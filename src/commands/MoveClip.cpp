@@ -56,7 +56,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
     : TMoveCommand(nullptr, view->get_context(), "")
     , m_actionType(UNDEFINED)
-    , mcd(new MoveClipData)
+    , m_d(new MoveClipData)
 {
     QString action = "No action supplied in args";
 
@@ -64,9 +64,9 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
         action = args.at(0).toString();
     }
     if (args.size() > 1) {
-        mcd->verticalOnly = args.at(1).toBool();
+        m_d->verticalOnly = args.at(1).toBool();
     } else {
-        mcd->verticalOnly = false;
+        m_d->verticalOnly = false;
     }
 
     QString des;
@@ -122,9 +122,9 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
         TimeRef currentLocation = TimeRef(cpointer().on_first_input_event_scene_x() * d->sv->timeref_scalefactor);
 
         if (d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())) {
-            mcd->pointedTrackIndex = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())->get_track()->get_sort_index();
+            m_d->pointedTrackIndex = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())->get_track()->get_sort_index();
         } else {
-            mcd->pointedTrackIndex = 0;
+            m_d->pointedTrackIndex = 0;
         }
 
         if (m_actionType == FOLD_SHEET || m_actionType == FOLD_MARKERS) {
@@ -164,7 +164,7 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
         } else {
             m_group.add_clip(clip);
         }
-        mcd->pointedTrackIndex = clip->get_track()->get_sort_index();
+        m_d->pointedTrackIndex = clip->get_track()->get_sort_index();
     }
 
     m_origTrackIndex = m_newTrackIndex = m_group.get_track_index();
@@ -174,16 +174,16 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
         m_trackStartLocation = m_group.get_track_start_location();
     }
     m_session = d->sv->get_sheet();
-    mcd->zoom = nullptr;
+    m_d->zoom = nullptr;
 }
 
 MoveClip::~MoveClip()
 {
-    if (mcd) {
-        if (mcd->zoom) {
-            delete mcd->zoom;
+    if (m_d) {
+        if (m_d->zoom) {
+            delete m_d->zoom;
         }
-        delete mcd;
+        delete m_d;
     }
 }
 
@@ -203,8 +203,8 @@ int MoveClip::begin_hold()
 
     m_group.set_as_moving(true);
 
-    mcd->sceneXStartPos = cpointer().on_first_input_event_scene_x();
-    mcd->relativeWorkCursorPos = m_session->get_work_location() - m_group.get_track_start_location();
+    m_d->sceneXStartPos = cpointer().on_first_input_event_scene_x();
+    m_d->relativeWorkCursorPos = m_session->get_work_location() - m_group.get_track_start_location();
 
     d->sv->stop_follow_play_head();
 
@@ -232,11 +232,11 @@ int MoveClip::finish_hold()
 
 int MoveClip::prepare_actions()
 {
-    if (mcd->zoom) {
-        delete mcd->zoom;
+    if (m_d->zoom) {
+        delete m_d->zoom;
     }
-    delete mcd;
-    mcd = nullptr;
+    delete m_d;
+    m_d = nullptr;
 
     if (m_actionType == COPY) {
         m_group.remove_all_clips_from_tracks();
@@ -300,25 +300,25 @@ void MoveClip::cancel_action()
 
 int MoveClip::jog()
 {
-    if (mcd->zoom) {
-        mcd->zoom->jog();
+    if (m_d->zoom) {
+        m_d->zoom->jog();
         return 0;
     }
 
     AudioTrackView* trackView = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos());
     int deltaTrackIndex = 0;
     if (trackView/* && !(m_actionType == FOLD_SHEET)*/) {
-        deltaTrackIndex = trackView->get_track()->get_sort_index() - mcd->pointedTrackIndex;
-        m_group.check_valid_track_index_delta(deltaTrackIndex);
+        deltaTrackIndex = trackView->get_track()->get_sort_index() - m_d->pointedTrackIndex;
+        deltaTrackIndex = m_group.check_valid_track_index_delta(deltaTrackIndex);
         m_newTrackIndex = m_newTrackIndex + deltaTrackIndex;
-        mcd->pointedTrackIndex = trackView->get_track()->get_sort_index();
+        m_d->pointedTrackIndex = trackView->get_track()->get_sort_index();
     }
 
     // Calculate the distance moved based on the current scene x pos and the initial one.
     // Only assign if we the movements is allowed in horizontal direction
     TimeRef diff_f;
-    if (!mcd->verticalOnly) {
-        diff_f = (cpointer().scene_x() - mcd->sceneXStartPos) * d->sv->timeref_scalefactor;
+    if (!m_d->verticalOnly) {
+        diff_f = (cpointer().scene_x() - m_d->sceneXStartPos) * d->sv->timeref_scalefactor;
     }
 
     // If the moved distance (diff_f) makes as go beyond the left most position (== 0, or TimeRef())
@@ -332,7 +332,7 @@ int MoveClip::jog()
     }
 
     // substract the snap distance, if snap is turned on.
-    if ((m_session->is_snap_on() || d->doSnap) && !mcd->verticalOnly) {
+    if ((m_session->is_snap_on() || d->doSnap) && !m_d->verticalOnly) {
         newTrackStartLocation -= m_session->get_snap_list()->calculate_snap_diff(newTrackStartLocation, newTrackStartLocation + m_group.get_length());
     }
 
@@ -369,7 +369,7 @@ void MoveClip::prev_snap_pos()
 
 void MoveClip::do_prev_next_snap(TimeRef trackStartLocation, TimeRef trackEndLocation)
 {
-    if (mcd->verticalOnly) return;
+    if (m_d->verticalOnly) return;
     ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
     trackStartLocation -= m_session->get_snap_list()->calculate_snap_diff(trackStartLocation, trackEndLocation);
     m_posDiff = trackStartLocation - m_trackStartLocation;
@@ -391,7 +391,7 @@ void MoveClip::move_to_end()
 void MoveClip::move_up()
 {
     int deltaTrackIndex = -1;
-    m_group.check_valid_track_index_delta(deltaTrackIndex);
+    deltaTrackIndex = m_group.check_valid_track_index_delta(deltaTrackIndex);
     m_newTrackIndex = m_newTrackIndex + deltaTrackIndex;
     do_move();
 }
@@ -399,19 +399,19 @@ void MoveClip::move_up()
 void MoveClip::move_down()
 {
     int deltaTrackIndex = 1;
-    m_group.check_valid_track_index_delta(deltaTrackIndex);
+    deltaTrackIndex = m_group.check_valid_track_index_delta(deltaTrackIndex);
     m_newTrackIndex = m_newTrackIndex + deltaTrackIndex;
     do_move();
 }
 
 void MoveClip::move_left()
 {
-    if (mcd->zoom) {
-        mcd->zoom->hzoom_out();
+    if (m_d->zoom) {
+        m_d->zoom->hzoom_out();
         return;
     }
 
-    if (mcd->verticalOnly) return;
+    if (m_d->verticalOnly) return;
 
     if (d->doSnap) {
         return prev_snap_pos();
@@ -426,12 +426,12 @@ void MoveClip::move_left()
 
 void MoveClip::move_right()
 {
-    if (mcd->zoom) {
-        mcd->zoom->hzoom_in();
+    if (m_d->zoom) {
+        m_d->zoom->hzoom_in();
         return;
     }
 
-    if (mcd->verticalOnly) return;
+    if (m_d->verticalOnly) return;
 
     if (d->doSnap) {
         return next_snap_pos();
@@ -443,9 +443,9 @@ void MoveClip::move_right()
 
 void MoveClip::start_zoom()
 {
-    if (!mcd->zoom) {
-        mcd->zoom = new Zoom(d->sv, QList<QVariant>() << "HJogZoom" << "1.2" << "0.2");
-        mcd->zoom->begin_hold();
+    if (!m_d->zoom) {
+        m_d->zoom = new Zoom(d->sv, QList<QVariant>() << "HJogZoom" << "1.2" << "0.2");
+        m_d->zoom->begin_hold();
         cpointer().set_canvas_cursor_shape(":/cursorZoomHorizontal");
         // FIXME, should no longer be handled from inherited class
 //        stop_shuttle();
@@ -453,15 +453,15 @@ void MoveClip::start_zoom()
         cpointer().set_canvas_cursor_shape(":/cursorHoldLrud");
         // FIXME, should no longer be handled from inherited class
 //        start_shuttle(true);
-        delete mcd->zoom;
-        mcd->zoom = 0;
+        delete m_d->zoom;
+        m_d->zoom = 0;
     }
 }
 
 void MoveClip::toggle_vertical_only()
 {
-    mcd->verticalOnly = !mcd->verticalOnly;
-    if (mcd->verticalOnly) {
+    m_d->verticalOnly = !m_d->verticalOnly;
+    if (m_d->verticalOnly) {
         set_cursor_shape(0, 1);
         cpointer().set_canvas_cursor_text(tr("Vertical On"), 1000);
     } else {
@@ -476,17 +476,17 @@ void MoveClip::do_move()
 
     m_group.move_to(m_newTrackIndex, m_trackStartLocation + m_posDiff);
 
-    if (mcd) {
+    if (m_d) {
         TrackView* tv = d->sv->get_track_views().at(m_newTrackIndex);
         qreal sceneY = tv->scenePos().y() + tv->boundingRect().height() / 2;
-        d->sv->keyboard_move_canvas_cursor_to_location(m_trackStartLocation + m_posDiff + mcd->relativeWorkCursorPos, sceneY);
+        d->sv->keyboard_move_canvas_cursor_to_location(m_trackStartLocation + m_posDiff + m_d->relativeWorkCursorPos, sceneY);
         d->sv->set_edit_cursor_text(timeref_to_text(m_trackStartLocation + m_posDiff, d->sv->timeref_scalefactor));
     }
 }
 
 void MoveClip::set_jog_bypassed(bool bypassed)
 {
-    if (mcd && bypassed) {
+    if (m_d && bypassed) {
         stop_shuttle();
     }
 }

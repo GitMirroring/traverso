@@ -89,7 +89,7 @@ private :
         TimeRef     relativeWorkCursorPos;
 	};
 	
-    MoveClipData* mcd;
+    MoveClipData* m_d;
 
 	void do_prev_next_snap(TimeRef trackStartLocation, TimeRef trackEndLocation);
 	void do_move();

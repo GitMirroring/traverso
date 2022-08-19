@@ -145,22 +145,24 @@ void AudioClipGroup::remove_all_clips_from_tracks()
     }
 }
 
-void AudioClipGroup::check_valid_track_index_delta(int & delta)
+int AudioClipGroup::check_valid_track_index_delta(int delta)
 {
         if (m_clips.isEmpty()) {
-        return;
+        return 0;
     }
 
     int allowedDeltaPlus = (m_clips.first()->get_sheet()->get_audio_track_count() - 1) - m_bottomTrackIndex;
     int allowedDeltaMin  = -m_topTrackIndex;
 
     if (delta > allowedDeltaPlus) {
-        delta = allowedDeltaPlus;
+        return allowedDeltaPlus;
     }
 
     if (delta < allowedDeltaMin) {
-        delta = allowedDeltaMin;
+        return allowedDeltaMin;
     }
+
+    return 0;
 }
 
 bool AudioClipGroup::is_locked() const
