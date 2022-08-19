@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "DiskIO.h"
 #include "Sheet.h"
-#include <QThread>
 
 #if defined (Q_OS_UNIX)
 
@@ -73,7 +72,6 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 #include "ReadSource.h"
 #include "WriteSource.h"
 #include "AudioDevice.h"
-#include "RingBuffer.h"
 #include "TConfig.h"
 
 // Always put me below _all_ includes, this is needed
@@ -83,26 +81,11 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 
 #define UPDATE_INTERVAL		20
 
-
-// DiskIOThread is a private class to be used by
-// DiskIO only for processing read/write buffers
-// in a seperate thread.
-class DiskIOThread : public QThread
+DiskIOThread::DiskIOThread(DiskIO *diskio)
+    : QThread(diskio),
+      m_diskio(diskio)
 {
-public:
-    DiskIOThread(DiskIO* diskio)
-        : QThread(diskio),
-          m_diskio(diskio)
-    {
-        connect(&m_workTimer, SIGNAL(timeout()), m_diskio, SLOT(do_work()));
-    }
-
-    DiskIO*		m_diskio;
-    QTimer			m_workTimer;
-
-protected:
-    void run() override;
-};
+}
 
 void DiskIOThread::run()
 {
@@ -158,18 +141,18 @@ DiskIO::DiskIO(Sheet* sheet)
     m_resampleDecodeBuffer = new DecodeBuffer;
 
     // Move this instance to the workthread
-//    moveToThread(m_diskThread);
-//    m_workTimer.moveToThread(m_diskThread);
-
-//    connect(&m_workTimer, SIGNAL(timeout()), this, SLOT(do_work()));
-
-    m_diskThread->start();
+    m_workTimer.moveToThread(m_diskThread);
+    m_workTimer.connect(m_diskThread, SIGNAL(started()), SLOT(start()));
+    m_workTimer.connect(m_diskThread, SIGNAL(finished()), SLOT(stop()));
+    m_workTimer.setInterval(UPDATE_INTERVAL);
+    connect(&m_workTimer, SIGNAL(timeout()), this, SLOT(do_work()), Qt::DirectConnection);
 }
+
 
 DiskIO::~DiskIO()
 {
     PENTERDES;
-    stop();
+    stop_io();
     delete [] framebuffer[0];
     delete m_decodebuffer;
     delete m_resampleDecodeBuffer;
@@ -229,7 +212,7 @@ void DiskIO::output_rate_changed(uint rate)
 void DiskIO::do_work( )
 {
 #if defined (THREAD_CHECK)
-    Q_ASSERT_X(m_sheet->threadId != QThread::currentThreadId (), "DiskIO::do_work", "Error, running in gui thread!!!!!");
+    Q_ASSERT_X(this->thread() != m_workTimer.thread(), "DiskIO::do_work", "Error, running in gui thread!!!!!");
 #endif
 
     QMutexLocker locker(&mutex);
@@ -358,30 +341,6 @@ int DiskIO::there_are_processable_sources( )
     return 0;
 }
 
-
-// Internal function
-int DiskIO::stop( )
-{
-    PENTER;
-    int res = 0;
-
-    // Stop any processing in do_work()
-    m_stopWork = 1;
-
-    // Exit the diskthreads event loop
-    m_diskThread->exit(0);
-
-    // Wait for the Thread to return from it's event loop. 1000 ms should be (more then) enough,
-    // if not, terminate this thread and print a warning!
-    if ( ! m_diskThread->wait(2000) ) {
-        qWarning("DiskIO :: Still running after 2 second wait, terminating!");
-        m_diskThread->terminate();
-        res = -1;
-    }
-
-    return res;
-}
-
 /**
  *      Registers the ReadSource source. The source's RingBuffer will be initialized at this point.
  *
@@ -461,17 +420,16 @@ void DiskIO::update_time_usage( )
  *
  * @return Returns the CPU time consumed by the DiskIO work thread
  */
-trav_time_t DiskIO::get_cpu_time( )
+float DiskIO::get_cpu_time( )
 {
     trav_time_t currentTime = get_microseconds();
-    trav_time_t result = (m_totalDoWorkTime  / (currentTime - m_lastdoWorkReadTime) ) * 100;
+    float result = (m_totalDoWorkTime  / double(currentTime - m_lastdoWorkReadTime) ) * 100;
     m_totalDoWorkTime = 0;
     m_lastdoWorkReadTime = currentTime;
 
     // 	if (result > 95) {
     // 		qWarning("DiskIO :: consuming more then 95 Percent CPU !!");
-    // 	}
-
+    // 	}    qDebug() << result;
     return result;
 }
 
@@ -511,16 +469,33 @@ int DiskIO::get_read_buffers_fill_status( )
 
 void DiskIO::start_io( )
 {
+    PENTER;
     //	Q_ASSERT_X(m_sheet->threadId != QThread::currentThreadId (), "DiskIO::start_io", "Error, running in gui thread!!!!!");
-    m_diskThread->m_workTimer.start(UPDATE_INTERVAL);
-    emit ioStartRequested();
+    m_diskThread->start();
 }
 
 void DiskIO::stop_io( )
 {
-    //	Q_ASSERT_X(m_sheet->threadId != QThread::currentThreadId (), "DiskIO::stop_io", "Error, running in gui thread!!!!!");
-    // 	m_workTimer.stop();
-    emit ioStopRequested();
+    PENTER;
+    if (!m_diskThread->isRunning()) {
+        return;
+    }
+
+
+    // Stop any processing in do_work()
+    m_stopWork = 1;
+
+    // Exit the diskthreads event loop
+    m_diskThread->exit(0);
+
+    // Wait for the Thread to return from it's event loop. 1000 ms should be (more then) enough,
+    // if not, terminate this thread and print a warning!
+    if ( ! m_diskThread->wait(2000) ) {
+        qWarning("DiskIO :: Still running after 2 second wait, terminating!");
+        m_diskThread->terminate();
+    }
+
+    m_stopWork = 0;
 }
 
 void DiskIO::set_resample_quality(int quality)

@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 #include <QTimer>
 #include <QPair>
+#include <QThread>
 
 #include "defines.h"
 
@@ -65,7 +66,7 @@ public:
 	void unregister_read_source(ReadSource* source);
 	void unregister_write_source(WriteSource* source);
 
-	trav_time_t get_cpu_time();
+        float get_cpu_time();
 	int get_write_buffers_fill_status();
 	int get_read_buffers_fill_status();
 	int get_output_rate() {return m_outputRate;}
@@ -102,7 +103,6 @@ private:
 	
 	void update_time_usage();
 	
-        int stop();
 	int there_are_processable_sources();
 
 	friend class DiskIOThread;
@@ -123,6 +123,24 @@ signals:
     void ioStopRequested();
 
 };
+
+// DiskIOThread is a private class to be used by
+// DiskIO only for processing read/write buffers
+// in a seperate thread.
+class DiskIOThread : public QThread
+{
+        Q_OBJECT
+public:
+    DiskIOThread(DiskIO* diskio);
+
+
+private:
+    DiskIO*		m_diskio;
+
+protected:
+    void run() override;
+};
+
 
 #endif
 
