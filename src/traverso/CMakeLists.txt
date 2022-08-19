@@ -57,7 +57,7 @@ widgets/TSessionTabWidget.cpp
 widgets/TContextHelpWidget.cpp
 )
 
-QT5_ADD_RESOURCES(TRAVERSO_RESOURCES
+QT6_ADD_RESOURCES(TRAVERSO_RESOURCES
 ../../resources/traverso.qrc
 )
 
@@ -169,8 +169,8 @@ ADD_EXECUTABLE(traverso
 )
 
 TARGET_LINK_LIBRARIES(traverso
-        ${Qt5Widgets_LIBRARIES}
-        ${Qt5Xml_LIBRARIES}
+	${Qt6Widgets_LIBRARIES}
+	${Qt6Xml_LIBRARIES}
         traversosheetcanvas
         traversocore
         traversoaudiofileio

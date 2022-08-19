@@ -76,7 +76,8 @@ SystemResources::SystemResources(QWidget * parent)
 	m_readBufferStatus = new SystemValueBar(this);
 	m_readBufferStatus->setToolTip(tr("Read Buffer Status"));
 	m_writeBufferStatus->setToolTip(tr("Write Buffer Status"));
-	m_cpuUsage = new SystemValueBar(this);
+    m_dspCpuUsage = new SystemValueBar(this);
+    m_diskCpuUsage = new SystemValueBar(this);
 	m_icon = new QPushButton();
 	m_icon->setIcon(find_pixmap(":/memorysmall"));
 	m_icon->setFlat(true);
@@ -99,23 +100,32 @@ SystemResources::SystemResources(QWidget * parent)
 	m_readBufferStatus->add_range_color(60, 100, QColor(227, 254, 227));
 	m_readBufferStatus->setMinimumWidth(60);
 	
-	m_cpuUsage->set_range(0, 100);
-	m_cpuUsage->set_int_rounding(false);
-	m_cpuUsage->setMinimumWidth(90);
-	m_cpuUsage->add_range_color(0, 60, QColor(227, 254, 227));
-	m_cpuUsage->add_range_color(60, 75, QColor(255, 255, 0));
-	m_cpuUsage->add_range_color(75, 100, QColor(255, 0, 0));
+    m_dspCpuUsage->set_range(0, 100);
+    m_dspCpuUsage->set_int_rounding(false);
+    m_dspCpuUsage->setMinimumWidth(90);
+    m_dspCpuUsage->add_range_color(0, 60, QColor(227, 254, 227));
+    m_dspCpuUsage->add_range_color(60, 75, QColor(255, 255, 0));
+    m_dspCpuUsage->add_range_color(75, 100, QColor(255, 0, 0));
+
+    m_diskCpuUsage->set_range(0, 100);
+    m_diskCpuUsage->set_int_rounding(false);
+    m_diskCpuUsage->setMinimumWidth(90);
+    m_diskCpuUsage->add_range_color(0, 60, QColor(227, 254, 227));
+    m_diskCpuUsage->add_range_color(60, 75, QColor(255, 255, 0));
+    m_diskCpuUsage->add_range_color(75, 100, QColor(255, 0, 0));
 	
         m_readBufferStatus->set_text("R");
 	m_writeBufferStatus->set_text("W");
-        m_cpuUsage->set_text("DSP");
+        m_dspCpuUsage->set_text("DSP");
+        m_diskCpuUsage->set_text("I/O");
 	
         QHBoxLayout* lay = new QHBoxLayout(this);
 	lay->addSpacing(6);
 	lay->addWidget(m_readBufferStatus);
-	lay->addWidget(m_icon);
+    lay->addWidget(m_diskCpuUsage);
+//	lay->addWidget(m_icon);
 	lay->addWidget(m_writeBufferStatus);
-	lay->addWidget(m_cpuUsage);
+    lay->addWidget(m_dspCpuUsage);
         lay->addWidget(TMainWindow::instance()->get_track_finder());
         lay->addWidget(m_collectedNumber);
     lay->setContentsMargins(0, 0, 0, 0);
@@ -134,7 +144,9 @@ SystemResources::SystemResources(QWidget * parent)
 
 void SystemResources::update_status( )
 {
-	float time = audiodevice().get_cpu_time();
+    float time = audiodevice().get_cpu_time();
+    float diskIOtime = 0.0f;
+
 	int bufReadStatus = 100;
 	int bufWriteStatus = 100;
 	
@@ -142,13 +154,15 @@ void SystemResources::update_status( )
 		foreach(Sheet* sheet, m_project->get_sheets() ) {
 			bufReadStatus = std::min(sheet->get_diskio()->get_read_buffers_fill_status(), bufReadStatus);
 			bufWriteStatus = std::min(sheet->get_diskio()->get_write_buffers_fill_status(), bufWriteStatus);
+            diskIOtime += sheet->get_diskio()->get_cpu_time();
 		}
 	}
 
 	
 	m_readBufferStatus->set_value(bufReadStatus);
 	m_writeBufferStatus->set_value(bufWriteStatus);
-	m_cpuUsage->set_value(time);
+    m_dspCpuUsage->set_value(time);
+    m_diskCpuUsage->set_value(diskIOtime);
 }
 
 
@@ -513,7 +527,7 @@ void SystemValueBar::paintEvent(QPaintEvent* )
 	painter.setBrush(color);
 	painter.setPen(Qt::NoPen);
 	float scalefactor = width() / m_max;
-	rect = QRect(1, (height() - 15) / 2 + 1, width() - 2 - (int)(scalefactor* (m_max - m_current)), 13);
+    rect = QRect(1, (height() - 15) / 2 + 1, width() - 2 - (int)(scalefactor* (m_max - m_current)), 13);
 	painter.drawRect(rect);
 	
 	painter.setPen(Qt::black);

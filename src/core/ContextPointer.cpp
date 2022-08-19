@@ -59,7 +59,7 @@ struct TMouseData {
     QPoint  onFirstInputEventPos;
     QPoint  jogStartGlobalMousePos;   // global Mouse Screen position at jog start
     QPoint  mousePos;
-    QPoint  globalMousePos;           // global Mouse Screen position while holding
+    QPointF  globalMousePos;           // global Mouse Screen position while holding
     QPoint  mouseCursorPosDuringHold;  // global Mouse Screen pos while holding centered in ViewPort
     QPoint  canvasCursorPos;
 };
@@ -352,12 +352,12 @@ void ContextPointer::set_active_context_items_by_keyboard_input(const QList<Cont
     set_active_context_items(items);
 }
 
-QPoint ContextPointer::get_global_mouse_pos() const
+QPointF ContextPointer::get_global_mouse_pos() const
 {
     return m_mouseData->globalMousePos;
 }
 
-void ContextPointer::update_mouse_positions(const QPoint &pos, const QPoint &globalPos)
+void ContextPointer::update_mouse_positions(const QPoint &pos, const QPointF &globalPos)
 {
     m_mouseData->mousePos = pos;
     m_mouseData->globalMousePos = globalPos;

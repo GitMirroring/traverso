@@ -33,14 +33,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <Utils.h>
 #include "TInputEventDispatcher.h"
-#include "Themer.h"
 
 #include "SheetView.h"
 #include "ViewPort.h"
 #include "ViewItem.h"
 #include "ContextPointer.h"
 
-#include "Import.h"
 #include <cstdio>
 
 // Always put me below _all_ includes, this is needed
@@ -132,7 +130,7 @@ bool ViewPort::event(QEvent * event)
 
 void ViewPort::grab_mouse()
 {
-    viewport()->grabMouse();
+//    viewport()->grabMouse();
 }
 
 void ViewPort::release_mouse()
@@ -145,7 +143,7 @@ void ViewPort::mouseMoveEvent(QMouseEvent* event)
 {
     PENTER;
 
-    cpointer().update_mouse_positions(event->pos(), event->globalPos());
+    cpointer().update_mouse_positions(event->pos(), event->globalPosition());
 
     if (cpointer().keyboard_only_input()) {
         event->accept();
@@ -232,7 +230,7 @@ void ViewPort::tabletEvent(QTabletEvent * event)
 	QGraphicsView::tabletEvent(event);
 }
 
-void ViewPort::enterEvent(QEvent* e)
+void ViewPort::enterEvent(QEnterEvent* e)
 {
     if (ied().is_holding()) {
         // we allready have viewport so do nothing

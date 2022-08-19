@@ -72,7 +72,8 @@ private:
         QTimer          m_updateTimer;
 	SystemValueBar*	m_readBufferStatus;
 	SystemValueBar*	m_writeBufferStatus;
-        SystemValueBar*	m_cpuUsage;
+        SystemValueBar*	m_dspCpuUsage;
+        SystemValueBar*	m_diskCpuUsage;
         QPushButton*	m_icon;
         QLabel*         m_collectedNumber;
 
