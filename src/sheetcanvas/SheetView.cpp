@@ -53,11 +53,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "ViewPort.h"
 #include "TMoveCommand.h"
 
-#include "AddRemove.h"
 #include "ProjectManager.h"
 #include "Project.h"
-
-#include "AudioDevice.h"
 
 #include <Debugger.h>
 
