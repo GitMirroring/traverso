@@ -33,7 +33,7 @@ class JackDriver : public TAudioDriver
 {
 	Q_OBJECT
 public:
-        JackDriver(AudioDevice* dev, uint rate, nframes_t bufferSize);
+        JackDriver(AudioDevice* device);
         ~JackDriver();
 
         int  process_callback (nframes_t nframes);

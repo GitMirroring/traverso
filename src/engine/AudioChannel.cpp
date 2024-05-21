@@ -20,7 +20,8 @@
 */
 
 #include "AudioChannel.h"
-#include "AudioDevice.h"
+
+#include "Mixer.h"
 
 #include "Tsar.h"
 #include "Utils.h"

@@ -85,7 +85,7 @@ public:
         void set_master_out_bus(AudioBus* bus);
         void send_to_master_out(AudioChannel* channel, nframes_t nframes);
 
-	QStringList get_capture_channel_names() const;
+    QStringList get_capture_channel_names() const;
 	QStringList get_playback_channel_names() const;
 	
         QList<AudioChannel*> get_channels() const;
@@ -135,7 +135,7 @@ private:
 	friend class AlsaDriver;
 	friend class PADriver;
         friend class TAudioDriver;
-	friend class PulseAudioDriver;
+    friend class TPulseAudioDriver;
 	friend class AudioDeviceThread;
 #if defined (COREAUDIO_SUPPORT)
 	friend class CoreAudioDriver;
@@ -176,10 +176,6 @@ private:
 
     void post_run_cycle();
 
-	// These are reserved for Driver Objects only!!
-	AudioChannel* register_capture_channel(const QByteArray& busName, const QString& audioType, int flags, uint bufferSize, uint channel );
-	AudioChannel* register_playback_channel(const QByteArray& busName, const QString& audioType, int flags, uint bufferSize, uint channel );
-	
 	int run_cycle(nframes_t nframes, float delayed_usecs);
 	
 	void set_buffer_size(uint size);
@@ -203,7 +199,7 @@ private:
 	void mili_sleep(int msec);
 	void xrun();
 	
-	size_t run_audio_thread() const;
+    size_t run_audio_thread() const {return m_runAudioThread;}
 	
 	QVariant get_driver_property(const QString& property, const QVariant& defaultValue);
 
@@ -257,9 +253,6 @@ private slots:
 
 // use this function to get the audiodevice object
 AudioDevice& audiodevice();
-
-
-inline size_t AudioDevice::run_audio_thread( ) const {return m_runAudioThread;}
 
 
 #endif

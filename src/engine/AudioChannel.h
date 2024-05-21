@@ -25,9 +25,8 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 
 #include "defines.h"
 #include <QString>
+#include <QObject>
 #include <QVarLengthArray>
-#include "Mixer.h"
-#include "RingBuffer.h"
 #include "APILinkedList.h"
 
 class RingBuffer;

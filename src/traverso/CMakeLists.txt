@@ -210,7 +210,8 @@ ENDIF(HAVE_PORTAUDIO)
 
 IF(HAVE_PULSEAUDIO)
         TARGET_LINK_LIBRARIES(traverso
-                pulse
+		pulse-simple
+		pulse
         )
 ENDIF(HAVE_PULSEAUDIO)
 

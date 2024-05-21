@@ -38,7 +38,7 @@ RELAYTOOL_JACK
 #endif
 
 #if defined (PULSEAUDIO_SUPPORT)
-#include "PulseAudioDriver.h"
+#include "TPulseAudioDriver.h"
 #endif
 
 #if defined (COREAUDIO_SUPPORT)
@@ -231,8 +231,8 @@ void AudioDevice::set_buffer_size( nframes_t size )
     Q_ASSERT(size > 0);
     m_bufferSize = size;
 
-    for (auto m_channel : m_channels) {
-        m_channel->set_buffer_size(m_bufferSize);
+    for (auto chan : m_channels) {
+        chan->set_buffer_size(m_bufferSize);
     }
 
 }
@@ -334,7 +334,7 @@ void AudioDevice::set_parameters(AudioDeviceSetup ads)
 
     m_runAudioThread = 1;
 
-    if ((ads.driverType == "ALSA") || (ads.driverType == "Null Driver")) {
+    if ((ads.driverType == "ALSA") || (ads.driverType == "Null Driver") || (ads.driverType == "PulseAudio") ) {
 
         printf("AudioDevice: Starting Audio Thread ... ");
 
@@ -379,7 +379,7 @@ void AudioDevice::set_parameters(AudioDeviceSetup ads)
     }
 #endif
 
-    if (ads.driverType == "PortAudio"|| /*(ads.driverType == "PulseAudio") ||*/ (ads.driverType == "CoreAudio")) {
+    if (ads.driverType == "PortAudio"|| (ads.driverType == "PulseAudio") || (ads.driverType == "CoreAudio")) {
         if (m_driver->start() == -1) {
             // PortAudio driver failed to start, fallback to Null Driver:
             set_parameters(m_fallBackSetup);
@@ -397,7 +397,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
         if (driverType == "Jack") {
-            m_driver = new JackDriver(this, m_rate, m_bufferSize);
+            m_driver = new JackDriver(this);
             JackDriver* jackDriver = qobject_cast<JackDriver*>(m_driver);
             if (jackDriver && jackDriver->setup(m_setup.jackChannels) < 0) {
                 message(tr("Audiodevice: Failed to create the Jack Driver"), WARNING);
@@ -413,7 +413,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
 
 #if defined (ALSA_SUPPORT)
     if (driverType == "ALSA") {
-        m_driver =  new AlsaDriver(this, m_rate, m_bufferSize);
+        m_driver =  new AlsaDriver(this);
         AlsaDriver* alsaDriver = qobject_cast<AlsaDriver*>(m_driver);
         if (alsaDriver && alsaDriver->setup(capture,playback, cardDevice, m_ditherShape) < 0) {
             message(tr("Audiodevice: Failed to create the ALSA Driver"), WARNING);
@@ -428,7 +428,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
 
 #if defined (PORTAUDIO_SUPPORT)
     if (driverType == "PortAudio") {
-        m_driver = new PADriver(this, m_rate, m_bufferSize);
+        m_driver = new PADriver(this);
         PADriver* paDriver = qobject_cast<PADriver*>(m_driver);
         if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
             message(tr("Audiodevice: Failed to create the PortAudio Driver"), WARNING);
@@ -443,8 +443,8 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
 
 #if defined (PULSEAUDIO_SUPPORT)
     if (driverType == "PulseAudio") {
-        m_driver = new PulseAudioDriver(this, m_rate, m_bufferSize);
-        PulseAudioDriver* paDriver = qobject_cast<PulseAudioDriver*>(m_driver);
+        m_driver = new TPulseAudioDriver(this);
+        TPulseAudioDriver* paDriver = qobject_cast<TPulseAudioDriver*>(m_driver);
         if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
             message(tr("Audiodevice: Failed to create the PulseAudio Driver"), WARNING);
             delete m_driver;
@@ -475,7 +475,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
 
     if (driverType == "Null Driver") {
         printf("AudioDevice: Creating Null Driver...\n");
-        m_driver = new TAudioDriver(this, m_rate, m_bufferSize);
+        m_driver = new TAudioDriver(this);
         m_driverType = driverType;
         return 1;
     }

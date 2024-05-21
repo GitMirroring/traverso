@@ -102,7 +102,6 @@ private:
 	
         bool            		m_isMonitoring;
         bool                    m_isInternalBus;
-        uint         			m_channelCount;
         int                     m_type;
         int                     m_busType;
         qint64                  m_id;
@@ -121,7 +120,7 @@ signals:
  */
 inline AudioChannel * AudioBus::get_channel( uint channelNumber )
 {
-        if (channelNumber < m_channelCount) {
+        if (channelNumber < get_channel_count()) {
                 return m_channels.at(channelNumber);
         }
         return 0;

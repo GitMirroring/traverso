@@ -37,13 +37,13 @@
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
-JackDriver::JackDriver(AudioDevice * dev , uint rate, nframes_t bufferSize)
-                : TAudioDriver(dev, rate, bufferSize)
+JackDriver::JackDriver(AudioDevice* device)
+    : TAudioDriver(device)
 {
         read = MakeDelegate(this, &JackDriver::_read);
         write = MakeDelegate(this, &JackDriver::_write);
         run_cycle = RunCycleCallback(this, &JackDriver::_run_cycle);
-	m_running = false;
+    m_running = 0;
 
         connect(this, SIGNAL(pcpairRemoved(PortChannelPair*)), this, SLOT(cleanup_removed_port_channel_pair(PortChannelPair*)));
 }
@@ -53,7 +53,7 @@ JackDriver::~JackDriver( )
 	PENTER;
         Q_ASSERT(!is_running());
 
-    if (m_running == -1) {
+    if (m_running == 2) {
         // jack server shut us down so do not call jack_client_close
         return;
     }
@@ -68,7 +68,7 @@ int JackDriver::_read( nframes_t nframes )
 
                 if (pcpair->unregister) {
                         m_inputs.removeAll(pcpair);
-                        RT_THREAD_EMIT(this, pcpair, pcpairRemoved(PortChannelPair*))
+                        tsar().rt_thread_emit(this, pcpair, "pcpairRemoved(PortChannelPair*)");
                         continue;
                 }
 
@@ -84,7 +84,7 @@ int JackDriver::_write( nframes_t nframes )
 
                 if (pcpair->unregister) {
                         m_outputs.removeAll(pcpair);
-                        RT_THREAD_EMIT(this, pcpair, pcpairRemoved(PortChannelPair*))
+                        tsar().rt_thread_emit(this, pcpair, "pcpairRemoved(PortChannelPair*)");
                         continue;
                 }
 
@@ -100,13 +100,13 @@ int JackDriver::setup(QList<AudioChannel* > channels)
 	
         const char *client_name = "Traverso";
         m_jack_client = nullptr;
-        capture_frame_latency = playback_frame_latency =0 ;
+        m_captureFrameLatency = m_playbackFrameLatency =0 ;
 
 
         printf("Connecting to the Jack server...\n");
 
         if ( (m_jack_client = jack_client_open(client_name, JackNoStartServer, nullptr)) == nullptr) {
-                device->driverSetupMessage(tr("Couldn't connect to the jack server, is jack running?"), AudioDevice::DRIVER_SETUP_FAILURE);
+                m_device->driverSetupMessage(tr("Couldn't connect to the jack server, is jack running?"), AudioDevice::DRIVER_SETUP_FAILURE);
                 return -1;
         }
 
@@ -138,7 +138,7 @@ void JackDriver::add_channel(AudioChannel* channel)
         }
 
         pcpair->channel = channel;
-        pcpair->channel->set_latency( frames_per_cycle + capture_frame_latency );
+        pcpair->channel->set_latency( m_framesPerCycle + m_captureFrameLatency );
         pcpair->name = channel->get_name();
 
 
@@ -183,8 +183,8 @@ int JackDriver::attach( )
 {
 	PENTER;
 
-        device->set_buffer_size( jack_get_buffer_size(m_jack_client) );
-        device->set_sample_rate (jack_get_sample_rate(m_jack_client));
+        m_device->set_buffer_size( jack_get_buffer_size(m_jack_client) );
+        m_device->set_sample_rate (jack_get_sample_rate(m_jack_client));
 
         jack_set_process_callback (m_jack_client, _process_callback, this);
         jack_set_xrun_callback (m_jack_client, _xrun_callback, this);
@@ -204,7 +204,7 @@ int JackDriver::start( )
 		return -1;
 	}
 	
-        device->driverSetupMessage(tr("Succesfully connected to jack server!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+        m_device->driverSetupMessage(tr("Succesfully connected to jack server!"), AudioDevice::DRIVER_SETUP_SUCCESS);
 
         m_running = 1;
 	return 1;
@@ -231,9 +231,9 @@ int JackDriver::process_callback (nframes_t nframes)
         transportstate.realtime = true;
         transportstate.isSlave = true;
 
-        device->transport_control(transportstate);
+        m_device->transport_control(transportstate);
 	
-	device->run_cycle( nframes, 0.0);
+    m_device->run_cycle( nframes, 0.0);
         return 0;
 }
 
@@ -249,7 +249,7 @@ int JackDriver::jack_sync_callback (jack_transport_state_t state, jack_position_
         transportstate.isSlave = true;
         transportstate.realtime = true;
 	
-        return device->transport_control(transportstate);
+        return m_device->transport_control(transportstate);
 }
 
 
@@ -274,8 +274,8 @@ QString JackDriver::get_device_longname( )
 int JackDriver::_xrun_callback( void * arg )
 {
         JackDriver* driver  = static_cast<JackDriver *> (arg);
-	if (driver->m_running) {
-        	driver->device->xrun();
+    if (driver->is_running()) {
+            driver->m_device->xrun();
 	}
         return 0;
 }
@@ -283,7 +283,7 @@ int JackDriver::_xrun_callback( void * arg )
 int JackDriver::_process_callback (nframes_t nframes, void *arg)
 {
 	JackDriver* driver  = static_cast<JackDriver *> (arg);
-	if (!driver->m_running) {
+    if (!driver->is_running()) {
 		return 0;
 	}
 	
@@ -293,9 +293,9 @@ int JackDriver::_process_callback (nframes_t nframes, void *arg)
 int JackDriver::_bufsize_callback( nframes_t nframes, void * arg )
 {
         JackDriver* driver  = static_cast<JackDriver *> (arg);
-        driver->device->set_buffer_size( nframes );
+        driver->m_device->set_buffer_size( nframes );
 
-        emit driver->device->driverParamsChanged();
+        emit driver->m_device->driverParamsChanged();
         return 0;
 }
 
@@ -307,7 +307,7 @@ float JackDriver::get_cpu_load( )
 void JackDriver::_on_jack_shutdown_callback( void * arg )
 {
 	JackDriver* driver  = static_cast<JackDriver *> (arg);
-	driver->m_running = -1;
+    driver->m_running = 2;
 }
 
 int JackDriver::_jack_sync_callback (jack_transport_state_t state, jack_position_t* pos, void* arg)
@@ -317,7 +317,7 @@ int JackDriver::_jack_sync_callback (jack_transport_state_t state, jack_position
 
 void JackDriver::update_config()
 {
-	m_isSlave = device->get_driver_property("jackslave", false).toBool();
+    m_isSlave = m_device->get_driver_property("jackslave", false).toBool();
 		
 	if (m_isSlave) {
                 jack_set_sync_callback (m_jack_client, _jack_sync_callback, this);
@@ -331,7 +331,7 @@ void JackDriver::cleanup_removed_port_channel_pair(PortChannelPair* pcpair)
         PENTER;
         jack_port_unregister(m_jack_client, pcpair->jackport);
 
-        device->delete_channel(pcpair->channel);
+        m_device->delete_channel(pcpair->channel);
         delete pcpair;
         pcpair = nullptr;
 }

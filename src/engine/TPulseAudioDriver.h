@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2007 Remon Sijrier 
+    Copyright (C) 2008 Remon Sijrier 
  
     This file is part of Traverso
  
@@ -19,50 +19,39 @@
  
 */
 
-#ifndef PORTAUDIO_DRIVER_H
-#define PORTAUDIO_DRIVER_H
+#ifndef TPULSE_AUDIO_DRIVER_H
+#define TPULSE_AUDIO_DRIVER_H
 
 #include "TAudioDriver.h"
-#include "portaudio.h"
+#include "defines.h"
+#include <pulse/pulseaudio.h>
+#include <pulse/simple.h>
 
-class PADriver : public TAudioDriver
+class TPulseAudioDriver : public TAudioDriver
 {
-        Q_OBJECT
+    Q_OBJECT
 
 public:
-    PADriver(AudioDevice* device);
-	~PADriver();
+    TPulseAudioDriver(AudioDevice* device);
+	~TPulseAudioDriver();
 
-	int  process_callback (nframes_t nframes);
 	int _read(nframes_t nframes);
 	int _write(nframes_t nframes);
-	int _run_cycle() {return 1;}
-        int setup(bool capture=true, bool playback=true, const QString& deviceInfo="alsa::default::default");
+	int _run_cycle();
+	int setup(bool capture=true, bool playback=true, const QString& cardDevice="hw:0");
 	int attach();
 	int start();
 	int stop();
 
 	QString get_device_name();
 	QString get_device_longname();
-        static QStringList devices_info(const QString& hostApi);
-        static int host_index_for_host_api(const QString& hostapi);
 
-	float get_cpu_load();
+	void update_config();
 
 private:
-	PaStream* m_paStream;
-        void* m_paInputBuffer;
-        void* m_paOutputBuffer;
-
-
- 	static int _xrun_callback(void *arg);
-	static void _on_pa_shutdown_callback(void* arg);
-	static int _process_callback( const void *inputBuffer, void *outputBuffer,
-					unsigned long framesPerBuffer,
-					const PaStreamCallbackTimeInfo* timeInfo,
-					PaStreamCallbackFlags statusFlags,
-					void *arg );
-
+    // Simple PulseAudio
+    pa_simple*  m_paSimple;
+    pa_sample_spec m_sampleSpec{};
 };
 
 
@@ -70,3 +59,4 @@ private:
 
 //eof
 
+ 

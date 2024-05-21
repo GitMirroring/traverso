@@ -50,7 +50,6 @@ AudioBus::AudioBus(const BusConfig& config)
 {
         m_isMonitoring = true;
 
-        m_channelCount = 0;
         m_name = config.name;
         if (config.type == "input") {
                 m_type = ChannelIsInput;
@@ -101,7 +100,6 @@ void AudioBus::add_channel(AudioChannel* chan)
 {
 	Q_ASSERT(chan);
         m_channels.append(chan);
-        m_channelCount++;
 }
 
 void AudioBus::add_channel(const QString &channel)
@@ -111,7 +109,7 @@ void AudioBus::add_channel(const QString &channel)
 
 uint AudioBus::get_channel_count() const
 {
-        return m_channelCount;
+        return m_channels.size();
 }
 
 QStringList AudioBus::get_channel_names() const
@@ -140,7 +138,6 @@ QList<qint64> AudioBus::get_channel_ids() const
 void AudioBus::audiodevice_params_changed()
 {
         m_channels.clear();
-        m_channelCount = 0;
 
         AudioChannel* channel;
 

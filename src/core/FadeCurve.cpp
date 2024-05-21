@@ -236,6 +236,7 @@ void FadeCurve::process(AudioBus *bus, nframes_t nframes)
 
         for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
                 for (nframes_t frame = 0; frame < framesToProcess; ++frame) {
+                // FXME: Array access result in an undefined pointer dereference accorindg to clang tidy
                         mixdown[chan][frame] *= m_session->gainbuffer[frame];
                 }
         }

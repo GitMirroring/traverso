@@ -19,7 +19,7 @@
  
 */
 
-#include "PulseAudioDriver.h"
+#include "TPulseAudioDriver.h"
 
 #include <pulse/error.h>
 
@@ -30,168 +30,112 @@
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
-PulseAudioDriver::PulseAudioDriver(AudioDevice * dev , uint rate, nframes_t bufferSize)
-    : TAudioDriver(dev, rate, bufferSize)
+TPulseAudioDriver::TPulseAudioDriver(AudioDevice* device )
+    : TAudioDriver(device)
 {
-	read = MakeDelegate(this, &PulseAudioDriver::_read);
-	write = MakeDelegate(this, &PulseAudioDriver::_write);
-	run_cycle = RunCycleCallback(this, &PulseAudioDriver::_run_cycle);
-	
-    m_mainloop = nullptr;
-    context = nullptr;
-    stream = nullptr;
-    mainloop_api = nullptr;
-	volume = PA_VOLUME_NORM;
-	channel_map_set = 0;
+    read = MakeDelegate(this, &TPulseAudioDriver::_read);
+    write = MakeDelegate(this, &TPulseAudioDriver::_write);
+    run_cycle = RunCycleCallback(this, &TPulseAudioDriver::_run_cycle);
+
+    m_paSimple = nullptr;
 }
 
-PulseAudioDriver::~PulseAudioDriver( )
+TPulseAudioDriver::~TPulseAudioDriver( )
 {
-	PENTER;
-	if (stream)
-		pa_stream_unref(stream);
-
-	if (context)
-		pa_context_unref(context);
-
-    if (m_mainloop) {
-		pa_signal_done();
-        pa_mainloop_free(m_mainloop);
-	}
 }
 
-int PulseAudioDriver::_read( nframes_t nframes )
+int TPulseAudioDriver::_read( nframes_t nframes )
 {
 	return 1;
 }
 
-int PulseAudioDriver::_write( nframes_t nframes )
+int TPulseAudioDriver::_write( nframes_t nframes )
 {
-	return 1;
-}
+    Q_ASSERT(m_paSimple);
 
-int PulseAudioDriver::setup(bool capture, bool playback, const QString& )
-{
-	PENTER;
-	
-	sample_spec.rate = frame_rate;
-	sample_spec.channels = 2;
-	sample_spec.format = PA_SAMPLE_FLOAT32NE;
-	
-	assert(pa_sample_spec_valid(&sample_spec));
-	
-	if (channel_map_set && channel_map.channels != sample_spec.channels) {
-		fprintf(stderr, "Channel map doesn't match file.\n");
-		return -1;
-	}
-	
-	/* Set up a new main loop */
-    if (!(m_mainloop = pa_mainloop_new())) {
-		fprintf(stderr, "pa_mainloop_new() failed.\n");
-		return -1;
-	}
+    const void* buf;
+    int error;
 
-    mainloop_api = pa_mainloop_get_api(m_mainloop);
-
-	int r = pa_signal_init(mainloop_api);
-	assert(r == 0);
-
-	/* Create a new connection context */
-	if (!(context = pa_context_new(mainloop_api, "Traverso"))) {
-		fprintf(stderr, "pa_context_new() failed.\n");
-		return -1;
-	}
-
-	pa_context_set_state_callback(context, context_state_callback, this);
-
-	/* Connect the context */
-    pa_context_connect(context, "", (pa_context_flags_t)0, nullptr);
-
-
-
-
-	return 1;
-}
-
-int PulseAudioDriver::attach( )
-{
-	PENTER;
-    AudioChannel* audiochannel;
-//    int port_flags;
-    char buf[32];
-
-    // TODO use the found maxchannel count for the playback stream, instead of assuming 2 !!
-    for (int chn = 0; chn < 2; chn++) {
-
-        snprintf (buf, sizeof(buf) - 1, "playback_%d", chn+1);
-
-        audiochannel = add_playback_channel(buf);
-//		audiochannel = device->register_playback_channel(buf, "32 bit float audio", port_flags, frames_per_cycle, chn);
-//		audiochannel->set_latency( frames_per_cycle + capture_frame_latency );
-//        m_playbackChannels.append(audiochannel);
+    if (m_playbackChannels.size() > 0) {
+        buf = m_playbackChannels.at(0)->get_buffer(nframes);
+    } else {
+        printf("No playback channels\n");
+        return 0;
     }
 
-    // TODO use the found maxchannel count for the capture stream, instead of assuming 0 !!
-    for (int chn = 0; chn < 2; chn++) {
+    m_device->transport_cycle_end(get_microseconds());
 
-        snprintf (buf, sizeof(buf) - 1, "capture_%d", chn+1);
-        audiochannel = add_capture_channel(buf);
-
-//		audiochannel = device->register_capture_channel(buf, "32 bit float audio", port_flags, frames_per_cycle, chn);
-//		audiochannel->set_latency( frames_per_cycle + capture_frame_latency );
-//        m_captureChannels.append(audiochannel);
+    if (pa_simple_write(m_paSimple, buf, m_framesPerCycle * sizeof(audio_sample_t), &error) < 0) {
+        fprintf(stderr, __FILE__": pa_simple_write() failed: %s\n", pa_strerror(error));
     }
+
+    for (auto channel : m_playbackChannels) {
+        channel->silence_buffer(m_framesPerCycle);
+    }
+
+    m_device->transport_cycle_start(get_microseconds());
+
     return 1;
 }
 
-int PulseAudioDriver::start( )
+int TPulseAudioDriver::setup(bool capture, bool playback, const QString& )
 {
-    PENTER;
-    int ret;
-    /* Run the main loop */
-    if (pa_mainloop_run(m_mainloop, &ret) < 0) {
-        fprintf(stderr, "pa_mainloop_run() failed.\n");
+	PENTER;
+    int error;
+
+    m_frameRate = m_device->get_sample_rate();
+    m_framesPerCycle = m_device->get_buffer_size();
+	
+    m_sampleSpec.rate = m_frameRate;
+    m_sampleSpec.channels = 1;
+    m_sampleSpec.format = PA_SAMPLE_FLOAT32;
+
+    m_paSimple = pa_simple_new(NULL, "Traverso", PA_STREAM_PLAYBACK, NULL, "playback", &m_sampleSpec, NULL, NULL, &error);
+
+    if (!m_paSimple) {
+        m_device->driverSetupMessage(tr("Unable to connect to PulseAudio server!"), AudioDevice::DRIVER_SETUP_FAILURE);
         return -1;
     }
+
+    m_device->driverSetupMessage(tr("Succesfully connected to PulseAudio server!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+
     return 1;
 }
 
-int PulseAudioDriver::stop( )
+int TPulseAudioDriver::attach( )
+{
+    PENTER;
+
+    return TAudioDriver::attach();
+}
+
+int TPulseAudioDriver::start( )
+{
+    PENTER;
+    return 1;
+}
+
+int TPulseAudioDriver::stop( )
 {
 	PENTER;
+
+    pa_simple_free(m_paSimple);
+
 	return 1;
 }
 
-int PulseAudioDriver::process_callback (nframes_t nframes)
-{
-	device->run_cycle( nframes, 0.0);
-	return 0;
-}
-
-QString PulseAudioDriver::get_device_name()
+QString TPulseAudioDriver::get_device_name()
 {
 	return "Pulse";
 }
 
-QString PulseAudioDriver::get_device_longname()
+QString TPulseAudioDriver::get_device_longname()
 {
 	return "Pulse";
 }
 
-int PulseAudioDriver::_run_cycle()
+int TPulseAudioDriver::_run_cycle()
 {
-	return device->run_cycle(frames_per_cycle, 0);
-}
-
-void PulseAudioDriver::context_state_callback(pa_context * c, void * userdata)
-{
-}
-
-void PulseAudioDriver::stream_state_callback(pa_stream * s, void * userdata)
-{
-}
-
-void PulseAudioDriver::stream_write_callback(pa_stream * s, size_t length, void * userdata)
-{
+    return m_device->run_cycle(m_framesPerCycle, 0);
 }
 

@@ -29,38 +29,37 @@ $Id: Driver.cpp,v 1.6 2007/03/19 11:18:57 r_sijrier Exp $
 #include "Debugger.h"
 
 
-TAudioDriver::TAudioDriver(AudioDevice* dev , uint rate, nframes_t bufferSize)
+TAudioDriver::TAudioDriver(AudioDevice* device)
+    : m_device(device)
+    , m_frameRate(0)
+    , m_framesPerCycle(0)
 {
-	device = dev;
-	frame_rate = rate;
-	frames_per_cycle = bufferSize;
-
-        read = MakeDelegate(this, &TAudioDriver::_read);
-        write = MakeDelegate(this, &TAudioDriver::_write);
-        run_cycle = RunCycleCallback(this, &TAudioDriver::_run_cycle);
+    read = MakeDelegate(this, &TAudioDriver::_read);
+    write = MakeDelegate(this, &TAudioDriver::_write);
+    run_cycle = RunCycleCallback(this, &TAudioDriver::_run_cycle);
 }
 
 TAudioDriver::~ TAudioDriver( )
 {
 	PENTERDES;
         while( ! m_captureChannels.isEmpty())
-                device->delete_channel(m_captureChannels.takeFirst());
+                m_device->delete_channel(m_captureChannels.takeFirst());
 
         while( ! m_playbackChannels.isEmpty())
-                device->delete_channel(m_playbackChannels.takeFirst());
+                m_device->delete_channel(m_playbackChannels.takeFirst());
 }
 
 int TAudioDriver::_run_cycle( )
 {
 	// * 1000, we want it in millisecond
 	// / 2, 2 bytes (16 bit)
-	device->transport_cycle_end (get_microseconds());
+    m_device->transport_cycle_end (get_microseconds());
 
-	device->mili_sleep(23);
+    m_device->mili_sleep(23);
 
-	device->transport_cycle_start (get_microseconds());
+    m_device->transport_cycle_start (get_microseconds());
 
-	return device->run_cycle( frames_per_cycle, 0);
+    return m_device->run_cycle( m_framesPerCycle, 0);
 }
 
 int TAudioDriver::_read( nframes_t  )
@@ -88,25 +87,29 @@ int TAudioDriver::attach( )
         char buf[32];
         AudioChannel* chan;
 
-        device->set_buffer_size (frames_per_cycle);
-        device->set_sample_rate (frame_rate);
+
+        m_frameRate = 44100;
+        m_framesPerCycle = 1024;
+
+        m_device->set_buffer_size (m_framesPerCycle);
+        m_device->set_sample_rate (m_frameRate);
 
         port_flags = PortIsOutput|PortIsPhysical|PortIsTerminal;
 
-        // Create 2 fake capture channels
+        // Create 2 capture channels
         for (uint chn=0; chn<2; chn++) {
                 snprintf (buf, sizeof(buf) - 1, "capture_%d", chn+1);
 
                 chan = add_capture_channel(buf);
-                chan->set_latency( frames_per_cycle + capture_frame_latency );
+                chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
         }
 
-        // Create 2 fake playback channels
+        // Create 2 playback channels
         for (uint chn=0; chn<2; chn++) {
                 snprintf (buf, sizeof(buf) - 1, "playback_%d", chn+1);
 
                 chan = add_playback_channel(buf);
-                chan->set_latency( frames_per_cycle + capture_frame_latency );
+                chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
         }
 
         return 1;
