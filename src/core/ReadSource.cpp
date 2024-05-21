@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "DiskIO.h"
 #include "Utils.h"
 #include "Sheet.h"
-#include "AudioDevice.h"
 #include <QFile>
 #include "TConfig.h"
 #include <climits>
@@ -419,7 +418,7 @@ int ReadSource::rb_read(audio_sample_t** dst, TimeRef& start, nframes_t count)
 
 	nframes_t readcount = 0;
 	
-	for (int chan=0; chan<m_channelCount; ++chan) {
+    for (uint chan=0; chan<m_channelCount; ++chan) {
 		
 		readcount = m_buffers.at(chan)->read(dst[chan], count);
 
@@ -626,7 +625,7 @@ void ReadSource::prepare_rt_buffers( )
         // have chunck sizes that are multiples of 4KB ?
         m_chunkSize = m_bufferSize / DiskIO::bufferdividefactor;
 
-	for (int i=0; i<m_channelCount; ++i) {
+    for (uint i=0; i<m_channelCount; ++i) {
 		m_buffers.append(new RingBufferNPT<float>(m_bufferSize));
 	}
 

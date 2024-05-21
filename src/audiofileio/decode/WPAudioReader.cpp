@@ -124,7 +124,7 @@ nframes_t WPAudioReader::read_private(DecodeBuffer* buffer, nframes_t frameCount
 				break;	
 			default:
 				for (nframes_t f = 0; f < framesRead; f++) {
-					for (int c = 0; c < m_channels; c++) {
+                    for (uint c = 0; c < m_channels; c++) {
 						buffer->destination[c][f] = ((float*)readbuffer)[f * m_channels + c];
 					}
 				}
@@ -146,7 +146,7 @@ nframes_t WPAudioReader::read_private(DecodeBuffer* buffer, nframes_t frameCount
 				break;	
 			default:
 				for (nframes_t f = 0; f < framesRead; f++) {
-					for (int c = 0; c < m_channels; c++) {
+                    for (uint c = 0; c < m_channels; c++) {
 						buffer->destination[c][f] = (float)((float)readbuffer[f * m_channels + c]/ divider);
 					}
 				}

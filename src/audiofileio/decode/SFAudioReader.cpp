@@ -124,19 +124,21 @@ nframes_t SFAudioReader::read_private(DecodeBuffer* buffer, nframes_t frameCount
 	
 	// De-interlace
 	switch (m_channels) {
+        case 0:
+            return framesRead;
 		case 1:
 			memcpy(buffer->destination[0], buffer->readBuffer, framesRead * sizeof(audio_sample_t));
-			break;	
-		case 2:
+            break;
+        case 2:
+            for (int f = 0; f < framesRead; f++) {
+                int pos = f*2;
+                buffer->destination[0][f] = buffer->readBuffer[pos];
+                buffer->destination[1][f] = buffer->readBuffer[pos + 1];
+            }
+            break;
+        default:
 			for (int f = 0; f < framesRead; f++) {
-				int pos = f*2;
-				buffer->destination[0][f] = buffer->readBuffer[pos];
-				buffer->destination[1][f] = buffer->readBuffer[pos + 1];
-			}
-			break;	
-		default:
-			for (int f = 0; f < framesRead; f++) {
-				for (int c = 0; c < m_channels; c++) {
+                for (uint c = 0; c < m_channels; c++) {
 					buffer->destination[c][f] = buffer->readBuffer[f * m_channels + c];
 				}
 			}

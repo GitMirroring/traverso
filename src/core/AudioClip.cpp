@@ -495,7 +495,10 @@ int AudioClip::process(nframes_t nframes)
     } else {
         read_frames = uint(m_readSource->file_read(m_sheet->renderDecodeBuffer, mix_pos, framesToProcess));
         if (read_frames > 0) {
-            for (uint chan=0; chan<channelcount; ++chan) {
+            // FIXME
+            // BIG assumption here that m_readSource has same amount of channels as the bus
+            // Fix it for stereo/mono mismatch!!
+            for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
                 memcpy(mixdown[chan], m_sheet->renderDecodeBuffer->destination[chan], read_frames * sizeof(audio_sample_t));
             }
         }

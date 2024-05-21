@@ -570,7 +570,7 @@ nframes_t FlacAudioReader::read_private(DecodeBuffer* buffer, nframes_t frameCou
 				break;
 			default:
 				for (nframes_t i = 0; i < framesToCopy; i++) {
-					for (int c = 0; c < get_num_channels(); c++) {
+                    for (uint c = 0; c < get_num_channels(); c++) {
 						buffer->destination[c][framesCoppied + i] = m_flac->internalBuffer[m_flac->bufferStart + i * get_num_channels() + c];
 					}
 				}
