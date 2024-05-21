@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioProcessingNode.h"
 #include "Snappable.h"
 #include "defines.h"
-#include "GainEnvelope.h"
 
 
 class Sheet;
@@ -152,8 +151,8 @@ private:
 	friend class ResourcesManager;
 
 signals:
-	void muteChanged();
-	void lockChanged();
+    void muteChanged();
+    void lockChanged();
 	void positionChanged();
 	void fadeAdded(FadeCurve*);
 	void fadeRemoved(FadeCurve*);
