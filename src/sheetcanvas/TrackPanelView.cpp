@@ -186,8 +186,14 @@ void TrackPanelView::layout_panel_items()
     m_trackNameView->setPos(3, 3);
 
     qreal height =  m_boundingRect.height();
+    bool horizontalVuMeterViewPossible = height > (VUMETER_Y_POS + std::min(m_vuMeterView->boundingRect().height(), m_vuMeterView->boundingRect().width()));
 
     Qt::Orientation orientation = Qt::Orientation(config().get_property("Themer", "VUOrientation", Qt::Vertical).toInt());
+    if (!horizontalVuMeterViewPossible) {
+        orientation = Qt::Vertical;
+    }
+    m_vuMeterView->update_orientation(orientation);
+
     if (orientation == Qt::Vertical) {
         m_vuMeterView->set_bounding_rect(QRectF(0, 0, VU_WIDTH, height - 4));
         m_vuMeterView->setPos(m_boundingRect.width() - VU_WIDTH - 5, 2);
@@ -204,18 +210,10 @@ void TrackPanelView::layout_panel_items()
 
     m_panKnob->setPos(ledViewXPos + PANEL_ITEM_SPACING - LED_SPACING, LED_Y_POS - 2);
     m_gainKnob->setPos(m_panKnob->pos().x() + m_panKnob->boundingRect().width() + LED_SPACING, LED_Y_POS - 2);
-
-
-    if ( (m_vuMeterView->pos().y() + m_vuMeterView->boundingRect().height()) >= height) {
-        m_vuMeterView->hide();
-    } else {
-        m_vuMeterView->show();
-    }
 }
 
 void TrackPanelView::theme_config_changed()
 {
-        m_vuMeterView->update_orientation();
         layout_panel_items();
 	foreach(ViewItem* ledViews, m_ledViews) {
 		ledViews->update();

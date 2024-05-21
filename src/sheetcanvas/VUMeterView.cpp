@@ -61,14 +61,11 @@ VUMeterView::VUMeterView(ViewItem* parent, Track* track)
 {
         load_theme_data();
         m_audioTrack = qobject_cast<AudioTrack*>(track);
-        m_orientation = Qt::Horizontal;
 
         for (int i = 0; i < 2; ++i) {
                 VUMeterLevelView* level = new VUMeterLevelView(this, track->get_vumonitors().at(i));
                 m_levels.append(level);
         }
-
-        update_orientation();
 
 //        add a ruler with tickmarks and labels
 //        ruler = new VUMeterRulerView(this);
@@ -144,12 +141,12 @@ void VUMeterView::set_bounding_rect(QRectF rect)
 //        ruler->set_bounding_rect(rect);
 }
 
-void VUMeterView::update_orientation()
+void VUMeterView::update_orientation(Qt::Orientation orientation)
 {
-        m_orientation = static_cast<Qt::Orientation>(config().get_property("Themer", "VUOrientation", Qt::Vertical).toInt());
-        foreach(VUMeterLevelView* level, m_levels) {
-                level->set_orientation(m_orientation);
-        }
+    m_orientation = orientation;
+    foreach(VUMeterLevelView* level, m_levels) {
+            level->set_orientation(orientation);
+    }
 }
 
 void VUMeterView::calculate_lut_data()

@@ -66,7 +66,7 @@ public:
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
         void calculate_bounding_rect();
         void set_bounding_rect(QRectF rect);
-        void update_orientation();
+        void update_orientation(Qt::Orientation orientation);
 
         void reset();
 
