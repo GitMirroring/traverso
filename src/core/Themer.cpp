@@ -134,7 +134,7 @@ void Themer::save( )
         doc.appendChild(themerNode);
 
         QDomElement properties = doc.createElement("properties");
-        QHash<QString, QVariant>::ConstIterator propertiesIt = m_properties.begin();
+        QHash<QString, QVariant>::Iterator propertiesIt = m_properties.begin();
         while (propertiesIt != m_properties.end()) {
                 QDomElement e = doc.createElement("property");
                 e.setAttribute("name", propertiesIt.key());
@@ -148,7 +148,7 @@ void Themer::save( )
         QFont basefont = QApplication::font();
 
         QDomElement fonts = doc.createElement("fonts");
-        QHash<QString, QFont>::ConstIterator fontsIt = m_fonts.begin();
+        QHash<QString, QFont>::Iterator fontsIt = m_fonts.begin();
         while (fontsIt != m_fonts.end()) {
                 QDomElement e = doc.createElement("font");
                 e.setAttribute("name", fontsIt.key());

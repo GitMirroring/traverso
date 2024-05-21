@@ -20,7 +20,6 @@
 */
 
 #include "NewProjectDialog.h"
-#include "ui_NewProjectDialog.h"
 
 #include <QDir>
 #include <QStringList>
@@ -90,14 +89,14 @@ NewProjectDialog::NewProjectDialog( QWidget * parent )
 	m_buttonGroup->addButton(radioButtonImport, 0);
 	m_buttonGroup->addButton(radioButtonEmpty, 1);
 
-	connect(useTemplateCheckBox, SIGNAL(stateChanged (int)), this, SLOT(use_template_checkbox_state_changed(int)));
+    connect(useTemplateCheckBox, SIGNAL(stateChanged(int)), this, SLOT(use_template_checkbox_state_changed(int)));
 	connect(buttonAdd, SIGNAL(clicked()), this, SLOT(add_files()));
 	connect(buttonRemove, SIGNAL(clicked()), this, SLOT(remove_files()));
 	connect(buttonUp, SIGNAL(clicked()), this, SLOT(move_up()));
 	connect(buttonDown, SIGNAL(clicked()), this, SLOT(move_down()));
 
-	connect(m_converter, SIGNAL(taskFinished(QString, int, QString)), this, SLOT(load_file(QString, int, QString)));
-	connect(m_buttonGroup, SIGNAL(buttonClicked(int)), stackedWidget, SLOT(setCurrentIndex(int)));
+    connect(m_converter, SIGNAL(taskFinished(QString,int,QString)), this, SLOT(load_file(QString,int,QString)));
+    connect(m_buttonGroup, SIGNAL(idClicked(int)), stackedWidget, SLOT(setCurrentIndex(int)));
 
         connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_directory_line_edit()));
 }
@@ -121,11 +120,12 @@ void NewProjectDialog::accept( )
 	// first test if project exists already
 	if (pm().project_exists(title)) {
 		switch (QMessageBox::information(this,
-			tr("Traverso - Question"),
-			   tr("The Project \"%1\" already exists, do you want to remove it and replace it with a new one ?").arg(title),
-                  tr("Yes"), tr("No"), "", 1, -1))
+            tr("Traverso - Question"),
+            tr("The Project \"%1\" already exists, do you want to remove it and replace it with a new one ?").arg(title),
+            QMessageBox::StandardButton::Yes,
+            QMessageBox::StandardButton::Cancel))
 		{
-			case 0:
+            case QMessageBox::StandardButton::Yes:
 				pm().remove_project(title);
 				break;
 			default:
@@ -240,7 +240,7 @@ void NewProjectDialog::add_files()
 	{
 		QStringList labels;
 		QFileInfo finfo(list.at(i));
-		labels << "Unnamed" << finfo.fileName();
+        labels << finfo.completeBaseName() << finfo.fileName();
 
 		QTreeWidgetItem* item = new QTreeWidgetItem(treeWidgetFiles, labels, 0);
 		item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsEnabled);
@@ -279,6 +279,7 @@ void NewProjectDialog::remove_files()
 
 void NewProjectDialog::copy_files()
 {
+    PENTER;
         emit numberOfFiles(treeWidgetFiles->topLevelItemCount());
 
 	QList<QFileInfo> list;
@@ -312,12 +313,14 @@ void NewProjectDialog::copy_files()
 
 void NewProjectDialog::load_all_files()
 {
+    PENTER;
 	int i = 0;
 
 	while(treeWidgetFiles->topLevelItemCount()) {
 		QTreeWidgetItem* item = treeWidgetFiles->takeTopLevelItem(0);
 		QString f = item->data(0, Qt::ToolTipRole).toString();
 		QString n = item->text(0);
+        qDebug() << n;
 		delete item;
 
 		load_file(f, i, n);
@@ -346,7 +349,8 @@ void NewProjectDialog::load_file(QString name, int i, QString trackname)
         }
 
 	Import* import = new Import(name);
-	track->set_name(trackname);
+        printf("renaming track to %s\n", trackname.toLatin1().data());
+    track->set_name(trackname);
 	import->set_track(track);
         import->set_position(TimeRef());
 	if (import->create_readsource() != -1) {
@@ -448,7 +452,10 @@ void NewProjectDialog::on_changeProjectsDirButton_clicked()
                                 tr("Please check permission for this directory: %1").arg(newPath) );
                 return;
         } else {
-                QMessageBox::information( this, tr("Traverso - Information"), tr("Created new Project directory for you here: %1\n").arg(newPath), "OK", 0 );
+                QMessageBox::information( this,
+                    tr("Traverso - Information"),
+                    tr("Created new Project directory for you here: %1\n").arg(newPath),
+                    QMessageBox::StandardButton::Ok );
         }
 
         pm().set_current_project_dir(newPath);

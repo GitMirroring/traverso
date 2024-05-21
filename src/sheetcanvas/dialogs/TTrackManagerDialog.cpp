@@ -36,6 +36,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Themer.h"
 #include "TMainWindow.h"
 
+#include "Mixer.h"
+
 #include <QMenu>
 
 #include "Debugger.h"

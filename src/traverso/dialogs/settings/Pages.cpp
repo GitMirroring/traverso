@@ -75,7 +75,7 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
     m_alsadevices->layout()->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->addWidget(m_alsadevices);
 
-        connect(driverCombo, SIGNAL(currentIndexChanged(QString)), this, SLOT(driver_combobox_index_changed(QString)));
+        connect(driverCombo, SIGNAL(currentTextChanged(QString)), this, SLOT(driver_combobox_index_changed(QString)));
     connect(restartDriverButton, SIGNAL(clicked()), this, SLOT(restart_driver_button_clicked()));
         connect(rateComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(rate_combobox_index_changed(int)));
         connect(&audiodevice(), SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
@@ -223,7 +223,7 @@ void AudioDriverConfigPage::load_config( )
         name = AlsaDriver::alsa_device_name(i);
         longName = AlsaDriver::alsa_device_longname(i);
         if (name != "") {
-                m_alsadevices->devicesCombo->addItem(longName, name);
+                m_alsadevices->devicesCombo->addItem(name + ", " + longName + "", name);
         }
     }
 

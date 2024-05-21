@@ -44,6 +44,20 @@ struct BufferStatus {
 	bool	needSync;
 };
 
+// DiskIOThread is a private class to be used by
+// DiskIO only for processing read/write buffers
+// in a seperate thread.
+class DiskIOThread : public QThread
+{
+    Q_OBJECT
+public:
+    DiskIOThread();
+
+protected:
+    void run() override;
+};
+
+
 class DiskIO : public QObject
 {
 	Q_OBJECT
@@ -82,7 +96,7 @@ private:
 	QList<WriteSource*>	m_processableWriteSources;
 	QList<QPair<BufferStatus*, ReadSource*> > m_readersStatus;
 	QList<QPair<int, WriteSource*> > m_writersStatus;
-	DiskIOThread*		m_diskThread;
+    DiskIOThread		m_diskThread;
         QTimer			m_workTimer;
         QMutex			mutex;
 	volatile int		m_readBufferFillStatus;
@@ -105,12 +119,10 @@ private:
 	
 	int there_are_processable_sources();
 
-	friend class DiskIOThread;
+    void stop_disk_thread();
 
 public slots:
-	void seek();
-	void start_io();
-        void stop_io();
+    void seek();
 
 private slots:
         void do_work();
@@ -122,23 +134,6 @@ signals:
     void ioStartRequested();
     void ioStopRequested();
 
-};
-
-// DiskIOThread is a private class to be used by
-// DiskIO only for processing read/write buffers
-// in a seperate thread.
-class DiskIOThread : public QThread
-{
-        Q_OBJECT
-public:
-    DiskIOThread(DiskIO* diskio);
-
-
-private:
-    DiskIO*		m_diskio;
-
-protected:
-    void run() override;
 };
 
 

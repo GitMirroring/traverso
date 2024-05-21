@@ -39,6 +39,11 @@ public :
     TCommand(const QString& des = "No description set!");
     virtual ~TCommand();
 
+    enum ActionType {
+        UNDO,
+        DO
+    };
+
     virtual int begin_hold();
     virtual int finish_hold();
     virtual int prepare_actions();

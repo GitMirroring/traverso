@@ -40,13 +40,13 @@ class TSession;
 class TAudioProcessingNode : public ContextItem, public APILinkedListNode
 {
         Q_OBJECT
-    Q_PROPERTY(qreal gain READ get_gain WRITE set_gain)
+    Q_PROPERTY(float gain READ get_gain WRITE set_gain)
 
 
 public:
         TAudioProcessingNode (TSession* session=0);
         virtual ~TAudioProcessingNode () {}
-	
+
         TCommand* add_plugin(Plugin* plugin);
         TCommand* remove_plugin(Plugin* plugin);
 
@@ -81,7 +81,10 @@ private:
 
 
 public slots:
-	float get_gain() const;
+        float get_gain() {
+            return m_fader->get_gain();
+        }
+
         void set_gain(float gain);
         void set_gain_animated(float gain);
         TCommand* mute();
@@ -92,11 +95,6 @@ signals:
         void muteChanged(bool isMuted);
         void panChanged();
 };
-
-inline float TAudioProcessingNode::get_gain( ) const
-{
-	return m_fader->get_gain();
-}
 
 
 #endif

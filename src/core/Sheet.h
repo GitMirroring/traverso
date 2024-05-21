@@ -109,7 +109,7 @@ public:
         DecodeBuffer*		renderDecodeBuffer{};
 
 #if defined (THREAD_CHECK)
-	unsigned long	threadId;
+    QThread*	m_threadPointer;
 #endif
 
 private:
@@ -150,7 +150,7 @@ private:
 	void init();
 
 	int finish_audio_export();
-	void start_seek();
+    void start_seek();
         void initiate_seek_start(TimeRef location);
 	void start_transport_rolling(bool realtime);
 	void stop_transport_rolling();
@@ -175,7 +175,7 @@ public slots :
 	TCommand* toggle_snap();
 
 signals:
-	void seekStart();
+    void seekStart();
 	void snapChanged();
 	void setCursorAtEdge();
 	void recordingStateChanged();

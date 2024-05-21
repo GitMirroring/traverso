@@ -458,7 +458,7 @@ void Track::process_send(TSend *send, nframes_t nframes)
         float panFactor;
 
         AudioBus* receiverBus = send->get_bus();
-        for (int i=0; i<m_processBus->get_channel_count(); i++) {
+        for (uint i=0; i<m_processBus->get_channel_count(); i++) {
                 sender = m_processBus->get_channel(i);
                 receiver = receiverBus->get_channel(i);
                 if (sender && receiver) {

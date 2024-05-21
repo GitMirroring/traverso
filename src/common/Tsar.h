@@ -27,7 +27,7 @@ $Id: Tsar.h,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 #include <QBasicTimer>
 #include <QByteArray>
 #include "RingBufferNPT.h"
-#include <iostream>
+#include "qthread.h"
 
 #define THREAD_SAVE_INVOKE(caller, argument, slotSignature)  { \
     TsarEvent event = tsar().create_event(caller, argument, #slotSignature, ""); \
@@ -76,7 +76,9 @@ public:
     void add_rt_event(TsarEvent& event);
     void process_event_slot(const TsarEvent& event);
     void process_event_signal(const TsarEvent& event);
-    void process_event_slot_signal(const TsarEvent& event);
+    void process_event(const TsarEvent& event);
+
+    static void rt_thread_emit(QObject *cal, void* arg, const char* signalSignature);
 
 protected:
     void timerEvent(QTimerEvent *event);
@@ -99,7 +101,7 @@ private:
     int 	m_retryCount;
 
 #if defined (THREAD_CHECK)
-    unsigned long	m_threadId;
+    QThread*	m_threadPointer;
 #endif
 
     void process_events();

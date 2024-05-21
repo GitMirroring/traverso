@@ -36,7 +36,8 @@
 TimeRef msms_to_timeref(QString str)
 {
 	TimeRef out;
-    QStringList lst = str.simplified().split(QRegularExpression("[;,.:]"), Qt::SkipEmptyParts);
+    static QRegularExpression expression("[;,.:]");
+    QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
 	if (lst.size() >= 1) out += TimeRef(lst.at(0).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
 	if (lst.size() >= 2) out += TimeRef(lst.at(1).toInt() * UNIVERSAL_SAMPLE_RATE);
@@ -48,7 +49,8 @@ TimeRef msms_to_timeref(QString str)
 TimeRef cd_to_timeref(QString str)
 {
 	TimeRef out;
-    QStringList lst = str.simplified().split(QRegularExpression("[;,.:]"), Qt::SkipEmptyParts);
+    static QRegularExpression expression("[;,.:]");
+    QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
 	if (lst.size() >= 1) out += TimeRef(lst.at(0).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
 	if (lst.size() >= 2) out += TimeRef(lst.at(1).toInt() * UNIVERSAL_SAMPLE_RATE);
@@ -60,7 +62,8 @@ TimeRef cd_to_timeref(QString str)
 TimeRef cd_to_timeref_including_hours(QString str)
 {
 	TimeRef out;
-    QStringList lst = str.simplified().split( QRegularExpression("[;,.:]"), Qt::SkipEmptyParts);
+    static QRegularExpression expression("[;,.:]");
+    QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
 	if (lst.size() >= 1) out += TimeRef(lst.at(0).toInt() * ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
 	if (lst.size() >= 2) out += TimeRef(lst.at(1).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
@@ -107,10 +110,8 @@ qint64 create_id( )
 
 QDateTime extract_date_time(qint64 id)
 {
-	QDateTime time;
-    //QT6_FIXME
-//	time.setTime_t(id / 1000000000);
-	return time;
+    QDateTime time = QDateTime::fromSecsSinceEpoch(id / 1000000000);
+    return time;
 }
 
 QPixmap find_pixmap ( const QString & pixname )
@@ -253,8 +254,11 @@ QStringList find_qm_files()
 QString language_name_from_qm_file(const QString& lang)
 {
 	QTranslator translator;
-	translator.load(lang);
-	return translator.translate("LanguageName", "English", "The name of this Language, e.g. German would be Deutch");
+    if (translator.load(lang)) {
+        return translator.translate("LanguageName", "English", "The name of this Language, e.g. German would be Deutch");
+    }
+
+    return QString("Failed to load language name from qm file");
 }
 
 bool t_MetaobjectInheritsClass(const QMetaObject *mo, const QString& className)

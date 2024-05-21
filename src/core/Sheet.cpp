@@ -135,7 +135,7 @@ void Sheet::init()
 {
 	PENTER2;
 #if defined (THREAD_CHECK)
-	threadId = QThread::currentThreadId ();
+    m_threadPointer = QThread::currentThread();
 #endif
 
 	QObject::tr("Sheet");
@@ -153,15 +153,15 @@ void Sheet::init()
         m_acmanager = new AudioClipManager(this);
         set_context_item( m_acmanager );
 
-	connect(this, SIGNAL(seekStart()), m_diskio, SLOT(seek()), Qt::QueuedConnection);
+    connect(this, SIGNAL(seekStart()), m_diskio, SLOT(seek()), Qt::QueuedConnection);
 	connect(this, SIGNAL(prepareRecording()), this, SLOT(prepare_recording()));
 	connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(audiodevice_params_changed()), Qt::DirectConnection);
 	connect(m_diskio, SIGNAL(seekFinished()), this, SLOT(seek_finished()), Qt::QueuedConnection);
 	connect (m_diskio, SIGNAL(readSourceBufferUnderRun()), this, SLOT(handle_diskio_readbuffer_underrun()));
 	connect (m_diskio, SIGNAL(writeSourceBufferOverRun()), this, SLOT(handle_diskio_writebuffer_overrun()));
 	connect(&config(), SIGNAL(configChanged()), this, SLOT(config_changed()));
-	connect(this, SIGNAL(transportStarted()), m_diskio, SLOT(start_io()));
-	connect(this, SIGNAL(transportStopped()), m_diskio, SLOT(stop_io()));
+    // connect(this, SIGNAL(transportStarted()), m_diskio, SLOT(start_io()));
+    // connect(this, SIGNAL(transportStopped()), m_diskio, SLOT(stop_io()));
 
     mixdown = gainbuffer = nullptr;
 
@@ -566,7 +566,7 @@ int Sheet::render(ExportSpecification* spec)
 		if (spec->normalize) {
             Mixer::apply_gain_to_buffer(spec->dataF, nframes_t(bufsize), spec->normvalue);
 		}
-		if (m_exportSource->process (nframes)) {
+        if (m_exportSource->process (nframes) <= 0) {
                         return -1;
 		}
 	}
@@ -607,6 +607,8 @@ void Sheet::set_gain(float gain)
 void Sheet::set_work_at(TimeRef location, bool isFolder)
 {
         if ((! isFolder) && m_project->sheets_are_track_folder()) {
+        // FIXME
+            // m_project->set_work_at calls Sheet::set_work_at effectively crasing the program
                 return m_project->set_work_at(location, isFolder);
         }
 
@@ -705,7 +707,7 @@ void Sheet::solo_track(Track *track)
 int Sheet::process( nframes_t nframes )
 {
 	if (m_startSeek) {
-                printf("process: starting seek\n");
+        printf("Sheet::process: starting seek\n");
 		start_seek();
 		return 0;
 	}
@@ -724,7 +726,8 @@ int Sheet::process( nframes_t nframes )
 		m_realtimepath = false;
 		m_stopTransport = false;
 		
-                RT_THREAD_EMIT(this, nullptr, transportStopped())
+        // RT_THREAD_EMIT(this, nullptr, transportStopped())
+        Tsar::rt_thread_emit(this, nullptr, "transportStopped()");
 
 		return 0;
     }
@@ -772,8 +775,8 @@ int Sheet::process_export( nframes_t nframes )
         memset (mixdown, 0, sizeof (audio_sample_t) * nframes);
 
 	// Process all Tracks.
-        apill_foreach(AudioTrack* track, AudioTrack*, m_rtAudioTracks) {
-		track->process(nframes);
+        apill_foreach(AudioTrack* audioTrack, AudioTrack*, m_rtAudioTracks) {
+        audioTrack->process(nframes);
 	}
 
     apill_foreach(TBusTrack* busTrack, TBusTrack*, m_rtBusTracks) {
@@ -897,9 +900,9 @@ void Sheet::handle_diskio_writebuffer_overrun( )
 TimeRef Sheet::get_last_location() const
 {
 	TimeRef lastAudio = m_acmanager->get_last_location();
-	
-	if (m_timeline->get_markers().size()) {
-		TimeRef lastMarker = m_timeline->get_markers().last()->get_when();
+
+    if (m_timeline->get_markers().size() > 0) {
+        TimeRef lastMarker = m_timeline->get_markers().constLast()->get_when();
 		return (lastAudio > lastMarker) ? lastAudio : lastMarker;
 	}
 	
@@ -922,7 +925,7 @@ TCommand* Sheet::add_track(Track* track, bool historable)
 TCommand * Sheet::set_recordable()
 {
 #if defined (THREAD_CHECK)
-	Q_ASSERT(QThread::currentThreadId() == threadId);
+    Q_ASSERT(QThread::currentThread() == m_threadPointer);
 #endif
 	
 	// Do nothing if transport is rolling!
@@ -962,7 +965,7 @@ TCommand* Sheet::set_recordable_and_start_transport()
 TCommand* Sheet::start_transport()
 {
 #if defined (THREAD_CHECK)
-	Q_ASSERT(QThread::currentThreadId() == threadId);
+    Q_ASSERT(QThread::currentThread() == m_threadPointer);
 #endif
 	// Delegate the transport start (or if we are rolling stop)
 	// request to the audiodevice. Depending on the driver in use
@@ -1061,12 +1064,12 @@ void Sheet::start_transport_rolling(bool realtime)
 	m_realtimepath = true;
     t_atomic_int_set(&m_transport, 1);
 	
-	if (realtime) {
+    if (realtime) {
         RT_THREAD_EMIT(this, nullptr, transportStarted());
-	} else {
-		emit transportStarted();
-	}
-	
+    } else {
+        emit transportStarted();
+    }
+
 	PMESG("transport rolling");
 }
 
@@ -1099,7 +1102,7 @@ void Sheet::set_recording(bool recording, bool realtime)
 void Sheet::prepare_recording()
 {
 #if defined (THREAD_CHECK)
-	Q_ASSERT(QThread::currentThreadId() == threadId);
+    Q_ASSERT(QThread::currentThread() == m_threadPointer);
 #endif
 	
         if (m_recording && any_audio_track_armed()) {
@@ -1153,7 +1156,7 @@ void Sheet::set_transport_pos(TimeRef location)
         }
 
 #if defined (THREAD_CHECK)
-	Q_ASSERT(QThread::currentThreadId() ==  threadId);
+    Q_ASSERT(QThread::currentThread() ==  m_threadPointer);
 #endif
         printf("sheet: set transport to: %lld\n", location.universal_frame());
 	audiodevice().transport_seek_to(m_audiodeviceClient, location);
@@ -1167,7 +1170,7 @@ void Sheet::set_transport_pos(TimeRef location)
 void Sheet::start_seek()
 {
 #if defined (THREAD_CHECK)
-	Q_ASSERT(threadId != QThread::currentThreadId ());
+    Q_ASSERT(m_threadPointer != QThread::currentThread());
 #endif
 	
 	if (is_transport_rolling()) {
@@ -1189,10 +1192,10 @@ void Sheet::start_seek()
 void Sheet::seek_finished()
 {
 #if defined (THREAD_CHECK)
-	Q_ASSERT_X(threadId == QThread::currentThreadId (), "Sheet::seek_finished", "Called from other Thread!");
+    Q_ASSERT_X(m_threadPointer == QThread::currentThread(), "Sheet::seek_finished", "Called from other Thread!");
 #endif
 	PMESG2("Sheet :: entering seek_finished");
-	m_transportLocation  = m_newTransportLocation;
+    m_transportLocation  = m_newTransportLocation;
         printf("seek finished, setting transport location to %lld\n", m_transportLocation.universal_frame());
 	m_seeking = 0;
 

@@ -74,6 +74,8 @@ private :
 	const char*	m_doSignal;
 	const char*	m_undoSignal;
 	bool		m_instantanious;
+
+    int un_redo_action(TCommand::ActionType actionType);
 };
 
 #endif

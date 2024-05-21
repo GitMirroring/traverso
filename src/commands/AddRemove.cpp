@@ -233,57 +233,49 @@ int AddRemove::prepare_actions()
 int AddRemove::do_action()
 {
     PENTER3;
-    if ( ! m_doActionEvent.valid ) {
-        PWARN("No do action defined for this Command");
-        return -1;
-    }
-
-    if (m_instantanious) {
-        tsar().process_event_slot_signal(m_doActionEvent);
-        return 1;
-    }
-
-    if (m_sheet) {
-        if (m_sheet->is_transport_rolling()) {
-            PMESG("Using Thread Save add/remove");
-            tsar().add_event(m_doActionEvent);
-        } else {
-            tsar().process_event_slot_signal(m_doActionEvent);
-        }
-    } else {
-        tsar().add_event(m_doActionEvent);
-    }
-
-    // update the cursor to the context item that was below the item we are removing here
-    cpointer().request_viewport_to_detect_items_below_cursor();
-
-    return 1;
+    return un_redo_action(TCommand::ActionType::DO);
 }
 
 int AddRemove::undo_action()
 {
     PENTER3;
 
-    if ( ! m_undoActionEvent.valid ) {
+    return un_redo_action(TCommand::ActionType::UNDO);
+}
+
+int AddRemove::un_redo_action(ActionType actionType)
+{
+    TsarEvent event;
+    switch (actionType) {
+
+    case TCommand::UNDO:
+        event = m_undoActionEvent;
+        break;
+    case TCommand::DO:
+        event = m_doActionEvent;
+        break;
+    }
+
+    if ( ! event.valid ) {
         PWARN("No undo action defined for this Command");
         return -1;
     }
 
     if (m_instantanious) {
-        tsar().process_event_slot_signal(m_undoActionEvent);
+        tsar().process_event(event);
         return 1;
     }
 
     if (m_sheet) {
         if (m_sheet->is_transport_rolling()) {
-            PMESG("Using Thread Save add/remove");
-            tsar().add_event(m_undoActionEvent);
+            PMESG("AddRemove::un_redo_action: Using Thread Save add/remove");
+            tsar().add_event(event);
         } else {
-            tsar().process_event_slot_signal(m_undoActionEvent);
+            tsar().process_event(event);
         }
     } else {
         PMESG("Using direct add/remove/signaling");
-        tsar().add_event(m_undoActionEvent);
+        tsar().add_event(event);
     }
 
     // update the cursor to the context item that we are adding here
@@ -294,7 +286,8 @@ int AddRemove::undo_action()
     return 1;
 }
 
-/**
+
+    /**
  * 	Set's the command as instantanious
  
     The do/undo actions will call the slot and emit the signal (if they exist)

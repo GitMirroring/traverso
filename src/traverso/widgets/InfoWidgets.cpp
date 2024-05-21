@@ -116,15 +116,15 @@ SystemResources::SystemResources(QWidget * parent)
 	
         m_readBufferStatus->set_text("R");
 	m_writeBufferStatus->set_text("W");
-        m_dspCpuUsage->set_text("DSP");
-        m_diskCpuUsage->set_text("I/O");
+        m_dspCpuUsage->set_text("DSP CPU");
+        m_diskCpuUsage->set_text("I/O CPU");
 	
         QHBoxLayout* lay = new QHBoxLayout(this);
 	lay->addSpacing(6);
 	lay->addWidget(m_readBufferStatus);
-    lay->addWidget(m_diskCpuUsage);
 //	lay->addWidget(m_icon);
 	lay->addWidget(m_writeBufferStatus);
+    lay->addWidget(m_diskCpuUsage);
     lay->addWidget(m_dspCpuUsage);
         lay->addWidget(TMainWindow::instance()->get_track_finder());
         lay->addWidget(m_collectedNumber);

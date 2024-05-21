@@ -72,11 +72,10 @@ void RestoreProjectBackupDialog::populate_treeview()
 	QDateTime datetime;
 	foreach(uint time, list) {
 		QTreeWidgetItem* item = new QTreeWidgetItem(dateTreeWidget);
-        //QT6_FIXME
 
-//        datetime.setTime_t(time);
+        datetime.setSecsSinceEpoch(time);
 
-        item->setText(0, datetime.toString("dd-MM-yy"));
+        item->setText(0, datetime.toString("dd-MM-yyyy"));
 		item->setText(1, datetime.toString("hh:mm:ss"));
 		item->setData(0, Qt::UserRole, time);
 	}

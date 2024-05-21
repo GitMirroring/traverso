@@ -72,18 +72,18 @@ void PluginSlider::paintEvent(QPaintEvent *)
 void PluginSlider::mousePressEvent( QMouseEvent * e )
 {
 	dragging = true;
-	calculate_new_value(e->x());
+    calculate_new_value(e->position().x());
 }
 
 void PluginSlider::mouseMoveEvent( QMouseEvent * e )
 {
-	calculate_new_value(e->x());
+    calculate_new_value(e->position().x());
 }
 
 void PluginSlider::mouseReleaseEvent( QMouseEvent * e )
 {
 	dragging = false;
-	calculate_new_value(e->x());
+    calculate_new_value(e->position().x());
 }
 
 void PluginSlider::calculate_new_value(float mouseX)

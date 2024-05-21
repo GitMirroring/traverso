@@ -52,7 +52,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cmath>
 #include "dialogs/AudioClipEditDialog.h"
 #include "Fade.h"
-#include "AudioDevice.h"
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
@@ -72,7 +71,7 @@ AudioClipView::AudioClipView(SheetView* sv, AudioTrackView* parent, AudioClip* c
     m_sv = sv;
     m_sheet = m_clip->get_sheet();
 
-    load_theme_data();
+    AudioClipView::load_theme_data();
 
     m_waitingForPeaks = false;
     m_progress = 0;
@@ -95,8 +94,8 @@ AudioClipView::AudioClipView(SheetView* sv, AudioTrackView* parent, AudioClip* c
     connect(m_clip, SIGNAL(stateChanged()), this, SLOT(clip_state_changed()));
     connect(m_clip, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
     connect(m_clip, SIGNAL(lockChanged()), this, SLOT(repaint()));
-    connect(m_clip, SIGNAL(fadeAdded(FadeCurve*)), this, SLOT(add_new_fade_curve_view( FadeCurve*)));
-    connect(m_clip, SIGNAL(fadeRemoved(FadeCurve*)), this, SLOT(remove_fade_curve_view( FadeCurve*)));
+    connect(m_clip, SIGNAL(fadeAdded(FadeCurve*)), this, SLOT(add_new_fade_curve_view(FadeCurve*)));
+    connect(m_clip, SIGNAL(fadeRemoved(FadeCurve*)), this, SLOT(remove_fade_curve_view(FadeCurve*)));
     connect(m_clip, SIGNAL(positionChanged()), this, SLOT(position_changed()));
 
     if (m_clip->recording_state() == AudioClip::RECORDING) {
@@ -301,7 +300,7 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
 
     // Load peak data, mix curvedata and start painting it
     // if no peakdata is returned for a certain Peak object, schedule it for loading.
-    for (int chan=0; chan < channels; ++chan) {
+    for (uint chan=0; chan < channels; ++chan) {
 
         int availpeaks = peak->calculate_peaks(
                     chan,
@@ -799,7 +798,7 @@ void AudioClipView::load_theme_data()
     minINFLineColor = themer()->get_color("AudioClip:channelseperator");
     m_paintWithOutline = config().get_property("Themer", "paintwavewithoutline", true).toBool();
     m_drawDbGrid = config().get_property("Themer", "drawdbgrid", false).toBool();
-    calculate_bounding_rect();
+    AudioClipView::calculate_bounding_rect();
 
     QFont dblfont = themer()->get_font("AudioClip:fontscale:dblines");
     QFontMetrics fm(dblfont);

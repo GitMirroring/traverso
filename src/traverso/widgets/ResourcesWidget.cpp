@@ -48,16 +48,16 @@ FileWidget::FileWidget(QWidget *parent)
     QPalette palette;
     palette.setColor(QPalette::AlternateBase, themer()->get_color("ResourcesBin:alternaterowcolor"));
 
-    m_dirModel = new QFileSystemModel;
-    m_dirModel->setFilter(QDir::Dirs | QDir::Files | QDir::NoDot);
+    m_fileSystemModel = new QFileSystemModel;
+    m_fileSystemModel->setFilter(QDir::Dirs | QDir::Files | QDir::NoDot);
     m_dirView = new QListView;
-    m_dirView->setModel(m_dirModel);
+    m_dirView->setModel(m_fileSystemModel);
     m_dirView->setDragEnabled(true);
     m_dirView->setDropIndicatorShown(true);
     m_dirView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_dirView->setAlternatingRowColors(true);
     m_dirView->setPalette(palette);
-    m_dirModel->sort(QDir::DirsFirst | QDir::Name | QDir::IgnoreCase);
+    m_fileSystemModel->sort(QDir::DirsFirst | QDir::Name | QDir::IgnoreCase);
 
     m_box = new QComboBox(this);
     m_box->addItem("", "");
@@ -75,16 +75,9 @@ FileWidget::FileWidget(QWidget *parent)
     upButton->setMaximumHeight(25);
     upButton->setMaximumWidth(30);
 
-    QPushButton* refreshButton = new QPushButton(this);
-    QIcon refreshIcon = QIcon(find_pixmap(":/refresh-16"));
-    refreshButton->setToolTip(tr("Refresh File View"));
-    refreshButton->setIcon(refreshIcon);
-    refreshButton->setMaximumHeight(25);
-    refreshButton->setMaximumWidth(30);
 
     QHBoxLayout* hlay = new QHBoxLayout;
     hlay->addWidget(upButton);
-    hlay->addWidget(refreshButton);
     hlay->addStretch();
 
     QVBoxLayout* lay = new QVBoxLayout(this);
@@ -96,26 +89,25 @@ FileWidget::FileWidget(QWidget *parent)
 
     setLayout(lay);
 
-    connect(m_dirView, SIGNAL(clicked(const QModelIndex& )), this, SLOT(dirview_item_clicked(const QModelIndex&)));
+    connect(m_dirView, SIGNAL(clicked(QModelIndex&)), this, SLOT(dirview_item_clicked(QModelIndex&)));
     connect(upButton, SIGNAL(clicked()), this, SLOT(dir_up_button_clicked()));
-    connect(refreshButton, SIGNAL(clicked()), this, SLOT(refresh_button_clicked()));
     connect(m_box, SIGNAL(activated(int)), this, SLOT(box_actived(int)));
 }
 
 void FileWidget::dirview_item_clicked(const QModelIndex & index)
 {
-	if (m_dirModel->isDir(index)) {
+    if (m_fileSystemModel->isDir(index)) {
 		m_dirView->setRootIndex(index);
-		pm().get_project()->set_import_dir(m_dirModel->filePath(index));
-		m_box->setItemText(0, m_dirModel->filePath(index));
-		m_box->setItemData(0, m_dirModel->filePath(index));
+        pm().get_project()->set_import_dir(m_fileSystemModel->filePath(index));
+        m_box->setItemText(0, m_fileSystemModel->filePath(index));
+        m_box->setItemData(0, m_fileSystemModel->filePath(index));
 		m_box->setCurrentIndex(0);
 	}
 }
 
 void FileWidget::dir_up_button_clicked()
 {
-	QDir dir(m_dirModel->filePath(m_dirView->rootIndex()));
+    QDir dir(m_fileSystemModel->filePath(m_dirView->rootIndex()));
 	
 #if defined (Q_OS_WIN)
 	if (m_dirModel->filePath(m_dirView->rootIndex()) == "") {
@@ -134,27 +126,21 @@ void FileWidget::dir_up_button_clicked()
 	}
 #endif
 	
-	m_dirView->setRootIndex(m_dirModel->index(dir.canonicalPath()));
+    m_dirView->setRootIndex(m_fileSystemModel->index(dir.canonicalPath()));
 	m_box->setItemText(0, text);
 	m_box->setItemData(0, dir.canonicalPath());
 	m_box->setCurrentIndex(0);
 }
 
-void FileWidget::refresh_button_clicked()
-{
-    //QT6_FIXME
-//	m_dirModel->refresh(m_dirView->rootIndex());
-}
-
 void FileWidget::box_actived(int i)
 {
-	m_dirView->setRootIndex(m_dirModel->index(m_box->itemData(i).toString()));
+    m_dirView->setRootIndex(m_fileSystemModel->index(m_box->itemData(i).toString()));
 }
 
 void FileWidget::set_current_path(const QString& path) const
 {
-	m_dirView->setRootIndex(m_dirModel->index(path));
-	m_box->setItemText(0, path);
+    m_fileSystemModel->setRootPath(path);
+    m_box->setItemText(0, path);
 	m_box->setItemData(0, path);
 }
 
@@ -164,7 +150,36 @@ ResourcesWidget::ResourcesWidget(QWidget * parent)
 {
     m_project = nullptr;
     m_currentSheet = nullptr;
-    sourcesTreeWidget = nullptr;
+
+    setupUi(this);
+
+    QPalette palette;
+    palette.setColor(QPalette::AlternateBase, themer()->get_color("ResourcesBin:alternaterowcolor"));
+    sourcesTreeWidget->setPalette(palette);
+    sourcesTreeWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    sourcesTreeWidget->setAlternatingRowColors(true);
+    sourcesTreeWidget->setDragEnabled(true);
+    sourcesTreeWidget->setDropIndicatorShown(true);
+    sourcesTreeWidget->setIndentation(COLUMN_INDENTION);
+    sourcesTreeWidget->header()->setSectionResizeMode(0, QHeaderView::Fixed);
+    sourcesTreeWidget->header()->setSectionResizeMode(1, QHeaderView::Fixed);
+    sourcesTreeWidget->header()->setSectionResizeMode(2, QHeaderView::Fixed);
+    sourcesTreeWidget->header()->setSectionResizeMode(3, QHeaderView::Fixed);
+    sourcesTreeWidget->header()->resizeSection(1, LENGTH_SECTION_WIDTH);
+    sourcesTreeWidget->header()->resizeSection(2, LENGTH_SECTION_WIDTH);
+    sourcesTreeWidget->header()->resizeSection(3, LENGTH_SECTION_WIDTH);
+    sourcesTreeWidget->header()->setStretchLastSection(false);
+    sourcesTreeWidget->setUniformRowHeights(true);
+
+
+    m_filewidget = new FileWidget(this);
+    tab_2->layout()->addWidget(m_filewidget);
+
+
+    connect(sheetComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(sheet_combo_box_index_changed(int)));
+    connect(sheetComboBox, SIGNAL(activated(int)), this, SLOT(sheet_combo_box_index_changed(int)));
+
+    connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
 }
 
 ResourcesWidget::~ ResourcesWidget()
@@ -174,39 +189,6 @@ ResourcesWidget::~ ResourcesWidget()
 void ResourcesWidget::showEvent( QShowEvent * event ) 
 {
 	Q_UNUSED(event);
-	
-	if (sourcesTreeWidget) {
-		return;
-	}
-	
-	setupUi(this);
-	
-	QPalette palette;
-	palette.setColor(QPalette::AlternateBase, themer()->get_color("ResourcesBin:alternaterowcolor"));
-	sourcesTreeWidget->setPalette(palette);
-	sourcesTreeWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
-	sourcesTreeWidget->setAlternatingRowColors(true);
-	sourcesTreeWidget->setDragEnabled(true);
-	sourcesTreeWidget->setDropIndicatorShown(true);
-	sourcesTreeWidget->setIndentation(COLUMN_INDENTION);
-    sourcesTreeWidget->header()->setSectionResizeMode(0, QHeaderView::Fixed);
-    sourcesTreeWidget->header()->setSectionResizeMode(1, QHeaderView::Fixed);
-    sourcesTreeWidget->header()->setSectionResizeMode(2, QHeaderView::Fixed);
-    sourcesTreeWidget->header()->setSectionResizeMode(3, QHeaderView::Fixed);
-	sourcesTreeWidget->header()->resizeSection(1, LENGTH_SECTION_WIDTH);
-	sourcesTreeWidget->header()->resizeSection(2, LENGTH_SECTION_WIDTH);
-	sourcesTreeWidget->header()->resizeSection(3, LENGTH_SECTION_WIDTH);
-	sourcesTreeWidget->header()->setStretchLastSection(false);
-	sourcesTreeWidget->setUniformRowHeights(true);
-	
-	
-	m_filewidget = new FileWidget(this);
-    tab_2->layout()->addWidget(m_filewidget);
-	
-	
-	connect(sheetComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(sheet_combo_box_index_changed(int)));
-	connect(sheetComboBox, SIGNAL(activated(int)), this, SLOT(sheet_combo_box_index_changed(int)));
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
 }
 
 void ResourcesWidget::set_project(Project * project)
@@ -256,7 +238,7 @@ void ResourcesWidget::project_load_finished()
 		sheet_added(sheet);
 	}
 	
-    set_current_sheet(qobject_cast<Sheet*>(m_project->get_current_session()));
+    set_current_session(m_project->get_current_session());
 
     m_filewidget->set_current_path(m_project->get_import_dir());
 
@@ -270,7 +252,7 @@ void ResourcesWidget::sheet_combo_box_index_changed(int index)
         }
 	qint64 id = sheetComboBox->itemData(index).toLongLong();
 	Sheet* sheet = m_project->get_sheet(id);
-	set_current_sheet(sheet);
+    set_current_session(sheet);
 }
 
 void ResourcesWidget::sheet_added(Sheet * sheet)
@@ -284,8 +266,13 @@ void ResourcesWidget::sheet_removed(Sheet * sheet)
 	sheetComboBox->removeItem(index);
 }
 
-void ResourcesWidget::set_current_sheet(Sheet * sheet)
+void ResourcesWidget::set_current_session(TSession * session)
 {
+    Sheet* sheet = qobject_cast<Sheet*>(session);
+    if (! sheet)  {
+        return;
+
+    }
 	if (m_currentSheet == sheet) {
 		return;
 	}

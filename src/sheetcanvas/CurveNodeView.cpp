@@ -44,8 +44,8 @@ CurveNodeView::CurveNodeView( SheetView * sv, CurveView* curveview, CurveNode * 
 
 	setFlags(QGraphicsItem::ItemIgnoresTransformations);
 
-	load_theme_data();
-    calculate_bounding_rect();
+    CurveNodeView::load_theme_data();
+    CurveNodeView::calculate_bounding_rect();
 
 	connect(m_node->m_curve, SIGNAL(nodePositionChanged()), this, SLOT(update_pos()));
 }

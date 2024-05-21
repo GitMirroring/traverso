@@ -81,9 +81,8 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 
 #define UPDATE_INTERVAL		20
 
-DiskIOThread::DiskIOThread(DiskIO *diskio)
-    : QThread(diskio),
-      m_diskio(diskio)
+DiskIOThread::DiskIOThread()
+    : QThread()
 {
 }
 
@@ -126,7 +125,6 @@ void DiskIOThread::run()
 DiskIO::DiskIO(Sheet* sheet)
     : m_sheet(sheet)
 {
-    m_diskThread = new DiskIOThread(this);
     m_lastdoWorkReadTime = get_microseconds();
     m_stopWork = m_seeking = false;
     m_sampleRateChanged = false;
@@ -141,18 +139,19 @@ DiskIO::DiskIO(Sheet* sheet)
     m_resampleDecodeBuffer = new DecodeBuffer;
 
     // Move this instance to the workthread
-    m_workTimer.moveToThread(m_diskThread);
-    m_workTimer.connect(m_diskThread, SIGNAL(started()), SLOT(start()));
-    m_workTimer.connect(m_diskThread, SIGNAL(finished()), SLOT(stop()));
+    moveToThread(&m_diskThread);
+    m_workTimer.connect(&m_diskThread, SIGNAL(started()), SLOT(start()));
+    // m_workTimer.connect(&m_diskThread, SIGNAL(finished()), SLOT(stop()));
     m_workTimer.setInterval(UPDATE_INTERVAL);
-    connect(&m_workTimer, SIGNAL(timeout()), this, SLOT(do_work()), Qt::DirectConnection);
+    connect(&m_workTimer, SIGNAL(timeout()), this, SLOT(do_work()), Qt::QueuedConnection);
+    m_diskThread.start(QThread::TimeCriticalPriority);
 }
 
 
 DiskIO::~DiskIO()
 {
     PENTERDES;
-    stop_io();
+    stop_disk_thread();
     delete [] framebuffer[0];
     delete m_decodebuffer;
     delete m_resampleDecodeBuffer;
@@ -168,9 +167,9 @@ void DiskIO::seek()
 {
     PENTER;
 
-#if defined (THREAD_CHECK)
-    Q_ASSERT_X(m_sheet->threadId != QThread::currentThreadId (), "DiskIO::seek", "Error, running in gui thread!!!!!");
-#endif
+// #if defined (THREAD_CHECK)
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "Error, running in gui thread!!!!!");
+// #endif
 
     mutex.lock();
 
@@ -211,9 +210,9 @@ void DiskIO::output_rate_changed(uint rate)
 // Internal function
 void DiskIO::do_work( )
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT_X(this->thread() != m_workTimer.thread(), "DiskIO::do_work", "Error, running in gui thread!!!!!");
-#endif
+// #if defined (THREAD_CHECK)
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "Error, running in gui thread!!!!!");
+// #endif
 
     QMutexLocker locker(&mutex);
 
@@ -228,6 +227,7 @@ void DiskIO::do_work( )
             ReadSource* source = m_processableReadSources.at(i);
 
             if (m_stopWork) {
+                printf("DiskIO::do_work: Detected stop work, returning from do_work()\n");
                 update_time_usage();
                 return;
             }
@@ -467,17 +467,10 @@ int DiskIO::get_read_buffers_fill_status( )
     return status;
 }
 
-void DiskIO::start_io( )
+void DiskIO::stop_disk_thread( )
 {
     PENTER;
-    //	Q_ASSERT_X(m_sheet->threadId != QThread::currentThreadId (), "DiskIO::start_io", "Error, running in gui thread!!!!!");
-    m_diskThread->start();
-}
-
-void DiskIO::stop_io( )
-{
-    PENTER;
-    if (!m_diskThread->isRunning()) {
+    if (!m_diskThread.isRunning()) {
         return;
     }
 
@@ -486,16 +479,15 @@ void DiskIO::stop_io( )
     m_stopWork = 1;
 
     // Exit the diskthreads event loop
-    m_diskThread->exit(0);
+    printf("DiskIO::stop_io: calling m_diskThread->exit(0)\n");
+    m_diskThread.exit(0);
 
     // Wait for the Thread to return from it's event loop. 1000 ms should be (more then) enough,
     // if not, terminate this thread and print a warning!
-    if ( ! m_diskThread->wait(2000) ) {
+    if ( ! m_diskThread.wait(2000) ) {
         qWarning("DiskIO :: Still running after 2 second wait, terminating!");
-        m_diskThread->terminate();
+        m_diskThread.terminate();
     }
-
-    m_stopWork = 0;
 }
 
 void DiskIO::set_resample_quality(int quality)

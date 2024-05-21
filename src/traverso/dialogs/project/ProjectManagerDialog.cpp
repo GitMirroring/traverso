@@ -75,12 +75,13 @@ void ProjectManagerDialog::set_project(Project* project)
 	if (m_project) {
 		connect(m_project, SIGNAL(sheetAdded(Sheet*)), this, SLOT(update_sheet_list()));
 		connect(m_project, SIGNAL(sheetRemoved(Sheet*)), this, SLOT(update_sheet_list()));
-		connect(m_project->get_history_stack(), SIGNAL(redoTextChanged ( const QString &)),
-			this, SLOT(redo_text_changed(const QString&)));
-		connect(m_project->get_history_stack(), SIGNAL(undoTextChanged ( const QString &)),
-			this, SLOT(undo_text_changed(const QString&)));
-		setWindowTitle("Manage Project - " + m_project->get_title());
+        connect(m_project->get_history_stack(), SIGNAL(redoTextChanged(QString)),
+            this, SLOT(redo_text_changed(QString)));
+        connect(m_project->get_history_stack(), SIGNAL(undoTextChanged(QString)),
+            this, SLOT(undo_text_changed(QString)));
+        setWindowTitle("Manage Project - " + m_project->get_title());
 		descriptionTextEdit->setText(m_project->get_description());
+        createdDateLabel->setText("Created on: " + extract_date_time(m_project->get_id()).toString());
 		lineEditTitle->setText(m_project->get_title());
 		lineEditId->setText(m_project->get_discid());
 		lineEditUPC->setText(m_project->get_upc_ean());
@@ -226,12 +227,12 @@ void ProjectManagerDialog::on_createSheetButton_clicked( )
 	TMainWindow::instance()->show_newsheet_dialog();
 }
 
-void ProjectManagerDialog::redo_text_changed(const QString & text)
+void ProjectManagerDialog::redo_text_changed(QString text)
 {
 	redoButton->setText(text);
 }
 
-void ProjectManagerDialog::undo_text_changed(const QString & text)
+void ProjectManagerDialog::undo_text_changed(QString text)
 {
 	undoButton->setText(text);
 }

@@ -39,7 +39,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ViewItem.h"
 #include "ContextPointer.h"
 
-#include <cstdio>
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
@@ -141,7 +140,7 @@ void ViewPort::release_mouse()
 
 void ViewPort::mouseMoveEvent(QMouseEvent* event)
 {
-    PENTER;
+    PENTER4;
 
     cpointer().update_mouse_positions(event->pos(), event->globalPosition());
 
@@ -222,9 +221,9 @@ void ViewPort::detect_items_below_cursor()
 
 void ViewPort::tabletEvent(QTabletEvent * event)
 {
-	PMESG("ViewPort tablet event:: x, y: %d, %d", (int)event->x(), (int)event->y());
+    PMESG("ViewPort tablet event:: x, y: %d, %d", (int)event->position().x(), (int)event->position().y());
 	PMESG("ViewPort tablet event:: high resolution x, y: %f, %f",
-	      event->hiResGlobalX(), event->hiResGlobalY());
+          event->globalPosition().x(), event->globalPosition().y());
 //	cpointer().store_mouse_cursor_position((int)event->x(), (int)event->y());
 	
 	QGraphicsView::tabletEvent(event);

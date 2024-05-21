@@ -23,7 +23,6 @@ $Id: Tsar.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 #include "Tsar.h"
 
 #include "AudioDevice.h"
-#include "TInputEventDispatcher.h"
 #include <QMetaMethod>
 #include <QMessageBox>
 #include <QCoreApplication>
@@ -68,7 +67,7 @@ Tsar::Tsar()
 	m_retryCount = 0;
 	
 #if defined (THREAD_CHECK)
-	m_threadId = QThread::currentThreadId ();
+    m_threadPointer = QThread::currentThread();
 #endif
 
         m_timer.start(20, this);
@@ -99,7 +98,7 @@ void Tsar::timerEvent(QTimerEvent *event)
 bool Tsar::add_event(TsarEvent& event )
 {
 #if defined (THREAD_CHECK)
-	Q_ASSERT_X(m_threadId == QThread::currentThreadId (), "Tsar::add_event", "Adding event from other then GUI thread!!");
+    Q_ASSERT_X(m_threadPointer == QThread::currentThread(), "Tsar::add_event", "Adding event from other then GUI thread!!");
 #endif
 	if (m_events.at(0)->write(&event, 1) == 1) {
 		m_eventCounter++;
@@ -121,7 +120,7 @@ bool Tsar::add_event(TsarEvent& event )
 void Tsar::add_rt_event( TsarEvent& event )
 {
 #if defined (THREAD_CHECK)
-	Q_ASSERT_X(m_threadId != QThread::currentThreadId (), "Tsar::add_rt_event", "Adding event from NON-RT Thread!!");
+    Q_ASSERT_X(m_threadPointer != QThread::currentThread(), "Tsar::add_rt_event", "Adding event from NON-RT Thread!!");
 #endif
 	m_events.at(1)->write(&event, 1);
 }
@@ -131,7 +130,7 @@ void Tsar::add_rt_event( TsarEvent& event )
 //
 void Tsar::process_events( )
 {
-//#define profile
+#define profile
 
 	for (int i=0; i<m_events.size(); ++i) {
 		RingBufferNPT<TsarEvent>* newEvents = m_events.at(i);
@@ -181,7 +180,7 @@ void Tsar::finish_processed_events( )
 	
 	m_retryCount++;
 	
-	if (m_retryCount > 200)
+    if (m_retryCount > 200)
 	{
 		if (audiodevice().get_driver_type() != "Null Driver") {
             QMessageBox::critical( nullptr,
@@ -193,18 +192,16 @@ void Tsar::finish_processed_events( )
 				"* You're not running with real time privileges! Please make sure this is setup properly.\n\n"
 				"* The audio chipset isn't supported (completely), you probably have to turn off some of it's features.\n"
 				"\nFor more information, see the Help file, section: \n\n AudioDriver: 'Thread stalled error'\n\n"),
-				"OK", 
-                nullptr );
-                        AudioDeviceSetup ads;
-                        ads.driverType = "Null Driver";
-                        audiodevice().set_parameters(ads);
+                QMessageBox::Ok);
+            AudioDeviceSetup ads;
+            ads.driverType = "Null Driver";
+            audiodevice().set_parameters(ads);
 			m_retryCount = 0;
 		} else {
             QMessageBox::critical( nullptr,
 				tr("Traverso - Fatal!"), 
 				tr("The Null AudioDriver stalled too, exiting application!"),
-				"OK", 
-                nullptr );
+                QMessageBox::Ok);
 			QCoreApplication::exit(-1);
 		}
 	}
@@ -234,7 +231,7 @@ TsarEvent Tsar::create_event( QObject* caller, void* argument, const char* slotS
 	TsarEvent event;
 	event.caller = caller;
 	event.argument = argument;
-	int index;
+    int index;
 	
 	if (qstrlen(slotSignature) > 0) {
 		index = caller->metaObject()->indexOfMethod(slotSignature);
@@ -328,10 +325,23 @@ void Tsar::process_event_signal(const TsarEvent & event )
 *
 * @param event The TsarEvent to be processed 
 */
-void Tsar::process_event_slot_signal(const TsarEvent & event )
+void Tsar::process_event(const TsarEvent & event )
 {
 	process_event_slot(event);
 	process_event_signal(event);
+}
+
+void Tsar::rt_thread_emit(QObject *cal, void* arg, const char* signalSignature)
+{
+    TsarEvent event{}; \
+        event.caller = cal;
+        event.argument = arg;
+        event.slotindex = -1; \
+        int retrievedsignalindex = cal->metaObject()->indexOfSignal(signalSignature);
+        Q_ASSERT(retrievedsignalindex >= 0);
+        event.signalindex = retrievedsignalindex;
+        event.valid = true;
+        tsar().add_rt_event(event);
 }
 
 //eof
