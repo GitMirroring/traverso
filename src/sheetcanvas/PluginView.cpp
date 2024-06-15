@@ -56,8 +56,8 @@ PluginView::PluginView(PluginChainView* parent, PluginChain* chain, Plugin* plug
 	
 	QFontMetrics fm(themer()->get_font("Plugin:fontscale:name"));
     m_textwidth = fm.horizontalAdvance(m_name);
-	
-	calculate_bounding_rect();
+
+    PluginView::calculate_bounding_rect();
 	
 	connect(m_plugin, SIGNAL(bypassChanged()), this, SLOT(repaint()));
         connect(m_plugin, SIGNAL(activeContextChanged()), this, SLOT(repaint()));

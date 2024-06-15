@@ -84,8 +84,8 @@ AudioClip::AudioClip(const QString& name)
     m_isLocked = config().get_property("AudioClip", "LockByDefault", false).toBool();
     m_isTake = false;
     m_syncDuringDrag = false;
-    fadeIn = nullptr;
-    fadeOut = nullptr;
+    m_fadeIn = nullptr;
+    m_fadeOut = nullptr;
     m_fader->automate_port(0, true);
     m_maxGainAmplification = dB_to_scale_factor(24);
 
@@ -109,11 +109,11 @@ AudioClip::AudioClip(const QDomNode& node)
     m_sheetId = e.attribute("sheet", "0").toLongLong();
     m_name = e.attribute( "clipname", "" ) ;
     m_isMuted =  e.attribute( "mute", "" ).toInt();
-    m_length = TimeRef(e.attribute( "length", "0" ).toLongLong());
-    m_sourceStartLocation = TimeRef(e.attribute( "sourcestart", "" ).toLongLong());
+    m_length = TTimeRef(e.attribute( "length", "0" ).toLongLong());
+    m_sourceStartLocation = TTimeRef(e.attribute( "sourcestart", "" ).toLongLong());
 
     m_sourceEndLocation = m_sourceStartLocation + m_length;
-    TimeRef location(e.attribute( "trackstart", "" ).toLongLong());
+    TTimeRef location(e.attribute( "trackstart", "" ).toLongLong());
     m_domNode = node.cloneNode();
     //	init();
     // first init to set variables that are referenced in:
@@ -163,30 +163,30 @@ int AudioClip::set_state(const QDomNode& node)
     m_isMuted =  e.attribute( "mute", "" ).toInt();
 
     bool ok;
-    m_sourceStartLocation = TimeRef(e.attribute( "sourcestart", "" ).toLongLong(&ok));
-    m_length = TimeRef(e.attribute( "length", "0" ).toLongLong(&ok));
+    m_sourceStartLocation = TTimeRef(e.attribute( "sourcestart", "" ).toLongLong(&ok));
+    m_length = TTimeRef(e.attribute( "length", "0" ).toLongLong(&ok));
     m_sourceEndLocation = m_sourceStartLocation + m_length;
 
     emit stateChanged();
 
     QDomElement fadeInNode = node.firstChildElement("FadeIn");
     if (!fadeInNode.isNull()) {
-        if (!fadeIn) {
-            fadeIn = new FadeCurve(this, m_sheet, "FadeIn");
-            fadeIn->set_history_stack(get_history_stack());
-            private_add_fade(fadeIn);
+        if (!m_fadeIn) {
+            m_fadeIn = new FadeCurve(this, m_sheet, "FadeIn");
+            m_fadeIn->set_history_stack(get_history_stack());
+            private_add_fade(m_fadeIn);
         }
-        fadeIn->set_state( fadeInNode );
+        m_fadeIn->set_state( fadeInNode );
     }
 
     QDomElement fadeOutNode = node.firstChildElement("FadeOut");
     if (!fadeOutNode.isNull()) {
-        if (!fadeOut) {
-            fadeOut = new FadeCurve(this, m_sheet, "FadeOut");
-            fadeOut->set_history_stack(get_history_stack());
-            private_add_fade(fadeOut);
+        if (!m_fadeOut) {
+            m_fadeOut = new FadeCurve(this, m_sheet, "FadeOut");
+            m_fadeOut->set_history_stack(get_history_stack());
+            private_add_fade(m_fadeOut);
         }
-        fadeOut->set_state( fadeOutNode );
+        m_fadeOut->set_state( fadeOutNode );
     }
 
     QDomNode pluginChainNode = node.firstChildElement("PluginChain");
@@ -197,7 +197,7 @@ int AudioClip::set_state(const QDomNode& node)
     // Curves rely on our start position, so only set the start location
     // after curves (those created in plugins too!) are inited and having
     // their state set.
-    TimeRef location(e.attribute( "trackstart", "" ).toLongLong(&ok));
+    TTimeRef location(e.attribute( "trackstart", "" ).toLongLong(&ok));
     set_track_start_location(location);
 
     return 1;
@@ -206,7 +206,7 @@ int AudioClip::set_state(const QDomNode& node)
 QDomNode AudioClip::get_state( QDomDocument doc )
 {
     QDomElement node = doc.createElement("Clip");
-    node.setAttribute("trackstart", m_trackStartLocation.universal_frame());
+    node.setAttribute("trackstart", get_location_start().universal_frame());
     node.setAttribute("sourcestart", m_sourceStartLocation.universal_frame());
     node.setAttribute("length", m_length.universal_frame());
     node.setAttribute("mute", m_isMuted);
@@ -218,11 +218,11 @@ QDomNode AudioClip::get_state( QDomDocument doc )
 
     node.setAttribute("source", m_readSourceId);
 
-    if (fadeIn) {
-        node.appendChild(fadeIn->get_state(doc));
+    if (m_fadeIn) {
+        node.appendChild(m_fadeIn->get_state(doc));
     }
-    if (fadeOut) {
-        node.appendChild(fadeOut->get_state(doc));
+    if (m_fadeOut) {
+        node.appendChild(m_fadeOut->get_state(doc));
     }
 
     QDomNode pluginChainNode = doc.createElement("PluginChain");
@@ -283,103 +283,103 @@ void AudioClip::removed_from_track()
     m_readSource->set_active(false);
 }
 
-void AudioClip::set_left_edge(TimeRef newLeftLocation)
+void AudioClip::set_left_edge(TTimeRef newLeftLocation)
 {
-    if (newLeftLocation < TimeRef()) {
-        newLeftLocation = TimeRef();
+    if (newLeftLocation < TTimeRef()) {
+        newLeftLocation = TTimeRef();
     }
 
-    if (newLeftLocation < m_trackStartLocation) {
+    if (newLeftLocation < get_location_start()) {
 
-        TimeRef availableTimeLeft = m_sourceStartLocation;
+        TTimeRef availableTimeLeft = m_sourceStartLocation;
 
-        TimeRef movingToLeft = m_trackStartLocation - newLeftLocation;
+        TTimeRef movingToLeft = get_location_start() - newLeftLocation;
 
         if (movingToLeft > availableTimeLeft) {
             movingToLeft = availableTimeLeft;
         }
 
         set_source_start_location( m_sourceStartLocation - movingToLeft );
-        set_track_start_location(m_trackStartLocation - movingToLeft);
-    } else if (newLeftLocation > m_trackStartLocation) {
+        set_track_start_location(get_location_start() - movingToLeft);
+    } else if (newLeftLocation > get_location_start()) {
 
-        TimeRef availableTimeRight = m_length;
+        TTimeRef availableTimeRight = m_length;
 
-        TimeRef movingToRight = newLeftLocation - m_trackStartLocation;
+        TTimeRef movingToRight = newLeftLocation - get_location_start();
 
-        if (movingToRight > (availableTimeRight - TimeRef(nframes_t(4), get_rate())) ) {
-            movingToRight = (availableTimeRight - TimeRef(nframes_t(4), get_rate()));
+        if (movingToRight > (availableTimeRight - TTimeRef(nframes_t(4), get_rate())) ) {
+            movingToRight = (availableTimeRight - TTimeRef(nframes_t(4), get_rate()));
         }
 
         set_source_start_location( m_sourceStartLocation + movingToRight );
-        set_track_start_location(m_trackStartLocation + movingToRight);
+        set_track_start_location(get_location_start() + movingToRight);
     }
 }
 
-void AudioClip::set_right_edge(TimeRef newRightLocation)
+void AudioClip::set_right_edge(TTimeRef newRightLocation)
 {
 
-    if (newRightLocation < TimeRef()) {
-        newRightLocation = TimeRef();
+    if (newRightLocation < TTimeRef()) {
+        newRightLocation = TTimeRef();
     }
 
-    if (newRightLocation > m_trackEndLocation) {
+    if (newRightLocation > get_location_end()) {
 
-        TimeRef availableTimeRight = m_sourceLength - m_sourceEndLocation;
+        TTimeRef availableTimeRight = m_sourceLength - m_sourceEndLocation;
 
-        TimeRef movingToRight = newRightLocation - m_trackEndLocation;
+        TTimeRef movingToRight = newRightLocation - get_location_end();
 
         if (movingToRight > availableTimeRight) {
             movingToRight = availableTimeRight;
         }
 
         set_source_end_location( m_sourceEndLocation + movingToRight );
-        set_track_end_location( m_trackEndLocation + movingToRight );
+        set_track_end_location( get_location_end() + movingToRight );
 
-    } else if (newRightLocation < m_trackEndLocation) {
+    } else if (newRightLocation < get_location_end()) {
 
-        TimeRef availableTimeLeft = m_length;
+        TTimeRef availableTimeLeft = m_length;
 
-        TimeRef movingToLeft = m_trackEndLocation - newRightLocation;
+        TTimeRef movingToLeft = get_location_end() - newRightLocation;
 
-        if (movingToLeft > availableTimeLeft - TimeRef(nframes_t(4), get_rate())) {
-            movingToLeft = availableTimeLeft - TimeRef(nframes_t(4), get_rate());
+        if (movingToLeft > availableTimeLeft - TTimeRef(nframes_t(4), get_rate())) {
+            movingToLeft = availableTimeLeft - TTimeRef(nframes_t(4), get_rate());
         }
 
         set_source_end_location( m_sourceEndLocation - movingToLeft);
-        set_track_end_location( m_trackEndLocation - movingToLeft );
+        set_track_end_location( get_location_end() - movingToLeft );
     }
 }
 
-void AudioClip::set_source_start_location(const TimeRef& location)
+void AudioClip::set_source_start_location(const TTimeRef& location)
 {
     m_sourceStartLocation = location;
     m_length = m_sourceEndLocation - m_sourceStartLocation;
 }
 
-void AudioClip::set_source_end_location(const TimeRef& location)
+void AudioClip::set_source_end_location(const TTimeRef& location)
 {
     m_sourceEndLocation = location;
     m_length = m_sourceEndLocation - m_sourceStartLocation;
 }
 
-void AudioClip::set_track_start_location(const TimeRef& location)
+void AudioClip::set_track_start_location(const TTimeRef& location)
 {
     PENTER2;
-    m_trackStartLocation = location;
-    m_fader->get_curve()->set_start_offset(m_trackStartLocation);
+    set_location_start(location);
+    m_fader->get_curve()->set_start_offset(get_location_start());
 
     // set_track_end_location will emit positionChanged(), so we
     // don't emit it in this function to avoid emitting it twice
     // (although it seems more logical to emit it here, there are
     // situations where only set_track_end_location() is called, and
     // then we also want to emit positionChanged())
-    set_track_end_location(m_trackStartLocation + m_length);
+    set_track_end_location(get_location_start() + m_length);
 }
 
-void AudioClip::set_track_end_location(const TimeRef& location)
+void AudioClip::set_track_end_location(const TTimeRef& location)
 {
-    m_trackEndLocation = location;
+    set_location_end(location);
 
     if ( (!is_moving()) && m_sheet) {
         m_sheet->get_snap_list()->mark_dirty();
@@ -391,18 +391,18 @@ void AudioClip::set_track_end_location(const TimeRef& location)
 
 void AudioClip::set_fade_in(double range)
 {
-    if (!fadeIn) {
-        create_fade_in();
+    if (!m_fadeIn) {
+        create_fade(FadeCurve::FadeIn);
     }
-    fadeIn->set_range(range);
+    m_fadeIn->set_range(range);
 }
 
 void AudioClip::set_fade_out(double range)
 {
-    if (!fadeOut) {
-        create_fade_out();
+    if (!m_fadeOut) {
+        create_fade(FadeCurve::FadeOut);
     }
-    fadeOut->set_range(range);
+    m_fadeOut->set_range(range);
 }
 
 void AudioClip::set_selected(bool /*selected*/)
@@ -440,7 +440,7 @@ int AudioClip::process(nframes_t nframes)
     AudioBus* bus = m_sheet->get_clip_render_bus();
     bus->silence_buffers(nframes);
 
-    TimeRef mix_pos;
+    TTimeRef mix_pos;
     uint channelcount = get_channel_count();
 
     // since we only use 2 channels, this will do for now
@@ -451,16 +451,16 @@ int AudioClip::process(nframes_t nframes)
 
 
     uint outputRate = m_readSource->get_output_rate();
-    TimeRef transportLocation = m_sheet->get_transport_location();
-    TimeRef upperRange = transportLocation + TimeRef(framesToProcess, outputRate);
+    TTimeRef transportLocation = m_sheet->get_transport_location();
+    TTimeRef upperRange = transportLocation + TTimeRef(framesToProcess, outputRate);
 
 
-    if ( (m_trackStartLocation < upperRange) && (m_trackEndLocation > transportLocation) ) {
-        if (transportLocation < m_trackStartLocation) {
-            // Using to_frame() for both the m_trackStartLocation and transportLocation seems to round
-            // better then using (m_trackStartLocation - transportLocation).to_frame()
+    if ( (get_location_start() < upperRange) && (get_location_end() > transportLocation) ) {
+        if (transportLocation < get_location_start()) {
+            // Using to_frame() for both the get_location_start() and transportLocation seems to round
+            // better then using (get_location_start() - transportLocation).to_frame()
             // TODO : find out why!
-            uint offset = (m_trackStartLocation).to_frame(outputRate) - transportLocation.to_frame(outputRate);
+            uint offset = (get_location_start()).to_frame(outputRate) - transportLocation.to_frame(outputRate);
             mix_pos = m_sourceStartLocation;
             // 			printf("offset %d\n", offset);
 
@@ -470,19 +470,19 @@ int AudioClip::process(nframes_t nframes)
             }
             framesToProcess -= offset;
         } else {
-            mix_pos = (transportLocation - m_trackStartLocation + m_sourceStartLocation);
+            mix_pos = (transportLocation - get_location_start() + m_sourceStartLocation);
             // 			printf("else: Setting mix pos to start location %d\n", mix_pos.to_frame(96000));
 
             for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
                 mixdown[chan] = bus->get_buffer(chan, framesToProcess);
             }
         }
-        if (m_trackEndLocation < upperRange) {
-            // Using to_frame() for both the upperRange and m_trackEndLocation seems to round
-            // better then using (upperRange - m_trackEndLocation).to_frame()
+        if (get_location_end() < upperRange) {
+            // Using to_frame() for both the upperRange and get_location_end() seems to round
+            // better then using (upperRange - get_location_end()).to_frame()
             // TODO : find out why!
-            framesToProcess -= upperRange.to_frame(outputRate) - m_trackEndLocation.to_frame(outputRate);
-            // 			printf("if (m_trackEndLocation < upperRange): framesToProcess %d\n", framesToProcess);
+            framesToProcess -= upperRange.to_frame(outputRate) - get_location_end().to_frame(outputRate);
+            // 			printf("if (get_location_end() < upperRange): framesToProcess %d\n", framesToProcess);
         }
     } else {
         return 0;
@@ -518,7 +518,7 @@ int AudioClip::process(nframes_t nframes)
         fade->process(bus, nframes);
     }
 
-    TimeRef endlocation = mix_pos + TimeRef(read_frames, get_rate());
+    TTimeRef endlocation = mix_pos + TTimeRef(read_frames, get_rate());
     m_fader->process_gain(mixdown, mix_pos, endlocation, read_frames, channelcount);
 
     AudioBus* processBus = m_track->get_process_bus();
@@ -569,7 +569,7 @@ int AudioClip::init_recording()
         return -1;
     }
 
-    m_sourceStartLocation = TimeRef();
+    m_sourceStartLocation = TTimeRef();
     m_isTake = true;
     m_recordingStatus = RECORDING;
 
@@ -606,9 +606,9 @@ int AudioClip::init_recording()
     spec->sample_rate = audiodevice().get_sample_rate();
     spec->src_quality = SRC_SINC_MEDIUM_QUALITY;
     spec->isRecording = true;
-    spec->startLocation = TimeRef();
-    spec->endLocation = TimeRef();
-    spec->totalTime = TimeRef();
+    spec->startLocation = TTimeRef();
+    spec->endLocation = TTimeRef();
+    spec->totalTime = TTimeRef();
     spec->blocksize = audiodevice().get_buffer_size();
     spec->name = m_name + "-" + sourceid;
     spec->dataF = bus->get_buffer(0, audiodevice().get_buffer_size());
@@ -648,32 +648,32 @@ TCommand* AudioClip::lock()
 
 TCommand* AudioClip::reset_fade_in()
 {
-    if (fadeIn) {
-        return new FadeRange(this, fadeIn, 1.0);
+    if (m_fadeIn) {
+        return new FadeRange(this, m_fadeIn, 1.0);
     }
     return nullptr;
 }
 
 TCommand* AudioClip::reset_fade_out()
 {
-    if (fadeOut) {
-        return new FadeRange(this, fadeOut, 1.0);
+    if (m_fadeOut) {
+        return new FadeRange(this, m_fadeOut, 1.0);
     }
     return nullptr;
 }
 
 TCommand* AudioClip::reset_fade_both()
 {
-    if (!fadeOut && !fadeIn) {
+    if (!m_fadeOut && !m_fadeIn) {
         return nullptr;
     }
 
     CommandGroup* group = new CommandGroup(this, tr("Remove Fades"));
 
-    if (fadeIn) {
+    if (m_fadeIn) {
         group->add_command(reset_fade_in());
     }
-    if (fadeOut) {
+    if (m_fadeOut) {
         group->add_command(reset_fade_out());
     }
 
@@ -717,7 +717,7 @@ void AudioClip::set_audio_source(ReadSource* rs)
     // it's a bit weak this way, hopefull I'll get up something better in the future.
     // The positioning-length-offset and such stuff is still a bit weak :(
     // NOTE: don't change, audio recording (finish_writesource()) assumes there is checked for length == 0 !!!
-    if (m_length == TimeRef()) {
+    if (m_length == TTimeRef()) {
         m_sourceEndLocation = rs->get_length();
         m_length = m_sourceEndLocation;
     }
@@ -737,7 +737,7 @@ void AudioClip::set_audio_source(ReadSource* rs)
     }
 
     // This will also emit positionChanged() which is more or less what we want.
-    set_track_end_location(m_trackStartLocation + m_sourceLength - m_sourceStartLocation);
+    set_track_end_location(get_location_start() + m_sourceLength - m_sourceStartLocation);
 }
 
 void AudioClip::finish_write_source()
@@ -751,7 +751,7 @@ Q_ASSERT(m_readSource);
     } else {
         m_sheet->get_diskio()->register_read_source(m_readSource);
         // re-inits the lenght from the audiofile due calling rsm->set_source_for_clip()
-        m_length = TimeRef();
+        m_length = TTimeRef();
     }
 
     delete m_writer;
@@ -862,7 +862,7 @@ uint AudioClip::get_rate( ) const
     return audiodevice().get_sample_rate();
 }
 
-TimeRef AudioClip::get_source_length( ) const
+TTimeRef AudioClip::get_source_length( ) const
 {
     return m_sourceLength;
 }
@@ -925,12 +925,12 @@ float AudioClip::calculate_normalization_factor(float targetdB)
 
 FadeCurve * AudioClip::get_fade_in( ) const
 {
-    return fadeIn;
+    return m_fadeIn;
 }
 
 FadeCurve * AudioClip::get_fade_out( ) const
 {
-    return fadeOut;
+    return m_fadeOut;
 }
 
 void AudioClip::private_add_fade( FadeCurve* fade )
@@ -938,37 +938,45 @@ void AudioClip::private_add_fade( FadeCurve* fade )
     m_fades.append(fade);
 
     if (fade->get_fade_type() == FadeCurve::FadeIn) {
-        fadeIn = fade;
+        m_fadeIn = fade;
     } else if (fade->get_fade_type() == FadeCurve::FadeOut) {
-        fadeOut = fade;
+        m_fadeOut = fade;
     }
 }
 
 void AudioClip::private_remove_fade( FadeCurve * fade )
 {
-    if (fade == fadeIn) {
-        fadeIn = nullptr;
-    } else if (fade == fadeOut) {
-        fadeOut = nullptr;
+    if (fade == m_fadeIn) {
+        m_fadeIn = nullptr;
+    } else if (fade == m_fadeOut) {
+        m_fadeOut = nullptr;
     }
 
     m_fades.remove(fade);
 }
 
-void AudioClip::create_fade_in( )
+void AudioClip::create_fade(FadeCurve::FadeType fadeType)
 {
-    fadeIn = new FadeCurve(this, m_sheet, "FadeIn");
-    fadeIn->set_shape("Fast");
-    fadeIn->set_history_stack(get_history_stack());
-    THREAD_SAVE_INVOKE_AND_EMIT_SIGNAL(this, fadeIn, private_add_fade(FadeCurve*), fadeAdded(FadeCurve*));
-}
+    FadeCurve* fadeCurve = nullptr;
+    switch (fadeType) {
+    case FadeCurve::FadeIn:
+        m_fadeIn = new FadeCurve(this, m_sheet, "FadeIn");
+        fadeCurve = m_fadeIn;
+        break;
+        case FadeCurve::FadeOut:
+        m_fadeOut = new FadeCurve(this, m_sheet, "FadeOut");
+        fadeCurve = m_fadeOut;
+        break;
+    default:
+        PERROR("FadeType unknown");
+        return;
+    }
 
-void AudioClip::create_fade_out( )
-{
-    fadeOut = new FadeCurve(this, m_sheet, "FadeOut");
-    fadeOut->set_shape("Fast");
-    fadeOut->set_history_stack(get_history_stack());
-    THREAD_SAVE_INVOKE_AND_EMIT_SIGNAL(this, fadeOut, private_add_fade(FadeCurve*), fadeAdded(FadeCurve*));
+    Q_ASSERT(fadeCurve);
+
+    fadeCurve->set_shape("Fast");
+    fadeCurve->set_history_stack(get_history_stack());
+    tsar().thread_save_invoke_and_emit_signal(this, fadeCurve, "private_add_fade(FadeCurve*)", "fadeAdded(FadeCurve*)");
 }
 
 QDomNode AudioClip::get_dom_node() const

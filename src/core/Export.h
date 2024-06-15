@@ -31,6 +31,7 @@ $Id: Export.h,v 1.20 2009/05/07 19:59:03 n_doebelin Exp $
 
 #include "defines.h"
 #include "gdither.h"
+#include "TTimeRef.h"
 
 class Project;
 class ExportThread;
@@ -51,10 +52,10 @@ struct ExportSpecification
     uint      	sample_rate;
 	int             src_quality;
     uint       	channels;
-	TimeRef		startLocation;
-	TimeRef		endLocation;
-        TimeRef		cdTrackStart;
-        TimeRef		cdTrackEnd;
+    TTimeRef		startLocation;
+    TTimeRef		endLocation;
+        TTimeRef		cdTrackStart;
+        TTimeRef		cdTrackEnd;
         GDitherType     dither_type;
 
 	/* used exclusively during export */
@@ -64,8 +65,8 @@ struct ExportSpecification
     uint		blocksize;
 	int	        data_width;
 
-	TimeRef      	totalTime;
-	TimeRef      	pos;
+    TTimeRef      	totalTime;
+    TTimeRef      	pos;
 	QMap<QString, QString>	extraFormat;
 
 	/* shared between UI thread and audio thread */
@@ -89,7 +90,7 @@ struct ExportSpecification
 	float		peakvalue;
 	float 		normvalue;
 	bool 		resumeTransport;
-	TimeRef		resumeTransportLocation;
+    TTimeRef		resumeTransportLocation;
 	bool		renderfinished;
 	bool		isCdExport;
         QList<Marker*>  markers;

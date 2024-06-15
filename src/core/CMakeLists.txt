@@ -15,6 +15,9 @@ ${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Mixer.cpp
 ${CMAKE_SOURCE_DIR}/src/common/RingBuffer.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Resampler.cpp
+${CMAKE_SOURCE_DIR}/src/common/TTimeRef.cpp
+${CMAKE_SOURCE_DIR}/src/common/TTransportControl.cpp
+
 AudioClip.cpp
 AudioClipGroup.cpp
 AudioClipManager.cpp
@@ -51,7 +54,7 @@ Track.cpp
 WriteSource.cpp
 gdither.cpp
 SnapList.cpp
-Snappable.cpp
+LocationItem.cpp
 TimeLine.cpp
 Marker.cpp
 Themer.cpp

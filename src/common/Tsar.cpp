@@ -28,6 +28,7 @@ $Id: Tsar.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 #include <QCoreApplication>
 #include <QThread>
 #include <QTimerEvent>
+#include <unistd.h>
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
@@ -59,10 +60,12 @@ Tsar::Tsar()
     size_t guiThreadEventsBufferSize = 10000;
     size_t audioThreadEventsBufferSize = 1000;
 
-	m_events.append(new RingBufferNPT<TsarEvent>(guiThreadEventsBufferSize));
-	oldEvents = new RingBufferNPT<TsarEvent>(guiThreadEventsBufferSize);
+    m_guiThreadEventBuffer = new RingBufferNPT<TsarEvent>(guiThreadEventsBufferSize);
+    m_audioThreadEventBuffer = new RingBufferNPT<TsarEvent>(audioThreadEventsBufferSize);
+    m_processedEventsSlot = new RingBufferNPT<TsarEvent>(guiThreadEventsBufferSize);
 
-	m_events.append(new RingBufferNPT<TsarEvent>(audioThreadEventsBufferSize));
+    m_eventBuffers.append(m_guiThreadEventBuffer);
+    m_eventBuffers.append(m_audioThreadEventBuffer);
 
 	m_retryCount = 0;
 	
@@ -70,21 +73,21 @@ Tsar::Tsar()
     m_threadPointer = QThread::currentThread();
 #endif
 
-        m_timer.start(20, this);
+    m_timer.start(20, this);
 }
 
 Tsar::~ Tsar( )
 {
-	foreach(RingBufferNPT<TsarEvent>* eventBuffer, m_events) {
+    foreach(RingBufferNPT<TsarEvent>* eventBuffer, m_eventBuffers) {
 		delete eventBuffer;
 	}
-	delete oldEvents;
+    delete m_processedEventsSlot;
 }
 
 void Tsar::timerEvent(QTimerEvent *event)
 {
         if (event->timerId() == m_timer.timerId()) {
-                finish_processed_events();
+                process_events_signal();
         }
 }
 
@@ -100,7 +103,7 @@ bool Tsar::add_event(TsarEvent& event )
 #if defined (THREAD_CHECK)
     Q_ASSERT_X(m_threadPointer == QThread::currentThread(), "Tsar::add_event", "Adding event from other then GUI thread!!");
 #endif
-	if (m_events.at(0)->write(&event, 1) == 1) {
+    if (m_guiThreadEventBuffer->write(&event, 1) == 1) {
 		m_eventCounter++;
 		return true;
 	}
@@ -122,55 +125,62 @@ void Tsar::add_rt_event( TsarEvent& event )
 #if defined (THREAD_CHECK)
     Q_ASSERT_X(m_threadPointer != QThread::currentThread(), "Tsar::add_rt_event", "Adding event from NON-RT Thread!!");
 #endif
-	m_events.at(1)->write(&event, 1);
+
+    if (m_audioThreadEventBuffer->write(&event, 1) != 1) {
+        emit audioThreadEventBufferFull(QString("Tsar::add_rt_event: Event lost due no write space in event buffer: %1::%2, (signal: %3)").arg(
+            event.caller->metaObject()->className(),
+            (event.slotindex >= 0) ? event.caller->metaObject()->method(event.slotindex).methodSignature().data() : "",
+            (event.signalindex >= 0) ? event.caller->metaObject()->method(event.signalindex).methodSignature().data() : ""));
+    }
 }
 
 //
 //  Function called in RealTime AudioThread processing path
 //
-void Tsar::process_events( )
+void Tsar::process_events_slot( )
 {
 #define profile
 
-	for (int i=0; i<m_events.size(); ++i) {
-		RingBufferNPT<TsarEvent>* newEvents = m_events.at(i);
+#if defined (profile)
+    trav_time_t starttime = get_microseconds();
+#endif
+
+    for (int i=0; i<m_eventBuffers.size(); ++i) {
+        RingBufferNPT<TsarEvent>* eventBuffer = m_eventBuffers.at(i);
 		
-		int processedCount = 0;
-        size_t newEventCount = newEvents->read_space();
-	
-		while((newEventCount > 0) && (processedCount < 50)) {
+        int processedEvents = 0;
+        size_t availableEvents = eventBuffer->read_space();
+
+        while((availableEvents > 0) && (processedEvents < 200)) {
+            TsarEvent event;
+
+            if (eventBuffer->read(&event, 1) == 1) {
+                process_event_slot(event);
+                // printf("Processed %s slot: %s, signal: %s\n", event.caller->metaObject()->className(),
+                //        (event.slotindex >= 0) ? event.caller->metaObject()->method(event.slotindex).methodSignature().data() : "no_slot_supplied",
+                //        (event.signalindex >= 0) ? event.caller->metaObject()->method(event.signalindex).methodSignature().data() : "so_signal_supplied");
+
+                m_processedEventsSlot->write(&event, 1);
+                --availableEvents;
+            }
+
+            ++processedEvents;
+        }
+    }
 #if defined (profile)
-			trav_time_t starttime = get_microseconds();
+    int processtime = int(get_microseconds() - starttime);
+    if (processtime > 10)
+        printf("Process time: %d useconds\n\n", processtime);
 #endif
-			TsarEvent event;
-			
-			newEvents->read(&event, 1);
-	
-			process_event_slot(event);
-			
-			oldEvents->write(&event, 1);
-			
-			--newEventCount;
-			++processedCount;
-	
-#if defined (profile)
-            int processtime = int(get_microseconds() - starttime);
-			printf("called %s::%s, (signal: %s) \n", event.caller->metaObject()->className(), 
-            (event.slotindex >= 0) ? event.caller->metaObject()->method(event.slotindex).methodSignature().data() : "",
-                        (event.signalindex >= 0) ? event.caller->metaObject()->method(event.signalindex).methodSignature().data() : "");
-			printf("Process time: %d useconds\n\n", processtime);
-#endif
-		}
-	}
 }
 
-void Tsar::finish_processed_events( )
+void Tsar::process_events_signal( )
 {
 	
-	while(oldEvents->read_space() >= 1 ) {
+    while(m_processedEventsSlot->read_space() >= 1 ) {
 		TsarEvent event;
 		// Read one TsarEvent from the processed events ringbuffer 'queue'
-		oldEvents->read(&event, 1);
+        m_processedEventsSlot->read(&event, 1);
 		
 		process_event_signal(event);
 		
@@ -333,15 +343,28 @@ void Tsar::process_event(const TsarEvent & event )
 
 void Tsar::rt_thread_emit(QObject *cal, void* arg, const char* signalSignature)
 {
-    TsarEvent event{}; \
-        event.caller = cal;
-        event.argument = arg;
-        event.slotindex = -1; \
-        int retrievedsignalindex = cal->metaObject()->indexOfSignal(signalSignature);
-        Q_ASSERT(retrievedsignalindex >= 0);
-        event.signalindex = retrievedsignalindex;
-        event.valid = true;
-        tsar().add_rt_event(event);
+    TsarEvent event;
+    event.caller = cal;
+    event.argument = arg;
+    event.slotindex = -1;
+    int retrievedsignalindex = cal->metaObject()->indexOfSignal(signalSignature);
+    Q_ASSERT(retrievedsignalindex >= 0);
+    event.signalindex = retrievedsignalindex;
+    event.valid = true;
+    add_rt_event(event);
+}
+
+void Tsar::thread_save_invoke_and_emit_signal(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
+{
+    TsarEvent event = tsar().create_event(caller, arg, slotSignature, signalSignature);
+    while (!add_event(event)) {
+        std::cout << "THREAD_SAVE_INVOKE: failed to add event, trying again\n";
+#if defined (Q_OS_WIN)
+        Sleep(2);
+#else
+        usleep(2 * 1000);
+#endif
+    }
 }
 
 //eof

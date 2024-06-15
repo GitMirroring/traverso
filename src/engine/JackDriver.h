@@ -76,6 +76,7 @@ private:
         jack_client_t*          m_jack_client{};
         QList<PortChannelPair*> m_inputs;
         QList<PortChannelPair*> m_outputs;
+        TTransportControl*        m_transportControl;
 
         bool                    m_isSlave{};
 

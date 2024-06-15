@@ -17,22 +17,22 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
-$Id: Snappable.cpp,v 1.2 2008/02/21 20:00:48 r_sijrier Exp $
+$Id: LocationItem.cpp,v 1.2 2008/02/21 20:00:48 r_sijrier Exp $
 */
 
-#include "Snappable.h"
+#include "LocationItem.h"
 #include "SnapList.h"
 
 #include <Debugger.h>
 
 
-Snappable::Snappable()
+LocationItem::LocationItem()
 {
 	m_isSnappable = true;
 	snapList = 0;
 }
 
-void Snappable::set_snappable(bool snap)
+void LocationItem::set_snappable(bool snap)
 {
 	if (snapList) {
 		snapList->mark_dirty();
@@ -40,12 +40,22 @@ void Snappable::set_snappable(bool snap)
 	m_isSnappable = snap;
 }
 
-void Snappable::set_snap_list(SnapList *sList)
+void LocationItem::set_snap_list(SnapList *sList)
 {
 	snapList = sList;
 }
 
-bool Snappable::is_snappable() const
+void LocationItem::set_location_start(const TTimeRef &start)
+{
+    m_locationStart = start;
+}
+
+void LocationItem::set_location_end(const TTimeRef &end)
+{
+    m_locationEnd = end;
+}
+
+bool LocationItem::is_snappable() const
 {
 	return m_isSnappable;
 }

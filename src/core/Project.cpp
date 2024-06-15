@@ -1278,7 +1278,7 @@ int Project::start_export(ExportSpecification* spec)
                 // ... then start the render process and wait until it's finished
                 sheet->start_export(spec);
 		
-		if (!QMetaObject::invokeMethod(sheet, "set_transport_pos",  Qt::QueuedConnection, Q_ARG(TimeRef, spec->resumeTransportLocation))) {
+		if (!QMetaObject::invokeMethod(sheet, "set_transport_pos",  Qt::QueuedConnection, Q_ARG(TTimeRef, spec->resumeTransportLocation))) {
 			printf("Invoking Sheet::set_transport_pos() failed\n");
 		}
 		if (spec->resumeTransport) {
@@ -1312,9 +1312,9 @@ void Project::export_finished()
 }
 
 /* returns the total time of the data that will be written to CD */
-TimeRef Project::get_cd_totaltime(ExportSpecification* spec)
+TTimeRef Project::get_cd_totaltime(ExportSpecification* spec)
 {
-        TimeRef totalTime = TimeRef();
+        TTimeRef totalTime = TTimeRef();
 
         spec->renderpass = ExportSpecification::CREATE_CDRDAO_TOC;
 
@@ -1707,7 +1707,7 @@ bool Project::is_recording() const
 	return false;
 }
 
-void Project::set_work_at(TimeRef worklocation, bool isFolder)
+void Project::set_work_at(TTimeRef worklocation, bool isFolder)
 {
         foreach(Sheet* sheet, m_sheets) {
                 sheet->set_work_at(worklocation, isFolder);
@@ -1761,7 +1761,7 @@ int Project::process( nframes_t nframes )
         return result;
 }
 
-int Project::transport_control(transport_state_t state)
+int Project::transport_control(TTransportControl *state)
 {
         bool result = true;
 
@@ -1772,12 +1772,12 @@ int Project::transport_control(transport_state_t state)
         return result;
 }
 
-TimeRef Project::get_last_location() const
+TTimeRef Project::get_last_location() const
 {
-        TimeRef lastLocation;
+        TTimeRef lastLocation;
 
         foreach(Sheet* sheet, m_sheets) {
-                TimeRef location = sheet->get_last_location();
+                TTimeRef location = sheet->get_last_location();
                 if (location > lastLocation) {
                         lastLocation = location;
                 }
@@ -1786,9 +1786,9 @@ TimeRef Project::get_last_location() const
         return lastLocation;
 }
 
-TimeRef Project::get_transport_location() const
+TTimeRef Project::get_transport_location() const
 {
-        if (!m_activeSheet) return TimeRef();
+        if (!m_activeSheet) return TTimeRef();
 
         return m_activeSheet->get_transport_location();
 }

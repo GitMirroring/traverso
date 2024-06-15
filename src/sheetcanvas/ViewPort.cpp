@@ -140,7 +140,7 @@ void ViewPort::release_mouse()
 
 void ViewPort::mouseMoveEvent(QMouseEvent* event)
 {
-    PENTER4;
+    PENTER;
 
     cpointer().update_mouse_positions(event->pos(), event->globalPosition());
 
@@ -153,12 +153,12 @@ void ViewPort::mouseMoveEvent(QMouseEvent* event)
     // since a mouse move event generates a jog() call for the
     // active holding command, this has a number of nasty side effects :-(
     // For now, we ignore such events....
-    if (event->pos() == m_oldMousePos) {
+    if (event->pos() == m_previousMousePos) {
         event->accept();
         return;
     }
 
-    m_oldMousePos = event->pos();
+    m_previousMousePos = event->pos();
 
     if (ied().is_holding()) {
         // cpointer().update_mouse_positions() will instruct ied() to update holdcommand
@@ -208,6 +208,7 @@ void ViewPort::detect_items_below_cursor()
         set_canvas_cursor_shape(":/cursorFloat", Qt::AlignTop | Qt::AlignHCenter);
     }
 
+    printf("setting active context items for detect items below cursor %lld", activeContextItems.size());
     // update context pointer active context items list
     cpointer().set_active_context_items_by_mouse_movement(activeContextItems);
 
@@ -245,7 +246,7 @@ void ViewPort::enterEvent(QEnterEvent* e)
     // for now, default to old solution by only setting BlankCursor
 //    QGuiApplication::setOverrideCursor(Qt::BlankCursor);
     if (m_sv) {
-        viewport()->setCursor(Qt::BlankCursor);
+        // viewport()->setCursor(Qt::BlankCursor);
     }
 
 	cpointer().set_current_viewport(this);
@@ -277,7 +278,7 @@ void ViewPort::leaveEvent(QEvent* e)
     // Force the next mouse move event to do something
     // even if the mouse didn't move, so switching viewports
     // does update the current context!
-    m_oldMousePos = QPoint();
+    m_previousMousePos = QPoint();
     e->accept();
 }
 
@@ -342,6 +343,11 @@ void ViewPort::set_canvas_cursor_shape(const QString &shape, int alignment)
 
 void ViewPort::set_canvas_cursor_text( const QString & text, int mseconds)
 {
+    if (!m_sv) {
+        PERROR(QString("ViewPort::set_canvas_cursor_text: no sheetview set to set text %1").arg(text));
+        return;
+    }
+
 	m_sv->set_edit_cursor_text(text, mseconds);
 }
 

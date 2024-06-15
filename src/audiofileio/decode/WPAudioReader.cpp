@@ -48,7 +48,7 @@ WPAudioReader::WPAudioReader(const QString& filename)
 	m_channels = WavpackGetReducedChannels(m_wp);
 	m_nframes = WavpackGetNumSamples(m_wp);
 	m_rate = WavpackGetSampleRate(m_wp);
-	m_length = TimeRef(m_nframes, m_rate);
+	m_length = TTimeRef(m_nframes, m_rate);
 }
 
 

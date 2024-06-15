@@ -59,7 +59,7 @@ TCommand * TTransport::to_start()
 {
 	if (m_session)
 	{
-		m_session->set_transport_pos(TimeRef());
+		m_session->set_transport_pos(TTimeRef());
 	}
 
     return nullptr;

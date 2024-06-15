@@ -39,6 +39,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
+#define NO_HOLD_EVENT -100
+
 /**
  * \class InputEventDispatcher
  * \brief Processes keyboard/mouse events, dispatches the result, and handles the returned Command objects
@@ -89,9 +91,10 @@ TInputEventDispatcher::TInputEventDispatcher()
     m_moveCommand = nullptr;
     // holdEvenCode MUST be a value != ANY key code!
     // when set to 'not matching any key!!!!!!
-    m_holdEventCode = -100;
-    reset();
-
+    m_holdEventCode = NO_HOLD_EVENT;
+    m_cancelHold = false;
+    m_bypassJog = false;
+    m_enterFinishesHold = false;
     m_sCollectedNumber = "";
 
     m_modifierKeys << Qt::Key_Shift << Qt::Key_Control << Qt::Key_Alt << Qt::Key_Meta;
@@ -147,7 +150,7 @@ int TInputEventDispatcher::dispatch_shortcut(TShortcut* shortCut, bool fromConte
 
     TCommand* command = nullptr;
     QString slotsignature = "";
-    QList<QObject* > contextItemsList = !fromContextMenu ? cpointer().get_context_items() : cpointer().get_contextmenu_items();
+    QList<QObject* > contextItemsList = fromContextMenu ? cpointer().get_contextmenu_items() : cpointer().get_context_items();
     QObject* contextItem = nullptr;
 
     if (m_holdingCommand) {
@@ -412,7 +415,7 @@ int TInputEventDispatcher::dispatch_shortcut(TShortcut* shortCut, bool fromConte
                         } else {
                             keyString = QKeySequence(shortCut->getKeyValue()).toString();
                         }
-                        cpointer().set_canvas_cursor_text(tr("Press Enter or %1 to accept, Esc to reject").arg(keyString));
+                        cpointer().set_canvas_cursor_text(tr("%1 or Enter to accept, Esc to cancel").arg(keyString));
                     }
                 } else {
                     PWARN("hold action begin_hold() returned -1");
@@ -714,7 +717,7 @@ void TInputEventDispatcher::finish_hold()
     PENTER;
     PMESG("Finishing hold action %s", m_holdingCommand->metaObject()->className());
 
-    m_holdEventCode = -100;
+    m_holdEventCode = NO_HOLD_EVENT;
 
     clear_hold_modifier_keys();
 

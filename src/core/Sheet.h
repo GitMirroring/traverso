@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSession.h"
 #include <QDomNode>
 #include <QTimer>
+#include "TTransportControl.h"
 #include "defines.h"
 #include "APILinkedList.h"
 
@@ -40,7 +41,7 @@ class TAudioDeviceClient;
 class AudioBus;
 class SnapList;
 class TimeLine;
-class Snappable;
+class LocationItem;
 class DecodeBuffer;
 class TBusTrack;
 class Track;
@@ -71,12 +72,12 @@ public:
 	AudioBus* get_clip_render_bus() const {return m_clipRenderBus;}
         AudioTrack* get_audio_track_for_index(int index);
         QString get_audio_sources_dir() const;
-        TimeRef get_last_location() const;
+        TTimeRef get_last_location() const;
 
 	// Set functions
 	void set_artists(const QString& pArtistis);
-        void set_work_at(TimeRef location, bool isFolder=false);
-        void set_work_at_for_sheet_as_track_folder(const TimeRef& location);
+        void set_work_at(TTimeRef location, bool isFolder=false);
+        void set_work_at_for_sheet_as_track_folder(const TTimeRef& location);
 	void set_snapping(bool snap);
         int set_state( const QDomNode & node );
 	void set_recording(bool recording, bool realtime);
@@ -88,7 +89,7 @@ public:
 
 	int process(nframes_t nframes);
 	// jackd only feature
-	int transport_control(transport_state_t state);
+    int transport_control(TTransportControl* state);
 	int process_export(nframes_t nframes);
 	int prepare_export(ExportSpecification* spec);
 	int render(ExportSpecification* spec);
@@ -122,7 +123,7 @@ private:
     AudioBus*		m_clipRenderBus{};
     DiskIO*			m_diskio{};
     AudioClipManager*	m_acmanager{};
-	QList<TimeRef>		m_xposList;
+	QList<TTimeRef>		m_xposList;
         QString                 m_audioSourcesDir;
 
 	// The following data could be read/written by multiple threads
@@ -151,7 +152,7 @@ private:
 
 	int finish_audio_export();
     void start_seek();
-        void initiate_seek_start(TimeRef location);
+        void initiate_seek_start(TTimeRef location);
 	void start_transport_rolling(bool realtime);
 	void stop_transport_rolling();
 	void update_skip_positions();
@@ -164,7 +165,7 @@ public slots :
 	void seek_finished();
         void audiodevice_params_changed();
         void set_gain(float gain);
-        void set_transport_pos(TimeRef location);
+        void set_transport_pos(TTimeRef location);
 
 
 	TCommand* next_skip_pos();

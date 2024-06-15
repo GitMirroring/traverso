@@ -167,7 +167,7 @@ int ReadSource::set_state( const QDomNode & node )
 	m_id = e.attribute("id", "").toLongLong();
 	m_rate = m_outputRate = e.attribute("rate", "0").toUInt();
 	bool ok;
-	m_length = TimeRef(e.attribute("length", "0").toLongLong(&ok));
+	m_length = TTimeRef(e.attribute("length", "0").toLongLong(&ok));
     m_origBitDepth = e.attribute("origbitdepth", "0").toUInt();
 	m_wasRecording = e.attribute("wasrecording", "0").toInt();
 	m_decodertype = e.attribute("decoder", "");
@@ -203,7 +203,7 @@ int ReadSource::init( )
 	}
 	
 	if (m_silent) {
-		m_length = TimeRef(LLONG_MAX);
+		m_length = TTimeRef(LLONG_MAX);
 		m_channelCount = 0;
 		m_origBitDepth = 16;
 		m_bufferstatus->fillStatus =  100;
@@ -295,7 +295,7 @@ void ReadSource::set_output_rate(int rate)
 }
 
 
-int ReadSource::file_read(DecodeBuffer* buffer, const TimeRef& start, nframes_t cnt) const
+int ReadSource::file_read(DecodeBuffer* buffer, const TTimeRef& start, nframes_t cnt) const
 {
 //	PROFILE_START;
 	Q_ASSERT(m_audioReader);
@@ -368,7 +368,7 @@ int ReadSource::set_file(const QString & filename)
 
 
 
-int ReadSource::rb_read(audio_sample_t** dst, TimeRef& start, nframes_t count)
+int ReadSource::rb_read(audio_sample_t** dst, TTimeRef& start, nframes_t count)
 {
 	if (m_channelCount == 0) {
 		return count;
@@ -379,7 +379,7 @@ int ReadSource::rb_read(audio_sample_t** dst, TimeRef& start, nframes_t count)
 		return 0;
 	}
 
-	TimeRef diff = m_rbRelativeFileReadPos - start;
+	TTimeRef diff = m_rbRelativeFileReadPos - start;
 	// In universal frame positioning, it is possible (somehow) that the start 
 	// location and m_rbRelativeFileReadPos differ very very slighly, and when
 	// converted to frames, the difference is much smaller then 1 frame.
@@ -392,13 +392,13 @@ int ReadSource::rb_read(audio_sample_t** dst, TimeRef& start, nframes_t count)
 	
 	if (start != m_rbRelativeFileReadPos) {
 		
-		TimeRef availabletime(nframes_t(m_buffers.at(0)->read_space()), m_outputRate);
+		TTimeRef availabletime(nframes_t(m_buffers.at(0)->read_space()), m_outputRate);
 /*		printf("rb_read:: m_rbRelativeFileReadPos, start: %lld, %lld\n", m_rbRelativeFileReadPos.universal_frame(), start.universal_frame());
 		printf("rb_read:: availabletime %d\n", availabletime.to_frame(m_outputRate));*/
 		
-		if ( (start > m_rbRelativeFileReadPos) && ((m_rbRelativeFileReadPos + availabletime) > (start + TimeRef(count, m_outputRate))) ) {
+		if ( (start > m_rbRelativeFileReadPos) && ((m_rbRelativeFileReadPos + availabletime) > (start + TTimeRef(count, m_outputRate))) ) {
 			
-			TimeRef advance = start - m_rbRelativeFileReadPos;
+			TTimeRef advance = start - m_rbRelativeFileReadPos;
 			if (availabletime < advance) {
 				printf("available < advance !!!!!!!\n");
 			}
@@ -410,7 +410,7 @@ int ReadSource::rb_read(audio_sample_t** dst, TimeRef& start, nframes_t count)
 /*			printf("rb_read:: advance %d\n", advance.to_frame(m_outputRate));
 			printf("rb_read:: m_rbRelativeFileReadPos after advance %d\n", m_rbRelativeFileReadPos.to_frame(m_outputRate));*/
 		} else {
-			TimeRef synclocation = start + m_clip->get_track_start_location() + m_clip->get_source_start_location();
+            TTimeRef synclocation = start + m_clip->get_location_start() + m_clip->get_source_start_location();
 			start_resync(synclocation);
 			return 0;
 		}
@@ -451,14 +451,14 @@ int ReadSource::rb_file_read(DecodeBuffer* buffer, nframes_t cnt)
 }
 
 
-void ReadSource::rb_seek_to_file_position(TimeRef& position)
+void ReadSource::rb_seek_to_file_position(TTimeRef& position)
 {
 	Q_ASSERT(m_clip);
 	
 // 	printf("rb_seek_to_file_position:: seeking to %d\n", position);
 	
 	// calculate position relative to the file!
-	TimeRef fileposition = position - m_clip->get_track_start_location() - m_clip->get_source_start_location();
+    TTimeRef fileposition = position - m_clip->get_location_start() - m_clip->get_source_start_location();
 	
 	// Do nothing if we are allready at the seek position
 	if (m_rbFileReadPos == fileposition) {
@@ -469,7 +469,7 @@ void ReadSource::rb_seek_to_file_position(TimeRef& position)
 	// check if the clip's start position is within the range
 	// if not, fill the buffer from the earliest point this clip
 	// will come into play.
-	if (fileposition < TimeRef()) {
+	if (fileposition < TTimeRef()) {
 // 		printf("not seeking to %ld, but too %d\n\n", fileposition,m_clip->get_source_start_location()); 
 		fileposition = m_clip->get_source_start_location();
 	}
@@ -551,7 +551,7 @@ void ReadSource::process_ringbuffer(DecodeBuffer* buffer, bool seeking)
 }
 
 
-void ReadSource::start_resync(TimeRef& position)
+void ReadSource::start_resync(TTimeRef& position)
 {
 // 	printf("starting resync!\n");
 	if (m_needSync || m_syncInProgress) {
@@ -630,7 +630,7 @@ void ReadSource::prepare_rt_buffers( )
 	}
 
         // FIXME: does this really make sense to do still ? :
-        TimeRef synclocation = m_clip->get_sheet()->get_transport_location();
+        TTimeRef synclocation = m_clip->get_sheet()->get_transport_location();
         start_resync(synclocation);
 }
 
@@ -643,10 +643,10 @@ BufferStatus* ReadSource::get_buffer_status()
 	int freespace = m_buffers.at(0)->write_space();
 	
 // 	printf("m_rbFileReadPos, m_length %lld, %lld\n", m_rbFileReadPos.universal_frame(), m_length.universal_frame());
-	TimeRef transport = m_clip->get_sheet()->get_transport_location();
-	TimeRef syncstartlocation = m_clip->get_track_start_location();
+	TTimeRef transport = m_clip->get_sheet()->get_transport_location();
+    TTimeRef syncstartlocation = m_clip->get_location_start();
 	bool transportBeforeSyncStartLocation = transport < (syncstartlocation - (3 * UNIVERSAL_SAMPLE_RATE));
-	bool transportAfterClipEndLocation = transport > (m_clip->get_track_end_location() + (3 * UNIVERSAL_SAMPLE_RATE));
+    bool transportAfterClipEndLocation = transport > (m_clip->get_location_end() + (3 * UNIVERSAL_SAMPLE_RATE));
 			
 	if (m_rbFileReadPos >= m_length || !m_active || transportBeforeSyncStartLocation || transportAfterClipEndLocation) {
 		m_bufferstatus->fillStatus =  100;

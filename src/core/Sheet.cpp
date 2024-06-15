@@ -209,7 +209,7 @@ int Sheet::set_state( const QDomNode & node )
 	
 	bool ok;
         m_workLocation = e.attribute( "m_workLocation", "0").toLongLong(&ok);
-	m_transportLocation = TimeRef(e.attribute( "transportlocation", "0").toLongLong(&ok));
+	m_transportLocation = TTimeRef(e.attribute( "transportlocation", "0").toLongLong(&ok));
 	
 	// Start seeking to the 'old' transport pos
 	set_transport_pos(m_transportLocation);
@@ -366,9 +366,9 @@ int Sheet::prepare_export(ExportSpecification* spec)
 	}
 
 	spec->startLocation = LONG_LONG_MAX;
-	spec->endLocation = TimeRef();
+	spec->endLocation = TTimeRef();
 
-	TimeRef endlocation, startlocation;
+	TTimeRef endlocation, startlocation;
 
         foreach(AudioTrack* track, m_audioTracks) {
                 track->get_render_range(startlocation, endlocation);
@@ -604,7 +604,7 @@ void Sheet::set_gain(float gain)
         emit stateChanged();
 }
 
-void Sheet::set_work_at(TimeRef location, bool isFolder)
+void Sheet::set_work_at(TTimeRef location, bool isFolder)
 {
         if ((! isFolder) && m_project->sheets_are_track_folder()) {
         // FIXME
@@ -613,8 +613,8 @@ void Sheet::set_work_at(TimeRef location, bool isFolder)
         }
 
         // catch location < 0
-        if (location < TimeRef()) {
-                location = TimeRef();
+        if (location < TTimeRef()) {
+                location = TTimeRef();
         }
 
 	m_workLocation = location;
@@ -626,7 +626,7 @@ void Sheet::set_work_at(TimeRef location, bool isFolder)
 	emit workingPosChanged();
 }
 
-void Sheet::set_work_at_for_sheet_as_track_folder(const TimeRef &location)
+void Sheet::set_work_at_for_sheet_as_track_folder(const TTimeRef &location)
 {
         set_work_at(location, true);
 }
@@ -726,8 +726,7 @@ int Sheet::process( nframes_t nframes )
 		m_realtimepath = false;
 		m_stopTransport = false;
 		
-        // RT_THREAD_EMIT(this, nullptr, transportStopped())
-        Tsar::rt_thread_emit(this, nullptr, "transportStopped()");
+        tsar().rt_thread_emit(this, nullptr, "transportStopped()");
 
 		return 0;
     }
@@ -829,7 +828,7 @@ void Sheet::audiodevice_params_changed()
 		
         m_diskio->output_rate_changed(m_currentSampleRate);
 		
-		TimeRef location = m_transportLocation;
+		TTimeRef location = m_transportLocation;
         location.add_frames(1, audiodevice().get_sample_rate());
 	
 		set_transport_pos(location);
@@ -897,12 +896,12 @@ void Sheet::handle_diskio_writebuffer_overrun( )
 }
 
 
-TimeRef Sheet::get_last_location() const
+TTimeRef Sheet::get_last_location() const
 {
-	TimeRef lastAudio = m_acmanager->get_last_location();
+	TTimeRef lastAudio = m_acmanager->get_last_location();
 
     if (m_timeline->get_markers().size() > 0) {
-        TimeRef lastMarker = m_timeline->get_markers().constLast()->get_when();
+        TTimeRef lastMarker = m_timeline->get_markers().constLast()->get_when();
 		return (lastAudio > lastMarker) ? lastAudio : lastMarker;
 	}
 	
@@ -982,25 +981,25 @@ TCommand* Sheet::start_transport()
 
 // Function can be called either from the GUI or RT thread.
 // So ALL functions called here need to be RT thread save!!
-int Sheet::transport_control(transport_state_t state)
+int Sheet::transport_control(TTransportControl *transportControl)
 {
-        switch(state.transport) {
+        switch(transportControl->get_state()) {
 	case TransportStopped:
-                if (state.location != m_transportLocation) {
-                        initiate_seek_start(state.location);
+                if (transportControl->get_location() != m_transportLocation) {
+                        initiate_seek_start(transportControl->get_location());
                 }
                 if (is_transport_rolling()) {
 			stop_transport_rolling();
 			if (is_recording()) {
-				set_recording(false, state.realtime);
+                set_recording(false, transportControl->is_realtime());
 			}
 		}
 		return true;
 	
 	case TransportStarting:
                 printf("TransportStarting\n");
-		if (state.location != m_transportLocation) {
-                        initiate_seek_start(state.location);
+        if (transportControl->get_location() != m_transportLocation) {
+                        initiate_seek_start(transportControl->get_location());
                         return false;
 		}
 		if (! m_seeking) {
@@ -1010,9 +1009,9 @@ int Sheet::transport_control(transport_state_t state)
 					// prepare_recording() is only to be called from the GUI thread
 					// so we delegate the prepare_recording() function call via a 
 					// RT thread save signal!
-					Q_ASSERT(state.realtime);
-                                        RT_THREAD_EMIT(this, nullptr, prepareRecording())
-                                        PMESG("transport starting: initiating prepare for record");
+                    Q_ASSERT(transportControl->is_realtime());
+                    tsar().rt_thread_emit(this, nullptr, "prepareRecording()");
+                    PMESG("transport starting: initiating prepare for record");
 					return false;
 				}
 				if (!m_readyToRecord) {
@@ -1035,11 +1034,11 @@ int Sheet::transport_control(transport_state_t state)
 			// driver, we currently can assume it's comming from the GUI 
 			// thread, and TransportStarting never was called before!
 			// So in case we are recording we have to prepare for recording now!
-			if ( ! state.isSlave && is_recording() ) {
-				Q_ASSERT(!state.realtime);
+            if ( ! transportControl->is_slave() && is_recording() ) {
+                Q_ASSERT(!transportControl->is_realtime());
 				prepare_recording();
 			}
-			start_transport_rolling(state.realtime);
+            start_transport_rolling(transportControl->is_realtime());
 		}
 		return true;
 	}
@@ -1047,7 +1046,7 @@ int Sheet::transport_control(transport_state_t state)
 	return false;
 }
 
-void Sheet::initiate_seek_start(TimeRef location)
+void Sheet::initiate_seek_start(TTimeRef location)
 {
         if ( ! m_seeking ) {
                 m_newTransportLocation = location;
@@ -1065,7 +1064,7 @@ void Sheet::start_transport_rolling(bool realtime)
     t_atomic_int_set(&m_transport, 1);
 	
     if (realtime) {
-        RT_THREAD_EMIT(this, nullptr, transportStarted());
+        tsar().rt_thread_emit(this, nullptr, "transportStarted()");
     } else {
         emit transportStarted();
     }
@@ -1091,7 +1090,7 @@ void Sheet::set_recording(bool recording, bool realtime)
 	}
 	
 	if (realtime) {
-        RT_THREAD_EMIT(this, nullptr, recordingStateChanged());
+        tsar().rt_thread_emit(this, nullptr, "recordingStateChanged()");
 	} else {
 		emit recordingStateChanged();
 	}
@@ -1148,9 +1147,9 @@ void Sheet::clip_finished_recording(AudioClip * clip)
 }
 
 
-void Sheet::set_transport_pos(TimeRef location)
+void Sheet::set_transport_pos(TTimeRef location)
 {
-        if (location < TimeRef()) {
+        if (location < TTimeRef()) {
                 // do nothing
                 return;
         }
@@ -1185,7 +1184,7 @@ void Sheet::start_seek()
 	m_diskio->prepare_for_seek();
 
 	// 'Tell' the diskio it should start a seek action.
-    RT_THREAD_EMIT(this, nullptr, seekStart());
+    tsar().rt_thread_emit(this, nullptr, "seekStart()");
 
 }
 
@@ -1243,15 +1242,15 @@ TCommand* Sheet::prev_skip_pos()
 		update_skip_positions();
 	}
 
-	TimeRef p = get_transport_location();
+	TTimeRef p = get_transport_location();
 
-	if (p < TimeRef()) {
+	if (p < TTimeRef()) {
 		PERROR("pos < 0");
-		set_transport_pos(TimeRef());
+		set_transport_pos(TTimeRef());
 		return ied().failure();
 	}
 
-	QListIterator<TimeRef> it(m_xposList);
+	QListIterator<TTimeRef> it(m_xposList);
 
 	it.toBack();
 
@@ -1264,7 +1263,7 @@ TCommand* Sheet::prev_skip_pos()
 
 	int i = 0;
 	while (it.hasPrevious()) {
-		TimeRef pos = it.previous();
+		TTimeRef pos = it.previous();
 		if (pos < p) {
 			p = pos;
 			++i;
@@ -1287,20 +1286,20 @@ TCommand* Sheet::next_skip_pos()
 		update_skip_positions();
 	}
 
-	TimeRef p = get_transport_location();
+	TTimeRef p = get_transport_location();
 
 	if (p > m_xposList.last()) {
 		PERROR("pos > last snap position");
 		return ied().failure();
 	}
 
-	QListIterator<TimeRef> it(m_xposList);
+	QListIterator<TTimeRef> it(m_xposList);
 
 	int i = 0;
 	int steps = 1;
 	
 	while (it.hasNext()) {
-		TimeRef pos = it.next();
+		TTimeRef pos = it.next();
 		if (pos > p) {
 			p = pos;
 			++i;
@@ -1320,14 +1319,14 @@ void Sheet::update_skip_positions()
 	m_xposList.clear();
 
 	// store the beginning of the sheet and the work cursor
-	m_xposList << TimeRef();
+	m_xposList << TTimeRef();
 	m_xposList << get_work_location();
 
 	// store all clip borders
 	QList<AudioClip* > acList = get_audioclip_manager()->get_clip_list();
 	for (int i = 0; i < acList.size(); ++i) {
-		m_xposList << acList.at(i)->get_track_start_location();
-		m_xposList << acList.at(i)->get_track_end_location();
+		m_xposList << acList.at(i)->get_location_start();
+        m_xposList << acList.at(i)->get_location_end();
 	}
 
 	// store all marker positions
@@ -1337,9 +1336,9 @@ void Sheet::update_skip_positions()
 	}
 
 	// remove duplicates
-	QMutableListIterator<TimeRef> it(m_xposList);
+	QMutableListIterator<TTimeRef> it(m_xposList);
 	while (it.hasNext()) {
-		TimeRef val = it.next();
+		TTimeRef val = it.next();
 		if (m_xposList.count(val) > 1) {
 			it.remove();
 		}
@@ -1350,8 +1349,8 @@ void Sheet::update_skip_positions()
 
 void Sheet::skip_to_start()
 {
-	set_transport_pos((TimeRef()));
-	set_work_at((TimeRef()));
+	set_transport_pos((TTimeRef()));
+	set_work_at((TTimeRef()));
 }
 
 void Sheet::skip_to_end()

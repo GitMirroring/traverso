@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define READSOURCE_H
 
 #include "AudioSource.h"
+#include "TTimeRef.h"
 
 #include <QDomDocument>
 
@@ -55,10 +56,10 @@ public :
 	int set_state( const QDomNode& node );
 	QDomNode get_state(QDomDocument doc);
 
-	int rb_read(audio_sample_t** dest, TimeRef& start, nframes_t cnt);
-	void rb_seek_to_file_position(TimeRef& position);
+	int rb_read(audio_sample_t** dest, TTimeRef& start, nframes_t cnt);
+	void rb_seek_to_file_position(TTimeRef& position);
 	
-	int file_read(DecodeBuffer* buffer, const TimeRef& start, nframes_t cnt) const;
+	int file_read(DecodeBuffer* buffer, const TTimeRef& start, nframes_t cnt) const;
 	int file_read(DecodeBuffer* buffer, nframes_t start, nframes_t cnt);
 
 	int init();
@@ -72,7 +73,7 @@ public :
 	nframes_t get_nframes() const;
     uint get_file_rate() const;
     uint get_output_rate() const {return m_outputRate;}
-	const TimeRef& get_length() const {return m_length;}
+	const TTimeRef& get_length() const {return m_length;}
 	
 	void sync(DecodeBuffer* buffer);
 	void process_ringbuffer(DecodeBuffer* buffer, bool seeking=false);
@@ -89,9 +90,9 @@ private:
     int			m_refcount;
     int			m_error;
 	bool			m_silent;
-	TimeRef			m_rbFileReadPos;
-	TimeRef			m_rbRelativeFileReadPos;
-	TimeRef			m_syncPos;
+	TTimeRef			m_rbFileReadPos;
+	TTimeRef			m_rbRelativeFileReadPos;
+	TTimeRef			m_syncPos;
     volatile size_t		m_rbReady;
     volatile size_t		m_needSync;
     volatile size_t		m_active;
@@ -99,7 +100,7 @@ private:
     volatile size_t		m_bufferUnderRunDetected;
     bool			m_syncInProgress;
 	
-	mutable TimeRef		m_length;
+	mutable TTimeRef		m_length;
 	QString			m_decodertype;
     uint			m_outputRate;
 	
@@ -108,7 +109,7 @@ private:
 	int ref() { return m_refcount++;}
 	
 	void private_init();
-	void start_resync(TimeRef& position);
+	void start_resync(TTimeRef& position);
 	void finish_resync();
 	int rb_file_read(DecodeBuffer* buffer, nframes_t cnt);
 

@@ -23,14 +23,16 @@ $Id: Snappable.h,v 1.1 2007/03/29 22:18:38 benjie Exp $
 #ifndef SNAPPABLE_H
 #define SNAPPABLE_H
 
+#include "TTimeRef.h"
+
 class SnapList;
 
 
-class Snappable
+class LocationItem
 {
 public:
-	Snappable();
-        virtual ~Snappable() {}
+    LocationItem();
+        virtual ~LocationItem() {}
 
 	void set_snappable(bool snap);
 
@@ -38,9 +40,22 @@ public:
 
 	void set_snap_list(SnapList *sList);
 
+    TTimeRef get_location_start() const {return m_locationStart;}
+    TTimeRef get_location_end() const {return m_locationEnd;}
+    virtual TTimeRef get_length() const {return m_locationEnd - m_locationStart;}
+
+
+    void set_location_start(const TTimeRef& start);
+    void set_location_end(const TTimeRef& end);
+
+protected:
+    TTimeRef     m_locationStart;
+    TTimeRef     m_locationEnd;
+
 private:
 	bool		m_isSnappable;
 	SnapList	*snapList;
+
 };
 
 

@@ -25,11 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ContextItem.h"
 #include <QDomNode>
 #include <QList>
-#include "defines.h"
+#include "TTimeRef.h"
 
 class TSession;
 class Marker;
-class Snappable;
+class LocationItem;
 class TCommand;
 struct ExportSpecification;
 
@@ -49,8 +49,8 @@ public:
 	
 	Marker* get_marker(qint64 id);
 	Marker* get_end_marker();
-	bool get_end_location(TimeRef& location);
-	bool get_start_location(TimeRef& location);
+	bool get_end_location(TTimeRef& location);
+	bool get_start_location(TTimeRef& location);
 	bool has_end_marker();
 
 	TCommand* add_marker(Marker* marker, bool historable=true);

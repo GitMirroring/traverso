@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioTrack.h"
 #include "TimeLine.h"
 
-#include "ClipsViewPort.h"
 #include "SheetView.h"
 #include "AudioTrackView.h"
 #include "AudioClipView.h"
@@ -119,7 +118,7 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
 
         d->doSnap = d->sv->get_sheet()->is_snap_on();
 
-        TimeRef currentLocation = TimeRef(cpointer().on_first_input_event_scene_x() * d->sv->timeref_scalefactor);
+        TTimeRef currentLocation = TTimeRef(cpointer().on_first_input_event_scene_x() * d->sv->timeref_scalefactor);
 
         if (d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())) {
             m_d->pointedTrackIndex = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())->get_track()->get_sort_index();
@@ -143,7 +142,7 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
             foreach(AudioTrack* track, tracks) {
                 QList<AudioClip*> clips = track->get_audioclips();
                 foreach(AudioClip* clip, clips) {
-                    if (clip->get_track_end_location() > currentLocation) {
+                    if (clip->get_location_end() > currentLocation) {
                         movingClips.append(clip);
                     }
                 }
@@ -171,7 +170,7 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
     if (m_group.get_size() == 0 && m_markers.count() > 0) {
         m_trackStartLocation = m_markers[0].origin;
     } else {
-        m_trackStartLocation = m_group.get_track_start_location();
+        m_trackStartLocation = m_group.get_location_start();
     }
     m_session = d->sv->get_sheet();
     m_d->zoom = nullptr;
@@ -198,13 +197,13 @@ int MoveClip::begin_hold()
         QList<AudioClip*> newclips = m_group.copy_clips();
         m_group.set_clips(newclips);
         m_group.add_all_clips_to_tracks();
-        m_group.move_to(m_origTrackIndex, m_trackStartLocation + TimeRef(d->sv->timeref_scalefactor * 3));
+        m_group.move_to(m_origTrackIndex, m_trackStartLocation + TTimeRef(d->sv->timeref_scalefactor * 3));
     }
 
     m_group.set_as_moving(true);
 
     m_d->sceneXStartPos = cpointer().on_first_input_event_scene_x();
-    m_d->relativeWorkCursorPos = m_session->get_work_location() - m_group.get_track_start_location();
+    m_d->relativeWorkCursorPos = m_session->get_work_location() - m_group.get_location_start();
 
     d->sv->stop_follow_play_head();
 
@@ -216,7 +215,7 @@ int MoveClip::begin_hold()
 //        MoveCommand::begin_hold();
     }
 
-    cpointer().set_canvas_cursor_text(timeref_to_text(m_group.get_track_start_location(), d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(timeref_to_text(m_group.get_location_start(), d->sv->timeref_scalefactor));
 
     return 1;
 }
@@ -242,7 +241,7 @@ int MoveClip::prepare_actions()
         m_group.remove_all_clips_from_tracks();
     }
 
-    if (m_origTrackIndex == m_newTrackIndex &&  m_posDiff == TimeRef() &&
+    if (m_origTrackIndex == m_newTrackIndex &&  m_posDiff == TTimeRef() &&
             ! (m_actionType == COPY || m_actionType == MOVE_TO_START || m_actionType == MOVE_TO_END) ) {
         return -1;
     }
@@ -316,16 +315,16 @@ int MoveClip::jog()
 
     // Calculate the distance moved based on the current scene x pos and the initial one.
     // Only assign if we the movements is allowed in horizontal direction
-    TimeRef diff_f;
+    TTimeRef diff_f;
     if (!m_d->verticalOnly) {
         diff_f = (cpointer().scene_x() - m_d->sceneXStartPos) * d->sv->timeref_scalefactor;
     }
 
-    // If the moved distance (diff_f) makes as go beyond the left most position (== 0, or TimeRef())
+    // If the moved distance (diff_f) makes as go beyond the left most position (== 0, or TTimeRef())
     // set the newTrackStartLocation to 0. Else calculate it based on the original track start location
     // and the distance moved.
-    TimeRef newTrackStartLocation;
-    if (diff_f < TimeRef() && m_trackStartLocation < (-1 * diff_f)) {
+    TTimeRef newTrackStartLocation;
+    if (diff_f < TTimeRef() && m_trackStartLocation < (-1 * diff_f)) {
         newTrackStartLocation = qint64(0);
     } else {
         newTrackStartLocation = m_trackStartLocation + diff_f;
@@ -356,18 +355,18 @@ int MoveClip::jog()
 void MoveClip::next_snap_pos()
 {
 
-    do_prev_next_snap(m_session->get_snap_list()->next_snap_pos(m_group.get_track_start_location()),
-                      m_session->get_snap_list()->next_snap_pos(m_group.get_track_end_location()));
+    do_prev_next_snap(m_session->get_snap_list()->next_snap_pos(m_group.get_location_start()),
+                      m_session->get_snap_list()->next_snap_pos(m_group.get_location_end()));
 }
 
 void MoveClip::prev_snap_pos()
 {
 
-    do_prev_next_snap(m_session->get_snap_list()->prev_snap_pos(m_group.get_track_start_location()),
-                      m_session->get_snap_list()->prev_snap_pos(m_group.get_track_end_location()));
+    do_prev_next_snap(m_session->get_snap_list()->prev_snap_pos(m_group.get_location_start()),
+                      m_session->get_snap_list()->prev_snap_pos(m_group.get_location_end()));
 }
 
-void MoveClip::do_prev_next_snap(TimeRef trackStartLocation, TimeRef trackEndLocation)
+void MoveClip::do_prev_next_snap(TTimeRef trackStartLocation, TTimeRef trackEndLocation)
 {
     if (m_d->verticalOnly) return;
     ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
@@ -379,7 +378,7 @@ void MoveClip::do_prev_next_snap(TimeRef trackStartLocation, TimeRef trackEndLoc
 void MoveClip::move_to_start()
 {
 
-    m_group.move_to(m_group.get_track_index(), TimeRef());
+    m_group.move_to(m_group.get_track_index(), TTimeRef());
 }
 
 void MoveClip::move_to_end()
@@ -418,7 +417,7 @@ void MoveClip::move_left()
     }
 
     m_posDiff -= (d->sv->timeref_scalefactor * d->speed);
-    if (m_posDiff + m_trackStartLocation < TimeRef()) {
+    if (m_posDiff + m_trackStartLocation < TTimeRef()) {
         m_posDiff = -1 * m_trackStartLocation;
     }
     do_move();

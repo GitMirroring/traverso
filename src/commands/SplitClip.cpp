@@ -44,7 +44,7 @@ SplitClip::SplitClip(AudioClipView* view)
 	m_track = m_clip->get_track();
 	leftClip = nullptr;
 	rightClip = nullptr;
-	m_splitPoint = TimeRef();
+	m_splitPoint = TTimeRef();
 	Q_ASSERT(m_clip->get_sheet());
 }
 
@@ -52,10 +52,10 @@ SplitClip::SplitClip(AudioClipView* view)
 int SplitClip::prepare_actions()
 {
     if (m_splitPoint == qint64(0)) {
-        m_splitPoint = TimeRef(cpointer().scene_x() * d->sv->timeref_scalefactor);
+        m_splitPoint = TTimeRef(cpointer().scene_x() * d->sv->timeref_scalefactor);
     }
 
-	if (m_splitPoint <= m_clip->get_track_start_location() || m_splitPoint >= m_clip->get_track_start_location() + m_clip->get_length()) {
+	if (m_splitPoint <= m_clip->get_location_start() || m_splitPoint >= m_clip->get_location_start() + m_clip->get_length()) {
 		return -1;
 	}
 
@@ -63,7 +63,7 @@ int SplitClip::prepare_actions()
 	rightClip = resources_manager()->get_clip(m_clip->get_id());
 	
 	leftClip->set_sheet(m_clip->get_sheet());
-	leftClip->set_track_start_location(m_clip->get_track_start_location());
+	leftClip->set_track_start_location(m_clip->get_location_start());
 	leftClip->set_right_edge(m_splitPoint);
 	if (leftClip->get_fade_out()) {
 		FadeRange* cmd = (FadeRange*)leftClip->reset_fade_out();
@@ -203,15 +203,15 @@ void SplitClip::prev_snap_pos()
         do_keyboard_move(m_session->get_snap_list()->prev_snap_pos(m_splitPoint));
 }
 
-void SplitClip::do_keyboard_move(TimeRef location)
+void SplitClip::do_keyboard_move(TTimeRef location)
 {
         m_splitPoint = location;
 
-        if (m_splitPoint < m_clip->get_track_start_location()) {
-                m_splitPoint = m_clip->get_track_start_location();
+        if (m_splitPoint < m_clip->get_location_start()) {
+                m_splitPoint = m_clip->get_location_start();
         }
-        if (m_splitPoint > m_clip->get_track_end_location()) {
-                m_splitPoint = m_clip->get_track_end_location();
+        if (m_splitPoint > m_clip->get_location_end()) {
+                m_splitPoint = m_clip->get_location_end();
         }
 
         QPointF pos = m_cv->mapFromScene(m_splitPoint / d->sv->timeref_scalefactor, m_splitcursor->scenePos().y());

@@ -168,7 +168,7 @@ void ResampleAudioReader::set_output_rate(uint rate)
 	}
 	m_outputRate = rate;
 	m_nframes = file_to_resampled_frame(m_reader->get_nframes());
-	m_length = TimeRef(m_nframes, m_outputRate);
+	m_length = TTimeRef(m_nframes, m_outputRate);
 	
 	reset();
 }
@@ -310,14 +310,14 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
 
 nframes_t ResampleAudioReader::resampled_to_file_frame(nframes_t frame)
 {
-	TimeRef location(frame, m_outputRate);
+	TTimeRef location(frame, m_outputRate);
 	return location.to_frame(m_rate);
 }
 
 
 nframes_t ResampleAudioReader::file_to_resampled_frame(nframes_t frame)
 {
-	TimeRef location(frame, m_rate);
+	TTimeRef location(frame, m_rate);
 	return location.to_frame(m_outputRate);
 }
 

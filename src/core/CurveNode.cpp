@@ -57,8 +57,8 @@ void CurveNode::set_when_and_value(double when, double value)
     if (qFuzzyCompare(this->when, when) && qFuzzyCompare(this->value, value)) {
         return;
     }
-	this->when = when;
-	this->value = value;
+    this->when = when;
+    this->value = value;
 	emit m_curve->nodePositionChanged();
 }
 //eof

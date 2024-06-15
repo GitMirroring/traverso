@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBusTrack.h"
 #include "Sheet.h"
 #include "SnapList.h"
-#include "Snappable.h"
+#include "LocationItem.h"
 #include "TimeLine.h"
 
 #include "Debugger.h"
@@ -43,7 +43,7 @@ TSession::TSession(TSession *parentSession)
 	if (!parentSession) {
 		m_timeline = new TimeLine(this);
 		m_snaplist = new SnapList(this);
-		m_workSnap = new Snappable();
+		m_workSnap = new LocationItem();
 		m_workSnap->set_snap_list(m_snaplist);
 	} else {
 		set_parent_session(parentSession);
@@ -55,8 +55,8 @@ TSession::TSession(TSession *parentSession)
 void TSession::init()
 {
 	// TODO seek to old position on project exit ?
-	m_workLocation = TimeRef();
-	m_transportLocation = TimeRef();
+	m_workLocation = TTimeRef();
+	m_transportLocation = TTimeRef();
 	m_mode = EDIT;
 	m_sbx = m_sby = 0;
 	m_hzoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
@@ -121,7 +121,9 @@ int TSession::set_state( const QDomNode & node )
 
 		Track* track = m_parentSession->get_track(id);
 		if (track) {
-			add_track(track);
+            // add_track(track) should not return a TCommand object
+            // but directly add track and return nullptr, this is by design
+            Q_ASSERT(add_track(track) == nullptr);
 			set_track_height(track->get_id(), e.attribute("height", "90").toInt());
 		}
 
@@ -206,7 +208,7 @@ SnapList* TSession::get_snap_list() const
 	return m_snaplist;
 }
 
-Snappable* TSession::get_work_snap() const
+LocationItem* TSession::get_work_snap() const
 {
 	if (m_parentSession) {
 		return m_parentSession->get_work_snap();
@@ -224,7 +226,7 @@ TimeLine* TSession::get_timeline() const
 	return m_timeline;
 }
 
-TimeRef TSession::get_work_location() const
+TTimeRef TSession::get_work_location() const
 {
 	if (m_parentSession) {
 		return m_parentSession->get_work_location();
@@ -232,7 +234,7 @@ TimeRef TSession::get_work_location() const
 	return m_workLocation;
 }
 
-TimeRef TSession::get_last_location() const
+TTimeRef TSession::get_last_location() const
 {
 	if (m_parentSession) {
 		return m_parentSession->get_last_location();
@@ -240,10 +242,10 @@ TimeRef TSession::get_last_location() const
 
 	PERROR("TSession::get_last_location(): unsupported configuration, this function needs a parentSession to work!");
 
-	return TimeRef();
+	return TTimeRef();
 }
 
-TimeRef TSession::get_transport_location() const
+TTimeRef TSession::get_transport_location() const
 {
 	if (m_parentSession) {
 		return m_parentSession->get_transport_location();
@@ -327,14 +329,14 @@ void TSession::set_hzoom( qreal hzoom )
 	emit hzoomChanged();
 }
 
-void TSession::set_work_at(TimeRef location, bool isFolder)
+void TSession::set_work_at(TTimeRef location, bool isFolder)
 {
 	if (m_parentSession) {
         m_parentSession->set_work_at(location, isFolder);
     }
 }
 
-void TSession::set_transport_pos(TimeRef location)
+void TSession::set_transport_pos(TTimeRef location)
 {
 	if (m_parentSession) {
 		m_parentSession->set_transport_pos(location);

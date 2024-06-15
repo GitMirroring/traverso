@@ -106,7 +106,7 @@ void NewTrackDialog::create_track()
 
 
         TCommand* command = session->add_track(track);
-        command->setText(tr("Added %1: %2").arg(track->metaObject()->className()).arg(track->get_name()));
+        command->setText(tr("Added %1: %2").arg(track->metaObject()->className(), track->get_name()));
         TCommand::process_command(command);
 
         if (driver == "Jack") {

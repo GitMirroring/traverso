@@ -36,6 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomDocument>
 
 #include "CurveNode.h"
+#include "TTimeRef.h"
 #include "defines.h"
 
 
@@ -52,13 +53,13 @@ public:
 
 	QDomNode get_state(QDomDocument doc, const QString& name);
 	virtual int set_state( const QDomNode& node );
-	int process(audio_sample_t** buffer, const TimeRef& startlocation, const TimeRef& endlocation, nframes_t nframes, uint channels, float makeupgain=1.0f);
+	int process(audio_sample_t** buffer, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels, float makeupgain=1.0f);
 	
 	TCommand* add_node(CurveNode* node, bool historable=true);
 	TCommand* remove_node(CurveNode* node, bool historable=true);
 	
 	// Get functions
-	double get_range() const;
+    double get_range() const;
     void get_vector (double x0, double x1, float *arg, nframes_t veclen);
 	APILinkedList& get_nodes() {return m_nodes;}
         TSession* get_sheet() const {return m_session;}
@@ -72,8 +73,8 @@ public:
 	}
 	
 	void clear_curve() {m_nodes.clear();}
-        void set_start_offset(TimeRef offset) {m_startoffset = offset;}
-        TimeRef get_start_offset() const {return m_startoffset;}
+        void set_start_offset(TTimeRef offset) {m_startoffset = offset;}
+        TTimeRef get_start_offset() const {return m_startoffset;}
 
 
 protected:
@@ -89,7 +90,7 @@ private :
         LookupCache     m_lookup_cache;
         bool            m_changed{};
         double          m_defaultValue{};
-        TimeRef		m_startoffset;
+        TTimeRef		m_startoffset;
 
 	
 	double multipoint_eval (double x);
@@ -118,11 +119,11 @@ signals :
 
 inline double Curve::get_range( ) const
 {
-	if (m_nodes.size()) {
-		return ((CurveNode*)m_nodes.last())->when;
-	}
-		
-	return 0;
+    if (m_nodes.size()) {
+        return ((CurveNode*)m_nodes.last())->when;
+    }
+
+    return 0;
 }
 
 #endif

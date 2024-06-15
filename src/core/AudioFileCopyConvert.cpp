@@ -95,10 +95,10 @@ void AudioFileCopyConvert::process_task(CopyTask task)
 	uint buffersize = 16384;
 	DecodeBuffer decodebuffer;
 	
-	task.spec->startLocation = TimeRef();
+	task.spec->startLocation = TTimeRef();
 	task.spec->endLocation = task.readsource->get_length();
 	task.spec->totalTime = task.spec->endLocation;
-	task.spec->pos = TimeRef();
+	task.spec->pos = TTimeRef();
 	task.spec->isRecording = false;
 	
 	task.spec->exportdir = task.dir;

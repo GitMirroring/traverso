@@ -73,7 +73,7 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
         m_recAction->setCheckable(true);
         m_playAction->setCheckable(true);
 
-	m_lastSnapPosition = TimeRef();
+	m_lastSnapPosition = TTimeRef();
 
 	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
 	connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(update_label()));

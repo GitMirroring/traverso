@@ -180,9 +180,9 @@ int ProjectConverter::start_conversion_from_version_2_to_3()
 			rate = source->get_rate();
 		}
 			
-		clipelement.setAttribute("trackstart", TimeRef(trackStart, rate).universal_frame());
-		clipelement.setAttribute("sourcestart", TimeRef(sourceStartFrame, rate).universal_frame());
-		clipelement.setAttribute("length", TimeRef(length, rate).universal_frame());
+		clipelement.setAttribute("trackstart", TTimeRef(trackStart, rate).universal_frame());
+		clipelement.setAttribute("sourcestart", TTimeRef(sourceStartFrame, rate).universal_frame());
+		clipelement.setAttribute("length", TTimeRef(length, rate).universal_frame());
 		
 		QDomElement fadeInNode = clipsNode.firstChildElement("FadeIn");
 		if (!fadeInNode.isNull()) {
@@ -196,7 +196,7 @@ int ProjectConverter::start_conversion_from_version_2_to_3()
 				range = rangestring.toDouble();
 			}
 			if (range > 1.0) {
-				e.setAttribute("range", TimeRef(nframes_t(range), rate).universal_frame());
+				e.setAttribute("range", TTimeRef(nframes_t(range), rate).universal_frame());
 			}
 		}
 		QDomElement fadeOutNode = clipsNode.firstChildElement("FadeOut");
@@ -211,7 +211,7 @@ int ProjectConverter::start_conversion_from_version_2_to_3()
 				range = rangestring.toDouble();
 			}
 			if (range > 1.0)
-				e.setAttribute("range", TimeRef(nframes_t(range), rate).universal_frame());
+				e.setAttribute("range", TTimeRef(nframes_t(range), rate).universal_frame());
 		}
 			
 		QDomNode pluginChainNode = clipsNode.firstChildElement("PluginChain");
@@ -235,7 +235,7 @@ int ProjectConverter::start_conversion_from_version_2_to_3()
 									QStringList whenValueList = nodesList.at(i).split(",");
 									double when = whenValueList.at(0).toDouble();
 									double value = whenValueList.at(1).toDouble();
-									newNodesList << QString::number(TimeRef(nframes_t(when), rate).universal_frame(), 'g', 24).append(",").append(QString::number(value));
+									newNodesList << QString::number(TTimeRef(nframes_t(when), rate).universal_frame(), 'g', 24).append(",").append(QString::number(value));
 									e.setAttribute("nodes",  newNodesList.join(";"));
 								}
 							}

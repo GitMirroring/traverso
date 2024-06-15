@@ -33,42 +33,42 @@
 #include <QDir>
 #include <cmath>
 
-TimeRef msms_to_timeref(QString str)
+TTimeRef msms_to_timeref(QString str)
 {
-	TimeRef out;
+    TTimeRef out;
     static QRegularExpression expression("[;,.:]");
     QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
-	if (lst.size() >= 1) out += TimeRef(lst.at(0).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
-	if (lst.size() >= 2) out += TimeRef(lst.at(1).toInt() * UNIVERSAL_SAMPLE_RATE);
-	if (lst.size() >= 3) out += TimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE / 1000);
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE / 1000);
 
 	return out;
 }
 
-TimeRef cd_to_timeref(QString str)
+TTimeRef cd_to_timeref(QString str)
 {
-	TimeRef out;
+    TTimeRef out;
     static QRegularExpression expression("[;,.:]");
     QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
-	if (lst.size() >= 1) out += TimeRef(lst.at(0).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
-	if (lst.size() >= 2) out += TimeRef(lst.at(1).toInt() * UNIVERSAL_SAMPLE_RATE);
-	if (lst.size() >= 3) out += TimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE / 75);
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE / 75);
 
 	return out;
 }
 
-TimeRef cd_to_timeref_including_hours(QString str)
+TTimeRef cd_to_timeref_including_hours(QString str)
 {
-	TimeRef out;
+    TTimeRef out;
     static QRegularExpression expression("[;,.:]");
     QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
-	if (lst.size() >= 1) out += TimeRef(lst.at(0).toInt() * ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
-	if (lst.size() >= 2) out += TimeRef(lst.at(1).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
-	if (lst.size() >= 3) out += TimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE);
-	if (lst.size() >= 4) out += TimeRef(lst.at(3).toInt() * UNIVERSAL_SAMPLE_RATE / 75);
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 4) out += TTimeRef(lst.at(3).toInt() * UNIVERSAL_SAMPLE_RATE / 75);
 
 	return out;
 }
@@ -127,7 +127,7 @@ QPixmap find_pixmap ( const QString & pixname )
 	return pixmap;
 }
 
-QString timeref_to_hms(const TimeRef& ref)
+QString timeref_to_hms(const TTimeRef& ref)
 {
 	qint64 remainder;
 	int hours, mins, secs;
@@ -144,7 +144,7 @@ QString timeref_to_hms(const TimeRef& ref)
 
 }
 
-QString timeref_to_ms(const TimeRef& ref)
+QString timeref_to_ms(const TTimeRef& ref)
 {
 	qint64 remainder;
 	int mins, secs;
@@ -158,8 +158,8 @@ QString timeref_to_ms(const TimeRef& ref)
     return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0'));
 }
 
-// TimeRef to MM:SS.99 (hundredths)
-QString timeref_to_ms_2 (const TimeRef& ref)
+// TTimeRef to MM:SS.99 (hundredths)
+QString timeref_to_ms_2 (const TTimeRef& ref)
 {
 	qint64 remainder;
 	int mins, secs, frames;
@@ -175,8 +175,8 @@ QString timeref_to_ms_2 (const TimeRef& ref)
     return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(QLocale::system().decimalPoint()).arg(frames, 2, 10, QLatin1Char('0'));
 }
 
-// TimeRef to MM:SS.999 (ms)
-QString timeref_to_ms_3(const TimeRef& ref)
+// TTimeRef to MM:SS.999 (ms)
+QString timeref_to_ms_3(const TTimeRef& ref)
 {
 	qint64 remainder;
 	int mins, secs, frames;
@@ -193,7 +193,7 @@ QString timeref_to_ms_3(const TimeRef& ref)
 }
 
 // Frame to MM:SS:75 (75ths of a second, for CD burning)
-QString timeref_to_cd (const TimeRef& ref)
+QString timeref_to_cd (const TTimeRef& ref)
 {
 	qint64 remainder;
 	int mins, secs, frames;
@@ -210,7 +210,7 @@ QString timeref_to_cd (const TimeRef& ref)
 }
 
 // Frame to HH:MM:SS,75 (75ths of a second, for CD burning)
-QString timeref_to_cd_including_hours (const TimeRef& ref)
+QString timeref_to_cd_including_hours (const TTimeRef& ref)
 {
 	qint64 remainder;
 	int hours, mins, secs, frames;
@@ -229,7 +229,7 @@ QString timeref_to_cd_including_hours (const TimeRef& ref)
     return spos.arg(hours, 2, 10, QLatin1Char('0')).arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(frames, 2, 10, QLatin1Char('0'));
 }
 
-QString timeref_to_text(const TimeRef & ref, qint64 scalefactor)
+QString timeref_to_text(const TTimeRef & ref, qint64 scalefactor)
 {
 	if (scalefactor >= 512*640) {
 		return timeref_to_ms_2(ref);

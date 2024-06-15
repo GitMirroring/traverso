@@ -59,22 +59,22 @@ QVector<float> VUMeterView::lut;
 VUMeterView::VUMeterView(ViewItem* parent, Track* track)
         : ViewItem(parent)
 {
-        load_theme_data();
-        m_audioTrack = qobject_cast<AudioTrack*>(track);
+    VUMeterView::load_theme_data();
+    m_audioTrack = qobject_cast<AudioTrack*>(track);
 
-        for (int i = 0; i < 2; ++i) {
-                VUMeterLevelView* level = new VUMeterLevelView(this, track->get_vumonitors().at(i));
-                m_levels.append(level);
-        }
+    for (int i = 0; i < 2; ++i) {
+            VUMeterLevelView* level = new VUMeterLevelView(this, track->get_vumonitors().at(i));
+            m_levels.append(level);
+    }
 
 //        add a ruler with tickmarks and labels
 //        ruler = new VUMeterRulerView(this);
 //        ruler->setPos(0, 10);
 
-        connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
-        if (m_audioTrack) {
-            connect(m_audioTrack, SIGNAL(armedChanged(bool)), this, SLOT(audiotrack_armed_changed()));
-        }
+    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+    if (m_audioTrack) {
+        connect(m_audioTrack, SIGNAL(armedChanged(bool)), this, SLOT(audiotrack_armed_changed()));
+    }
 }
 
 VUMeterView::~ VUMeterView( )
@@ -151,7 +151,7 @@ void VUMeterView::update_orientation(Qt::Orientation orientation)
 
 void VUMeterView::calculate_lut_data()
 {
-        for (float i = 60; i >= -700; i -= 2) {
+        for (int i = 60; i >= -700; i -= 2) {
                 if (i >= -200) {
                         lut.push_back(100.0f + i * 2.5f / 10.0f);
                 } else if (i >= -300) {
@@ -213,7 +213,7 @@ VUMeterRulerView::VUMeterRulerView(ViewItem* parent)
         m_presetMark.push_back(-24);
         m_presetMark.push_back(-70);
 
-        load_theme_data();
+        VUMeterRulerView::load_theme_data();
         connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
 }
 

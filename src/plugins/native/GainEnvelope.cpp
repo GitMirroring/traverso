@@ -105,7 +105,7 @@ Curve * GainEnvelope::get_curve()
 }
 
 
-void GainEnvelope::process_gain(audio_sample_t** buffer, const TimeRef& startlocation, const TimeRef& endlocation, nframes_t nframes, uint channels)
+void GainEnvelope::process_gain(audio_sample_t** buffer, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels)
 {
         PluginControlPort* port = m_controlPorts.at(0);
 

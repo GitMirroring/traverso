@@ -25,13 +25,12 @@
 
 #include "TCommand.h"
 
-#include "defines.h"
+#include "TTimeRef.h"
 
 class QString;
 class AudioClip;
 class AudioTrack;
 class ReadSource;
-struct TimeRef;
 
 class Import : public TCommand
 {
@@ -39,9 +38,9 @@ class Import : public TCommand
 
 public :
 	Import(const QString& fileName);
-        Import(AudioTrack* track, const TimeRef& length, bool silent = false);
+        Import(AudioTrack* track, const TTimeRef& length, bool silent = false);
         Import(AudioTrack* track, const QString& fileName);
-        Import(AudioTrack* track, const QString& fileName, const TimeRef& position);
+        Import(AudioTrack* track, const QString& fileName, const TTimeRef& position);
         ~Import();
 
         int prepare_actions();
@@ -52,7 +51,7 @@ public :
 	int create_readsource();
 	void create_audioclip();
         void set_track(AudioTrack* track);
-	void set_position(const TimeRef& position);
+	void set_position(const TTimeRef& position);
         ReadSource* readsource() {return m_source;}
 
 private :
@@ -62,9 +61,9 @@ private :
         QString 	m_fileName;
 	QString		m_name;
     bool		m_silent{};
-	TimeRef		m_initialLength;
+	TTimeRef		m_initialLength;
     bool		m_hasPosition{};
-	TimeRef		m_position;
+	TTimeRef		m_position;
 
         void init(AudioTrack* track, const QString& filename);
 };

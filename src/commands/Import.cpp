@@ -38,7 +38,7 @@ Import::Import(const QString& fileName)
 }
 
 
-Import::Import(AudioTrack* track, const TimeRef& length, bool silent)
+Import::Import(AudioTrack* track, const TTimeRef& length, bool silent)
 	: TCommand(track, "")
 {
 	init(track, "");
@@ -59,7 +59,7 @@ Import::Import(AudioTrack* track, const QString& fileName)
 	init(track, fileName);
 }
 
-Import::Import(AudioTrack* track, const QString& fileName, const TimeRef& position)
+Import::Import(AudioTrack* track, const QString& fileName, const TTimeRef& position)
 	: TCommand(track, tr("Import Audio File"))
 {
 	init(track, fileName);
@@ -71,12 +71,12 @@ void Import::init(AudioTrack* track, const QString& fileName)
 {
 	m_clip = nullptr;
 	m_source = nullptr;
-	m_position = TimeRef();
+	m_position = TTimeRef();
 	m_silent = false;
 	m_hasPosition = false;
 	m_fileName = fileName;
 	m_track = track;
-	m_initialLength = TimeRef();
+	m_initialLength = TTimeRef();
 
 }
 
@@ -146,7 +146,7 @@ void Import::create_audioclip()
 	m_clip->set_sheet(m_track->get_sheet());
 	m_clip->set_track(m_track);
 	
-	TimeRef startLocation;
+	TTimeRef startLocation;
     if (!m_hasPosition) {
         startLocation = m_track->get_end_location();
     } else {
@@ -165,7 +165,7 @@ void Import::set_track(AudioTrack * track)
 }
 
 
-void Import::set_position(const TimeRef& position)
+void Import::set_position(const TTimeRef& position)
 {
 	m_hasPosition = true;
 	m_position = position;

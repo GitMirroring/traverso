@@ -25,9 +25,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TimeLine.h"
 #include "Utils.h"
 
-Marker::Marker(TimeLine* tl, const TimeRef when, Type type)
+Marker::Marker(TimeLine* tl, const TTimeRef when, MarkerType type)
 	: ContextItem(tl)
-	, Snappable()
+	, LocationItem()
 	, m_timeline(tl)
 	, m_when(when)
 	, m_type(type)
@@ -51,7 +51,7 @@ Marker::Marker(TimeLine* tl, const TimeRef when, Type type)
 
 Marker::Marker(TimeLine * tl, const QDomNode& node)
 	: ContextItem(tl)
-	, Snappable()
+	, LocationItem()
 	, m_timeline(tl)
 {
 	set_snap_list(m_timeline->get_sheet()->get_snap_list());
@@ -93,7 +93,7 @@ int Marker::set_state(const QDomNode & node)
 
 	m_description = e.attribute("description", "");
 	QString tp = e.attribute("type", "CDTRACK");
-	m_when = TimeRef(e.attribute("position", "0").toLongLong());
+	m_when = TTimeRef(e.attribute("position", "0").toLongLong());
 	m_id = e.attribute("id", "0").toLongLong();
 	m_performer = e.attribute("performer", "");
 	m_composer = e.attribute("composer", "");
@@ -110,7 +110,7 @@ int Marker::set_state(const QDomNode & node)
 	return 1;
 }
 
-void Marker::set_when(const TimeRef& when)
+void Marker::set_when(const TTimeRef& when)
 {
 	m_when = when;
 	emit positionChanged();

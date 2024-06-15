@@ -27,7 +27,7 @@
 #include <QToolBar>
 #include <QWidget>
 
-#include "defines.h"
+#include "TTimeRef.h"
 
 class Project;
 class Sheet;
@@ -52,7 +52,7 @@ private:
 	QAction*	m_toEndAction;
 	QAction*	m_toRightAction;
 	QTimer		m_updateTimer;
-	TimeRef		m_lastSnapPosition;
+	TTimeRef		m_lastSnapPosition;
 
 public slots:
 	void set_project(Project*);

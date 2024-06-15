@@ -383,7 +383,7 @@ void HDDSpaceInfo::update_status( )
 			}
 		}
 		
-		TimeRef time(availabletime);
+		TTimeRef time(availabletime);
 		text = timeref_to_hms(time);
 		if (text < "00:30:00") {
 			QPalette pal;

@@ -52,11 +52,11 @@ CurveView::CurveView(SheetView* sv, ViewItem* parentViewItem, Curve* curve)
     setFlags(QGraphicsItem::ItemUsesExtendedStyleOption);
 
     m_sv = sv;
-    load_theme_data();
+    CurveView::load_theme_data();
 
     m_blinkColorDirection = 1;
     m_blinkingNode = nullptr;
-    m_startoffset = TimeRef();
+    m_startoffset = TTimeRef();
     m_guicurve = new Curve(nullptr);
     m_guicurve->set_sheet(sv->get_sheet());
 
@@ -423,33 +423,33 @@ TCommand* CurveView::drag_node()
         return ied().failure();
     }
 
-    TimeRef min(qint64(0));
-    TimeRef max(qint64(DBL_MAX));
+    TTimeRef min(qint64(0));
+    TTimeRef max(qint64(DBL_MAX));
     APILinkedList nodeList = m_curve->get_nodes();
 
     int indexFirstNode = nodeList.indexOf(selectedNodes.first());
     int indexLastNode = nodeList.indexOf(selectedNodes.last());
 
     if (indexFirstNode > 0) {
-        min = TimeRef(((CurveNode*)nodeList.at(indexFirstNode-1))->get_when() + 1);
+        min = TTimeRef(((CurveNode*)nodeList.at(indexFirstNode-1))->get_when() + 1);
     }
 
     if (nodeList.size() > (indexLastNode + 1)) {
-        max = TimeRef(((CurveNode*)nodeList.at(indexLastNode+1))->get_when() - 1);
+        max = TTimeRef(((CurveNode*)nodeList.at(indexLastNode+1))->get_when() - 1);
     }
 
     if (boundingRect().width() * m_sv->timeref_scalefactor < max) {
         max = boundingRect().width() * m_sv->timeref_scalefactor;
     }
 
-    if ((min - get_start_offset()) < TimeRef()) {
+    if ((min - get_start_offset()) < TTimeRef()) {
         min = get_start_offset();
     }
 
-    TimeRef startLocation = TimeRef(selectedNodes.first()->get_when());
-    TimeRef endLocation  = TimeRef(selectedNodes.last()->get_when());
-    TimeRef minWhenDiff = min - startLocation;
-    TimeRef maxWhenDiff = max - endLocation + m_startoffset;
+    TTimeRef startLocation = TTimeRef(selectedNodes.first()->get_when());
+    TTimeRef endLocation  = TTimeRef(selectedNodes.last()->get_when());
+    TTimeRef minWhenDiff = min - startLocation;
+    TTimeRef maxWhenDiff = max - endLocation + m_startoffset;
 
 
     double maxValue = DBL_MIN;
@@ -532,10 +532,10 @@ void CurveView::node_moved( )
 
 void CurveView::load_theme_data()
 {
-    calculate_bounding_rect();
+    CurveView::calculate_bounding_rect();
 }
 
-void CurveView::set_start_offset(TimeRef offset)
+void CurveView::set_start_offset(TTimeRef offset)
 {
     m_startoffset = offset;
 }
@@ -602,13 +602,13 @@ TCommand* CurveView::toggle_select_all_nodes()
     return ied().succes();
 }
 
-CurveNodeView* CurveView::get_node_view_before(TimeRef location) const
+CurveNodeView* CurveView::get_node_view_before(TTimeRef location) const
 {
-    TimeRef curveStartOffset = m_curve->get_start_offset();
+    TTimeRef curveStartOffset = m_curve->get_start_offset();
 
     for (int i = m_nodeViews.size() - 1; i>=0; --i) {
         CurveNodeView* nodeview = m_nodeViews.at(i);
-        TimeRef absoluteLocation = TimeRef(nodeview->get_curve_node()->get_when()) + curveStartOffset;
+        TTimeRef absoluteLocation = TTimeRef(nodeview->get_curve_node()->get_when()) + curveStartOffset;
         if (absoluteLocation < location) {
             return nodeview;
         }
@@ -617,12 +617,12 @@ CurveNodeView* CurveView::get_node_view_before(TimeRef location) const
     return nullptr;
 }
 
-CurveNodeView* CurveView::get_node_view_after(TimeRef location) const
+CurveNodeView* CurveView::get_node_view_after(TTimeRef location) const
 {
-    TimeRef curveStartOffset = m_curve->get_start_offset();
+    TTimeRef curveStartOffset = m_curve->get_start_offset();
 
     foreach(CurveNodeView* nodeview, m_nodeViews) {
-        TimeRef absoluteLocation = TimeRef(nodeview->get_curve_node()->get_when()) + curveStartOffset;
+        TTimeRef absoluteLocation = TTimeRef(nodeview->get_curve_node()->get_when()) + curveStartOffset;
         if (absoluteLocation > location) {
             return nodeview;
         }

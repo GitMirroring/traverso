@@ -37,7 +37,7 @@ AudioClipManager::AudioClipManager( Sheet* sheet )
 	PENTERCONS;
 	m_sheet = sheet;
 	set_history_stack( m_sheet->get_history_stack() );
-	m_lastLocation = TimeRef();
+	m_lastLocation = TTimeRef();
 }
 
 AudioClipManager::~ AudioClipManager( )
@@ -120,17 +120,17 @@ void AudioClipManager::update_last_frame( )
 {
         PENTER3;
 	
-	m_lastLocation = TimeRef();
+	m_lastLocation = TTimeRef();
 	
 	foreach(AudioClip* clip, m_clips) {
-		if (clip->get_track_end_location() >= m_lastLocation)
-			m_lastLocation = clip->get_track_end_location();
+        if (clip->get_location_end() >= m_lastLocation)
+            m_lastLocation = clip->get_location_end();
 	}
 	
 	emit m_sheet->lastFramePositionChanged();
 }
 
-TimeRef AudioClipManager::get_last_location() const
+TTimeRef AudioClipManager::get_last_location() const
 {
 	return m_lastLocation;
 }

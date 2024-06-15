@@ -22,7 +22,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "defines.h"
+#include "TTimeRef.h"
 #include <QPixmap>
 #include <QDateTime>
 
@@ -30,17 +30,17 @@
 
 class QString;
 
-QString timeref_to_hms(const TimeRef& ref);
-QString timeref_to_ms(const TimeRef& ref);
-QString timeref_to_ms_2 (const TimeRef& ref);
-QString timeref_to_ms_3 (const TimeRef& ref);
-QString timeref_to_text(const TimeRef& ref, qint64 scalefactor);
-QString timeref_to_cd(const TimeRef& ref);
-QString timeref_to_cd_including_hours(const TimeRef& ref);
+QString timeref_to_hms(const TTimeRef& ref);
+QString timeref_to_ms(const TTimeRef& ref);
+QString timeref_to_ms_2 (const TTimeRef& ref);
+QString timeref_to_ms_3 (const TTimeRef& ref);
+QString timeref_to_text(const TTimeRef& ref, qint64 scalefactor);
+QString timeref_to_cd(const TTimeRef& ref);
+QString timeref_to_cd_including_hours(const TTimeRef& ref);
 
-TimeRef msms_to_timeref(QString str);
-TimeRef cd_to_timeref(QString str);
-TimeRef cd_to_timeref_including_hours(QString str);
+TTimeRef msms_to_timeref(QString str);
+TTimeRef cd_to_timeref(QString str);
+TTimeRef cd_to_timeref_including_hours(QString str);
 QString coefficient_to_dbstring(float coeff, int decimals=1);
 QDateTime extract_date_time(qint64 id);
 

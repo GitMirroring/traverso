@@ -352,7 +352,7 @@ void NewProjectDialog::load_file(QString name, int i, QString trackname)
         printf("renaming track to %s\n", trackname.toLatin1().data());
     track->set_name(trackname);
 	import->set_track(track);
-        import->set_position(TimeRef());
+        import->set_position(TTimeRef());
 	if (import->create_readsource() != -1) {
 		TCommand::process_command(import);
 	}

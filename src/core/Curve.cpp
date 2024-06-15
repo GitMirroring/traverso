@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Curve.h"
 #include <cmath>
 
-#include "Sheet.h"
+#include "TSession.h"
 #include "Utils.h"
 #include <AddRemove.h>
 #include "Mixer.h"
@@ -89,7 +89,7 @@ QDomNode Curve::get_state(QDomDocument doc, const QString& name)
 	QStringList nodesList;
 	
     apill_foreach(CurveNode* cn, CurveNode*, m_nodes) {
-		nodesList << QString::number(cn->when, 'g', 24).append(",").append(QString::number(cn->value));
+        nodesList << QString::number(cn->when, 'g', 24).append(",").append(QString::number(cn->value));
 	}
 	
 	if (m_nodes.size() == 0) {
@@ -129,8 +129,8 @@ int Curve::set_state( const QDomNode & node )
 
 int Curve::process(
 	audio_sample_t** buffer,
-	const TimeRef& startlocation,
-	const TimeRef& endlocation,
+	const TTimeRef& startlocation,
+	const TTimeRef& endlocation,
 	nframes_t nframes,
 	uint channels,
     audio_sample_t makeupgain
@@ -189,7 +189,6 @@ void Curve::solve ()
         auto y = QVarLengthArray<double>(npoints);
 
         int i;
-		QList<CurveNode* >::iterator xx;
 
 		CurveNode* cn;
 		i = 0;
@@ -323,13 +322,13 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
     CurveNode* lastnode = static_cast<CurveNode*>(m_nodes.last());
     CurveNode* firstnode = static_cast<CurveNode*>(m_nodes.first());
 
-	max_x = lastnode->when;
-	min_x = firstnode->when;
+    max_x = lastnode->when;
+    min_x = firstnode->when;
 
 	lx = max (min_x, x0);
 
 	if (x1 < 0) {
-		x1 = lastnode->when;
+        x1 = lastnode->when;
 	}
 
 	hx = min (max_x, x1);
@@ -409,8 +408,8 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
 			dx = 0; // not used
 		}
 	
-		double slope = (lastnode->value - firstnode->value) /
-			(lastnode->when - firstnode->when );
+        double slope = (lastnode->value - firstnode->value) /
+            (lastnode->when - firstnode->when );
 		double yfrac = dx*slope;
 
         vec[0] = float(firstnode->value + slope * (lx - firstnode->when));
@@ -441,7 +440,7 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
 double Curve::multipoint_eval(double x)
 {	
 	if ((m_lookup_cache.left < 0) ||
-		((m_lookup_cache.left > x) || (m_lookup_cache.range.second->when < x))) {
+        ((m_lookup_cache.left > x) || (m_lookup_cache.range.second->when < x))) {
 		
 		CurveNode cn (this, x, 0.0);
 
@@ -489,7 +488,7 @@ double Curve::multipoint_eval(double x)
 					while (n--) {
 						lbmiddle = lbmiddle->next;
 					}
-					if (((CurveNode*)lbmiddle)->when < cn.when) {
+                    if (((CurveNode*)lbmiddle)->when < cn.when) {
 						lbfirst = lbmiddle;
 						lbfirst = lbfirst->next;
 						lblen = lblen - lbhalf - 1;
@@ -522,7 +521,7 @@ double Curve::multipoint_eval(double x)
 						ubmiddle = ubmiddle->next;
 					}
 					
-					if (cn.when < ((CurveNode*)ubmiddle)->when) {
+                    if (cn.when < ((CurveNode*)ubmiddle)->when) {
 						ublen = ubhalf;
 					} else {
 						ubfirst = ubmiddle;
@@ -568,7 +567,7 @@ double Curve::multipoint_eval(double x)
 	/* x is a control point in the data */
 	/* invalidate the cached range because its not usable */
 	m_lookup_cache.left = -1;
-	return m_lookup_cache.range.first->value;
+    return m_lookup_cache.range.first->value;
 }
 
 void Curve::set_range(double when)
@@ -592,7 +591,7 @@ void Curve::set_range(double when)
 	
 	Q_ASSERT(when >= 0.0);
 	
-	double factor = when / lastnode->when;
+    double factor = when / lastnode->when;
 	
 	if (factor == 1.0)
 		return;
@@ -607,7 +606,7 @@ void Curve::x_scale(double factor)
 	Q_ASSERT(factor != 0.0);
 	
     apill_foreach(CurveNode* node, CurveNode*, m_nodes) {
-		node->set_when(node->when * factor);
+        node->set_when(node->when * factor);
 	}
 }
 

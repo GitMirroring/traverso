@@ -103,7 +103,7 @@ int PlayHeadMove::jog()
     if (x != m_newXPos) {
         m_playhead->setPos(x, 0);
 
-        m_newTransportLocation = TimeRef(x * d->sv->timeref_scalefactor);
+        m_newTransportLocation = TTimeRef(x * d->sv->timeref_scalefactor);
 
         if (m_resync && m_session->is_transport_rolling()) {
             m_session->set_transport_pos(m_newTransportLocation);
@@ -153,12 +153,12 @@ void PlayHeadMove::prev_snap_pos()
     do_keyboard_move(m_session->get_snap_list()->prev_snap_pos(m_newTransportLocation), true);
 }
 
-void PlayHeadMove::do_keyboard_move(TimeRef newLocation, bool centerInView)
+void PlayHeadMove::do_keyboard_move(TTimeRef newLocation, bool centerInView)
 {
     ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
 
-    if (newLocation < TimeRef()) {
-        newLocation = TimeRef();
+    if (newLocation < TTimeRef()) {
+        newLocation = TTimeRef();
     }
 
     m_newTransportLocation = newLocation;
@@ -195,5 +195,5 @@ void PlayHeadMove::move_to_work_cursor()
 
 void PlayHeadMove::move_to_start()
 {
-    do_keyboard_move(TimeRef());
+    do_keyboard_move(TTimeRef());
 }

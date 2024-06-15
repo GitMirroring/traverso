@@ -26,8 +26,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QAction>
 #include <QStringList>
 
-#include "AudioBus.h"
-#include "AudioDevice.h"
 #include "CurveView.h"
 #include "TConfig.h"
 #include "TrackPanelView.h"
@@ -46,7 +44,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Project.h"
 #include "ProjectManager.h"
 #include "Sheet.h"
-#include "TBusTrack.h"
 #include "Track.h"
 #include "TMainWindow.h"
 #include "VUMeterView.h"
@@ -519,9 +516,11 @@ void TrackPanelLed::ison_changed(bool isOn)
 
 TCommand * TrackPanelLed::toggle()
 {
-	TCommand* com;
-	QMetaObject::invokeMethod(m_object, QS_C(m_toggleslot), Qt::DirectConnection, Q_RETURN_ARG(TCommand*, com));
-	Q_ASSERT(!com);
+    TCommand* com = nullptr;
+
+    QMetaObject::invokeMethod(m_object, QS_C(m_toggleslot), Qt::DirectConnection, Q_RETURN_ARG(TCommand*, com));
+
+    Q_ASSERT(!com);
 
     return nullptr;
 }

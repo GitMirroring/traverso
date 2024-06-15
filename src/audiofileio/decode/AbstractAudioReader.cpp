@@ -42,7 +42,7 @@ AbstractAudioReader::AbstractAudioReader(const QString& filename)
     m_fileName = filename;
     m_readPos = m_channels = m_nframes = 0;
     m_rate = 0;
-    m_length = TimeRef();
+    m_length = TTimeRef();
 }
 
 

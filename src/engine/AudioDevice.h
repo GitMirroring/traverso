@@ -34,6 +34,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "RingBufferNPT.h"
 #include "APILinkedList.h"
+#include "TTimeRef.h"
+#include "TTransportControl.h"
 #include "defines.h"
 
 class AudioDeviceThread;
@@ -49,6 +51,9 @@ class JackDriver;
 class CoreAudioDriver;
 #endif
 
+typedef FastDelegate1<nframes_t, int> ProcessCallback;
+typedef FastDelegate0<int> RunCycleCallback;
+typedef FastDelegate1<TTransportControl*, int> TransportControlCallback;
 
 class AudioDevice : public QObject
 {
@@ -71,8 +76,8 @@ public:
         void remove_client(TAudioDeviceClient* client);
 	
         void transport_start(TAudioDeviceClient* client);
-        void transport_stop(TAudioDeviceClient* client, TimeRef location);
-        int transport_seek_to(TAudioDeviceClient* client, TimeRef location);
+        void transport_stop(TAudioDeviceClient* client, TTimeRef location);
+        int transport_seek_to(TAudioDeviceClient* client, TTimeRef location);
 
         AudioDeviceSetup get_device_setup() {return m_setup;}
 
@@ -104,7 +109,7 @@ public:
 
 	uint get_sample_rate() const;
 	uint get_bit_depth() const;
-	TimeRef get_buffer_latency();
+    TTimeRef get_buffer_latency();
 
 	/**
 	 * 
@@ -140,6 +145,7 @@ private:
 #if defined (COREAUDIO_SUPPORT)
 	friend class CoreAudioDriver;
 #endif
+    TTransportControl*     m_transportControl;
 
         AudioDeviceSetup        m_setup;
         AudioDeviceSetup        m_fallBackSetup;
@@ -172,7 +178,7 @@ private:
 
 	int run_one_cycle(nframes_t nframes, float delayed_usecs);
 	int create_driver(const QString& driverType, bool capture, bool playback, const QString& cardDevice);
-	int transport_control(transport_state_t state);
+    int transport_control(TTransportControl* state);
 
     void post_run_cycle();
 

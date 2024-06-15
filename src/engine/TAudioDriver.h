@@ -24,6 +24,7 @@
 #define T_AUDIO_DRIVER_H
 
 #include "defines.h"
+#include "AudioDevice.h"
 #include <memops.h>
 
 

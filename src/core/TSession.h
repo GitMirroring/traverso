@@ -27,10 +27,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 #include "APILinkedList.h"
 #include "defines.h"
+#include "TTimeRef.h"
 
 class AudioTrack;
 class SnapList;
-class Snappable;
+class LocationItem;
 class TBusTrack;
 class Track;
 class TimeLine;
@@ -50,10 +51,10 @@ public:
 	QPoint get_scrollbar_xy();
 	int get_mode() const {return m_mode;}
     bool is_transport_rolling() const;
-	TimeRef get_work_location() const;
-	virtual TimeRef get_last_location() const;
-	TimeRef get_new_transport_location() const {return m_newTransportLocation;}
-	virtual TimeRef get_transport_location() const;
+	TTimeRef get_work_location() const;
+	virtual TTimeRef get_last_location() const;
+	TTimeRef get_new_transport_location() const {return m_newTransportLocation;}
+	virtual TTimeRef get_transport_location() const;
 	virtual SnapList* get_snap_list() const;
 	Track* get_track(qint64 id) const;
 	TimeLine* get_timeline() const;
@@ -65,12 +66,12 @@ public:
 	virtual QList<Track*> get_tracks() const;
 	QList<TBusTrack*> get_bus_tracks() const;
 	QList<TSession*> get_child_sessions() const {return m_childSessions;}
-	Snappable* get_work_snap() const;
+	LocationItem* get_work_snap() const;
 	virtual bool is_snap_on() const	{return m_isSnapOn;}
 
 
 	void set_hzoom(qreal hzoom);
-    virtual void set_work_at(TimeRef location, bool isFolder=false);
+    virtual void set_work_at(TTimeRef location, bool isFolder=false);
 	void set_scrollbar_xy(int x, int y);
 	void set_scrollbar_x(int x);
 	void set_scrollbar_y(int y);
@@ -107,7 +108,7 @@ protected:
 	QHash<qint64, int>      m_trackHeights;
 
 	SnapList*	m_snaplist;
-	Snappable*	m_workSnap;
+	LocationItem*	m_workSnap;
 	TimeLine*	m_timeline;
 	QString         m_name;
 
@@ -119,9 +120,9 @@ protected:
 	bool            m_isProjectSession{};
 
 	volatile size_t		m_transport{};
-	TimeRef                 m_transportLocation;
-	TimeRef                 m_workLocation;
-	TimeRef                 m_newTransportLocation;
+	TTimeRef                 m_transportLocation;
+	TTimeRef                 m_workLocation;
+	TTimeRef                 m_newTransportLocation;
 
 private:
 	friend class TimeLine;
@@ -131,7 +132,7 @@ private:
 
 public slots:
 	void set_temp_follow_state(bool state);
-	virtual void set_transport_pos(TimeRef location);
+	virtual void set_transport_pos(TTimeRef location);
 
 	TCommand* toggle_solo();
 	TCommand* toggle_mute();

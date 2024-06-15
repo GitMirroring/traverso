@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef ABSTRACTAUDIOREADER_H
 #define ABSTRACTAUDIOREADER_H
 
+#include "TTimeRef.h"
 #include "defines.h"
 
 #include <QString>
@@ -62,7 +63,7 @@ public:
 	virtual ~AbstractAudioReader();
 	
     uint get_num_channels();
-	const TimeRef& get_length() const {return m_length;}
+    const TTimeRef& get_length() const {return m_length;}
 	nframes_t get_nframes() const {return m_nframes;}
     uint get_file_rate();
 	bool eof();
@@ -86,7 +87,7 @@ protected:
 
 	nframes_t	m_readPos;
     uint		m_channels;
-	TimeRef		m_length;
+    TTimeRef	m_length;
 	nframes_t	m_nframes;
     uint		m_rate;
 };

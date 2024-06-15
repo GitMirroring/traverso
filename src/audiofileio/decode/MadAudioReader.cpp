@@ -461,7 +461,7 @@ MadAudioReader::MadAudioReader(const QString& filename)
     }
 
     m_rate = d->firstHeader.samplerate;
-    m_length = TimeRef(m_nframes, m_rate);
+    m_length = TTimeRef(m_nframes, m_rate);
 
     d->overflowBuffers = nullptr;
 }

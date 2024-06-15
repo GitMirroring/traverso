@@ -1341,7 +1341,7 @@ void TMainWindow::import_audio()
 	}
 
 	// append the clips to the selected track
-    TimeRef position = track->get_end_location();
+    TTimeRef position = track->get_end_location();
 
 	TimeLine* tl = sheet->get_timeline();
 	int n = tl->get_markers().size() + 1;

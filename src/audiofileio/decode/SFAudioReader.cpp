@@ -52,7 +52,7 @@ SFAudioReader::SFAudioReader(const QString& filename)
 	m_channels = m_sfinfo.channels;
 	m_nframes = m_sfinfo.frames;
 	m_rate = m_sfinfo.samplerate;
-	m_length = TimeRef(m_nframes, m_rate);
+    m_length = TTimeRef(m_nframes, m_rate);
 }
 
 

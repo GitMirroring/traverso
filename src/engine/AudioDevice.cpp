@@ -152,6 +152,7 @@ AudioDevice& audiodevice()
 
 AudioDevice::AudioDevice()
 {
+    m_transportControl = new TTransportControl();
     m_runAudioThread = false;
     m_driver = nullptr;
     m_masterOutBus = nullptr;
@@ -768,7 +769,7 @@ float AudioDevice::get_cpu_time( )
 
 void AudioDevice::post_run_cycle( )
 {
-    tsar().process_events();
+    tsar().process_events_slot();
 
     apill_foreach(TAudioDeviceClient* client, TAudioDeviceClient*, m_clients) {
         if (client->wants_to_be_disconnected_from_audiodevice()) {
@@ -801,7 +802,7 @@ void AudioDevice::private_remove_client(TAudioDeviceClient* client)
  */
 void AudioDevice::add_client( TAudioDeviceClient * client )
 {
-    THREAD_SAVE_INVOKE(this, client, private_add_client(TAudioDeviceClient*));
+    tsar().thread_save_invoke_and_emit_signal(this, client, "private_add_client(TAudioDeviceClient*)", "");
 }
 
 /**
@@ -812,7 +813,7 @@ void AudioDevice::add_client( TAudioDeviceClient * client )
  */
 void AudioDevice::remove_client( TAudioDeviceClient * client )
 {
-    THREAD_SAVE_INVOKE_AND_EMIT_SIGNAL(this, client, private_remove_client(TAudioDeviceClient*), clientRemoved(TAudioDeviceClient*));
+    tsar().thread_save_invoke_and_emit_signal(this, client, "private_remove_client(TAudioDeviceClient*)", "clientRemoved(TAudioDeviceClient*)");
 }
 
 void AudioDevice::mili_sleep(int msec)
@@ -834,11 +835,11 @@ void AudioDevice::audiothread_finished()
 
 void AudioDevice::xrun( )
 {
-    RT_THREAD_EMIT(this, nullptr, bufferUnderRun());
+    tsar().rt_thread_emit(this, nullptr, "bufferUnderRun()");
 
     m_xrunCount++;
     if (m_xrunCount > 30) {
-        RT_THREAD_EMIT(this, nullptr, xrunStormDetected());
+        tsar().rt_thread_emit(this, nullptr, "xrunStormDetected()");
     }
 }
 
@@ -869,7 +870,7 @@ void AudioDevice::switch_to_null_driver()
     set_parameters(m_fallBackSetup);
 }
 
-int AudioDevice::transport_control(transport_state_t state)
+int AudioDevice::transport_control(TTransportControl *state)
 {
 #if defined (JACK_SUPPORT)
     if (!slaved_jack_driver()) {
@@ -897,16 +898,15 @@ void AudioDevice::transport_start(TAudioDeviceClient * client)
     }
 #endif
 
-    transport_state_t state;
-    state.transport = TransportRolling;
-    state.isSlave = false;
-    state.realtime = false;
-    state.location = TimeRef(); // get from client!!
+    m_transportControl->set_state(TransportRolling);
+    m_transportControl->set_slave(false);
+    m_transportControl->set_realtime(false);
+    m_transportControl->set_location(TTimeRef()); // get from client!!
 
-    client->transport_control(state);
+    client->transport_control(m_transportControl);
 }
 
-void AudioDevice::transport_stop(TAudioDeviceClient * client, TimeRef location)
+void AudioDevice::transport_stop(TAudioDeviceClient * client, TTimeRef location)
 {
 #if defined (JACK_SUPPORT)
     JackDriver* jackdriver = slaved_jack_driver();
@@ -917,17 +917,16 @@ void AudioDevice::transport_stop(TAudioDeviceClient * client, TimeRef location)
     }
 #endif
 
-    transport_state_t state;
-    state.transport = TransportStopped;
-    state.isSlave = false;
-    state.realtime = false;
-    state.location = location;
+    m_transportControl->set_state(TransportStopped);
+    m_transportControl->set_slave(false);
+    m_transportControl->set_realtime(false);
+    m_transportControl->set_location(location);
 
-    client->transport_control(state);
+    client->transport_control(m_transportControl);
 }
 
 // return 0 if valid request, non-zero otherwise.
-int AudioDevice::transport_seek_to(TAudioDeviceClient* client, TimeRef location)
+int AudioDevice::transport_seek_to(TAudioDeviceClient* client, TTimeRef location)
 {
 #if defined (JACK_SUPPORT)
     JackDriver* jackdriver = slaved_jack_driver();
@@ -938,13 +937,12 @@ int AudioDevice::transport_seek_to(TAudioDeviceClient* client, TimeRef location)
     }
 #endif
 
-    transport_state_t state;
-    state.transport = TransportStarting;
-    state.isSlave = false;
-    state.realtime = false;
-    state.location = location;
+    m_transportControl->set_state(TransportStarting);
+    m_transportControl->set_slave(false);
+    m_transportControl->set_realtime(false);
+    m_transportControl->set_location(location);
 
-    client->transport_control(state);
+    client->transport_control(m_transportControl);
 
     return 0;
 }
@@ -963,7 +961,7 @@ JackDriver* AudioDevice::slaved_jack_driver()
 }
 #endif
 
-TimeRef AudioDevice::get_buffer_latency()
+TTimeRef AudioDevice::get_buffer_latency()
 {
     return {m_bufferSize, m_rate};
 }

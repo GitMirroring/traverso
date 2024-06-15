@@ -26,13 +26,11 @@
 #include "TimeLineViewPort.h"
 #include "SheetView.h"
 #include "Themer.h"
-#include "TConfig.h"
 #include "Peak.h"
 
 #include <Sheet.h>
 #include "Utils.h"
 #include "ContextPointer.h"
-#include "Mixer.h"
 
 #include <QGridLayout>
 #include <QScrollBar>
@@ -132,7 +130,7 @@ void TTimeLabel::update_label()
 
 
 SheetWidget::SheetWidget(TSession* sheet, QWidget* parent)
-	: QFrame(parent)
+    : QFrame(parent)
 	, m_session(sheet)
 {
 	if (!m_session) {
@@ -210,7 +208,7 @@ SheetWidget::SheetWidget(TSession* sheet, QWidget* parent)
 	
 	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
 	
-	setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
+    setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
 
 	cpointer().set_current_viewport(m_clipsViewPort);
 	m_clipsViewPort->setFocus();

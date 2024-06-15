@@ -135,7 +135,7 @@ Marker * TimeLine::get_marker(qint64 id)
 	return 0;
 }
 
-bool TimeLine::get_end_location(TimeRef& location)
+bool TimeLine::get_end_location(TTimeRef& location)
 {
 	foreach(Marker* marker, m_markers) {
 		if (marker->get_type() == Marker::ENDMARKER) {
@@ -147,7 +147,7 @@ bool TimeLine::get_end_location(TimeRef& location)
 	return false;
 }
 
-bool TimeLine::get_start_location(TimeRef & location)
+bool TimeLine::get_start_location(TTimeRef & location)
 {
 	if (m_markers.size() > 0) {
 		location = m_markers.first()->get_when();
@@ -265,7 +265,7 @@ QList<Marker*> TimeLine::get_cdtrack_list(ExportSpecification *spec)
         }
 
         if (!endmarker) {
-                TimeRef endlocation = qMax(spec->endLocation, lst.last()->get_when());
+                TTimeRef endlocation = qMax(spec->endLocation, lst.last()->get_when());
                 lst.push_back(new Marker(this, endlocation, Marker::ENDMARKER));
         }
 
@@ -279,7 +279,7 @@ QString TimeLine::get_cdrdao_tracklist(ExportSpecification* spec, bool pregap)
 
         QList<Marker*> mlist = get_cdtrack_list(spec);
 
-//	TimeRef start;
+//	TTimeRef start;
 
         for(int i = 0; i < mlist.size()-1; ++i) {
 
@@ -319,7 +319,7 @@ QString TimeLine::get_cdrdao_tracklist(ExportSpecification* spec, bool pregap)
                         //}
                 }
 
-                TimeRef length = cd_to_timeref(timeref_to_cd(endmarker->get_when())) - cd_to_timeref(timeref_to_cd(startmarker->get_when()));
+                TTimeRef length = cd_to_timeref(timeref_to_cd(endmarker->get_when())) - cd_to_timeref(timeref_to_cd(startmarker->get_when()));
 
 //		QString s_start = timeref_to_cd(start);
                 QString s_length = timeref_to_cd(length);

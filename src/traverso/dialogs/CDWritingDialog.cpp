@@ -693,7 +693,7 @@ QString CDWritingDialog::get_device(int index)
 /// modes are no longer there so find out what this was doing I guess ?
 //void CDWritingDialog::sheet_mode_changed(bool b)
 //{
-//        TimeRef t = TimeRef();
+//        TTimeRef t = TTimeRef();
 //        m_exportSpec->allSheets = !b;
 //        t = m_project->get_cd_totaltime(m_exportSpec);
 //        cdTotalTimeLabel->setText(timeref_to_cd(t));

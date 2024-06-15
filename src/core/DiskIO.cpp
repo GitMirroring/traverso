@@ -176,7 +176,7 @@ void DiskIO::seek()
     m_stopWork = 0;
     m_seeking = true;
 
-    TimeRef location = m_sheet->get_new_transport_location();
+    TTimeRef location = m_sheet->get_new_transport_location();
 
     foreach(ReadSource* source, m_readSources) {
         if (m_sampleRateChanged) {

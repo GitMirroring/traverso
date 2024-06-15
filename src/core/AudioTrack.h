@@ -47,16 +47,16 @@ public :
         AudioClip* init_recording();
         TCommand* add_clip(AudioClip* clip, bool historable=true, bool ismove=false);
         TCommand* remove_clip(AudioClip* clip, bool historable=true, bool ismove=false);
-        AudioClip* get_clip_after(const TimeRef& pos);
-        AudioClip* get_clip_before(const TimeRef& pos);
+        AudioClip* get_clip_after(const TTimeRef& pos);
+        AudioClip* get_clip_before(const TTimeRef& pos);
         Sheet* get_sheet() const {return m_sheet;}
         QDomNode get_state(QDomDocument doc, bool istemplate=false);
         QList<AudioClip*> get_audioclips() const {return  m_audioClips;}
 
         // Return the rightmost AudioClip track end location
-        TimeRef get_end_location() const;
+        TTimeRef get_end_location() const;
 
-        void get_render_range(TimeRef& startlocation, TimeRef& endlocation);
+        void get_render_range(TTimeRef& startlocation, TTimeRef& endlocation);
 	bool show_clip_volume_automation() const {return m_showClipVolumeAutomation;}
 
         int set_state( const QDomNode& node );

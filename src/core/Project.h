@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSession.h"
 #include "APILinkedList.h"
 
+#include "TTransportControl.h"
 #include "defines.h"
 
 class AudioBus;
@@ -53,7 +54,7 @@ public :
 
         int process(nframes_t nframes);
         // jackd only feature
-        int transport_control(transport_state_t state);
+        int transport_control(TTransportControl* state);
 
         AudioBus* get_playback_bus(const QString& name) const;
         AudioBus* get_capture_bus(const QString& name) const;
@@ -77,8 +78,8 @@ public :
 	int get_num_sheets() const;
     uint get_rate() const;
     uint get_bitdepth() const;
-        TimeRef get_last_location() const;
-        TimeRef get_transport_location() const;
+        TTimeRef get_last_location() const;
+        TTimeRef get_transport_location() const;
 
         QStringList get_input_buses_for(TBusTrack* busTrack);
 	
@@ -125,7 +126,7 @@ public :
         void set_current_session(qint64 id);
 	void set_import_dir(const QString& dir);
         void set_sheets_are_tracks_folder(bool isFolder);
-        void set_work_at(TimeRef worklocation, bool isFolder);
+        void set_work_at(TTimeRef worklocation, bool isFolder);
         void set_keyboard_arrow_key_navigation_speed(int speed) {m_keyboardArrowNavigationSpeed = speed;}
         int save_from_template_to_project_file(const QString& file, const QString& projectName);
 
@@ -143,7 +144,7 @@ public :
 	int export_project(ExportSpecification* spec);
 	int start_export(ExportSpecification* spec);
 	int create_cdrdao_toc(ExportSpecification* spec);
-        TimeRef get_cd_totaltime(ExportSpecification*);
+        TTimeRef get_cd_totaltime(ExportSpecification*);
 
 	enum {
 		SETTING_XML_CONTENT_FAILED = -1,

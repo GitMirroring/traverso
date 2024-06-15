@@ -193,7 +193,7 @@ void SpectralMeterView::update_background()
 	QFontMetrics fm(themer()->get_font("FFTMeter:fontscale:label"));
 
 	// draw horizontal lines + labels
-	for (float i = upper_db; i >= lower_db; i -= 10.0f) {
+    for (int i = int(upper_db); i >= int(lower_db); i -= 10) {
 		float f = db2ypos(i);
 
 		painter.setPen(m_penGrid);

@@ -75,10 +75,10 @@ void AudioFileMerger::process_task(MergeTask task)
 	DecodeBuffer decodebuffer1;
 	
 	ExportSpecification* spec = new ExportSpecification();
-	spec->startLocation = TimeRef();
+	spec->startLocation = TTimeRef();
 	spec->endLocation = task.readsource0->get_length();
 	spec->totalTime = spec->endLocation;
-	spec->pos = TimeRef();
+	spec->pos = TTimeRef();
 	spec->isRecording = false;
 	
 	spec->exportdir = task.dir;

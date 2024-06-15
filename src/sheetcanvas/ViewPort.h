@@ -85,7 +85,7 @@ protected:
     SheetView* m_sv;
 
 private:
-    QPoint      m_oldMousePos;
+    QPoint      m_previousMousePos;
 };
 
 #endif

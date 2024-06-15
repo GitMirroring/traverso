@@ -203,8 +203,8 @@ void AudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *opt
     }
 
     // Draw the contour
-    painter->setPen(themer()->get_color("AudioClip:contour"));
-    painter->drawRect(m_boundingRect.adjusted(0, 0, -1.5, -1));
+    // painter->setPen(themer()->get_color("AudioClip:contour"));
+    // painter->drawRect(m_boundingRect.adjusted(0, 0, -1.5, -1));
 
     // Paint a pixmap if the clip is locked
     if (m_clip->is_locked()) {
@@ -235,7 +235,7 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
     }
 
     bool microView = m_sheet->get_hzoom() < 64 ? true : false;
-    TimeRef clipstartoffset = m_clip->get_source_start_location();
+    TTimeRef clipstartoffset = m_clip->get_source_start_location();
     uint channels = m_clip->get_channel_count();
     int peakdatacount = microView ? pixelcount : pixelcount * 2;
     // FIXME: make it so it supports any channel count
@@ -305,7 +305,7 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
         int availpeaks = peak->calculate_peaks(
                     chan,
                     &pixeldata[chan],
-                    TimeRef(xstart * m_sv->timeref_scalefactor) + clipstartoffset,
+                    TTimeRef(xstart * m_sv->timeref_scalefactor) + clipstartoffset,
                     peakdatacount,
                     m_sheet->get_hzoom());
 
@@ -530,8 +530,8 @@ void AudioClipView::draw_clipinfo_area(QPainter* p, double xstart)
         return;
     }
 
-    int margin = 6;
-    p->drawPixmap(margin, m_height - m_clipInfo.height() - margin, m_clipInfo);
+    int margin = 3;
+    p->drawPixmap(margin, /*m_height - m_clipInfo.height() -*/ margin, m_clipInfo);
 }
 
 
@@ -734,7 +734,7 @@ void AudioClipView::repaint( )
 void AudioClipView::update_start_pos()
 {
     // 	printf("AudioClipView::update_start_pos()\n");
-    setPos((double(m_clip->get_track_start_location().universal_frame()) / m_sv->timeref_scalefactor), 0);
+    setPos((double(m_clip->get_location_start().universal_frame()) / m_sv->timeref_scalefactor), 0);
 }
 
 TCommand * AudioClipView::fade_range()
@@ -843,7 +843,7 @@ TCommand * AudioClipView::select_fade_out_shape( )
 
 void AudioClipView::start_recording()
 {
-    m_oldRecordingPos = TimeRef();
+    m_oldRecordingPos = TTimeRef();
     connect(&m_recordingTimer, SIGNAL(timeout()), this, SLOT(update_recording()));
     m_recordingTimer.start(750);
 }
@@ -863,7 +863,7 @@ void AudioClipView::update_recording()
         return;
     }
 
-    TimeRef newPos = m_clip->get_length();
+    TTimeRef newPos = m_clip->get_length();
     m_boundingRect = QRectF(0, 0, (newPos / m_sv->timeref_scalefactor), m_height);
 
     int updatewidth = int((newPos - m_oldRecordingPos) / m_sv->timeref_scalefactor);

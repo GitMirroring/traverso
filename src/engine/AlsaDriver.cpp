@@ -35,8 +35,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <unistd.h>
 #include <cstdlib>
 #include <cerrno>
-#include <cstdarg>
-#include <csignal>
 #include <sys/types.h>
 #include <regex.h>
 
@@ -597,7 +595,7 @@ int AlsaDriver::configure_stream(char *device_name,
 
     *nperiodsp = user_nperiods;
     snd_pcm_hw_params_set_periods_min (handle, hw_params, nperiodsp, NULL);
-    if (*nperiodsp < user_nperiods)
+    if (int(*nperiodsp) < user_nperiods)
         *nperiodsp = user_nperiods;
 
     if (snd_pcm_hw_params_set_periods_near (handle, hw_params, nperiodsp, NULL) < 0) {
@@ -605,7 +603,7 @@ int AlsaDriver::configure_stream(char *device_name,
         return -1;
     }
 
-    if (*nperiodsp < user_nperiods) {
+    if (int(*nperiodsp) < user_nperiods) {
         printf("AlsaDriver: use %d periods for %s\n", *nperiodsp, stream_name);
         return -1;
     }

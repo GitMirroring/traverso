@@ -42,8 +42,8 @@ static const int DOT_SIZE		= 6;
 static const QString DOT_COLOR		= "#78817B";
 
 FadeCurveView::FadeCurveView(SheetView* sv, AudioClipView* parent, FadeCurve * fadeCurve )
-	: ViewItem(parent, fadeCurve)
-	, m_fadeCurve(fadeCurve)
+    : ViewItem(parent, fadeCurve)
+    , m_fadeCurve(fadeCurve)
 {
 	PENTERCONS;
     m_sv = sv;
@@ -51,8 +51,9 @@ FadeCurveView::FadeCurveView(SheetView* sv, AudioClipView* parent, FadeCurve * f
 	m_holdactive = false;
 	m_guicurve = new Curve(nullptr);
 	m_guicurve->set_sheet(m_sv->get_sheet());
-	
-	
+
+    Q_ASSERT(m_fadeCurve);
+
     apill_foreach(CurveNode* node, CurveNode*, m_fadeCurve->get_nodes()) {
 		CurveNode* guinode = new CurveNode(m_guicurve, 
 				node->get_when() / m_sv->timeref_scalefactor,
@@ -61,10 +62,10 @@ FadeCurveView::FadeCurveView(SheetView* sv, AudioClipView* parent, FadeCurve * f
 		cmd->set_instantanious(true);
 		TCommand::process_command(cmd);
 	}
-	
-	load_theme_data();
 
-        setFlags(QGraphicsItem::ItemUsesExtendedStyleOption);
+    FadeCurveView::load_theme_data();
+
+    setFlags(QGraphicsItem::ItemUsesExtendedStyleOption);
 
 	connect(m_fadeCurve, SIGNAL(stateChanged()), this, SLOT(state_changed()));
 	connect(m_fadeCurve, SIGNAL(rangeChanged()), this, SLOT(state_changed()));

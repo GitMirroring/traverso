@@ -59,7 +59,7 @@ LameAudioWriter::LameAudioWriter()
 LameAudioWriter::~LameAudioWriter()
 {
 	if (m_fid) {
-		close_private();
+        LameAudioWriter::close_private();
 	}
 	if (m_buffer) {
 		delete [] m_buffer;

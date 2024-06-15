@@ -186,15 +186,15 @@ void MarkerDialog::position_changed(const QString &s)
 // 	But the realtime thing plays not nice, what about only
 // 	calling this function when the user hits enter ?
 
-// 	TimeRef newpos = cd_to_timeref(s);
-// 	TimeRef oldpos = m_marker->get_when();
+// 	TTimeRef newpos = cd_to_timeref(s);
+// 	TTimeRef oldpos = m_marker->get_when();
 // 	QVariant newv, oldv;
 // 	newv.setValue(newpos);
 // 	oldv.setValue(oldpos);
 // 	PCommand* command = new PCommand(m_marker, "set_when", oldv, newv, tr("Move Marker (from Marker Editor)"));
 // 	Command::process_command(command);
 
-	TimeRef location = cd_to_timeref_including_hours(s);
+	TTimeRef location = cd_to_timeref_including_hours(s);
 	m_marker->set_when(location);
 	markersTreeWidget->sortItems(0, Qt::AscendingOrder);
 }

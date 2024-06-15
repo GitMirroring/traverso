@@ -140,12 +140,12 @@ void AudioChannel::private_remove_monitor(VUMonitor *monitor)
 
 void AudioChannel::add_monitor(VUMonitor *monitor)
 {
-        THREAD_SAVE_INVOKE(this, monitor, private_add_monitor(VUMonitor*));
+    tsar().thread_save_invoke_and_emit_signal(this, monitor, "private_add_monitor(VUMonitor*)", "");
 }
 
 void AudioChannel::remove_monitor(VUMonitor *monitor)
 {
-        THREAD_SAVE_INVOKE(this, monitor, private_remove_monitor(VUMonitor*));
+    tsar().thread_save_invoke_and_emit_signal(this, monitor, "private_remove_monitor(VUMonitor*)", "");
 }
 
 void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes)

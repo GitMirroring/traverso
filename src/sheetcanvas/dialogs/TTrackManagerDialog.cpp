@@ -336,6 +336,9 @@ void TTrackManagerDialog::update_routing_input_output_widget_view()
                 }
         }
 
+        //FIXME
+        // What does this code actually do?
+        // clang says, item is a potentential memory leak
         if (m_track->get_type() == Track::AUDIOTRACK) {
                 QListWidgetItem* item = new QListWidgetItem(routingInputListWidget);
                 AudioBus* bus = m_track->get_input_bus();

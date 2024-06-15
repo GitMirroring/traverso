@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <CommandGroup.h>
 #include "RemoveClip.h"
 
-#include "AudioDevice.h"
 
 #include <QScrollBar>
 #include <QSet>
@@ -133,7 +132,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 	CommandGroup* group = new CommandGroup(m_sw->get_sheet(), 
                tr("Import %n audiofile(s)", "", m_imports.size() + m_resourcesImport.size()));
 	
-	TimeRef startpos = TimeRef(mapFromGlobal(QCursor::pos()).x() * m_sw->get_sheetview()->timeref_scalefactor);
+	TTimeRef startpos = TTimeRef(mapFromGlobal(QCursor::pos()).x() * m_sw->get_sheetview()->timeref_scalefactor);
 	
 	foreach(qint64 id, m_resourcesImport) {
 		AudioClip* clip = resources_manager()->get_clip(id);
@@ -145,7 +144,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 				clip->set_state(clip->get_dom_node());
 			}
 			clip->set_track_start_location(startpos);
-			startpos = clip->get_track_end_location();
+            startpos = clip->get_location_end();
 			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
 			group->add_command(arc);
 			continue;
@@ -157,7 +156,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 			clip->set_sheet(m_importTrack->get_sheet());
 			clip->set_track(m_importTrack);
 			clip->set_track_start_location(startpos);
-			startpos = clip->get_track_end_location();
+            startpos = clip->get_location_end();
 			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
 			group->add_command(arc);
 		}

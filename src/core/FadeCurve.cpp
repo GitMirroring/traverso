@@ -169,6 +169,7 @@ int FadeCurve::set_state( const QDomNode & node )
 
 void FadeCurve::process(AudioBus *bus, nframes_t nframes)
 {
+    Q_ASSERT(bus->get_channel_count() == 2);
 
         if (is_bypassed()) {
 		return;
@@ -181,17 +182,17 @@ void FadeCurve::process(AudioBus *bus, nframes_t nframes)
         uint outputRate = audiodevice().get_sample_rate();
         uint framesToProcess = nframes;
 
-        TimeRef trackStartLocation, trackEndLocation, mix_pos;
-        TimeRef fadeRange = TimeRef(get_range());
+        TTimeRef trackStartLocation, trackEndLocation, mix_pos;
+        TTimeRef fadeRange = TTimeRef(get_range());
 
-        TimeRef transportLocation = m_session->get_transport_location();
-        TimeRef upperRange = transportLocation + TimeRef(framesToProcess, outputRate);
+        TTimeRef transportLocation = m_session->get_transport_location();
+        TTimeRef upperRange = transportLocation + TTimeRef(framesToProcess, outputRate);
 
 	
 	if (m_type == FadeIn) {
-                trackStartLocation = m_clip->get_track_start_location();
+                trackStartLocation = m_clip->get_location_start();
         } else {
-                trackStartLocation = m_clip->get_track_end_location() - fadeRange;
+                trackStartLocation = m_clip->get_location_end() - fadeRange;
 	}
 
         trackEndLocation = trackStartLocation + fadeRange;
@@ -203,7 +204,7 @@ void FadeCurve::process(AudioBus *bus, nframes_t nframes)
                         // better then using (m_trackStartLocation - transportLocation).to_frame()
                         // TODO : find out why!
                         uint offset = (trackStartLocation).to_frame(outputRate) - transportLocation.to_frame(outputRate);
-                        mix_pos = TimeRef();
+                        mix_pos = TTimeRef();
 //                        printf("offset %d\n", offset);
 
                         for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
@@ -230,14 +231,14 @@ void FadeCurve::process(AudioBus *bus, nframes_t nframes)
         }
 
 
-        upperRange = mix_pos + TimeRef(framesToProcess, outputRate);
+        upperRange = mix_pos + TTimeRef(framesToProcess, outputRate);
 
         get_vector(mix_pos.universal_frame(), upperRange.universal_frame(), m_session->gainbuffer, framesToProcess);
 
         for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
                 for (nframes_t frame = 0; frame < framesToProcess; ++frame) {
                 // FXME: Array access result in an undefined pointer dereference accorindg to clang tidy
-                        mixdown[chan][frame] *= m_session->gainbuffer[frame];
+                mixdown[chan][frame] *= m_session->gainbuffer[frame];
                 }
         }
 }
@@ -386,7 +387,7 @@ void FadeCurve::set_strength_factor( float factor )
 	emit strengthValueChanged();
 }
 
-QList< QPointF > FadeCurve::get_control_points( )
+QList< QPointF > FadeCurve::get_control_points( ) const
 {
 	return m_controlPoints;
 }

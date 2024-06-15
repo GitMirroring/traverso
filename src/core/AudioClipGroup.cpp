@@ -50,7 +50,7 @@ void AudioClipGroup::set_clips(QList< AudioClip * > clips)
     update_state();
 }
 
-void AudioClipGroup::move_to(int trackIndex, TimeRef location)
+void AudioClipGroup::move_to(int trackIndex, TTimeRef location)
 {
     PENTER;
     int trackIndexDelta = trackIndex - m_topTrackIndex;
@@ -66,7 +66,7 @@ void AudioClipGroup::move_to(int trackIndex, TimeRef location)
             }
         }
 
-        TimeRef offset = clip->get_track_start_location() - m_trackStartLocation;
+        TTimeRef offset = clip->get_location_start() - get_location_start();
         clip->set_track_start_location(location + offset);
     }
 
@@ -79,8 +79,8 @@ void AudioClipGroup::update_state()
         return;
     }
 
-    m_trackStartLocation = LLONG_MAX;
-    m_trackEndLocation = TimeRef();
+    set_location_start(TTimeRef(LLONG_MAX));
+    set_location_end(TTimeRef());
 
     m_topTrackIndex = INT_MAX;
     m_bottomTrackIndex = 0;
@@ -93,11 +93,11 @@ void AudioClipGroup::update_state()
         if (index > m_bottomTrackIndex) {
             m_bottomTrackIndex = index;
         }
-        if (m_trackStartLocation > clip->get_track_start_location()) {
-            m_trackStartLocation = clip->get_track_start_location();
+        if (m_locationStart > clip->get_location_start()) {
+            m_locationStart = clip->get_location_start();
         }
-        if (m_trackEndLocation < clip->get_track_end_location()) {
-            m_trackEndLocation = clip->get_track_end_location();
+        if (m_locationEnd < clip->get_location_end()) {
+            m_locationEnd = clip->get_location_end();
         }
     }
 }
@@ -124,7 +124,7 @@ QList<AudioClip*> AudioClipGroup::copy_clips()
         AudioClip* newclip = resources_manager()->get_clip(clip->get_id());
         newclip->set_sheet(clip->get_sheet());
         newclip->set_track(clip->get_track());
-        newclip->set_track_start_location(clip->get_track_start_location());
+        newclip->set_track_start_location(clip->get_location_start());
         newclips.append(newclip);
     }
 

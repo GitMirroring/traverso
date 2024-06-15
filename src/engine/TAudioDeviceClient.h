@@ -27,7 +27,7 @@ $Id: Client.h,v 1.7 2007/11/19 11:18:54 r_sijrier Exp $
 #include <QObject>
 #include "APILinkedList.h"
 
-#include "defines.h"
+#include "AudioDevice.h"
 
 class AudioBus;
 

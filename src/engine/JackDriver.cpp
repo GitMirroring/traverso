@@ -31,7 +31,7 @@
 #include "AudioDevice.h"
 #include "AudioChannel.h"
 #include "Tsar.h"
-
+#include "TTimeRef.h"
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
@@ -44,6 +44,7 @@ JackDriver::JackDriver(AudioDevice* device)
         write = MakeDelegate(this, &JackDriver::_write);
         run_cycle = RunCycleCallback(this, &JackDriver::_run_cycle);
     m_running = 0;
+        m_transportControl = new TTransportControl();
 
         connect(this, SIGNAL(pcpairRemoved(PortChannelPair*)), this, SLOT(cleanup_removed_port_channel_pair(PortChannelPair*)));
 }
@@ -143,9 +144,9 @@ void JackDriver::add_channel(AudioChannel* channel)
 
 
         if (is_running()) {
-                THREAD_SAVE_INVOKE(this, pcpair, private_add_port_channel_pair(PortChannelPair*))
+            tsar().thread_save_invoke_and_emit_signal(this, pcpair, "private_add_port_channel_pair(PortChannelPair*)", "");
         } else {
-                private_add_port_channel_pair(pcpair);
+            private_add_port_channel_pair(pcpair);
         }
 }
 
@@ -222,34 +223,32 @@ int JackDriver::stop( )
 
 int JackDriver::process_callback (nframes_t nframes)
 {
-	jack_position_t pos;
-        jack_transport_state_t state = jack_transport_query (m_jack_client, &pos);
-	
-        transport_state_t transportstate;
-        transportstate.transport = state;
-        transportstate.location = TimeRef(pos.frame, audiodevice().get_sample_rate());
-        transportstate.realtime = true;
-        transportstate.isSlave = true;
+    jack_position_t pos;
+    jack_transport_state_t state = jack_transport_query (m_jack_client, &pos);
 
-        m_device->transport_control(transportstate);
-	
+    m_transportControl->set_state(state);
+    m_transportControl->set_location(TTimeRef(pos.frame, audiodevice().get_sample_rate()));
+    m_transportControl->set_realtime(true);
+    m_transportControl->set_slave(true);
+
+    m_device->transport_control(m_transportControl);
+
     m_device->run_cycle( nframes, 0.0);
-        return 0;
+    return 0;
 }
 
 // NOTE:  note that in jack2 they (process and sync callback) occur asynchronously in 2 different threads
-//        How to handle that properly in Travers? The Tsar RT event buffer assumes only one RT thread.
+//        How to handle that properly in Traverso? The TSAR RT event buffer assumes only one RT thread.
 int JackDriver::jack_sync_callback (jack_transport_state_t state, jack_position_t* pos)
 {
-        transport_state_t transportstate;
-        transportstate.transport = state;
-        printf("jack state is %d\n", state);
-        transportstate.location = TimeRef(pos->frame, audiodevice().get_sample_rate());
-        printf("jack transport callback, location is %lld\n", transportstate.location.universal_frame());
-        transportstate.isSlave = true;
-        transportstate.realtime = true;
-	
-        return m_device->transport_control(transportstate);
+    m_transportControl->set_state(state);
+    m_transportControl->set_location(TTimeRef(pos->frame, audiodevice().get_sample_rate()));
+    m_transportControl->set_realtime(true);
+    m_transportControl->set_slave(true);
+    printf("jack state is %d\n", state);
+    printf("jack transport callback, location is %lld\n", m_transportControl->get_location().universal_frame());
+
+    return m_device->transport_control(m_transportControl);
 }
 
 

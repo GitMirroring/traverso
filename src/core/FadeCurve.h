@@ -64,7 +64,7 @@ public:
 	void set_strength_factor(float factor);
 	
 	FadeType get_fade_type() const {return m_type;}
-	QList<QPointF> get_control_points();
+    QList<QPointF> get_control_points() const;
 	
 	bool is_bypassed() const {return m_bypass;}
 	bool is_smaller_then(APILinkedListNode* node) {Q_UNUSED(node); return false;}

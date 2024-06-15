@@ -393,7 +393,7 @@ FlacAudioReader::FlacAudioReader(const QString& filename)
 		m_channels = m_flac->m_channels;
 		m_nframes = m_flac->m_samples;
 		m_rate = m_flac->m_rate;
-		m_length = TimeRef(m_nframes, m_rate);
+		m_length = TTimeRef(m_nframes, m_rate);
 	}
 }
 

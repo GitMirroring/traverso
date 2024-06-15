@@ -50,7 +50,7 @@ AudioTrackView::AudioTrackView(SheetView* sv, AudioTrack * track)
     PENTERCONS;
 
     m_track = track;
-    load_theme_data();
+    AudioTrackView::load_theme_data();
 
     m_panel = new AudioTrackPanelView(this);
 
@@ -69,7 +69,7 @@ AudioTrackView::AudioTrackView(SheetView* sv, AudioTrack * track)
         add_new_audioclipview(clip);
     }
 
-    automation_visibility_changed();
+    AudioTrackView::automation_visibility_changed();
 }
 
 void AudioTrackView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
@@ -140,7 +140,7 @@ void AudioTrackView::to_front(AudioClipView * view)
     view->setZValue(zValue() + 2);
 }
 
-AudioClipView* AudioTrackView::get_nearest_audioclip_view(TimeRef location) const
+AudioClipView* AudioTrackView::get_nearest_audioclip_view(TTimeRef location) const
 {
     PENTER;
     if (!m_clipViews.size()) {
@@ -148,29 +148,29 @@ AudioClipView* AudioTrackView::get_nearest_audioclip_view(TimeRef location) cons
     }
 
     AudioClipView* nearestClipView = nullptr;
-    TimeRef shortestDistance(LONG_LONG_MAX);
+    TTimeRef shortestDistance(LONG_LONG_MAX);
 
     foreach(AudioClipView* clipview, m_clipViews) {
         AudioClip* clip = clipview->get_clip();
 
         // check if location is in the clipviews start/end range
         // if so, we found the 'nearest' clipview, so return it.
-        if (clip->get_track_start_location() < location &&
-                clip->get_track_end_location() > location) {
+        if (clip->get_location_start() < location &&
+                clip->get_location_end() > location) {
             return clipview;
         }
 
         // this clip is left of of location.
-        if (clip->get_track_end_location() < location) {
-            TimeRef diff = location - clip->get_track_end_location();
+        if (clip->get_location_end() < location) {
+            TTimeRef diff = location - clip->get_location_end();
             if (diff < shortestDistance) {
                 shortestDistance = diff;
                 nearestClipView = clipview;
             }
         }
         // this clip is right of location
-        if (clip->get_track_start_location() > location) {
-            TimeRef diff = clip->get_track_start_location() - location;
+        if (clip->get_location_start() > location) {
+            TTimeRef diff = clip->get_location_start() - location;
             if (diff < shortestDistance) {
                 shortestDistance = diff;
                 nearestClipView = clipview;
@@ -207,5 +207,5 @@ void AudioTrackView::automation_visibility_changed()
     TrackView::automation_visibility_changed();
 
     // TODO: should be move to ContextItem::set_ignore_context() ?
-    cpointer().request_viewport_to_detect_items_below_cursor();
+    // cpointer().request_viewport_to_detect_items_below_cursor();
 }

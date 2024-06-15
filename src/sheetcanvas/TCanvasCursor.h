@@ -39,20 +39,24 @@ public:
     TCanvasCursor(SheetView*);
     ~TCanvasCursor();
 
+    enum {
+        First,
+        Second
+    };
+
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
-    void set_text(const QString& text, int mseconds=-1);
-    void set_info(const QString& info);
+    void set_text(const QString& first, int mseconds=-1);
     void set_cursor_shape(const QString& shape, int alignment);
 
 private:
-    PositionIndicator*      m_textItem;
-    PositionIndicator*      m_infoItem;
+    PositionIndicator*      m_positionIndicator;
+
     QString         m_shape;
     qreal			m_xOffset;
     qreal			m_yOffset;
     QPixmap			m_pixmap;
-    QString			m_text;
+    QString			m_primaryText;
     QTimer			m_timer;
 
     void create_cursor_pixmap(const QString& shape);

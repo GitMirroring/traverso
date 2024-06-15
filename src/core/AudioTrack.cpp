@@ -118,11 +118,11 @@ QDomNode AudioTrack::get_state( QDomDocument doc, bool istemplate)
     return node;
 }
 
-TimeRef AudioTrack::get_end_location() const
+TTimeRef AudioTrack::get_end_location() const
 {
-    TimeRef endLocation{};
+    TTimeRef endLocation{};
     if (!m_audioClips.isEmpty()) {
-        endLocation = m_audioClips.last()->get_track_end_location();
+        endLocation = m_audioClips.last()->get_location_end();
     }
     return endLocation;
 }
@@ -319,8 +319,8 @@ int AudioTrack::process( nframes_t nframes )
         mixdown[chan] = m_processBus->get_buffer(chan, nframes);
     }
 
-    TimeRef location = m_sheet->get_transport_location();
-    TimeRef endlocation = location + TimeRef(nframes, audiodevice().get_sample_rate());
+    TTimeRef location = m_sheet->get_transport_location();
+    TTimeRef endlocation = location + TTimeRef(nframes, audiodevice().get_sample_rate());
     // Apply fader Gain/envelope
     m_fader->process_gain(mixdown, location, endlocation, nframes, m_processBus->get_channel_count());
 
@@ -361,47 +361,47 @@ TCommand* AudioTrack::silence_others( )
     return command;
 }
 
-void AudioTrack::get_render_range(TimeRef& startlocation, TimeRef& endlocation )
+void AudioTrack::get_render_range(TTimeRef& startlocation, TTimeRef& endlocation )
 {
     if(m_audioClips.isEmpty()) {
         return;
     }
 
-    endlocation = TimeRef();
+    endlocation = TTimeRef();
     startlocation = LLONG_MAX;
 
     for(AudioClip* clip : m_audioClips) {
         if (! clip->is_muted() ) {
-            if (clip->get_track_end_location() > endlocation) {
-                endlocation = clip->get_track_end_location();
+            if (clip->get_location_end() > endlocation) {
+                endlocation = clip->get_location_end();
             }
 
-            if (clip->get_track_start_location() < startlocation) {
-                startlocation = clip->get_track_start_location();
+            if (clip->get_location_start() < startlocation) {
+                startlocation = clip->get_location_start();
             }
         }
     }
 
 }
 
-AudioClip* AudioTrack::get_clip_after(const TimeRef& pos)
+AudioClip* AudioTrack::get_clip_after(const TTimeRef& pos)
 {
     for(AudioClip* clip : m_audioClips) {
-        if (clip->get_track_start_location() > pos) {
+        if (clip->get_location_start() > pos) {
             return clip;
         }
     }
     return nullptr;
 }
 
-AudioClip* AudioTrack::get_clip_before(const TimeRef& pos)
+AudioClip* AudioTrack::get_clip_before(const TTimeRef& pos)
 {
-    TimeRef shortestDistance(LONG_LONG_MAX);
+    TTimeRef shortestDistance(LONG_LONG_MAX);
     AudioClip* nearest = nullptr;
 
     for(AudioClip* clip : m_audioClips) {
-        if (clip->get_track_start_location() < pos) {
-            TimeRef diff = pos - clip->get_track_start_location();
+        if (clip->get_location_start() < pos) {
+            TTimeRef diff = pos - clip->get_location_start();
             if (diff < shortestDistance) {
                 shortestDistance = diff;
                 nearest = clip;
@@ -470,7 +470,7 @@ void AudioTrack::clip_position_changed(AudioClip * clip)
     std::sort(m_audioClips.begin(), m_audioClips.end(), AudioClip::isLeftMostClip);
 
     if (m_sheet && m_sheet->is_transport_rolling()) {
-        THREAD_SAVE_INVOKE(this, clip, private_clip_position_changed(AudioClip*));
+        tsar().thread_save_invoke_and_emit_signal(this, clip, "private_clip_position_changed(AudioClip*)", "");
     } else {
         private_clip_position_changed(clip);
     }

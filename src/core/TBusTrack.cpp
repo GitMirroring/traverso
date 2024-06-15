@@ -136,8 +136,8 @@ int TBusTrack::process(nframes_t nframes)
     for(uint chan=0; chan<m_processBus->get_channel_count(); chan++) {
         mixdown[chan] = m_processBus->get_buffer(chan, nframes);
     }
-    TimeRef location = m_session->get_transport_location();
-    TimeRef endlocation = location + TimeRef(nframes, audiodevice().get_sample_rate());
+    TTimeRef location = m_session->get_transport_location();
+    TTimeRef endlocation = location + TTimeRef(nframes, audiodevice().get_sample_rate());
 
     m_fader->process_gain(mixdown, location, endlocation, nframes, m_processBus->get_channel_count());
 

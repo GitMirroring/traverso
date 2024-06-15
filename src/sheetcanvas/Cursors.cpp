@@ -61,7 +61,8 @@ PlayHead::PlayHead(SheetView* sv, TSession* session, ClipsViewPort* vp)
 	connect(&m_animation, SIGNAL(frameChanged(int)), this, SLOT(set_animation_value(int)));
 	connect(&m_animation, SIGNAL(finished()), this, SLOT(animation_finished()));
         connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
-        load_theme_data();
+
+    PlayHead::load_theme_data();
 
 	setZValue(99);
 }
