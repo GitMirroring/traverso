@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ResourcesManager.h"
 #include "Sheet.h"
 #include "AudioTrack.h"
-#include <limits.h>
 
 #include "Debugger.h"
 
@@ -79,7 +78,7 @@ void AudioClipGroup::update_state()
         return;
     }
 
-    set_location_start(TTimeRef(LLONG_MAX));
+    set_location_start(TTimeRef::max_length());
     set_location_end(TTimeRef());
 
     m_topTrackIndex = INT_MAX;

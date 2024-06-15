@@ -24,7 +24,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QInputDialog>
 #include <QStringList>
 
-#include "libtraversocore.h"
+#include "AudioClipManager.h"
+#include "AudioTrack.h"
+#include "Information.h"
+#include "Project.h"
+#include "ProjectManager.h"
+#include "Sheet.h"
+#include "TBusTrack.h"
+#include "TInputEventDispatcher.h"
+#include "TimeLine.h"
 #include "libtraversosheetcanvas.h"
 #include "commands.h"
 #include <cfloat>
@@ -418,7 +426,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
                    "ImportAudioCommand needs a Track as argument");
             return 0;
         }
-        TTimeRef length(10*UNIVERSAL_SAMPLE_RATE);
+        TTimeRef length(10*TTimeRef::UNIVERSAL_SAMPLE_RATE);
         return new Import(track, length, true);
     }
 

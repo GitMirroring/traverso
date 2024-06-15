@@ -83,7 +83,7 @@ VUMeter::VUMeter(QWidget* parent, AudioBus* bus)
 	
 	m_minSpace += levelLedLayout->spacing();
 
-	for (int i = 0; i < bus->get_channel_count(); ++i) {
+    for (uint i = 0; i < bus->get_channel_count(); ++i) {
         QWidget* widget = new QWidget(this);
 		QVBoxLayout* levellayout = new QVBoxLayout(widget);
         levellayout->setContentsMargins(0, 0, 0, 0);
@@ -477,7 +477,7 @@ VUMeterLevel::VUMeterLevel(QWidget* parent, AudioChannel* chan)
 	: QWidget(parent)
 	, m_channel(chan)
 {
-        m_monitor = new VUMonitor();
+        m_monitor = new TVUMonitor();
         m_channel->add_monitor(m_monitor);
 
 	tailDeltaY = peakHoldValue = rms = -120.0;

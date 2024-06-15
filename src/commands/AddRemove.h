@@ -32,6 +32,7 @@ class TSession;
 class AddRemove : public TCommand
 {
     Q_OBJECT
+
 public :
 	AddRemove(ContextItem* parent, ContextItem* item, const QString& des);
 	AddRemove(ContextItem* parent,

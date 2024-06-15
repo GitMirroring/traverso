@@ -281,7 +281,7 @@ int AddRemove::un_redo_action(ActionType actionType)
     // update the cursor to the context item that we are adding here
     // in case the mouse cursor did not move and the position of this object
     // is below the mouse cursor position
-    cpointer().request_viewport_to_detect_items_below_cursor();
+    // cpointer().request_viewport_to_detect_items_below_cursor();
 
     return 1;
 }

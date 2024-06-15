@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include <QFile>
 #include "TConfig.h"
-#include <climits>
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
@@ -203,7 +202,7 @@ int ReadSource::init( )
 	}
 	
 	if (m_silent) {
-		m_length = TTimeRef(LLONG_MAX);
+        m_length = TTimeRef::max_length();
 		m_channelCount = 0;
 		m_origBitDepth = 16;
 		m_bufferstatus->fillStatus =  100;
@@ -645,8 +644,8 @@ BufferStatus* ReadSource::get_buffer_status()
 // 	printf("m_rbFileReadPos, m_length %lld, %lld\n", m_rbFileReadPos.universal_frame(), m_length.universal_frame());
 	TTimeRef transport = m_clip->get_sheet()->get_transport_location();
     TTimeRef syncstartlocation = m_clip->get_location_start();
-	bool transportBeforeSyncStartLocation = transport < (syncstartlocation - (3 * UNIVERSAL_SAMPLE_RATE));
-    bool transportAfterClipEndLocation = transport > (m_clip->get_location_end() + (3 * UNIVERSAL_SAMPLE_RATE));
+	bool transportBeforeSyncStartLocation = transport < (syncstartlocation - (3 * TTimeRef::UNIVERSAL_SAMPLE_RATE));
+    bool transportAfterClipEndLocation = transport > (m_clip->get_location_end() + (3 * TTimeRef::UNIVERSAL_SAMPLE_RATE));
 			
 	if (m_rbFileReadPos >= m_length || !m_active || transportBeforeSyncStartLocation || transportAfterClipEndLocation) {
 		m_bufferstatus->fillStatus =  100;

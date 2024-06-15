@@ -24,6 +24,8 @@ $Id: Driver.cpp,v 1.6 2007/03/19 11:18:57 r_sijrier Exp $
 #include "AudioDevice.h"
 #include "AudioChannel.h"
 
+#include <QString>
+
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
@@ -83,42 +85,37 @@ int TAudioDriver::_null_cycle( nframes_t  )
 
 int TAudioDriver::attach( )
 {
-        int port_flags;
-        char buf[32];
-        AudioChannel* chan;
+    // int port_flags;
+    // port_flags = PortIsOutput|PortIsPhysical|PortIsTerminal;
+
+    AudioChannel* chan;
+
+    m_frameRate = 44100;
+    m_framesPerCycle = 1024;
+
+    m_device->set_buffer_size (m_framesPerCycle);
+    m_device->set_sample_rate (m_frameRate);
 
 
-        m_frameRate = 44100;
-        m_framesPerCycle = 1024;
+    // Create 2 capture channels
+    for (uint chn=0; chn<2; chn++) {
+        chan = add_capture_channel(QString("capture_%1").arg(chn+1));
+        chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
+    }
 
-        m_device->set_buffer_size (m_framesPerCycle);
-        m_device->set_sample_rate (m_frameRate);
+    // Create 2 playback channels
+    for (uint chn=0; chn<2; chn++) {
+        chan = add_playback_channel(QString("playback_%1").arg(chn+1));
+        chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
+    }
 
-        port_flags = PortIsOutput|PortIsPhysical|PortIsTerminal;
-
-        // Create 2 capture channels
-        for (uint chn=0; chn<2; chn++) {
-                snprintf (buf, sizeof(buf) - 1, "capture_%d", chn+1);
-
-                chan = add_capture_channel(buf);
-                chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
-        }
-
-        // Create 2 playback channels
-        for (uint chn=0; chn<2; chn++) {
-                snprintf (buf, sizeof(buf) - 1, "playback_%d", chn+1);
-
-                chan = add_playback_channel(buf);
-                chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
-        }
-
-        return 1;
+    return 1;
 }
 
 AudioChannel* TAudioDriver::add_capture_channel(const QString& chanName)
 {
         PENTER;
-        AudioChannel* chan = audiodevice().create_channel(chanName, m_captureChannels.size(), ChannelIsInput);
+    AudioChannel* chan = audiodevice().create_channel(chanName, m_captureChannels.size(), AudioChannel::ChannelIsInput);
         m_captureChannels.append(chan);
         return chan;
 }
@@ -126,7 +123,7 @@ AudioChannel* TAudioDriver::add_capture_channel(const QString& chanName)
 AudioChannel* TAudioDriver::add_playback_channel(const QString& chanName)
 {
         PENTER;
-        AudioChannel* chan = audiodevice().create_channel(chanName, m_playbackChannels.size(), ChannelIsOutput);
+        AudioChannel* chan = audiodevice().create_channel(chanName, m_playbackChannels.size(), AudioChannel::ChannelIsOutput);
         m_playbackChannels.append(chan);
         return chan;
 }

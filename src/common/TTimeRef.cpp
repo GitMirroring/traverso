@@ -1,12 +1,19 @@
 #include "TTimeRef.h"
 
+#include <limits.h>
+
 TTimeRef::TTimeRef() {
     m_position = 0;
 }
 
 TTimeRef::TTimeRef(nframes_t frame, uint rate) {
     Q_ASSERT(rate);
-    m_position = (UNIVERSAL_SAMPLE_RATE / rate) * frame;
+    m_position = (TTimeRef::UNIVERSAL_SAMPLE_RATE / rate) * frame;
+}
+
+TTimeRef TTimeRef::max_length()
+{
+    return TTimeRef(LLONG_MAX);
 }
 
 TTimeRef::TTimeRef(qint64 position)

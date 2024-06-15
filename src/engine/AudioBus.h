@@ -27,6 +27,7 @@ $Id: AudioBus.h,v 1.7 2007/06/04 20:47:16 r_sijrier Exp $
 #include <QObject>
 #include <QList>
 #include <QString>
+#include "TAudioBusConfiguration.h"
 #include "defines.h"
 #include "AudioChannel.h"
 #include "APILinkedList.h"
@@ -36,8 +37,13 @@ class AudioBus : public QObject, public APILinkedListNode
 	Q_OBJECT
 
 public:
-        AudioBus(const BusConfig& config);
+        AudioBus(const TAudioBusConfiguration& config);
 	~AudioBus();
+
+        enum AudioBusFlags {
+            BusIsHardware = 1,
+            BusIsSoftware = 2
+        };
 
 
 	void add_channel(AudioChannel* chan);
@@ -61,8 +67,8 @@ public:
 	}
 
         void set_monitoring(bool monitor);
-        bool is_input() {return m_type == ChannelIsInput;}
-        bool is_output() {return m_type == ChannelIsOutput;}
+        bool is_input() {return m_type == AudioChannel::ChannelIsInput;}
+        bool is_output() {return m_type == AudioChannel::ChannelIsOutput;}
         bool is_valid() const;
         int get_type() const {return m_type;}
         int get_bus_type() const {return m_busType;}
@@ -76,7 +82,7 @@ public:
 		}
 	}
 
-        void process_monitoring(VUMonitors vumonitors) {
+        void process_monitoring(QList<TVUMonitor*> vumonitors) {
                 for (int i=0; i<m_channels.size(); ++i) {
                         m_channels.at(i)->process_monitoring(vumonitors.at(i));
                 }

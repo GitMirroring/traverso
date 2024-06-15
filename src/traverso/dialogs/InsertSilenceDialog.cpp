@@ -83,7 +83,7 @@ void InsertSilenceDialog::accept()
             m_track = shortestTrack;
         }
 
-        TTimeRef length = TTimeRef(lengthSpinBox->value() * UNIVERSAL_SAMPLE_RATE);
+        TTimeRef length = TTimeRef(lengthSpinBox->value() * TTimeRef::UNIVERSAL_SAMPLE_RATE);
         Import* cmd = new Import(m_track, length, true);
         TCommand::process_command(cmd);
     }

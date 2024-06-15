@@ -19,13 +19,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "libtraversocore.h"
-
 #include "Peak.h"
 
 #include "AbstractAudioReader.h" // Needed for DecodeBuffer declaration
+#include "Project.h"
+#include "ProjectManager.h"
 #include "ReadSource.h"
 #include "ResourcesManager.h"
+#include "Utils.h"
 #include "defines.h"
 #include "Mixer.h"
 #include "FileHelpers.h"
@@ -47,6 +48,8 @@ int Peak::zoomStep[] = {
 };
 
 QHash<int, int> Peak::chacheIndexLut;
+
+typedef short peak_data_t;
 
 Peak::Peak(AudioSource* source)
 {

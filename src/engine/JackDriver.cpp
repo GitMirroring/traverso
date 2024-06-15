@@ -37,6 +37,13 @@
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
+/**
+ * Used for the type argument of jack_port_register() for default
+ * audio ports.
+ */
+#define JACK_DEFAULT_AUDIO_TYPE "32 bit float mono audio"
+
+
 JackDriver::JackDriver(AudioDevice* device)
     : TAudioDriver(device)
 {
@@ -124,11 +131,11 @@ void JackDriver::add_channel(AudioChannel* channel)
         PENTER;
         PortChannelPair* pcpair = new PortChannelPair();
 
-        if (channel->get_type() == ChannelIsInput) {
+        if (channel->get_type() == AudioChannel::ChannelIsInput) {
 		pcpair->jackport = jack_port_register (m_jack_client, channel->get_name().toUtf8().data(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
         }
 
-        if (channel->get_type() == ChannelIsOutput) {
+        if (channel->get_type() == AudioChannel::ChannelIsOutput) {
 		pcpair->jackport = jack_port_register (m_jack_client, channel->get_name().toUtf8().data(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
         }
 
@@ -152,10 +159,10 @@ void JackDriver::add_channel(AudioChannel* channel)
 
 void JackDriver::private_add_port_channel_pair(PortChannelPair *pair)
 {
-        if (pair->channel->get_type() == ChannelIsInput) {
+        if (pair->channel->get_type() == AudioChannel::ChannelIsInput) {
                 m_inputs.append(pair);
         }
-        if (pair->channel->get_type() == ChannelIsOutput) {
+        if (pair->channel->get_type() == AudioChannel::ChannelIsOutput) {
                 m_outputs.append(pair);
         }
 }

@@ -105,7 +105,7 @@ void AudioChannel::set_buffer_size( nframes_t size )
 }
 
 
-void AudioChannel::process_monitoring(VUMonitor* monitor)
+void AudioChannel::process_monitoring(TVUMonitor* monitor)
 {
         Q_ASSERT(m_bufferSize > 0);
         float peakValue = 0;
@@ -115,7 +115,7 @@ void AudioChannel::process_monitoring(VUMonitor* monitor)
                 monitor->process(peakValue);
         }
 
-        apill_foreach(VUMonitor* internalmonitor, VUMonitor*, m_monitors) {
+        apill_foreach(TVUMonitor* internalmonitor, TVUMonitor*, m_monitors) {
                 internalmonitor->process(peakValue);
         }
 }
@@ -126,24 +126,24 @@ void AudioChannel::set_monitoring( bool monitor )
 }
 
 
-void AudioChannel::private_add_monitor(VUMonitor *monitor)
+void AudioChannel::private_add_monitor(TVUMonitor *monitor)
 {
         m_monitors.append(monitor);
 }
 
-void AudioChannel::private_remove_monitor(VUMonitor *monitor)
+void AudioChannel::private_remove_monitor(TVUMonitor *monitor)
 {
         if (!m_monitors.remove(monitor)) {
                 printf("AudioChannel:: VUMonitor was not in monitors list, failed to remove it!\n");
         }
 }
 
-void AudioChannel::add_monitor(VUMonitor *monitor)
+void AudioChannel::add_monitor(TVUMonitor *monitor)
 {
     tsar().thread_save_invoke_and_emit_signal(this, monitor, "private_add_monitor(VUMonitor*)", "");
 }
 
-void AudioChannel::remove_monitor(VUMonitor *monitor)
+void AudioChannel::remove_monitor(TVUMonitor *monitor)
 {
     tsar().thread_save_invoke_and_emit_signal(this, monitor, "private_remove_monitor(VUMonitor*)", "");
 }
@@ -155,28 +155,6 @@ void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframe
                 process_monitoring();
 //                audiodevice().send_to_master_out(this, m_bufferSize);
         }
-}
-
-
-/**
- *
- * @return The highest peak value since the previous call to this function,
- *		 call this at least 10 times each second to keep data consistent
- */
-audio_sample_t VUMonitor::get_peak_value( )
-{
-    if (m_flag) {
-        return 0.0;
-        }
-
-        float result = m_peak;
-
-        return result;
-}
-
-bool VUMonitor::is_smaller_then(APILinkedListNode *)
-{
-    return true;
 }
 
 

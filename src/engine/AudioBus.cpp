@@ -46,15 +46,15 @@ $Id: AudioBus.cpp,v 1.11 2008/01/21 16:22:15 r_sijrier Exp $
  * @param channels The number of AudioChannels to add to this AudioBus
  * @return a new AudioBus instance
  */
-AudioBus::AudioBus(const BusConfig& config)
+AudioBus::AudioBus(const TAudioBusConfiguration& config)
 {
         m_isMonitoring = true;
 
         m_name = config.name;
         if (config.type == "input") {
-                m_type = ChannelIsInput;
+                m_type = AudioChannel::ChannelIsInput;
         } else {
-                m_type = ChannelIsOutput;
+                m_type = AudioChannel::ChannelIsOutput;
         }
 
         if (config.bustype == "hardware") {

@@ -280,7 +280,7 @@ void AudioDriverConfigPage::restart_driver_button_clicked()
         m_driverSetupMessages.clear();
         driverInformationTextEdit->clear();
 
-        AudioDeviceSetup ads = audiodevice().get_device_setup();
+        TAudioDeviceSetup ads = audiodevice().get_device_setup();
     QString driver = driverCombo->currentText();
         ads.rate = rateComboBox->currentText().toInt();
         ads.bufferSize =  periodBufferSizesList.at(latencyComboBox->currentIndex());

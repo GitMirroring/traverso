@@ -294,7 +294,7 @@ static const int PEAK_HOLD_MODE = 1;		// 0 = no peak hold, 1 = dynamic, 2 = cons
 static const bool SHOW_RMS = false;		// toggle RMS lines on / off
 
 
-VUMeterLevelView::VUMeterLevelView(ViewItem* parent, VUMonitor* monitor)
+VUMeterLevelView::VUMeterLevelView(ViewItem* parent, TVUMonitor* monitor)
         : ViewItem(parent)
 {
         m_monitor = monitor;

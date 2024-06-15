@@ -21,13 +21,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ClipsViewPort.h"
 
+#include "AudioTrack.h"
+#include "Project.h"
+#include "ProjectManager.h"
+#include "ReadSource.h"
+#include "ResourcesManager.h"
 #include "SheetWidget.h"
 #include "SheetView.h"
+#include "Sheet.h"
 #include "AudioTrackView.h"
 #include "ViewItem.h"
-#include <libtraversocore.h>
-#include <Import.h>
-#include <CommandGroup.h>
+#include "Import.h"
+#include "CommandGroup.h"
 #include "RemoveClip.h"
 
 

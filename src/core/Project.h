@@ -25,14 +25,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QString>
 #include <QList>
 #include <QDomNode>
-#include "TSession.h"
-#include "APILinkedList.h"
 
-#include "TTransportControl.h"
+#include "TSession.h"
 #include "defines.h"
 
 class AudioBus;
 class AudioChannel;
+class TAudioBusConfiguration;
+class TTransportControl;
 class Sheet;
 class Track;
 class ResourcesManager;
@@ -60,7 +60,7 @@ public :
         AudioBus* get_capture_bus(const QString& name) const;
 
         AudioBus* get_audio_bus(qint64 id);
-        AudioBus* create_software_audio_bus(const BusConfig& config);
+        AudioBus* create_software_audio_bus(const TAudioBusConfiguration& config);
         void remove_software_audio_bus(AudioBus* bus);
         QList<TSend*> get_inputs_for_bus_track(TBusTrack* busTrack) const;
         void setup_default_hardware_buses();

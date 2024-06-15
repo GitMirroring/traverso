@@ -3,7 +3,6 @@
 
 #include <QString>
 #include <QStringList>
-#include "FastDelegate.h"
 
 // Implementation for atomic int get/set from glibc's atomic.h/c
 // to get rid of the glib dependency!
@@ -34,84 +33,11 @@ static inline void t_atomic_int_set (volatile int *atomic, int newval)
 #endif // ENDIF __ppc__
 
 
-using namespace fastdelegate;
-
 /**
  * Type used to represent sample frame counts.
  */
 typedef uint32_t     nframes_t;
 
-enum {
-	TransportStopped = 0,
-	TransportRolling = 1,
-  	TransportLooping = 2,
-  	TransportStarting = 3
-};
-
-enum ChannelFlags {
-        ChannelIsInput = 1,
-        ChannelIsOutput = 2
-};
-
-enum AudioBusFlags {
-        BusIsHardware = 1,
-        BusIsSoftware = 2
-};
-
-typedef struct {
-        QString name;
-        QString type;
-        QString destination;
-} ChannelConfig;
-
-struct BusConfig {
-        BusConfig() {
-                id = -1;
-                channelcount = 0;
-                isInternalBus = false;
-                bustype = "software";
-        }
-
-        QString name;
-        QStringList channelNames;
-        QString type;
-        QString bustype;
-        int channelcount;
-        bool isInternalBus;
-        qint64 id;
-};
-
-class AudioChannel;
-struct AudioDeviceSetup {
-        AudioDeviceSetup() {
-                rate = 44100;
-                bufferSize = 1024;
-                driverType = "default";
-                playback = capture = true;
-                cardDevice = "";
-                ditherShape = "None";
-        }
-
-        QList<BusConfig>        busConfigs;
-        QList<ChannelConfig>    channelConfigs;
-        QList<AudioChannel*>    jackChannels;
-        uint             rate;
-        nframes_t       bufferSize;
-        QString         driverType;
-        bool            capture;
-        bool            playback;
-        QString         cardDevice;
-        QString         ditherShape;
-};
-
-#define MouseScrollHorizontalLeft -1
-#define MouseScrollHorizontalRight -2
-#define MouseScrollVerticalUp -3
-#define MouseScrollVerticalDown -4
-
-
-class VUMonitor;
-typedef QList<VUMonitor*> VUMonitors;
 
 /**
  * Type used to represent the value of free running
@@ -122,16 +48,9 @@ typedef long trav_time_t;
 typedef unsigned long          channel_t;
 
 typedef float audio_sample_t;
-// typedef unsigned char peak_data_t;
-typedef short peak_data_t;
 
 
 
-/**
- * Used for the type argument of jack_port_register() for default
- * audio ports.
- */
-#define JACK_DEFAULT_AUDIO_TYPE "32 bit float mono audio"
 
 
 

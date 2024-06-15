@@ -39,9 +39,9 @@ TTimeRef msms_to_timeref(QString str)
     static QRegularExpression expression("[;,.:]");
     QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
-    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
-    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * UNIVERSAL_SAMPLE_RATE);
-    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE / 1000);
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE / 1000);
 
 	return out;
 }
@@ -52,9 +52,9 @@ TTimeRef cd_to_timeref(QString str)
     static QRegularExpression expression("[;,.:]");
     QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
-    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
-    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * UNIVERSAL_SAMPLE_RATE);
-    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE / 75);
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE / 75);
 
 	return out;
 }
@@ -65,10 +65,10 @@ TTimeRef cd_to_timeref_including_hours(QString str)
     static QRegularExpression expression("[;,.:]");
     QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
 
-    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
-    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
-    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * UNIVERSAL_SAMPLE_RATE);
-    if (lst.size() >= 4) out += TTimeRef(lst.at(3).toInt() * UNIVERSAL_SAMPLE_RATE / 75);
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 4) out += TTimeRef(lst.at(3).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE / 75);
 
 	return out;
 }
@@ -134,11 +134,11 @@ QString timeref_to_hms(const TTimeRef& ref)
 
 	qint64 universalframe = ref.universal_frame();
 
-	hours = (int) (universalframe / ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
-	remainder = qint64(universalframe - (hours * ONE_HOUR_UNIVERSAL_SAMPLE_RATE));
-	mins = (int) (remainder / ( ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
-	remainder -= mins * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE;
-	secs = (int) (remainder / UNIVERSAL_SAMPLE_RATE);
+    hours = (int) (universalframe / TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    remainder = qint64(universalframe - (hours * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE));
+    mins = (int) (remainder / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
+    remainder -= mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE;
+    secs = (int) (remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE);
     QString spos("%1:%2%3");
     return spos.arg(hours, 2, 10, QLatin1Char('0')).arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0'));
 
@@ -151,9 +151,9 @@ QString timeref_to_ms(const TTimeRef& ref)
 
 	qint64 universalframe = ref.universal_frame();
 
-	mins = (int) (universalframe / ( ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
-	remainder = (long unsigned int) (universalframe - (mins * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE));
-	secs = (int) (remainder / UNIVERSAL_SAMPLE_RATE);
+    mins = (int) (universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
+    remainder = (long unsigned int) (universalframe - (mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE));
+    secs = (int) (remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE);
     QString spos("%1:%2");
     return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0'));
 }
@@ -166,11 +166,11 @@ QString timeref_to_ms_2 (const TTimeRef& ref)
 
 	qint64 universalframe = ref.universal_frame();
 
-	mins = universalframe / ( ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	remainder = universalframe - ( mins * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	secs = remainder / UNIVERSAL_SAMPLE_RATE;
-	remainder -= secs * UNIVERSAL_SAMPLE_RATE;
-	frames = remainder * 100 / UNIVERSAL_SAMPLE_RATE;
+    mins = universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    remainder = universalframe - ( mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    frames = remainder * 100 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
     QString spos("%1:%2%3%4");
     return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(QLocale::system().decimalPoint()).arg(frames, 2, 10, QLatin1Char('0'));
 }
@@ -183,11 +183,11 @@ QString timeref_to_ms_3(const TTimeRef& ref)
 
 	qint64 universalframe = ref.universal_frame();
 
-	mins = universalframe / ( ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	remainder = universalframe - ( mins * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	secs = remainder / UNIVERSAL_SAMPLE_RATE;
-	remainder -= secs * UNIVERSAL_SAMPLE_RATE;
-	frames = remainder * 1000 / UNIVERSAL_SAMPLE_RATE;
+    mins = universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    remainder = universalframe - ( mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    frames = remainder * 1000 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
     QString spos("%1:%2%3%4");
     return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(QLocale::system().decimalPoint()).arg(frames, 3, 10, QLatin1Char('0'));
 }
@@ -200,11 +200,11 @@ QString timeref_to_cd (const TTimeRef& ref)
 
 	qint64 universalframe = ref.universal_frame();
 
-	mins = universalframe / ( ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	remainder = universalframe - ( mins * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	secs = remainder / UNIVERSAL_SAMPLE_RATE;
-	remainder -= secs * UNIVERSAL_SAMPLE_RATE;
-	frames = remainder * 75 / UNIVERSAL_SAMPLE_RATE;
+    mins = universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    remainder = universalframe - ( mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    frames = remainder * 75 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
     QString spos("%1:%2%3");
     return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(frames, 2, 10, QLatin1Char('0'));
 }
@@ -217,13 +217,13 @@ QString timeref_to_cd_including_hours (const TTimeRef& ref)
 
 	qint64 universalframe = ref.universal_frame();
 
-	hours = int(universalframe / ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
-	remainder = qint64(universalframe - (hours * ONE_HOUR_UNIVERSAL_SAMPLE_RATE));
-	mins = (int) (remainder / ( ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
-	remainder -= mins * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE;
-	secs = (int) (remainder / UNIVERSAL_SAMPLE_RATE);
-	remainder -= secs * UNIVERSAL_SAMPLE_RATE;
-	frames = remainder * 75 / UNIVERSAL_SAMPLE_RATE;
+    hours = int(universalframe / TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    remainder = qint64(universalframe - (hours * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE));
+    mins = (int) (remainder / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
+    remainder -= mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE;
+    secs = (int) (remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    frames = remainder * 75 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
 
     QString spos("%1:%2%3%4");
     return spos.arg(hours, 2, 10, QLatin1Char('0')).arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(frames, 2, 10, QLatin1Char('0'));
@@ -272,101 +272,3 @@ bool t_MetaobjectInheritsClass(const QMetaObject *mo, const QString& className)
 	return false;
 }
 
-bool t_KeyStringToKeyValue(int &variable, const QString &text)
-{
-	if (text == "NUMERICAL")
-	{
-		return true;
-	}
-
-	variable = 0;
-	QString s;
-	int x  = 0;
-    if ((text != "") && (text.length() > 0) ) {
-		s="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-		x = s.indexOf(text);
-		if (x>=0) {
-			variable = Qt::Key_A + x;
-		} else {
-			s="|ESC     |TAB     |BACKTAB |BKSPACE |RETURN  |ENTER   |INSERT  |DELETE  "
-			"|PAUSE   |PRINT   |SYSREQ  |CLEAR   ";
-			x = s.indexOf("|" + text);
-			if (x>=0)
-				variable = Qt::Key_Escape + (x/9);
-			else {
-				s="|HOME    |END     |LEFTARROW  |UPARROW  |RIGHTARROW  "
-				"|DOWNARROW  |PRIOR   |NEXT    ";
-				x = s.indexOf("|" + text);
-				if (x>=0)
-					variable = Qt::Key_Home + (x/9);
-				else {
-					s="|SHIFT   |CTRL    |META    |ALT     |CAPS    "
-					"|NUMLOCK |SCROLL  ";
-					x = s.indexOf("|" + text);
-					if (x>=0)
-						variable = Qt::Key_Shift + (x/9);
-					else {
-						s="F1 F2 F3 F4 F5 F6 F7 F8 F9 F10F11F12";
-						x=s.indexOf(text);
-						if (x>=0) {
-							variable = Qt::Key_F1 + (x/3);
-						} else if (text=="SPACE") {
-							variable = Qt::Key_Space;
-						} else if (text == "MOUSEBUTTONLEFT") {
-							variable = Qt::LeftButton;
-						} else if (text == "MOUSEBUTTONRIGHT") {
-							variable = Qt::RightButton;
-						} else if (text == "MOUSEBUTTONMIDDLE") {
-                            variable = Qt::MiddleButton;
-						} else if (text == "MOUSEBUTTONX1") {
-							variable = Qt::XButton1;
-						} else if (text == "MOUSEBUTTONX2") {
-							variable = Qt::XButton2;
-						} else if (text == "MOUSESCROLLHORIZONTALLEFT") {
-							variable = MouseScrollHorizontalLeft;
-						} else if (text =="MOUSESCROLLHORIZONTALRIGHT") {
-							variable = MouseScrollHorizontalRight;
-						} else if (text == "MOUSESCROLLVERTICALUP") {
-							variable = MouseScrollVerticalUp;
-						} else if( text == "MOUSESCROLLVERTICALDOWN") {
-							variable = MouseScrollVerticalDown;
-						} else if( text == "/") {
-							variable = Qt::Key_Slash;
-						} else if ( text == "\\") {
-							variable = Qt::Key_Backslash;
-						} else if ( text == "[") {
-							variable = Qt::Key_BracketLeft;
-						} else if ( text == "]") {
-							variable = Qt::Key_BracketRight;
-						} else if ( text == "PAGEUP") {
-							variable = Qt::Key_PageUp;
-						} else if ( text == "PAGEDOWN") {
-							variable = Qt::Key_PageDown;
-						} else if (text == "MINUS") {
-							variable = Qt::Key_Minus;
-						} else if (text == "PLUS") {
-							variable = Qt::Key_Plus;
-						} else if (text == ";") {
-							variable = Qt::Key_Semicolon;
-						} else if (text == "'") {
-							variable = Qt::Key_Apostrophe;
-						} else if (text == ",") {
-							variable = Qt::Key_Comma;
-						} else if (text == ".") {
-							variable = Qt::Key_Period;
-						} else {
-							printf("KeyStringToValue: No value found for key %s\n", QS_C(text));
-							return false;
-						}
-					}
-				}
-			}
-		}
-
-
-
-	}
-
-	// Code found, return true
-	return true;
-}

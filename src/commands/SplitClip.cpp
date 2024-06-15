@@ -20,11 +20,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "SplitClip.h"
-		
-#include <libtraversocore.h>
+
+#include "AudioClip.h"
+#include "AudioTrack.h"
+#include "ProjectManager.h"
+#include "ResourcesManager.h"
+#include "Sheet.h"
 #include "SheetView.h"
 #include "AudioClipView.h"
 #include "LineView.h"
+#include "SnapList.h"
 #include "ViewItem.h"
 #include "Fade.h"
 #include "Themer.h"

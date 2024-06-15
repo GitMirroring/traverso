@@ -34,7 +34,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ProjectManager.h"
 #include "ResourcesManager.h"
 #include "Utils.h"
-#include <climits>
 #include "AddRemove.h"
 #include "PCommand.h"
 
@@ -368,7 +367,7 @@ void AudioTrack::get_render_range(TTimeRef& startlocation, TTimeRef& endlocation
     }
 
     endlocation = TTimeRef();
-    startlocation = LLONG_MAX;
+    startlocation = TTimeRef::max_length();
 
     for(AudioClip* clip : m_audioClips) {
         if (! clip->is_muted() ) {

@@ -140,7 +140,7 @@ void ProjectManager::set_current_project(Project* project)
                 emit projectLoaded(m_currentProject);
         } else if (!m_exitInProgress) {
                 // free the audiodevice, but only if we don't want to quit.
-                audiodevice().set_parameters(AudioDeviceSetup());
+                audiodevice().set_parameters(TAudioDeviceSetup());
         }
 
 	if ( ! oldprojectname.isEmpty() ) {

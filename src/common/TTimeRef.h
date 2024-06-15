@@ -5,24 +5,25 @@
 #include <QMetaType>
 #include "defines.h"
 
-// Universal samplerate for the frequences 22050, 32000, 44100, 88200, 96000 and 192000 Hz
-static const qint64 UNIVERSAL_SAMPLE_RATE = 28224000;
-static const qint64 ONE_HOUR_UNIVERSAL_SAMPLE_RATE = 101606400000LL;
-static const qint64 ONE_MINUTE_UNIVERSAL_SAMPLE_RATE = 1693440000LL;
+
 
 class TTimeRef {
 
 public:
+    // Universal samplerate for the frequences 22050, 32000, 44100, 88200, 96000 and 192000 Hz
+    static const qint64 UNIVERSAL_SAMPLE_RATE = 28224000;
+    static const qint64 ONE_HOUR_UNIVERSAL_SAMPLE_RATE = 101606400000LL;
+    static const qint64 ONE_MINUTE_UNIVERSAL_SAMPLE_RATE = 1693440000LL;
 
     TTimeRef();
     explicit TTimeRef(qint64 position);
     explicit TTimeRef(double position);
-
     TTimeRef(nframes_t frame, uint rate);
-
     TTimeRef(qreal frame, uint rate) {
         m_position = qint64((qreal(UNIVERSAL_SAMPLE_RATE) / rate) * frame);
     }
+
+    static TTimeRef max_length();
 
     void add_frames(nframes_t frames, uint rate) {
         m_position += ((UNIVERSAL_SAMPLE_RATE / rate) * frames);

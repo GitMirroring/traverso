@@ -223,12 +223,12 @@ void NewTrackDialog::update_buses_comboboxes()
         item->setForeground(QColor("grey"));
         item->setFlags(Qt::NoItemFlags);
         foreach(AudioBus* bus, hardwareBuses) {
-            if (isAudioTrack->isChecked() && bus->get_type() == ChannelIsInput) {
+            if (isAudioTrack->isChecked() && bus->get_type() == AudioChannel::ChannelIsInput) {
                 QListWidgetItem* item = new QListWidgetItem(routingInputListWidget);
                 item->setText(bus->get_name());
                 item->setData(Qt::UserRole, bus->get_id());
             }
-            if (bus->get_type() == ChannelIsOutput) {
+            if (bus->get_type() == AudioChannel::ChannelIsOutput) {
                 QListWidgetItem* item = new QListWidgetItem(routingOutputListWidget);
                 item->setText(bus->get_name());
                 item->setData(Qt::UserRole, bus->get_id());

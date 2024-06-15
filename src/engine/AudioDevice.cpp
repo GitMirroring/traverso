@@ -307,9 +307,9 @@ void AudioDevice::delay( float  )
  * re-inits the AlsaDriver with the new paramaters, when succesfull emits the driverParamsChanged() signal,
  * restarts the AudioDeviceThread and emits the started() signal
  *
- * @param AudioDeviceSetup Contains all parameters the AudioDevice needs
+ * @param TAudioDeviceSetup Contains all parameters the AudioDevice needs
  */
-void AudioDevice::set_parameters(AudioDeviceSetup ads)
+void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 {
     PENTER;
 
@@ -898,7 +898,7 @@ void AudioDevice::transport_start(TAudioDeviceClient * client)
     }
 #endif
 
-    m_transportControl->set_state(TransportRolling);
+    m_transportControl->set_state(TTransportControl::Rolling);
     m_transportControl->set_slave(false);
     m_transportControl->set_realtime(false);
     m_transportControl->set_location(TTimeRef()); // get from client!!
@@ -917,7 +917,7 @@ void AudioDevice::transport_stop(TAudioDeviceClient * client, TTimeRef location)
     }
 #endif
 
-    m_transportControl->set_state(TransportStopped);
+    m_transportControl->set_state(TTransportControl::Stopped);
     m_transportControl->set_slave(false);
     m_transportControl->set_realtime(false);
     m_transportControl->set_location(location);
@@ -937,7 +937,7 @@ int AudioDevice::transport_seek_to(TAudioDeviceClient* client, TTimeRef location
     }
 #endif
 
-    m_transportControl->set_state(TransportStarting);
+    m_transportControl->set_state(TTransportControl::Starting);
     m_transportControl->set_slave(false);
     m_transportControl->set_realtime(false);
     m_transportControl->set_location(location);

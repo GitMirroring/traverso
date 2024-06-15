@@ -576,12 +576,12 @@ void TInputEventDispatcher::catch_mousebutton_release( QMouseEvent * e )
 void TInputEventDispatcher::catch_scroll(QWheelEvent* e)
 {
     if (e->angleDelta().y() > 0) {
-        process_press_event(MouseScrollVerticalUp);
-        process_release_event(MouseScrollVerticalUp);
+        process_press_event(TShortcutManager::MouseScrollVerticalUp);
+        process_release_event(TShortcutManager::MouseScrollVerticalUp);
     }
     if (e->angleDelta().y() < 0) {
-        process_press_event(MouseScrollVerticalDown);
-        process_release_event(MouseScrollVerticalDown);
+        process_press_event(TShortcutManager::MouseScrollVerticalDown);
+        process_release_event(TShortcutManager::MouseScrollVerticalDown);
     }
 }
 

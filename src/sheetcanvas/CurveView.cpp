@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "SheetView.h"
 #include "CurveNodeView.h"
 #include <Themer.h>
-#include "AudioDevice.h"
 
 #include <Curve.h>
 #include <CurveNode.h>
@@ -41,7 +40,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define NODE_SOFT_SELECTION_DISTANCE 40
 
 
-#include <climits>
 #include <cfloat>
 
 CurveView::CurveView(SheetView* sv, ViewItem* parentViewItem, Curve* curve)

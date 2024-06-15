@@ -92,7 +92,7 @@ void TBusTrack::create_process_bus()
                 return;
         }
         m_type = BUS;
-        BusConfig busConfig;
+        TAudioBusConfiguration busConfig;
         busConfig.name = m_name;
         busConfig.channelcount = m_channelCount;
         busConfig.type = "output";

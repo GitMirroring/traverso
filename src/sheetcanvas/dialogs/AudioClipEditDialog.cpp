@@ -356,7 +356,7 @@ void AudioClipEditDialog::fadeout_default()
 
 TTimeRef AudioClipEditDialog::qtime_to_timeref(const QTime & time)
 {
-	TTimeRef ref(time.hour() * ONE_HOUR_UNIVERSAL_SAMPLE_RATE + time.minute() * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE + time.second() * UNIVERSAL_SAMPLE_RATE + (time.msec() * UNIVERSAL_SAMPLE_RATE) / 1000);
+    TTimeRef ref(time.hour() * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE + time.minute() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE + time.second() * TTimeRef::UNIVERSAL_SAMPLE_RATE + (time.msec() * TTimeRef::UNIVERSAL_SAMPLE_RATE) / 1000);
 	return ref;
 }
 
@@ -367,13 +367,13 @@ QTime AudioClipEditDialog::timeref_to_qtime(const TTimeRef& ref)
 
 	qint64 universalframe = ref.universal_frame();
 	
-	hours = universalframe / (ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
-	remainder = universalframe - (hours * ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
-	mins = remainder / ( ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	remainder = remainder - (mins * ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	secs = remainder / UNIVERSAL_SAMPLE_RATE;
-	remainder -= secs * UNIVERSAL_SAMPLE_RATE;
-	msec = remainder * 1000 / UNIVERSAL_SAMPLE_RATE;
+    hours = universalframe / (TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    remainder = universalframe - (hours * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    mins = remainder / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    remainder = remainder - (mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+	secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+	remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+	msec = remainder * 1000 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
 
 	QTime time(hours, mins, secs, msec);
 	return time;

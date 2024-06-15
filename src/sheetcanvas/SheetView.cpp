@@ -84,7 +84,7 @@ SheetView::SheetView(SheetWidget* sheetwidget,
 	m_viewportReady = false;
     m_sheetMasterOutView = nullptr;
     m_projectMasterOutView = nullptr;
-	timeref_scalefactor = UNIVERSAL_SAMPLE_RATE;
+    timeref_scalefactor = TTimeRef::UNIVERSAL_SAMPLE_RATE;
     m_hasMouseTracking = true;
 
 	m_clipsViewPort->scene()->addItem(this);
@@ -167,7 +167,7 @@ void SheetView::scale_factor_changed( )
 		// will be zero too, and we use timeref_scalefactor as a divider so...:
 		zoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
 	}
-	timeref_scalefactor = qint64(zoom * (UNIVERSAL_SAMPLE_RATE / 44100));
+    timeref_scalefactor = qint64(zoom * (TTimeRef::UNIVERSAL_SAMPLE_RATE / 44100));
 	m_tlvp->scale_factor_changed();
 
 	update_tracks_bounding_rect();

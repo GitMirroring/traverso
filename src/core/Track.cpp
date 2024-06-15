@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include "ProjectManager.h"
 #include "Project.h"
+#include "TAudioBusConfiguration.h"
 #include "Utils.h"
 #include "TBusTrack.h"
 #include "TSend.h"
@@ -47,7 +48,7 @@ Track::Track(TSession* session)
         m_channelCount = 2;
 
         for (int i=0; i<2; ++i) {
-                m_vumonitors.append(new VUMonitor());
+                m_vumonitors.append(new TVUMonitor());
         }
 
         Project* project = pm().get_project();
@@ -537,11 +538,11 @@ bool Track::connect_to_jack(bool inports, bool outports)
         Project* project = pm().get_project();
         AudioBus* bus = 0;
 
-        BusConfig busconfig;
+        TAudioBusConfiguration busconfig;
         busconfig.channelcount = m_channelCount;
         busconfig.name = m_name;
 
-        ChannelConfig channelconfig;
+        TAudioChannelConfiguration channelconfig;
 
         if (outports) {
                 for (int chan=0; chan<m_channelCount; ++chan) {
@@ -584,7 +585,7 @@ bool Track::disconnect_from_jack(bool inports, bool outports)
         if (outports) {
                 QList<qint64> jackSends;
                 apill_foreach(TSend* send, TSend*, m_postSends) {
-                        if (send->get_bus()->get_bus_type() == BusIsSoftware) {
+                    if (send->get_bus()->get_bus_type() == AudioBus::BusIsSoftware) {
                                 jackSends.append(send->get_id());
                                 project->remove_software_audio_bus(send->get_bus());
                         }

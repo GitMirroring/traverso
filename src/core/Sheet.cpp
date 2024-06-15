@@ -165,7 +165,7 @@ void Sheet::init()
 
     mixdown = gainbuffer = nullptr;
 
-        BusConfig busConfig;
+        TAudioBusConfiguration busConfig;
         busConfig.name = "Sheet Render Bus";
         busConfig.channelcount = 2;
         busConfig.type = "output";
@@ -984,7 +984,7 @@ TCommand* Sheet::start_transport()
 int Sheet::transport_control(TTransportControl *transportControl)
 {
         switch(transportControl->get_state()) {
-	case TransportStopped:
+    case TTransportControl::Stopped:
                 if (transportControl->get_location() != m_transportLocation) {
                         initiate_seek_start(transportControl->get_location());
                 }
@@ -996,7 +996,7 @@ int Sheet::transport_control(TTransportControl *transportControl)
 		}
 		return true;
 	
-	case TransportStarting:
+    case TTransportControl::Starting:
                 printf("TransportStarting\n");
         if (transportControl->get_location() != m_transportLocation) {
                         initiate_seek_start(transportControl->get_location());
@@ -1028,7 +1028,7 @@ int Sheet::transport_control(TTransportControl *transportControl)
 			return false;
 		}
 	
-	case TransportRolling:
+    case TTransportControl::Rolling:
 		if (!is_transport_rolling()) {
 			// When the transport rolling request came from a non slave
 			// driver, we currently can assume it's comming from the GUI 

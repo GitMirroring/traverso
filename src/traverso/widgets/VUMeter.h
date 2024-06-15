@@ -31,7 +31,7 @@
 class AudioBus;
 class AudioChannel;
 class VUMeterLevel;
-class VUMonitor;
+class TVUMonitor;
 class QLabel;
 class QHBoxLayout;
 class QVBoxLayout;
@@ -181,7 +181,7 @@ private:
         bool 		activeTail{};
 	bool		peakHoldFalling;
         AudioChannel*	m_channel;
-        VUMonitor*      m_monitor;
+        TVUMonitor*      m_monitor;
         QBrush		levelClearColor,
 			m_colBg;
         QPixmap		levelPixmap;

@@ -8,6 +8,14 @@ class TTransportControl
 public:
     TTransportControl();
 
+    enum {
+        Stopped = 0,
+        Rolling = 1,
+        Looping = 2,
+        Starting = 3
+    };
+
+
     int get_state() const {return m_state;}
     bool is_slave() const {return m_isSlave;}
     bool is_realtime() const {return m_isRealTime;}

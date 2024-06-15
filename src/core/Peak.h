@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QHash>
 #include <QPair>
 
+#include "TTimeRef.h"
 #include "defines.h"
 
 class ReadSource;
@@ -102,6 +103,7 @@ public:
 	// for samples in the range [-4, +4] or + 12 dB
 	static const int MAX_DB_VALUE = 8000;
 	static int zoomStep[ZOOM_LEVELS + 1];
+
 
 	Peak(AudioSource* source);
 	~Peak();

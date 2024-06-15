@@ -21,10 +21,13 @@
 
 #include "PlayHeadMove.h"
 
-#include <libtraversocore.h>
 #include "SheetView.h"
 #include "ClipsViewPort.h"
 #include "Cursors.h"
+#include "SnapList.h"
+#include "TSession.h"
+#include "TConfig.h"
+#include "TInputEventDispatcher.h"
 
 #include <Debugger.h>
 

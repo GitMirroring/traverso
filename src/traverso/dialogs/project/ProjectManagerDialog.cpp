@@ -21,7 +21,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ProjectManagerDialog.h"
 
-#include "libtraversocore.h"
+#include "Information.h"
+#include "ProjectManager.h"
+
 #include <QStringList>
 #include <QInputDialog>
 #include <QHeaderView>
@@ -30,12 +32,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QFileDialog>
 #include <QDir>
 #include <QMessageBox>
+#include <QUndoStack>
 #include <dialogs/project/NewSheetDialog.h>
+#include "Project.h"
+#include "Sheet.h"
+#include "TCommand.h"
 #include "TMainWindow.h"
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
+#include "Utils.h"
 
 ProjectManagerDialog::ProjectManagerDialog( QWidget * parent )
 	: QDialog(parent)

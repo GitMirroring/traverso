@@ -305,7 +305,7 @@ TShortcut* TShortcutManager::getShortcutForKey(const QString &keyString)
 {
 	int keyValue = -1;
 
-	if (!t_KeyStringToKeyValue(keyValue, keyString)) {
+    if (!keyboard_key_string_to_numerical_value(keyString, keyValue)) {
 	       info().warning(tr("Shortcut Manager: Loaded keymap has this unrecognized key: %1").arg(keyString));
            return nullptr;
 	}
@@ -1261,7 +1261,7 @@ void TShortcutManager::loadShortcuts()
 		foreach(QString string, modifiers)
 		{
 			int modifier;
-			if (t_KeyStringToKeyValue(modifier, string))
+            if (keyboard_key_string_to_numerical_value(string, modifier))
 			{
 				function->m_modifierkeys << modifier;
 			}
@@ -1345,7 +1345,7 @@ void TShortcutManager::modifyFunctionKeys(TFunction *function, const QStringList
 	foreach(QString string, modifiers)
 	{
 		int modifier;
-		if (t_KeyStringToKeyValue(modifier, string))
+        if (keyboard_key_string_to_numerical_value(string, modifier))
 		{
 			function->m_modifierkeys << modifier;
 		}
@@ -1562,5 +1562,104 @@ bool TShortcutManager::classInherits(const QString& className, const QString &in
 	}
 
 	return false;
+}
+
+bool TShortcutManager::keyboard_key_string_to_numerical_value(const QString &text, int &value)
+{
+    if (text == "NUMERICAL")
+    {
+        return true;
+    }
+
+    value = 0;
+    QString s;
+    int x  = 0;
+    if ((text != "") && (text.length() > 0) ) {
+        s="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        x = s.indexOf(text);
+        if (x>=0) {
+            value = Qt::Key_A + x;
+        } else {
+            s="|ESC     |TAB     |BACKTAB |BKSPACE |RETURN  |ENTER   |INSERT  |DELETE  "
+                "|PAUSE   |PRINT   |SYSREQ  |CLEAR   ";
+            x = s.indexOf("|" + text);
+            if (x>=0)
+                value = Qt::Key_Escape + (x/9);
+            else {
+                s="|HOME    |END     |LEFTARROW  |UPARROW  |RIGHTARROW  "
+                    "|DOWNARROW  |PRIOR   |NEXT    ";
+                x = s.indexOf("|" + text);
+                if (x>=0)
+                    value = Qt::Key_Home + (x/9);
+                else {
+                    s="|SHIFT   |CTRL    |META    |ALT     |CAPS    "
+                        "|NUMLOCK |SCROLL  ";
+                    x = s.indexOf("|" + text);
+                    if (x>=0)
+                        value = Qt::Key_Shift + (x/9);
+                    else {
+                        s="F1 F2 F3 F4 F5 F6 F7 F8 F9 F10F11F12";
+                        x=s.indexOf(text);
+                        if (x>=0) {
+                            value = Qt::Key_F1 + (x/3);
+                        } else if (text=="SPACE") {
+                            value = Qt::Key_Space;
+                        } else if (text == "MOUSEBUTTONLEFT") {
+                            value = Qt::LeftButton;
+                        } else if (text == "MOUSEBUTTONRIGHT") {
+                            value = Qt::RightButton;
+                        } else if (text == "MOUSEBUTTONMIDDLE") {
+                            value = Qt::MiddleButton;
+                        } else if (text == "MOUSEBUTTONX1") {
+                            value = Qt::XButton1;
+                        } else if (text == "MOUSEBUTTONX2") {
+                            value = Qt::XButton2;
+                        } else if (text == "MOUSESCROLLHORIZONTALLEFT") {
+                            value = TShortcutManager::MouseScrollHorizontalLeft;
+                        } else if (text =="MOUSESCROLLHORIZONTALRIGHT") {
+                            value = TShortcutManager::MouseScrollHorizontalRight;
+                        } else if (text == "MOUSESCROLLVERTICALUP") {
+                            value = TShortcutManager::MouseScrollVerticalUp;
+                        } else if( text == "MOUSESCROLLVERTICALDOWN") {
+                            value = TShortcutManager::MouseScrollVerticalDown;
+                        } else if( text == "/") {
+                            value = Qt::Key_Slash;
+                        } else if ( text == "\\") {
+                            value = Qt::Key_Backslash;
+                        } else if ( text == "[") {
+                            value = Qt::Key_BracketLeft;
+                        } else if ( text == "]") {
+                            value = Qt::Key_BracketRight;
+                        } else if ( text == "PAGEUP") {
+                            value = Qt::Key_PageUp;
+                        } else if ( text == "PAGEDOWN") {
+                            value = Qt::Key_PageDown;
+                        } else if (text == "MINUS") {
+                            value = Qt::Key_Minus;
+                        } else if (text == "PLUS") {
+                            value = Qt::Key_Plus;
+                        } else if (text == ";") {
+                            value = Qt::Key_Semicolon;
+                        } else if (text == "'") {
+                            value = Qt::Key_Apostrophe;
+                        } else if (text == ",") {
+                            value = Qt::Key_Comma;
+                        } else if (text == ".") {
+                            value = Qt::Key_Period;
+                        } else {
+                            printf("KeyStringToValue: No value found for key %s\n", QS_C(text));
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+    }
+
+    // Code found, return true
+    return true;
 }
 

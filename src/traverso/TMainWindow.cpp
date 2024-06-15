@@ -21,12 +21,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "../config.h"
 
-#include <libtraversocore.h>
-#include "libtraversosheetcanvas.h"
-#include "commands.h"
-#include "TShortcutManager.h"
+#include "TMainWindow.h"
 
-#include "AudioChannel.h"
+
+#include "AudioClip.h"
+#include "AudioClipView.h"
+#include "Information.h"
+#include "Marker.h"
+#include "Project.h"
+#include "ReadSource.h"
+#include "Sheet.h"
+#include "SheetView.h"
+#include "Track.h"
+#include "TBusTrack.h"
+#include "TVUMonitor.h"
+#include "TShortcutManager.h"
+#include "TInputEventDispatcher.h"
+
 #include <AudioDevice.h>
 
 #include <QDockWidget>
@@ -43,8 +54,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QCompleter>
 #include <QStandardItemModel>
 
-#include "TMainWindow.h"
 #include "ProjectManager.h"
+#include "TrackView.h"
 #include "ViewPort.h"
 #include "FadeCurve.h"
 #include "TConfig.h"
@@ -793,7 +804,7 @@ void TMainWindow::create_menus( )
 	list.append(QKeySequence("CTRL+Q"));
 	action->setShortcuts(list);
 	action->setIcon(QIcon(":/exit"));
-	connect(action, SIGNAL(triggered( bool )), &pm(), SLOT(exit()));
+    connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(exit()));
 
 
 	menu = m_mainMenuBar->addMenu(tr("&Edit"));
@@ -804,14 +815,14 @@ void TMainWindow::create_menus( )
 	action->setIcon(QIcon(":/undo"));
 	action->setShortcuts(QKeySequence::Undo);
 	m_editToolBar->addAction(action);
-	connect(action, SIGNAL(triggered( bool )), &pm(), SLOT(undo()));
+    connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(undo()));
 
 	action = menu->addAction(tr("Redo"));
 	m_projectMenuToolbarActions.append(action);
 	action->setIcon(QIcon(":/redo"));
 	action->setShortcuts(QKeySequence::Redo);
 	m_editToolBar->addAction(action);
-	connect(action, SIGNAL(triggered( bool )), &pm(), SLOT(redo()));
+    connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(redo()));
 
 	menu->addSeparator();
 	m_editToolBar->addSeparator();
@@ -906,10 +917,10 @@ void TMainWindow::create_menus( )
 	connect(action, SIGNAL(triggered(bool)), this, SLOT(change_recording_format_to_wav()));
 	action = m_encodingMenu->addAction("WavPack");
 	action->setData("wavpack");
-	connect(action, SIGNAL(triggered( bool )), this, SLOT(change_recording_format_to_wavpack()));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(change_recording_format_to_wavpack()));
 	action = m_encodingMenu->addAction("WAVE-64");
 	action->setData("w64");
-	connect(action, SIGNAL(triggered( bool )), this, SLOT(change_recording_format_to_wav64()));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(change_recording_format_to_wav64()));
 
 	m_resampleQualityMenu = menu->addMenu(tr("Resample &Quality"));
 	action = m_resampleQualityMenu->addAction(tr("Best"));
@@ -934,7 +945,7 @@ void TMainWindow::create_menus( )
 	connect(action, SIGNAL(triggered()), this, SLOT(show_shortcuts_edit_dialog()));
 
 	action = menu->addAction(tr("&Preferences..."));
-	connect(action, SIGNAL(triggered( bool )), this, SLOT(show_settings_dialog()));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(show_settings_dialog()));
 
 
 	menu = m_mainMenuBar->addMenu(tr("&Help"));
@@ -1742,7 +1753,7 @@ TCommand* TMainWindow::show_track_finder()
 
 	foreach(Sheet* sheet, sheets) {
 		QList<Track*> tracks = sheet->get_tracks();
-		tracks.append(sheet->get_master_out_bus_track());
+        tracks.append(sheet->get_master_out_bus_track());
 		tracks.append(m_project->get_master_out_bus_track());
 		foreach(Track* track, tracks) {
 			QStandardItem* sItem = new QStandardItem(track->get_name());
@@ -1855,7 +1866,7 @@ void TMainWindow::update_vu_levels_peak()
 	tracks.append(m_project->get_tracks());
 	tracks.append(m_project->get_master_out_bus_track());
 	for(int i = 0; i< tracks.size(); i++) {
-		VUMonitors monitors = tracks.at(i)->get_vumonitors();
+        QList<TVUMonitor*> monitors = tracks.at(i)->get_vumonitors();
 		for (int j=0; j<monitors.size(); ++j) {
 			monitors.at(j)->set_read();
 		}

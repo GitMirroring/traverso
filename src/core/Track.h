@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "defines.h"
 
 class TSend;
+class TVUMonitor;
 
 class Track : public TAudioProcessingNode
 {
@@ -45,7 +46,7 @@ public:
 
         void get_state(QDomDocument& doc, QDomElement& element, bool istemplate=false);
         int get_sort_index() const;
-        VUMonitors get_vumonitors() const {return m_vumonitors;}
+        QList<TVUMonitor*> get_vumonitors() const {return m_vumonitors;}
 
         void set_muted_by_solo(bool muted);
         void set_solo(bool solo);
@@ -87,7 +88,7 @@ public:
 
 
 protected:
-        VUMonitors      m_vumonitors;
+        QList<TVUMonitor*>  m_vumonitors;
         int             m_sortIndex;
         int             m_type{};
         int             m_channelCount;

@@ -34,9 +34,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "RingBufferNPT.h"
 #include "APILinkedList.h"
+#include "TAudioBusConfiguration.h"
+#include "TAudioDeviceSetup.h"
 #include "TTimeRef.h"
 #include "TTransportControl.h"
 #include "defines.h"
+
+#include "FastDelegate.h"
+
 
 class AudioDeviceThread;
 class TAudioDriver;
@@ -50,6 +55,8 @@ class JackDriver;
 #if defined (COREAUDIO_SUPPORT)
 class CoreAudioDriver;
 #endif
+
+using namespace fastdelegate;
 
 typedef FastDelegate1<nframes_t, int> ProcessCallback;
 typedef FastDelegate0<int> RunCycleCallback;
@@ -70,7 +77,7 @@ public:
                 DRIVER_SETUP_WARNING
         };
 
-        void set_parameters(AudioDeviceSetup ads);
+        void set_parameters(TAudioDeviceSetup ads);
 
         void add_client(TAudioDeviceClient* client);
         void remove_client(TAudioDeviceClient* client);
@@ -79,7 +86,7 @@ public:
         void transport_stop(TAudioDeviceClient* client, TTimeRef location);
         int transport_seek_to(TAudioDeviceClient* client, TTimeRef location);
 
-        AudioDeviceSetup get_device_setup() {return m_setup;}
+        TAudioDeviceSetup get_device_setup() {return m_setup;}
 
         AudioChannel* create_channel(const QString& name, uint channelNumber, int type);
         AudioChannel* get_playback_channel_by_name(const QString& name);
@@ -147,15 +154,15 @@ private:
 #endif
     TTransportControl*     m_transportControl;
 
-        AudioDeviceSetup        m_setup;
-        AudioDeviceSetup        m_fallBackSetup;
+        TAudioDeviceSetup        m_setup;
+        TAudioDeviceSetup        m_fallBackSetup;
         AudioBus*               m_masterOutBus;
         TAudioDriver* 		m_driver;
         AudioDeviceThread* 	m_audioThread;
         APILinkedList		m_clients;
         QList<AudioChannel* >   m_channels;
-        QList<BusConfig>        m_busConfigs;
-        QList<ChannelConfig>    m_channelConfigs;
+        QList<TAudioBusConfiguration>        m_busConfigs;
+        QList<TAudioChannelConfiguration>    m_channelConfigs;
         QStringList		m_availableDrivers;
         QTimer			m_xrunResetTimer;
 #if defined (JACK_SUPPORT)

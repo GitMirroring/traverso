@@ -140,6 +140,12 @@ class TShortcutManager : public QObject
 	Q_OBJECT
 public:
 
+    static const int MouseScrollHorizontalLeft = -1;
+    static const int MouseScrollHorizontalRight = -2;
+    static const int MouseScrollVerticalUp = -3;
+    static const int MouseScrollVerticalDown = -4;
+
+
     void createAndAddFunction(const QString &object, const QString &description, const QString &slotSignature, const QString &commandName, const QString& inheritedBase = "");
 	void registerFunction(TFunction* function);
 	TFunction* getFunction(const QString& function) const;
@@ -186,6 +192,8 @@ private:
 	TShortcutManager(const TShortcutManager&) : QObject() {}
 
 	friend TShortcutManager& tShortCutManager();
+
+    bool keyboard_key_string_to_numerical_value(const QString& text, int& value);
 
 public slots:
 	TCommand* export_keymap();
