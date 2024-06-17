@@ -54,7 +54,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include "Utils.h"
 #include "ContextItem.h"
-#include "TimeLine.h"
+#include "TTimeLineRuler.h"
 #include "Marker.h"
 #include "TInputEventDispatcher.h"                       
 #include "TSend.h"
@@ -215,8 +215,11 @@ int Sheet::set_state( const QDomNode & node )
 	set_transport_pos(m_transportLocation);
 	set_snapping(e.attribute("snapping", "0").toInt());
 	m_mode = e.attribute("mode", "0").toInt();
-	
-	m_timeline->set_state(node.firstChildElement("TimeLine"));
+
+    // TTimeLineRuler used to be called TimeLine so to keep old projects
+    // working and not lose Markers (which are a child node of TimeLine
+    // we keep calling it TimeLine (?)
+    m_timeline->set_state(node.firstChildElement("TimeLine"));
 
         
         QDomNode masterOutNode = node.firstChildElement("MasterOut");

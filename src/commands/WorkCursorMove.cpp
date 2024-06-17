@@ -32,7 +32,7 @@
 #include "TimeLineViewPort.h"
 #include "TimeLineView.h"
 #include "MarkerView.h"
-#include "TimeLine.h"
+#include "TTimeLineRuler.h"
 #include "Cursors.h"
 
 #include <Debugger.h>

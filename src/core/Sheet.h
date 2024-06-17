@@ -40,7 +40,7 @@ class AudioClipManager;
 class TAudioDeviceClient;
 class AudioBus;
 class SnapList;
-class TimeLine;
+class TTimeLineRuler;
 class LocationItem;
 class DecodeBuffer;
 class TBusTrack;

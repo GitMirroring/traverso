@@ -60,8 +60,11 @@ public:
 	void set_audio_source(ReadSource* source);
     int init_recording();
 	int process(nframes_t nframes);
-	
-    [[deprecated]] void set_track_start_location(const TTimeRef& location);
+
+    // Re-implemented from LocationItem::set_location_start
+    // preferably we wouldn't have to re-implement this function
+    // TODO: make every location dependent item not have to re-implement ?
+    void set_location_start(const TTimeRef& location);
 	void set_fade_in(double range);
 	void set_fade_out(double range);
 	void set_track(AudioTrack* track);

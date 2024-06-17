@@ -32,10 +32,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ReadSource.h"
 #include "Sheet.h"
 #include "SheetView.h"
+#include "TShortCutFunction.h"
 #include "Track.h"
 #include "TBusTrack.h"
 #include "TVUMonitor.h"
-#include "TShortcutManager.h"
+#include "TShortCutManager.h"
 #include "TInputEventDispatcher.h"
 
 #include <AudioDevice.h>
@@ -60,8 +61,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "FadeCurve.h"
 #include "TConfig.h"
 #include "Plugin.h"
-#include "Import.h"
-#include "TimeLine.h"
+#include "TAudioFileImportCommand.h"
+#include "TTimeLineRuler.h"
 #include "Themer.h"
 #include "AudioFileCopyConvert.h"
 
@@ -978,7 +979,7 @@ void TMainWindow::process_context_menu_action( QAction * action )
 	QMenu* menu = qobject_cast<QMenu*>(action->parent());
 	QCursor::setPos(menu->pos());
 	qApp->processEvents();
-	TFunction* function = (TFunction*) action->data().value<void*>();
+	TShortCutFunction* function = (TShortCutFunction*) action->data().value<void*>();
 	ied().dispatch_shortcut_from_contextmenu(function);
 }
 
@@ -1083,9 +1084,9 @@ TCommand * TMainWindow::show_context_menu( )
     return nullptr;
 }
 
-QMenu* TMainWindow::create_context_menu(QObject* item, QList<TFunction* >* menulist)
+QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* >* menulist)
 {
-	QList<TFunction* > list;
+	QList<TShortCutFunction* > list;
 	if (item) {
 		list = tShortCutManager().getFunctionsFor(item->metaObject()->className());
 	} else {
@@ -1113,10 +1114,10 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TFunction* >* menul
 	menu->addSeparator();
 	menu->setFont(themer()->get_font("ContextMenu:fontscale:actions"));
 
-	QMap<QString, QList<TFunction*>* > submenus;
+	QMap<QString, QList<TShortCutFunction*>* > submenus;
 
 	for (int i=0; i<list.size(); ++i) {
-		TFunction* function = list.at(i);
+		TShortCutFunction* function = list.at(i);
 
 		// If this MenuData item is a submenu, add to the
 		// list of submenus, which will be processed lateron
@@ -1124,9 +1125,9 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TFunction* >* menul
         if (function->submenu.isEmpty()) {
             add_function_to_menu(function, menu);
 		} else {
-            QList<TFunction*>* list;
+            QList<TShortCutFunction*>* list;
             if ( ! submenus.contains(function->submenu)) {
-                submenus.insert(function->submenu, new QList<TFunction*>());
+                submenus.insert(function->submenu, new QList<TShortCutFunction*>());
             }
             list = submenus.value(function->submenu);
             list->append(function);
@@ -1138,9 +1139,9 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TFunction* >* menul
 	// menu is also done ~10 lines up ...
 	QList<QString> keys = submenus.keys();
 	foreach(const QString &key, keys) {
-		QList<TFunction*>* list = submenus.value(key);
+		QList<TShortCutFunction*>* list = submenus.value(key);
 
-		std::sort(list->begin(), list->end(), TFunction::smaller);
+		std::sort(list->begin(), list->end(), TShortCutFunction::smaller);
 
 		QMenu* subMenu = new QMenu(this);
 		subMenu->setFont(themer()->get_font("ContextMenu:fontscale:actions"));
@@ -1151,7 +1152,7 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TFunction* >* menul
 
         QAction* action = menu->insertMenu(nullptr, subMenu);
 		action->setText(tShortCutManager().get_translation_for(key));
-		foreach(TFunction* function, *list) {
+		foreach(TShortCutFunction* function, *list) {
             add_function_to_menu(function, subMenu);
 		}
 	}
@@ -1159,7 +1160,7 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TFunction* >* menul
 	return menu;
 }
 
-void TMainWindow::add_function_to_menu(TFunction *function, QMenu *menu)
+void TMainWindow::add_function_to_menu(TShortCutFunction *function, QMenu *menu)
 {
     QAction* action = menu->addAction(function->getDescription());
     QKeySequence sequence(function->getKeySequence().remove(" "));
@@ -1352,37 +1353,39 @@ void TMainWindow::import_audio()
 	}
 
 	// append the clips to the selected track
-    TTimeRef position = track->get_end_location();
+    TTimeRef importLocation = track->get_end_location();
 
-	TimeLine* tl = sheet->get_timeline();
-	int n = tl->get_markers().size() + 1;
-	if (tl->has_end_marker()) {
+    TTimeLineRuler* timeLineRuler = sheet->get_timeline();
+    int n = timeLineRuler->get_markers().size() + 1;
+    if (timeLineRuler->has_end_marker()) {
 		n -= 1;
 	}
 
 	while(!files.isEmpty()) {
-		QString file = files.takeFirst();
-        Import* import = new Import(track, file);
-        import->set_position(position);
+        QString fileName = files.takeFirst();
+        TAudioFileImportCommand* import = new TAudioFileImportCommand();
+        import->set_track(track);
+        import->set_file_name(fileName);
+        import->set_import_location(importLocation);
 
-		QFileInfo fi(file);
-		Marker* m = new Marker(tl, position);
+        QFileInfo fi(fileName);
+        Marker* m = new Marker(timeLineRuler, importLocation);
 		m->set_description(QString(tr("%1: %2")).arg(n).arg(fi.baseName()));
 
 		if (import->create_readsource() != -1) {
-			position += import->readsource()->get_length();
+            importLocation += import->readsource()->get_length();
 			TCommand::process_command(import);
-			TCommand::process_command(tl->add_marker(m, true));
+            TCommand::process_command(timeLineRuler->add_marker(m, true));
 		}
 		++n;
 	}
 
-	if (tl->has_end_marker()) {
-		Marker* m = tl->get_end_marker();
-		m->set_when(position);
+    if (timeLineRuler->has_end_marker()) {
+        Marker* m = timeLineRuler->get_end_marker();
+        m->set_when(importLocation);
 	} else {
-		Marker* m = new Marker(tl, position, Marker::ENDMARKER);
-		TCommand::process_command(tl->add_marker(m, true));
+        Marker* m = new Marker(timeLineRuler, importLocation, Marker::ENDMARKER);
+        TCommand::process_command(timeLineRuler->add_marker(m, true));
 	}
 
 	delete importClips;

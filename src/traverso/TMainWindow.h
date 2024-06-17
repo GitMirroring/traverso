@@ -78,7 +78,7 @@ class ProgressToolBar;
 class WelcomeWidget;
 class TSessionTabWidget;
 class TShortcutEditorDialog;
-class TFunction;
+class TShortCutFunction;
 
 class AbstractVUMeterLevel
 {
@@ -109,7 +109,7 @@ public :
         int get_vulevel_update_frequency() const {return m_vuLevelUpdateFrequency;}
 
         QLineEdit* get_track_finder() const {return m_trackFinder;}
-	QMenu* create_context_menu(QObject* item, QList<TFunction* >* list = 0);
+	QMenu* create_context_menu(QObject* item, QList<TShortCutFunction* >* list = 0);
 	SheetWidget* getCurrentSheetWidget() const {return m_currentSheetWidget;}
 
 protected:
@@ -182,7 +182,7 @@ private:
 
 	
 	void create_menus();
-    void add_function_to_menu(TFunction* function, QMenu* menu);
+    void add_function_to_menu(TShortCutFunction* function, QMenu* menu);
         void set_project_actions_enabled(bool enable);
 	void save_config_and_emit_message(const QString& message);
         void track_finder_show_initial_text();

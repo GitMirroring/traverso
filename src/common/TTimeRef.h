@@ -24,6 +24,7 @@ public:
     }
 
     static TTimeRef max_length();
+    static TTimeRef negative_max_length();
 
     void add_frames(nframes_t frames, uint rate) {
         m_position += ((UNIVERSAL_SAMPLE_RATE / rate) * frames);

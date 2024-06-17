@@ -296,6 +296,6 @@ void FadeCurveView::set_holding(bool hold)
 
 void FadeCurveView::load_theme_data()
 {
-	calculate_bounding_rect();
+    FadeCurveView::calculate_bounding_rect();
 }
 

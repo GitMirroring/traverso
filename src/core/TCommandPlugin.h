@@ -30,17 +30,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QVariant>
 
 /**
- * \class CommandPlugin
+ * \class TCommandPlugin
  * \brief An abstract class to create new Command's which can be loaded dynamically
  *
  */
 
-class CommandPlugin : public QObject
+class TCommandPlugin : public QObject
 {
 	Q_OBJECT
 
 public:
-	virtual ~CommandPlugin() {}
+    virtual ~TCommandPlugin() {}
 /**
 	 * 	Create a Command object, based on the command string.
 

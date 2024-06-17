@@ -844,6 +844,7 @@ bool MadAudioReader::createPcmSamples(mad_synth* synth)
         /* Right channel. If the decoded stream is monophonic then no right channel
         */
         if (synth->pcm.channels == 2) {
+            // FIXME Array access results in undefined pointer dereference according to clang clazy
             writeBuffers[1][offset + i] = mad_f_todouble(synth->pcm.samples[1][i]);
         }
     } // pcm conversion

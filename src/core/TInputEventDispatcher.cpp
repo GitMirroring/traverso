@@ -25,9 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Information.h"
 #include "TCommand.h"
 #include "TMoveCommand.h"
-#include "CommandPlugin.h"
+#include "TCommandPlugin.h"
+#include "TShortCut.h"
+#include "TShortCutFunction.h"
 #include "Utils.h"
-#include "TShortcutManager.h"
+#include "TShortCutManager.h"
 #include "TConfig.h"
 
 #include <QMetaMethod>
@@ -65,7 +67,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
         over the list, and start handling the returned Command object.
 
         If the keymap specified that the object's doesn't have a function (slot) to be called, but instead<br />
-        uses a CommandPlugin, the list of loaded CommandPlugins is searched to find a match for the <br />
+        uses a TCommandPlugin, the list of loaded CommandPlugins is searched to find a match for the <br />
         plugin name supplied in the keymap file, if there is a match, the Plugin is used to create <br />
         the Command object, and the same routine is used to handle this Command object.
 
@@ -74,7 +76,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
         deleted afterwards.
 
 
- *	\sa Command, ContextPointer, ViewPort, CommandPlugin
+ *	\sa Command, ContextPointer, ViewPort, TCommandPlugin
  */
 
 
@@ -105,7 +107,7 @@ TInputEventDispatcher::TInputEventDispatcher()
 TInputEventDispatcher::~ TInputEventDispatcher( )
 = default;
 
-int TInputEventDispatcher::dispatch_shortcut_from_contextmenu(TFunction* function)
+int TInputEventDispatcher::dispatch_shortcut_from_contextmenu(TShortCutFunction* function)
 {
     PENTER2;
     QStringList keys = function->getKeys();
@@ -113,7 +115,7 @@ int TInputEventDispatcher::dispatch_shortcut_from_contextmenu(TFunction* functio
     {
         return -1;
     }
-    TShortcut* shortCut = tShortCutManager().getShortcutForKey(keys.first());
+    TShortCut* shortCut = tShortCutManager().getShortcutForKey(keys.first());
 
     if (! shortCut) {
         //		PERROR("ContextMenu keySequence doesn't apply to any InputEngine knows off!! (%s)", QS_C(keys.first()));
@@ -143,7 +145,7 @@ int TInputEventDispatcher::dispatch_shortcut_from_contextmenu(TFunction* functio
 }
 
 
-int TInputEventDispatcher::dispatch_shortcut(TShortcut* shortCut, bool fromContextMenu)
+int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromContextMenu)
 {
     PENTER2;
     PMESG("Dispatching key %d", shortCut->getKeyValue());
@@ -168,16 +170,16 @@ int TInputEventDispatcher::dispatch_shortcut(TShortcut* shortCut, bool fromConte
             continue;
         }
 
-        TFunction* shortCutFunction = nullptr;
+        TShortCutFunction* shortCutFunction = nullptr;
 
         const QMetaObject* metaObject = contextItem->metaObject();
         // traverse upwards till no more superclasses are found
         // this supports inheritance on QObjects.
         while (metaObject)
         {
-            QList<TFunction*> functions = shortCut->getFunctionsForObject(metaObject->className());
+            QList<TShortCutFunction*> functions = shortCut->getFunctionsForObject(metaObject->className());
 
-            foreach(TFunction* function, functions) {
+            foreach(TShortCutFunction* function, functions) {
                 if (!function) {
                     continue;
                 }
@@ -251,7 +253,7 @@ int TInputEventDispatcher::dispatch_shortcut(TShortcut* shortCut, bool fromConte
         if ( ! m_holdingCommand ) {
 
             if ( ! pluginname.isEmpty() ) {
-                CommandPlugin* plug = tShortCutManager().getCommandPlugin(pluginname);
+                TCommandPlugin* plug = tShortCutManager().getCommandPlugin(pluginname);
                 if (!plug)
                 {
                     info().critical(tr("Command Plugin %1 not found!").arg(pluginname));
@@ -275,7 +277,7 @@ int TInputEventDispatcher::dispatch_shortcut(TShortcut* shortCut, bool fromConte
             // FIXME shortCut->getFunctionsForObject() returns a list,
             // we need to iterate over the list for a match or what ?
             QString delegatedobject;
-            QList<TFunction*> objectFunctions;
+            QList<TShortCutFunction*> objectFunctions;
 
             if (m_holdingCommand) {
                 objectFunctions = shortCut->getFunctionsForObject("HoldCommand");
@@ -576,12 +578,12 @@ void TInputEventDispatcher::catch_mousebutton_release( QMouseEvent * e )
 void TInputEventDispatcher::catch_scroll(QWheelEvent* e)
 {
     if (e->angleDelta().y() > 0) {
-        process_press_event(TShortcutManager::MouseScrollVerticalUp);
-        process_release_event(TShortcutManager::MouseScrollVerticalUp);
+        process_press_event(TShortCutManager::MouseScrollVerticalUp);
+        process_release_event(TShortCutManager::MouseScrollVerticalUp);
     }
     if (e->angleDelta().y() < 0) {
-        process_press_event(TShortcutManager::MouseScrollVerticalDown);
-        process_release_event(TShortcutManager::MouseScrollVerticalDown);
+        process_press_event(TShortCutManager::MouseScrollVerticalDown);
+        process_release_event(TShortCutManager::MouseScrollVerticalDown);
     }
 }
 
@@ -624,7 +626,7 @@ void TInputEventDispatcher::process_press_event(int keyValue)
         return;
     }
 
-    TShortcut* shortCut = tShortCutManager().getShortcutForKey(keyValue);
+    TShortCut* shortCut = tShortCutManager().getShortcutForKey(keyValue);
 
     if (m_isHolding && shortCut)
     {

@@ -68,7 +68,7 @@ int SplitClip::prepare_actions()
 	rightClip = resources_manager()->get_clip(m_clip->get_id());
 	
 	leftClip->set_sheet(m_clip->get_sheet());
-	leftClip->set_track_start_location(m_clip->get_location_start());
+	leftClip->set_location_start(m_clip->get_location_start());
 	leftClip->set_right_edge(m_splitPoint);
 	if (leftClip->get_fade_out()) {
 		FadeRange* cmd = (FadeRange*)leftClip->reset_fade_out();
@@ -78,7 +78,7 @@ int SplitClip::prepare_actions()
 	
 	rightClip->set_sheet(m_clip->get_sheet());
 	rightClip->set_left_edge(m_splitPoint);
-	rightClip->set_track_start_location(m_splitPoint);
+	rightClip->set_location_start(m_splitPoint);
 	if (rightClip->get_fade_in()) {
 		FadeRange* cmd = (FadeRange*)rightClip->reset_fade_in();
         cmd->set_do_not_push_to_historystack();

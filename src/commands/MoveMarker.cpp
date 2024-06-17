@@ -26,7 +26,7 @@
 #include "SnapList.h"
 #include "Sheet.h"
 #include "SheetView.h"
-#include "TimeLine.h"
+#include "TTimeLineRuler.h"
 #include "TInputEventDispatcher.h"
 
 

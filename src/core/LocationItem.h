@@ -45,7 +45,7 @@ public:
     virtual TTimeRef get_length() const {return m_locationEnd - m_locationStart;}
 
 
-    void set_location_start(const TTimeRef& start);
+    virtual void set_location_start(const TTimeRef& start);
     void set_location_end(const TTimeRef& end);
 
 protected:

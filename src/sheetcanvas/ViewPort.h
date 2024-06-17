@@ -30,7 +30,7 @@
 class ViewItem;
 class SheetView;
 class ContextItem;
-class Import;
+class TAudioFileImportCommand;
 class AudioTrack;
 class HoldCursor;
 class QGraphicsTextItem;

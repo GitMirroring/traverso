@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TCommand.h"
 #include "PCommand.h"
 #include "TMainWindow.h"
-#include "TShortcutManager.h"
+#include "TShortCutManager.h"
 #include "Themer.h"
 
 #include "Debugger.h"

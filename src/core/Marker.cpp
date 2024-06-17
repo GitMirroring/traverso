@@ -22,10 +22,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Marker.h"
 #include "Sheet.h"
 
-#include "TimeLine.h"
+#include "TTimeLineRuler.h"
 #include "Utils.h"
 
-Marker::Marker(TimeLine* tl, const TTimeRef when, MarkerType type)
+Marker::Marker(TTimeLineRuler* tl, const TTimeRef when, MarkerType type)
 	: ContextItem(tl)
 	, LocationItem()
 	, m_timeline(tl)
@@ -49,7 +49,7 @@ Marker::Marker(TimeLine* tl, const TTimeRef when, MarkerType type)
 	m_index = -1;
 }
 
-Marker::Marker(TimeLine * tl, const QDomNode& node)
+Marker::Marker(TTimeLineRuler * tl, const QDomNode& node)
 	: ContextItem(tl)
 	, LocationItem()
 	, m_timeline(tl)

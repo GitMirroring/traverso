@@ -233,7 +233,7 @@ void AudioClipEditDialog::clip_start_edit_changed(const QTime& time)
 	if (ied().is_holding()) return;
 
 	locked = true;
-	m_clip->set_track_start_location(qtime_to_timeref(time));
+	m_clip->set_location_start(qtime_to_timeref(time));
 	update_clip_end();
 	locked = false;
 }

@@ -19,7 +19,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TShortcutManager.h"
+#include "TShortCutManager.h"
+#include "TShortCut.h"
+#include "TShortCutFunction.h"
 
 #include <QPluginLoader>
 #include <QSettings>
@@ -34,22 +36,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ContextItem.h"
 #include "Information.h"
 #include "Utils.h"
-#include "CommandPlugin.h"
+#include "TCommandPlugin.h"
 #include "TConfig.h"
 
 #include "Debugger.h"
 
-QList<TFunction*> TShortcut::getFunctionsForObject(const QString &objectName)
+QList<TShortCutFunction*> TShortCut::getFunctionsForObject(const QString &objectName)
 {
 	return objects.values(objectName);
 }
 
-QList<TFunction*> TShortcut::getFunctions()
+QList<TShortCutFunction*> TShortCut::getFunctions()
 {
     return objects.values();
 }
 
-QString TFunction::getModifierSequence(bool fromInheritedBase)
+QString TShortCutFunction::getModifierSequence(bool fromInheritedBase)
 {
 	QString modifiersString;
 
@@ -67,7 +69,7 @@ QString TFunction::getModifierSequence(bool fromInheritedBase)
 	return modifiersString;
 }
 
-QString TFunction::getKeySequence(bool formatHtml)
+QString TShortCutFunction::getKeySequence(bool formatHtml)
 {
 	QString sequence;
 	QStringList sequenceList;
@@ -86,12 +88,12 @@ QString TFunction::getKeySequence(bool formatHtml)
 
     sequence = sequenceList.join(" , ");
 
-    TShortcutManager::makeShortcutKeyHumanReadable(sequence, formatHtml);
+    TShortCutManager::makeShortcutKeyHumanReadable(sequence, formatHtml);
 
 	return sequence;
 }
 
-QList<int> TFunction::getModifierKeys(bool fromInheritedBase)
+QList<int> TShortCutFunction::getModifierKeys(bool fromInheritedBase)
 {
 	if (m_inheritedFunction && m_usesInheritedBase && fromInheritedBase)
 	{
@@ -101,7 +103,7 @@ QList<int> TFunction::getModifierKeys(bool fromInheritedBase)
 	return m_modifierkeys;
 }
 
-QString TFunction::getSlotSignature() const
+QString TShortCutFunction::getSlotSignature() const
 {
     // a slotsignature is only set for hold commands, not for modifier keys
     // if the shortcut is from a modifier key then the slotsignature will be
@@ -114,7 +116,7 @@ QString TFunction::getSlotSignature() const
 	return slotsignature;
 }
 
-QString TFunction::getDescription() const
+QString TShortCutFunction::getDescription() const
 {
 	if (!m_description.isEmpty())
 	{
@@ -129,7 +131,7 @@ QString TFunction::getDescription() const
 	return m_description;
 }
 
-QString TFunction::getLongDescription() const
+QString TShortCutFunction::getLongDescription() const
 {
 	QString description = getDescription();
 	if (!submenu.isEmpty())
@@ -139,17 +141,17 @@ QString TFunction::getLongDescription() const
 	return description;
 }
 
-void TFunction::setDescription(const QString& description)
+void TShortCutFunction::setDescription(const QString& description)
 {
 	m_description = description;
 }
 
-void TFunction::setInheritedBase(const QString &base)
+void TShortCutFunction::setInheritedBase(const QString &base)
 {
 	m_inheritedBase = base;
 }
 
-QStringList TFunction::getKeys(bool fromInheritedBase) const
+QStringList TShortCutFunction::getKeys(bool fromInheritedBase) const
 {
 	if (m_inheritedFunction && m_usesInheritedBase && fromInheritedBase)
 	{
@@ -159,22 +161,22 @@ QStringList TFunction::getKeys(bool fromInheritedBase) const
 	return m_keys;
 }
 
-QStringList TFunction::getObjects() const
+QStringList TShortCutFunction::getObjects() const
 {
     return object.split("::", Qt::SkipEmptyParts);
 }
 
-QString TFunction::getObject() const
+QString TShortCutFunction::getObject() const
 {
 	return getObjects().first();
 }
 
-void TFunction::setInheritedFunction(TFunction *inherited)
+void TShortCutFunction::setInheritedFunction(TShortCutFunction *inherited)
 {
 	m_inheritedFunction = inherited;
 }
 
-int TFunction::getAutoRepeatInterval() const
+int TShortCutFunction::getAutoRepeatInterval() const
 {
 	if (m_inheritedFunction && m_usesInheritedBase)
 	{
@@ -184,7 +186,7 @@ int TFunction::getAutoRepeatInterval() const
 	return m_autorepeatInterval;
 }
 
-int TFunction::getAutoRepeatStartDelay() const
+int TShortCutFunction::getAutoRepeatStartDelay() const
 {
 	if (m_inheritedFunction && m_usesInheritedBase)
 	{
@@ -194,7 +196,7 @@ int TFunction::getAutoRepeatStartDelay() const
 	return m_autorepeatStartDelay;
 }
 
-void TShortcutManager::makeShortcutKeyHumanReadable(QString& keyfact, bool formatHtml)
+void TShortCutManager::makeShortcutKeyHumanReadable(QString& keyfact, bool formatHtml)
 {
     keyfact.replace(QString("MOUSESCROLLVERTICALUP"), tr("Scroll Up"));
 	keyfact.replace(QString("MOUSESCROLLVERTICALDOWN"), tr("Scroll Down"));
@@ -232,19 +234,21 @@ void TShortcutManager::makeShortcutKeyHumanReadable(QString& keyfact, bool forma
 }
 
 
-TShortcutManager& tShortCutManager()
+TShortCutManager& tShortCutManager()
 {
-	static TShortcutManager manager;
+    static TShortCutManager manager;
 	return manager;
 }
 
-TShortcutManager::TShortcutManager()
+TShortCutManager::TShortCutManager()
 {
 	cpointer().add_contextitem(this);
 }
 
-void TShortcutManager::registerFunction(TFunction *function)
+void TShortCutManager::registerFunction(TShortCutFunction *function)
 {
+    Q_ASSERT(!function->object.isEmpty());
+
 	if (m_functions.contains(function->commandName))
 	{
 		printf("There is already a function registered with command name %s\n", QS_C(function->commandName));
@@ -254,24 +258,24 @@ void TShortcutManager::registerFunction(TFunction *function)
 	m_functions.insert(function->commandName, function);
 }
 
-TFunction* TShortcutManager::getFunction(const QString &functionName) const
+TShortCutFunction* TShortCutManager::getFunction(const QString &functionName) const
 {
-    TFunction* function = m_functions.value(functionName, nullptr);
+    TShortCutFunction* function = m_functions.value(functionName, nullptr);
 	if (!function)
 	{
-		printf("TShortcutManager::getFunction: Function %s not in database!!\n", functionName.toLatin1().data());
+        printf("TShortCutManager::getFunction: Function %s not in database!!\n", functionName.toLatin1().data());
 	}
 
 	return function;
 }
 
-QList< TFunction* > TShortcutManager::getFunctionsFor(QString className)
+QList< TShortCutFunction* > TShortCutManager::getFunctionsFor(QString className)
 {
-	QList<TFunction* > functionsList;
+    QList<TShortCutFunction* > functionsList;
     QStringList classes = m_classes.value(className.remove("View"));
     foreach(QString object, classes)
 	{
-		foreach(TFunction* function, m_functions)
+        foreach(TShortCutFunction* function, m_functions)
 		{
 			// filter out objects that inherit from MoveCommand
 			// but do not support move up/down
@@ -297,47 +301,47 @@ QList< TFunction* > TShortcutManager::getFunctionsFor(QString className)
 		}
 	}
 
-    std::sort(functionsList.begin(), functionsList.end(), TFunction::smaller);
+    std::sort(functionsList.begin(), functionsList.end(), TShortCutFunction::smaller);
     return functionsList;
 }
 
-TShortcut* TShortcutManager::getShortcutForKey(const QString &keyString)
+TShortCut* TShortCutManager::getShortcutForKey(const QString &keyString)
 {
-	int keyValue = -1;
+    int keyValue;
 
     if (!keyboard_key_string_to_numerical_value(keyString, keyValue)) {
 	       info().warning(tr("Shortcut Manager: Loaded keymap has this unrecognized key: %1").arg(keyString));
            return nullptr;
 	}
 
-    TShortcut* shortcut = m_shortcuts.value(keyValue, nullptr);
+    TShortCut* shortcut = m_shortcuts.value(keyValue, nullptr);
 
 	if (!shortcut)
 	{
-		shortcut = new TShortcut(keyValue);
+        shortcut = new TShortCut(keyValue);
 		m_shortcuts.insert(keyValue, shortcut);
 	}
 
 	return shortcut;
 }
 
-TShortcut* TShortcutManager::getShortcutForKey(int key)
+TShortCut* TShortCutManager::getShortcutForKey(int key)
 {
-    TShortcut* shortcut = m_shortcuts.value(key, nullptr);
+    TShortCut* shortcut = m_shortcuts.value(key, nullptr);
 	return shortcut;
 }
 
-CommandPlugin* TShortcutManager::getCommandPlugin(const QString &pluginName)
+TCommandPlugin* TShortCutManager::getCommandPlugin(const QString &pluginName)
 {
 	return m_commandPlugins.value(pluginName);
 }
 
-void TShortcutManager::register_command_plugin(CommandPlugin *plugin, const QString &pluginName)
+void TShortCutManager::register_command_plugin(TCommandPlugin *plugin, const QString &pluginName)
 {
     m_commandPlugins.insert(pluginName, plugin);
 }
 
-bool TShortcutManager::isCommandClass(const QString &className)
+bool TShortCutManager::isCommandClass(const QString &className)
 {
 	QList<const QMetaObject*> list = m_metaObjects.value(className);
 
@@ -351,12 +355,12 @@ bool TShortcutManager::isCommandClass(const QString &className)
 	return false;
 }
 
-QList<QString> TShortcutManager::getClassNames() const
+QList<QString> TShortCutManager::getClassNames() const
 {
     return m_classes.keys();
 }
 
-QString TShortcutManager::getClassForObject(const QString &object) const
+QString TShortCutManager::getClassForObject(const QString &object) const
 {
 	QStringList keys = m_classes.keys();
 	foreach(QString key, keys)
@@ -370,10 +374,10 @@ QString TShortcutManager::getClassForObject(const QString &object) const
 	return "";
 }
 
-void TShortcutManager::loadFunctions()
+void TShortCutManager::loadFunctions()
 {
 //	foreach (QObject* obj, QPluginLoader::staticInstances()) {
-//		CommandPlugin* plug = qobject_cast<CommandPlugin*>(obj);
+//		TCommandPlugin* plug = qobject_cast<TCommandPlugin*>(obj);
 //		if (plug)
 //		{
 //			m_commandPlugins.insert(plug->metaObject()->className(), plug);
@@ -402,292 +406,292 @@ void TShortcutManager::loadFunctions()
     registerItemClass("EditPropertiesBase", "EditPropertiesBase");
 
 
-	TFunction* function;
+    TShortCutFunction* function;
 
-    function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "ToggleVerticalBase";
     function->setDescription(tr("Toggle Vertical"));
     function->commandName = "ToggleVerticalBase";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "GainBase";
 	function->setDescription(tr("Gain"));
 	function->commandName = "GainBase";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "MoveBase";
 	function->m_description = tr("Move");
 	function->commandName = "MoveBase";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "DeleteBase";
 	function->m_description = tr("Remove");
 	function->commandName = "DeleteBase";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "ToggleBypassBase";
     function->slotsignature = "toggle_bypass";
     function->setDescription(tr("Toggle Bypass"));
     function->commandName = "ToggleBypassBase";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TMoveCommand";
 	function->slotsignature = "toggle_snap_on_off";
 	function->setDescription(tr("Toggle Snap on/off"));
 	function->commandName = "MoveCommandToggleSnap";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "EditPropertiesBase";
 	function->slotsignature = "edit_properties";
 	function->setDescription(tr("Edit Properties"));
 	function->commandName = "EditPropertiesBase";
     registerFunction(function);
 
-    function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "AudioTrack";
 	function->slotsignature = "toggle_arm";
 	function->m_description = tr("Record: On/Off");
 	function->commandName = "AudioTrackToggleRecord";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "AudioTrack";
 	function->slotsignature = "silence_others";
 	function->m_description = tr("Silence other tracks");
 	function->commandName = "AudioTrackSilenceOthers";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "FadeCurve";
 	function->slotsignature = "set_mode";
 	function->m_description = tr("Cycle Shape");
 	function->commandName = "FadeCurveCycleShape";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TMoveCommand";
 	function->slotsignature = "move_right";
 	function->m_description = tr("Move Right");
 	function->commandName = "MoveCommandRight";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TMoveCommand";
 	function->slotsignature = "move_left";
 	function->m_description = tr("Move Left");
 	function->commandName = "MoveCommandLeft";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TMoveCommand";
 	function->slotsignature = "move_up";
 	function->m_description = tr("Move Up");
 	function->commandName = "MoveCommandUp";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TMoveCommand";
 	function->slotsignature = "move_down";
 	function->m_description = tr("Move Down");
 	function->commandName = "MoveCommandDown";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TMoveCommand";
 	function->slotsignature = "move_faster";
 	function->m_description = tr("Move Faster");
 	function->commandName = "MoveCommandFaster";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TMoveCommand";
 	function->slotsignature = "move_slower";
 	function->m_description = tr("Move Slower");
 	function->commandName = "MoveCommandSlower";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TMainWindow";
 	function->slotsignature = "quick_start";
 	function->m_description = tr("Show Help");
 	function->commandName = "ShowHelp";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TMainWindow";
 	function->slotsignature = "full_screen";
 	function->m_description = tr("Full Screen");
 	function->commandName = "MainWindowShowFullScreen";
     registerFunction(function);
 
-	function = new TFunction();
-	function->object = "TShortcutManager";
+    function = new TShortCutFunction();
+    function->object = "TShortCutManager";
 	function->slotsignature = "export_keymap";
 	function->m_description = tr("Export keymap");
 	function->commandName = "ExportShortcutMap";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TrackView";
 	function->slotsignature = "add_new_plugin";
 	function->m_description = tr("Add new Plugin");
 	function->commandName = "TrackAddPlugin";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TPanKnobView";
 	function->slotsignature = "pan_left";
 	function->m_description = tr("Pan to Left");
 	function->commandName = "PanKnobPanLeft";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TPanKnobView";
 	function->slotsignature = "pan_right";
 	function->m_description = tr("Pan to Right");
 	function->commandName = "PanKnobPanRight";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Zoom";
 	function->slotsignature = "hzoom_out";
 	function->setDescription(tr("Out"));
 	function->commandName = "ZoomOut";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Zoom";
 	function->slotsignature = "hzoom_in";
 	function->setDescription(tr("In"));
 	function->commandName = "ZoomIn";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TrackPan";
 	function->slotsignature = "pan_left";
 	function->m_description = tr("Pan to Left");
 	function->commandName = "TrackPanLeft";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TrackPan";
 	function->slotsignature = "pan_right";
 	function->m_description = tr("Pan to Right");
 	function->commandName = "TrackPanRight";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TGainGroupCommand";
 	function->slotsignature = "increase_gain";
 	function->m_description = tr("Increase");
 	function->commandName = "GainIncrease";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TGainGroupCommand";
 	function->slotsignature = "decrease_gain";
 	function->m_description = tr("Decrease");
 	function->commandName = "GainDecrease";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "MoveTrack";
 	function->slotsignature = "move_up";
 	function->m_description = tr("Move Up");
 	function->commandName = "MoveTrackUp";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "MoveTrack";
 	function->slotsignature = "move_down";
 	function->m_description = tr("Move Down");
 	function->commandName = "MoveTrackDown";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "scroll_up";
 	function->m_description =tr("Up");
 	function->commandName = "ViewScrollUp";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "scroll_down";
 	function->m_description = tr("Down");
 	function->commandName = "ViewScrollDown";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Zoom";
 	function->slotsignature = "track_vzoom_out";
 	function->m_description = tr("Track Vertical Zoom Out");
 	function->commandName = "ZoomTrackVerticalOut";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Zoom";
 	function->slotsignature = "track_vzoom_in";
 	function->m_description = tr("Track Vertical Zoom In");
 	function->commandName = "ZoomTrackVerticalIn";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "to_upper_context_level";
 	function->m_description = tr("One Layer Up");
 	function->commandName = "NavigateToUpperContext";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "to_lower_context_level";
 	function->m_description = tr("One Layer Down");
 	function->commandName = "NavigateToLowerContext";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "AudioClipView";
 	function->slotsignature = "fade_range";
 	function->m_description = tr("Adjust Length");
 	function->commandName = "AudioClipFadeLength";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TTransport";
 	function->slotsignature = "start_transport";
 	function->m_description = tr("Play (Start/Stop)");
 	function->commandName = "TransportPlayStartStop";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TTransport";
 	function->slotsignature = "set_recordable_and_start_transport";
 	function->m_description = tr("Start Recording");
 	function->commandName = "TransportSetRecordingPlayStart";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TTransport";
 	function->slotsignature = "to_start";
 	function->setDescription(tr("To start"));
 	function->commandName = "TransportToStart";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TTransport";
 	function->slotsignature = "to_end";
 	function->setDescription(tr("To end"));
 	function->commandName = "TransportToEnd";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TTransport";
 	function->setSlotSignature("set_transport_position");
 	function->setDescription(tr("Set Play Position"));
@@ -695,243 +699,243 @@ void TShortcutManager::loadFunctions()
 	function->useX = true;
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TrackView";
 	function->setInheritedBase("EditPropertiesBase");
 	function->commandName = "EditTrackProperties";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->setInheritedBase("EditPropertiesBase");
 	function->commandName = "EditSongProperties";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "PluginView";
 	function->setInheritedBase("EditPropertiesBase");
 	function->commandName = "EditPluginProperties";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SpectralMeterView";
 	function->setInheritedBase("EditPropertiesBase");
 	function->commandName = "EditSpectralMeterProperties";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "AudioClipView";
 	function->setInheritedBase("EditPropertiesBase");
 	function->commandName = "EditAudioClipProperties";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Zoom";
 	function->slotsignature = "toggle_expand_all_tracks";
 	function->m_description = tr("Expand/Collapse Tracks");
 	function->commandName = "ZoomToggleExpandAllTracks";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TrackPanelLed";
 	function->slotsignature = "toggle";
 	function->m_description = tr("Toggle On/Off");
 	function->commandName = "PanelLedToggle";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "CurveView";
 	function->slotsignature = "add_node";
 	function->m_description = tr("New Node");
 	function->commandName = "AddCurveNode";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "TMoveCommand";
 	function->slotsignature = "numerical_input";
 	function->m_description = tr("Moving Speed");
 	function->commandName = "MoveCommandSpeed";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TCommand";
 	function->m_description = tr("Reject");
 	function->commandName = "RejectHoldCommand";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TCommand";
 	function->m_description = tr("Accept");
 	function->commandName = "AcceptHoldCommand";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Zoom";
 	function->slotsignature = "numerical_input";
 	function->m_description = tr("Track Height");
 	function->commandName = "ZoomNumericalInput";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "FadeCurveView";
 	function->slotsignature = "select_fade_shape";
 	function->m_description = tr("Select Preset");
 	function->commandName = "FadeSelectPreset";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TMainWindow";
 	function->slotsignature = "show_newtrack_dialog";
 	function->m_description = tr("New Track Dialog");
 	function->commandName = "ShowNewTrackDialog";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "browse_to_time_line";
 	function->m_description = tr("To Timeline");
 	function->commandName = "NavigateToTimeLine";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TrackPanelGain";
 	function->slotsignature = "gain_decrement";
 	function->m_description = tr("Decrease");
 	function->commandName = "TrackPanelGainDecrement";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TrackPanelGain";
 	function->slotsignature = "gain_increment";
 	function->m_description = tr("Increase");
 	function->commandName = "TrackPanelGainIncrement";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "CropClip";
 	function->slotsignature = "adjust_left";
 	function->m_description = tr("Adjust Left");
     function->commandName = "CropClipAdjustLeft";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "CropClip";
 	function->slotsignature = "adjust_right";
 	function->m_description = tr("Adjust Right");
 	function->commandName = "CropClipAdjustRight";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "touch";
 	function->m_description = tr("Set");
 	function->commandName = "WorkCursorTouch";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TimeLineView";
 	function->slotsignature = "playhead_to_marker";
 	function->m_description = tr("Playhead to Marker");
 	function->commandName = "TimeLinePlayheadToMarker";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "AudioClipView";
 	function->slotsignature = "set_audio_file";
 	function->m_description = tr("Reset Audio File");
 	function->commandName = "AudioClipSetAudioFile";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "FadeCurve";
 	function->slotsignature = "toggle_raster";
 	function->m_description = tr("Toggle Raster");
 	function->commandName = "FadeCurveToggleRaster";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SpectralMeterView";
 	function->slotsignature = "reset";
 	function->m_description = tr("Reset average curve");
 	function->commandName = "SpectralMeterResetAverageCurve";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "AudioClip";
 	function->slotsignature = "lock";
 	function->m_description = tr("Lock");
 	function->commandName = "AudioClipLock";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "CorrelationMeterView";
 	function->slotsignature = "set_mode";
 	function->m_description = tr("Toggle display range");
 	function->commandName = "CorrelationMeterToggleDisplayRange";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SpectralMeterView";
 	function->slotsignature = "set_mode";
 	function->m_description = tr("Toggle average curve");
 	function->commandName = "SpectralMeterToggleDisplayRange";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TimeLineView";
 	function->slotsignature = "add_marker";
 	function->m_description = tr("Add Marker");
 	function->commandName = "TimeLineAddMarker";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "add_marker";
 	function->m_description = tr("Add Marker");
 	function->commandName = "SheetAddMarker";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "add_marker_at_playhead";
 	function->m_description = tr("Add Marker at Playhead");
 	function->commandName = "SheetAddMarkerAtPlayhead";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TimeLineView";
 	function->slotsignature = "add_marker_at_playhead";
 	function->m_description = tr("Add Marker at Playhead");
 	function->commandName = "TimeLineAddMarkerAtPlayhead";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "add_marker_at_work_cursor";
 	function->m_description = tr("Add Marker at Work Cursor");
 	function->commandName = "SheetAddMarkerAtWorkCursor";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TimeLineView";
 	function->slotsignature = "add_marker_at_work_cursor";
 	function->m_description = tr("Add Marker at Work Cursor");
 	function->commandName = "TimeLineAddMarkerAtWorkCursor";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "FadeCurve";
     function->setInheritedBase("ToggleBypassBase");
 	function->commandName = "FadeCurveToggleBypass";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Plugin";
     function->setInheritedBase("ToggleBypassBase");
 	function->commandName = "PluginToggleBypass";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "FadeCurveView";
 	function->slotsignature = "bend";
 	function->setDescription(tr("Adjust Bend"));
@@ -939,70 +943,70 @@ void TShortcutManager::loadFunctions()
 	function->commandName = "FadeCurveBend";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TimeLineView";
 	function->slotsignature = "TMainWindow::show_marker_dialog";
 	function->setDescription(tr("Edit Markers"));
 	function->commandName = "TimeLineShowMarkerDialog";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TMainWindow";
 	function->slotsignature = "show_context_menu";
 	function->setDescription(tr("Context Menu"));
 	function->commandName = "ShowContextMenu";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "HoldCommand";
 	function->slotsignature = "TMainWindow::show_context_menu";
 	function->setDescription(tr("Context Menu"));
 	function->commandName = "HoldCommandShowContextMenu";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TMainWindow";
 	function->slotsignature = "show_project_manager_dialog";
 	function->setDescription(tr("Show Project Management Dialog"));
 	function->commandName = "MainWindowShowProjectManagementDialog";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TAudioProcessingNode";
 	function->slotsignature = "mute";
 	function->setDescription(tr("Mute"));
 	function->commandName = "Mute";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Track";
 	function->slotsignature = "solo";
 	function->setDescription(tr("Solo"));
 	function->commandName = "Solo";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "CurveView";
 	function->slotsignature = "toggle_select_all_nodes";
 	function->setDescription(tr("Select All Nodes"));
 	function->commandName = "CurveSelectAllNodes";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "ProjectManager";
 	function->slotsignature = "save_project";
 	function->setDescription(tr("Save Project"));
 	function->commandName = "ProjectSave";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "CurveView";
 	function->slotsignature = "select_lazy_selected_node";
 	function->setDescription(tr("Select Node"));
 	function->commandName = "CurveSelectNode";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "FadeCurveView";
 	function->slotsignature = "strength";
 	function->setDescription(tr("Adjust Strength"));
@@ -1010,63 +1014,63 @@ void TShortcutManager::loadFunctions()
 	function->useX = true;
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "goto_end";
 	function->setDescription(tr("To end"));
 	function->commandName = "WorkCursorToEnd";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "MoveTrack";
 	function->slotsignature = "to_bottom";
 	function->setDescription(tr("To Bottom"));
 	function->commandName = "MoveTrackToBottom";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "goto_begin";
 	function->setDescription(tr("To start"));
 	function->commandName = "WorkCursorToStart";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "MoveTrack";
 	function->slotsignature = "to_top";
 	function->setDescription(tr("To Top"));
 	function->commandName = "MoveTrackToTop";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "PlayHeadMove";
 	function->slotsignature = "move_to_work_cursor";
 	function->setDescription(tr("To Work Cursor"));
 	function->commandName = "PlayHeadMoveToWorkCursor";
     registerFunction(function);
 
-    function = new TFunction();
+    function = new TShortCutFunction();
     function->object = "PlayHeadMove";
     function->slotsignature = "move_to_start";
     function->setDescription(tr("To Start"));
     function->commandName = "PlayHeadMoveToStart";
     registerFunction(function);
 
-    function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "touch_play_cursor";
 	function->setDescription(tr("Set"));
 	function->commandName = "SheetSetPlayPosition";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "SheetView";
 	function->slotsignature = "center_playhead";
 	function->setDescription(tr("Center"));
 	function->commandName = "SheetCenterPlayhead";
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "Zoom";
 	function->slotsignature = "toggle_vertical_horizontal_jog_zoom";
 	function->setDescription(tr("Toggle Vertical / Horizontal"));
@@ -1074,7 +1078,7 @@ void TShortcutManager::loadFunctions()
     function->setInheritedBase("ToggleVerticalBase");
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "MoveClip";
 	function->slotsignature = "toggle_vertical_only";
 	function->setDescription(tr("Toggle Vertical Only"));
@@ -1082,7 +1086,7 @@ void TShortcutManager::loadFunctions()
     function->setInheritedBase("ToggleVerticalBase");
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "MoveCurveNode";
 	function->slotsignature = "toggle_vertical_only";
 	function->setDescription(tr("Toggle Vertical Only"));
@@ -1090,59 +1094,57 @@ void TShortcutManager::loadFunctions()
     function->setInheritedBase("ToggleVerticalBase");
     registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "WorkCursorMove";
 	function->slotsignature = "move_to_play_cursor";
 	function->setDescription(tr("To Playhead"));
 	function->commandName = "WorkCursorMoveToPlayhead";
     registerFunction(function);
 
-    function = new TFunction();
-    function->object = "WorkCursorMove";
-    function->slotsignature = "move_to_start";
-    function->setDescription(tr("To Start"));
-    function->commandName = "WorkCursorMoveToStart";
-    registerFunction(function);
+    // function = new TShortCutFunction();
+    // function->object = "";
+    // function->slotsignature = "";
+    // function->setDescription(tr(""));
+    // function->commandName = "";
+    // registerFunction(function);
 
-	function = new TFunction();
+    function = new TShortCutFunction();
 	function->object = "TMainWindow";
 	function->slotsignature = "show_track_finder";
 	function->setDescription(tr("Activate Track Finder"));
 	function->commandName = "MainWindowActivateTrackFinder";
     registerFunction(function);
 
-	function = new TFunction();
-	function->object = "TMainWindow";
-	function->slotsignature = "browse_to_first_track_in_active_sheet";
-	function->setDescription(tr("Browse to first Track in current View"));
-	function->commandName = "MainWindowNavigateToFirstTrack";
-    registerFunction(function);
 
-	function = new TFunction();
-	function->object = "TMainWindow";
-	function->slotsignature = "browse_to_last_track_in_active_sheet";
-	function->setDescription(tr("Browse to last Track in current View"));
-	function->commandName = "MainWindowNavigateToLastTrack";
-    registerFunction(function);
 
+ //    createAndAddFunction("", tr(""), "", "");
 
     createAndAddFunction("TAudioProcessingNode", tr("Gain Envelope"), "toggle_show_gain_automation_curve", "GainShowAutomation");
+
     createAndAddFunction("AudioTrackView", tr("Insert Silence"), "insert_silence", "AudioTrackInsertSilence");
+    createAndAddFunction("TrackPan", tr("Reset"), "reset_pan", "TrackPanReset", "ResetBase");
 
     createAndAddFunction("FadeRange", tr("Reset"), "reset_length", "FadeResetLength", "ResetBase");
-
-    createAndAddFunction("ResetBase", tr("Reset"), "", "ResetBase");
 
     createAndAddFunction("TGainGroupCommand", tr("Input dB value"), "numerical_input", "GainNumericalInput");
     createAndAddFunction("TGainGroupCommand", tr("Toggle Selection"), "toggle_primary_gain_only", "GainToggleSelection");
     createAndAddFunction("TGainGroupCommand", tr("Reset"), "reset_gain", "GainReset", "ResetBase");
 
-    createAndAddFunction("TrackPan", tr("Reset"), "reset_pan", "TrackPanReset", "ResetBase");
+    createAndAddFunction("TMainWindow", tr("Browse to first Track in current View"), "browse_to_first_track_in_active_sheet", "MainWindowNavigateToFirstTrack");
+    createAndAddFunction("TMainWindow", tr("Browse to last Track in current View"), "browse_to_last_track_in_active_sheet", "MainWindowNavigateToLastTrack");
+
+
+    createAndAddFunction("WorkCursorMove", tr("To Start"), "move_to_start", "WorkCursorMoveToStart");
+
+
+    createAndAddFunction("ResetBase", tr("Reset"), "", "ResetBase");
+
+
 }
 
-void TShortcutManager::createAndAddFunction(const QString &object, const QString &description, const QString &slotSignature, const QString &commandName, const QString &inheritedBase)
+void TShortCutManager::createAndAddFunction(const QString &object, const QString &description, const QString &slotSignature, const QString &commandName, const QString &inheritedBase)
 {
-    auto function = new TFunction();
+    auto function = new TShortCutFunction();
     function->object = object;
     function->m_description = description;
     function->slotsignature = slotSignature;
@@ -1154,7 +1156,7 @@ void TShortcutManager::createAndAddFunction(const QString &object, const QString
 }
 
 
-void TShortcutManager::saveFunction(TFunction *function)
+void TShortCutManager::saveFunction(TShortCutFunction *function)
 {
 	QSettings settings(QSettings::IniFormat, QSettings::UserScope, "Traverso", "Shortcuts");
 
@@ -1189,17 +1191,17 @@ void TShortcutManager::saveFunction(TFunction *function)
 	settings.endGroup();
 }
 
-void TShortcutManager::exportFunctions()
+void TShortCutManager::exportFunctions()
 {
-	foreach(TFunction* function, m_functions)
+    foreach(TShortCutFunction* function, m_functions)
 	{
 		saveFunction(function);
 	}
 }
 
-void TShortcutManager::loadShortcuts()
+void TShortCutManager::loadShortcuts()
 {
-	foreach(TShortcut* shortCut, m_shortcuts)
+    foreach(TShortCut* shortCut, m_shortcuts)
 	{
 		delete shortCut;
 	}
@@ -1212,9 +1214,9 @@ void TShortcutManager::loadShortcuts()
 
 	QStringList defaultGroups = defaultSettings.childGroups();
 	QStringList userGroups = userSettings.childGroups();
-	QList<TFunction*> functionsThatInherit;
+    QList<TShortCutFunction*> functionsThatInherit;
 
-	foreach(TFunction* function, m_functions)
+    foreach(TShortCutFunction* function, m_functions)
 	{
 		function->m_keys.clear();
 		function->m_modifierkeys.clear();
@@ -1297,7 +1299,7 @@ void TShortcutManager::loadShortcuts()
 		{
 			foreach(QString key, function->getKeys())
 			{
-                TShortcut* shortcut = getShortcutForKey(key);
+                TShortCut* shortcut = getShortcutForKey(key);
 				if (shortcut)
 				{
 					foreach(QString object, function->getObjects())
@@ -1309,9 +1311,9 @@ void TShortcutManager::loadShortcuts()
 		}
 	}
 
-	foreach(TFunction* function, functionsThatInherit)
+    foreach(TShortCutFunction* function, functionsThatInherit)
 	{
-		TFunction* inheritedFunction = getFunction(function->getInheritedBase());
+        TShortCutFunction* inheritedFunction = getFunction(function->getInheritedBase());
 		if (inheritedFunction)
 		{
 			function->setInheritedFunction(inheritedFunction);
@@ -1319,7 +1321,7 @@ void TShortcutManager::loadShortcuts()
 			{
 				foreach(QString key, function->getKeys())
 				{
-                    TShortcut* shortcut = getShortcutForKey(key);
+                    TShortCut* shortcut = getShortcutForKey(key);
 					if (shortcut)
 					{
 						foreach(QString object, function->getObjects())
@@ -1335,7 +1337,7 @@ void TShortcutManager::loadShortcuts()
     emit functionKeysChanged();
 }
 
-void TShortcutManager::modifyFunctionKeys(TFunction *function, const QStringList& keys, QStringList modifiers)
+void TShortCutManager::modifyFunctionKeys(TShortCutFunction *function, const QStringList& keys, QStringList modifiers)
 {
 	function->m_keys.clear();
 	function->m_modifierkeys.clear();
@@ -1356,14 +1358,14 @@ void TShortcutManager::modifyFunctionKeys(TFunction *function, const QStringList
 	loadShortcuts();
 }
 
-void TShortcutManager::modifyFunctionInheritedBase(TFunction *function, bool usesInheritedBase)
+void TShortCutManager::modifyFunctionInheritedBase(TShortCutFunction *function, bool usesInheritedBase)
 {
 	function->setUsesInheritedbase(usesInheritedBase);
 	saveFunction(function);
 	loadShortcuts();
 }
 
-void TShortcutManager::restoreDefaultFor(TFunction *function)
+void TShortCutManager::restoreDefaultFor(TShortCutFunction *function)
 {
 	QSettings userSettings(QSettings::IniFormat, QSettings::UserScope, "Traverso", "Shortcuts");
 
@@ -1375,14 +1377,14 @@ void TShortcutManager::restoreDefaultFor(TFunction *function)
 	loadShortcuts();
 }
 
-void TShortcutManager::restoreDefaults()
+void TShortCutManager::restoreDefaults()
 {
 	QSettings userSettings(QSettings::IniFormat, QSettings::UserScope, "Traverso", "Shortcuts");
 	userSettings.clear();
 	loadShortcuts();
 }
 
-void TShortcutManager::add_meta_object(const QMetaObject* mo)
+void TShortCutManager::add_meta_object(const QMetaObject* mo)
 {
 	QString shortcutItem = QString(mo->className()).remove("View");
 	QList<const QMetaObject*> list = m_metaObjects.value(shortcutItem);
@@ -1402,7 +1404,7 @@ void TShortcutManager::add_meta_object(const QMetaObject* mo)
 }
 
 /**
- * @brief TShortcutManager::registerItemClass
+ * @brief TShortCutManager::registerItemClass
  * Used to support multiple inheritance, but not bother the user with multiple
  * object names to dispatch shortcuts to.
  * @param itemName The object name presented to the user in the
@@ -1411,31 +1413,31 @@ void TShortcutManager::add_meta_object(const QMetaObject* mo)
  * e.g. AudioClip is represented by AudioClipView, AudioClip, TProcessingNode and ViewItem
  *
  */
-void TShortcutManager::registerItemClass(const QString &itemName, const QString &className)
+void TShortCutManager::registerItemClass(const QString &itemName, const QString &className)
 {
 	QStringList classesList = m_classes.value(itemName);
 	classesList.append(className);
 	m_classes.insert(itemName, classesList);
 }
 
-void TShortcutManager::add_translation(const QString &signature, const QString &translation)
+void TShortCutManager::add_translation(const QString &signature, const QString &translation)
 {
 	m_translations.insert(signature, translation);
 }
 
 
-QString TShortcutManager::get_translation_for(const QString &entry)
+QString TShortCutManager::get_translation_for(const QString &entry)
 {
 	QString key = entry;
 	key = key.remove("View");
 	if (!m_translations.contains(key)) {
-        qDebug("TShortcutManager::get_translation_for(%s) not in database", entry.toLatin1().data());
-		return QString("TShortcutManager: %1 not found!").arg(key);
+        qDebug("TShortCutManager::get_translation_for(%s) not in database", entry.toLatin1().data());
+        return QString("TShortCutManager: %1 not found!").arg(key);
 	}
 	return m_translations.value(key);
 }
 
-QString TShortcutManager::createHtmlForClass(const QString& className, QObject* object)
+QString TShortCutManager::createHtmlForClass(const QString& className, QObject* object)
 {
 	QString holdKeyFact = "";
 
@@ -1462,12 +1464,12 @@ QString TShortcutManager::createHtmlForClass(const QString& className, QObject* 
 
 	QStringList result;
 	int j=0;
-	QList<TFunction* > list = getFunctionsFor(className);
-	QMap<QString, QList<TFunction*> > functionsMap;
+    QList<TShortCutFunction* > list = getFunctionsFor(className);
+    QMap<QString, QList<TShortCutFunction*> > functionsMap;
 
-	foreach(TFunction* function, list)
+    foreach(TShortCutFunction* function, list)
     {
-		QList<TFunction*> listForKey = functionsMap.value(function->submenu);
+        QList<TShortCutFunction*> listForKey = functionsMap.value(function->submenu);
 		listForKey.append(function);
 		functionsMap.insert(function->submenu, listForKey);
 	}
@@ -1481,9 +1483,9 @@ QString TShortcutManager::createHtmlForClass(const QString& className, QObject* 
 				      "<font style=\"font-size: 11px;\"><b>" + submenu + "</b></font></td></tr>\n";
 		}
 
-		QList<TFunction*> subMenuFunctionList = functionsMap.value(submenu);
+        QList<TShortCutFunction*> subMenuFunctionList = functionsMap.value(submenu);
 
-		foreach(TFunction* function, subMenuFunctionList)
+        foreach(TShortCutFunction* function, subMenuFunctionList)
 		{
             QString keySequence = function->getKeySequence(true);
 			keySequence.replace(QString(" , "), QString("<br />"));
@@ -1508,7 +1510,7 @@ QString TShortcutManager::createHtmlForClass(const QString& className, QObject* 
 	return html;
 }
 
-TCommand * TShortcutManager::export_keymap()
+TCommand * TShortCutManager::export_keymap()
 {
 	QTextStream out;
 	QFile data(QDir::homePath() + "/traversokeymap.html");
@@ -1526,7 +1528,7 @@ TCommand * TShortcutManager::export_keymap()
     return nullptr;
 }
 
-TCommand * TShortcutManager::get_keymap(QString &str)
+TCommand * TShortCutManager::get_keymap(QString &str)
 {
 	str = "<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n"
 	      "<style type=\"text/css\">\n"
@@ -1547,7 +1549,7 @@ TCommand * TShortcutManager::get_keymap(QString &str)
     return nullptr;
 }
 
-bool TShortcutManager::classInherits(const QString& className, const QString &inherited)
+bool TShortCutManager::classInherits(const QString& className, const QString &inherited)
 {
 	QList<const QMetaObject*> metas = m_metaObjects.value(className);
 
@@ -1564,14 +1566,15 @@ bool TShortcutManager::classInherits(const QString& className, const QString &in
 	return false;
 }
 
-bool TShortcutManager::keyboard_key_string_to_numerical_value(const QString &text, int &value)
+bool TShortCutManager::keyboard_key_string_to_numerical_value(const QString &text, int &value)
 {
+    value = Qt::Key_unknown;
+
     if (text == "NUMERICAL")
     {
         return true;
     }
 
-    value = 0;
     QString s;
     int x  = 0;
     if ((text != "") && (text.length() > 0) ) {
@@ -1615,13 +1618,13 @@ bool TShortcutManager::keyboard_key_string_to_numerical_value(const QString &tex
                         } else if (text == "MOUSEBUTTONX2") {
                             value = Qt::XButton2;
                         } else if (text == "MOUSESCROLLHORIZONTALLEFT") {
-                            value = TShortcutManager::MouseScrollHorizontalLeft;
+                            value = TShortCutManager::MouseScrollHorizontalLeft;
                         } else if (text =="MOUSESCROLLHORIZONTALRIGHT") {
-                            value = TShortcutManager::MouseScrollHorizontalRight;
+                            value = TShortCutManager::MouseScrollHorizontalRight;
                         } else if (text == "MOUSESCROLLVERTICALUP") {
-                            value = TShortcutManager::MouseScrollVerticalUp;
+                            value = TShortCutManager::MouseScrollVerticalUp;
                         } else if( text == "MOUSESCROLLVERTICALDOWN") {
-                            value = TShortcutManager::MouseScrollVerticalDown;
+                            value = TShortCutManager::MouseScrollVerticalDown;
                         } else if( text == "/") {
                             value = Qt::Key_Slash;
                         } else if ( text == "\\") {

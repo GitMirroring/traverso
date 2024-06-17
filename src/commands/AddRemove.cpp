@@ -41,13 +41,13 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
 
     One for example creates the function (slot) Command* add_track() in SheetView. and add <br />
     an entry in the keymap file to define which keyfact will be used to call this function.<br />
-    One also can create a CommandPlugin, and point the keyfact in the keymap file to the <br />
+    One also can create a TCommandPlugin, and point the keyfact in the keymap file to the <br />
     plugin name, this way you don't need to add a function (slot) to the SheetView class.
 
     When using the first approach, you create a new Track object in the GUI object SheetView<br />
     and return the Command object returned by m_sheet->add_track(track);, see example code below.
 
-    Using a CommandPlugin for this kind of action doesn't make much sense, you most likely <br />
+    Using a TCommandPlugin for this kind of action doesn't make much sense, you most likely <br />
     want to use plugins to manipulate existing objects.
 
     \code

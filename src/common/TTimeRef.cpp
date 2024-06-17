@@ -16,6 +16,11 @@ TTimeRef TTimeRef::max_length()
     return TTimeRef(LLONG_MAX);
 }
 
+TTimeRef TTimeRef::negative_max_length()
+{
+    return TTimeRef((LLONG_MAX - 1) * -1);
+}
+
 TTimeRef::TTimeRef(qint64 position)
     : m_position(position)
 {

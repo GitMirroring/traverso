@@ -20,9 +20,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TShortcutEditorDialog.h"
+#include "TShortCut.h"
+#include "TShortCutFunction.h"
 #include "ui_TShortcutEditorDialog.h"
 
-#include "TShortcutManager.h"
+#include "TShortCutManager.h"
 #include <QTreeWidgetItem>
 
 #include "Debugger.h"
@@ -152,9 +154,9 @@ void TShortcutEditorDialog::objects_combo_box_activated(int index)
         ui->shortcutsTreeWidget->setHeaderLabels(QStringList() << tr("Function") << tr("Key / Button"));
 	}
 
-	QList<TFunction* > functionsList = tShortCutManager().getFunctionsFor(className);
+	QList<TShortCutFunction* > functionsList = tShortCutManager().getFunctionsFor(className);
 
-	foreach(TFunction* function, functionsList)
+	foreach(TShortCutFunction* function, functionsList)
 	{
 		QTreeWidgetItem* item;
 		item = new QTreeWidgetItem(QStringList() << function->getLongDescription() << function->getKeySequence());
@@ -178,7 +180,7 @@ void TShortcutEditorDialog::key_combo_box_activated(int)
 		return;
 	}
 
-	TFunction* function = getSelectedFunction();
+	TShortCutFunction* function = getSelectedFunction();
 	if (!function)
 	{
 		return;
@@ -224,14 +226,14 @@ void TShortcutEditorDialog::key1_combo_box_activated(int /*index*/)
 	ui->shortcutsTreeWidget->clear();
 
 	QString keyString = ui->keyComboBox1->itemData(ui->keyComboBox1->currentIndex()).toString();
-	TShortcut* shortCut = tShortCutManager().getShortcutForKey(keyString);
+	TShortCut* shortCut = tShortCutManager().getShortcutForKey(keyString);
 
 	if (!shortCut)
 	{
 		return;
 	}
 
-	foreach(TFunction* function, shortCut->getFunctions())
+	foreach(TShortCutFunction* function, shortCut->getFunctions())
 	{
 		QString translatedObjectName = tShortCutManager().get_translation_for(function->getObject());
 		QStringList stringlist;
@@ -245,7 +247,7 @@ void TShortcutEditorDialog::key1_combo_box_activated(int /*index*/)
     ui->shortcutsTreeWidget->sortItems(0, Qt::SortOrder::AscendingOrder);
 }
 
-TFunction* TShortcutEditorDialog::getSelectedFunction()
+TShortCutFunction* TShortcutEditorDialog::getSelectedFunction()
 {
 	QList<QTreeWidgetItem*> items = ui->shortcutsTreeWidget->selectedItems();
 
@@ -256,14 +258,14 @@ TFunction* TShortcutEditorDialog::getSelectedFunction()
 	}
 	QTreeWidgetItem *item = items.first();
 
-	return (TFunction*) item->data(0, Qt::UserRole).value<void*>();
+	return (TShortCutFunction*) item->data(0, Qt::UserRole).value<void*>();
 }
 
 void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 {
 	if (ui->showfunctionsCheckBox->isChecked())
 	{
-		TFunction* function = getSelectedFunction();
+		TShortCutFunction* function = getSelectedFunction();
 		if (function)
 		{
 			int index = ui->objectsComboBox->findData(tShortCutManager().getClassForObject(function->getObject()));
@@ -290,7 +292,7 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 	ui->altCheckBox->setChecked(false);
 	ui->metaCheckBox->setChecked(false);
 
-	TFunction* function = getSelectedFunction();
+	TShortCutFunction* function = getSelectedFunction();
 	if (!function)
 	{
         ui->baseFunctionGroupBox->hide();
@@ -324,7 +326,7 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 		ui->keyComboBox2->setCurrentIndex(index);
 	}
 
-	TFunction* inheritedFunction = function->getInheritedFunction();
+	TShortCutFunction* inheritedFunction = function->getInheritedFunction();
 	bool usesInheritedBase = function->usesInheritedBase();
 	if (inheritedFunction)
 	{
@@ -400,7 +402,7 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 
 void TShortcutEditorDialog::base_function_checkbox_clicked()
 {
-	TFunction* function = getSelectedFunction();
+	TShortCutFunction* function = getSelectedFunction();
 	if (!function)
 	{
 		return;
@@ -455,7 +457,7 @@ void TShortcutEditorDialog::function_keys_changed()
 		return;
 	}
 
-	TFunction* function = (TFunction*) item->data(0, Qt::UserRole).value<void*>();
+	TShortCutFunction* function = (TShortCutFunction*) item->data(0, Qt::UserRole).value<void*>();
 
 	objects_combo_box_activated(ui->objectsComboBox->currentIndex());
 
@@ -472,7 +474,7 @@ void TShortcutEditorDialog::function_keys_changed()
 
 void TShortcutEditorDialog::configure_inherited_shortcut_pushbutton_clicked()
 {
-	TFunction* function = getSelectedFunction();
+	TShortCutFunction* function = getSelectedFunction();
 	if (!function)
 	{
 		return;
@@ -493,7 +495,7 @@ void TShortcutEditorDialog::configure_inherited_shortcut_pushbutton_clicked()
 
 void TShortcutEditorDialog::on_restoreDefaultPushButton_clicked()
 {
-	TFunction* function = getSelectedFunction();
+	TShortCutFunction* function = getSelectedFunction();
 	if (!function)
 	{
 		return;
@@ -541,7 +543,7 @@ void TShortcutEditorDialog::moveItemUpDown(int direction)
 	for (int i=0; i<ui->shortcutsTreeWidget->topLevelItemCount(); ++i)
 	{
 		item = ui->shortcutsTreeWidget->topLevelItem(i);
-		TFunction* function = (TFunction*) item->data(0, Qt::UserRole).value<void*>();
+		TShortCutFunction* function = (TShortCutFunction*) item->data(0, Qt::UserRole).value<void*>();
 		function->sortorder = i;
 	}
 

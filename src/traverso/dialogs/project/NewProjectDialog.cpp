@@ -52,7 +52,7 @@
 #include <AudioTrack.h>
 #include <Utils.h>
 #include <CommandGroup.h>
-#include "Import.h"
+#include "TAudioFileImportCommand.h"
 #include "AudioFileCopyConvert.h"
 #include "ReadSource.h"
 
@@ -328,7 +328,7 @@ void NewProjectDialog::load_all_files()
 	}
 }
 
-void NewProjectDialog::load_file(QString name, int i, QString trackname)
+void NewProjectDialog::load_file(const QString &fileName, int i, QString trackname)
 {
         Sheet* sheet = qobject_cast<Sheet*>(pm().get_project()->get_current_session());
 
@@ -348,11 +348,12 @@ void NewProjectDialog::load_file(QString name, int i, QString trackname)
                 return;
         }
 
-	Import* import = new Import(name);
-        printf("renaming track to %s\n", trackname.toLatin1().data());
+    TAudioFileImportCommand* import = new TAudioFileImportCommand();
+    import->set_file_name(fileName);
+    printf("renaming track to %s\n", trackname.toLatin1().data());
     track->set_name(trackname);
 	import->set_track(track);
-        import->set_position(TTimeRef());
+    import->set_import_location(TTimeRef());
 	if (import->create_readsource() != -1) {
 		TCommand::process_command(import);
 	}

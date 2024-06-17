@@ -34,7 +34,7 @@ class SnapList;
 class LocationItem;
 class TBusTrack;
 class Track;
-class TimeLine;
+class TTimeLineRuler;
 
 class TSession : public ContextItem
 {
@@ -57,7 +57,7 @@ public:
 	virtual TTimeRef get_transport_location() const;
 	virtual SnapList* get_snap_list() const;
 	Track* get_track(qint64 id) const;
-	TimeLine* get_timeline() const;
+	TTimeLineRuler* get_timeline() const;
 	TSession* get_parent_session() const {return m_parentSession;}
 	QString get_name() const {return m_name;}
 	int get_track_height(qint64 trackId) const {return m_trackHeights.value(trackId, 150);}
@@ -109,7 +109,7 @@ protected:
 
 	SnapList*	m_snaplist;
 	LocationItem*	m_workSnap;
-	TimeLine*	m_timeline;
+	TTimeLineRuler*	m_timeline;
 	QString         m_name;
 
 	int		m_mode{};
@@ -125,7 +125,7 @@ protected:
 	TTimeRef                 m_newTransportLocation;
 
 private:
-	friend class TimeLine;
+	friend class TTimeLineRuler;
 
 	void init();
 

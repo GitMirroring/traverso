@@ -66,7 +66,7 @@ void AudioClipGroup::move_to(int trackIndex, TTimeRef location)
         }
 
         TTimeRef offset = clip->get_location_start() - get_location_start();
-        clip->set_track_start_location(location + offset);
+        clip->set_location_start(location + offset);
     }
 
     update_state();
@@ -123,7 +123,7 @@ QList<AudioClip*> AudioClipGroup::copy_clips()
         AudioClip* newclip = resources_manager()->get_clip(clip->get_id());
         newclip->set_sheet(clip->get_sheet());
         newclip->set_track(clip->get_track());
-        newclip->set_track_start_location(clip->get_location_start());
+        newclip->set_location_start(clip->get_location_start());
         newclips.append(newclip);
     }
 

@@ -45,7 +45,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Utils.h"
 #include <AddRemove.h>
 #include "FileHelpers.h"
-#include "TimeLine.h"
+#include "TTimeLineRuler.h"
 #include "TBusTrack.h"
 #include "TSend.h"
 #include "SpectralMeter.h"

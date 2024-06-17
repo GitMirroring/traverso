@@ -19,14 +19,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TimeLine.h"
+#include "TTimeLineRuler.h"
 
 #include "TSession.h"
 #include "Marker.h"
 #include "Export.h"
 #include "Utils.h"
-#include <AddRemove.h>
-#include "AudioDevice.h"
+#include "AddRemove.h"
 
 #include <QRegularExpression>
 
@@ -37,14 +36,14 @@ static bool smallerMarker(const Marker* left, const Marker* right )
 	return left->get_when() < right->get_when();
 }
 
-TimeLine::TimeLine(TSession * sheet)
+TTimeLineRuler::TTimeLineRuler(TSession * sheet)
 	: ContextItem(sheet)
 	, m_sheet(sheet)
 {
-	QObject::tr("TimeLine");
+    QObject::tr("TTimeLineRuler");
 }
 
-QDomNode TimeLine::get_state(QDomDocument doc)
+QDomNode TTimeLineRuler::get_state(QDomDocument doc)
 {
 	QDomElement domNode = doc.createElement("TimeLine");
 	QDomNode markersNode = doc.createElement("Markers");
@@ -57,7 +56,7 @@ QDomNode TimeLine::get_state(QDomDocument doc)
 	return domNode;
 }
 
-int TimeLine::set_state(const QDomNode & node)
+int TTimeLineRuler::set_state(const QDomNode & node)
 {
 	m_markers.clear();
 
@@ -76,7 +75,7 @@ int TimeLine::set_state(const QDomNode & node)
 	return 1;
 }
 
-TCommand * TimeLine::add_marker(Marker* marker, bool historable)
+TCommand * TTimeLineRuler::add_marker(Marker* marker, bool historable)
 {
 	connect(marker, SIGNAL(positionChanged()), this, SLOT(marker_position_changed()));
 	
@@ -95,7 +94,7 @@ TCommand * TimeLine::add_marker(Marker* marker, bool historable)
 	return cmd;
 }
 
-TCommand* TimeLine::remove_marker(Marker* marker, bool historable)
+TCommand* TTimeLineRuler::remove_marker(Marker* marker, bool historable)
 {
 	AddRemove* cmd;
 	cmd = new AddRemove(this, marker, historable, m_sheet,
@@ -112,19 +111,19 @@ TCommand* TimeLine::remove_marker(Marker* marker, bool historable)
 	return cmd;
 }
 
-void TimeLine::private_add_marker(Marker * marker)
+void TTimeLineRuler::private_add_marker(Marker * marker)
 {
 	m_markers.append(marker);
 	index_markers();
 }
 
-void TimeLine::private_remove_marker(Marker * marker)
+void TTimeLineRuler::private_remove_marker(Marker * marker)
 {
 	m_markers.removeAll(marker);
 	index_markers();
 }
 
-Marker * TimeLine::get_marker(qint64 id)
+Marker * TTimeLineRuler::get_marker(qint64 id)
 {
 	foreach(Marker* marker, m_markers) {
 		if (marker->get_id() == id) {
@@ -135,7 +134,7 @@ Marker * TimeLine::get_marker(qint64 id)
 	return 0;
 }
 
-bool TimeLine::get_end_location(TTimeRef& location)
+bool TTimeLineRuler::get_end_location(TTimeRef& location)
 {
 	foreach(Marker* marker, m_markers) {
 		if (marker->get_type() == Marker::ENDMARKER) {
@@ -147,7 +146,7 @@ bool TimeLine::get_end_location(TTimeRef& location)
 	return false;
 }
 
-bool TimeLine::get_start_location(TTimeRef & location)
+bool TTimeLineRuler::get_start_location(TTimeRef & location)
 {
 	if (m_markers.size() > 0) {
 		location = m_markers.first()->get_when();
@@ -158,7 +157,7 @@ bool TimeLine::get_start_location(TTimeRef & location)
 }
 
 
-bool TimeLine::has_end_marker()
+bool TTimeLineRuler::has_end_marker()
 {
 	foreach(Marker* marker, m_markers) {
 		if (marker->get_type() == Marker::ENDMARKER) {
@@ -170,7 +169,7 @@ bool TimeLine::has_end_marker()
 }
 
 
-Marker* TimeLine::get_end_marker()
+Marker* TTimeLineRuler::get_end_marker()
 {
 	foreach(Marker* marker, m_markers) {
 		if (marker->get_type() == Marker::ENDMARKER) {
@@ -181,7 +180,7 @@ Marker* TimeLine::get_end_marker()
     return nullptr;
 }
 
-void TimeLine::marker_position_changed()
+void TTimeLineRuler::marker_position_changed()
 {
 	index_markers();
 
@@ -192,7 +191,7 @@ void TimeLine::marker_position_changed()
 	emit m_sheet->lastFramePositionChanged();
 }
 
-void TimeLine::index_markers()
+void TTimeLineRuler::index_markers()
 {
     std::sort(m_markers.begin(), m_markers.end(), smallerMarker);
 	// let the markers know about their position (index)
@@ -203,7 +202,7 @@ void TimeLine::index_markers()
 
 // returns all markers of type CDTRACK
 // sets 'endmarker' to true if an endmarker is present, else to false.
-QList<Marker*> TimeLine::get_cd_layout(bool & endmarker)
+QList<Marker*> TTimeLineRuler::get_cd_layout(bool & endmarker)
 {
         QList<Marker*> list;
         endmarker = false;
@@ -226,7 +225,7 @@ QList<Marker*> TimeLine::get_cd_layout(bool & endmarker)
 // formatting the track names in a separate function to guarantee that
 // the file names of exported tracks and the entry in the TOC file always
 // match
-QString TimeLine::format_cdtrack_name(Marker *marker, int i)
+QString TTimeLineRuler::format_cdtrack_name(Marker *marker, int i)
 {
 	PENTER;
         QString name;
@@ -249,7 +248,7 @@ QString TimeLine::format_cdtrack_name(Marker *marker, int i)
 
 // creates a valid list of markers for CD export. Takes care of special cases
 // such as if no markers are present, or if an end marker is missing.
-QList<Marker*> TimeLine::get_cdtrack_list(ExportSpecification *spec)
+QList<Marker*> TTimeLineRuler::get_cdtrack_list(ExportSpecification *spec)
 {
 	PENTER;
         bool endmarker;
@@ -273,7 +272,7 @@ QList<Marker*> TimeLine::get_cdtrack_list(ExportSpecification *spec)
 }
 
 
-QString TimeLine::get_cdrdao_tracklist(ExportSpecification* spec, bool pregap)
+QString TTimeLineRuler::get_cdrdao_tracklist(ExportSpecification* spec, bool pregap)
 {
         QString output;
 

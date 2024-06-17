@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "LocationItem.h"
 #include <QDomNode>
 
-class TimeLine;
+class TTimeLineRuler;
 
 class Marker : public ContextItem, public LocationItem
 {
@@ -39,8 +39,8 @@ public:
 		ENDMARKER
 	};
 
-    Marker(TimeLine* tl, const TTimeRef when, MarkerType type = CDTRACK);
-	Marker(TimeLine* tl, const QDomNode& node);
+    Marker(TTimeLineRuler* tl, const TTimeRef when, MarkerType type = CDTRACK);
+	Marker(TTimeLineRuler* tl, const QDomNode& node);
         ~Marker() {}
 	
 	QDomNode get_state(QDomDocument doc);
@@ -57,7 +57,7 @@ public:
 	void set_copyprotect(bool);
 	void set_index(int);
 
-	TimeLine * get_timeline() const {return m_timeline;}
+	TTimeLineRuler * get_timeline() const {return m_timeline;}
 	TTimeRef get_when() const {return m_when;}
 	QString get_description() const {return m_description;}
 	QString get_performer() const {return m_performer;}
@@ -77,7 +77,7 @@ public slots:
 
 
 private:
-	TimeLine* m_timeline;
+	TTimeLineRuler* m_timeline;
 	TTimeRef m_when;
 	QString	m_description,
     m_performer,

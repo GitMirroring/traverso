@@ -27,7 +27,7 @@
 #include <QTimer>
 
 class SheetView;
-class TimeLine;
+class TTimeLineRuler;
 class MarkerView;
 class Marker;
 
@@ -51,7 +51,7 @@ public:
 
 private:
 	QList<MarkerView* > m_markerViews;
-	TimeLine* 	m_timeline;
+	TTimeLineRuler* 	m_timeline;
 	MarkerView* 	m_blinkingMarker;
 	QColor		m_blinkColor;
 

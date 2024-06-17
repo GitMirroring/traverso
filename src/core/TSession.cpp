@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include "SnapList.h"
 #include "LocationItem.h"
-#include "TimeLine.h"
+#include "TTimeLineRuler.h"
 
 #include "Debugger.h"
 
@@ -41,7 +41,7 @@ TSession::TSession(TSession *parentSession)
 	m_parentSession = nullptr;
 
 	if (!parentSession) {
-		m_timeline = new TimeLine(this);
+		m_timeline = new TTimeLineRuler(this);
 		m_snaplist = new SnapList(this);
 		m_workSnap = new LocationItem();
 		m_workSnap->set_snap_list(m_snaplist);
@@ -217,7 +217,7 @@ LocationItem* TSession::get_work_snap() const
 	return m_workSnap;
 }
 
-TimeLine* TSession::get_timeline() const
+TTimeLineRuler* TSession::get_timeline() const
 {
 	if (m_parentSession) {
 		return m_parentSession->get_timeline();

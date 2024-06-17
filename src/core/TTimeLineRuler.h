@@ -33,12 +33,12 @@ class LocationItem;
 class TCommand;
 struct ExportSpecification;
 
-class TimeLine : public ContextItem
+class TTimeLineRuler : public ContextItem
 {
 	Q_OBJECT
 public:
-        TimeLine(TSession* sheet);
-        ~TimeLine() {}
+        TTimeLineRuler(TSession* sheet);
+        ~TTimeLineRuler() {}
 	
 	QDomNode get_state(QDomDocument doc);
 	int set_state(const QDomNode& node);

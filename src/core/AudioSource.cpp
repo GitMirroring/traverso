@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <utility>
 #include "Sheet.h"
 #include "Peak.h"
-#include "Export.h"
 #include "Utils.h"
 
 // Always put me below _all_ includes, this is needed

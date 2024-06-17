@@ -117,7 +117,7 @@ AudioClip::AudioClip(const QDomNode& node)
     m_domNode = node.cloneNode();
     //	init();
     // first init to set variables that are referenced in:
-    set_track_start_location(location);
+    AudioClip::set_location_start(location);
 }
 
 AudioClip::~AudioClip()
@@ -198,7 +198,7 @@ int AudioClip::set_state(const QDomNode& node)
     // after curves (those created in plugins too!) are inited and having
     // their state set.
     TTimeRef location(e.attribute( "trackstart", "" ).toLongLong(&ok));
-    set_track_start_location(location);
+    AudioClip::set_location_start(location);
 
     return 1;
 }
@@ -300,7 +300,7 @@ void AudioClip::set_left_edge(TTimeRef newLeftLocation)
         }
 
         set_source_start_location( m_sourceStartLocation - movingToLeft );
-        set_track_start_location(get_location_start() - movingToLeft);
+        AudioClip::set_location_start(get_location_start() - movingToLeft);
     } else if (newLeftLocation > get_location_start()) {
 
         TTimeRef availableTimeRight = m_length;
@@ -312,7 +312,7 @@ void AudioClip::set_left_edge(TTimeRef newLeftLocation)
         }
 
         set_source_start_location( m_sourceStartLocation + movingToRight );
-        set_track_start_location(get_location_start() + movingToRight);
+        AudioClip::set_location_start(get_location_start() + movingToRight);
     }
 }
 
@@ -363,10 +363,10 @@ void AudioClip::set_source_end_location(const TTimeRef& location)
     m_length = m_sourceEndLocation - m_sourceStartLocation;
 }
 
-void AudioClip::set_track_start_location(const TTimeRef& location)
+void AudioClip::set_location_start(const TTimeRef& location)
 {
     PENTER2;
-    set_location_start(location);
+    LocationItem::set_location_start(location);
     m_fader->get_curve()->set_start_offset(get_location_start());
 
     // set_track_end_location will emit positionChanged(), so we
@@ -379,7 +379,7 @@ void AudioClip::set_track_start_location(const TTimeRef& location)
 
 void AudioClip::set_track_end_location(const TTimeRef& location)
 {
-    set_location_end(location);
+    LocationItem::set_location_end(location);
 
     if ( (!is_moving()) && m_sheet) {
         m_sheet->get_snap_list()->mark_dirty();

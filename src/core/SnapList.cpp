@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClip.h"
 #include "AudioClipManager.h"
 #include "TConfig.h"
-#include "TimeLine.h"
+#include "TTimeLineRuler.h"
 #include "Utils.h"
 #include "Marker.h"
 

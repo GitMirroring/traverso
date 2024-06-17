@@ -56,7 +56,7 @@ private slots:
 	void update_template_combobox();
 	void add_files();
 	void remove_files();
-	void load_file(QString, int, QString);
+    void load_file(const QString& fileName, int, QString);
 	void move_up();
 	void move_down();
         void on_changeProjectsDirButton_clicked();

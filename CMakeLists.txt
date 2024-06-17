@@ -378,6 +378,11 @@ IF(UNIX)
                 SET(HAVE_ALSA FALSE)
         ENDIF(WANT_ALSA)
 
+	PKG_CHECK_MODULES(SNDFILE  sndfile>=1.1.0)
+	IF (SNDFILE_FOUND)
+	        MESSAGE("-- SNDFILE Library Found OK")
+	ENDIF(SNDFILE_FOUND)
+
 # END LINUX section
 
 

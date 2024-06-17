@@ -28,12 +28,12 @@ AudioSource.cpp
 AbstractViewPort.cpp
 TCommand.cpp
 TConfig.cpp
-TShortcutManager.cpp
+TShortCutManager.cpp
 ContextPointer.cpp
 ContextItem.cpp
 Curve.cpp
 CurveNode.cpp
-CommandPlugin.cpp
+TCommandPlugin.h
 DiskIO.cpp
 Export.cpp
 FadeCurve.cpp
@@ -55,7 +55,7 @@ WriteSource.cpp
 gdither.cpp
 SnapList.cpp
 LocationItem.cpp
-TimeLine.cpp
+TTimeLineRuler.cpp
 Marker.cpp
 Themer.cpp
 ProjectConverter.cpp
@@ -82,7 +82,9 @@ ENDIF(UNIX)
 
 SET(TRAVERSO_CORE_LIBRARY "traversocore")
 
-ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE})
+ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE}
+	TShortCutFunction.h TShortCutFunction.cpp
+	TShortCut.h TShortCut.cpp)
 
 IF(USE_PCH)
     ADD_DEPENDENCIES(traversocore precompiled_headers)

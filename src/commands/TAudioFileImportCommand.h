@@ -32,40 +32,40 @@ class AudioClip;
 class AudioTrack;
 class ReadSource;
 
-class Import : public TCommand
+class TAudioFileImportCommand : public TCommand
 {
-        Q_OBJECT
+    Q_OBJECT
 
 public :
-	Import(const QString& fileName);
-        Import(AudioTrack* track, const TTimeRef& length, bool silent = false);
-        Import(AudioTrack* track, const QString& fileName);
-        Import(AudioTrack* track, const QString& fileName, const TTimeRef& position);
-        ~Import();
+    TAudioFileImportCommand();
+    ~TAudioFileImportCommand();
 
-        int prepare_actions();
-        int do_action();
-        int undo_action();
-	bool is_hold_command() const {return false;}
-	
-	int create_readsource();
-	void create_audioclip();
-        void set_track(AudioTrack* track);
-	void set_position(const TTimeRef& position);
-        ReadSource* readsource() {return m_source;}
+    int prepare_actions();
+    int do_action();
+    int undo_action();
+    bool is_hold_command() const {return false;}
+
+    int create_readsource();
+    void create_audioclip();
+    void set_file_name(const QString& fileName);
+    void set_track(AudioTrack* track);
+    void set_import_location(const TTimeRef& location);
+    void set_length(const TTimeRef& length);
+    void set_silent(bool silent);
+    ReadSource* readsource() {return m_readSource;}
 
 private :
-        AudioTrack*	m_track{};
-        AudioClip*	m_clip{};
-    ReadSource* 	m_source{};
-        QString 	m_fileName;
-	QString		m_name;
-    bool		m_silent{};
-	TTimeRef		m_initialLength;
-    bool		m_hasPosition{};
-	TTimeRef		m_position;
+    AudioTrack*     m_track;
+    AudioClip*      m_clip;
+    ReadSource* 	m_readSource;
+    QString         m_fileName;
+    QString         m_name;
+    TTimeRef		m_initialLength;
+    TTimeRef		m_importLocation;
+    bool            m_silent;
+    bool            m_hasPosition;
 
-        void init(AudioTrack* track, const QString& filename);
+    void init(AudioTrack* track, const QString& filename);
 };
 
 #endif
