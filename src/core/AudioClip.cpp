@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <AudioDevice.h>
 #include "Mixer.h"
 #include "DiskIO.h"
-#include "Export.h"
+#include "TExportSpecification.h"
 #include "AudioClipManager.h"
 #include "ResourcesManager.h"
 #include "Curve.h"
@@ -581,37 +581,32 @@ int AudioClip::init_recording()
 
     QString sourceid = QString::number(rs->get_id());
 
-    auto spec = new ExportSpecification;
+    auto spec = new TExportSpecification;
 
     spec->exportdir = m_sheet->get_audio_sources_dir();
 
     QString recordFormat = config().get_property("Recording", "FileFormat", "wav").toString();
     if (recordFormat == "wavpack") {
-        spec->writerType = "wavpack";
+        spec->set_writer_type("wavpack");
         QString compression = config().get_property("Recording", "WavpackCompressionType", "fast").toString();
         QString skipwvx = config().get_property("Recording", "WavpackSkipWVX", "false").toString();
         spec->extraFormat["quality"] = compression;
         spec->extraFormat["skip_wvx"] = skipwvx;
     }
     else if (recordFormat == "w64") {
-        spec->writerType = "sndfile";
-        spec->extraFormat["filetype"] = "w64";
+        spec->set_file_format(SF_FORMAT_W64);
     } else {
-        spec->writerType = "sndfile";
-        spec->extraFormat["filetype"] = "wav";
+        spec->set_file_format(SF_FORMAT_WAV);
     }
 
-    spec->data_width = 1;	// 1 means float
-    spec->channels = channelcount;
-    spec->sample_rate = audiodevice().get_sample_rate();
-    spec->src_quality = SRC_SINC_MEDIUM_QUALITY;
-    spec->isRecording = true;
-    spec->startLocation = TTimeRef();
-    spec->endLocation = TTimeRef();
-    spec->totalTime = TTimeRef();
-    spec->blocksize = audiodevice().get_buffer_size();
+    spec->set_recording_state(TExportSpecification::RecordingState::RECORDING);
+    spec->set_block_size(audiodevice().get_buffer_size());
+    spec->set_channel_count(channelcount);
+    spec->set_render_buffer(bus->get_buffer(0, audiodevice().get_buffer_size()));
+    spec->set_sample_rate(audiodevice().get_sample_rate());
+    spec->set_export_start_location(TTimeRef());
+    spec->set_export_end_location(TTimeRef());
     spec->name = m_name + "-" + sourceid;
-    spec->dataF = bus->get_buffer(0, audiodevice().get_buffer_size());
 
     m_writer = new WriteSource(spec);
     if (m_writer->prepare_export() == -1) {
@@ -856,7 +851,7 @@ uint AudioClip::get_bitdepth( ) const
 uint AudioClip::get_rate( ) const
 {
     if (m_readSource) {
-        return m_readSource->get_rate();
+        return m_readSource->get_sample_rate();
     }
 
     return audiodevice().get_sample_rate();

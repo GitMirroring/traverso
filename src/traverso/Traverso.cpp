@@ -29,7 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Traverso.h"
 #include "Mixer.h"
 #include "ProjectManager.h"
-#include "Project.h"
 #include "TMainWindow.h"
 #include "Themer.h"
 #include "TConfig.h"
@@ -41,7 +40,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "widgets/SpectralMeterWidget.h"
 #include "widgets/CorrelationMeterWidget.h"
 
-#include "defines.h"
 #include "fpu.h"
 #ifdef __SSE__
 #include <xmmintrin.h>

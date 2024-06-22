@@ -145,7 +145,7 @@ void TimeLineView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opti
 	TTimeRef major;
 	
 	if (m_zooms.contains(m_sv->timeref_scalefactor)) {
-		major = msms_to_timeref(m_zooms[m_sv->timeref_scalefactor]);
+		major = TTimeRef::msms_to_timeref(m_zooms[m_sv->timeref_scalefactor]);
 	} else {
 		major = 120 * m_sv->timeref_scalefactor;
 	}
@@ -200,7 +200,7 @@ void TimeLineView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opti
 	// Draw text
 	for (int i=0; i<majorTicks.size(); ++i) {
 		int x = majorTicks.at(i);
-		painter->drawText(x + 4, height - 8, timeref_to_text(majorTimeRefs.at(i), m_sv->timeref_scalefactor));
+		painter->drawText(x + 4, height - 8, TTimeRef::timeref_to_text(majorTimeRefs.at(i), m_sv->timeref_scalefactor));
 	}
 	
 	painter->restore();

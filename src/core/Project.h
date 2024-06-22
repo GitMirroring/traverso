@@ -36,8 +36,8 @@ class TTransportControl;
 class Sheet;
 class Track;
 class ResourcesManager;
-struct ExportSpecification;
-class ExportThread;
+struct TExportSpecification;
+class TExportThread;
 class TAudioDeviceClient;
 class TBusTrack;
 class TSend;
@@ -141,10 +141,9 @@ public :
 	
 	int save(bool autosave=false);
 	int load(const QString &projectfile = "");
-	int export_project(ExportSpecification* spec);
-	int start_export(ExportSpecification* spec);
-	int create_cdrdao_toc(ExportSpecification* spec);
-        TTimeRef get_cd_totaltime(ExportSpecification*);
+	int export_project(TExportSpecification* spec);
+	int create_cdrdao_toc(TExportSpecification* spec);
+        TTimeRef get_cd_totaltime(TExportSpecification*);
 
 	enum {
 		SETTING_XML_CONTENT_FAILED = -1,
@@ -170,7 +169,7 @@ private:
         TSession*               m_activeSession;
         APILinkedList           m_RtSheets;
 	ResourcesManager* 	m_resourcesManager;
-        ExportThread*           m_exportThread;
+        TExportThread*           m_exportThread;
         TAudioDeviceClient*	m_audiodeviceClient;
         SpectralMeter*          m_spectralMeter;
         CorrelationMeter*       m_correlationMeter;
@@ -202,9 +201,6 @@ private:
 	bool		m_useResampling;
         bool            m_sheetsAreTrackFolder{};
 
-	int		overallExportProgress{};
-	int 		renderedSheets{};
-	QList<Sheet* > 	sheetsToRender;
 
         qint64 		m_activeSheetId;
         qint64          m_activeSessionId;

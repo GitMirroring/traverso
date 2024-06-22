@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TSession.h"
 #include "Marker.h"
-#include "Export.h"
+#include "TExportSpecification.h"
 #include "Utils.h"
 #include "AddRemove.h"
 
@@ -248,7 +248,7 @@ QString TTimeLineRuler::format_cdtrack_name(Marker *marker, int i)
 
 // creates a valid list of markers for CD export. Takes care of special cases
 // such as if no markers are present, or if an end marker is missing.
-QList<Marker*> TTimeLineRuler::get_cdtrack_list(ExportSpecification *spec)
+QList<Marker*> TTimeLineRuler::get_cdtrack_list(TExportSpecification *spec)
 {
 	PENTER;
         bool endmarker;
@@ -260,11 +260,11 @@ QList<Marker*> TTimeLineRuler::get_cdtrack_list(ExportSpecification *spec)
 
 	// make sure there are at least a start- and end-marker in the list
         if (lst.size() == 0) {
-                lst.push_back(new Marker(this, spec->startLocation, Marker::CDTRACK));
+                lst.push_back(new Marker(this, spec->get_export_start_location(), Marker::CDTRACK));
         }
 
         if (!endmarker) {
-                TTimeRef endlocation = qMax(spec->endLocation, lst.last()->get_when());
+                TTimeRef endlocation = qMax(spec->get_export_end_location(), lst.last()->get_when());
                 lst.push_back(new Marker(this, endlocation, Marker::ENDMARKER));
         }
 
@@ -272,7 +272,7 @@ QList<Marker*> TTimeLineRuler::get_cdtrack_list(ExportSpecification *spec)
 }
 
 
-QString TTimeLineRuler::get_cdrdao_tracklist(ExportSpecification* spec, bool pregap)
+QString TTimeLineRuler::get_cdrdao_tracklist(TExportSpecification* spec, bool pregap)
 {
         QString output;
 
@@ -318,10 +318,10 @@ QString TTimeLineRuler::get_cdrdao_tracklist(ExportSpecification* spec, bool pre
                         //}
                 }
 
-                TTimeRef length = cd_to_timeref(timeref_to_cd(endmarker->get_when())) - cd_to_timeref(timeref_to_cd(startmarker->get_when()));
+                TTimeRef length = TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(endmarker->get_when())) - TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(startmarker->get_when()));
 
-//		QString s_start = timeref_to_cd(start);
-                QString s_length = timeref_to_cd(length);
+//		QString s_start = TTimeRef::timeref_to_cd(start);
+                QString s_length = TTimeRef::timeref_to_cd(length);
 
 //		output += "  FILE \"" + spec->name + "." + spec->extraFormat["filetype"] + "\" " + s_start + " " + s_length + "\n\n";
                 output += "  FILE \"" + format_cdtrack_name(startmarker, i+1) + "." + spec->extraFormat["filetype"] + "\" 0 " + s_length + "\n\n";

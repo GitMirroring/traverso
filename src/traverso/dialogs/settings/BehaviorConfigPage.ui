@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>366</width>
-    <height>432</height>
+    <height>468</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -90,7 +90,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QRadioButton" name="restoreRadioButton">
+          <widget class="QRadioButton" name="openLastProjectRadioButton">
            <property name="text">
             <string>Last Project</string>
            </property>

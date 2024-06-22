@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "gdither.h"
 #include <samplerate.h>
 
-struct ExportSpecification;
+struct TExportSpecification;
 class Peak;
 class DiskIO;
 class AbstractAudioWriter;
@@ -39,7 +39,7 @@ class WriteSource : public AudioSource
 	Q_OBJECT
 
 public :
-	WriteSource(ExportSpecification* spec);
+	WriteSource(TExportSpecification* spec);
 	~WriteSource();
 
         int rb_write(AudioBus* bus, nframes_t nframes);
@@ -63,7 +63,7 @@ public :
 
 private:
 	AbstractAudioWriter*	m_writer;
-	ExportSpecification*	m_spec;
+	TExportSpecification*	m_exportSpecification;
 	Peak*			m_peak;
 	
 	DiskIO*		m_diskio;

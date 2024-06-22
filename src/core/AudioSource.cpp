@@ -81,7 +81,7 @@ void AudioSource::set_dir(const QString& dir)
 }
 
 
-uint AudioSource::get_rate( ) const
+uint AudioSource::get_sample_rate( ) const
 {
 	return m_rate;
 }

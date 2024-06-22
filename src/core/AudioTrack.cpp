@@ -395,7 +395,7 @@ AudioClip* AudioTrack::get_clip_after(const TTimeRef& pos)
 
 AudioClip* AudioTrack::get_clip_before(const TTimeRef& pos)
 {
-    TTimeRef shortestDistance(LONG_LONG_MAX);
+    TTimeRef shortestDistance = TTimeRef::max_length();
     AudioClip* nearest = nullptr;
 
     for(AudioClip* clip : m_audioClips) {

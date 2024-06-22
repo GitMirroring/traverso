@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClipView.h"
 #include "PluginChainView.h"
 #include "Themer.h"
-#include "TrackPanelViewPort.h"
 #include "SheetView.h"
 #include "TrackPanelView.h"
 #include "TMainWindow.h"
@@ -38,7 +37,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClip.h"
 #include <Utils.h>
 #include "CurveView.h"
-#include "PluginChain.h"
 
 #include <PluginSelectorDialog.h>
 
@@ -148,7 +146,7 @@ AudioClipView* AudioTrackView::get_nearest_audioclip_view(TTimeRef location) con
     }
 
     AudioClipView* nearestClipView = nullptr;
-    TTimeRef shortestDistance(LONG_LONG_MAX);
+    TTimeRef shortestDistance = TTimeRef::max_length();
 
     foreach(AudioClipView* clipview, m_clipViews) {
         AudioClip* clip = clipview->get_clip();

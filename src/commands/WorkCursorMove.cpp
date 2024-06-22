@@ -104,7 +104,7 @@ int WorkCursorMove::jog()
 
 	m_session->set_work_at(newLocation);
 
-    cpointer().set_canvas_cursor_text(timeref_to_text(newLocation, d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(newLocation, d->sv->timeref_scalefactor));
 	cpointer().set_canvas_cursor_pos(QPointF(m_workCursor->scenePos().x(), m_holdCursorSceneY));
 
 	return 1;

@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ResampleAudioReader.h"
 #include <QString>
 #include <cstdio>
+#include <samplerate.h>
 
 #define OVERFLOW_SIZE 512
 
@@ -29,12 +30,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
+class PrivateSRC {
+public:
+    QVector<SRC_STATE*>	srcStates;
+    SRC_DATA            srcData{};
+};
+
 
 // On init, creates a child AudioReader for any filetype, and a samplerate converter
-ResampleAudioReader::ResampleAudioReader(const QString& filename, const QString& decoder)
+ResampleAudioReader::ResampleAudioReader(const QString& filename)
 	: AbstractAudioReader(filename)
 {
-	m_reader = AbstractAudioReader::create_audio_reader(filename, decoder);
+    m_reader = AbstractAudioReader::create_audio_reader(filename);
 	if (!m_reader) {
 		PERROR("ResampleAudioReader: couldn't create AudioReader");
 		m_channels = m_nframes = 0;
@@ -46,7 +53,8 @@ ResampleAudioReader::ResampleAudioReader(const QString& filename, const QString&
 
 		m_outputRate = m_rate;
 	}
-	
+
+    m_privateSRC = new PrivateSRC;
 	m_isResampleAvailable = false;
     m_overflowBuffers = nullptr;
 	m_overflowUsed = 0;
@@ -62,9 +70,9 @@ ResampleAudioReader::~ResampleAudioReader()
 		delete m_reader;
 	}
 	
-	while (m_srcStates.size()) {
-		src_delete(m_srcStates.back());
-		m_srcStates.pop_back();
+    while (m_privateSRC->srcStates.size()) {
+        src_delete(m_privateSRC->srcStates.back());
+        m_privateSRC->srcStates.pop_back();
 	}
 	
 	if (m_overflowBuffers) {
@@ -98,11 +106,11 @@ void ResampleAudioReader::clear_buffers()
 // Clear the samplerateconverter to a clean state (used on seek)
 void ResampleAudioReader::reset()
 {
-	foreach(SRC_STATE* state, m_srcStates) {
+    foreach(SRC_STATE* state, m_privateSRC->srcStates) {
 		src_reset(state);
 	}
 	
-	m_srcData.end_of_input = 0;
+    m_privateSRC->srcData.end_of_input = 0;
 	m_overflowUsed = 0;
 	
 	// Read extra frames from the child reader on the first read after a seek.
@@ -117,28 +125,28 @@ void ResampleAudioReader::set_converter_type(int converter_type)
 	
 	int error;
 
-    if ( (float(m_outputRate) / get_file_rate()) > 2.0f && converter_type == 3 ) {
-		if (m_convertorType == 2) {
+    if ( (float(m_outputRate) / get_file_rate()) > 2.0f && converter_type == SRC_ZERO_ORDER_HOLD ) {
+        if (m_convertorType == SRC_SINC_FASTEST) {
 			return;
 		}
 		printf("ResampleAudioReader::set_converter_type: src does not support a resample ratio > 2 with converter type Fast, using quality Medium\n");
-		m_convertorType = 2; 
+        m_convertorType = SRC_SINC_FASTEST;
 	} else {
 		m_convertorType = converter_type;
 	}
 	
-	while (m_srcStates.size()) {
-		src_delete(m_srcStates.back());
-		m_srcStates.pop_back();
+    while (m_privateSRC->srcStates.size()) {
+        src_delete(m_privateSRC->srcStates.back());
+        m_privateSRC->srcStates.pop_back();
 	}
 	
 	clear_buffers();
 	
     for (uint c = 0; c < m_reader->get_num_channels(); c++) {
 		
-		m_srcStates.append(src_new(m_convertorType, 1, &error));
+        m_privateSRC->srcStates.append(src_new(m_convertorType, 1, &error));
 		
-		if (!m_srcStates[c]) {
+        if (!m_privateSRC->srcStates[c]) {
 			PERROR("ResampleAudioReader: couldn't create libSampleRate SRC_STATE");
 			m_isResampleAvailable = false;
 			break;
@@ -251,7 +259,7 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
 	m_readExtraFrames = 0;
 	
 	if (m_reader->eof()) {
-		m_srcData.end_of_input = 1;
+        m_privateSRC->srcData.end_of_input = 1;
 	}
 	
 	nframes_t framesToConvert = frameCount;
@@ -261,28 +269,28 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
 	
     for (uint chan = 0; chan < m_channels; chan++) {
 		// Set up sample rate converter struct for s.r.c. processing
-		m_srcData.data_in = m_resampleDecodeBuffer->destination[chan];
-		m_srcData.input_frames = bufferUsed;
-		m_srcData.data_out = buffer->destination[chan];
-		m_srcData.output_frames = framesToConvert;
-        m_srcData.src_ratio = double(m_outputRate) / m_rate;
-		src_set_ratio(m_srcStates[chan], m_srcData.src_ratio);
+        m_privateSRC->srcData.data_in = m_resampleDecodeBuffer->destination[chan];
+        m_privateSRC->srcData.input_frames = bufferUsed;
+        m_privateSRC->srcData.data_out = buffer->destination[chan];
+        m_privateSRC->srcData.output_frames = framesToConvert;
+        m_privateSRC->srcData.src_ratio = double(m_outputRate) / m_rate;
+        src_set_ratio(m_privateSRC->srcStates[chan], m_privateSRC->srcData.src_ratio);
 		
-		if (src_process(m_srcStates[chan], &m_srcData)) {
+        if (src_process(m_privateSRC->srcStates[chan], &m_privateSRC->srcData)) {
 			PERROR("Resampler: src_process() error!");
 			return 0;
 		}
-        framesRead = nframes_t(m_srcData.output_frames_gen);
+        framesRead = nframes_t(m_privateSRC->srcData.output_frames_gen);
 	}
 	
-    m_overflowUsed = bufferUsed - nframes_t(m_srcData.input_frames_used);
+    m_overflowUsed = bufferUsed - nframes_t(m_privateSRC->srcData.input_frames_used);
 	if (m_overflowUsed < 0) {
 		m_overflowUsed = 0;
 	}
 	if (m_overflowUsed) {
 		// If there was overflow, save it for the next read.
         for (uint chan = 0; chan < m_channels; chan++) {
-            memcpy(m_overflowBuffers[chan], m_resampleDecodeBuffer->destination[chan] + m_srcData.input_frames_used, nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
+            memcpy(m_overflowBuffers[chan], m_resampleDecodeBuffer->destination[chan] + m_privateSRC->srcData.input_frames_used, nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
 		}
 	}
 	
@@ -337,5 +345,10 @@ void ResampleAudioReader::set_resample_decode_buffer(DecodeBuffer * buffer)
 	}
 	m_resampleDecodeBuffer = buffer;
 	reset();
+}
+
+int ResampleAudioReader::get_default_resample_quality()
+{
+    return SRC_SINC_FASTEST;
 }
 

@@ -28,7 +28,7 @@
 class AudioFileCopyConvert;
 class ExportFormatOptionsWidget;
 class QButtonGroup;
-struct ExportSpecification;
+struct TExportSpecification;
 
 
 class NewProjectDialog : public QDialog, protected Ui::NewProjectDialog
@@ -43,7 +43,7 @@ public:
 
 private:
 	AudioFileCopyConvert* m_converter;
-	ExportSpecification* m_exportSpec;
+	TExportSpecification* m_exportSpec;
 	ExportFormatOptionsWidget* m_formatOptionsWidget{};
 	QButtonGroup* m_buttonGroup;
 

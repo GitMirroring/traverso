@@ -30,11 +30,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Marker.h"
 #include "Project.h"
 #include "ReadSource.h"
+#include "ResampleAudioReader.h"
 #include "Sheet.h"
+#include "SheetView.h"
+#include "Track.h"
+#include "TVUMonitor.h"
 #include "SheetView.h"
 #include "TShortCutFunction.h"
 #include "Track.h"
 #include "TBusTrack.h"
+#include "TVUMonitor.h"
+#include "SheetView.h"
+#include "TShortCutFunction.h"
+#include "Track.h"
 #include "TVUMonitor.h"
 #include "TShortCutManager.h"
 #include "TInputEventDispatcher.h"
@@ -70,7 +78,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ui_QuickStart.h"
 
-#include "widgets/BusMonitor.h"
+#include "widgets/TAudioBusVUMonitorWidget.h"
 #include "widgets/InfoWidgets.h"
 #include "widgets/ResourcesWidget.h"
 #include "widgets/CorrelationMeterWidget.h"
@@ -218,7 +226,7 @@ TMainWindow::TMainWindow()
 	m_busMonitorDW = new QDockWidget(tr("VU Meters"), this);
 	m_busMonitorDW->setObjectName(tr("VU Meters"));
 
-	busMonitor = new BusMonitor(m_busMonitorDW);
+    busMonitor = new TAudioBusVUMonitorWidget(m_busMonitorDW);
 	m_busMonitorDW->setWidget(busMonitor);
 	addDockWidget(Qt::RightDockWidgetArea, m_busMonitorDW);
 
@@ -1263,7 +1271,7 @@ void TMainWindow::config_changed()
 		}
 	}
 
-	int quality = config().get_property("Conversion", "RTResamplingConverterType", DEFAULT_RESAMPLE_QUALITY).toInt();
+    int quality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
 	actions = m_resampleQualityMenu->actions();
 
 	bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
@@ -1363,7 +1371,7 @@ void TMainWindow::import_audio()
 
 	while(!files.isEmpty()) {
         QString fileName = files.takeFirst();
-        TAudioFileImportCommand* import = new TAudioFileImportCommand();
+        TAudioFileImportCommand* import = new TAudioFileImportCommand(track);
         import->set_track(track);
         import->set_file_name(fileName);
         import->set_import_location(importLocation);

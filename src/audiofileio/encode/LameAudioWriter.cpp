@@ -68,7 +68,7 @@ LameAudioWriter::~LameAudioWriter()
 }
 
 
-const char* LameAudioWriter::get_extension()
+const char* LameAudioWriter::get_file_extension()
 {
 	return ".mp3";
 }

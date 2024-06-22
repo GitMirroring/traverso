@@ -131,7 +131,7 @@ int FadeRange::jog()
 	m_curve->set_range( m_newRange );
 	
 	TTimeRef location = TTimeRef(m_newRange);
-    cpointer().set_canvas_cursor_text(timeref_to_ms_3(location));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_ms_3(location));
 	
 	return 1;
 }
@@ -186,7 +186,7 @@ void FadeRange::do_keyboard_move(double range)
         m_newRange = range;
 
 	TTimeRef location = TTimeRef(m_newRange);
-	cpointer().set_canvas_cursor_text(timeref_to_ms_3(location));
+	cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_ms_3(location));
 
         do_action();
 }

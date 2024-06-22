@@ -384,7 +384,7 @@ void HDDSpaceInfo::update_status( )
 		}
 		
 		TTimeRef time(availabletime);
-		text = timeref_to_hms(time);
+		text = TTimeRef::timeref_to_hms(time);
 		if (text < "00:30:00") {
 			QPalette pal;
 			pal.setColor(QPalette::ButtonText, QColor(Qt::red));

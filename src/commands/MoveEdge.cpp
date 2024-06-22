@@ -149,7 +149,7 @@ int MoveEdge::jog()
 		m_newPos = m_clip->get_location_start();
 	}
 
-    cpointer().set_canvas_cursor_text(timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
 
 	return 1;
 }
@@ -205,7 +205,7 @@ void MoveEdge::do_keyboard_move()
 		m_newPos = m_clip->get_location_start();
 	}
 
-    cpointer().set_canvas_cursor_text(timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
 }
 
 // eof

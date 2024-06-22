@@ -1,5 +1,8 @@
 #include "TTimeRef.h"
 
+#include <QLocale>
+#include <QRegularExpression>
+
 #include <limits.h>
 
 TTimeRef::TTimeRef() {
@@ -32,3 +35,154 @@ TTimeRef::TTimeRef(double position)
 {
 
 }
+QString TTimeRef::timeref_to_hms(const TTimeRef& ref)
+{
+    qint64 remainder;
+    int hours, mins, secs;
+
+    qint64 universalframe = ref.universal_frame();
+
+    hours = (int) (universalframe / TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    remainder = qint64(universalframe - (hours * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE));
+    mins = (int) (remainder / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
+    remainder -= mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE;
+    secs = (int) (remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    QString spos("%1:%2:%3");
+    return spos.arg(hours, 2, 10, QLatin1Char('0')).arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0'));
+
+}
+
+QString TTimeRef::timeref_to_ms(const TTimeRef& ref)
+{
+    qint64 remainder;
+    int mins, secs;
+
+    qint64 universalframe = ref.universal_frame();
+
+    mins = (int) (universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
+    remainder = (long unsigned int) (universalframe - (mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE));
+    secs = (int) (remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    QString spos("%1:%2");
+    return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0'));
+}
+
+// TTimeRef to MM:SS.99 (hundredths)
+QString TTimeRef::timeref_to_ms_2 (const TTimeRef& ref)
+{
+    qint64 remainder;
+    int mins, secs, frames;
+
+    qint64 universalframe = ref.universal_frame();
+
+    mins = universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    remainder = universalframe - ( mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    frames = remainder * 100 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    QString spos("%1:%2%3%4");
+    return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(QLocale::system().decimalPoint()).arg(frames, 2, 10, QLatin1Char('0'));
+}
+
+// TTimeRef to MM:SS.999 (ms)
+QString TTimeRef::timeref_to_ms_3(const TTimeRef& ref)
+{
+    qint64 remainder;
+    int mins, secs, frames;
+
+    qint64 universalframe = ref.universal_frame();
+
+    mins = universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    remainder = universalframe - ( mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    frames = remainder * 1000 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    QString spos("%1:%2%3%4");
+    return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(QLocale::system().decimalPoint()).arg(frames, 3, 10, QLatin1Char('0'));
+}
+
+// Frame to MM:SS,75 (75ths of a second, for CD burning)
+QString TTimeRef::timeref_to_cd (const TTimeRef& ref)
+{
+    qint64 remainder;
+    int mins, secs, frames;
+
+    qint64 universalframe = ref.universal_frame();
+
+    mins = universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    remainder = universalframe - ( mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    frames = remainder * 75 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    QString spos("%1:%2,%3");
+    return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(frames, 2, 10, QLatin1Char('0'));
+}
+
+// Frame to HH:MM:SS,75 (75ths of a second, for CD burning)
+QString TTimeRef::timeref_to_cd_including_hours (const TTimeRef& ref)
+{
+    qint64 remainder;
+    int hours, mins, secs, frames;
+
+    qint64 universalframe = ref.universal_frame();
+
+    hours = int(universalframe / TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    remainder = qint64(universalframe - (hours * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE));
+    mins = (int) (remainder / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE ));
+    remainder -= mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE;
+    secs = (int) (remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    frames = remainder * 75 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+
+    QString spos("%1:%2:%3,%4");
+    return spos.arg(hours, 2, 10, QLatin1Char('0')).arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(frames, 2, 10, QLatin1Char('0'));
+}
+
+QString TTimeRef::timeref_to_text(const TTimeRef & ref, qint64 scalefactor)
+{
+    if (scalefactor >= 512*640) {
+        return TTimeRef::timeref_to_ms_2(ref);
+    } else {
+        return TTimeRef::timeref_to_ms_3(ref);
+    }
+}
+
+TTimeRef TTimeRef::msms_to_timeref(QString str)
+{
+    TTimeRef out;
+    static QRegularExpression expression("[;,.:]");
+    QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
+
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE / 1000);
+
+    return out;
+}
+
+TTimeRef TTimeRef::cd_to_timeref(QString str)
+{
+    TTimeRef out;
+    static QRegularExpression expression("[;,.:]");
+    QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
+
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE / 75);
+
+    return out;
+}
+
+TTimeRef TTimeRef::cd_to_timeref_including_hours(QString str)
+{
+    TTimeRef out;
+    static QRegularExpression expression("[;,.:]");
+    QStringList lst = str.simplified().split(expression, Qt::SkipEmptyParts);
+
+    if (lst.size() >= 1) out += TTimeRef(lst.at(0).toInt() * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 2) out += TTimeRef(lst.at(1).toInt() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 3) out += TTimeRef(lst.at(2).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    if (lst.size() >= 4) out += TTimeRef(lst.at(3).toInt() * TTimeRef::UNIVERSAL_SAMPLE_RATE / 75);
+
+    return out;
+}
+

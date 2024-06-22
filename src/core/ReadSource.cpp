@@ -149,7 +149,6 @@ QDomNode ReadSource::get_state( QDomDocument doc )
 	node.setAttribute("wasrecording", m_wasRecording);
 	node.setAttribute("length", m_length.universal_frame());
 	node.setAttribute("rate", m_rate);
-	node.setAttribute("decoder", m_decodertype);
 
 	return node;
 }
@@ -169,7 +168,6 @@ int ReadSource::set_state( const QDomNode & node )
 	m_length = TTimeRef(e.attribute("length", "0").toLongLong(&ok));
     m_origBitDepth = e.attribute("origbitdepth", "0").toUInt();
 	m_wasRecording = e.attribute("wasrecording", "0").toInt();
-	m_decodertype = e.attribute("decoder", "");
 	
 	// For older project files, this should properly detect if the 
 	// audio source was a recording or not., in fact this should suffice
@@ -227,7 +225,7 @@ int ReadSource::init( )
 	
 	// There should be another config option for ConverterType to use for export (higher quality)
 	//converter_type = config().get_property("Conversion", "ExportResamplingConverterType", 0).toInt();
-	m_audioReader = new ResampleAudioReader(m_fileName, m_decodertype);
+    m_audioReader = new ResampleAudioReader(m_fileName);
 	
 	if (!m_audioReader->is_valid()) {
 //		PERROR("ReadSource:: audio reader is not valid! (reader channel count: %d, nframes: %d", m_audioReader->get_num_channels(), m_audioReader->get_nframes());
@@ -236,14 +234,13 @@ int ReadSource::init( )
 		return (m_error = COULD_NOT_OPEN_FILE);
 	}
 	
-	int converter_type = config().get_property("Conversion", "RTResamplingConverterType", DEFAULT_RESAMPLE_QUALITY).toInt();
+    int converter_type = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
 	m_audioReader->set_converter_type(converter_type);
 	
 	set_output_rate(m_audioReader->get_file_rate());
 	
 	// (re)set the decoder type
-	m_decodertype = m_audioReader->decoder_type();
-	m_channelCount = m_audioReader->get_num_channels();
+    m_channelCount = m_audioReader->get_num_channels();
 	
 	// @Ben: I thought we support any channel count now ??
 //        if (m_channelCount > 2) {

@@ -33,8 +33,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
-TAudioFileImportCommand::TAudioFileImportCommand()
-    : TCommand(tr("Import Audio File"))
+TAudioFileImportCommand::TAudioFileImportCommand(ContextItem *context)
+    : TCommand(context, tr("Import Audio File"))
 {
     m_track = nullptr;
     m_fileName = "";

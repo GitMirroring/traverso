@@ -37,7 +37,7 @@ class TAudioFileImportCommand : public TCommand
     Q_OBJECT
 
 public :
-    TAudioFileImportCommand();
+    TAudioFileImportCommand(ContextItem* context);
     ~TAudioFileImportCommand();
 
     int prepare_actions();

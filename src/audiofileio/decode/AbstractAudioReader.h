@@ -51,7 +51,6 @@ private:
 	
 	void delete_destination_buffers();
 	void delete_readbuffer();
-	void delete_resample_buffers();
 
 };
 
@@ -63,7 +62,7 @@ public:
 	virtual ~AbstractAudioReader();
 	
     uint get_num_channels();
-    const TTimeRef& get_length() const {return m_length;}
+    TTimeRef get_length() const {return m_length;}
 	nframes_t get_nframes() const {return m_nframes;}
     uint get_file_rate();
 	bool eof();
@@ -77,7 +76,7 @@ public:
 	virtual QString decoder_type() const = 0;
 	virtual void clear_buffers() {}
 	
-	static AbstractAudioReader* create_audio_reader(const QString& filename, const QString& decoder = 0);
+    static AbstractAudioReader* create_audio_reader(const QString& filename);
 	
 protected:
 	virtual bool seek_private(nframes_t start) = 0;

@@ -123,7 +123,7 @@ void TTimeLabel::update_label()
         if (!m_session) {
                 currentTime = "";
         } else {
-                currentTime = timeref_to_ms_2(m_session->get_transport_location());
+                currentTime = TTimeRef::timeref_to_ms_2(m_session->get_transport_location());
         }
         setText(currentTime);
 }

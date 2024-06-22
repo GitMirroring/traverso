@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QStyleFactory>
 
 #include "Pages.h"
+#include "ResampleAudioReader.h"
 #include "dialogs/ThemeModifierDialog.h"
 #include <AudioDevice.h>
 #if defined (ALSA_SUPPORT)
@@ -950,7 +951,7 @@ void RecordingConfigPage::load_config()
         wavpackCompressionComboBox->setCurrentIndex(2);
     }
 
-    int index = config().get_property("Conversion", "RTResamplingConverterType", DEFAULT_RESAMPLE_QUALITY).toInt();
+    int index = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
     ontheflyResampleComboBox->setCurrentIndex(index);
 
     index = config().get_property("Conversion", "ExportResamplingConverterType", 1).toInt();
@@ -971,7 +972,7 @@ void RecordingConfigPage::save_config()
 void RecordingConfigPage::reset_default_config()
 {
     config().set_property("Conversion", "DynamicResampling", true);
-    config().set_property("Conversion", "RTResamplingConverterType", DEFAULT_RESAMPLE_QUALITY);
+    config().set_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality());
     config().set_property("Conversion", "ExportResamplingConverterType", 1);
     config().set_property("Recording", "FileFormat", "wav");
     config().set_property("Recording", "WavpackCompressionType", "fast");

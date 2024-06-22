@@ -42,10 +42,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioTrack.h"
 #include "Mixer.h"
 #include "AudioSource.h"
+#include "ResampleAudioReader.h"
 #include "AudioClip.h"
 #include "Peak.h"
-#include "Export.h"
+#include "TExportSpecification.h"
 #include "DiskIO.h"
+#include "TExportThread.h"
 #include "WriteSource.h"
 #include "AudioClipManager.h"
 #include "Tsar.h"
@@ -143,7 +145,7 @@ void Sheet::init()
 	m_diskio = new DiskIO(this);
 	m_currentSampleRate = audiodevice().get_sample_rate();
     m_diskio->output_rate_changed(m_currentSampleRate);
-	int converter_type = config().get_property("Conversion", "RTResamplingConverterType", DEFAULT_RESAMPLE_QUALITY).toInt();
+    int converter_type = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
 	m_diskio->set_resample_quality(converter_type);
 
         m_hs = new QUndoStack(pm().get_undogroup());
@@ -336,13 +338,13 @@ bool Sheet::any_audio_track_armed()
 
 // this function is called from the parent project before it calls Sheet::render().
 // depending on the renderpass mode, additional information is gathered here for
-// the ExportSpecification (e.g. the start and end location, the marker list,
+// the TExportSpecification (e.g. the start and end location, the marker list,
 // transport is stopped, a new writeSource is created etc.)
-int Sheet::prepare_export(ExportSpecification* spec)
+int Sheet::prepare_export(TExportSpecification* spec)
 {
 	PENTER;
 	
-	if ( ! (spec->renderpass == ExportSpecification::CREATE_CDRDAO_TOC) ) {
+	if ( ! (spec->renderpass == TExportSpecification::CREATE_CDRDAO_TOC) ) {
 		if (is_transport_rolling()) {
 			spec->resumeTransport = true;
 			// When transport is rolling, this equals stopping the transport!
@@ -368,79 +370,72 @@ int Sheet::prepare_export(ExportSpecification* spec)
 		m_rendering = true;
 	}
 
-	spec->startLocation = LONG_LONG_MAX;
-	spec->endLocation = TTimeRef();
+    TTimeRef trackEndlocation, exportEndLocation = TTimeRef();
+    TTimeRef trackStartlocation, exportStartLocation = TTimeRef::max_length();
 
-	TTimeRef endlocation, startlocation;
-
-        foreach(AudioTrack* track, m_audioTracks) {
-                track->get_render_range(startlocation, endlocation);
-
-		if (track->is_solo()) {
-			spec->endLocation = endlocation;
-			spec->startLocation = startlocation;
-			break;
-		}
-
-		if (endlocation > spec->endLocation) {
-			spec->endLocation = endlocation;
-		}
-
-		if (startlocation < spec->startLocation) {
-			spec->startLocation = startlocation;
-		}
-	}
-	
-	if (spec->isCdExport) {
-		if (m_timeline->get_start_location(startlocation)) {
-			PMESG2("  Start marker found at %s", QS_C(timeref_to_ms(startlocation)));
+    if (spec->is_cd_export()) {
+        if (m_timeline->get_start_location(exportStartLocation)) {
 			// round down to the start of the CD frame (75th of a sec)
-			startlocation = cd_to_timeref(timeref_to_cd(startlocation));
-			spec->startLocation = startlocation;
-		} else {
-			PMESG2("  No start marker found");
+            exportStartLocation = TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(exportStartLocation));
+            PMESG("Start marker found at %s", QS_C(TTimeRef::timeref_to_cd(exportStartLocation)));
+        } else {
+            PMESG2("No start marker found");
 		}			
 		
-		if (m_timeline->get_end_location(endlocation)) {
-			PMESG2("  End marker found at %s", QS_C(timeref_to_ms(endlocation)));
-			spec->endLocation = endlocation;
-		} else {
-			PMESG2("  No end marker found");
+        if (m_timeline->get_end_location(exportEndLocation)) {
+            exportEndLocation = TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(exportEndLocation));
+            PMESG("End marker found at %s", QS_C(TTimeRef::timeref_to_cd(exportEndLocation)));
+        } else {
+            PMESG2("No end marker found");
 		}
-	}
+    } else {
+        QList<AudioTrack*> tracksToExport;
+        auto soloTracks = get_solo_tracks();
 
-        // compute some default values
-	spec->totalTime = spec->endLocation - spec->startLocation;
+        if (soloTracks.size() > 0) {
+            tracksToExport = soloTracks;
+        } else {
+            tracksToExport = m_audioTracks;
+        }
 
-// 	PWARN("Render length is: %s",timeref_to_ms_3(spec->totalTime).toLatin1().data() );
+        foreach(AudioTrack* track, tracksToExport) {
+            track->get_render_range(trackStartlocation, trackEndlocation);
 
-	spec->pos = spec->startLocation;
-	spec->progress = 0;
+            exportStartLocation = std::min(trackStartlocation, exportStartLocation);
+            exportEndLocation = std::max(trackEndlocation, exportEndLocation);
+        }
 
-        spec->basename = "Sheet_" + QString::number(m_project->get_sheet_index(m_id)) +"-" + m_name;
+    }
+
+    spec->set_export_start_location(exportStartLocation);
+    spec->set_export_end_location(exportEndLocation);
+
+    // compute some default values
+
+    spec->basename = "Sheet_" + QString::number(m_project->get_sheet_index(m_id)) +"-" + m_name;
 	spec->name = spec->basename;
 
-	if (spec->startLocation == spec->endLocation) {
+    if (spec->get_export_length() == TTimeRef()) {
 		info().warning(tr("No audio to export! (Is everything muted?)"));
 		return -1;
 	}
-	else if (spec->startLocation > spec->endLocation) {
+    else if (spec->get_export_start_location() > spec->get_export_end_location()) {
 		info().warning(tr("Export start frame starts beyond export end frame!!"));
 		return -1;
 	}
 
-	if (spec->channels == 0) {
+    if (spec->get_channel_count() == 0) {
 		info().warning(tr("Export tries to render to 0 channels wav file??"));
 		return -1;
 	}
 
-	if (spec->renderpass == ExportSpecification::CREATE_CDRDAO_TOC) {
+	if (spec->renderpass == TExportSpecification::CREATE_CDRDAO_TOC) {
 		return 1;
 	}
 	
-	m_transportLocation = spec->startLocation;
+    m_transportLocation = spec->get_export_location();
 	
-        resize_buffer(spec->blocksize);
+    resize_buffer(spec->get_block_size());
 	
 	renderDecodeBuffer = new DecodeBuffer;
 
@@ -458,25 +453,23 @@ int Sheet::finish_audio_export()
 
 // this function is called from the parent project. if several cd-tracks should be exported
 // to separate files, we will call the render() process for each file.
-int Sheet::start_export(ExportSpecification* spec)
+int Sheet::start_export(TExportSpecification* spec)
 {
         QString message;
         float peakvalue = 0.0;
 
-        spec->markers = m_timeline->get_cdtrack_list(spec);
+        // auto markers = m_timeline->get_cdtrack_list(spec);
 
-        for (int i = 0; i < spec->markers.size()-1; ++i) {
-                spec->progress      = 0;
-                                      // round down to the start of the CD frame (75th of a sec)
-                spec->cdTrackStart  = cd_to_timeref(timeref_to_cd(spec->markers.at(i)->get_when()));
-                spec->cdTrackEnd    = cd_to_timeref(timeref_to_cd(spec->markers.at(i+1)->get_when()));
-                spec->name          = m_timeline->format_cdtrack_name(spec->markers.at(i), i+1);
-                spec->totalTime     = spec->cdTrackEnd - spec->cdTrackStart;
-                spec->pos           = spec->cdTrackStart;
-                m_transportLocation = spec->cdTrackStart;
+        // for (int i = 0; i < markers.size()-1; ++i) {
+        //         // round down to the start of the CD frame (75th of a sec)
+        //         spec->set_export_start_location(TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(markers.at(i)->get_when())));
+        //         spec->set_export_end_location(TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(markers.at(i+1)->get_when())));
+        //         spec->name          = m_timeline->format_cdtrack_name(markers.at(i), i+1);
+                spec->print_export_data();
+                m_transportLocation = spec->get_export_start_location();
 
 
-                if (spec->renderpass == ExportSpecification::WRITE_TO_HARDDISK) {
+                if (spec->renderpass == TExportSpecification::WRITE_TO_HARDDISK) {
                         m_exportSource = new WriteSource(spec);
 
                         if (m_exportSource->prepare_export() == -1) {
@@ -485,41 +478,39 @@ int Sheet::start_export(ExportSpecification* spec)
                                 return -1;
                         }
 
-                        message = QString(tr("Rendering Sheet %1 - Track %2 of %3")).arg(m_name).arg(i+1).arg(spec->markers.size()-1);
+                        // message = QString(tr("Rendering Sheet %1 - Track %2 of %3")).arg(m_name).arg(i+1).arg(markers.size()-1);
 
-                } else if (spec->renderpass == ExportSpecification::CALC_NORM_FACTOR) {
-                        message = QString(tr("Normalising Sheet %1 - Track %2 of %3")).arg(m_name).arg(i+1).arg(spec->markers.size()-1);
+                } else if (spec->renderpass == TExportSpecification::CALC_NORM_FACTOR) {
+                        // message = QString(tr("Normalising Sheet %1 - Track %2 of %3")).arg(m_name).arg(i+1).arg(markers.size()-1);
                 }
 
                 m_project->set_export_message(message);
 
                 while(render(spec) > 0) {}
 
-                peakvalue = f_max(peakvalue, spec->peakvalue);
-                spec->peakvalue = peakvalue;
+                peakvalue = f_max(peakvalue, spec->m_peakValue);
+                spec->m_peakValue = peakvalue;
 
-                if (spec->renderpass == ExportSpecification::WRITE_TO_HARDDISK) {
+                if (spec->renderpass == TExportSpecification::WRITE_TO_HARDDISK) {
                         m_exportSource->finish_export();
                         delete m_exportSource;
                         m_exportSource = nullptr;
                 }
-        }
+        // }
 
         finish_audio_export();
         return 1;
 }
 
-int Sheet::render(ExportSpecification* spec)
+int Sheet::render(TExportSpecification* spec)
 {
     uint chn;
     int x;
-        int progress = 0;
 
-        nframes_t diff = (spec->cdTrackEnd - spec->pos).to_frame(int(audiodevice().get_sample_rate()));
-	nframes_t nframes = spec->blocksize;
-	nframes_t this_nframes = std::min(diff, nframes);
+    nframes_t diff = spec->get_remaining_export_frames();
+    nframes_t nframes = std::min(diff, spec->get_block_size());
 
-	if (!spec->running || spec->stop || this_nframes == 0) {
+    if (!spec->running || spec->stop || nframes == 0) {
 		process_export (nframes);
 		/*		PWARN("Finished Rendering for this sheet");
 				PWARN("running is %d", spec->running);
@@ -534,16 +525,15 @@ int Sheet::render(ExportSpecification* spec)
 
 	/* and now export the results */
 
-	nframes = this_nframes;
-
-    memset (spec->dataF, 0, sizeof (spec->dataF[0]) * nframes * ulong(spec->channels));
+    spec->silence_render_buffer(nframes);
 
 	/* foreach output channel ... */
 
 	float* buf;
 	AudioBus* masterOutBus = m_masterOutBusTrack->get_process_bus();
+    auto specRenderBuffer = spec->get_render_buffer();
 
-	for (chn = 0; chn < spec->channels; ++chn) {
+    for (chn = 0; chn < spec->get_channel_count(); ++chn) {
 		buf = masterOutBus->get_buffer(chn, nframes);
 
 		if (!buf) {
@@ -553,40 +543,28 @@ int Sheet::render(ExportSpecification* spec)
 		}
 
         for (x = 0; x < int(nframes); ++x) {
-			spec->dataF[chn+(x*spec->channels)] = buf[x];
+            specRenderBuffer[chn+(x*spec->get_channel_count())] = buf[x];
 		}
 	}
 
-
-    int bufsize = int(int(spec->blocksize) * spec->channels);
 	if (spec->normalize) {
-		if (spec->renderpass == ExportSpecification::CALC_NORM_FACTOR) {
-            spec->peakvalue = Mixer::compute_peak(spec->dataF, nframes_t(bufsize), spec->peakvalue);
+		if (spec->renderpass == TExportSpecification::CALC_NORM_FACTOR) {
+            spec->update_peak_value();
 		}
 	}
 	
-	if (spec->renderpass == ExportSpecification::WRITE_TO_HARDDISK) {
+	if (spec->renderpass == TExportSpecification::WRITE_TO_HARDDISK) {
 		if (spec->normalize) {
-            Mixer::apply_gain_to_buffer(spec->dataF, nframes_t(bufsize), spec->normvalue);
+            Mixer::apply_gain_to_buffer(specRenderBuffer, spec->get_render_buffer_size(), spec->normvalue);
 		}
         if (m_exportSource->process (nframes) <= 0) {
-                        return -1;
+            return -1;
 		}
 	}
 	
+    spec->add_exported_frames(nframes);
 
-    spec->pos.add_frames(nframes, int(audiodevice().get_sample_rate()));
-
-        progress = int(double( 100 * (spec->pos - spec->cdTrackStart).universal_frame()) / (spec->totalTime.universal_frame()));
-
-        // only update the progress info if progress is higher then the
-        // old progress value, to avoid a flood of progress changed signals!
-        if (progress > spec->progress) {
-                spec->progress = progress;
-                m_project->set_sheet_export_progress(progress);
-        }
-
-        return 1;
+    return 1;
 }
 
 void Sheet::set_artists(const QString& pArtists)
@@ -597,14 +575,16 @@ void Sheet::set_artists(const QString& pArtists)
 
 void Sheet::set_gain(float gain)
 {
-    if (gain < 0.0f)
+    if (gain < 0.0f) {
 		gain = 0.0;
-    if (gain > 2.0f)
+    }
+    if (gain > 2.0f) {
 		gain = 2.0;
+    }
 
-        m_masterOutBusTrack->set_gain(gain);
+    m_masterOutBusTrack->set_gain(gain);
 
-        emit stateChanged();
+    emit stateChanged();
 }
 
 void Sheet::set_work_at(TTimeRef location, bool isFolder)
@@ -652,55 +632,54 @@ void Sheet::set_snapping(bool snapping)
 
 void Sheet::solo_track(Track *track)
 {
-        bool wasSolo = track->is_solo();
+    bool wasSolo = track->is_solo();
 
-        track->set_muted_by_solo(!wasSolo);
-        track->set_solo(!wasSolo);
+    track->set_muted_by_solo(!wasSolo);
+    track->set_solo(!wasSolo);
 
-        QList<AudioTrack*> tracks= get_audio_tracks();
+    QList<AudioTrack*> tracks = get_audio_tracks();
 
 
-        // If the Track was a Bus Track, then also (un) solo all the AudioTracks
-        // that have this Bus Track as the output bus.
-        if ((track->get_type() == Track::BUS) && !(track == m_masterOutBusTrack)) {
-                QList<AudioTrack*> busTrackAudioTracks;
-                foreach(AudioTrack* sgTrack, tracks) {
-                        QList<TSend*> sends = sgTrack->get_post_sends();
-                        foreach(TSend* send, sends) {
-                                if (send->get_bus_id() == track->get_process_bus()->get_id()) {
-                                        busTrackAudioTracks.append(sgTrack);
-                                }
-                        }
+    // If the Track was a Bus Track, then also (un) solo all the AudioTracks
+    // that have this Bus Track as the output bus.
+    if ((track->get_type() == Track::BUS) && !(track == m_masterOutBusTrack)) {
+        QList<AudioTrack*> busTrackAudioTracks;
+        foreach(AudioTrack* sgTrack, tracks) {
+            QList<TSend*> sends = sgTrack->get_post_sends();
+            foreach(TSend* send, sends) {
+                if (send->get_bus_id() == track->get_process_bus()->get_id()) {
+                    busTrackAudioTracks.append(sgTrack);
                 }
-
-                if (wasSolo) {
-                        foreach(AudioTrack* sgTrack, busTrackAudioTracks) {
-                                sgTrack->set_solo(false);
-                                sgTrack->set_muted_by_solo(false);
-                        }
-                } else {
-                        foreach(AudioTrack* sgTrack, busTrackAudioTracks) {
-                                sgTrack->set_solo(true);
-                                sgTrack->set_muted_by_solo(true);
-                        }
-                }
+            }
         }
 
-        bool hasSolo = false;
+        if (wasSolo) {
+            foreach(AudioTrack* sgTrack, busTrackAudioTracks) {
+                sgTrack->set_solo(false);
+                sgTrack->set_muted_by_solo(false);
+            }
+        } else {
+            foreach(AudioTrack* sgTrack, busTrackAudioTracks) {
+                sgTrack->set_solo(true);
+                sgTrack->set_muted_by_solo(true);
+            }
+        }
+    }
 
+    bool hasSolo = false;
+
+    foreach(Track* t, tracks) {
+        t->set_muted_by_solo(!t->is_solo());
+        if (t->is_solo()) {
+            hasSolo = true;
+        }
+    }
+
+    if (!hasSolo) {
         foreach(Track* t, tracks) {
-                t->set_muted_by_solo(!t->is_solo());
-                if (t->is_solo()) {
-                        hasSolo = true;
-                }
+            t->set_muted_by_solo(false);
         }
-
-        if (!hasSolo) {
-                foreach(Track* t, tracks) {
-                        t->set_muted_by_solo(false);
-                }
-        }
-
+    }
 }
 
 
@@ -798,23 +777,24 @@ int Sheet::process_export( nframes_t nframes )
 
 void Sheet::resize_buffer(nframes_t size)
 {
-	if (mixdown)
+    if (mixdown) {
 		delete [] mixdown;
-	if (gainbuffer)
+    }
+    if (gainbuffer) {
 		delete [] gainbuffer;
+    }
+
 	mixdown = new audio_sample_t[size];
 	gainbuffer = new audio_sample_t[size];
-        QList<AudioBus*> buses;
-        buses.append(m_masterOutBusTrack->get_process_bus());
-        buses.append(m_renderBus);
-        buses.append(m_clipRenderBus);
-        foreach(AudioBus* bus, buses) {
-                for(uint i=0; i<bus->get_channel_count(); i++) {
-                        if (AudioChannel* chan = bus->get_channel(i)) {
-                                chan->set_buffer_size(size);
-                        }
-                }
-        }
+
+    QList<AudioChannel*> audioChannels;
+    audioChannels.append(m_masterOutBusTrack->get_process_bus()->get_channels());
+    audioChannels.append(m_renderBus->get_channels());
+    audioChannels.append(m_clipRenderBus->get_channels());
+
+    foreach(auto chan, audioChannels) {
+        chan->set_buffer_size(size);
+    }
 }
 
 void Sheet::audiodevice_params_changed()
@@ -1212,7 +1192,7 @@ void Sheet::seek_finished()
 
 void Sheet::config_changed()
 {
-	int quality = config().get_property("Conversion", "RTResamplingConverterType", DEFAULT_RESAMPLE_QUALITY).toInt();
+    int quality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
 	if (m_diskio->get_resample_quality() != quality) {
 		m_diskio->set_resample_quality(quality);
 	}
@@ -1234,6 +1214,17 @@ AudioTrack * Sheet::get_audio_track_for_index(int index)
 	}
 	
     return nullptr;
+}
+
+QList<AudioTrack *> Sheet::get_solo_tracks() const
+{
+    QList<AudioTrack*> soloTracks;
+    foreach(auto track, m_audioTracks) {
+        if (track->is_solo()) {
+            soloTracks.append(track);
+        }
+    }
+    return soloTracks;
 }
 
 

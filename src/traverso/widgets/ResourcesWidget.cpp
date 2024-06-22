@@ -406,11 +406,11 @@ void ClipTreeItem::clip_state_changed()
 		}
 	}
 	
-	QString start = timeref_to_ms(m_clip->get_source_start_location());
-	QString end = timeref_to_ms(m_clip->get_source_end_location());
+	QString start = TTimeRef::timeref_to_ms(m_clip->get_source_start_location());
+	QString end = TTimeRef::timeref_to_ms(m_clip->get_source_end_location());
 		
 	setText(0, m_clip->get_name());
-	setText(1, timeref_to_ms(m_clip->get_length()));
+	setText(1, TTimeRef::timeref_to_ms(m_clip->get_length()));
 	setText(2, start);
 	setText(3, end);
 	setToolTip(0, m_clip->get_name() + "   " + start + " - " + end);
@@ -473,9 +473,9 @@ void SourceTreeItem::source_state_changed()
 		}
 	}
 	
-    uint rate = m_source->get_rate();
+    uint rate = m_source->get_sample_rate();
 	if (rate == 0) rate = pm().get_project()->get_rate();
-	QString duration = timeref_to_ms(m_source->get_length());
+	QString duration = TTimeRef::timeref_to_ms(m_source->get_length());
 	setText(0, m_source->get_short_name());
 	setText(1, duration);
 	setText(2, "");

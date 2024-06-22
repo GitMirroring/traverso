@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Ben Levitt 
+Copyright (C) 2005-2006 Remon Sijrier 
 
 This file is part of Traverso
 
@@ -17,37 +17,39 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
+$Id: Export.h,v 1.20 2009/05/07 19:59:03 n_doebelin Exp $
 */
 
-#ifndef SFAUDIOWRITER_H
-#define SFAUDIOWRITER_H
+#ifndef TEXPORTTHREAD_H
+#define TEXPORTTHREAD_H
 
-#include "AbstractAudioWriter.h"
+#include <QThread>
+#include <QMap>
 
-#include "defines.h"
-#include "sndfile.h"
 
-#include <QFile>
 
+class Project;
 class TExportSpecification;
 
-class SFAudioWriter : public AbstractAudioWriter
+class TExportThread : public QThread
 {
-	
+	Q_OBJECT
+
 public:
-    SFAudioWriter(TExportSpecification* spec);
-	~SFAudioWriter();
-		
-protected:
-	bool open_private();
-	nframes_t write_private(void* buffer, nframes_t frameCount);
-	bool close_private();
-	
-	SNDFILE*	m_sf;
-	SF_INFO 	m_sfinfo{};
-	
+    TExportThread(Project* project);
+    ~TExportThread()
+	{}
+
+	void run();
+	void sleep_for(uint msecs) {
+		msleep(msecs);
+	}
+    void set_specification(TExportSpecification* spec);
+
 private:
-	QFile m_file;
+	Project*		m_project;
+    TExportSpecification*	m_exportSpecification;
 };
+
 
 #endif

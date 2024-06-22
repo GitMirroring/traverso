@@ -209,7 +209,7 @@ void TransportConsoleWidget::update_label()
 	if (!m_sheet) {
                 currentTime = "";
 	} else {
-		currentTime = timeref_to_ms_2(m_sheet->get_transport_location());
+		currentTime = TTimeRef::timeref_to_ms_2(m_sheet->get_transport_location());
 	}
 	m_timeLabel->setText(currentTime);
 }

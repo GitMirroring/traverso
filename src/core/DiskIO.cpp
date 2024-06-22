@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "DiskIO.h"
+#include "ResampleAudioReader.h"
 #include "Sheet.h"
 
 #if defined (Q_OS_UNIX)
@@ -128,7 +129,7 @@ DiskIO::DiskIO(Sheet* sheet)
     m_lastdoWorkReadTime = get_microseconds();
     m_stopWork = m_seeking = false;
     m_sampleRateChanged = false;
-    m_resampleQuality = config().get_property("Conversion", "RTResamplingConverterType", DEFAULT_RESAMPLE_QUALITY).toInt();
+    m_resampleQuality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
     m_readBufferFillStatus = m_writeBufferFillStatus = 0;
     m_hardDiskOverLoadCounter = 0;
 

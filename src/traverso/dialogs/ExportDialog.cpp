@@ -20,12 +20,11 @@
 */
 
 #include "ExportDialog.h"
-#include "ui_ExportDialog.h"
 
 #include <QFileDialog>
 #include <QCloseEvent>
 
-#include "Export.h"
+#include "TExportSpecification.h"
 #include "Information.h"
 #include "Project.h"
 #include "ProjectManager.h"
@@ -90,8 +89,8 @@ void ExportDialog::on_startButton_clicked( )
 		return;
 	}
 	
-	connect(m_project, SIGNAL(sheetExportProgressChanged(int)), this, SLOT(update_sheet_progress(int)));
-	connect(m_project, SIGNAL(overallExportProgressChanged(int)), this, SLOT(update_overall_progress(int)));
+    connect(m_exportSpec, SIGNAL(progressChanged(int)), this, SLOT(update_sheet_progress(int)));
+    connect(m_exportSpec, SIGNAL(progressChanged(int)), this, SLOT(update_overall_progress(int)));
 	connect(m_project, SIGNAL(exportFinished()), this, SLOT(render_finished()));
 	connect(m_project, SIGNAL(exportStartedForSheet(Sheet*)), this, SLOT (set_exporting_sheet(Sheet*)));
         connect(m_project, SIGNAL(exportMessage(QString)), this, SLOT(set_export_message(QString)));
@@ -116,8 +115,6 @@ void ExportDialog::on_startButton_clicked( )
 	name += fi.completeBaseName() + ".toc";
 	m_exportSpec->tocFileName = name;
 
-	m_exportSpec->isRecording = false;
-	
 	if (m_project->export_project(m_exportSpec) == -1) {
 		return;
 	}
@@ -208,7 +205,7 @@ void ExportDialog::set_project(Project * project)
 			delete m_exportSpec;
             m_exportSpec = nullptr;
 		}
-		m_exportSpec = new ExportSpecification;
+		m_exportSpec = new TExportSpecification;
 		m_exportSpec->exportdir = m_project->get_root_dir() + "/Export/";
 		m_exportSpec->renderfinished = false;
 		exportDirName->setText(m_exportSpec->exportdir);

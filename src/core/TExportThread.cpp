@@ -20,128 +20,122 @@
     $Id: Export.cpp,v 1.18 2009/05/07 19:59:03 n_doebelin Exp $
 */
 
-#include "Export.h"
+#include "TExportThread.h"
+#include "AudioDevice.h"
+#include "Information.h"
+#include "Sheet.h"
+#include "TExportSpecification.h"
 #include "Project.h"
-#include <cstdio>
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
+#include "Utils.h"
+#include <cfloat>
 
-ExportThread::ExportThread(Project* project)
+TExportThread::TExportThread(Project* project)
 	: QThread(project)
 {
-        m_project = project;
+    m_project = project;
 }
 
-void ExportThread::set_specification(ExportSpecification * spec)
+void TExportThread::set_specification(TExportSpecification * spec)
 {
-	m_spec  = spec;
-	m_spec->thread = this;
+    m_exportSpecification  = spec;
+    m_exportSpecification->thread = this;
 }
 
 
-void ExportThread::run( )
+void TExportThread::run( )
 {
-        m_project->start_export(m_spec);
-}
+    // FIXME
+    // used to be default export block size as set in TExportSpecification (16 KB)
+    // this is more efficient then the audio device buffer size, are buffers not
+    // correctly resized on export perhaps and this hack was applied to make export work again ?
+    // m_exportSpecification->set_block_size(audiodevice().get_buffer_size());
 
-ExportSpecification::ExportSpecification()
-{
-    sample_rate = 0;
-	
-	src_quality = SRC_SINC_MEDIUM_QUALITY;
-    channels = 0;
-	startLocation = qint64(-1);
-	endLocation = qint64(-1);
-    cdTrackStart = qint64(-1);
-    cdTrackEnd = qint64(-1);
-    dither_type = GDitherShaped;
+    int overallExportProgress;
+    int renderedSheets = 0;
+    QList<Sheet* > 	sheetsToRender;
 
-    dataF = nullptr;
-    blocksize = 0;
-	data_width = -1;
-	
-	totalTime = qint64(-1);
-	pos = qint64(-1);
-	
-	allSheets = false;
-	stop = false;
-	breakout = false;
-	isRecording = -1;
-	exportdir = "";
-	basename = "";
-	name = "";
-	writeToc = false;
-	normalize = false;
-	renderpass = WRITE_TO_HARDDISK;
-	normvalue = 1.0;
-	peakvalue = 0.0;
-	isCdExport = false;
-}
+    // determine which sheets to export, store them in sheetsToRender
+    if (m_exportSpecification->allSheets) {
+        foreach(Sheet* sheet, m_project->get_sheets()) {
+            sheetsToRender.append(sheet);
+        }
+    } else {
+        Sheet* sheet = qobject_cast<Sheet*>(m_project->get_current_session());
+        if (sheet) {
+            sheetsToRender.append(sheet);
+        }
+    }
 
-int ExportSpecification::is_valid()
-{
+    // process each sheet in the list sheetsToRender. here we set the renderpass mode,
+    // and then call Sheet::repare_export() and Sheet::render(), which do the actual
+    // processing.
+    foreach(Sheet* sheet, sheetsToRender) {
+        PMESG("Starting export for sheet %lld", sheet->get_id());
+        emit m_project->exportStartedForSheet(sheet);
+        m_exportSpecification->resumeTransport = false;
+        m_exportSpecification->resumeTransportLocation = sheet->get_transport_location();
+        // sheet->readbuffer = readbuffer;
 
-    if (sample_rate == 0) {
-		printf("ExportSpecification: No samplerate configured!\n");
-		return -1;
-	}
-	
-    if (channels == 0) {
-		printf("ExportSpecification: No channels configured!\n");
-		return -1;
-	}
-	
-	if (startLocation == qint64(-1)) {
-		printf("ExportSpecification: No start frame configured!\n");
-		return -1;
-	}
+        if (m_exportSpecification->normalize) {
+            // start one render pass in mode "CALC_NORM_FACTOR"
+            m_exportSpecification->m_peakValue = 0.0;
+            m_exportSpecification->renderpass = TExportSpecification::CALC_NORM_FACTOR;
 
-	if (endLocation == qint64(-1)) {
-		printf("ExportSpecification: No end frame configured!\n");
-		return -1;
-	}
 
-	if (! dataF ) {
-		printf("ExportSpecification: No mixdown buffer created!!\n");
-		return -1;
-	}
+            if (sheet->prepare_export(m_exportSpecification) < 0) {
+                PERROR("Failed to prepare sheet for export");
+                continue;
+            }
 
-    if (blocksize == 0) {
-		printf("ExportSpecification: No blocksize configured!\n");
-		return -1;
-	}
+            sheet->start_export(m_exportSpecification);
 
-	if (data_width == -1) {
-		printf("ExportSpecification: No data width configured!\n");
-		return -1;
-	}
+            m_exportSpecification->normvalue = (1.0f - FLT_EPSILON) / m_exportSpecification->m_peakValue;
 
-	if (totalTime == qint64(-1)) {
-		printf("ExportSpecification: No total frames configured!\n");
-		return -1;
-	}
+            if (m_exportSpecification->m_peakValue > 1.0f) {
+                info().critical(tr("Detected clipping in exported audio! (%1)")
+                                    .arg(coefficient_to_dbstring(m_exportSpecification->m_peakValue)));
+            }
 
-	if (isRecording == -1) {
-		printf("ExportSpecification: No isRecording configured!\n");
-		return -1;
-	}
+            if (!m_exportSpecification->breakout) {
+                info().information(tr("calculated norm factor: %1").arg(coefficient_to_dbstring(m_exportSpecification->normvalue)));
+            }
+        }
 
-	if (pos == qint64(-1) && isRecording == 0) {
-		printf("ExportSpecification: No position configured!\n");
-		return -1;
-	}
-	
-	if (exportdir.isEmpty()) {
-		printf("ExportSpecification: No export dir configured!\n");
-		return -1;
-	}
+        // start the real render pass in mode "WRITE_TO_HARDDISK"
+        m_exportSpecification->renderpass = TExportSpecification::WRITE_TO_HARDDISK;
 
-	if (name.isEmpty()) {
-		printf("ExportSpecification: No name configured!\n");
-		return -1;
-	}
+        // first call Sheet::prepare_export()...
+        if (sheet->prepare_export(m_exportSpecification) < 0) {
+            PERROR("Failed to prepare sheet for export");
+            break;
+        }
 
-	return 1;
+        // ... then start the render process and wait until it's finished
+        sheet->start_export(m_exportSpecification);
+
+        if (!QMetaObject::invokeMethod(sheet, "set_transport_pos",  Qt::QueuedConnection, Q_ARG(TTimeRef, m_exportSpecification->resumeTransportLocation))) {
+            printf("Invoking Sheet::set_transport_pos() failed\n");
+        }
+        if (m_exportSpecification->resumeTransport) {
+            if (!QMetaObject::invokeMethod(sheet, "start_transport",  Qt::QueuedConnection)) {
+                printf("Invoking Sheet::start_transport() failed\n");
+            }
+        }
+        if (m_exportSpecification->breakout) {
+            break;
+        }
+        renderedSheets++;
+    }
+
+    PMESG("Export Finished");
+
+    m_exportSpecification->running = false;
+    overallExportProgress = 0;
+
+
+    emit m_project->exportFinished();
 }

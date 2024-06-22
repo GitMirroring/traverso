@@ -20,7 +20,7 @@
     $Id: VUMeter.cpp,v 1.3 2009/04/16 19:38:19 n_doebelin Exp $
 */
 
-#include "VUMeter.h"
+#include "TVUMeterWidget.h"
 
 #include <QPainter>
 #include <QGradient>
@@ -61,9 +61,9 @@ static const int MAXIMUM_WIDTH	= 150;
 static const int VULED_HEIGHT	= 8;
 
 // initialize static variables
-QVector<float> VUMeter::lut;
+QVector<float> TVUMeterWidget::lut;
 
-VUMeter::VUMeter(QWidget* parent, AudioBus* bus)
+TVUMeterWidget::TVUMeterWidget(QWidget* parent, AudioBus* bus)
 	: QWidget(parent)
 {
 	setMaximumWidth(MAXIMUM_WIDTH);
@@ -142,11 +142,11 @@ VUMeter::VUMeter(QWidget* parent, AudioBus* bus)
 	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
 }
 
-VUMeter::~ VUMeter( )
+TVUMeterWidget::~ TVUMeterWidget( )
 {}
 
 
-void VUMeter::paintEvent( QPaintEvent *  )
+void TVUMeterWidget::paintEvent( QPaintEvent *  )
 {
 	PENTER3;
 
@@ -154,7 +154,7 @@ void VUMeter::paintEvent( QPaintEvent *  )
 	painter.fillRect( 0 , 0 , width(), height() , m_widgetBgBrush );
 }
 
-void VUMeter::resizeEvent( QResizeEvent *  )
+void TVUMeterWidget::resizeEvent( QResizeEvent *  )
 {
 	PENTER3;
 
@@ -176,17 +176,17 @@ void VUMeter::resizeEvent( QResizeEvent *  )
 	}
 }
 
-QSize VUMeter::sizeHint() const
+QSize TVUMeterWidget::sizeHint() const
 {
 	return QSize(100, 200);
 }
 
-QSize VUMeter::minimumSizeHint() const
+QSize TVUMeterWidget::minimumSizeHint() const
 {
 	return QSize(100, 200);
 }
 
-void VUMeter::calculate_lut_data()
+void TVUMeterWidget::calculate_lut_data()
 {
 	for (int i = 60; i >= -700; i -= 2) {
 		if (i >= -200) {
@@ -203,24 +203,24 @@ void VUMeter::calculate_lut_data()
 	}
 }
 
-void VUMeter::peak_monitoring_stopped()
+void TVUMeterWidget::peak_monitoring_stopped()
 {
 	hide();
 }
 
-void VUMeter::peak_monitoring_started()
+void TVUMeterWidget::peak_monitoring_started()
 {
 	show();
 }
 
-void VUMeter::reset()
+void TVUMeterWidget::reset()
 {
 	foreach(VUMeterLevel* level, m_levels) {
 		level->reset();
 	}
 }
 
-void VUMeter::load_theme_data()
+void TVUMeterWidget::load_theme_data()
 {
 	m_vulevelspacing = themer()->get_property("VUMeter:layout:vuspacing", 3).toInt();
 	m_vulayoutspacing = themer()->get_property("VUMeter:layout:vulayoutspacing", 5).toInt();
@@ -307,11 +307,11 @@ void VUMeterRuler::paintEvent( QPaintEvent*  )
 	for (uint j = 0; j < lineMark.size(); ++j) {
 		int idx = int(LUT_MULTIPLY * float((-lineMark[j] + 6)));
 
-		if ((idx < 0) || (idx >= VUMeter::vumeter_lut()->size())) {
+        if ((idx < 0) || (idx >= TVUMeterWidget::vumeter_lut()->size())) {
 			continue;
 		}
 
-		deltaY = (int) ( VUMeter::vumeter_lut()->at(idx)/115.0  * levelRange );
+        deltaY = (int) ( TVUMeterWidget::vumeter_lut()->at(idx)/115.0  * levelRange );
 		painter.drawLine(0, height() - deltaY, TICK_LINE_LENGTH, height() - deltaY);
 	}
 
@@ -335,11 +335,11 @@ void VUMeterRuler::paintEvent( QPaintEvent*  )
 		int idx = int(LUT_MULTIPLY * float(-presetMark[j] + 6));
 
 		// check the LUT index (I had exceptions without that check)
-		if ((idx < 0) || (idx >= VUMeter::vumeter_lut()->size())) {
+        if ((idx < 0) || (idx >= TVUMeterWidget::vumeter_lut()->size())) {
 			continue;
 		}
 
-		deltaY = (int) ( VUMeter::vumeter_lut()->at(idx)/115.0  * levelRange );
+        deltaY = (int) ( TVUMeterWidget::vumeter_lut()->at(idx)/115.0  * levelRange );
         QString spm("%1");
         spm = spm.arg(presetMark[j], 2, 10, QLatin1Char('0'));
 
@@ -738,10 +738,10 @@ int VUMeterLevel::get_meter_position(float f)
 	}
 
 	// if idx > size of the LUT, dBVal is somewhere < -70 dB, which is not displayed
-	if (idx >= VUMeter::vumeter_lut()->size()) {
+    if (idx >= TVUMeterWidget::vumeter_lut()->size()) {
 		return height();
 	} else {
-		return  height() - int(VUMeter::vumeter_lut()->at(idx)/115.0 * (float)height());
+        return  height() - int(TVUMeterWidget::vumeter_lut()->at(idx)/115.0 * (float)height());
 	}
 }
 

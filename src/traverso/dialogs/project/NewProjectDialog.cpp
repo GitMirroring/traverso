@@ -42,7 +42,7 @@
 #include <QIcon>
 
 #include "TConfig.h"
-#include "Export.h"
+#include "TExportSpecification.h"
 #include "Information.h"
 #include "ProjectManager.h"
 #include "ResourcesManager.h"
@@ -84,7 +84,7 @@ NewProjectDialog::NewProjectDialog( QWidget * parent )
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 
 	m_converter = new AudioFileCopyConvert();
-	m_exportSpec = new ExportSpecification;
+	m_exportSpec = new TExportSpecification;
 	m_buttonGroup = new QButtonGroup(this);
 	m_buttonGroup->addButton(radioButtonImport, 0);
 	m_buttonGroup->addButton(radioButtonEmpty, 1);
@@ -348,7 +348,7 @@ void NewProjectDialog::load_file(const QString &fileName, int i, QString trackna
                 return;
         }
 
-    TAudioFileImportCommand* import = new TAudioFileImportCommand();
+    TAudioFileImportCommand* import = new TAudioFileImportCommand(track);
     import->set_file_name(fileName);
     printf("renaming track to %s\n", trackname.toLatin1().data());
     track->set_name(trackname);

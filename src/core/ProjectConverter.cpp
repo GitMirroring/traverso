@@ -149,7 +149,7 @@ int ProjectConverter::start_conversion_from_version_2_to_3()
 			
 			readsourceelement.setAttribute("name", name + ".wav");
 			readsourceelement.setAttribute("length", readsource0->get_length().universal_frame());
-			readsourceelement.setAttribute("rate", readsource0->get_rate());
+			readsourceelement.setAttribute("rate", readsource0->get_sample_rate());
 			
 		} else {
 			// The version 2 of the project file didn't have the full name
@@ -177,7 +177,7 @@ int ProjectConverter::start_conversion_from_version_2_to_3()
 		ReadSource* source = m_readsources.value(readsourceid);
 		int rate = projectrate;
 		if (source) {
-			rate = source->get_rate();
+			rate = source->get_sample_rate();
 		}
 			
 		clipelement.setAttribute("trackstart", TTimeRef(trackStart, rate).universal_frame());

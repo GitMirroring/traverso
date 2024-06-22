@@ -21,13 +21,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "WriteSource.h"
 
-#include "Export.h"
+#include "TExportSpecification.h"
 #include <math.h>
 
 #include "AudioBus.h"
 #include <AudioDevice.h>
-#include <AbstractAudioWriter.h>
-#include <SFAudioWriter.h>
+#include "AbstractAudioWriter.h"
 #include "Peak.h"
 #include "Utils.h"
 #include "DiskIO.h"
@@ -37,9 +36,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 
-WriteSource::WriteSource( ExportSpecification* specification )
+WriteSource::WriteSource( TExportSpecification* specification )
 	: AudioSource(specification->exportdir, specification->name)
-	, m_spec(specification)
+    , m_exportSpecification(specification)
 {
     m_diskio = nullptr;
     m_writer = nullptr;
@@ -58,9 +57,11 @@ WriteSource::~WriteSource()
 	for(int i=0; i<m_buffers.size(); ++i) {
 		delete m_buffers.at(i);
 	}
-	
-	if (m_spec->isRecording) {
-		delete m_spec;
+
+    // If the export state was recording it means ownership of the TExportSpecification
+    // was given to this WriteSource instance so we should delete it now
+    if (m_exportSpecification->get_recording_state() == TExportSpecification::RecordingState::RECORDING) {
+        delete m_exportSpecification;
 	}
 	if (m_writer) {
 		delete m_writer;
@@ -89,7 +90,7 @@ int WriteSource::process (nframes_t nframes)
 
         /* now do sample rate conversion */
 
-        if (m_sampleRate != m_spec->sample_rate) {
+        if (m_sampleRate != m_exportSpecification->get_sample_rate()) {
 
             int err;
 
@@ -99,8 +100,7 @@ int WriteSource::process (nframes_t nframes)
                 PERROR("Invalid channelcount which should be impossible");
                 return written;
             }
-            uint rate = audiodevice().get_sample_rate();
-            m_src_data.end_of_input = (m_spec->pos + TTimeRef(nframes, rate)) >= m_spec->endLocation;
+            m_src_data.end_of_input = (m_exportSpecification->get_export_location() + TTimeRef(nframes, m_sampleRate)) >= m_exportSpecification->get_export_end_location();
             m_src_data.data_out = m_dataF2;
 
             if (m_leftover_frames > 0) {
@@ -113,7 +113,7 @@ int WriteSource::process (nframes_t nframes)
 
                     /* first time, append new data from dataF into the m_leftoverF buffer */
 
-                    memcpy (m_leftoverF + (m_leftover_frames * m_channelCount), m_spec->dataF, nframes * m_channelCount * sizeof(float));
+                    memcpy (m_leftoverF + (m_leftover_frames * m_channelCount), m_exportSpecification->get_render_buffer(), nframes * m_channelCount * sizeof(float));
                     m_src_data.input_frames = nframes + m_leftover_frames;
                 } else {
 
@@ -126,7 +126,7 @@ int WriteSource::process (nframes_t nframes)
                 }
             } else {
 
-                m_src_data.data_in = m_spec->dataF;
+                m_src_data.data_in = m_exportSpecification->get_render_buffer();
                 m_src_data.input_frames = nframes;
 
             }
@@ -158,17 +158,17 @@ int WriteSource::process (nframes_t nframes)
 
             to_write = nframes;
             m_leftover_frames = 0;
-            float_buffer = m_spec->dataF;
+            float_buffer = m_exportSpecification->get_render_buffer();
         }
 
         if (m_output_data) {
             memset (m_output_data, 0, m_sample_bytes * to_write * m_channelCount);
         }
 
-        switch (m_spec->data_width) {
-        case 8:
-        case 16:
-        case 24:
+        switch (m_exportSpecification->get_data_format()) {
+        case SF_FORMAT_PCM_S8:
+        case SF_FORMAT_PCM_16:
+        case SF_FORMAT_PCM_24:
             for (chn = 0; chn < m_channelCount; ++chn) {
                 gdither_runf (m_dither, chn, to_write, float_buffer, m_output_data);
             }
@@ -176,7 +176,7 @@ int WriteSource::process (nframes_t nframes)
             written += m_writer->write(m_output_data, to_write);
             break;
 
-        case 32:
+        case SF_FORMAT_PCM_32:
             for (chn = 0; chn < m_channelCount; ++chn) {
 
                 int *ob = static_cast<int *>(m_output_data);
@@ -202,7 +202,7 @@ int WriteSource::process (nframes_t nframes)
             /* and export to disk */
             written += m_writer->write(m_output_data, to_write);
             break;
-
+        // default is SF_FORMAT_FLOAT
         default:
             for (x = 0; x < to_write * m_channelCount; ++x) {
                 if (float_buffer[x] > 1.0f) {
@@ -225,12 +225,12 @@ int WriteSource::prepare_export()
 {
 	PENTER;
 	
-	Q_ASSERT(m_spec->is_valid() == 1);
+    Q_ASSERT(m_exportSpecification->is_valid() == 1);
 	
 	GDitherSize dither_size;
 
 	m_sampleRate = audiodevice().get_sample_rate();
-	m_channelCount = m_spec->channels;
+    m_channelCount = m_exportSpecification->get_channel_count();
 	m_processPeaks = false;
     m_diskio = nullptr;
     m_dataF2 = m_leftoverF = nullptr;
@@ -239,16 +239,16 @@ int WriteSource::prepare_export()
     m_src_state = nullptr;
 	
 
-	switch (m_spec->data_width) {
-	case 8:
+    switch (m_exportSpecification->get_data_format()) {
+    case SF_FORMAT_PCM_S8:
 		dither_size = GDither8bit;
 		break;
 
-	case 16:
+    case SF_FORMAT_PCM_16:
 		dither_size = GDither16bit;
 		break;
 
-	case 24:
+    case SF_FORMAT_PCM_24:
         dither_size = GDither32bit;
 		break;
 
@@ -260,60 +260,51 @@ int WriteSource::prepare_export()
 	if (m_writer) {
 		delete m_writer;
 	}
+
+    set_name(get_name() + m_exportSpecification->get_file_extension());
+
+    m_writer = AbstractAudioWriter::create_audio_writer(m_exportSpecification);
 	
-	m_writer = AbstractAudioWriter::create_audio_writer(m_spec->writerType);
-	m_writer->set_rate(m_spec->sample_rate);
-	m_writer->set_bits_per_sample(m_spec->data_width);
-	m_writer->set_num_channels(m_channelCount);
-	
-	QString key;
-	foreach (key, m_spec->extraFormat.keys()) {
-		if (m_writer->set_format_attribute(key, m_spec->extraFormat[key]) == false) {
-			printf("Invalid Extra Format Info: %s=%s\n", QS_C(key), QS_C(m_spec->extraFormat[key]));
-		}
-	}
-	
-	set_name(get_name() + m_writer->get_extension());
-	
-	if (m_writer->open(m_fileName) == false) {
+    if (!m_writer->open(m_fileName)) {
+        PERROR("Write Source failed to open");
 		return -1;
 	}
 	
-    if (m_spec->sample_rate != m_sampleRate) {
+    if (m_sampleRate != m_exportSpecification->get_sample_rate()) {
 		qDebug("Doing samplerate conversion");
 		int err;
 
-        if ((m_src_state = src_new (m_spec->src_quality, int(m_channelCount), &err)) == nullptr) {
+        if ((m_src_state = src_new (m_exportSpecification->get_sample_rate_conversion_quality(), int(m_channelCount), &err)) == nullptr) {
             PWARN(QString("cannot initialize sample rate conversion: %1").arg(src_strerror(err)).toLatin1().data());
 			return -1;
 		}
 
-        m_src_data.src_ratio = m_spec->sample_rate / double(m_sampleRate);
-        m_out_samples_max = nframes_t(ceil (m_spec->blocksize * m_src_data.src_ratio * m_channelCount));
+        m_src_data.src_ratio = m_exportSpecification->get_sample_rate() / double(m_sampleRate);
+        m_out_samples_max = nframes_t(ceil (m_exportSpecification->get_block_size() * m_src_data.src_ratio * m_channelCount));
 		m_dataF2 = new audio_sample_t[m_out_samples_max];
 
-		m_max_leftover_frames = 4 * m_spec->blocksize;
+        m_max_leftover_frames = 4 * m_exportSpecification->get_block_size();
 		m_leftoverF = new audio_sample_t[m_max_leftover_frames * m_channelCount];
 		m_leftover_frames = 0;
 	} else {
-		m_out_samples_max = m_spec->blocksize * m_channelCount;
+        m_out_samples_max = m_exportSpecification->get_block_size() * m_channelCount;
 	}
 
-	m_dither = gdither_new (m_spec->dither_type, m_channelCount, dither_size, m_spec->data_width);
+    m_dither = gdither_new (m_exportSpecification->dither_type, m_channelCount, dither_size, m_exportSpecification->get_bit_depth());
 
 	/* allocate buffers where dithering and output will occur */
 
-	switch (m_spec->data_width) {
-	case 8:
+    switch (m_exportSpecification->get_data_format()) {
+    case SF_FORMAT_PCM_S8:
 		m_sample_bytes = 1;
 		break;
 
-	case 16:
+    case SF_FORMAT_PCM_16:
 		m_sample_bytes = 2;
 		break;
 
-	case 24:
-	case 32:
+    case SF_FORMAT_PCM_24:
+    case SF_FORMAT_PCM_32:
 		m_sample_bytes = 4;
 		break;
 
@@ -448,12 +439,12 @@ int WriteSource::rb_file_write(nframes_t cnt)
 
     if (read > 0) {
         if (m_channelCount == 1) {
-            m_spec->dataF = readbuffer[0];
+            m_exportSpecification->set_render_buffer(readbuffer[0]);
         } else {
             // Interlace data into dataF buffer!
             for (uint f=0; f<read; f++) {
                 for (chan = 0; chan < m_channelCount; chan++) {
-                    m_spec->dataF[f * m_channelCount + chan] = readbuffer[chan][f];
+                    m_exportSpecification->get_render_buffer()[f * m_channelCount + chan] = readbuffer[chan][f];
                 }
             }
         }
@@ -477,9 +468,11 @@ void WriteSource::set_recording(bool rec )
 	m_isRecording = rec;
 }
 
+// Called from DiskIO::do_work in DiskAudioThread
+// TODO: make sure this function is thread save
 void WriteSource::process_ringbuffer(audio_sample_t* buffer)
 {
-	m_spec->dataF = buffer;
+    m_exportSpecification->set_render_buffer(buffer);
 	int readSpace = m_buffers.at(0)->read_space();
 
 	if (! m_isRecording ) {

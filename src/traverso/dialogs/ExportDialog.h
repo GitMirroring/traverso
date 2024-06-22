@@ -29,7 +29,7 @@
 class ExportFormatOptionsWidget;
 class Project;
 class Sheet;
-struct ExportSpecification;
+struct TExportSpecification;
 
 class ExportDialog : public QDialog, protected Ui::ExportDialog
 {
@@ -46,7 +46,7 @@ protected:
 
 private:
 	Project* m_project{};
-	ExportSpecification* 	m_exportSpec;
+	TExportSpecification* 	m_exportSpec;
 	ExportFormatOptionsWidget* m_formatOptionsWidget;
 
 	bool is_safe_to_export();

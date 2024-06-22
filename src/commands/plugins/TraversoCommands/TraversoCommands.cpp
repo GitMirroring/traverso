@@ -417,7 +417,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             return 0;
         }
 
-        auto audioFileImportCommand = new TAudioFileImportCommand();
+        auto audioFileImportCommand = new TAudioFileImportCommand(track);
         audioFileImportCommand->set_track(track);
         return audioFileImportCommand;
     }
@@ -431,7 +431,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             return 0;
         }
         TTimeRef length(10*TTimeRef::UNIVERSAL_SAMPLE_RATE);
-        auto audioFileImportCommand = new TAudioFileImportCommand();
+        auto audioFileImportCommand = new TAudioFileImportCommand(track);
         audioFileImportCommand->set_track(track);
         audioFileImportCommand->set_length(length);
         audioFileImportCommand->set_silent(true);

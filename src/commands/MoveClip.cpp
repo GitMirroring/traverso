@@ -215,7 +215,7 @@ int MoveClip::begin_hold()
 //        MoveCommand::begin_hold();
     }
 
-    cpointer().set_canvas_cursor_text(timeref_to_text(m_group.get_location_start(), d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_group.get_location_start(), d->sv->timeref_scalefactor));
 
     return 1;
 }
@@ -346,7 +346,7 @@ int MoveClip::jog()
         markerAndOrigin.marker->set_when(markerAndOrigin.origin + m_posDiff);
     }
 
-    cpointer().set_canvas_cursor_text(timeref_to_text(newTrackStartLocation, d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(newTrackStartLocation, d->sv->timeref_scalefactor));
 
     return 1;
 }
@@ -479,7 +479,7 @@ void MoveClip::do_move()
         TrackView* tv = d->sv->get_track_views().at(m_newTrackIndex);
         qreal sceneY = tv->scenePos().y() + tv->boundingRect().height() / 2;
         d->sv->keyboard_move_canvas_cursor_to_location(m_trackStartLocation + m_posDiff + m_d->relativeWorkCursorPos, sceneY);
-        d->sv->set_edit_cursor_text(timeref_to_text(m_trackStartLocation + m_posDiff, d->sv->timeref_scalefactor));
+        d->sv->set_edit_cursor_text(TTimeRef::timeref_to_text(m_trackStartLocation + m_posDiff, d->sv->timeref_scalefactor));
     }
 }
 

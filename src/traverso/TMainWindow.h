@@ -34,7 +34,7 @@ class TSession;
 class AudioTrack;
 class Track;
 class Project;
-class BusMonitor;
+class TAudioBusVUMonitorWidget;
 class InfoBox;
 class ViewPort;
 class ContextItem;
@@ -160,7 +160,7 @@ private:
 	bool			m_isFollowing{};
         QByteArray              m_windowState;
 
-	BusMonitor* 		busMonitor;
+    TAudioBusVUMonitorWidget* 		busMonitor;
         QToolBar*               m_mainMenuToolBar;
         QMenuBar*               m_mainMenuBar;
 	QToolBar*		m_projectToolBar;

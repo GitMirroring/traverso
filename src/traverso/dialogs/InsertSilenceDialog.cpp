@@ -84,7 +84,7 @@ void InsertSilenceDialog::accept()
         }
 
         TTimeRef length = TTimeRef(lengthSpinBox->value() * TTimeRef::UNIVERSAL_SAMPLE_RATE);
-        TAudioFileImportCommand* cmd = new TAudioFileImportCommand();
+        TAudioFileImportCommand* cmd = new TAudioFileImportCommand(m_track);
         cmd->set_track(m_track);
         cmd->set_length(length);
         cmd->set_silent(true);

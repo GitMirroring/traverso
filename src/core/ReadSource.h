@@ -101,7 +101,6 @@ private:
     bool			m_syncInProgress;
 	
 	mutable TTimeRef		m_length;
-	QString			m_decodertype;
     uint			m_outputRate;
 	
     BufferStatus*		m_bufferstatus;

@@ -35,7 +35,7 @@ Curve.cpp
 CurveNode.cpp
 TCommandPlugin.h
 DiskIO.cpp
-Export.cpp
+TExportThread.cpp TExportThread.h
 FadeCurve.cpp
 FileHelpers.cpp
 Information.cpp
@@ -84,7 +84,8 @@ SET(TRAVERSO_CORE_LIBRARY "traversocore")
 
 ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE}
 	TShortCutFunction.h TShortCutFunction.cpp
-	TShortCut.h TShortCut.cpp)
+	TShortCut.h TShortCut.cpp
+	TExportSpecification.h TExportSpecification.cpp)
 
 IF(USE_PCH)
     ADD_DEPENDENCIES(traversocore precompiled_headers)

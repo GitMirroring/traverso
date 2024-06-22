@@ -167,7 +167,7 @@ void TCommand::set_valid(bool valid)
 	m_isValid = valid;
 }
 
-// Internal function, not to be used outside of InputEngine
+// Internal function, not to be used outside of TInputEventDispatcher
 int TCommand::push_to_history_stack( )
 {
 	PENTER3;

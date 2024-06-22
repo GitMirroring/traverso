@@ -61,13 +61,13 @@ private slots:
 
 
 
-class VUMeter : public QWidget
+class TVUMeterWidget : public QWidget
 {
 	Q_OBJECT
 
 public:
-        VUMeter(QWidget* parent, AudioBus* bus);
-        ~VUMeter();
+        TVUMeterWidget(QWidget* parent, AudioBus* bus);
+        ~TVUMeterWidget();
 
 	void reset();
 	
@@ -118,7 +118,7 @@ private slots:
  * @return Pointer to the lookup table, which is of format QVector<float>
  */
 
-inline QVector<float>* VUMeter::vumeter_lut()
+inline QVector<float>* TVUMeterWidget::vumeter_lut()
 {
 	if (lut.isEmpty()) {
 		calculate_lut_data();

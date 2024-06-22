@@ -1259,7 +1259,7 @@ void SheetView::keyboard_move_canvas_cursor_to_location(TTimeRef location, qreal
 	QPoint pos = m_clipsViewPort->mapFromScene(location / timeref_scalefactor, sceneY);
     cpointer().store_canvas_cursor_position(pos);
 
-    m_canvasCursor->set_text(timeref_to_text(location, timeref_scalefactor));
+    m_canvasCursor->set_text(TTimeRef::timeref_to_text(location, timeref_scalefactor));
     do_keyboard_canvas_cursor_move(QPointF(location / timeref_scalefactor, sceneY));
 }
 

@@ -112,7 +112,7 @@ int PlayHeadMove::jog()
             m_session->set_transport_pos(m_newTransportLocation);
         }
 
-        cpointer().set_canvas_cursor_text(timeref_to_text(m_newTransportLocation, d->sv->timeref_scalefactor));
+        cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newTransportLocation, d->sv->timeref_scalefactor));
     }
 
     cpointer().set_canvas_cursor_pos(QPointF(x, y));
@@ -187,7 +187,7 @@ void PlayHeadMove::do_keyboard_move(TTimeRef newLocation, bool centerInView)
     }
 
 
-    cpointer().set_canvas_cursor_text(timeref_to_text(m_newTransportLocation, d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newTransportLocation, d->sv->timeref_scalefactor));
     d->sv->set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), m_holdCursorSceneY), AbstractViewPort::CursorMoveReason::KEYBOARD_NAVIGATION);
 }
 

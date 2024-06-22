@@ -12,8 +12,8 @@ class TTimeRef {
 public:
     // Universal samplerate for the frequences 22050, 32000, 44100, 88200, 96000 and 192000 Hz
     static const qint64 UNIVERSAL_SAMPLE_RATE = 28224000;
-    static const qint64 ONE_HOUR_UNIVERSAL_SAMPLE_RATE = 101606400000LL;
-    static const qint64 ONE_MINUTE_UNIVERSAL_SAMPLE_RATE = 1693440000LL;
+    static const qint64 ONE_HOUR_UNIVERSAL_SAMPLE_RATE = 101606400000;
+    static const qint64 ONE_MINUTE_UNIVERSAL_SAMPLE_RATE = 1693440000;
 
     TTimeRef();
     explicit TTimeRef(qint64 position);
@@ -25,6 +25,21 @@ public:
 
     static TTimeRef max_length();
     static TTimeRef negative_max_length();
+
+    static QString timeref_to_ms(const TTimeRef& ref);
+    static QString timeref_to_ms_2 (const TTimeRef& ref);
+    static QString timeref_to_ms_3 (const TTimeRef& ref);
+    static QString timeref_to_hms(const TTimeRef& ref);
+
+    static QString timeref_to_text(const TTimeRef& ref, qint64 scalefactor);
+
+    static QString timeref_to_cd(const TTimeRef& ref);
+    static QString timeref_to_cd_including_hours(const TTimeRef& ref);
+
+    static TTimeRef msms_to_timeref(QString str);
+    static TTimeRef cd_to_timeref(QString str);
+    static TTimeRef cd_to_timeref_including_hours(QString str);
+
 
     void add_frames(nframes_t frames, uint rate) {
         m_position += ((UNIVERSAL_SAMPLE_RATE / rate) * frames);
@@ -113,9 +128,9 @@ public:
         return left;
     }
 
-    friend TTimeRef operator/(const TTimeRef& left, const TTimeRef& right) {
+    friend qreal operator/(const TTimeRef& left, const TTimeRef& right) {
         Q_ASSERT(right.m_position != 0);
-        return TTimeRef(left.m_position / right.m_position);
+        return qreal(left.m_position) / right.m_position;
     }
 
     friend qreal operator/(const TTimeRef& left, const qint64 right) {

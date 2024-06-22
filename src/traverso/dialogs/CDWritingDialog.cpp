@@ -22,10 +22,10 @@
 #include "CDWritingDialog.h"
 
 #include <QMessageBox>
+#include <samplerate.h>
 
-#include "Export.h"
+#include "TExportSpecification.h"
 #include "TConfig.h"
-#include "AudioDevice.h"
 #include "Project.h"
 #include "ProjectManager.h"
 #include "Information.h"
@@ -69,8 +69,8 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	
 	connect(m_burnprocess, SIGNAL(readyReadStandardOutput()), this, SLOT(read_standard_output()));
 	connect(m_burnprocess, SIGNAL(started()), this, SLOT(cdrdao_process_started()));
-	connect(m_burnprocess, SIGNAL(finished(int, QProcess::ExitStatus)),
-		this, SLOT(cdrdao_process_finished(int, QProcess::ExitStatus)));
+    connect(m_burnprocess, SIGNAL(finished(int,QProcess::ExitStatus)),
+        this, SLOT(cdrdao_process_finished(int,QProcess::ExitStatus)));
 	connect(startButton, SIGNAL(clicked()), this, SLOT(start_burn_process()));
 	connect(stopButton, SIGNAL(clicked()), this, SLOT(stop_burn_process()));
 	connect(refreshButton, SIGNAL(clicked()), this, SLOT(query_devices()));
@@ -133,7 +133,7 @@ void CDWritingDialog::set_project(Project * project)
 			delete m_exportSpec;
             m_exportSpec = nullptr;
 		}
-		m_exportSpec = new ExportSpecification;
+		m_exportSpec = new TExportSpecification;
 		m_exportSpec->exportdir = m_project->get_root_dir() + "/Export/";
 		m_exportSpec->renderfinished = false;
 	}
@@ -321,25 +321,22 @@ void CDWritingDialog::cd_render()
 	if ( !	(m_exportSpec->renderfinished && 
 		(m_exportSpec->allSheets == cdAllSheetsButton->isChecked()) &&
 		(m_exportSpec->normalize == cdNormalizeCheckBox->isChecked())) ) {
-		
-		m_exportSpec->data_width = 16;
-		m_exportSpec->writerType = "sndfile";
-		m_exportSpec->extraFormat["filetype"] = "wav";
-		m_exportSpec->channels = 2;
-		m_exportSpec->sample_rate = 44100;
+
+        m_exportSpec->set_data_format(SF_FORMAT_PCM_16);
+        m_exportSpec->set_channel_count(2);
 		m_exportSpec->writeToc = true;
 		m_exportSpec->dither_type = GDitherTri;
-		m_exportSpec->src_quality = SRC_SINC_MEDIUM_QUALITY; // SRC_SINC_BEST_QUALITY  SRC_SINC_FASTEST  SRC_ZERO_ORDER_HOLD  SRC_LINEAR
+        // TODO
+        // What about offering user option to select samplerate conversion quality?
 		if (cdAllSheetsButton->isChecked()) {
 			m_exportSpec->allSheets = true;
 		} else {
 			m_exportSpec->allSheets = false;
 		}
 		m_exportSpec->normalize = cdNormalizeCheckBox->isChecked();
-		m_exportSpec->isRecording = false;
 		m_exportSpec->stop = false;
 		m_exportSpec->breakout = false;
-		m_exportSpec->isCdExport = true;
+        m_exportSpec->set_is_cd_export(true);
 		
 		if (m_project->create_cdrdao_toc(m_exportSpec) < 0) {
 			info().warning(tr("Creating CDROM table of contents failed, unable to write CD"));
@@ -696,6 +693,6 @@ QString CDWritingDialog::get_device(int index)
 //        TTimeRef t = TTimeRef();
 //        m_exportSpec->allSheets = !b;
 //        t = m_project->get_cd_totaltime(m_exportSpec);
-//        cdTotalTimeLabel->setText(timeref_to_cd(t));
+//        cdTotalTimeLabel->setText(TTimeRef::timeref_to_cd(t));
 //}
 

@@ -170,7 +170,7 @@ int SplitClip::jog()
 	}
 	m_splitcursor->setPos(xpos, 0);
 
-    cpointer().set_canvas_cursor_text(timeref_to_text(m_splitPoint, d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_splitPoint, d->sv->timeref_scalefactor));
 	
 	return 1;
 }

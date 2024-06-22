@@ -49,7 +49,7 @@ public :
 	QString get_short_name() const;
         qint64 get_id() const {return m_id;}
 	qint64 get_orig_sheet_id() const {return m_origSheetId;}
-    uint get_rate() const;
+    uint get_sample_rate() const;
         uint get_channel_count() const {return m_channelCount;}
     uint get_bit_depth() const;
 	

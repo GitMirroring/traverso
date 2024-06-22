@@ -104,7 +104,7 @@ void ClipsViewPort::dragEnterEvent( QDragEnterEvent * event )
                 continue;
 			}
 			
-            TAudioFileImportCommand* import = new TAudioFileImportCommand();
+            TAudioFileImportCommand* import = new TAudioFileImportCommand(pm().get_project());
             import->set_file_name(fileName);
 			m_imports.append(import);
 			

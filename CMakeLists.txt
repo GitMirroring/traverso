@@ -32,7 +32,6 @@ OPTION(WANT_PORTAUDIO	"Include PortAudio support (Driver support for Mac OS X an
 OPTION(WANT_PULSEAUDIO	"Include PulseAudio support (Driver support for Linux and Windows" ON)
 OPTION(WANT_COREAUDIO	"Include CoreAudio support (Driver support for Mac OS X" OFF)
 OPTION(WANT_LV2		"Include LV2 Plugin support" ON)
-OPTION(WANT_MP3_DECODE	"Include mp3 decoding support, for playing mp3 files" ON)
 OPTION(WANT_MP3_ENCODE	"Include mp3 encoding support, for creating mp3 files" ON)
 OPTION(WANT_PCH     	"Use precompiled headers" OFF)
 OPTION(WANT_DEBUG   	"Debug build" ON)

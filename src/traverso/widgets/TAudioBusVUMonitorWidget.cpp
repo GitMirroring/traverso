@@ -19,14 +19,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "BusMonitor.h"
+#include "TAudioBusVUMonitorWidget.h"
 
-#include "VUMeter.h"
+#include "TBusTrack.h"
+#include "TVUMeterWidget.h"
 
 #include <ProjectManager.h>
 #include <Project.h>
 #include <Sheet.h>
-#include "TBusTrack.h"
 #include <Themer.h>
 #include <AudioDevice.h>
 #include <AudioBus.h>
@@ -40,7 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 
-BusMonitor::BusMonitor(QWidget* parent)
+TAudioBusVUMonitorWidget::TAudioBusVUMonitorWidget(QWidget* parent)
     : QWidget( parent)
 {
     PENTERCONS;
@@ -60,12 +60,12 @@ BusMonitor::BusMonitor(QWidget* parent)
 }
 
 
-BusMonitor::~BusMonitor()
+TAudioBusVUMonitorWidget::~TAudioBusVUMonitorWidget()
 {
     PENTERDES;
 }
 
-QSize BusMonitor::sizeHint() const
+QSize TAudioBusVUMonitorWidget::sizeHint() const
 {
     int width = 0;
     foreach(QWidget* widget, outMeters) {
@@ -76,12 +76,12 @@ QSize BusMonitor::sizeHint() const
     return QSize(width, 140);
 }
 
-QSize BusMonitor::minimumSizeHint() const
+QSize TAudioBusVUMonitorWidget::minimumSizeHint() const
 {
     return QSize(50, 50);
 }
 
-void BusMonitor::create_vu_meters( )
+void TAudioBusVUMonitorWidget::create_vu_meters( )
 {
     PENTER;
 
@@ -96,13 +96,13 @@ void BusMonitor::create_vu_meters( )
     setLayout(m_layout);
 
     while( ! inMeters.isEmpty() ) {
-        VUMeter* meter = inMeters.takeFirst();
+        TVUMeterWidget* meter = inMeters.takeFirst();
         m_layout->removeWidget( meter );
         delete meter;
     }
 
     while ( ! outMeters.isEmpty() ) {
-        VUMeter* meter = outMeters.takeFirst();
+        TVUMeterWidget* meter = outMeters.takeFirst();
         m_layout->removeWidget( meter );
         delete meter;
     }
@@ -147,16 +147,16 @@ void BusMonitor::create_vu_meters( )
 
     if (m_sheet) {
         AudioBus* bus = m_sheet->get_master_out_bus_track()->get_process_bus();
-        m_masterOutMeter = new VUMeter(this, bus);
+        m_masterOutMeter = new TVUMeterWidget(this, bus);
         m_layout->addWidget(m_masterOutMeter);
         bus = m_sheet->get_project()->get_master_out_bus_track()->get_process_bus();
-        m_projectMaster = new VUMeter(this, bus);
+        m_projectMaster = new TVUMeterWidget(this, bus);
         m_layout->addWidget(m_projectMaster);
     }
 
 }
 
-void BusMonitor::set_project(Project * project)
+void TAudioBusVUMonitorWidget::set_project(Project * project)
 {
     Q_UNUSED(project);
 
@@ -166,7 +166,7 @@ void BusMonitor::set_project(Project * project)
     m_sheet = 0;
 }
 
-void BusMonitor::set_session(TSession* session)
+void TAudioBusVUMonitorWidget::set_session(TSession* session)
 {
     Project* project = qobject_cast<Project*>(session);
     if (project) {
@@ -183,7 +183,7 @@ void BusMonitor::set_session(TSession* session)
     create_vu_meters();
 }
 
-void BusMonitor::keyPressEvent(QKeyEvent * event)
+void TAudioBusVUMonitorWidget::keyPressEvent(QKeyEvent * event)
 {
     if (event->isAutoRepeat()) {
         return;
@@ -194,19 +194,19 @@ void BusMonitor::keyPressEvent(QKeyEvent * event)
     }
 }
 
-void BusMonitor::mousePressEvent(QMouseEvent * event)
+void TAudioBusVUMonitorWidget::mousePressEvent(QMouseEvent * event)
 {
     if (event->button() == Qt::RightButton) {
         show_menu();
     }
 }
 
-void BusMonitor::reset_vu_meters()
+void TAudioBusVUMonitorWidget::reset_vu_meters()
 {
-    foreach(VUMeter* meter, inMeters) {
+    foreach(TVUMeterWidget* meter, inMeters) {
         meter->reset();
     }
-    foreach(VUMeter* meter, outMeters) {
+    foreach(TVUMeterWidget* meter, outMeters) {
         meter->reset();
     }
     if (m_masterOutMeter) {
@@ -217,7 +217,7 @@ void BusMonitor::reset_vu_meters()
     }
 }
 
-void BusMonitor::show_menu()
+void TAudioBusVUMonitorWidget::show_menu()
 {
     if (!m_menu) {
         m_menu = new QMenu(this);
@@ -238,7 +238,7 @@ void BusMonitor::show_menu()
     m_menu->exec(QCursor::pos());
 }
 
-void BusMonitor::enterEvent(QEvent *)
+void TAudioBusVUMonitorWidget::enterEvent(QEvent *)
 {
     setFocus();
 }

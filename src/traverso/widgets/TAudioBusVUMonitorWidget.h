@@ -26,20 +26,20 @@ $Id: BusMonitor.h,v 1.1 2008/05/24 17:41:02 r_sijrier Exp $
 #include <QWidget>
 #include <QList>
 
-class VUMeter;
+class TVUMeterWidget;
 class Project;
 class Sheet;
 class TSession;
 class QMenu;
 class QHBoxLayout;
 
-class BusMonitor :  public QWidget
+class TAudioBusVUMonitorWidget :  public QWidget
 {
 	Q_OBJECT
 
 public:
-	BusMonitor(QWidget* parent);
-	~BusMonitor();
+    TAudioBusVUMonitorWidget(QWidget* parent);
+    ~TAudioBusVUMonitorWidget();
 
 protected:
 	void enterEvent ( QEvent * );
@@ -50,10 +50,10 @@ protected:
 	
 private:
         Sheet*                  m_sheet;
-        VUMeter*                m_masterOutMeter;
-        VUMeter*                m_projectMaster;
-	QList<VUMeter* >	inMeters;
-	QList<VUMeter* >	outMeters;
+        TVUMeterWidget*                m_masterOutMeter;
+        TVUMeterWidget*                m_projectMaster;
+	QList<TVUMeterWidget* >	inMeters;
+	QList<TVUMeterWidget* >	outMeters;
         QMenu*                  m_menu;
         QHBoxLayout*            m_layout;
 	

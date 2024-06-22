@@ -23,15 +23,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define RESAMPLEAUDIOREADER_H
 
 #include <AbstractAudioReader.h>
-#include <QVector>
-#include <samplerate.h>
 
+class PrivateSRC;
 
 class ResampleAudioReader : public AbstractAudioReader
 {
 
 public:
-	ResampleAudioReader(const QString &filename, const QString& decoder);
+
+    ResampleAudioReader(const QString &filename);
 	~ResampleAudioReader();
 	
 	nframes_t read_from(DecodeBuffer* buffer, nframes_t start, nframes_t count) {
@@ -50,6 +50,8 @@ public:
 	void set_output_rate(uint rate);
 	void set_converter_type(int converter_type);
 	void set_resample_decode_buffer(DecodeBuffer* buffer);
+
+    static int get_default_resample_quality();
 	
 protected:
 	void reset();
@@ -61,14 +63,13 @@ protected:
 	nframes_t file_to_resampled_frame(nframes_t frame);
 	
 	AbstractAudioReader*	m_reader;
-	QVector<SRC_STATE*>	m_srcStates;
-	SRC_DATA		m_srcData{};
-	audio_sample_t**	m_overflowBuffers;
-    long			m_overflowUsed;
-    uint			m_outputRate;
-	int			m_convertorType;
-	bool			m_isResampleAvailable;
-	nframes_t		m_readExtraFrames{};
+    PrivateSRC*             m_privateSRC;
+    audio_sample_t**        m_overflowBuffers;
+    long                    m_overflowUsed;
+    uint                    m_outputRate;
+    int                     m_convertorType;
+    bool                    m_isResampleAvailable;
+    nframes_t               m_readExtraFrames{};
 	
 private:
 	void create_overflow_buffers();

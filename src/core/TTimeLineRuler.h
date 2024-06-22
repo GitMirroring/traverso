@@ -31,7 +31,7 @@ class TSession;
 class Marker;
 class LocationItem;
 class TCommand;
-struct ExportSpecification;
+struct TExportSpecification;
 
 class TTimeLineRuler : public ContextItem
 {
@@ -57,8 +57,8 @@ public:
 	TCommand* remove_marker(Marker* marker, bool historable=true);
 
         QString format_cdtrack_name(Marker *, int);
-        QList<Marker *> get_cdtrack_list(ExportSpecification*);
-        QString get_cdrdao_tracklist(ExportSpecification* spec, bool pregap = false);
+        QList<Marker *> get_cdtrack_list(TExportSpecification*);
+        QString get_cdrdao_tracklist(TExportSpecification* spec, bool pregap = false);
 
 
 private:
