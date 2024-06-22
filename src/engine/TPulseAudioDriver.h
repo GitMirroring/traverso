@@ -52,6 +52,7 @@ private:
     // Simple PulseAudio
     pa_simple*  m_paSimple;
     pa_sample_spec m_sampleSpec{};
+    audio_sample_t* m_interleavedBuffer;
 };
 
 
