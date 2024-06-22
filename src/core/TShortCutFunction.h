@@ -44,6 +44,8 @@ public:
         return left->sortorder > right->sortorder;
     }
 
+    static void makeShortcutKeyHumanReadable(QString& key, bool formatHtml=false);
+
     QVariantList arguments;
     QString object;
     QString pluginname;

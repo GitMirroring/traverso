@@ -66,11 +66,11 @@ public:
 
 	void loadFunctions();
     void saveFunction(TShortCutFunction* function);
+    void saveFunctions(QList<TShortCutFunction*> functions);
 	void exportFunctions();
 	void loadShortcuts();
     void restoreDefaultFor(TShortCutFunction* function);
 	void restoreDefaults();
-    static void makeShortcutKeyHumanReadable(QString& key, bool formatHtml=false);
 
 	bool isCommandClass(const QString& className);
 
