@@ -314,14 +314,14 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 	if (keys.size() > 0)
 	{
 		QString keySequence = keys.at(0);
-        tShortCutManager().makeShortcutKeyHumanReadable(keySequence);
+        TShortCutFunction::makeShortcutKeyHumanReadable(keySequence);
 		int index = ui->keyComboBox1->findText(keySequence, Qt::MatchFixedString);
 		ui->keyComboBox1->setCurrentIndex(index);
 	}
 	if (keys.size() > 1)
 	{
 		QString keySequence = keys.at(1);
-		tShortCutManager().makeShortcutKeyHumanReadable(keySequence);
+        TShortCutFunction::makeShortcutKeyHumanReadable(keySequence);
 		int index = ui->keyComboBox2->findText(keySequence, Qt::MatchFixedString);
 		ui->keyComboBox2->setCurrentIndex(index);
 	}
@@ -525,6 +525,7 @@ void TShortcutEditorDialog::on_upPushButton_clicked()
 
 void TShortcutEditorDialog::moveItemUpDown(int direction)
 {
+    PENTER;
 	QTreeWidgetItem* item = ui->shortcutsTreeWidget->currentItem();
 	if (!item)
 	{
