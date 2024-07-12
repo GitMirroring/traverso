@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class PrivateSRC {
 public:
-    QVector<SRC_STATE*>	srcStates;
+    QList<SRC_STATE*>	srcStates;
     SRC_DATA            srcData{};
 };
 
@@ -44,14 +44,14 @@ ResampleAudioReader::ResampleAudioReader(const QString& filename)
     m_reader = AbstractAudioReader::create_audio_reader(filename);
 	if (!m_reader) {
 		PERROR("ResampleAudioReader: couldn't create AudioReader");
-		m_channels = m_nframes = 0;
+        m_channels = m_fileFrames = 0;
 	} else {
 		m_channels = m_reader->get_num_channels();
-		m_rate = m_reader->get_file_rate();
-		m_nframes = m_reader->get_nframes();
+        m_fileSampleRate = m_reader->get_file_rate();
+        m_fileFrames = m_reader->get_nframes();
 		m_length = m_reader->get_length();
 
-		m_outputRate = m_rate;
+        m_outputSampleRate = m_fileSampleRate;
 	}
 
     m_privateSRC = new PrivateSRC;
@@ -106,7 +106,7 @@ void ResampleAudioReader::clear_buffers()
 // Clear the samplerateconverter to a clean state (used on seek)
 void ResampleAudioReader::reset()
 {
-    foreach(SRC_STATE* state, m_privateSRC->srcStates) {
+    for(SRC_STATE* state : m_privateSRC->srcStates) {
 		src_reset(state);
 	}
 	
@@ -125,7 +125,7 @@ void ResampleAudioReader::set_converter_type(int converter_type)
 	
 	int error;
 
-    if ( (float(m_outputRate) / get_file_rate()) > 2.0f && converter_type == SRC_ZERO_ORDER_HOLD ) {
+    if ( (float(m_outputSampleRate) / get_file_rate()) > 2.0f && converter_type == SRC_ZERO_ORDER_HOLD ) {
         if (m_convertorType == SRC_SINC_FASTEST) {
 			return;
 		}
@@ -161,7 +161,7 @@ void ResampleAudioReader::set_converter_type(int converter_type)
 
 uint ResampleAudioReader::get_output_rate()
 {
-	return m_outputRate;
+    return m_outputSampleRate;
 }
 
 uint ResampleAudioReader::get_file_rate()
@@ -174,9 +174,9 @@ void ResampleAudioReader::set_output_rate(uint rate)
 	if (!m_reader) {
 		return;
 	}
-	m_outputRate = rate;
-	m_nframes = file_to_resampled_frame(m_reader->get_nframes());
-	m_length = TTimeRef(m_nframes, m_outputRate);
+    m_outputSampleRate = rate;
+    m_fileFrames = file_to_resampled_frame(m_reader->get_nframes());
+    m_length = TTimeRef(m_fileFrames, m_outputSampleRate);
 	
 	reset();
 }
@@ -188,7 +188,7 @@ bool ResampleAudioReader::seek_private(nframes_t start)
 {
 	Q_ASSERT(m_reader);
 	
-	if (m_outputRate == m_rate || !m_isResampleAvailable) {
+    if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
 		return m_reader->seek(start);
 	}
 	
@@ -205,7 +205,7 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
 	Q_ASSERT(m_reader);
 	
 	// pass through if not changing sampleRate.
-	if (m_outputRate == m_rate || !m_isResampleAvailable) {
+    if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
 		return m_reader->read(buffer, frameCount);
 	} else if (!m_overflowBuffers) {
 		create_overflow_buffers();
@@ -263,8 +263,8 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
 	}
 	
 	nframes_t framesToConvert = frameCount;
-	if (frameCount > m_nframes - m_readPos) {
-		framesToConvert = m_nframes - m_readPos;
+    if (frameCount > m_fileFrames - m_readPos) {
+        framesToConvert = m_fileFrames - m_readPos;
 	}
 	
     for (uint chan = 0; chan < m_channels; chan++) {
@@ -273,7 +273,7 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
         m_privateSRC->srcData.input_frames = bufferUsed;
         m_privateSRC->srcData.data_out = buffer->destination[chan];
         m_privateSRC->srcData.output_frames = framesToConvert;
-        m_privateSRC->srcData.src_ratio = double(m_outputRate) / m_rate;
+        m_privateSRC->srcData.src_ratio = double(m_outputSampleRate) / m_fileSampleRate;
         src_set_ratio(m_privateSRC->srcStates[chan], m_privateSRC->srcData.src_ratio);
 		
         if (src_process(m_privateSRC->srcStates[chan], &m_privateSRC->srcData)) {
@@ -318,15 +318,13 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
 
 nframes_t ResampleAudioReader::resampled_to_file_frame(nframes_t frame)
 {
-	TTimeRef location(frame, m_outputRate);
-	return location.to_frame(m_rate);
+    return TTimeRef::to_frame(TTimeRef(frame, m_outputSampleRate), m_fileSampleRate);
 }
 
 
 nframes_t ResampleAudioReader::file_to_resampled_frame(nframes_t frame)
-{
-	TTimeRef location(frame, m_rate);
-	return location.to_frame(m_outputRate);
+{    
+    return TTimeRef::to_frame(TTimeRef(frame, m_fileSampleRate), m_outputSampleRate);
 }
 
 void ResampleAudioReader::create_overflow_buffers()

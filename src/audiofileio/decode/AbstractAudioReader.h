@@ -45,9 +45,6 @@ public:
 
 private:
 	uint m_channels;
-	uint m_smallerReadCounter;
-	quint64 m_totalCheckSize;
-	uint m_bufferSizeCheckCounter;
 	
 	void delete_destination_buffers();
 	void delete_readbuffer();
@@ -63,7 +60,7 @@ public:
 	
     uint get_num_channels();
     TTimeRef get_length() const {return m_length;}
-	nframes_t get_nframes() const {return m_nframes;}
+    nframes_t get_nframes() const {return m_fileFrames;}
     uint get_file_rate();
 	bool eof();
 	nframes_t pos();
@@ -72,7 +69,7 @@ public:
 	bool seek(nframes_t start);
 	nframes_t read(DecodeBuffer* buffer, nframes_t frameCount);
 	
-	bool is_valid() {return (m_channels > 0 && m_nframes > 0);}
+    bool is_valid() {return (m_channels > 0 && m_fileFrames > 0);}
 	virtual QString decoder_type() const = 0;
 	virtual void clear_buffers() {}
 	
@@ -87,8 +84,8 @@ protected:
 	nframes_t	m_readPos;
     uint		m_channels;
     TTimeRef	m_length;
-	nframes_t	m_nframes;
-    uint		m_rate;
+    nframes_t	m_fileFrames;
+    uint		m_fileSampleRate;
 };
 
 #endif

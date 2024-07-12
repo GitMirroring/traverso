@@ -38,8 +38,7 @@ public:
 		return AbstractAudioReader::read_from(buffer, start, count);
 	}
 	nframes_t read_from(DecodeBuffer* buffer, const TTimeRef& start, nframes_t count) {
-        TTimeRef location = start;
-		return AbstractAudioReader::read_from(buffer, location.to_frame(m_outputRate), count);
+        return AbstractAudioReader::read_from(buffer, TTimeRef::to_frame(start, m_outputSampleRate), count);
 	}
 	QString decoder_type() const {return (m_reader) ? m_reader->decoder_type() : "";}
 	void clear_buffers();
@@ -66,7 +65,7 @@ protected:
     PrivateSRC*             m_privateSRC;
     audio_sample_t**        m_overflowBuffers;
     long                    m_overflowUsed;
-    uint                    m_outputRate;
+    uint                    m_outputSampleRate;
     int                     m_convertorType;
     bool                    m_isResampleAvailable;
     nframes_t               m_readExtraFrames{};
