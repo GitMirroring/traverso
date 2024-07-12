@@ -4,34 +4,6 @@
 #include <QString>
 #include <QStringList>
 
-// Implementation for atomic int get/set from glibc's atomic.h/c
-// to get rid of the glib dependency!
-// Arches that need memory bariers: ppc (which we support)
-// and sparc, alpha, ia64 which we do not support ??
-
-#if defined(__ppc__) || defined(__powerpc__) || defined(__PPC__)
-
-#  define T_ATOMIC_MEMORY_BARRIER __asm__ ("sync" : : : "memory")
-
-static inline int t_atomic_int_get (volatile int *atomic)
-{
-	T_ATOMIC_MEMORY_BARRIER;
-	return *atomic;
-}
-
-static inline void t_atomic_int_set (volatile int *atomic, int newval)
-{
-	*atomic = newval;
-	T_ATOMIC_MEMORY_BARRIER; 
-}
-
-#else
-
-# define t_atomic_int_get(atomic) 		(*(atomic))
-# define t_atomic_int_set(atomic, newval) 	((void) (*(atomic) = (newval)))
-
-#endif // ENDIF __ppc__
-
 
 /**
  * Type used to represent sample frame counts.
@@ -45,13 +17,9 @@ typedef uint32_t     nframes_t;
  */
 typedef long trav_time_t;
 
-typedef unsigned long          channel_t;
+typedef unsigned long channel_t;
 
 typedef float audio_sample_t;
-
-
-
-
 
 
 /**
@@ -152,15 +120,6 @@ typedef uint8_t            u_int8_t;
 
 #endif
 
-
-static inline long get_microseconds()
-{
-	struct timeval now;
-    gettimeofday(&now, nullptr);
-    long time = (now.tv_sec * 1000000 + now.tv_usec);
-	return time;
-}
-
 #if defined (RELAYTOOL_PRESENT)
 
 #define RELAYTOOL_JACK \
@@ -247,8 +206,8 @@ static inline long get_microseconds()
 #endif // endif RELAYTOOL_PRESENT
 
 
-#define PROFILE_START trav_time_t starttime = get_microseconds();
-#define PROFILE_END(args...) int processtime = (int) (get_microseconds() - starttime);printf("Process time for %s: %d useconds\n\n", args, processtime);
+#define PROFILE_START auto starttime = TTimeRef::get_microseconds_since_epoch();
+#define PROFILE_END(args...) auto processtime = (TTimeRef::get_microseconds_since_epoch() - starttime); printf("Process time for %s: %ld useconds\n\n", args, processtime);
 
 #endif // endif TRAVERSO_TYPES_H
 
