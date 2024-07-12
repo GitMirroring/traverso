@@ -53,7 +53,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  *	Creates  a Move Clip or Copy Clip Command object.
  */
 MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
-    : TMoveCommand(nullptr, view->get_context(), "")
+    : TMoveCommand(nullptr, view->get_related_context_item(), "")
     , m_actionType(UNDEFINED)
     , m_d(new MoveClipData)
 {

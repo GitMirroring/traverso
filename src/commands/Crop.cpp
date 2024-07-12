@@ -65,7 +65,7 @@ void CropItemView::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QW
 
 
 CropClip::CropClip(AudioClipView* view)
-	: TCommand(view->get_context(), tr("AudioClip: Magnetic Cut"))
+	: TCommand(view->get_related_context_item(), tr("AudioClip: Magnetic Cut"))
 	, m_cv(view)
 {
 	m_clip = view->get_clip();

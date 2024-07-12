@@ -351,11 +351,11 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         ContextItem* item = qobject_cast<ContextItem*>(obj);
 
         if (item->metaObject()->className() == QString("TrackPanelGain")) {
-            item = item->get_context();
+            item = item->get_related_context_item();
         } else if (AudioClipView* view = qobject_cast<AudioClipView*>(item)) {
-            item = view->get_context();
+            item = view->get_related_context_item();
         } else if (TrackView* view = qobject_cast<TrackView*>(item)) {
-            item = view->get_context();
+            item = view->get_related_context_item();
         }
 
 

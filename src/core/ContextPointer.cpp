@@ -112,7 +112,7 @@ QList< QObject * > ContextPointer::get_context_items( )
 	for (int i=0; i < activeItems.size(); ++i) {
         item = activeItems.at(i);
         contextItems.append(item);
-        while ((nextItem = item->get_context())) {
+        while ((nextItem = item->get_related_context_item())) {
 			contextItems.append(nextItem);
 			item = nextItem;
 		}
@@ -343,7 +343,7 @@ qreal ContextPointer::on_first_input_event_scene_y() const
 
 void ContextPointer::set_active_context_items_by_mouse_movement(const QList<ContextItem *> &items)
 {
-    printf("list size %lld\n", items.size());
+    // printf("list size %lld\n", items.size());
 	set_active_context_items(items);
 }
 

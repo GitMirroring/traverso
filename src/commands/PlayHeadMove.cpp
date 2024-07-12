@@ -53,7 +53,7 @@ int PlayHeadMove::finish_hold()
             m_playhead->hide();
         }
 
-        m_session->set_transport_pos(m_newTransportLocation);
+        m_session->set_transport_location(m_newTransportLocation);
     }
     return -1;
 }
@@ -109,7 +109,7 @@ int PlayHeadMove::jog()
         m_newTransportLocation = TTimeRef(x * d->sv->timeref_scalefactor);
 
         if (m_resync && m_session->is_transport_rolling()) {
-            m_session->set_transport_pos(m_newTransportLocation);
+            m_session->set_transport_location(m_newTransportLocation);
         }
 
         cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newTransportLocation, d->sv->timeref_scalefactor));
@@ -167,7 +167,7 @@ void PlayHeadMove::do_keyboard_move(TTimeRef newLocation, bool centerInView)
     m_newTransportLocation = newLocation;
 
     if (m_resync && m_session->is_transport_rolling()) {
-        m_session->set_transport_pos(m_newTransportLocation);
+        m_session->set_transport_location(m_newTransportLocation);
     } else {
         m_playhead->setPos(newLocation / d->sv->timeref_scalefactor, 0);
 
