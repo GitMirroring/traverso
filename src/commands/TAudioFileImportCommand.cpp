@@ -40,7 +40,7 @@ TAudioFileImportCommand::TAudioFileImportCommand(ContextItem *context)
     m_fileName = "";
     m_clip = nullptr;
     m_readSource = nullptr;
-    m_importLocation = TTimeRef::negative_max_length();
+    m_importLocation = TTimeRef::INVALID;
     m_initialLength = TTimeRef();
     m_silent = false;
     m_hasPosition = false;
@@ -107,7 +107,7 @@ void TAudioFileImportCommand::create_audioclip()
 	TTimeRef startLocation;
     // check if m_importLocation still equals default value
     // it means it was never changed.
-    if (m_importLocation == TTimeRef::negative_max_length()) {
+    if (m_importLocation == TTimeRef::INVALID) {
         startLocation = m_track->get_end_location();
     } else {
         startLocation = m_importLocation;

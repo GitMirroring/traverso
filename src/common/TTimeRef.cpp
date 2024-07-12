@@ -6,12 +6,16 @@
 #include <limits.h>
 
 TTimeRef::TTimeRef() {
-    m_position = 0;
+    m_universalFrame = 0;
 }
 
 TTimeRef::TTimeRef(nframes_t frame, uint rate) {
-    Q_ASSERT(rate);
-    m_position = (TTimeRef::UNIVERSAL_SAMPLE_RATE / rate) * frame;
+    Q_ASSERT(rate != 0);
+    m_universalFrame = (TTimeRef::UNIVERSAL_SAMPLE_RATE / rate) * frame;
+}
+
+TTimeRef::TTimeRef(qreal frame, uint rate) {
+    m_universalFrame = qint64((qreal(UNIVERSAL_SAMPLE_RATE) / rate) * frame);
 }
 
 TTimeRef TTimeRef::max_length()
@@ -19,19 +23,14 @@ TTimeRef TTimeRef::max_length()
     return TTimeRef(LLONG_MAX);
 }
 
-TTimeRef TTimeRef::negative_max_length()
-{
-    return TTimeRef((LLONG_MAX - 1) * -1);
-}
-
 TTimeRef::TTimeRef(qint64 position)
-    : m_position(position)
+    : m_universalFrame(position)
 {
 
 }
 
 TTimeRef::TTimeRef(double position)
-    : m_position(qint64(position))
+    : m_universalFrame(std::round(position))
 {
 
 }
@@ -90,13 +89,17 @@ QString TTimeRef::timeref_to_ms_3(const TTimeRef& ref)
     int mins, secs, frames;
 
     qint64 universalframe = ref.universal_frame();
+    QString spos("%1:%2%3%4");
+    if (universalframe < 0) {
+        universalframe *= -1;
+        spos.prepend("-");
+    }
 
     mins = universalframe / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
     remainder = universalframe - ( mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
     secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
     remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
     frames = remainder * 1000 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
-    QString spos("%1:%2%3%4");
     return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(QLocale::system().decimalPoint()).arg(frames, 3, 10, QLatin1Char('0'));
 }
 
