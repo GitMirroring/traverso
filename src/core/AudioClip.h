@@ -59,7 +59,7 @@ public:
 	
 	void set_audio_source(ReadSource* source);
     int init_recording();
-	int process(nframes_t nframes);
+    int process(const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes);
 
     // Re-implemented from LocationItem::set_location_start
     // preferably we wouldn't have to re-implement this function

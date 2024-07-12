@@ -52,7 +52,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "GainEnvelope.h"
 #include "TInputEventDispatcher.h"
 
-#include "AbstractAudioReader.h"
 
 #include <commands.h>
 
@@ -70,7 +69,6 @@ AudioClip::AudioClip(const QString& name)
     PENTERCONS;
     m_name = name;
     m_isMuted=false;
-    m_id = create_id();
     m_readSourceId = m_sheetId = 0;
     QObject::tr("AudioClip");
 
@@ -104,7 +102,7 @@ AudioClip::AudioClip(const QDomNode& node)
     // It makes sense to set these values at this time allready
     // they are for example used by the ResourcesManager!
     QDomElement e = node.toElement();
-    m_id = e.attribute("id", "").toLongLong();
+    set_id(e.attribute("id", "").toLongLong());
     m_readSourceId = e.attribute("source", "").toLongLong();
     m_sheetId = e.attribute("sheet", "0").toLongLong();
     m_name = e.attribute( "clipname", "" ) ;
@@ -172,8 +170,7 @@ int AudioClip::set_state(const QDomNode& node)
     QDomElement fadeInNode = node.firstChildElement("FadeIn");
     if (!fadeInNode.isNull()) {
         if (!m_fadeIn) {
-            m_fadeIn = new FadeCurve(this, m_sheet, "FadeIn");
-            m_fadeIn->set_history_stack(get_history_stack());
+            m_fadeIn = new FadeCurve(this, FadeCurve::FadeIn);
             private_add_fade(m_fadeIn);
         }
         m_fadeIn->set_state( fadeInNode );
@@ -182,8 +179,7 @@ int AudioClip::set_state(const QDomNode& node)
     QDomElement fadeOutNode = node.firstChildElement("FadeOut");
     if (!fadeOutNode.isNull()) {
         if (!m_fadeOut) {
-            m_fadeOut = new FadeCurve(this, m_sheet, "FadeOut");
-            m_fadeOut->set_history_stack(get_history_stack());
+            m_fadeOut = new FadeCurve(this, FadeCurve::FadeOut);
             private_add_fade(m_fadeOut);
         }
         m_fadeOut->set_state( fadeOutNode );
@@ -212,7 +208,7 @@ QDomNode AudioClip::get_state( QDomDocument doc )
     node.setAttribute("mute", m_isMuted);
     node.setAttribute("take", m_isTake);
     node.setAttribute("clipname", m_name );
-    node.setAttribute("id", m_id );
+    node.setAttribute("id", get_id() );
     node.setAttribute("sheet", m_sheetId );
     node.setAttribute("locked", m_isLocked);
 
@@ -413,10 +409,8 @@ void AudioClip::set_selected(bool /*selected*/)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int AudioClip::process(nframes_t nframes)
+int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes)
 {
-    Q_ASSERT(m_sheet);
-
     // Handle silence clips
     if (get_channel_count() == 0) {
         return 0;
@@ -435,96 +429,68 @@ int AudioClip::process(nframes_t nframes)
         return 0;
     }
 
+    if (startLocation >= get_location_end()) {
+        return 0;
+    }
+
+    if (endLocation <= get_location_start()) {
+        return 0;
+    }
+
+    Q_ASSERT(m_sheet);
     Q_ASSERT(m_readSource);
 
     AudioBus* bus = m_sheet->get_clip_render_bus();
     bus->silence_buffers(nframes);
 
-    TTimeRef mix_pos;
-    uint channelcount = get_channel_count();
-
-    // since we only use 2 channels, this will do for now
-    // FIXME make it future proof so it can deal with any amount of channels?
-    audio_sample_t* mixdown[6];
-
-    uint framesToProcess = nframes;
-
-
+    TTimeRef fileLocation;
+    audio_sample_t* mixdown[2];
+    nframes_t framesToProcess = nframes;
+    nframes_t offset = 0;
     uint outputRate = m_readSource->get_output_rate();
-    TTimeRef transportLocation = m_sheet->get_transport_location();
-    TTimeRef upperRange = transportLocation + TTimeRef(framesToProcess, outputRate);
+    uint channelcount = get_channel_count();
+    Q_ASSERT(bus->get_channel_count() >= channelcount);
 
-
-    if ( (get_location_start() < upperRange) && (get_location_end() > transportLocation) ) {
-        if (transportLocation < get_location_start()) {
-            // Using to_frame() for both the get_location_start() and transportLocation seems to round
-            // better then using (get_location_start() - transportLocation).to_frame()
-            // TODO : find out why!
-            uint offset = (get_location_start()).to_frame(outputRate) - transportLocation.to_frame(outputRate);
-            mix_pos = m_sourceStartLocation;
-            // 			printf("offset %d\n", offset);
-
-            for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
-                audio_sample_t* buf = bus->get_buffer(chan, framesToProcess);
-                mixdown[chan] = buf + offset;
-            }
-            framesToProcess -= offset;
-        } else {
-            mix_pos = (transportLocation - get_location_start() + m_sourceStartLocation);
-            // 			printf("else: Setting mix pos to start location %d\n", mix_pos.to_frame(96000));
-
-            for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
-                mixdown[chan] = bus->get_buffer(chan, framesToProcess);
-            }
-        }
-        if (get_location_end() < upperRange) {
-            // Using to_frame() for both the upperRange and get_location_end() seems to round
-            // better then using (upperRange - get_location_end()).to_frame()
-            // TODO : find out why!
-            framesToProcess -= upperRange.to_frame(outputRate) - get_location_end().to_frame(outputRate);
-            // 			printf("if (get_location_end() < upperRange): framesToProcess %d\n", framesToProcess);
-        }
+    if (startLocation < get_location_start()) {
+        fileLocation = m_sourceStartLocation;
+        offset = TTimeRef::to_frame(get_location_start() - startLocation, outputRate);
+        framesToProcess -= offset;
+        Q_ASSERT(offset < nframes);
+        Q_ASSERT(framesToProcess > 0);
     } else {
-        return 0;
+        fileLocation = (startLocation - get_location_start() + m_sourceStartLocation);
     }
 
-    uint read_frames = 0;
-
-    if (m_sheet->realtime_path()) {
-        read_frames = uint(m_readSource->rb_read(static_cast<audio_sample_t**>(mixdown), mix_pos, framesToProcess));
-    } else {
-        read_frames = uint(m_readSource->file_read(m_sheet->renderDecodeBuffer, mix_pos, framesToProcess));
-        if (read_frames > 0) {
-            // FIXME
-            // BIG assumption here that m_readSource has same amount of channels as the bus
-            // Fix it for stereo/mono mismatch!!
-            for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
-                memcpy(mixdown[chan], m_sheet->renderDecodeBuffer->destination[chan], read_frames * sizeof(audio_sample_t));
-            }
-        }
+    for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
+        audio_sample_t* buf = bus->get_buffer(chan, framesToProcess);
+        mixdown[chan] = buf + offset;
     }
 
-    if (read_frames <= 0) {
-        // 		printf("read_frames == 0\n");
-        return 0;
+    if (get_location_end() < endLocation) {
+        framesToProcess -= TTimeRef::to_frame(endLocation - get_location_end(), outputRate);
+        Q_ASSERT(framesToProcess > 0);
     }
 
-    if (read_frames != framesToProcess) {
-        std::cout << QString("read_frames, framesToProcess %1, %2").arg(read_frames).arg(framesToProcess).toLatin1().data() << &std::endl;
+    // Read the frames from the ringbuffers
+    nframes_t readFrames = m_readSource->ringbuffer_read(mixdown, startLocation, nframes);
+
+
+    if (readFrames != framesToProcess) {
+        std::cout << QString("AudioClip::process(): readFrames %1, framesToProcess %2").arg(readFrames).arg(framesToProcess).toLatin1().data() << &std::endl;
     }
 
-
-    apill_foreach(FadeCurve* fade, FadeCurve*, m_fades) {
-        fade->process(bus, nframes);
+    apill_foreach(FadeCurve*, fade, m_fades)
+        fade->process(bus, startLocation, endLocation, nframes);
     }
 
-    TTimeRef endlocation = mix_pos + TTimeRef(read_frames, get_rate());
-    m_fader->process_gain(mixdown, mix_pos, endlocation, read_frames, channelcount);
+    TTimeRef faderEndLocation = fileLocation + TTimeRef(readFrames, outputRate);
+
+    m_fader->process_gain(mixdown, fileLocation, faderEndLocation, readFrames, channelcount);
 
     AudioBus* processBus = m_track->get_process_bus();
 
-    // NEVER EVER FORGET that the mixing should be done on the WHOLE buffer, not just part of it
-    // so use an unmodified nframes variable!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+    // Mixing should be done on the WHOLE buffer, not just part of it
+    // so use an unmodified nframes variable
     if (channelcount == 1) {
         Mixer::mix_buffers_no_gain(processBus->get_buffer(0, nframes), bus->get_buffer(0, nframes), nframes);
         Mixer::mix_buffers_no_gain(processBus->get_buffer(1, nframes), bus->get_buffer(0, nframes), nframes);
@@ -583,7 +549,7 @@ int AudioClip::init_recording()
 
     auto spec = new TExportSpecification;
 
-    spec->exportdir = m_sheet->get_audio_sources_dir();
+    spec->set_export_dir(m_sheet->get_audio_sources_dir());
 
     QString recordFormat = config().get_property("Recording", "FileFormat", "wav").toString();
     if (recordFormat == "wavpack") {
@@ -606,7 +572,7 @@ int AudioClip::init_recording()
     spec->set_sample_rate(audiodevice().get_sample_rate());
     spec->set_export_start_location(TTimeRef());
     spec->set_export_end_location(TTimeRef());
-    spec->name = m_name + "-" + sourceid;
+    spec->set_export_file_name(m_name + "-" + sourceid);
 
     m_writer = new WriteSource(spec);
     if (m_writer->prepare_export() == -1) {
@@ -955,11 +921,11 @@ void AudioClip::create_fade(FadeCurve::FadeType fadeType)
     FadeCurve* fadeCurve = nullptr;
     switch (fadeType) {
     case FadeCurve::FadeIn:
-        m_fadeIn = new FadeCurve(this, m_sheet, "FadeIn");
+        m_fadeIn = new FadeCurve(this, FadeCurve::FadeIn);
         fadeCurve = m_fadeIn;
         break;
         case FadeCurve::FadeOut:
-        m_fadeOut = new FadeCurve(this, m_sheet, "FadeOut");
+        m_fadeOut = new FadeCurve(this, FadeCurve::FadeOut);
         fadeCurve = m_fadeOut;
         break;
     default:
@@ -971,7 +937,7 @@ void AudioClip::create_fade(FadeCurve::FadeType fadeType)
 
     fadeCurve->set_shape("Fast");
     fadeCurve->set_history_stack(get_history_stack());
-    tsar().thread_save_invoke_and_emit_signal(this, fadeCurve, "private_add_fade(FadeCurve*)", "fadeAdded(FadeCurve*)");
+    tsar().add_gui_event(this, fadeCurve, "private_add_fade(FadeCurve*)", "fadeAdded(FadeCurve*)");
 }
 
 QDomNode AudioClip::get_dom_node() const
