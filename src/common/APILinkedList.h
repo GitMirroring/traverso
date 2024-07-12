@@ -33,9 +33,10 @@ public:
 	virtual bool is_smaller_then(APILinkedListNode* node) = 0;
 };
 
-#define apill_foreach(variable, upcasttype, apillist) \
-        for(APILinkedListNode* apillnode = apillist.first(); apillnode!=nullptr; apillnode = apillnode->next) \
-                if (variable = static_cast<upcasttype>(apillnode)) \
+#define apill_foreach(upcasttype, variable, apillist) \
+    for(APILinkedListNode* apillnode = apillist.first(); apillnode!=nullptr; apillnode = apillnode->next) {\
+        upcasttype variable = static_cast<upcasttype>(apillnode); \
+
 
 class APILinkedList
 {
