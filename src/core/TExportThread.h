@@ -41,9 +41,7 @@ public:
 	{}
 
 	void run();
-	void sleep_for(uint msecs) {
-		msleep(msecs);
-	}
+
     void set_specification(TExportSpecification* spec);
 
 private:

@@ -36,7 +36,7 @@ class TTransportControl;
 class Sheet;
 class Track;
 class ResourcesManager;
-struct TExportSpecification;
+class TExportSpecification;
 class TExportThread;
 class TAudioDeviceClient;
 class TBusTrack;
@@ -54,7 +54,7 @@ public :
 
         int process(nframes_t nframes);
         // jackd only feature
-        int transport_control(TTransportControl* state);
+        int transport_control(TTransportControl* transportControl);
 
         AudioBus* get_playback_bus(const QString& name) const;
         AudioBus* get_capture_bus(const QString& name) const;
@@ -122,7 +122,6 @@ public :
 	void set_upc_ean(const QString& pUPC);
 	void set_genre(int pGenre);
 	void set_sheet_export_progress(int pogress);
-        void set_export_message(const QString &message);
         void set_current_session(qint64 id);
 	void set_import_dir(const QString& dir);
         void set_sheets_are_tracks_folder(bool isFolder);
@@ -137,13 +136,12 @@ public :
 	bool has_changed();
 	bool is_save_to_close() const;
 	bool is_recording() const;
-        bool sheets_are_track_folder() const {return m_sheetsAreTrackFolder;}
-	
+    bool sheets_are_track_folder() const {return m_sheetsAreTrackFolder;}
+
 	int save(bool autosave=false);
 	int load(const QString &projectfile = "");
-	int export_project(TExportSpecification* spec);
-	int create_cdrdao_toc(TExportSpecification* spec);
-        TTimeRef get_cd_totaltime(TExportSpecification*);
+    int export_project();
+    TExportSpecification* get_export_specification();
 
 	enum {
 		SETTING_XML_CONTENT_FAILED = -1,
@@ -179,6 +177,8 @@ private:
         QHash<qint64, AudioBus* >       m_softwareAudioBuses;
         QHash<qint64, AudioChannel* >   m_softwareAudioChannels;
 
+        TExportSpecification*   m_exportSpecification;
+
 
 
 	QString 	m_rootDir;
@@ -201,6 +201,10 @@ private:
 	bool		m_useResampling;
         bool            m_sheetsAreTrackFolder{};
 
+    bool    m_disconnectAudioDeviceClientForExport;
+        bool    m_projectClosed;
+
+
 
         qint64 		m_activeSheetId;
         qint64          m_activeSessionId;
@@ -210,32 +214,34 @@ private:
 	int create_peakfiles_dir();
 
         void prepare_audio_device(QDomDocument doc);
+    void set_project_closed() {
+        m_projectClosed = true;
+        disconnect_from_audio_device();
+    }
 	
 	friend class ProjectManager;
-
+    
 private slots:
-        void audiodevice_params_changed();
-	void private_add_sheet(Sheet* sheet);
-	void private_remove_sheet(Sheet* sheet);
-        void sheet_removed(Sheet* sheet);
-        void sheet_added(Sheet* sheet);
-        void export_finished();
-
+    void audiodevice_params_changed();
+    void private_add_sheet(Sheet* sheet);
+    void private_remove_sheet(Sheet* sheet);
+    void sheet_removed(Sheet* sheet);
+    void sheet_added(Sheet* sheet);
+    void export_finished();
+    void audio_device_removed_client(TAudioDeviceClient*client);
+    
 signals:
-        void currentSessionChanged(TSession* );
-        void sessionIsAlreadyCurrent(TSession* );
-        void privateSheetAdded(Sheet*);
-	void sheetAdded(Sheet*);
-        void privateSheetRemoved(Sheet*);
-        void sheetRemoved(Sheet*);
-        void sheetExportProgressChanged(int );
-	void overallExportProgressChanged(int );
-	void exportFinished();
-	void exportStartedForSheet(Sheet* );
-	void projectLoadFinished();
-        void projectLoadStarted();
-        void exportMessage(QString);
-        void trackPropertyChanged();
+    void currentSessionChanged(TSession* );
+    void sessionIsAlreadyCurrent(TSession* );
+    void privateSheetAdded(Sheet*);
+    void sheetAdded(Sheet*);
+    void privateSheetRemoved(Sheet*);
+    void sheetRemoved(Sheet*);
+    void projectLoadFinished();
+    void projectLoadStarted();
+    void trackPropertyChanged();
+
+    void exportFinished();
 };
 
 #endif

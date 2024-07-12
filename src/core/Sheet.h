@@ -26,13 +26,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 #include <QTimer>
 #include "TTransportControl.h"
+#include "Tsar.h"
 #include "defines.h"
 #include "APILinkedList.h"
 
 class Project;
 class AudioTrack;
 class AudioSource;
-class WriteSource;
 class AudioTrack;
 class AudioClip;
 class DiskIO;
@@ -41,12 +41,8 @@ class TAudioDeviceClient;
 class AudioBus;
 class SnapList;
 class TTimeLineRuler;
-class LocationItem;
-class DecodeBuffer;
 class TBusTrack;
 class Track;
-
-struct TExportSpecification;
 
 class Sheet : public TSession, public APILinkedListNode
 {
@@ -59,24 +55,31 @@ public:
     ~Sheet();
 
     // Get functions
-    int get_audio_track_count() const {return m_audioTracks.size();}
+    QDomNode get_state(QDomDocument doc, bool istemplate=false);
 
     QString get_artists() const {return m_artists;}
-    QDomNode get_state(QDomDocument doc, bool istemplate=false);
+
     QList<AudioTrack*> get_audio_tracks() const;
+    QList<AudioTrack*> get_solo_tracks() const;
+    QList<AudioTrack*> get_armed_tracks() const;
+
+    AudioTrack* get_audio_track_for_index(int index);
+    int get_audio_track_count() const {return m_audioTracks.size();}
 
     Project* get_project() const {return m_project;}
     DiskIO*	get_diskio() const;
+
     AudioClipManager* get_audioclip_manager() const;
+
     AudioBus* get_render_bus() const {return m_renderBus;}
     AudioBus* get_clip_render_bus() const {return m_clipRenderBus;}
-    AudioTrack* get_audio_track_for_index(int index);
 
-    QList<AudioTrack*> get_solo_tracks() const;
 
     QString get_audio_sources_dir() const;
 
     TTimeRef get_last_location() const;
+
+    TCommand* add_track(Track* track, bool historable=true);
 
     // Set functions
     int set_state( const QDomNode & node );
@@ -96,24 +99,18 @@ public:
 
     // jackd only feature
     int transport_control(TTransportControl* state);
-    int process_export(nframes_t nframes);
-    int prepare_export(TExportSpecification* spec);
-    int render(TExportSpecification* spec);
-    int start_export(TExportSpecification* spec);
+
+    bool get_cd_export_range(TTimeRef &startLocation, TTimeRef &endLocation);
+    bool get_export_range(TTimeRef &exportStartLocation, TTimeRef &exportEndLocation);
 
     void solo_track(Track* track);
     void create(int tracksToCreate);
-    TCommand* add_track(Track* api, bool historable=true);
 
     bool any_audio_track_armed();
-    bool realtime_path() const {return m_realtimepath;}
     bool is_changed() const {return m_changed;}
     bool is_snap_on() const	{return m_isSnapOn;}
     bool is_recording() const {return m_recording;}
     bool is_smaller_then(APILinkedListNode* node) {Q_UNUSED(node); return false;}
-
-    // audio_sample_t*		readbuffer{};
-    DecodeBuffer*		renderDecodeBuffer{};
 
 #if defined (THREAD_CHECK)
     QThread*	m_threadPointer;
@@ -121,43 +118,46 @@ public:
 
 private:
     QList<AudioClip*>	m_recordingClips;
-    QTimer			m_skipTimer;
-    Project*		m_project;
-    WriteSource*		m_exportSource{};
+    QTimer              m_skipTimer;
+    Project*            m_project;
     TAudioDeviceClient*	m_audiodeviceClient{};
-    AudioBus*		m_renderBus{};
-    AudioBus*		m_clipRenderBus{};
-    DiskIO*			m_diskio{};
+    AudioBus*           m_renderBus{};
+    AudioBus*           m_clipRenderBus{};
+    DiskIO*             m_diskio{};
     AudioClipManager*	m_acmanager{};
     QList<TTimeRef>		m_xposList;
-    QString                 m_audioSourcesDir;
+    QString             m_audioSourcesDir;
+    TsarEvent           m_transportStoppedTsarEvent;
+    TsarEvent           m_seekStartTsarEvent;
+    TsarEvent           m_transportLocationChangedTsarEvent;
 
-    // The following data could be read/written by multiple threads
-    // (gui, audio and m_diskio thread). Therefore they should have
-    // atomic behaviour, still not sure if volatile size_t declaration
-    // would suffice, or should we use t_atomic_int_set/get() to make
-    // it 100% portable and working on all platforms...?
-    volatile size_t		m_transportFrame{};
-    volatile size_t		m_newTransportFramePos{};
-    volatile size_t		m_seeking{};
-    volatile size_t		m_startSeek{};
-    volatile size_t		m_stopTransport{};
+    std::atomic<bool>   m_seeking;
+    std::atomic<bool>   m_startSeek;
+    std::atomic<bool>   m_stopTransport;
 
+    inline void set_start_seek(bool startSeek) {
+        m_startSeek.store(startSeek);
+    }
+    inline bool start_seek() const {
+        return m_startSeek.load();
+    }
+    inline void set_seeking(bool seeking) {
+        m_seeking.store(seeking);
+    }
+    inline bool is_seeking() const {
+        return m_seeking.load();
+    }
 
     QString 	m_artists;
-    uint		m_currentSampleRate{};
-    bool 		m_rendering{};
     bool 		m_changed{};
     bool		m_resumeTransport{};
-    bool		m_realtimepath{};
-    bool		m_recording{};
+    bool		m_recording;
     bool		m_prepareRecording{};
     bool		m_readyToRecord{};
 
     void init();
 
-    int finish_audio_export();
-    void start_seek();
+    void inititate_seek();
     void initiate_seek_start(TTimeRef location);
     void start_transport_rolling(bool realtime);
     void stop_transport_rolling();
@@ -171,7 +171,7 @@ public slots :
     void seek_finished();
     void audiodevice_params_changed();
     void set_gain(float gain);
-    void set_transport_pos(TTimeRef location);
+    void set_transport_location(TTimeRef location);
 
 
     TCommand* next_skip_pos();

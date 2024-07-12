@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QMessageBox>
 #include <QString>
 
-#include <cfloat>
 #include <unistd.h>
 
 #include "AudioBus.h"
@@ -82,6 +81,7 @@ Project::Project(const QString& title)
     m_activeSessionId = m_activeSheetId = -1;
     engineer = "";
     m_keyboardArrowNavigationSpeed = 4;
+    m_projectClosed = false;
     set_is_project_session(true);
 
     m_useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
@@ -91,11 +91,14 @@ Project::Project(const QString& title)
     m_bitDepth = audiodevice().get_bit_depth();
 
     m_resourcesManager = new ResourcesManager(this);
-    m_hs = new QUndoStack(pm().get_undogroup());
+    create_history_stack();
 
     m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
     m_audiodeviceClient->set_process_callback( MakeDelegate(this, &Project::process) );
     m_audiodeviceClient->set_transport_control_callback( MakeDelegate(this, &Project::transport_control) );
+
+    m_disconnectAudioDeviceClientForExport = false;
+    m_exportSpecification = nullptr;
 
     m_masterOutBusTrack = new MasterOutSubGroup(this, "");
     // FIXME: m_masterOut is a Track, but at this point in time, Track can't
@@ -110,20 +113,20 @@ Project::Project(const QString& title)
         }
     }
 
-    m_audiodeviceClient->masterOutBus = m_masterOutBusTrack->get_process_bus();
-
     cpointer().add_contextitem(this);
 
     connect(this, SIGNAL(privateSheetRemoved(Sheet*)), this, SLOT(sheet_removed(Sheet*)));
     connect(this, SIGNAL(privateSheetAdded(Sheet*)), this, SLOT(sheet_added(Sheet*)));
     connect(this, SIGNAL(exportFinished()), this, SLOT(export_finished()), Qt::QueuedConnection);
     connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(audiodevice_params_changed()), Qt::DirectConnection);
+    connect(&audiodevice(),SIGNAL(audioDeviceClientRemoved(TAudioDeviceClient*)), this, SLOT(audio_device_removed_client(TAudioDeviceClient*)));
 }
 
 
 Project::~Project()
 {
     PENTERDES;
+
     cpointer().remove_contextitem(this);
 
     delete m_resourcesManager;
@@ -133,7 +136,6 @@ Project::~Project()
     }
 
     delete m_masterOutBusTrack;
-    delete m_hs;
 }
 
 
@@ -170,7 +172,6 @@ int Project::create(int sheetcount, int numtracks)
         set_current_session(m_sheets.first()->get_id());
     }
 
-    m_id = create_id();
     m_importDir = QDir::homePath();
 
     // TODO: by calling prepare_audio_device() with an empty document
@@ -275,11 +276,8 @@ int Project::load(const QString& projectfile)
     m_message = e.attribute( "message", "" );
     m_rate = e.attribute( "rate", "" ).toUInt();
     m_bitDepth = e.attribute( "bitdepth", "" ).toUInt();
-    m_id = e.attribute("id", "0").toLongLong();
+    set_id(e.attribute("id", "0").toLongLong());
     m_sheetsAreTrackFolder = e.attribute("sheetsaretrackfolder", "0").toInt();
-    if (m_id == 0) {
-        m_id = create_id();
-    }
     m_importDir = e.attribute("importdir", QDir::homePath());
 
 
@@ -555,7 +553,7 @@ QDomNode Project::get_state(QDomDocument doc, bool istemplate)
     properties.setAttribute("projectfileversion", PROJECT_FILE_VERSION);
     properties.setAttribute("sheetsaretrackfolder", m_sheetsAreTrackFolder);
     if (! istemplate) {
-        properties.setAttribute("id", m_id);
+        properties.setAttribute("id", get_id());
     } else {
         properties.setAttribute("title", "Template Project File!!");
     }
@@ -663,7 +661,7 @@ void Project::prepare_audio_device(QDomDocument doc)
     ads.driverType = e.attribute("driver", "");
     ads.cardDevice = e.attribute("device", "");
     ads.rate = e.attribute("samplerate", "44100").toUInt();
-    ads.bufferSize = e.attribute("buffersize", "512").toUInt();
+    ads.bufferSize = e.attribute("buffersize", "1024").toUInt();
     //        ads.jackChannels.append(m_softwareAudioChannels.values());
 
     if (ads.driverType.isEmpty() || ads.driverType.isNull()) {
@@ -723,23 +721,8 @@ void Project::connect_to_audio_device()
 
 int Project::disconnect_from_audio_device()
 {
-    m_audiodeviceClient->disconnect_from_audiodevice();
-    int count = 0;
-    while(m_audiodeviceClient->is_connected()) {
-        printf("Project: Waiting to be disconnected from Audio Device\n");
-#if defined (Q_OS_WIN)
-        Sleep(20);
-#else
-        usleep(20 * 1000);
-#endif
-        count++;
-        if (count > 100) {
-            printf("Project::disconnect_from_audio_device: can't seem to disconnect from audiodevice, giving up!\n");
-            return -1;
-        }
-    }
-
-    printf("Project: Successfully disconnected from Audio Device!\n");
+    PENTER;
+    audiodevice().remove_client(m_audiodeviceClient);
     return 1;
 }
 
@@ -1166,40 +1149,13 @@ TSession* Project::get_current_session() const
 
 
 /* call this function to initiate the export or cd-writing */
-int Project::export_project(TExportSpecification* spec)
+int Project::export_project()
 {
     PENTER;
 
-    // lets first disconnect from audio device!
-    if (disconnect_from_audio_device() == -1 ) {
-        // big problem but let's not crash and inform user we have problem
-        info().warning(tr("Cannot disconnect from audiodevice. Export will not work"));
-        return -1;
-    }
+    m_disconnectAudioDeviceClientForExport = true;
 
-    if (!m_exportThread) {
-        m_exportThread = new TExportThread(this);
-    }
-
-    if (m_exportThread->isRunning()) {
-        info().warning(tr("Export already in progress, cannot start it twice!"));
-        return -1;
-    }
-
-    QDir dir(spec->exportdir);
-    if (!spec->exportdir.isEmpty() && !dir.exists()) {
-        if (!dir.mkdir(spec->exportdir)) {
-            info().warning(tr("Unable to create export directory! Please check permissions for this directory: %1").arg(spec->exportdir));
-            return -1;
-        }
-    }
-
-    spec->running = true;
-    spec->stop = false;
-    spec->breakout = false;
-
-    m_exportThread->set_specification(spec);
-    m_exportThread->start();
+    disconnect_from_audio_device();
 
     return 0;
 }
@@ -1209,102 +1165,34 @@ void Project::export_finished()
     connect_to_audio_device();
 }
 
-/* returns the total time of the data that will be written to CD */
-TTimeRef Project::get_cd_totaltime(TExportSpecification* spec)
+void Project::audio_device_removed_client(TAudioDeviceClient *client)
 {
-    // TODO
-    // Used to be called from CDWritingDialog::sheet_mode_changed(bool b)
-    // but that one needs investigation as well on usefullness.
-    TTimeRef totalTime = TTimeRef();
+    PENTER;
 
-    // spec->renderpass = TExportSpecification::CREATE_CDRDAO_TOC;
+    if (client != m_audiodeviceClient) {
+        return;
+    }
 
-    // if (spec->allSheets) {
-    //     foreach(Sheet* sheet, m_sheets) {
-    //         sheet->prepare_export(spec);
-    //         totalTime += spec->totalTime;
-    //     }
-    // } else {
-    //     Sheet* sheet = qobject_cast<Sheet*>(get_current_session());
-    //     if (sheet) {
-    //         sheet->prepare_export(spec);
-    //         totalTime += spec->totalTime;
-    //     }
-    // }
+    if (m_disconnectAudioDeviceClientForExport) {
+        m_exportSpecification->start_export(this);
+        m_disconnectAudioDeviceClientForExport = false;
+    }
 
-    return totalTime;
+    if (m_projectClosed) {
+        deleteLater();
+    }
+
 }
 
-int Project::create_cdrdao_toc(TExportSpecification* spec)
+TExportSpecification *Project::get_export_specification()
 {
-    QList<Sheet* > sheets;
-    QString filename = spec->exportdir;
-
-    if (spec->allSheets) {
-        foreach(Sheet* sheet, m_sheets) {
-            sheets.append(sheet);
-        }
-
-        // filename of the toc file is "project-name.toc"
-        filename += get_title() + ".toc";
-    } else {
-        Sheet* sheet = qobject_cast<Sheet*>(get_current_session());
-        if (!sheet) {
-            return -1;
-        }
-        sheets.append(sheet);
-
-        // filename of the toc file is "sheet-name.toc"
-        filename += spec->basename + ".toc";
+    if (!m_exportSpecification) {
+        m_exportSpecification = new TExportSpecification();
+        m_exportSpecification->set_export_dir(get_root_dir() + "/Export/");
+        m_exportSpecification->set_block_size(audiodevice().get_buffer_size());
     }
 
-    QString output;
-
-    output += "CD_DA\n\n";
-    output += "CD_TEXT {\n";
-
-    output += "  LANGUAGE_MAP {\n    0 : EN\n  }\n\n";
-
-    output += "  LANGUAGE 0 {\n";
-    output += "    TITLE \"" + get_title() +  "\"\n";
-    output += "    PERFORMER \"" + get_performer() + "\"\n";
-    output += "    DISC_ID \"" + get_discid() + "\"\n";
-    output += "    UPC_EAN \"" + get_upc_ean() + "\"\n\n";
-
-    output += "    ARRANGER \"" + get_arranger() + "\"\n";
-    output += "    SONGWRITER \"" + get_songwriter() + "\"\n";
-    output += "    MESSAGE \"" + get_message() + "\"\n";
-    output += "    GENRE \"" + QString::number(get_genre()) + "\"\n  }\n}\n\n";
-
-
-    bool pregap = true;
-    spec->renderpass = TExportSpecification::CREATE_CDRDAO_TOC;
-
-    foreach(Sheet* sheet, sheets) {
-        if (sheet->prepare_export(spec) < 0) {
-            return -1;
-        }
-        output += sheet->get_timeline()->get_cdrdao_tracklist(spec, pregap);
-        pregap = false; // only add the pregap at the first sheet
-    }
-
-
-    if (spec->writeToc) {
-        spec->tocFileName = filename;
-
-        QFile file(filename);
-
-        if (file.open(QFile::WriteOnly)) {
-            printf("Saving cdrdao toc-file to %s\n", QS_C(spec->tocFileName));
-            QTextStream out(&file);
-            out << output;
-            file.close();
-        }
-    }
-
-    spec->cdrdaoToc = output;
-
-    return 1;
+    return m_exportSpecification;
 }
 
 uint Project::get_rate( ) const
@@ -1321,21 +1209,6 @@ uint Project::get_bitdepth( ) const
 {
     return m_bitDepth;
 }
-
-void Project::set_sheet_export_progress(int progress)
-{
-    // overallExportProgress = (progress / sheetsToRender.count()) +
-    //                         (renderedSheets * (100 / sheetsToRender.count()) );
-
-    emit sheetExportProgressChanged(progress);
-    // emit overallExportProgressChanged(overallExportProgress);
-}
-
-void Project::set_export_message(const QString& message)
-{
-    emit exportMessage(message);
-}
-
 
 QList<Sheet* > Project::get_sheets( ) const
 {
@@ -1630,13 +1503,15 @@ int Project::process( nframes_t nframes )
 {
     int result = 0;
 
-    apill_foreach(Sheet* sheet, Sheet*, m_RtSheets) {
+    apill_foreach(Sheet*, sheet, m_RtSheets)
         result |= sheet->process(nframes);
     }
 
+    TTimeRef startLocation = get_transport_location();
+    TTimeRef endLocation = startLocation + TTimeRef(nframes, audiodevice().get_sample_rate());
 
-    apill_foreach(TBusTrack* busTrack, TBusTrack*, m_rtBusTracks) {
-        busTrack->process(nframes);
+    apill_foreach(TBusTrack*, busTrack, m_rtBusTracks)
+        busTrack->process(startLocation, endLocation, nframes);
     }
 
 
@@ -1657,17 +1532,17 @@ int Project::process( nframes_t nframes )
     }
 
     // Mix the result into the AudioDevice "physical" buffers
-    m_masterOutBusTrack->process(nframes);
+    m_masterOutBusTrack->process(startLocation, endLocation, nframes);
 
     return result;
 }
 
-int Project::transport_control(TTransportControl *state)
+int Project::transport_control(TTransportControl *transportControl)
 {
     bool result = true;
 
-    apill_foreach(Sheet* sheet, Sheet*, m_RtSheets) {
-        result = sheet->transport_control(state);
+    apill_foreach(Sheet*, sheet, m_RtSheets)
+        result = sheet->transport_control(transportControl);
     }
 
     return result;

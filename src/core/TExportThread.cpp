@@ -22,7 +22,7 @@
 
 #include "TExportThread.h"
 #include "AudioDevice.h"
-#include "Information.h"
+#include "DiskIO.h"
 #include "Sheet.h"
 #include "TExportSpecification.h"
 #include "Project.h"
@@ -31,7 +31,6 @@
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 #include "Utils.h"
-#include <cfloat>
 
 TExportThread::TExportThread(Project* project)
 	: QThread(project)
@@ -48,76 +47,51 @@ void TExportThread::set_specification(TExportSpecification * spec)
 
 void TExportThread::run( )
 {
-    // FIXME
-    // used to be default export block size as set in TExportSpecification (16 KB)
-    // this is more efficient then the audio device buffer size, are buffers not
-    // correctly resized on export perhaps and this hack was applied to make export work again ?
-    // m_exportSpecification->set_block_size(audiodevice().get_buffer_size());
 
-    int overallExportProgress;
-    int renderedSheets = 0;
-    QList<Sheet* > 	sheetsToRender;
+    for (auto sheet : m_exportSpecification->get_sheets_to_export()) {
 
-    // determine which sheets to export, store them in sheetsToRender
-    if (m_exportSpecification->allSheets) {
-        foreach(Sheet* sheet, m_project->get_sheets()) {
-            sheetsToRender.append(sheet);
-        }
-    } else {
-        Sheet* sheet = qobject_cast<Sheet*>(m_project->get_current_session());
-        if (sheet) {
-            sheetsToRender.append(sheet);
-        }
-    }
-
-    // process each sheet in the list sheetsToRender. here we set the renderpass mode,
-    // and then call Sheet::repare_export() and Sheet::render(), which do the actual
-    // processing.
-    foreach(Sheet* sheet, sheetsToRender) {
-        PMESG("Starting export for sheet %lld", sheet->get_id());
-        emit m_project->exportStartedForSheet(sheet);
-        m_exportSpecification->resumeTransport = false;
+        emit m_exportSpecification->exportMessage(QString("Starting export of %1").arg(sheet->get_name()));
         m_exportSpecification->resumeTransportLocation = sheet->get_transport_location();
-        // sheet->readbuffer = readbuffer;
+        m_exportSpecification->set_export_file_name("Sheet_" + QString::number(m_project->get_sheet_index(sheet->get_id())) +"-" + sheet->get_name());
 
-        if (m_exportSpecification->normalize) {
-            // start one render pass in mode "CALC_NORM_FACTOR"
-            m_exportSpecification->m_peakValue = 0.0;
-            m_exportSpecification->renderpass = TExportSpecification::CALC_NORM_FACTOR;
-
-
-            if (sheet->prepare_export(m_exportSpecification) < 0) {
-                PERROR("Failed to prepare sheet for export");
-                continue;
-            }
-
-            sheet->start_export(m_exportSpecification);
-
-            m_exportSpecification->normvalue = (1.0f - FLT_EPSILON) / m_exportSpecification->m_peakValue;
-
-            if (m_exportSpecification->m_peakValue > 1.0f) {
-                info().critical(tr("Detected clipping in exported audio! (%1)")
-                                    .arg(coefficient_to_dbstring(m_exportSpecification->m_peakValue)));
-            }
-
-            if (!m_exportSpecification->breakout) {
-                info().information(tr("calculated norm factor: %1").arg(coefficient_to_dbstring(m_exportSpecification->normvalue)));
-            }
+        TTimeRef exportStartLocation, exportEndLocation;
+        bool exportRangeAvailable = false;
+        if (m_exportSpecification->is_cd_export()) {
+            exportRangeAvailable = sheet->get_cd_export_range(exportStartLocation, exportEndLocation);
+        } else {
+            exportRangeAvailable = sheet->get_export_range(exportStartLocation, exportEndLocation);
         }
 
-        // start the real render pass in mode "WRITE_TO_HARDDISK"
-        m_exportSpecification->renderpass = TExportSpecification::WRITE_TO_HARDDISK;
-
-        // first call Sheet::prepare_export()...
-        if (sheet->prepare_export(m_exportSpecification) < 0) {
-            PERROR("Failed to prepare sheet for export");
-            break;
+        if (!exportRangeAvailable) {
+            printf("No export range available for Sheet %s\n", QS_C(sheet->get_name()));
+            return;
         }
+
+        m_exportSpecification->set_export_start_location(exportStartLocation);
+        m_exportSpecification->set_export_end_location(exportEndLocation);
 
         // ... then start the render process and wait until it's finished
-        sheet->start_export(m_exportSpecification);
+        sheet->set_transport_location(m_exportSpecification->get_export_start_location());
+        sheet->start_transport();
+        usleep(200 * 1000);
 
-        if (!QMetaObject::invokeMethod(sheet, "set_transport_pos",  Qt::QueuedConnection, Q_ARG(TTimeRef, m_exportSpecification->resumeTransportLocation))) {
+        emit m_exportSpecification->exportMessage(QString("Starting export of %1").arg(sheet->get_name()));
+        m_exportSpecification->print_export_data();
+
+        do {
+            nframes_t diff = m_exportSpecification->get_remaining_export_frames();
+            nframes_t nframes = std::min(diff, m_exportSpecification->get_block_size());
+
+            sheet->process(nframes);
+            usleep(50);
+            m_exportSpecification->add_exported_range(TTimeRef(nframes, audiodevice().get_sample_rate()));
+        } while(!m_exportSpecification->cancel_export_requested() && m_exportSpecification->get_remaining_export_frames() > 0);
+
+
+        emit m_exportSpecification->exportMessage(QString("Finished export of %1").arg(sheet->get_name()));
+
+
+        if (!QMetaObject::invokeMethod(sheet, "set_transport_location",  Qt::QueuedConnection, Q_ARG(TTimeRef, m_exportSpecification->resumeTransportLocation))) {
             printf("Invoking Sheet::set_transport_pos() failed\n");
         }
         if (m_exportSpecification->resumeTransport) {
@@ -125,16 +99,10 @@ void TExportThread::run( )
                 printf("Invoking Sheet::start_transport() failed\n");
             }
         }
-        if (m_exportSpecification->breakout) {
-            break;
-        }
-        renderedSheets++;
+
     }
 
     PMESG("Export Finished");
-
-    m_exportSpecification->running = false;
-    overallExportProgress = 0;
 
 
     emit m_project->exportFinished();
