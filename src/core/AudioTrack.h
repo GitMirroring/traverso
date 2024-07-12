@@ -56,7 +56,7 @@ public :
         // Return the rightmost AudioClip track end location
         TTimeRef get_end_location() const;
 
-        void get_render_range(TTimeRef& startlocation, TTimeRef& endlocation);
+        bool get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& trackExportEndLocation);
 	bool show_clip_volume_automation() const {return m_showClipVolumeAutomation;}
 
         int set_state( const QDomNode& node );
@@ -64,7 +64,7 @@ public :
         int arm();
         bool armed();
         int disarm();
-        int process(nframes_t nframes);
+        int process(const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes);
 
 protected:
         void add_input_bus(AudioBus* bus);

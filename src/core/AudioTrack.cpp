@@ -49,9 +49,8 @@ AudioTrack::AudioTrack(Sheet* sheet, const QString& name, int height )
     , m_sheet(sheet)
 {
     PENTERCONS;
-    m_id = create_id();
     m_name = name;
-    sheet->set_track_height(m_id, height);
+    sheet->set_track_height(get_id(), height);
     m_pan = m_numtakes = 0;
     m_showClipVolumeAutomation = false;
 
@@ -256,7 +255,7 @@ void AudioTrack::add_input_bus(AudioBus *bus)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int AudioTrack::process( nframes_t nframes )
+int AudioTrack::process(const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes )
 {
     int processResult = 0;
 
@@ -272,8 +271,9 @@ int AudioTrack::process( nframes_t nframes )
     int result;
     float panFactor;
 
+
     // Read in clip data into process bus.
-    apill_foreach(AudioClip* clip, AudioClip*, m_rtAudioClips) {
+    apill_foreach(AudioClip*, clip, m_rtAudioClips)
         if (m_isArmed && clip->recording_state() == AudioClip::NO_RECORDING) {
             if (m_isMuted || m_mutedBySolo) {
                 continue;
@@ -281,7 +281,7 @@ int AudioTrack::process( nframes_t nframes )
         }
 
 
-        result = clip->process(nframes);
+        result = clip->process(startLocation, endLocation, nframes);
 
         if (result <= 0) {
             continue;
@@ -318,10 +318,8 @@ int AudioTrack::process( nframes_t nframes )
         mixdown[chan] = m_processBus->get_buffer(chan, nframes);
     }
 
-    TTimeRef location = m_sheet->get_transport_location();
-    TTimeRef endlocation = location + TTimeRef(nframes, audiodevice().get_sample_rate());
     // Apply fader Gain/envelope
-    m_fader->process_gain(mixdown, location, endlocation, nframes, m_processBus->get_channel_count());
+    m_fader->process_gain(mixdown, startLocation, endLocation, nframes, m_processBus->get_channel_count());
 
 
     // Post fader plugins now
@@ -360,27 +358,28 @@ TCommand* AudioTrack::silence_others( )
     return command;
 }
 
-void AudioTrack::get_render_range(TTimeRef& startlocation, TTimeRef& endlocation )
+bool AudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& trackExportEndLocation )
 {
     if(m_audioClips.isEmpty()) {
-        return;
+        return false;
     }
 
-    endlocation = TTimeRef();
-    startlocation = TTimeRef::max_length();
+    trackExportStartLocation = TTimeRef::max_length();
+    trackExportEndLocation = TTimeRef();
 
     for(AudioClip* clip : m_audioClips) {
         if (! clip->is_muted() ) {
-            if (clip->get_location_end() > endlocation) {
-                endlocation = clip->get_location_end();
+            if (clip->get_location_end() > trackExportEndLocation) {
+                trackExportEndLocation = clip->get_location_end();
             }
 
-            if (clip->get_location_start() < startlocation) {
-                startlocation = clip->get_location_start();
+            if (clip->get_location_start() < trackExportStartLocation) {
+                trackExportStartLocation = clip->get_location_start();
             }
         }
     }
 
+    return (trackExportStartLocation != TTimeRef::max_length() && trackExportEndLocation != TTimeRef());
 }
 
 AudioClip* AudioTrack::get_clip_after(const TTimeRef& pos)
@@ -469,7 +468,7 @@ void AudioTrack::clip_position_changed(AudioClip * clip)
     std::sort(m_audioClips.begin(), m_audioClips.end(), AudioClip::isLeftMostClip);
 
     if (m_sheet && m_sheet->is_transport_rolling()) {
-        tsar().thread_save_invoke_and_emit_signal(this, clip, "private_clip_position_changed(AudioClip*)", "");
+        tsar().add_gui_event(this, clip, "private_clip_position_changed(AudioClip*)", "");
     } else {
         private_clip_position_changed(clip);
     }

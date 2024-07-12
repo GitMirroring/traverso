@@ -40,19 +40,20 @@ class FadeCurve : public Curve, public APILinkedListNode
 	
 public:
 	static QStringList defaultShapes;
-	
-	FadeCurve(AudioClip* clip, Sheet* sheet, const QString &type);
+
+    enum FadeType {
+        FadeIn = 0,
+        FadeOut = 1
+    };
+
+    FadeCurve(AudioClip* clip, FadeType fadeType);
 	~FadeCurve();
 	
-	enum FadeType {
-		FadeIn,
-		FadeOut
-	};
 	
 	QDomNode get_state(QDomDocument doc);
 	int set_state( const QDomNode & node );
-	
-        void process(AudioBus* bus, nframes_t nframes);
+
+    void process(AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes);
 	
 	float get_bend_factor() {return m_bendFactor;}
 	float get_strength_factor() {return m_strenghtFactor;}
@@ -72,15 +73,16 @@ public:
 	void set_range(double pos);
 	void set_mode(int m);
 
+    QString fade_type_to_string() const;
+
 private:
 	AudioClip*	m_clip;
 	float 		m_bendFactor;
 	float 		m_strenghtFactor;
 	bool		m_bypass;
 	int 		m_mode;
-	int		m_raster;
+    int         m_raster;
 	FadeType	m_type;
-	QString		m_sType;
 	QList<QPointF> 	m_controlPoints;
 	
 	QPointF get_curve_point(float f);
