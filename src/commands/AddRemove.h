@@ -60,14 +60,14 @@ public :
 	int do_action();
 	int undo_action();
 
-	void set_instantanious(bool instant);
+    void set_instantanious(bool instant);
 
 
 private :
 	ContextItem*	m_parentItem;
 	void* 		m_arg;
-    TsarEvent	m_doActionEvent{};
-    TsarEvent	m_undoActionEvent{};
+    TsarEvent	m_doActionEvent;
+    TsarEvent	m_undoActionEvent;
 	TSession*	m_sheet;
 
 	const char*	m_doActionSlot;

@@ -129,8 +129,6 @@ AddRemove::AddRemove(ContextItem* parent, ContextItem* item, const QString& des)
 {
     m_parentItem = parent;
     m_arg = item;
-    m_doActionEvent.valid = false;
-    m_undoActionEvent.valid = false;
 
     if (item && item->has_active_context()) {
         cpointer().remove_from_active_context_list(item);
@@ -222,10 +220,8 @@ int AddRemove::prepare_actions()
     Q_ASSERT(m_doActionSlot != QString(""));
     Q_ASSERT(m_undoActionSlot != QString(""));
 
-    m_doActionEvent = tsar().create_event(m_parentItem, m_arg, m_doActionSlot, m_doSignal);
-
-
-    m_undoActionEvent = tsar().create_event(m_parentItem, m_arg, m_undoActionSlot, m_undoSignal);
+    tsar().prepare_event(m_doActionEvent, m_parentItem, m_arg, m_doActionSlot, m_doSignal);
+    tsar().prepare_event(m_undoActionEvent, m_parentItem, m_arg, m_undoActionSlot, m_undoSignal);
 
     return 1;
 }
@@ -256,11 +252,6 @@ int AddRemove::un_redo_action(ActionType actionType)
         break;
     }
 
-    if ( ! event.valid ) {
-        PWARN("No undo action defined for this Command");
-        return -1;
-    }
-
     if (m_instantanious) {
         tsar().process_event(event);
         return 1;
@@ -269,13 +260,13 @@ int AddRemove::un_redo_action(ActionType actionType)
     if (m_sheet) {
         if (m_sheet->is_transport_rolling()) {
             PMESG("AddRemove::un_redo_action: Using Thread Save add/remove");
-            tsar().add_event(event);
+            tsar().post_gui_event(event);
         } else {
             tsar().process_event(event);
         }
     } else {
         PMESG("Using direct add/remove/signaling");
-        tsar().add_event(event);
+        tsar().post_gui_event(event);
     }
 
     // update the cursor to the context item that we are adding here

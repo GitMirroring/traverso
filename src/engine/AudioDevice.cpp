@@ -49,9 +49,7 @@ RELAYTOOL_JACK
 #include "TAudioDriver.h"
 #include "TAudioDeviceClient.h"
 #include "AudioChannel.h"
-#include "AudioBus.h"
 #include "Tsar.h"
-#include "Mixer.h"
 
 //#include <sys/mman.h>
 #include <QDebug>
@@ -150,12 +148,13 @@ AudioDevice& audiodevice()
     return device;
 }
 
+TsarEvent finishedOneProcessCycleEvent;
+
 AudioDevice::AudioDevice()
 {
     m_transportControl = new TTransportControl();
     m_runAudioThread = false;
     m_driver = nullptr;
-    m_masterOutBus = nullptr;
     m_audioThread = nullptr;
     m_bufferSize = 1024;
     m_rate = 0;
@@ -194,18 +193,18 @@ AudioDevice::AudioDevice()
 
     m_availableDrivers << "Null Driver";
 
-    // tsar is a singleton, so initialization is done on first tsar() call
-    // Tsar makes use of a QTimer to cleanup the processed events.
-    // The QTimer _has_ to be started from the GUI thread, so we 'initialize'
-    // tsar here _before_ the AudioDevice is setup, since tsar is being called
-    // from here by for example the jack driver which could initialize tsar
-    // from within the _jack client thread_ which makes the whole thing _fail_
+    // This will create the event queueu and tsar thread for us
+    // has to be running before the audio thread in order to make
+    // sure no events will get lost
     tsar();
 
     connect(this, SIGNAL(xrunStormDetected()), this, SLOT(switch_to_null_driver()));
     connect(&m_xrunResetTimer, SIGNAL(timeout()), this, SLOT(reset_xrun_counter()));
 
     m_xrunResetTimer.start(30000);
+
+
+    tsar().prepare_event(finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");
 }
 
 AudioDevice::~AudioDevice()
@@ -238,7 +237,7 @@ void AudioDevice::set_buffer_size( nframes_t size )
 
 }
 
-void AudioDevice::set_sample_rate( nframes_t rate )
+void AudioDevice::set_sample_rate( uint rate )
 {
     m_rate = rate;
 }
@@ -256,11 +255,6 @@ int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         printf ("late driver wakeup: nframes to process = %d\n", nframes);
     }
 
-
-    // FIXME: apparently this happens specifically after Seeking to a different
-    // tranport position (to start), then 2 times the nframes have to be processed
-    // when using ALSA as the driver.
-    // Found out: is this important or not
     /* run as many cycles as it takes to consume nframes (Should be 1 cycle!!)*/
     for (left = nframes; left >= m_bufferSize; left -= m_bufferSize) {
         if (run_one_cycle (m_bufferSize, delayed_usecs) < 0) {
@@ -269,7 +263,8 @@ int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         }
     }
 
-    post_run_cycle();
+    tsar().process_rt_event_slots();
+    tsar().post_rt_event(finishedOneProcessCycleEvent);
 
     return 1;
 }
@@ -282,7 +277,7 @@ int AudioDevice::run_one_cycle( nframes_t nframes, float  )
         return -1;
     }
 
-    apill_foreach(TAudioDeviceClient* client, TAudioDeviceClient*, m_clients) {
+    apill_foreach(TAudioDeviceClient*, client, m_clients)
         client->process(nframes);
     }
 
@@ -342,12 +337,15 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
         if (!m_audioThread) {
             m_audioThread = new AudioDeviceThread(this);
+            if ((ads.driverType == "ALSA") || (ads.driverType == "Null Driver")) {
+                m_audioThread->set_real_time(true);
+            }
         }
 
         // m_cycleStartTime/EndTime are set before/after the first cycle.
         // to avoid a "100%" cpu usage value during audioThread startup, set the
         // m_cycleStartTime here!
-        m_cycleStartTime = get_microseconds();
+        m_cycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
 
         // When the audiothread fails for some reason we catch it in audiothread_finished()
         // by connecting the finished signal of the audio thread!
@@ -617,20 +615,6 @@ void AudioDevice::remove_jack_channel(AudioChannel *channel)
 #endif
 }
 
-void AudioDevice::set_master_out_bus(AudioBus *bus)
-{
-    m_masterOutBus = bus;
-}
-
-void AudioDevice::send_to_master_out(AudioChannel* channel, nframes_t nframes)
-{
-    if (!m_masterOutBus) {
-        return;
-    }
-    Mixer::mix_buffers_no_gain(m_masterOutBus->get_buffer(0, nframes), channel->get_buffer(nframes), nframes);
-    Mixer::mix_buffers_no_gain(m_masterOutBus->get_buffer(1, nframes), channel->get_buffer(nframes), nframes);
-}
-
 AudioChannel* AudioDevice::get_capture_channel_by_name(const QString &name)
 {
     if (!m_driver) {
@@ -750,7 +734,7 @@ float AudioDevice::get_cpu_time( )
 #endif
 
 
-    trav_time_t currentTime = get_microseconds();
+    trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
     float totaltime = 0;
     trav_time_t value = 0;
     int read = m_cpuTime->read_space();
@@ -767,32 +751,17 @@ float AudioDevice::get_cpu_time( )
     return result;
 }
 
-void AudioDevice::post_run_cycle( )
-{
-    tsar().process_events_slot();
-
-    apill_foreach(TAudioDeviceClient* client, TAudioDeviceClient*, m_clients) {
-        if (client->wants_to_be_disconnected_from_audiodevice()) {
-            private_remove_client(client);
-        }
-    }
-}
-
 void AudioDevice::private_add_client(TAudioDeviceClient* client)
 {
     m_clients.prepend(client);
-    m_masterOutBus = client->masterOutBus;
-    client->set_connected_to_audiodevice(1);
 }
 
 void AudioDevice::private_remove_client(TAudioDeviceClient* client)
 {
+    PENTER;
     if (!m_clients.remove(client)) {
         printf("AudioDevice:: Client was not in clients list, failed to remove it!\n");
     }
-
-    m_masterOutBus = nullptr;
-    client->set_connected_to_audiodevice(0);
 }
 
 /**
@@ -802,7 +771,7 @@ void AudioDevice::private_remove_client(TAudioDeviceClient* client)
  */
 void AudioDevice::add_client( TAudioDeviceClient * client )
 {
-    tsar().thread_save_invoke_and_emit_signal(this, client, "private_add_client(TAudioDeviceClient*)", "");
+    tsar().add_gui_event(this, client, "private_add_client(TAudioDeviceClient*)", "audioDeviceClientAdded(TAudioDeviceClient*)");
 }
 
 /**
@@ -813,14 +782,8 @@ void AudioDevice::add_client( TAudioDeviceClient * client )
  */
 void AudioDevice::remove_client( TAudioDeviceClient * client )
 {
-    tsar().thread_save_invoke_and_emit_signal(this, client, "private_remove_client(TAudioDeviceClient*)", "clientRemoved(TAudioDeviceClient*)");
+    tsar().add_gui_event(this, client, "private_remove_client(TAudioDeviceClient*)", "audioDeviceClientRemoved(TAudioDeviceClient*)");
 }
-
-void AudioDevice::mili_sleep(int msec)
-{
-    m_audioThread->mili_sleep(msec);
-}
-
 
 void AudioDevice::audiothread_finished() 
 {
@@ -835,11 +798,11 @@ void AudioDevice::audiothread_finished()
 
 void AudioDevice::xrun( )
 {
-    tsar().rt_thread_emit(this, nullptr, "bufferUnderRun()");
+    tsar().add_rt_event(this, nullptr, "bufferUnderRun()");
 
     m_xrunCount++;
     if (m_xrunCount > 30) {
-        tsar().rt_thread_emit(this, nullptr, "xrunStormDetected()");
+        tsar().add_rt_event(this, nullptr, "xrunStormDetected()");
     }
 }
 
@@ -866,7 +829,7 @@ void AudioDevice::check_jack_shutdown()
 void AudioDevice::switch_to_null_driver()
 {
     message(tr("AudioDevice:: Buffer underrun 'Storm' detected, switching to Null Driver"), CRITICAL);
-    message(tr("AudioDevice:: For trouble shooting this problem, please see Chapter 11 from the user manual!"), INFO);
+    message(tr("AudioDevice:: For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
     set_parameters(m_fallBackSetup);
 }
 
@@ -880,7 +843,7 @@ int AudioDevice::transport_control(TTransportControl *state)
 
     int result = 0;
 
-    apill_foreach(TAudioDeviceClient* client, TAudioDeviceClient*, m_clients) {
+    apill_foreach(TAudioDeviceClient*, client, m_clients)
         result = client->transport_control(state);
     }
 
@@ -906,7 +869,7 @@ void AudioDevice::transport_start(TAudioDeviceClient * client)
     client->transport_control(m_transportControl);
 }
 
-void AudioDevice::transport_stop(TAudioDeviceClient * client, TTimeRef location)
+void AudioDevice::transport_stop(TAudioDeviceClient * client, const TTimeRef &location)
 {
 #if defined (JACK_SUPPORT)
     JackDriver* jackdriver = slaved_jack_driver();
@@ -926,13 +889,13 @@ void AudioDevice::transport_stop(TAudioDeviceClient * client, TTimeRef location)
 }
 
 // return 0 if valid request, non-zero otherwise.
-int AudioDevice::transport_seek_to(TAudioDeviceClient* client, TTimeRef location)
+int AudioDevice::transport_seek_to(TAudioDeviceClient* client, const TTimeRef& location)
 {
 #if defined (JACK_SUPPORT)
     JackDriver* jackdriver = slaved_jack_driver();
     if (jackdriver) {
         PMESG("using jack_transport_locate");
-        nframes_t frames = location.to_frame(get_sample_rate());
+        nframes_t frames = TTimeRef::to_frame(location, get_sample_rate());
         return jack_transport_locate(jackdriver->get_client(), frames);
     }
 #endif

@@ -23,16 +23,17 @@ $Id: Tsar.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 #include "Tsar.h"
 
 #include "AudioDevice.h"
+
 #include <QMetaMethod>
 #include <QMessageBox>
 #include <QCoreApplication>
 #include <QThread>
-#include <QTimerEvent>
 #include <unistd.h>
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
+#include "TAudioDeviceSetup.h"
 
 /**
  * 	\class Tsar
@@ -42,6 +43,13 @@ $Id: Tsar.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
  *
  */
 
+
+void TsarThread::process_tsar_signals() {
+    while(true) {
+        // printf("calling tsar process_tsar_signals\n");
+        tsar().process_rt_event_signals();
+    }
+}
 
 /**
  * 
@@ -55,140 +63,107 @@ Tsar& tsar()
 
 Tsar::Tsar()
 {
-	m_eventCounter = 0;
+    m_blockingGuiThreadEventBuffer = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(1024);
+    m_blockingEmitEventSignalsInGuiThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(1024);
 
-    size_t guiThreadEventsBufferSize = 10000;
-    size_t audioThreadEventsBufferSize = 1000;
-
-    m_guiThreadEventBuffer = new RingBufferNPT<TsarEvent>(guiThreadEventsBufferSize);
-    m_audioThreadEventBuffer = new RingBufferNPT<TsarEvent>(audioThreadEventsBufferSize);
-    m_processedEventsSlot = new RingBufferNPT<TsarEvent>(guiThreadEventsBufferSize);
-
-    m_eventBuffers.append(m_guiThreadEventBuffer);
-    m_eventBuffers.append(m_audioThreadEventBuffer);
-
-	m_retryCount = 0;
+    m_eventCounter = 0;
+    m_retryCount = 0;
 	
 #if defined (THREAD_CHECK)
     m_threadPointer = QThread::currentThread();
 #endif
 
-    m_timer.start(20, this);
+    auto tsarThread = new TsarThread;
+    connect(tsarThread, SIGNAL(started()), tsarThread, SLOT(process_tsar_signals()));
+    tsarThread->start();
+    tsarThread->moveToThread(tsarThread);
 }
 
 Tsar::~ Tsar( )
 {
-    foreach(RingBufferNPT<TsarEvent>* eventBuffer, m_eventBuffers) {
-		delete eventBuffer;
-	}
-    delete m_processedEventsSlot;
 }
 
-void Tsar::timerEvent(QTimerEvent *event)
-{
-        if (event->timerId() == m_timer.timerId()) {
-                process_events_signal();
-        }
-}
 
 /**
  * 	Use this function to add events to the event queue when 
  * 	called from the GUI thread.
  *
+ *  Blocks (buzy waits) if the event buffer is full
+ *
  *	Note: This function should be called ONLY from the GUI thread! 
  * @param event  The event to add to the event queue
  */
-bool Tsar::add_event(TsarEvent& event )
+void Tsar::post_gui_event(const TsarEvent &event )
 {
 #if defined (THREAD_CHECK)
     Q_ASSERT_X(m_threadPointer == QThread::currentThread(), "Tsar::add_event", "Adding event from other then GUI thread!!");
 #endif
-    if (m_guiThreadEventBuffer->write(&event, 1) == 1) {
-		m_eventCounter++;
-		return true;
-	}
-	m_retryCount = 0;
-	return false;
+
+    m_blockingGuiThreadEventBuffer->try_enqueue(std::move(event));
+
+    m_eventCounter++;
 }
 
 /**
- * 	Use this function to add events to the event queue when  
+ * 	Use this function to add events to the event queue when
  * 	called from the audio processing (real time) thread
  *
- *	Note: This function should be called ONLY from the realtime audio thread and has a 
- *	non blocking behaviour! (That is, it's a real time save function)
+ *	Note: This function should be called ONLY from the realtime audio thread and has a
+ *	blocking behaviour if the event buffer is full, we don't want to lose events do we?
  *
  * @param event The event to add to the event queue
  */
-void Tsar::add_rt_event( TsarEvent& event )
+void Tsar::post_rt_event(const TsarEvent &event )
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT_X(m_threadPointer != QThread::currentThread(), "Tsar::add_rt_event", "Adding event from NON-RT Thread!!");
-#endif
+    #if defined (THREAD_CHECK)
+        Q_ASSERT_X(m_threadPointer != QThread::currentThread(), "Tsar::add_rt_event", "Adding event from NON-RT Thread!!");
+    #endif
 
-    if (m_audioThreadEventBuffer->write(&event, 1) != 1) {
-        emit audioThreadEventBufferFull(QString("Tsar::add_rt_event: Event lost due no write space in event buffer: %1::%2, (signal: %3)").arg(
-            event.caller->metaObject()->className(),
-            (event.slotindex >= 0) ? event.caller->metaObject()->method(event.slotindex).methodSignature().data() : "",
-            (event.signalindex >= 0) ? event.caller->metaObject()->method(event.signalindex).methodSignature().data() : ""));
-    }
+    // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
+
+    m_blockingEmitEventSignalsInGuiThreadQueue->try_enqueue(event);
+
+    // auto totaltime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
+    // printf("post_rt_event took: %ld\n", totaltime);
 }
+
 
 //
 //  Function called in RealTime AudioThread processing path
 //
-void Tsar::process_events_slot( )
+void Tsar::process_rt_event_slots( )
 {
-#define profile
+   TsarEvent event;
+   // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
-#if defined (profile)
-    trav_time_t starttime = get_microseconds();
-#endif
-
-    for (int i=0; i<m_eventBuffers.size(); ++i) {
-        RingBufferNPT<TsarEvent>* eventBuffer = m_eventBuffers.at(i);
-		
-        int processedEvents = 0;
-        size_t availableEvents = eventBuffer->read_space();
-
-        while((availableEvents > 0) && (processedEvents < 200)) {
-            TsarEvent event;
-
-            if (eventBuffer->read(&event, 1) == 1) {
-                process_event_slot(event);
-                // printf("Processed %s slot: %s, signal: %s\n", event.caller->metaObject()->className(),
-                //        (event.slotindex >= 0) ? event.caller->metaObject()->method(event.slotindex).methodSignature().data() : "no_slot_supplied",
-                //        (event.signalindex >= 0) ? event.caller->metaObject()->method(event.signalindex).methodSignature().data() : "so_signal_supplied");
-
-                m_processedEventsSlot->write(&event, 1);
-                --availableEvents;
-            }
-
-            ++processedEvents;
+   // Blocking queue
+    while (m_blockingGuiThreadEventBuffer->try_dequeue(event)) {
+        process_event_slot(event);
+        // printf("Processed %s slot: %s, signal: %s\n", event.caller->metaObject()->className(),
+        //        (event.slotindex >= 0) ? event.caller->metaObject()->method(event.slotindex).methodSignature().data() : "no_slot_supplied",
+        //        (event.signalindex >= 0) ? event.caller->metaObject()->method(event.signalindex).methodSignature().data() : "so_signal_supplied");
+        if (event.signalindex >= 0) {
+            m_blockingEmitEventSignalsInGuiThreadQueue->try_enqueue(event);
+        } else {
+            --m_eventCounter;
         }
     }
-#if defined (profile)
-    int processtime = int(get_microseconds() - starttime);
-    if (processtime > 10)
-        printf("Process time: %d useconds\n\n", processtime);
-#endif
+
+    // auto totaltime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
+    // printf("process_rt_event_slots took: %ld\n", totaltime);
 }
 
-void Tsar::process_events_signal( )
+// Called by TsarThread which is allowed to block on the wait_dequeue()
+void Tsar::process_rt_event_signals( )
 {
-	
-    while(m_processedEventsSlot->read_space() >= 1 ) {
-		TsarEvent event;
-		// Read one TsarEvent from the processed events ringbuffer 'queue'
-        m_processedEventsSlot->read(&event, 1);
-		
-		process_event_signal(event);
-		
-		--m_eventCounter;
-// 		printf("finish_processed_objects:: Count is %d\n", m_eventCounter);
-	}
-	
-	m_retryCount++;
+    static TsarEvent event;
+
+    m_blockingEmitEventSignalsInGuiThreadQueue->wait_dequeue(event);
+
+    process_event_signal(event);
+
+    --m_eventCounter;
+    m_retryCount++;
 	
     if (m_retryCount > 200)
 	{
@@ -221,83 +196,23 @@ void Tsar::process_events_signal( )
 	}
 }
 
-/**
- * 	Creates a Tsar event. Add the tsar event to the event queue by calling add_event()
- * 	If you need to add an event from the real time audio processing thread, use
- * 	add_rt_event() instead!
- *
- *	Note: This function can be called both from the GUI and realtime audio thread and has a 
- *	non blocking behaviour! (That is, it's a real time save function)
- *
- * @param caller	The calling object, needs to be derived from a QObject
- * @param argument 	The slot and/or signal argument which can be of any type.
- * @param slotSignature The 'signature' of the calling objects slot (equals the name of the slot function)
- * @param signalSignature The 'signature' of the calling objects signal (equals the name of the signal function) 
- * @return The newly created event.
- */
-TsarEvent Tsar::create_event( QObject* caller, void* argument, const char* slotSignature, const char* signalSignature )
-{
-	PENTER3;
-	TsarEvent event;
-	event.caller = caller;
-	event.argument = argument;
-    int index;
-	
-	if (qstrlen(slotSignature) > 0) {
-		index = caller->metaObject()->indexOfMethod(slotSignature);
-		if (index < 0) {
-            PWARN(QString("Slot signature contains whitespaces, please remove to avoid unneeded processing (%1::%2)").arg(caller->metaObject()->className(), slotSignature).toLatin1().data());
-			QByteArray norm = QMetaObject::normalizedSignature(slotSignature);
-			index = caller->metaObject()->indexOfMethod(norm.constData());
-			if (index < 0) {
-//				PERROR("Couldn't find a valid index for %s", slotSignature);
-			}
-		}
-		event.slotindex = index;
-	} else {
-		event.slotindex = -1;
-	}
-	
-	if (qstrlen(signalSignature) > 0) {
-        index = caller->metaObject()->indexOfMethod(signalSignature);
-        if (index < 0) {
-            PWARN(QString("Signal signature contains whitespaces, please remove to avoid unneeded processing (%1::%2)").arg(caller->metaObject()->className(), signalSignature).toLatin1().data());
-			QByteArray norm = QMetaObject::normalizedSignature(signalSignature);
-            index = caller->metaObject()->indexOfMethod(norm.constData());
-        }
-		event.signalindex = index; 
-	} else {
-		event.signalindex = -1; 
-	}
-	
-	event.valid = true;
-	
-	return event;
-}
 
 /**
 *	This function can be used to process the events 'slot' part.
 *	Usefull when you have a Tsar event, but don't want/need to use tsar
 *	to call the events slot in a thread save way
 *
-*	Note: This function doesn't provide the thread safetyness you get with
-*		the add_event() function!
-*
 * @param event The TsarEvent to be processed 
 */
 void Tsar::process_event_slot(const TsarEvent& event )
 {
-	// If there is an object to be added, do the magic to call the slot :-)
-	if (event.slotindex > -1) {
+    Q_ASSERT(event.slotindex >= 0);
 
-        void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&event.argument)) };
-		
-		// This equals QMetaObject::invokeMethod(), without type checking. But we know that the types
-		// are the correct ones, and will be casted just fine!
-		if ( ! (event.caller->qt_metacall(QMetaObject::InvokeMetaMethod, event.slotindex, _a) < 0) ) {
-            qDebug("Tsar::process_event_slot failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.slotindex).methodSignature().data());
-		}
-	}
+    void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&event.argument)) };
+
+    if ( ! (event.caller->qt_metacall(QMetaObject::InvokeMetaMethod, event.slotindex, _a) < 0) ) {
+        qDebug("Tsar::process_event_slot failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.slotindex).methodSignature().data());
+    }
 }
 
 /**
@@ -305,24 +220,17 @@ void Tsar::process_event_slot(const TsarEvent& event )
 *	Usefull when you have a Tsar event, but don't want/need to use tsar
 *	to call the events signal in a thread save way
 *
-*	Note: This function doesn't provide the thread safetyness you get with
-*		the add_event() function!
-*
 * @param event The TsarEvent to be processed 
 */
 void Tsar::process_event_signal(const TsarEvent & event )
 {
-	// In case the signalindex > -1, emit the signal!
-	if (event.signalindex > -1) {
+    Q_ASSERT(event.signalindex >= 0);
 
-                void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&event.argument)) };
+    void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&event.argument))};
 
-                // This equals QMetaObject::invokeMethod(), without type checking. But we know that the types
-                // are the correct ones, and will be casted just fine!
-                if ( ! (event.caller->qt_metacall(QMetaObject::InvokeMetaMethod, event.signalindex, _a) < 0) ) {
-                        qDebug("Tsar::process_event_signal failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.signalindex).methodSignature().data());
-                }
-        }
+    if ( ! (event.caller->qt_metacall(QMetaObject::InvokeMetaMethod, event.signalindex, _a) < 0) ) {
+            qDebug("Tsar::process_event_signal failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.signalindex).methodSignature().data());
+    }
 }
 
 /**
@@ -341,7 +249,7 @@ void Tsar::process_event(const TsarEvent & event )
 	process_event_signal(event);
 }
 
-void Tsar::rt_thread_emit(QObject *cal, void* arg, const char* signalSignature)
+void Tsar::add_rt_event(QObject *cal, void* arg, const char* signalSignature)
 {
     TsarEvent event;
     event.caller = cal;
@@ -350,21 +258,27 @@ void Tsar::rt_thread_emit(QObject *cal, void* arg, const char* signalSignature)
     int retrievedsignalindex = cal->metaObject()->indexOfSignal(signalSignature);
     Q_ASSERT(retrievedsignalindex >= 0);
     event.signalindex = retrievedsignalindex;
-    event.valid = true;
-    add_rt_event(event);
+    post_rt_event(event);
 }
 
-void Tsar::thread_save_invoke_and_emit_signal(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
+void Tsar::add_gui_event(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
 {
-    TsarEvent event = tsar().create_event(caller, arg, slotSignature, signalSignature);
-    while (!add_event(event)) {
-        std::cout << "THREAD_SAVE_INVOKE: failed to add event, trying again\n";
-#if defined (Q_OS_WIN)
-        Sleep(2);
-#else
-        usleep(2 * 1000);
-#endif
-    }
+    PENTER;
+    TsarEvent event;
+    prepare_event(event, caller, arg, slotSignature, signalSignature);
+    post_gui_event(event);
+}
+
+/**
+ */
+void Tsar::prepare_event(TsarEvent &event, QObject* caller, void* argument, const char* slotSignature, const char* signalSignature )
+{
+    PENTER3;
+    event.caller = caller;
+    event.argument = argument;
+
+    event.slotindex = caller->metaObject()->indexOfMethod(slotSignature);
+    event.signalindex = caller->metaObject()->indexOfMethod(signalSignature);
 }
 
 //eof
