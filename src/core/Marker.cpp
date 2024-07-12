@@ -33,8 +33,7 @@ Marker::Marker(TTimeLineRuler* tl, const TTimeRef when, MarkerType type)
 	, m_type(type)
 {
 	QObject::tr("Marker");
-	set_history_stack(m_timeline->get_history_stack());
-	m_id = create_id();
+    set_history_stack(m_timeline->get_history_stack());
 
 	set_snap_list(m_timeline->get_sheet()->get_snap_list());
 
@@ -55,7 +54,7 @@ Marker::Marker(TTimeLineRuler * tl, const QDomNode& node)
 	, m_timeline(tl)
 {
 	set_snap_list(m_timeline->get_sheet()->get_snap_list());
-	set_history_stack(m_timeline->get_history_stack());
+    set_history_stack(m_timeline->get_history_stack());
 	set_state(node);
 }
 
@@ -65,7 +64,7 @@ QDomNode Marker::get_state(QDomDocument doc)
 	
 	domNode.setAttribute("position",  m_when.universal_frame());
 	domNode.setAttribute("description",  m_description);
-	domNode.setAttribute("id",  m_id);
+    domNode.setAttribute("id",  get_id());
 	domNode.setAttribute("performer", m_performer);
 	domNode.setAttribute("composer", m_composer);
 	domNode.setAttribute("songwriter", m_songwriter);
@@ -94,7 +93,7 @@ int Marker::set_state(const QDomNode & node)
 	m_description = e.attribute("description", "");
 	QString tp = e.attribute("type", "CDTRACK");
 	m_when = TTimeRef(e.attribute("position", "0").toLongLong());
-	m_id = e.attribute("id", "0").toLongLong();
+    set_id(e.attribute("id", "0").toLongLong());
 	m_performer = e.attribute("performer", "");
 	m_composer = e.attribute("composer", "");
 	m_songwriter = e.attribute("songwriter", "");

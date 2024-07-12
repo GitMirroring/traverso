@@ -57,13 +57,11 @@ void TSession::init()
 	// TODO seek to old position on project exit ?
 	m_workLocation = TTimeRef();
 	m_transportLocation = TTimeRef();
-	m_mode = EDIT;
-	m_sbx = m_sby = 0;
+    m_scrollBarXValue = m_scrollBarYValue = 0;
 	m_hzoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
-	m_transport = 0;
+    m_transportRolling.store(false);
 	m_isSnapOn=true;
 	m_isProjectSession = false;
-	m_id = create_id();
 
 	connect(this, SIGNAL(privateTrackAdded(Track*)), this, SLOT(private_track_added(Track*)));
 	connect(this, SIGNAL(privateTrackRemoved(Track*)), this, SLOT(private_track_removed(Track*)));
@@ -76,14 +74,14 @@ void TSession::set_parent_session(TSession *parentSession)
 		if (m_parentSession) {
 			disconnect(m_parentSession, SIGNAL(transportStarted()), this, SIGNAL(transportStarted()));
 			disconnect(m_parentSession, SIGNAL(transportStopped()), this, SIGNAL(transportStopped()));
-			disconnect(m_parentSession, SIGNAL(transportPosSet()), this, SIGNAL(transportPosSet()));
+            disconnect(m_parentSession, SIGNAL(transportLocationChanged()), this, SIGNAL(transportLocationChanged()));
 			disconnect(m_parentSession, SIGNAL(workingPosChanged()), this, SIGNAL(workingPosChanged()));
 			disconnect(m_parentSession, SIGNAL(hzoomChanged()), this, SIGNAL(hzoomChanged()));
 			disconnect(m_parentSession, SIGNAL(horizontalScrollBarValueChanged()), this, SIGNAL(horizontalScrollBarValueChanged()));
 		}
 		connect(parentSession, SIGNAL(transportStarted()), this, SIGNAL(transportStarted()));
 		connect(parentSession, SIGNAL(transportStopped()), this, SIGNAL(transportStopped()));
-		connect(parentSession, SIGNAL(transportPosSet()), this, SIGNAL(transportPosSet()));
+        connect(parentSession, SIGNAL(transportLocationChanged()), this, SIGNAL(transportLocationChanged()));
 		connect(parentSession, SIGNAL(workingPosChanged()), this, SIGNAL(workingPosChanged()));
 		connect(parentSession, SIGNAL(hzoomChanged()), this, SIGNAL(hzoomChanged()));
 		connect(parentSession, SIGNAL(horizontalScrollBarValueChanged()), this, SIGNAL(horizontalScrollBarValueChanged()));
@@ -92,7 +90,7 @@ void TSession::set_parent_session(TSession *parentSession)
 	m_parentSession = parentSession;
 
 	if (!m_isProjectSession) {
-		set_history_stack(m_parentSession->get_history_stack());
+        set_history_stack(m_parentSession->get_history_stack());
 	}
 
 	emit horizontalScrollBarValueChanged();
@@ -107,9 +105,9 @@ int TSession::set_state( const QDomNode & node )
 	QDomElement e = node.toElement();
 
 	m_name = e.attribute("name", "" );
-	m_id = e.attribute("id", "0").toLongLong();
-	m_sbx = e.attribute("sbx", "0").toInt();
-	m_sby = e.attribute("sby", "0").toInt();
+    set_id(e.attribute("id", "0").toLongLong());
+    m_scrollBarXValue = e.attribute("sbx", "0").toInt();
+    m_scrollBarYValue = e.attribute("sby", "0").toInt();
 
 	QDomNode tracksNode = node.firstChildElement("Tracks");
 	QDomNode trackNode = tracksNode.firstChild();
@@ -138,7 +136,7 @@ QDomNode TSession::get_state(QDomDocument doc)
 {
 	QDomElement sheetNode = doc.createElement("WorkSheet");
 
-	sheetNode.setAttribute("id", m_id);
+    sheetNode.setAttribute("id", get_id());
 	sheetNode.setAttribute("name", m_name);
 	sheetNode.setAttribute("sbx", get_scrollbar_xy().x());
 	sheetNode.setAttribute("sby", get_scrollbar_xy().y());
@@ -175,10 +173,10 @@ TBusTrack* TSession::get_master_out_bus_track() const
 QList<Track*> TSession::get_tracks() const
 {
 	QList<Track*> list;
-	foreach(AudioTrack* track, m_audioTracks) {
+    for(AudioTrack* track : m_audioTracks) {
 		list.append(track);
 	}
-	foreach(TBusTrack* track, m_busTracks) {
+    for(TBusTrack* track : m_busTracks) {
 		list.append(track);
 	}
 
@@ -269,10 +267,10 @@ QPoint TSession::get_scrollbar_xy()
 	if (m_parentSession) {
 		point.setX(m_parentSession->get_scrollbar_xy().x());
 	} else {
-		point.setX(m_sbx);
+        point.setX(m_scrollBarXValue);
 	}
 
-	point.setY(m_sby);
+    point.setY(m_scrollBarYValue);
 
 	return point;
 }
@@ -282,7 +280,7 @@ bool TSession::is_transport_rolling() const
 	if (m_parentSession) {
 		return m_parentSession->is_transport_rolling();
 	}
-    return m_transport == 1;
+    return m_transportRolling.load();
 }
 
 bool TSession::is_child_session() const
@@ -336,10 +334,10 @@ void TSession::set_work_at(TTimeRef location, bool isFolder)
     }
 }
 
-void TSession::set_transport_pos(TTimeRef location)
+void TSession::set_transport_location(TTimeRef location)
 {
 	if (m_parentSession) {
-		m_parentSession->set_transport_pos(location);
+		m_parentSession->set_transport_location(location);
 	}
 }
 
@@ -363,14 +361,14 @@ void TSession::set_scrollbar_x(int x)
 		return m_parentSession->set_scrollbar_x(x);
 	}
 
-	m_sbx = x;
+    m_scrollBarXValue = x;
 
 	emit horizontalScrollBarValueChanged();
 }
 
 void TSession::set_scrollbar_y(int y)
 {
-	m_sby = y;
+    m_scrollBarYValue = y;
 
 	emit verticalScrollBarValueChanged();
 }
@@ -389,13 +387,15 @@ TCommand* TSession::toggle_solo()
 
 	bool hasSolo = false;
 
-	QList<Track*> tracks= get_tracks();
+    const auto tracks = get_tracks();
 
-	foreach(Track* track, tracks) {
-		if (track->is_solo()) hasSolo = true;
+    for(Track* track : tracks) {
+        if (track->is_solo()) {
+            hasSolo = true;
+        }
 	}
 
-	foreach(Track* track, tracks) {
+    for (Track* track : tracks) {
 		track->set_solo(!hasSolo);
 		track->set_muted_by_solo(false);
 	}
@@ -410,11 +410,13 @@ TCommand* TSession::toggle_mute()
 	}
 
 	bool hasMute = false;
-	foreach(AudioTrack* track, m_audioTracks) {
-		if (track->is_muted()) hasMute = true;
+    for(AudioTrack* track : m_audioTracks) {
+        if (track->is_muted()) {
+            hasMute = true;
+        }
 	}
 
-	foreach(AudioTrack* track, m_audioTracks) {
+    for(AudioTrack* track : m_audioTracks) {
 		track->set_muted(!hasMute);
 	}
 

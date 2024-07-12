@@ -26,7 +26,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClipView.h"
 #include "SheetView.h"
 #include "AudioTrackView.h"
-#include "TTrackLaneView.h"
 #include "FadeCurveView.h"
 #include "CurveView.h"
 
@@ -52,6 +51,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cmath>
 #include "dialogs/AudioClipEditDialog.h"
 #include "Fade.h"
+
+#include "TTrackLaneView.h"
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
@@ -163,13 +164,8 @@ void AudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *opt
     if (m_clip->is_muted()) {
         m_waveBrush = m_brushFgMuted;
     } else {
-        if (m_sheet->get_mode() == Sheet::EDIT) {
-            if (mousehover) m_waveBrush = m_brushFgHover;
-            else            m_waveBrush = m_brushFg;
-        } else {
-            if (mousehover) m_waveBrush = m_brushFgEditHover;
-            else            m_waveBrush = m_brushFgEdit;
-        }
+        if (mousehover) m_waveBrush = m_brushFgHover;
+        else            m_waveBrush = m_brushFg;
     }
 
     int channels = m_clip->get_channel_count();
@@ -305,7 +301,7 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
         int availpeaks = peak->calculate_peaks(
                     chan,
                     &pixeldata[chan],
-                    TTimeRef(xstart * m_sv->timeref_scalefactor) + clipstartoffset,
+            TTimeRef(xstart * m_sv->timeref_scalefactor) + clipstartoffset,
                     peakdatacount,
                     m_sheet->get_hzoom());
 

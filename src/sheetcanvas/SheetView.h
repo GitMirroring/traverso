@@ -24,7 +24,6 @@
 
 #include "ViewItem.h"
 #include "AbstractViewPort.h"
-#include <QTimer>
 #include <QPropertyAnimation>
 
 class AudioClip;

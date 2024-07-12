@@ -24,10 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "AudioSource.h"
 
-#include "gdither.h"
 #include <samplerate.h>
+#include "gdither_types.h"
 
-struct TExportSpecification;
+class TExportSpecification;
 class Peak;
 class DiskIO;
 class AbstractAudioWriter;
@@ -42,7 +42,7 @@ public :
 	WriteSource(TExportSpecification* spec);
 	~WriteSource();
 
-        int rb_write(AudioBus* bus, nframes_t nframes);
+    nframes_t rb_write(AudioBus* bus, nframes_t nframes);
 	int rb_file_write(nframes_t cnt);
 	void process_ringbuffer(audio_sample_t* buffer);
 	int get_processable_buffer_space() const;
@@ -67,11 +67,11 @@ private:
 	Peak*			m_peak;
 	
 	DiskIO*		m_diskio;
-	GDither         m_dither{};
-	bool		m_processPeaks{};
+    GDither         m_dither;
+    bool		m_processPeaks{};
         bool            m_isRecording;
 	nframes_t       m_sampleRate{};
-	uint32_t        m_sample_bytes{};
+    uint32_t        m_sampleBytes{};
 	
 	// Sample rate conversion variables
 	nframes_t       m_out_samples_max{};
@@ -81,7 +81,7 @@ private:
 	nframes_t       m_max_leftover_frames{};
 	float*		m_leftoverF{};
 	float*		m_dataF2{};
-	void*           m_output_data{};
+    void*           m_outputData{};
 	
 	
 	void prepare_rt_buffers();

@@ -110,7 +110,7 @@ SET(HAVE_COREAUDIO FALSE)
 SET(HOST_SUPPORTS_SSE FALSE)
 
 SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wall -Wno-unused-local-typedefs ${CXX_FLAGS}")
-SET(CMAKE_CXX_FLAGS_RELEASE "-O2 -Wall -fPIC -Wno-unused-local-typedefs ${CXX_FLAGS}")
+SET(CMAKE_CXX_FLAGS_RELEASE "-O2 -Wall -fPIC -Wno-unused-local-typedefs  ${CXX_FLAGS}")
 
 # Detect the flags to be used for large file support
 execute_process(
@@ -207,54 +207,6 @@ IF (PKG_CONFIG_FOUND)
     ENDIF(WAVPACK_FOUND)
 ENDIF(PKG_CONFIG_FOUND)
 
-CHECK_INCLUDE_FILE("vorbis/vorbisfile.h" HAVE_VORBISFILE_H)
-IF(NOT HAVE_VORBISFILE_H)
-        MESSAGE(FATAL_ERROR "Ogg Vorbis development headers could not be found!\nPlease install the Ogg Vorbis development package, remove CMakeCache.txt and run cmake again")
-ENDIF(NOT HAVE_VORBISFILE_H)
-
-
-CHECK_INCLUDE_FILE("FLAC/export.h" HAVE_FLAC_H)
-IF(HAVE_FLAC_H)
-        MESSAGE("-- FLAC Library Found OK")
-ELSE(HAVE_FLAC_H)
-ENDIF(HAVE_FLAC_H)
-
-
-IF(WANT_MP3_DECODE)
-        CHECK_INCLUDE_FILE("mad.h" HAVE_MAD_H)
-        IF(HAVE_MAD_H)
-                SET(HAVE_MP3_DECODING TRUE)
-                LIST(APPEND TRAVERSO_DEFINES -DMP3_DECODE_SUPPORT)
-        ELSE(HAVE_MAD_H)
-            IF(PKG_CONFIG_FOUND)
-                PKG_CHECK_MODULES(MAD mad>=${MINIMAL_MAD_VERSION})
-                IF(MAD_FOUND)
-                        SET(HAVE_MP3_DECODING TRUE)
-                        LIST(APPEND TRAVERSO_DEFINES -DMP3_DECODE_SUPPORT)
-                        MESSAGE("-- MP3 Decoding Library Found OK")
-                ELSE(MAD_FOUND)
-                        MESSAGE(FATAL_ERROR "MP3 decoding support requested, but mp3 development headers (mad.h) could not be found!\nPlease install the mp3 development package (Usually called libmad0-dev), remove CMakeCache.txt and run cmake again")
-                ENDIF(MAD_FOUND)
-            ENDIF(PKG_CONFIG_FOUND)
-        ENDIF(HAVE_MAD_H)
-ELSE(WANT_MP3_DECODE)
-        SET(HAVE_MP3_DECODING FALSE)
-ENDIF(WANT_MP3_DECODE)
-
-
-IF(WANT_MP3_ENCODE)
-        CHECK_INCLUDE_FILE("lame/lame.h" HAVE_LAME_H)
-        IF(HAVE_LAME_H)
-                LIST(APPEND TRAVERSO_DEFINES -DMP3_ENCODE_SUPPORT)
-                MESSAGE("-- Building with mp3 encoding support enabled")
-                SET(HAVE_MP3_ENCODING TRUE)
-        ELSE(HAVE_LAME_H)
-                MESSAGE(FATAL_ERROR "MP3 encoding support requested, but mp3 development headers (lame.h) could not be found!\nPlease install the lame development package (Debian/ubuntu: apt-get install libmp3lame-dev), remove CMakeCache.txt and run cmake again")
-        ENDIF(HAVE_LAME_H)
-ELSE(WANT_MP3_ENCODE)
-        SET(HAVE_MP3_ENCODING FALSE)
-ENDIF(WANT_MP3_ENCODE)
-
 
 CHECK_INCLUDE_FILE("fftw3.h" HAVE_FFTW3_H)
 IF(NOT HAVE_FFTW3_H)
@@ -286,7 +238,7 @@ CONFIGURE_FILE(
 ADD_CUSTOM_TARGET(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
 
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 SET (QT_MIN_VERSION "6.5.0")

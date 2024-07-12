@@ -24,10 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QMutex>
 #include <QList>
-#include <QTimer>
 #include <QPair>
 #include <QThread>
 
+#include "RingBufferNPT.h"
 #include "defines.h"
 
 class ReadSource;
@@ -36,13 +36,6 @@ class AudioSource;
 class DiskIOThread;
 class Sheet;
 class DecodeBuffer;
-
-struct BufferStatus {
-	int	fillStatus;
-	int	priority;
-	bool	bufferUnderRun;
-	bool	needSync;
-};
 
 // DiskIOThread is a private class to be used by
 // DiskIO only for processing read/write buffers
@@ -83,39 +76,43 @@ public:
         float get_cpu_time();
 	int get_write_buffers_fill_status();
 	int get_read_buffers_fill_status();
-	int get_output_rate() {return m_outputRate;}
+    uint get_output_rate() {return m_outputRate;}
 	int get_resample_quality() {return m_resampleQuality;}
 	DecodeBuffer* get_resample_decode_buffer() {return m_resampleDecodeBuffer;}
 
 private:
-	Sheet* 			m_sheet;
-	volatile size_t		m_stopWork;
-	QList<ReadSource*>	m_readSources;
-	QList<WriteSource*>	m_writeSources;
-	QList<ReadSource*>	m_processableReadSources;
-	QList<WriteSource*>	m_processableWriteSources;
-	QList<QPair<BufferStatus*, ReadSource*> > m_readersStatus;
-	QList<QPair<int, WriteSource*> > m_writersStatus;
+    Sheet*              m_sheet;
+    std::atomic<bool>   m_stopWork;
+    std::atomic<bool>   m_seeking;
+
+    QList<ReadSource*>	m_readSources;
+    QList<ReadSource*>	m_processableReadSources;
+    QList<ReadSource*>	m_processableSyncSources;
+    QList<WriteSource*>	m_processableWriteSources;
+    QList<WriteSource*>	m_writeSources;
+
+    QList<QPair<int, WriteSource*> > m_writersStatus;
+
     DiskIOThread		m_diskThread;
-        QTimer			m_workTimer;
         QMutex			mutex;
-	volatile int		m_readBufferFillStatus;
-	volatile int		m_writeBufferFillStatus;
-        trav_time_t             m_totalDoWorkTime{};
-	trav_time_t		m_doWorkStartTime{};
-        trav_time_t		m_lastdoWorkReadTime;
-	bool			m_seeking;
-	int			m_resampleQuality;
-	bool			m_sampleRateChanged;
-	int			m_hardDiskOverLoadCounter;
-	audio_sample_t*		framebuffer[2]{};
-	audio_sample_t*		m_readbuffer{};
-	DecodeBuffer*		m_decodebuffer;
-	DecodeBuffer*		m_resampleDecodeBuffer;
+    std::atomic<int>    m_readBufferFillStatus;
+    std::atomic<int>    m_writeBufferFillStatus;
+
+    trav_time_t         m_totalDoWorkTime{};
+    trav_time_t         m_doWorkStartTime{};
+    trav_time_t 		m_lastdoWorkReadTime;
+    RingBufferNPT<trav_time_t>*	m_cpuTime;
+    int			m_resampleQuality;
+    bool			m_sampleRateChanged;
+    int			m_hardDiskOverLoadCounter;
+    audio_sample_t*		framebuffer;
+    audio_sample_t*		m_readbuffer{};
+    DecodeBuffer*		m_fileDecodeBuffer;
+    DecodeBuffer*		m_resampleDecodeBuffer;
     uint			m_outputRate{};
 
 	
-	void update_time_usage();
+    void update_time_usage(trav_time_t time);
 	
 	int there_are_processable_sources();
 
@@ -130,7 +127,7 @@ private slots:
 signals:
 	void seekFinished();
 	void readSourceBufferUnderRun();
-	void writeSourceBufferOverRun();
+    void writeSourceBufferOverRun();
     void ioStartRequested();
     void ioStopRequested();
 

@@ -500,7 +500,7 @@ void TShortCutManager::loadFunctions()
 
     function = new TShortCutFunction();
 	function->object = "TTransport";
-	function->setSlotSignature("set_transport_position");
+    function->setSlotSignature("set_transport_location");
 	function->setDescription(tr("Set Play Position"));
 	function->commandName = "TransportSetPosition";
 	function->useX = true;

@@ -74,35 +74,6 @@ signals:
     void privatePluginAdded(Plugin*);
 };
 
-inline void PluginChain::process_pre_fader(AudioBus * bus, nframes_t nframes)
-{
-    apill_foreach(Plugin* plugin, Plugin*, m_rtPlugins) {
-        if (plugin == m_fader) {
-            return;
-        }
-        plugin->process(bus, nframes);
-    }
-}
-
-inline int PluginChain::process_post_fader(AudioBus * bus, nframes_t nframes)
-{
-    if (!m_rtPlugins.size()) {
-        return 0;
-    }
-
-    bool faderWasReached = false;
-
-    apill_foreach(Plugin* plugin, Plugin*, m_rtPlugins) {
-        if (faderWasReached) {
-            plugin->process(bus, nframes);
-        } else if (plugin == m_fader) {
-            faderWasReached = true;
-        }
-    }
-
-    return 1;
-}
-
 #endif
 
 //eof

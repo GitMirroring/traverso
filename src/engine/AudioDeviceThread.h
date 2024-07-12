@@ -33,11 +33,9 @@ class AudioDeviceThread : public QThread
 
 public:
         AudioDeviceThread(AudioDevice* device);
-        int become_realtime(bool realtime);
 
         void run_on_cpu(int cpu);
-
-	void mili_sleep(int msec) {msleep(msec);}
+        void set_real_time(bool realTime);
 
         volatile size_t watchdogCheck;
 
@@ -47,6 +45,7 @@ protected:
 private:
         AudioDevice* m_device;
         bool m_realTime;
+        int become_realtime();
 };
 
 #endif

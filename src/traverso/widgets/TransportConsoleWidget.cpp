@@ -119,7 +119,7 @@ void TransportConsoleWidget::set_session(TSession* session)
 	connect(m_sheet, SIGNAL(recordingStateChanged()), this, SLOT(update_recording_state()));
 	connect(m_sheet, SIGNAL(transportStarted()), this, SLOT(transport_started()));
 	connect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
-	connect(m_sheet, SIGNAL(transportPosSet()), this, SLOT(update_label()));
+	connect(m_sheet, SIGNAL(transportLocationChanged()), this, SLOT(update_label()));
 
 	update_label();
 }

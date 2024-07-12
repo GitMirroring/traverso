@@ -470,7 +470,7 @@ static const int RMS_SAMPLES = 50;		// number of updates to be stored for RMS ca
 static const int UPDATE_FREQ = 40;		// frame rate of the level meter (update interval in ms)
 static const int PEAK_HOLD_TIME = 1000;		// peak hold time (ms)
 static const int PEAK_HOLD_MODE = 1;		// 0 = no peak hold, 1 = dynamic, 2 = constant
-static const bool SHOW_RMS = false;		// toggle RMS lines on / off
+static const bool SHOW_RMS = true;		// toggle RMS lines on / off
 
 
 VUMeterLevel::VUMeterLevel(QWidget* parent, AudioChannel* chan)

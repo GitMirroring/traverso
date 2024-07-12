@@ -193,7 +193,7 @@ void ViewPort::detect_items_below_cursor()
             if (ViewItem::is_viewitem(item))
             {
                 ViewItem* viewItem = static_cast<ViewItem*>(item);
-                if (!viewItem->ignore_context())
+                if (!viewItem->item_ignores_context())
                 {
                     activeContextItems.append(viewItem);
                     if (viewItem->has_mouse_tracking())
@@ -208,7 +208,7 @@ void ViewPort::detect_items_below_cursor()
         set_canvas_cursor_shape(":/cursorFloat", Qt::AlignTop | Qt::AlignHCenter);
     }
 
-    printf("setting active context items for detect items below cursor %lld", activeContextItems.size());
+    // printf("setting active context items for detect items below cursor %lld", activeContextItems.size());
     // update context pointer active context items list
     cpointer().set_active_context_items_by_mouse_movement(activeContextItems);
 

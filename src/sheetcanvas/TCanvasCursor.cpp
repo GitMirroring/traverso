@@ -34,7 +34,7 @@ TCanvasCursor::TCanvasCursor(SheetView* )
     m_positionIndicator = new PositionIndicator(this);
     m_positionIndicator->hide();
 
-    m_ignoreContext = true;
+    set_ignore_context(true);
     m_shape = "";
     m_xOffset = m_yOffset = 0.0;
 

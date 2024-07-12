@@ -320,7 +320,7 @@ void TSessionTabWidget::leaveEvent( QEvent * )
         m_arrowButton->setStyleSheet("background-color: none; border: none;");
 }
 
-void TSessionTabWidget::enterEvent( QEvent * /*e*/)
+void TSessionTabWidget::enterEvent(QEnterEvent * /*e*/)
 {
         if (pm().get_project()->get_current_session() == m_session) {
                 m_arrowButton->setStyleSheet("background-color: lightblue; margin: 0; margin-right: 2;");

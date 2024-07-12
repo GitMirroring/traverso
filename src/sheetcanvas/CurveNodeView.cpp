@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QPainter>
 #include <QPen>
-#include <utility>
 #include <CurveNode.h>
 #include <Themer.h>
 #include <Curve.h>
@@ -61,7 +60,7 @@ void CurveNodeView::paint( QPainter * painter, const QStyleOptionGraphicsItem * 
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
 
-    if (m_curveview->ignore_context()) {
+    if (m_curveview->item_ignores_context()) {
         return;
     }
 
@@ -72,7 +71,7 @@ void CurveNodeView::paint( QPainter * painter, const QStyleOptionGraphicsItem * 
 	QColor color = m_color;
     QColor hardSelectOutlineColor(Qt::white);
 
-    if (m_curveview->ignore_context()) {
+    if (m_curveview->item_ignores_context()) {
         color.setAlpha(75);
         hardSelectOutlineColor.setAlpha(75);
     }

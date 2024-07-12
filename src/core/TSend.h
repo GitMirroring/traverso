@@ -33,7 +33,7 @@ class TSend : public APILinkedListNode
 {
 
 public:
-        TSend(Track* track);
+    TSend(Track* track);
         TSend(Track* track, AudioBus* bus);
 
         QDomNode get_state( QDomDocument doc);

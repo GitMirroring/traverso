@@ -58,7 +58,7 @@ CurveView::CurveView(SheetView* sv, ViewItem* parentViewItem, Curve* curve)
     m_guicurve = new Curve(nullptr);
     m_guicurve->set_sheet(sv->get_sheet());
 
-    apill_foreach(CurveNode* node, CurveNode*, m_curve->get_nodes()) {
+    apill_foreach(CurveNode*, node, m_curve->get_nodes())
         add_curvenode_view(node);
     }
 
@@ -89,7 +89,7 @@ void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opti
         return;
     }
 
-    if (ignore_context() && m_nodeViews.size() == 1) {
+    if (item_ignores_context() && m_nodeViews.size() == 1) {
         return;
     }
 
@@ -106,7 +106,7 @@ void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opti
     QColor penColor;
     // NOTE: setting penwidth to 2 increases cpu load by at least 5 times for this function
     pen.setWidth(1);
-    if (ignore_context()) {
+    if (item_ignores_context()) {
         penColor = themer()->get_color("Curve:inactive");
     } else {
          penColor = themer()->get_color("Curve:active");
@@ -182,7 +182,7 @@ void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opti
     // vertically at the exact same x position. The curve line won't be painted
     // by the routine above (it doesn't catch the second node position obviously)
     // so we add curvenodes _always_ to solve this problem easily :-)
-    apill_foreach(CurveNodeView* view, CurveNodeView*, m_nodeViews) {
+    apill_foreach(CurveNodeView*, view, m_nodeViews)
         qreal x = view->x();
         if ( (x > xstart) && x < (xstart + pixelcount)) {
             polygon <<  QPointF( x + view->boundingRect().width() / 2,
@@ -226,7 +226,7 @@ void CurveView::add_curvenode_view(CurveNode* node)
 
 void CurveView::remove_curvenode_view(CurveNode* node)
 {
-    apill_foreach(CurveNodeView* nodeview, CurveNodeView*, m_nodeViews) {
+    apill_foreach(CurveNodeView*, nodeview, m_nodeViews)
         if (nodeview->get_curve_node() == node) {
             m_nodeViews.removeAll(nodeview);
             if (nodeview == m_blinkingNode) {
@@ -556,7 +556,7 @@ TCommand * CurveView::remove_all_nodes()
 {
     CommandGroup* group = new CommandGroup(m_curve, tr("Clear Nodes"));
 
-    apill_foreach(CurveNode* node, CurveNode*, m_curve->get_nodes()) {
+    apill_foreach(CurveNode*, node, m_curve->get_nodes())
         group->add_command(m_curve->remove_node(node));
     }
 

@@ -42,26 +42,15 @@ public:
 	void set_process_callback(const ProcessCallback& call);
 	void set_transport_control_callback(const TransportControlCallback& call);
 	bool is_smaller_then(APILinkedListNode* ) {return false;}
-        int is_connected() const {return m_isConnected;}
-	void set_connected_to_audiodevice(int connected) {
-		m_isConnected = connected;
-		if (m_isConnected) {
-			m_disconnectFromAudioDevice = 0;
-		}
-	}
-        void disconnect_from_audiodevice() {m_disconnectFromAudioDevice = 1;}
-        int wants_to_be_disconnected_from_audiodevice() const {return m_disconnectFromAudioDevice;}
 
 	
 	ProcessCallback process;
 	TransportControlCallback transport_control;
 	
 	QString		m_name;
-        AudioBus*       masterOutBus{};
+    AudioBus*       masterOutBus{};
 
 private:
-        int     m_isConnected;
-        int     m_disconnectFromAudioDevice;
 
 };
 

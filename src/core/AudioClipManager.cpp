@@ -25,7 +25,6 @@
 #include "AudioClip.h"
 #include "ResourcesManager.h"
 #include "ProjectManager.h"
-#include "Track.h"
 #include "commands.h"
 #include "SnapList.h"
 #include "Utils.h"
@@ -36,7 +35,7 @@ AudioClipManager::AudioClipManager( Sheet* sheet )
 {
 	PENTERCONS;
 	m_sheet = sheet;
-	set_history_stack( m_sheet->get_history_stack() );
+    set_history_stack( m_sheet->get_history_stack() );
 	m_lastLocation = TTimeRef();
 }
 

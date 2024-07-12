@@ -115,7 +115,7 @@ void AudioChannel::process_monitoring(TVUMonitor* monitor)
                 monitor->process(peakValue);
         }
 
-        apill_foreach(TVUMonitor* internalmonitor, TVUMonitor*, m_monitors) {
+        apill_foreach(TVUMonitor*, internalmonitor, m_monitors)
                 internalmonitor->process(peakValue);
         }
 }
@@ -140,12 +140,12 @@ void AudioChannel::private_remove_monitor(TVUMonitor *monitor)
 
 void AudioChannel::add_monitor(TVUMonitor *monitor)
 {
-    tsar().thread_save_invoke_and_emit_signal(this, monitor, "private_add_monitor(TVUMonitor*)", "");
+    tsar().add_gui_event(this, monitor, "private_add_monitor(TVUMonitor*)", "vuMonitorAdded(TVUMonitor*)");
 }
 
 void AudioChannel::remove_monitor(TVUMonitor *monitor)
 {
-    tsar().thread_save_invoke_and_emit_signal(this, monitor, "private_remove_monitor(TVUMonitor*)", "");
+    tsar().add_gui_event(this, monitor, "private_remove_monitor(TVUMonitor*)", "vuMonitorAdded(TVUMonitor*)");
 }
 
 void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes)
@@ -153,7 +153,6 @@ void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframe
         memcpy (m_buffer.data(), buf, sizeof(audio_sample_t) * nframes);
         if (m_monitoring) {
                 process_monitoring();
-//                audiodevice().send_to_master_out(this, m_bufferSize);
         }
 }
 

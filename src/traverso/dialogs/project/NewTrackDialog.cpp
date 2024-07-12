@@ -54,7 +54,7 @@ NewTrackDialog::NewTrackDialog(QWidget * parent)
     connect(addTrackBusButton, SIGNAL(clicked()), this, SLOT(create_track()));
     connect(isBusTrack, SIGNAL(toggled(bool)), this, SLOT(update_buses_comboboxes()));
     connect(&m_timer, SIGNAL(timeout()), this, SLOT(reset_information_label()));
-    connect(trackName, SIGNAL(textChanged(const QString&)), SLOT(update_completer(const QString&)));
+    connect(trackName, SIGNAL(textChanged(QString)), SLOT(update_completer(QString)));
 }
 
 void NewTrackDialog::showEvent(QShowEvent */*event*/)

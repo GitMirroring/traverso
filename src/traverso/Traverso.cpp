@@ -119,10 +119,10 @@ Traverso::Traverso(int &argc, char **argv )
 Traverso::~Traverso()
 {
     PENTERDES;
+    audiodevice().shutdown();
     delete TMainWindow::instance();
     delete themer();
     config().save();
-    audiodevice().shutdown();
 }
 
 void Traverso::create_interface( )

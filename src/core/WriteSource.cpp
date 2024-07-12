@@ -31,13 +31,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Utils.h"
 #include "DiskIO.h"
 
+#include "gdither.h"
+
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
 
 WriteSource::WriteSource( TExportSpecification* specification )
-	: AudioSource(specification->exportdir, specification->name)
+    : AudioSource(specification->get_export_dir(), specification->get_export_file_name())
     , m_exportSpecification(specification)
 {
     m_diskio = nullptr;
@@ -79,7 +81,7 @@ int WriteSource::process (nframes_t nframes)
 	int cnt = 0;
 
 	// nframes MUST be greater then 0, this is a precondition !
-	Q_ASSERT(nframes);
+    Q_ASSERT(nframes > 0);
 
     if (m_channelCount == 0) {
         PERROR("Channel count is 0");
@@ -161,8 +163,8 @@ int WriteSource::process (nframes_t nframes)
             float_buffer = m_exportSpecification->get_render_buffer();
         }
 
-        if (m_output_data) {
-            memset (m_output_data, 0, m_sample_bytes * to_write * m_channelCount);
+        if (m_outputData) {
+            memset (m_outputData, 0, m_sampleBytes * to_write * m_channelCount);
         }
 
         switch (m_exportSpecification->get_data_format()) {
@@ -170,16 +172,16 @@ int WriteSource::process (nframes_t nframes)
         case SF_FORMAT_PCM_16:
         case SF_FORMAT_PCM_24:
             for (chn = 0; chn < m_channelCount; ++chn) {
-                gdither_runf (m_dither, chn, to_write, float_buffer, m_output_data);
+                gdither_runf (m_dither, chn, to_write, float_buffer, m_outputData);
             }
             /* and export to disk */
-            written += m_writer->write(m_output_data, to_write);
+            written += m_writer->write(m_outputData, to_write);
             break;
 
         case SF_FORMAT_PCM_32:
             for (chn = 0; chn < m_channelCount; ++chn) {
 
-                int *ob = static_cast<int *>(m_output_data);
+                int *ob = static_cast<int *>(m_outputData);
                 const double int_max = double(INT_MAX);
                 const double int_min = double(INT_MIN);
 
@@ -200,7 +202,7 @@ int WriteSource::process (nframes_t nframes)
                 }
             }
             /* and export to disk */
-            written += m_writer->write(m_output_data, to_write);
+            written += m_writer->write(m_outputData, to_write);
             break;
         // default is SF_FORMAT_FLOAT
         default:
@@ -227,35 +229,18 @@ int WriteSource::prepare_export()
 	
     Q_ASSERT(m_exportSpecification->is_valid() == 1);
 	
-	GDitherSize dither_size;
 
-	m_sampleRate = audiodevice().get_sample_rate();
+    m_sampleRate = m_exportSpecification->get_sample_rate();
     m_channelCount = m_exportSpecification->get_channel_count();
-	m_processPeaks = false;
+    m_sampleBytes = m_exportSpecification->get_sample_bytes();
+
+    m_processPeaks = false;
     m_diskio = nullptr;
     m_dataF2 = m_leftoverF = nullptr;
     m_dither = nullptr;
-    m_output_data = nullptr;
+    m_outputData = nullptr;
     m_src_state = nullptr;
 	
-
-    switch (m_exportSpecification->get_data_format()) {
-    case SF_FORMAT_PCM_S8:
-		dither_size = GDither8bit;
-		break;
-
-    case SF_FORMAT_PCM_16:
-		dither_size = GDither16bit;
-		break;
-
-    case SF_FORMAT_PCM_24:
-        dither_size = GDither32bit;
-		break;
-
-	default:
-		dither_size = GDitherFloat;
-		break;
-	}
 
 	if (m_writer) {
 		delete m_writer;
@@ -290,31 +275,12 @@ int WriteSource::prepare_export()
         m_out_samples_max = m_exportSpecification->get_block_size() * m_channelCount;
 	}
 
-    m_dither = gdither_new (m_exportSpecification->dither_type, m_channelCount, dither_size, m_exportSpecification->get_bit_depth());
+    m_dither = gdither_new (m_exportSpecification->get_dither_type(), m_channelCount, m_exportSpecification->get_dither_size(), m_exportSpecification->get_bit_depth());
 
-	/* allocate buffers where dithering and output will occur */
 
-    switch (m_exportSpecification->get_data_format()) {
-    case SF_FORMAT_PCM_S8:
-		m_sample_bytes = 1;
-		break;
-
-    case SF_FORMAT_PCM_16:
-		m_sample_bytes = 2;
-		break;
-
-    case SF_FORMAT_PCM_24:
-    case SF_FORMAT_PCM_32:
-		m_sample_bytes = 4;
-		break;
-
-	default:
-        m_sample_bytes = 0; // float format
-		break;
-	}
-
-	if (m_sample_bytes) {
-        m_output_data = static_cast<void*>(malloc (m_sample_bytes * m_out_samples_max));
+    /* allocate buffers where dithering and output will occur */
+    if (m_sampleBytes) {
+        m_outputData = static_cast<void*>(malloc (m_sampleBytes * m_out_samples_max));
 	}
 
 	return 0;
@@ -345,9 +311,9 @@ int WriteSource::finish_export( )
         m_dither = nullptr;
 	}
 
-	if (m_output_data) {
-		free (m_output_data);
-        m_output_data = nullptr;
+    if (m_outputData) {
+        free (m_outputData);
+        m_outputData = nullptr;
 	}
 
 	if (m_src_state) {
@@ -371,23 +337,24 @@ int WriteSource::finish_export( )
 	return 1;
 }
 
-int WriteSource::rb_write(AudioBus* bus, nframes_t nframes)
+nframes_t WriteSource::rb_write(AudioBus* bus, nframes_t nframes)
 {
-        if (bus->get_channel_count() != m_channelCount) {
-                // invalid bus configuration for this write source!
-                return 0;
-        }
+    Q_ASSERT(bus->get_channel_count() == m_channelCount);
 
-	int written = 0;
-	
-        for (int i= int(m_channelCount-1); i>=0; --i) {
-                AudioChannel* chan = bus->get_channel(uint(i));
-                if (chan) {
-                        written = m_buffers.at(i)->write(chan->get_buffer(nframes), nframes);
-                }
-	}
-	
-	return written;
+    nframes_t written = 0;
+
+    for (uint i=0; i < m_channelCount; ++i) {
+        AudioChannel* audioChannel = bus->get_channel(i);
+        Q_ASSERT(audioChannel);
+
+        written = m_buffers.at(i)->write(audioChannel->get_buffer(nframes), nframes);
+
+        if (written != nframes) {
+            PERROR(QString("WriteSource::rb_write, could not write all frames. to write %1, written %2").arg(nframes, written));
+        }
+    }
+
+    return written;
 }
 
 void WriteSource::set_process_peaks( bool process )

@@ -147,9 +147,9 @@ void PlayHead::enable_follow()
 void PlayHead::update_position()
 {
 	QPointF newPos(m_session->get_transport_location() / m_sv->timeref_scalefactor, 1);
-	qreal playBufferTimePositionCompensation = 0;
+    qreal playBufferTimePositionCompensation = 0;
 	if (m_session->is_transport_rolling()) {
-		playBufferTimePositionCompensation = audiodevice().get_buffer_latency() / m_sv->timeref_scalefactor;
+        playBufferTimePositionCompensation = audiodevice().get_buffer_latency() / m_sv->timeref_scalefactor;
 	}
 	qreal newXPos = newPos.x() - playBufferTimePositionCompensation;
 	if (newXPos < 0.0) {

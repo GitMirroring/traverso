@@ -29,6 +29,7 @@ $Id: Driver.cpp,v 1.6 2007/03/19 11:18:57 r_sijrier Exp $
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
+#include "qthread.h"
 
 
 TAudioDriver::TAudioDriver(AudioDevice* device)
@@ -55,11 +56,11 @@ int TAudioDriver::_run_cycle( )
 {
 	// * 1000, we want it in millisecond
 	// / 2, 2 bytes (16 bit)
-    m_device->transport_cycle_end (get_microseconds());
+    m_device->set_transport_cycle_end_time (TTimeRef::get_nanoseconds_since_epoch());
 
-    m_device->mili_sleep(23);
+    QThread::currentThread()->sleep(std::chrono::nanoseconds (1000 * 1000 * 23));
 
-    m_device->transport_cycle_start (get_microseconds());
+    m_device->set_transport_cycle_start_time (TTimeRef::get_nanoseconds_since_epoch());
 
     return m_device->run_cycle( m_framesPerCycle, 0);
 }
@@ -72,7 +73,7 @@ int TAudioDriver::_read( nframes_t  )
 int TAudioDriver::_write( nframes_t nframes )
 {
         foreach(AudioChannel* chan, m_playbackChannels) {
-                chan->silence_buffer(nframes);
+                // chan->silence_buffer(nframes);
         }
 
         return 1;

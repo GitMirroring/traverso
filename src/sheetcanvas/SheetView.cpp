@@ -108,7 +108,7 @@ SheetView::SheetView(SheetWidget* sheetwidget,
 
 	connect(m_session, SIGNAL(workingPosChanged()), m_workCursor, SLOT(update_position()));
 	connect(m_session, SIGNAL(transportStarted()), this, SLOT(follow_play_head()));
-	connect(m_session, SIGNAL(transportPosSet()), this, SLOT(transport_position_set()));
+	connect(m_session, SIGNAL(transportLocationChanged()), this, SLOT(transport_position_set()));
 	connect(m_session, SIGNAL(workingPosChanged()), this, SLOT(stop_follow_play_head()));
 	connect(m_session, SIGNAL(verticalScrollBarValueChanged()), this, SLOT(session_vertical_scrollbar_position_changed()));
 	connect(m_session, SIGNAL(horizontalScrollBarValueChanged()), this, SLOT(session_horizontal_scrollbar_position_changed()));
@@ -408,8 +408,8 @@ void SheetView::remove_track_view(Track* track)
 			scene()->removeItem(view);
 			m_audioTrackViews.removeAll(view);
 			m_busTrackViews.removeAll(view);
-			delete view;
-			delete panel;
+            delete view;
+            delete panel;
 			break;
 		}
 	}
@@ -600,13 +600,13 @@ void SheetView::transport_position_set()
 
 void SheetView::stop_follow_play_head()
 {
-	m_session->set_temp_follow_state(false);
+    m_session->set_temp_follow_state(false);
 }
 
 
 void SheetView::follow_play_head()
 {
-	m_session->set_temp_follow_state(true);
+    m_session->set_temp_follow_state(true);
 }
 
 
@@ -696,7 +696,7 @@ TCommand * SheetView::touch_play_cursor( )
 	} else {
         x = cpointer().mouse_viewport_x();
 	}
-	m_session->set_transport_pos(TTimeRef(qRound(m_clipsViewPort->mapToScene(x, 0).x()) * timeref_scalefactor));
+	m_session->set_transport_location(TTimeRef(qRound(m_clipsViewPort->mapToScene(x, 0).x()) * timeref_scalefactor));
 
 	return nullptr;
 }

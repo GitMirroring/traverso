@@ -137,7 +137,7 @@ SystemResources::SystemResources(QWidget * parent)
 	
 	update_status();
 	
-        m_updateTimer.start(700);
+        m_updateTimer.start(750);
 
         connect(&ied(), SIGNAL(collectedNumberChanged()), this, SLOT(collected_number_changed()));
 }
@@ -244,7 +244,7 @@ QSize DriverInfo::sizeHint() const
 	return QSize(m_driver->width(), SONG_TOOLBAR_HEIGHT);
 }
 
-void DriverInfo::enterEvent(QEvent * /*event*/)
+void DriverInfo::enterEvent(QEnterEvent * /*event*/)
 {
 //	m_driver->setFlat(false);
 }
@@ -272,40 +272,42 @@ HDDSpaceInfo::HDDSpaceInfo(QWidget* parent )
 	
 	setFrameStyle(QFrame::NoFrame);
 	
-	connect(&updateTimer, SIGNAL(timeout()), this, SLOT(update_status()));
+    connect(&updateTimer, SIGNAL(timeout()), this, SLOT(update_status()));
 	
 	update_status();
-	updateTimer.start(20000);
+    updateTimer.start(20000);
 }
 
 
 void HDDSpaceInfo::set_session(TSession* session)
 {
         m_session = session;
-	
+
         if (! m_session) {
-		updateTimer.start(20000);
-		return;
-	}
-	
-	update_status();
-	
-        connect(m_session, SIGNAL(transportStopped()), this, SLOT(sheet_stopped()));
-        connect(m_session, SIGNAL(transportStarted()), this, SLOT(sheet_started()));
+        updateTimer.start(20000);
+        return;
+    }
+
+    update_status();
+
+    connect(m_session, SIGNAL(transportStopped()), this, SLOT(sheet_stopped()), Qt::UniqueConnection);
+    connect(m_session, SIGNAL(transportStarted()), this, SLOT(sheet_started()), Qt::UniqueConnection);
 }
 
 void HDDSpaceInfo::sheet_started()
 {
-	updateTimer.start(5000);
-	m_button->setEnabled(true);
-	update_status();
+    updateTimer.start(5000);
+    m_button->setEnabled(true);
+    update_status();
 }
 
 void HDDSpaceInfo::sheet_stopped()
 {
-	updateTimer.start(60000);
-	m_button->setEnabled(false);
-	update_status();
+    printf("HDDSpaceInfo::sheet_stopped call time: %ld\n", TTimeRef::get_microseconds_since_epoch());
+
+    updateTimer.start(60000);
+    m_button->setEnabled(false);
+    update_status();
 }
 
 
@@ -356,17 +358,12 @@ void HDDSpaceInfo::update_status( )
 	
 	if (recordingSheets.size()) {
 		int recChannelCount = 0;
-		foreach(Sheet* sheet, recordingSheets) {
-                        foreach(AudioTrack* track, sheet->get_audio_tracks()) {
-				if (track->armed()) {
-                                        // FIXME !!!!!!!
-                                        recChannelCount = 2;
-//					recChannelCount += track->capture_left_channel() ? 1 : 0;
-//					recChannelCount += track->capture_right_channel() ? 1 : 0;
-				}
-			}
-		}
-		
+        foreach(Sheet* sheet, recordingSheets) {
+            foreach(AudioTrack* track, sheet->get_armed_tracks()) {
+                recChannelCount += track->get_channel_count();
+            }
+        }
+
 		uint rate = audiodevice().get_sample_rate();
 		double availabletime = (double(TTimeRef::UNIVERSAL_SAMPLE_RATE) / rate) * space * 1048576.0;
 		availabletime /= double(sizeof(float) * recChannelCount);
@@ -537,8 +534,8 @@ void SystemValueBar::paintEvent(QPaintEvent* )
 		painter.drawText(0, 0, width(), height(), Qt::AlignCenter, 
 				m_text + " " + QString::number((int)m_current).append("%"));
 	} else {
-		painter.drawText(0, 0, width(), height(), Qt::AlignCenter, 
-                 m_text + " " + QString::number(double(m_current), 'f', 1).append("%"));
+        painter.drawText(0, 0, width(), height(), Qt::AlignCenter,
+                 m_text + " " + QString::number(double(m_current), 'f', 2).append("%"));
 	}
 }
 

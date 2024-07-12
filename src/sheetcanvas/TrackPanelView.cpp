@@ -223,17 +223,17 @@ AudioTrackPanelView::AudioTrackPanelView(AudioTrackView* trackView)
 {
 	PENTERCONS;
 
-        m_tv = trackView;
-	m_recLed = new TrackPanelLed(this, m_track, "R", "toggle_arm");
-        m_recLed->set_bounding_rect(QRectF(0, 0, LED_WIDTH, LED_HEIGHT));
+    m_tv = trackView;
+    m_recLed = new TrackPanelLed(this, m_track, "R", "toggle_arm");
+    m_recLed->set_bounding_rect(QRectF(0, 0, LED_WIDTH, LED_HEIGHT));
 
     m_ledViews.insert(4, m_recLed);
 
-        if (m_tv->get_track()->armed()) {
-                m_recLed->ison_changed(true);
-        }
+    if (m_tv->get_track()->armed()) {
+        m_recLed->ison_changed(true);
+    }
 
-        connect(m_tv->get_track(), SIGNAL(armedChanged(bool)), m_recLed, SLOT(ison_changed(bool)));
+    connect(m_tv->get_track(), SIGNAL(armedChanged(bool)), m_recLed, SLOT(ison_changed(bool)));
 }
 
 AudioTrackPanelView::~AudioTrackPanelView( )
@@ -244,7 +244,7 @@ AudioTrackPanelView::~AudioTrackPanelView( )
 
 void AudioTrackPanelView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
-        TrackPanelView::paint(painter, option, widget);
+    TrackPanelView::paint(painter, option, widget);
 }
 
 void AudioTrackPanelView::layout_panel_items()
@@ -291,7 +291,7 @@ TTrackLanePanelView::TTrackLanePanelView(TTrackLaneView* laneView)
 {
 	PENTERCONS;
 	m_laneView = laneView;
-	m_ignoreContext = true;
+    set_ignore_context(true);
 	setZValue(laneView->zValue() + 200);
 }
 

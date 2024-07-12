@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TEDITCURSOR_H
 
 #include "ViewItem.h"
-#include "AbstractViewPort.h"
 
 #include <QTimer>
 
@@ -36,7 +35,7 @@ class TCanvasCursor : public ViewItem
     Q_PROPERTY(QPointF position READ get_pos WRITE set_pos)
 
 public:
-    TCanvasCursor(SheetView*);
+    TCanvasCursor(SheetView* );
     ~TCanvasCursor();
 
     enum {

@@ -1193,7 +1193,7 @@ again:
             nfds++;
         }
 
-        poll_enter = get_microseconds ();
+        poll_enter = TTimeRef::get_nanoseconds_since_epoch ();
 
         if (poll_enter > poll_next) {
             /*
@@ -1204,7 +1204,7 @@ again:
             poll_next = 0;
         }
 
-        m_device->transport_cycle_end(poll_enter);
+        m_device->set_transport_cycle_end_time(poll_enter);
 
         poll_result = poll (pfd, nfds, poll_timeout);
         if (poll_result < 0) {
@@ -1227,7 +1227,7 @@ again:
 
         }
 
-        poll_ret = get_microseconds ();
+        poll_ret = TTimeRef::get_nanoseconds_since_epoch ();
 
         if (extra_fd < 0) {
             if (poll_next && poll_ret > poll_next) {
@@ -1235,7 +1235,7 @@ again:
             }
             poll_last = poll_ret;
             poll_next = poll_ret + m_periodUSecs;
-            m_device->transport_cycle_start (poll_ret);
+            m_device->set_transport_cycle_start_time (poll_ret);
         }
 
 #ifdef DEBUG_WAKEUP

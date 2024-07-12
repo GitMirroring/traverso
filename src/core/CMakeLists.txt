@@ -13,7 +13,6 @@ ${CMAKE_SOURCE_DIR}/src/common/Utils.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Tsar.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Mixer.cpp
-${CMAKE_SOURCE_DIR}/src/common/RingBuffer.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Resampler.cpp
 ${CMAKE_SOURCE_DIR}/src/common/TTimeRef.cpp
 ${CMAKE_SOURCE_DIR}/src/common/TTransportControl.cpp

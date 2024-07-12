@@ -212,7 +212,7 @@ void Peak::start_peak_loading()
 int Peak::calculate_peaks(
         int chan,
         float ** buffer,
-        TTimeRef startlocation,
+        const TTimeRef &startlocation,
         int peakDataCount,
         qreal framesPerPeak)
 {
@@ -246,7 +246,7 @@ int Peak::calculate_peaks(
         }
 
 
-        nframes_t startPos = startlocation.to_frame(44100);
+        nframes_t startPos = TTimeRef::to_frame(startlocation, 44100);
 
         int index = cache_index_lut()->value(nearestpow2, -1);
         if(index >= 0) {
@@ -652,7 +652,7 @@ out:
 }
 
 
-audio_sample_t Peak::get_max_amplitude(TTimeRef startlocation, TTimeRef endlocation)
+audio_sample_t Peak::get_max_amplitude(const TTimeRef &startlocation, const TTimeRef &endlocation)
 {
     foreach(ChannelData* data, m_channelData) {
         if (!data->file.isOpen() || !m_peaksAvailable) {
@@ -661,8 +661,8 @@ audio_sample_t Peak::get_max_amplitude(TTimeRef startlocation, TTimeRef endlocat
         }
     }
     int rate = m_source->get_file_rate();
-    nframes_t startframe = startlocation.to_frame(rate);
-    nframes_t endframe = endlocation.to_frame(rate);
+    nframes_t startframe = TTimeRef::to_frame(startlocation, rate);
+    nframes_t endframe = TTimeRef::to_frame(endlocation, rate);
     int startpos = startframe / NORMALIZE_CHUNK_SIZE;
     uint count = (endframe / NORMALIZE_CHUNK_SIZE) - startpos;
 

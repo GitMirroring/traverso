@@ -31,7 +31,7 @@ class TSession;
 class Marker;
 class LocationItem;
 class TCommand;
-struct TExportSpecification;
+class TExportSpecification;
 
 class TTimeLineRuler : public ContextItem
 {

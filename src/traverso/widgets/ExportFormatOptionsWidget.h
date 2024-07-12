@@ -26,7 +26,7 @@
 
 #include <QWidget>
 
-struct TExportSpecification;
+class TExportSpecification;
 
 class ExportFormatOptionsWidget : public QWidget, protected Ui::ExportFormatOptionsWidget
 {

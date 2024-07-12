@@ -83,8 +83,8 @@ public:
         void remove_client(TAudioDeviceClient* client);
 	
         void transport_start(TAudioDeviceClient* client);
-        void transport_stop(TAudioDeviceClient* client, TTimeRef location);
-        int transport_seek_to(TAudioDeviceClient* client, TTimeRef location);
+        void transport_stop(TAudioDeviceClient* client, const TTimeRef& location);
+        int transport_seek_to(TAudioDeviceClient* client, const TTimeRef &location);
 
         TAudioDeviceSetup get_device_setup() {return m_setup;}
 
@@ -93,9 +93,6 @@ public:
         AudioChannel* get_capture_channel_by_name(const QString& name);
 
         void delete_channel(AudioChannel* channel);
-
-        void set_master_out_bus(AudioBus* bus);
-        void send_to_master_out(AudioChannel* channel, nframes_t nframes);
 
     QStringList get_capture_channel_names() const;
 	QStringList get_playback_channel_names() const;
@@ -156,7 +153,6 @@ private:
 
         TAudioDeviceSetup        m_setup;
         TAudioDeviceSetup        m_fallBackSetup;
-        AudioBus*               m_masterOutBus;
         TAudioDriver* 		m_driver;
         AudioDeviceThread* 	m_audioThread;
         APILinkedList		m_clients;
@@ -183,25 +179,23 @@ private:
 	QString			m_ditherShape;
 	QHash<QString, QVariant> m_driverProperties;
 
-	int run_one_cycle(nframes_t nframes, float delayed_usecs);
-	int create_driver(const QString& driverType, bool capture, bool playback, const QString& cardDevice);
+    int run_cycle(nframes_t nframes, float delayed_usecs);
+    int run_one_cycle(nframes_t nframes, float delayed_usecs);
+
+    int create_driver(const QString& driverType, bool capture, bool playback, const QString& cardDevice);
     int transport_control(TTransportControl* state);
-
-    void post_run_cycle();
-
-	int run_cycle(nframes_t nframes, float delayed_usecs);
 	
 	void set_buffer_size(uint size);
 	void set_sample_rate(uint rate);
 	void set_bit_depth(uint depth);
 	void delay(float delay);
 
-	void transport_cycle_start(trav_time_t time)
+    void set_transport_cycle_start_time(trav_time_t time)
 	{
 		m_cycleStartTime = time;
 	}
 
-	void transport_cycle_end(trav_time_t time)
+    void set_transport_cycle_end_time(trav_time_t time)
 	{
 		trav_time_t runcycleTime = time - m_cycleStartTime;
 		m_cpuTime->write(&runcycleTime, 1);
@@ -209,7 +203,6 @@ private:
 
         TAudioDriver* get_driver() const {return m_driver;}
 
-	void mili_sleep(int msec);
 	void xrun();
 	
     size_t run_audio_thread() const {return m_runAudioThread;}
@@ -247,20 +240,22 @@ signals:
 	 *        This signal will be emited after succesfull Client removal from within the GUI Thread!
 	 * @param  The Client \a client which as been removed from the AudioDevice
 	 */
-        void clientRemoved(TAudioDeviceClient*);
+    void audioDeviceClientRemoved(TAudioDeviceClient*);
+    void audioDeviceClientAdded(TAudioDeviceClient*);
 	
 	void xrunStormDetected();
 	
 	void message(QString, int);
-        void driverSetupMessage(QString, int);
+    void driverSetupMessage(QString, int);
+    void finishedOneProcessCycle();
 
 private slots:
-        void private_add_client(TAudioDeviceClient* client);
-        void private_remove_client(TAudioDeviceClient* client);
-	void audiothread_finished();
-	void switch_to_null_driver();
-	void reset_xrun_counter() {m_xrunCount = 0;}
-	void check_jack_shutdown();
+    void private_add_client(TAudioDeviceClient* client);
+    void private_remove_client(TAudioDeviceClient* client);
+    void audiothread_finished();
+    void switch_to_null_driver();
+    void reset_xrun_counter() {m_xrunCount = 0;}
+    void check_jack_shutdown();
 };
 
 

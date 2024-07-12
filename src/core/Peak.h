@@ -116,13 +116,13 @@ public:
 	void process(uint channel, const audio_sample_t* buffer, nframes_t frames);
     int prepare_processing(uint rate);
 	int finish_processing();
-	int calculate_peaks(int chan, float** buffer, TTimeRef startlocation, int peakDataCount, qreal framesPerPeak);
+    int calculate_peaks(int chan, float** buffer, const TTimeRef &startlocation, int peakDataCount, qreal framesPerPeak);
 
 	void close();
 	
 	void start_peak_loading();
 
-	audio_sample_t get_max_amplitude(TTimeRef startlocation, TTimeRef endlocation);
+    audio_sample_t get_max_amplitude(const TTimeRef &startlocation, const TTimeRef &endlocation);
 	
 	static QHash<int, int>* cache_index_lut();
 	static int max_zoom_value();

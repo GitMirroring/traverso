@@ -238,7 +238,7 @@ void TAudioBusVUMonitorWidget::show_menu()
     m_menu->exec(QCursor::pos());
 }
 
-void TAudioBusVUMonitorWidget::enterEvent(QEvent *)
+void TAudioBusVUMonitorWidget::enterEvent(QEnterEvent *)
 {
     setFocus();
 }

@@ -28,7 +28,7 @@
 PositionIndicator::PositionIndicator(ViewItem* parentView)
     : ViewItem(parentView, nullptr)
 {
-    m_ignoreContext = true;
+    set_ignore_context(true);
 	setZValue(200);
 }
 

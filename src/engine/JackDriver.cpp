@@ -76,7 +76,7 @@ int JackDriver::_read( nframes_t nframes )
 
                 if (pcpair->unregister) {
                         m_inputs.removeAll(pcpair);
-                        tsar().rt_thread_emit(this, pcpair, "pcpairRemoved(PortChannelPair*)");
+                        tsar().add_rt_event(this, pcpair, "pcpairRemoved(PortChannelPair*)");
                         continue;
                 }
 
@@ -92,7 +92,7 @@ int JackDriver::_write( nframes_t nframes )
 
                 if (pcpair->unregister) {
                         m_outputs.removeAll(pcpair);
-                        tsar().rt_thread_emit(this, pcpair, "pcpairRemoved(PortChannelPair*)");
+                        tsar().add_rt_event(this, pcpair, "pcpairRemoved(PortChannelPair*)");
                         continue;
                 }
 
@@ -151,7 +151,7 @@ void JackDriver::add_channel(AudioChannel* channel)
 
 
         if (is_running()) {
-            tsar().thread_save_invoke_and_emit_signal(this, pcpair, "private_add_port_channel_pair(PortChannelPair*)", "");
+            tsar().add_gui_event(this, pcpair, "private_add_port_channel_pair(PortChannelPair*)", "");
         } else {
             private_add_port_channel_pair(pcpair);
         }

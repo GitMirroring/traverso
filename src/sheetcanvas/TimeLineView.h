@@ -24,8 +24,6 @@
 
 #include "ViewItem.h"
 
-#include <QTimer>
-
 class SheetView;
 class TTimeLineRuler;
 class MarkerView;

@@ -47,7 +47,6 @@ Curve::Curve(ContextItem* parent)
 	: ContextItem(parent)
 {
 	PENTERCONS;
-	m_id = create_id();
 	init();
 }
 
@@ -88,7 +87,7 @@ QDomNode Curve::get_state(QDomDocument doc, const QString& name)
 	
 	QStringList nodesList;
 	
-    apill_foreach(CurveNode* cn, CurveNode*, m_nodes) {
+    apill_foreach(CurveNode*, cn, m_nodes)
         nodesList << QString::number(cn->when, 'g', 24).append(",").append(QString::number(cn->value));
 	}
 	
@@ -98,7 +97,7 @@ QDomNode Curve::get_state(QDomDocument doc, const QString& name)
 	
 	domNode.setAttribute("nodes",  nodesList.join(";"));
 	domNode.setAttribute("defaulvalue",  m_defaultValue);
-	domNode.setAttribute("id",  m_id);
+    domNode.setAttribute("id",  get_id());
 	
 	
 	return domNode;
@@ -111,10 +110,7 @@ int Curve::set_state( const QDomNode & node )
 	
 	QStringList nodesList = e.attribute( "nodes", "" ).split(";");
 	m_defaultValue = e.attribute( "defaulvalue", "1.0" ).toDouble();
-	m_id = e.attribute("id", "0" ).toLongLong();
-	if (m_id == 0) {
-		m_id = create_id();
-	}
+    set_id(e.attribute("id", "0" ).toLongLong());
 	
 	for (int i=0; i<nodesList.size(); ++i) {
 		QStringList whenValueList = nodesList.at(i).split(",");
@@ -604,8 +600,8 @@ void Curve::set_range(double when)
 void Curve::x_scale(double factor)
 {
 	Q_ASSERT(factor != 0.0);
-	
-    apill_foreach(CurveNode* node, CurveNode*, m_nodes) {
+
+    apill_foreach(CurveNode*, node, m_nodes)
         node->set_when(node->when * factor);
 	}
 }
@@ -635,8 +631,8 @@ void Curve::set_changed( )
 TCommand* Curve::add_node(CurveNode* node, bool historable)
 {
 	PENTER2;
-	
-    apill_foreach(CurveNode* cn, CurveNode*, m_nodes) {
+
+    apill_foreach(CurveNode*, cn, m_nodes)
         if (qFuzzyCompare(node->when, cn->when) && qFuzzyCompare(node->value, cn->value)) {
 			info().warning(tr("There is allready a node at this exact position, not adding a new node"));
 			delete node;
@@ -645,13 +641,13 @@ TCommand* Curve::add_node(CurveNode* node, bool historable)
 		}
 	}
 
-	
-	AddRemove* cmd;
+
+    AddRemove* cmd;
         cmd = new AddRemove(this, node, historable, m_session,
 			"private_add_node(CurveNode*)", "nodeAdded(CurveNode*)",
 			"private_remove_node(CurveNode*)", "nodeRemoved(CurveNode*)", 
 			tr("Add CurveNode"));
-	
+
 	return cmd;
 }
 
@@ -684,7 +680,7 @@ TCommand* Curve::remove_node(CurveNode* node, bool historable)
 
 void Curve::private_add_node( CurveNode * node )
 {
-	m_nodes.add_and_sort(node);
+    m_nodes.add_and_sort(node);
 	set_changed();
 }
 
@@ -696,7 +692,7 @@ void Curve::private_remove_node( CurveNode * node )
 
 void Curve::set_sheet(TSession * sheet)
 {
-        m_session = sheet;
-        set_history_stack(m_session->get_history_stack());
+    m_session = sheet;
+    set_history_stack(m_session->get_history_stack());
 }
 

@@ -96,12 +96,12 @@ void AudioFileCopyConvert::process_task(CopyTask task)
 
     task.spec->set_export_start_location(TTimeRef());
     task.spec->set_export_end_location(task.readsource->get_length());
-	
-	task.spec->exportdir = task.dir;
+
+    task.spec->set_export_dir(task.dir);
 	task.spec->extraFormat["filetype"] = "wav";
     task.spec->set_channel_count(task.readsource->get_channel_count());
     task.spec->set_sample_rate(task.readsource->get_sample_rate());
-	task.spec->name = task.outFileName;
+    task.spec->set_export_file_name(task.outFileName);
 	
 	WriteSource* writesource = new WriteSource(task.spec);
 	bool failedToPrepareWritesource = false;
@@ -148,7 +148,7 @@ void AudioFileCopyConvert::process_task(CopyTask task)
         // The end of the file will be most likely not a multiple of block size.
         writesource->process(task.spec->get_block_size());
 		
-        task.spec->add_exported_frames(nframes);
+        task.spec->add_exported_range(TTimeRef(nframes, task.readsource->get_sample_rate()));
 
     } while (task.spec->get_remaining_export_frames() > 0);
 

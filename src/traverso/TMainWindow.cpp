@@ -76,6 +76,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "../sheetcanvas/SheetWidget.h"
 
+#include "qundogroup.h"
 #include "ui_QuickStart.h"
 
 #include "widgets/TAudioBusVUMonitorWidget.h"
@@ -544,7 +545,7 @@ void TMainWindow::show_session(TSession* session)
 	m_centerAreaWidget->setCurrentWidget(m_currentSheetWidget);
 
 	if (session) {
-		pm().get_undogroup()->setActiveStack(session->get_history_stack());
+        ContextItem::get_undogroup()->setActiveStack(session->get_history_stack());
         // Update scrollbars in order to reset the snapList's range
         m_currentSheetWidget->get_sheetview()->update_scrollbars();
 //                setWindowTitle(m_project->get_title() + ": Sheet " + session->get_name() + " - Traverso");
@@ -824,14 +825,14 @@ void TMainWindow::create_menus( )
 	action->setIcon(QIcon(":/undo"));
 	action->setShortcuts(QKeySequence::Undo);
 	m_editToolBar->addAction(action);
-    connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(undo()));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(undo()));
 
 	action = menu->addAction(tr("Redo"));
 	m_projectMenuToolbarActions.append(action);
 	action->setIcon(QIcon(":/redo"));
 	action->setShortcuts(QKeySequence::Redo);
 	m_editToolBar->addAction(action);
-    connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(redo()));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(redo()));
 
 	menu->addSeparator();
 	m_editToolBar->addSeparator();
@@ -1891,3 +1892,16 @@ void TMainWindow::reset_vu_levels_peak_hold_value()
 		m_vuLevels.at(i)->reset_peak_hold_value();
 	}
 }
+
+TCommand* TMainWindow::undo()
+{
+    ContextItem::get_undogroup()->undo();
+    return 0;
+}
+
+TCommand* TMainWindow::redo()
+{
+    ContextItem::get_undogroup()->redo();
+    return 0;
+}
+

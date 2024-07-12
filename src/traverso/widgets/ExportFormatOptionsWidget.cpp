@@ -323,11 +323,6 @@ void ExportFormatOptionsWidget::get_format_options(TExportSpecification * spec)
     spec->set_sample_rate(sampleRateComboBox->itemData(sampleRateComboBox->currentIndex()).toUInt());
     spec->set_sample_rate_conversion_quality(resampleQualityComboBox->itemData(resampleQualityComboBox->currentIndex()).toInt());
 
-
-	spec->normalize = normalizeCheckBox->isChecked();
-	
 	//TODO Make a ComboBox for this one too!
-	spec->dither_type = GDitherTri;
-
-
+    spec->set_dither_type(GDitherTri);
 }

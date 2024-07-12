@@ -63,7 +63,6 @@ public :
 
     void set_valid(bool valid);
     void set_do_not_push_to_historystack();
-    int push_to_history_stack();
     bool canvas_cursor_follows_mouse_cursor() const {return m_canvasCursorFollowsMouseCursor;}
 
     static void process_command(TCommand* cmd);
@@ -75,6 +74,9 @@ protected:
 
 private:
     QUndoStack* m_historyStack;
+
+    friend class TInputEventDispatcher;
+    int push_to_history_stack();
 };
 
 

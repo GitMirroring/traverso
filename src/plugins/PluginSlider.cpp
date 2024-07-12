@@ -118,7 +118,7 @@ void PluginSlider::leaveEvent( QEvent * )
 	update();
 }
 
-void PluginSlider::enterEvent( QEvent * )
+void PluginSlider::enterEvent(QEnterEvent * )
 {
 	highlight = true;
 	update();

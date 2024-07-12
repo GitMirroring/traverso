@@ -291,7 +291,7 @@ TCommand* TimeLineView::playhead_to_marker()
         update_softselected_marker(cpointer().on_first_input_event_scene_pos());
 
 	if (m_blinkingMarker) {
-		m_sv->get_sheet()->set_transport_pos(m_blinkingMarker->get_marker()->get_when());
+		m_sv->get_sheet()->set_transport_location(m_blinkingMarker->get_marker()->get_when());
         return nullptr;
 	}
 

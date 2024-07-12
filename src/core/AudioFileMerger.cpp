@@ -82,12 +82,12 @@ void AudioFileMerger::process_task(MergeTask task)
     TExportSpecification spec;
     spec.set_export_start_location(TTimeRef());
     spec.set_export_end_location(task.readsource0->get_length());
-	
-    spec.exportdir = task.dir;
+
+    spec.set_export_dir(task.dir);
     spec.extraFormat["filetype"] = "wav";
     spec.set_channel_count(2);
     spec.set_sample_rate(task.readsource0->get_sample_rate());
-    spec.name = task.outFileName;
+    spec.set_export_file_name(task.outFileName);
 	
     WriteSource writesource(&spec);
     if (writesource.prepare_export() == -1) {
@@ -132,7 +132,8 @@ void AudioFileMerger::process_task(MergeTask task)
         // The end of the file will be most likely not a multiple of block size.
         writesource.process(spec.get_block_size());
 		
-        spec.add_exported_frames(nframes);
+        spec.add_exported_range(TTimeRef(nframes, task.readsource0->get_sample_rate()));
+
     } while (spec.get_remaining_export_frames() > 0);
 
 

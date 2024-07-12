@@ -695,15 +695,15 @@ void TInputEventDispatcher::process_hold_modifier_keys()
         if (!hmk->wasExecuted) {
             hmk->wasExecuted = true;
             dispatch_shortcut(hmk->shortcut);
-            hmk->lastTimeExecuted = get_microseconds() + hmk->shortcut->autorepeatStartDelay * 1000;
+            hmk->lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch() + hmk->shortcut->autorepeatStartDelay;
             continue;
         }
 
-        trav_time_t timeDiff = get_microseconds() - hmk->lastTimeExecuted;
+        trav_time_t timeDiff = (TTimeRef::get_milliseconds_since_epoch() - hmk->lastTimeExecuted);
         // if timeDiff is very close (-2 ms) to it's interval value, execute it still
         // else the next interval might be too long between the previous one.
-        if ((timeDiff + 2 * 1000) >= hmk->shortcut->autorepeatInterval * 1000) {
-            hmk->lastTimeExecuted = get_microseconds();
+        if ((timeDiff + 2) >= hmk->shortcut->autorepeatInterval) {
+            hmk->lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch();
             dispatch_shortcut(hmk->shortcut);
         }
     }

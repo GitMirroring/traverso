@@ -30,7 +30,7 @@
 
 class Project;
 class Sheet;
-struct TExportSpecification;
+class TExportSpecification;
 class QProcess;
 
 class CDWritingDialog : public QDialog, protected Ui::CDWritingDialog

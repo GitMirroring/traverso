@@ -91,24 +91,23 @@ class DriverInfo : public InfoWidget
         Q_OBJECT
 
 public:
-        DriverInfo(QWidget* parent = 0);
-        ~DriverInfo() {}
+    DriverInfo(QWidget* parent = 0);
+    ~DriverInfo() {}
 
 protected:
 	QSize sizeHint () const;
-	void enterEvent ( QEvent * event );
+    void enterEvent ( QEnterEvent * event );
 	void leaveEvent ( QEvent * event );
 
 private:
-        QTimer		updateTimer;
-	QPushButton*	m_driver;
-        int		xrunCount;
-	
-	void draw_information();
+    QPushButton*	m_driver;
+    int		xrunCount;
+
+    void draw_information();
 
 private slots:
-        void update_driver_info();
-        void update_xrun_info();
+    void update_driver_info();
+    void update_xrun_info();
 };
 
 
@@ -123,16 +122,16 @@ protected:
 	QSize sizeHint() const;	
 	
 private:
-	QTimer	updateTimer;
-	QPushButton* m_button;
+    QTimer	updateTimer;
+    QPushButton* m_button;
 
 private slots:
         void set_session(TSession* );
 
 private slots:
 	void update_status();
-	void sheet_started();
-	void sheet_stopped();
+    void sheet_started();
+    void sheet_stopped();
 };
 
 

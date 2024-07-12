@@ -24,7 +24,6 @@
 
 #include <QGraphicsView>
 #include <QGraphicsItem>
-#include "ContextItem.h"
 #include "AbstractViewPort.h"
 
 class ViewItem;

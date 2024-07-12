@@ -49,7 +49,6 @@ public:
 
 	qreal get_hzoom() const;
 	QPoint get_scrollbar_xy();
-	int get_mode() const {return m_mode;}
     bool is_transport_rolling() const;
 	TTimeRef get_work_location() const;
 	virtual TTimeRef get_last_location() const;
@@ -91,11 +90,6 @@ public:
 	audio_sample_t* 	mixdown{};
 	audio_sample_t*		gainbuffer{};
 
-	enum Mode {
-		EDIT = 1,
-		EFFECTS = 2
-	};
-
 protected:
 	TSession*               m_parentSession;
 	QList<TSession*>        m_childSessions;
@@ -107,22 +101,21 @@ protected:
 	TBusTrack*              m_masterOutBusTrack{};
 	QHash<qint64, int>      m_trackHeights;
 
-	SnapList*	m_snaplist;
-	LocationItem*	m_workSnap;
-	TTimeLineRuler*	m_timeline;
-	QString         m_name;
+    SnapList*           m_snaplist;
+    LocationItem*       m_workSnap;
+    TTimeLineRuler*     m_timeline;
+    QString             m_name;
 
-	int		m_mode{};
-	int		m_sbx{};
-	int		m_sby{};
-	qreal		m_hzoom{};
-	bool 		m_isSnapOn{};
-	bool            m_isProjectSession{};
+    int                 m_scrollBarXValue{};
+    int                 m_scrollBarYValue{};
+    qreal               m_hzoom{};
+    bool                m_isSnapOn{};
+    bool                m_isProjectSession{};
 
-	volatile size_t		m_transport{};
-	TTimeRef                 m_transportLocation;
-	TTimeRef                 m_workLocation;
-	TTimeRef                 m_newTransportLocation;
+    std::atomic<bool>   m_transportRolling;
+    TTimeRef            m_transportLocation;
+    TTimeRef            m_workLocation;
+    TTimeRef            m_newTransportLocation;
 
 private:
 	friend class TTimeLineRuler;
@@ -132,7 +125,7 @@ private:
 
 public slots:
 	void set_temp_follow_state(bool state);
-	virtual void set_transport_pos(TTimeRef location);
+	virtual void set_transport_location(TTimeRef location);
 
 	TCommand* toggle_solo();
 	TCommand* toggle_mute();
@@ -159,7 +152,7 @@ signals:
 	void transportStarted();
 	void transportStopped();
 	void workingPosChanged();
-	void transportPosSet();
+    void transportLocationChanged();
 	void horizontalScrollBarValueChanged();
 	void verticalScrollBarValueChanged();
 	void propertyChanged();

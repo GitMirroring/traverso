@@ -42,7 +42,7 @@ public:
     ~TAudioBusVUMonitorWidget();
 
 protected:
-	void enterEvent ( QEvent * );
+    void enterEvent ( QEnterEvent * );
 	void mousePressEvent ( QMouseEvent * e );
 	void keyPressEvent ( QKeyEvent* e);
 	QSize sizeHint () const;

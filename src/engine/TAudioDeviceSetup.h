@@ -16,10 +16,10 @@ public:
 
     TAudioDeviceSetup();
 
-    QList<TAudioBusConfiguration>        busConfigs;
-    QList<TAudioChannelConfiguration>    channelConfigs;
-    QList<AudioChannel*>    jackChannels;
-    uint             rate;
+    QList<TAudioBusConfiguration>       busConfigs;
+    QList<TAudioChannelConfiguration>   channelConfigs;
+    QList<AudioChannel*>                jackChannels;
+    uint            rate;
     nframes_t       bufferSize;
     QString         driverType;
     bool            capture;

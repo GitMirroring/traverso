@@ -64,7 +64,7 @@ public:
 	 * @return 
 	 */
     audio_sample_t* get_buffer(uint channel, nframes_t nframes) {
-        return m_channels.at(int(channel))->get_buffer(nframes);
+        return m_channels.at(channel)->get_buffer(nframes);
     }
 
     void set_monitoring(bool monitor);
@@ -130,7 +130,7 @@ inline AudioChannel * AudioBus::get_channel( uint channelNumber )
     if (channelNumber < get_channel_count()) {
         return m_channels.at(channelNumber);
     }
-    return 0;
+    return nullptr;
 }
 
 

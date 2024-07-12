@@ -30,9 +30,6 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 #include <QVarLengthArray>
 #include "APILinkedList.h"
 
-class RingBuffer;
-class AudioDevice;
-
 class AudioChannel : public QObject
 {
     Q_OBJECT
@@ -95,6 +92,10 @@ private:
 private slots:
     void private_add_monitor(TVUMonitor* monitor);
     void private_remove_monitor(TVUMonitor* monitor);
+
+signals:
+    void vuMonitorAdded(TVUMonitor*);
+    void vuMonitorRemoved(TVUMonitor*);
 };
 
 #endif

@@ -79,7 +79,8 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
         connect(driverCombo, SIGNAL(currentTextChanged(QString)), this, SLOT(driver_combobox_index_changed(QString)));
     connect(restartDriverButton, SIGNAL(clicked()), this, SLOT(restart_driver_button_clicked()));
         connect(rateComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(rate_combobox_index_changed(int)));
-        connect(&audiodevice(), SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
+    connect(&audiodevice(), SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
+        connect(&audiodevice(), SIGNAL(message(QString,int)), this, SLOT(driver_setup_message(QString,int)));
 
 #if defined (PORTAUDIO_SUPPORT)
         connect(m_portaudiodrivers->driverCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(portaudio_host_api_combobox_index_changed(int)));
@@ -425,14 +426,14 @@ void AudioDriverConfigPage::driver_setup_message(QString message, int severity)
                 driverInformationTextEdit->show();
         }
 
-        if (severity == AudioDevice::DRIVER_SETUP_FAILURE) {
-                m_driverSetupMessages.append("<p class=\"failure\">" + message + "</p>");
-        } else if (severity == AudioDevice::DRIVER_SETUP_WARNING) {
-                m_driverSetupMessages.append("<p class=\"warning\">" + message + "</p>");
-        } else if (severity == AudioDevice::DRIVER_SETUP_SUCCESS) {
-                m_driverSetupMessages.append("<p class=\"success\">" + message + "</p>");
+        if (severity == AudioDevice::DRIVER_SETUP_FAILURE || severity == AudioDevice::CRITICAL) {
+                m_driverSetupMessages.prepend("<p class=\"failure\">" + message + "</p>");
+        } else if (severity == AudioDevice::DRIVER_SETUP_WARNING || severity == AudioDevice::WARNING) {
+                m_driverSetupMessages.prepend("<p class=\"warning\">" + message + "</p>");
+        } else if (severity == AudioDevice::DRIVER_SETUP_SUCCESS || severity == AudioDevice::INFO) {
+                m_driverSetupMessages.prepend("<p class=\"success\">" + message + "</p>");
         } else {
-                m_driverSetupMessages.append("<p>" + message + "</p>");
+                m_driverSetupMessages.prepend("<p>" + message + "</p>");
         }
 
         QString html = QString("<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n"

@@ -255,6 +255,10 @@ private slots:
 	void update_temp_follow_state(bool state);
         void track_finder_model_index_changed(const QModelIndex& index);
         void track_finder_return_pressed();
+
+    TCommand* undo();
+    TCommand* redo();
+
 };
 
 #endif

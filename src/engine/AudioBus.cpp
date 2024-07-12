@@ -22,7 +22,6 @@ $Id: AudioBus.cpp,v 1.11 2008/01/21 16:22:15 r_sijrier Exp $
 
 #include "AudioBus.h"
 #include "AudioChannel.h"
-#include "Mixer.h"
 #include "AudioDevice.h"
 #include "Utils.h"
 

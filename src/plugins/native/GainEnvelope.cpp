@@ -83,6 +83,7 @@ void GainEnvelope::set_session(TSession * session)
 {
     m_session = session;
     set_history_stack(m_session->get_history_stack());
+
 	if (get_curve()) {
                 get_curve()->set_sheet(session);
 	}

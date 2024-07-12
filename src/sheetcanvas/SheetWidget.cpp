@@ -57,20 +57,19 @@ void SheetPanelView::paint(QPainter * painter, const QStyleOptionGraphicsItem * 
 SheetPanelViewPort::SheetPanelViewPort(QGraphicsScene * scene, SheetWidget * sw)
 	: ViewPort(scene, sw)
 {
-        setSceneRect(-230, -TIMELINE_HEIGHT, 230, 0);
-        setFixedSize(230, TIMELINE_HEIGHT);
-        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setSceneRect(-230, -TIMELINE_HEIGHT, 230, 0);
+    setFixedSize(230, TIMELINE_HEIGHT);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-        m_spv = new SheetPanelView(scene, sw->get_session());
-        load_theme();
+    m_spv = new SheetPanelView(scene, sw->get_session());
+    load_theme();
 
-        QHBoxLayout* m_mainLayout = new QHBoxLayout(this);
-        m_mainLayout->addWidget(new TTimeLabel(this, sw->get_session()));
-        setLayout(m_mainLayout);
+    QHBoxLayout* m_mainLayout = new QHBoxLayout(this);
+    m_mainLayout->addWidget(new TTimeLabel(this, sw->get_session()));
+    setLayout(m_mainLayout);
 
-        connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme()));
-
+    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme()));
 }
 
 void SheetPanelViewPort::load_theme()
@@ -82,50 +81,21 @@ TTimeLabel::TTimeLabel(QWidget* parent, TSession *session)
         : QPushButton(parent)
         , m_session(session)
 {
-        setEnabled(false);
+    setEnabled(false);
 
-        setMaximumWidth(120);
-        setMinimumHeight(22);
-        setFocusPolicy(Qt::NoFocus);
-	setStyleSheet(  "color: darkorange;"
-                        "background-color: black;"
-                        "font: 17px;"
-                        "border-radius: 5px;");
+    setMaximumWidth(120);
+    setMinimumHeight(22);
+    setFocusPolicy(Qt::NoFocus);
+    setStyleSheet(  "color: darkorange;"
+                  "background-color: black;"
+                  "font: 17px;"
+                  "border-radius: 5px;");
 
+    setText(TTimeRef::timeref_to_ms_2(m_session->get_transport_location()));
 
-        connect(m_session, SIGNAL(transportStarted()), this, SLOT(transport_started()));
-        connect(m_session, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
-        connect(m_session, SIGNAL(transportPosSet()), this, SLOT(update_label()));
-        connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(update_label()));
-
-        update_label();
-}
-
-void TTimeLabel::transport_started()
-{
-    // use an odd number for the update interval, because
-        // a round number (e.g. 100) lets the last digit stay
-        // the same most of the time, but not always, which
-        // looks jerky
-        m_updateTimer.start(123);
-}
-
-void TTimeLabel::transport_stopped()
-{
-        m_updateTimer.stop();
-}
-
-
-void TTimeLabel::update_label()
-{
-        QString currentTime;
-
-        if (!m_session) {
-                currentTime = "";
-        } else {
-                currentTime = TTimeRef::timeref_to_ms_2(m_session->get_transport_location());
-        }
-        setText(currentTime);
+    connect(m_session, &TSession::transportLocationChanged, this, [=]() {
+        setText(TTimeRef::timeref_to_ms_2(m_session->get_transport_location()));
+    });
 }
 
 

@@ -33,7 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 
 #include <Sheet.h>
-#include "TBusTrack.h"
 #include <Track.h>
 #include <Utils.h>
 #include "PluginChain.h"
