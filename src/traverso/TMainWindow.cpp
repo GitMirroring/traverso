@@ -345,7 +345,7 @@ TMainWindow::TMainWindow()
     m_newTrackDialog = nullptr;
     m_quickStart = nullptr;
     m_restoreProjectBackupDialog = nullptr;
-	m_vuLevelUpdateFrequency = 40;
+    m_vuLevelUpdateFrequency = 40;
 
 	create_menus();
 

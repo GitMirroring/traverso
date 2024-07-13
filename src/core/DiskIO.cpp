@@ -135,7 +135,9 @@ DiskIO::DiskIO(Sheet* sheet)
     m_lastdoWorkReadTime = TTimeRef::get_nanoseconds_since_epoch();
     m_stopWork.store(false);
     m_seeking.store(false);
+    m_outputRate = 0;
     m_sampleRateChanged = false;
+    m_resampleQualityChanged = false;
     m_resampleQuality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
     m_readBufferFillStatus = m_writeBufferFillStatus = 0;
     m_hardDiskOverLoadCounter = 0;
@@ -186,14 +188,17 @@ void DiskIO::seek()
 
     TTimeRef transportLocation = m_sheet->get_new_transport_location();
 
-    for(ReadSource* source : m_readSources) {
-        if (m_sampleRateChanged) {
-            source->set_diskio(this);
+    if (m_sampleRateChanged) {
+        for (auto source : m_readSources) {
+            source->set_output_rate_end_convertor_type(m_outputRate, m_resampleQuality);
+            source->prepare_rt_buffers(transportLocation);
         }
-        source->rb_seek_to_transport_location(transportLocation);
+        m_sampleRateChanged = false;
     }
 
-    m_sampleRateChanged = false;
+    for(ReadSource* source : m_readSources) {
+        source->rb_seek_to_transport_location(transportLocation);
+    }
 
     mutex.unlock();
 
@@ -208,10 +213,14 @@ void DiskIO::seek()
 }
 
 
-void DiskIO::output_rate_changed(uint rate)
+void DiskIO::set_output_rate(uint outputRate)
 {
+    if (m_outputRate == outputRate) {
+        return;
+    }
+
+    m_outputRate = outputRate;
     m_sampleRateChanged = true;
-    m_outputRate = rate;
 }
 
 
@@ -229,6 +238,14 @@ void DiskIO::do_work( )
     m_doWorkStartTime = TTimeRef::get_nanoseconds_since_epoch();
 
     there_are_processable_sources();
+
+    if (m_resampleQualityChanged) {
+        for (auto source : m_readSources) {
+            source->set_output_rate_end_convertor_type(m_outputRate, m_resampleQuality);
+        }
+        m_resampleQualityChanged = false;
+    }
+
 
     for (int i=0; i<m_processableReadSources.size(); ++i) {
         ReadSource* source = m_processableReadSources.at(i);
@@ -337,9 +354,10 @@ void DiskIO::register_read_source (ReadSource* source )
         return;
     }
 
-    source->set_diskio(this);
-    source->prepare_rt_buffers(m_fileDecodeBuffer, m_sheet->get_transport_location());
-        // QMetaObject::invokeMethod(this, "do_work()", Qt::QueuedConnection);
+    source->set_output_rate_end_convertor_type(m_outputRate, m_resampleQuality);
+    source->set_decode_buffers(m_fileDecodeBuffer, m_resampleDecodeBuffer);
+
+    source->prepare_rt_buffers(m_sheet->get_transport_location());
 
     QMutexLocker locker(&mutex);
 
@@ -485,5 +503,6 @@ void DiskIO::stop_disk_thread( )
 void DiskIO::set_resample_quality(int quality)
 {
     m_resampleQuality = quality;
+    m_resampleQualityChanged = true;
 }
 

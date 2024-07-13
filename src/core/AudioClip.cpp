@@ -349,7 +349,10 @@ void AudioClip::set_right_edge(TTimeRef newRightLocation)
 
 void AudioClip::set_source_start_location(const TTimeRef& location)
 {
+    Q_ASSERT(m_readSource);
+
     m_sourceStartLocation = location;
+    m_readSource->set_source_start_location(location);
     m_length = m_sourceEndLocation - m_sourceStartLocation;
 }
 
@@ -362,7 +365,12 @@ void AudioClip::set_source_end_location(const TTimeRef& location)
 void AudioClip::set_location_start(const TTimeRef& location)
 {
     PENTER2;
+
     LocationItem::set_location_start(location);
+    if (m_readSource) {
+        m_readSource->set_transport_start_location(location);
+    }
+
     m_fader->get_curve()->set_start_offset(get_location_start());
 
     // set_track_end_location will emit positionChanged(), so we
@@ -429,11 +437,7 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
         return 0;
     }
 
-    if (startLocation >= get_location_end()) {
-        return 0;
-    }
-
-    if (endLocation <= get_location_start()) {
+    if ((startLocation >= get_location_end()) || (endLocation <= get_location_start())) {
         return 0;
     }
 
@@ -441,7 +445,6 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
     Q_ASSERT(m_readSource);
 
     AudioBus* bus = m_sheet->get_clip_render_bus();
-    bus->silence_buffers(nframes);
 
     TTimeRef fileLocation;
     audio_sample_t* mixdown[2];
@@ -461,19 +464,19 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
         fileLocation = (startLocation - get_location_start() + m_sourceStartLocation);
     }
 
-    for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
-        audio_sample_t* buf = bus->get_buffer(chan, framesToProcess);
-        mixdown[chan] = buf + offset;
-    }
-
     if (get_location_end() < endLocation) {
         framesToProcess -= TTimeRef::to_frame(endLocation - get_location_end(), outputRate);
         Q_ASSERT(framesToProcess > 0);
     }
 
     // Read the frames from the ringbuffers
-    nframes_t readFrames = m_readSource->ringbuffer_read(mixdown, startLocation, nframes);
+    nframes_t readFrames = m_readSource->ringbuffer_read(bus, fileLocation, nframes);
 
+
+    if (readFrames == 0) {
+        bus->silence_buffers(nframes);
+        return 0;
+    }
 
     if (readFrames != framesToProcess) {
         std::cout << QString("AudioClip::process(): readFrames %1, framesToProcess %2").arg(readFrames).arg(framesToProcess).toLatin1().data() << &std::endl;
@@ -483,7 +486,11 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
         fade->process(bus, startLocation, endLocation, nframes);
     }
 
-    TTimeRef faderEndLocation = fileLocation + TTimeRef(readFrames, outputRate);
+    TTimeRef faderEndLocation = fileLocation + TTimeRef(readFrames, outputRate);    
+    for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
+        audio_sample_t* buf = bus->get_buffer(chan, framesToProcess);
+        mixdown[chan] = buf + offset;
+    }
 
     m_fader->process_gain(mixdown, fileLocation, faderEndLocation, readFrames, channelcount);
 
@@ -671,6 +678,8 @@ void AudioClip::set_audio_source(ReadSource* rs)
     }
 
     m_readSource = rs;
+    m_readSource->set_transport_start_location(get_location_start());
+    m_readSource->set_source_start_location(get_source_start_location());
     m_readSourceId = rs->get_id();
     m_sourceLength = rs->get_length();
 
@@ -684,9 +693,6 @@ void AudioClip::set_audio_source(ReadSource* rs)
     }
 
     set_sources_active_state();
-
-    rs->set_audio_clip(this);
-
 
     if (m_recordingStatus == NO_RECORDING) {
         if (m_peak) {

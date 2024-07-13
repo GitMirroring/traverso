@@ -24,8 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ProjectManager.h"
 #include "Project.h"
-#include "AudioClip.h"
-#include "DiskIO.h"
+#include "AudioBus.h"
 #include "Utils.h"
 #include "AudioDevice.h"
 #include <QFile>
@@ -118,9 +117,11 @@ ReadSource::ReadSource()
 
 void ReadSource::private_init()
 {
-	m_refcount = 0;
+    m_transportStartLocation = TTimeRef();
+    m_sourceStartLocation = TTimeRef();
+
+    m_refcount = 0;
 	m_error = 0;
-    m_clip = nullptr;
     m_resampleAudioReader = nullptr;
     m_rtBufferSlotsQueue = nullptr;
     m_freeBufferSlotsQueue = nullptr;
@@ -128,16 +129,37 @@ void ReadSource::private_init()
 
 }
 
-
 ReadSource::~ReadSource()
 {
 	PENTERDES;
-	for(int i=0; i<m_buffers.size(); ++i) {
-		delete m_buffers.at(i);
-	}
+
+    delete_readbuffer_queues();
 	
     if (m_resampleAudioReader) {
         delete m_resampleAudioReader;
+    }
+}
+
+void ReadSource::delete_readbuffer_queues()
+{
+    QueueBufferSlot* slot;
+
+    if (m_freeBufferSlotsQueue) {
+        while(m_freeBufferSlotsQueue->try_dequeue(slot)) {
+            delete slot;
+            slot = nullptr;
+        }
+        Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == 0);
+        delete m_freeBufferSlotsQueue;
+    }
+
+    if (m_rtBufferSlotsQueue) {
+        while (m_rtBufferSlotsQueue->try_dequeue(slot)) {
+            delete slot;
+            slot = nullptr;
+        }
+        Q_ASSERT(m_rtBufferSlotsQueue->size_approx() == 0);
+        delete m_rtBufferSlotsQueue;
     }
 }
 
@@ -233,10 +255,8 @@ int ReadSource::init( )
 		return (m_error = COULD_NOT_OPEN_FILE);
 	}
 	
-    int converter_type = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
-    m_resampleAudioReader->set_converter_type(converter_type);
-	
-    set_output_rate(m_resampleAudioReader->get_file_rate());
+    int converterType = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
+    set_output_rate_end_convertor_type(m_resampleAudioReader->get_file_rate(), converterType);
 	
     m_channelCount = m_resampleAudioReader->get_num_channels();
 	
@@ -263,9 +283,9 @@ int ReadSource::init( )
 }
 
 
-void ReadSource::set_output_rate(int rate)
+void ReadSource::set_output_rate_end_convertor_type(int outputRate, int converterType)
 {
-	Q_ASSERT(rate > 0);
+    Q_ASSERT(outputRate > 0);
 	
     if (! m_resampleAudioReader) {
 		printf("ReadSource::set_output_rate: No audioreader!\n");
@@ -274,18 +294,32 @@ void ReadSource::set_output_rate(int rate)
 	
 	bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
 	if (useResampling) {
-        m_resampleAudioReader->set_output_rate(rate);
+        m_resampleAudioReader->set_output_rate(outputRate);
 	} else {
         m_resampleAudioReader->set_output_rate(m_resampleAudioReader->get_file_rate());
 	}
 
-    m_outputRate = rate;
+    m_resampleAudioReader->set_converter_type(converterType);
+
+    m_outputRate = outputRate;
 	
 	// The length could have become slightly smaller/larger due
 	// rounding issues involved with converting to one samplerate to another.
 	// Should be at the order of one - two samples at most, but for reading purposes we 
 	// need sample accurate information!
     m_length = m_resampleAudioReader->get_length();
+}
+
+void ReadSource::set_transport_start_location(const TTimeRef &transportStartLocation)
+{
+    // printf("ReadSource::set_transport_start_location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(transportStartLocation)));
+    m_transportStartLocation = transportStartLocation;
+}
+
+void ReadSource::set_source_start_location(const TTimeRef &sourceStartLocation)
+{
+    // printf("ReadSource::set_source_start_location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(sourceStartLocation)));
+    m_sourceStartLocation = sourceStartLocation;
 }
 
 
@@ -313,13 +347,6 @@ ReadSource * ReadSource::deep_copy( )
 	return source;
 }
 
-void ReadSource::set_audio_clip(AudioClip* clip)
-{
-	PENTER;
-	Q_ASSERT(clip);
-	m_clip = clip;
-}
-
 nframes_t ReadSource::get_nframes( ) const
 {
     if (!m_resampleAudioReader) {
@@ -331,8 +358,6 @@ nframes_t ReadSource::get_nframes( ) const
 int ReadSource::set_file(const QString & filename)
 {
 	PENTER;
-	
-	Q_ASSERT(m_clip);
 
 	m_error = 0;
 	
@@ -349,37 +374,19 @@ int ReadSource::set_file(const QString & filename)
 		return -1;
 	}
 	
-	set_audio_clip(m_clip);
-	
 	emit stateChanged();
 	
 	return 1;
 }
 
 
-void ReadSource::prepare_rt_buffers(DecodeBuffer* fileDecodeBuffer, const TTimeRef &transportLocation)
+void ReadSource::prepare_rt_buffers(const TTimeRef &transportLocation)
 {
-    printf("prepare_rt_buffers2: audio device buffer size %d\n", audiodevice().get_buffer_size());
+    printf("prepare_rt_buffers: audio device buffer size %d\n", audiodevice().get_buffer_size());
 
-    m_fileDecodeBuffer = fileDecodeBuffer;
+    delete_readbuffer_queues();
 
     QueueBufferSlot* slot;
-
-    if (m_freeBufferSlotsQueue) {
-        while(m_freeBufferSlotsQueue->try_dequeue(slot)) {
-            delete slot;
-        }
-        Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == 0);
-        delete m_freeBufferSlotsQueue;
-    }
-
-    if (m_rtBufferSlotsQueue) {
-        while (m_rtBufferSlotsQueue->try_dequeue(slot)) {
-            delete slot;
-        }
-        Q_ASSERT(m_rtBufferSlotsQueue->size_approx() == 0);
-        delete m_rtBufferSlotsQueue;
-    }
 
     m_rtBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(slotcount);
     m_freeBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(slotcount);
@@ -398,7 +405,7 @@ void ReadSource::prepare_rt_buffers(DecodeBuffer* fileDecodeBuffer, const TTimeR
         Q_ASSERT(queued);
     }
 
-    rb_seek_to_transport_location(transportLocation);
+    // rb_seek_to_transport_location(transportLocation);
 
     printf("ReadSource::prepare_rt_buffers2: rtUsedSlotsQueue slot count %zu\n", m_freeBufferSlotsQueue->size_approx());
     printf("ReadSource::prepare_rt_buffers2: rtQueue slot count %zu\n", m_rtBufferSlotsQueue->size_approx());
@@ -407,10 +414,6 @@ void ReadSource::prepare_rt_buffers(DecodeBuffer* fileDecodeBuffer, const TTimeR
 
 void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation)
 {
-    Q_ASSERT(m_clip);
-
-    printf("rb_seek_to_transport_location: seeking to %s\n", QS_C(TTimeRef::timeref_to_ms_3(transportLocation)));
-
     QueueBufferSlot* slot;
     // The contents of the Slots in the RT queue are most likely useless due to seeking
     // to another transport location.
@@ -422,44 +425,38 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
     Q_ASSERT(m_rtBufferSlotsQueue->size_approx() == 0);
     Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == slotcount);
 
-    TTimeRef fileLocation = transportLocation - m_clip->get_location_start() - m_clip->get_source_start_location();
+    TTimeRef fileLocation = transportLocation - m_transportStartLocation + m_sourceStartLocation;
+    printf("rb_seek_to_transport_location: seeking to location transport - file %s - %s\n",
+           QS_C(TTimeRef::timeref_to_ms_3(transportLocation)),
+           QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
 
     // check if the clip's start position is within the range
     // if not, fill the buffer from the earliest point this clip
     // will come into play.
     if (fileLocation < TTimeRef()) {
         printf("not seeking to file location %s, but to file location %s\n",
-               QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), QS_C(TTimeRef::timeref_to_ms_3(m_clip->get_source_start_location())));
-        fileLocation = m_clip->get_source_start_location();
+               QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), QS_C(TTimeRef::timeref_to_ms_3(m_sourceStartLocation)));
+        fileLocation = m_sourceStartLocation;
     }
 
     TTimeRef seekTransportLocation = transportLocation;
-    if (seekTransportLocation < m_clip->get_location_start()) {
-        seekTransportLocation = m_clip->get_location_start();
+    if (seekTransportLocation < m_transportStartLocation) {
+        seekTransportLocation = m_transportStartLocation;
         printf("transport location before clip start position, adjusting to clip start position %s\n",
                QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
     }
 
 
-    m_lastQueuedRTBufferSlot->set_locations(seekTransportLocation, fileLocation);
+    m_lastQueuedRTBufferSlot->set_file_location(fileLocation);
 }
 
 void ReadSource::fill_realtime_buffers(bool seeking)
 {
     Q_ASSERT(m_lastQueuedRTBufferSlot);
     Q_ASSERT(m_fileDecodeBuffer);
+    Q_ASSERT(m_channelCount > 0);
 
-    // printf("ReadSource::process_ringbuffer2\n");
-    if (m_channelCount == 0) {
-        return;
-    }
-
-    // Check if the resample quality has changed, it's a safe place here
-    // to reconfigure the audioreaders resample quality.
-    // This allows on the fly changing of the resample quality :)
-    if (m_diskio->get_resample_quality() != m_resampleAudioReader->get_convertor_type()) {
-        m_resampleAudioReader->set_converter_type(m_diskio->get_resample_quality());
-    }
+    // printf("ReadSource::fill_realtime_buffers\n");
 
     auto freeSlots = m_freeBufferSlotsQueue->size_approx();
     if (freeSlots == 0) {
@@ -467,11 +464,8 @@ void ReadSource::fill_realtime_buffers(bool seeking)
         return;
     }
 
-    QueueBufferSlot* slot = nullptr;
-    TTimeRef slotTransportLocation = m_lastQueuedRTBufferSlot->get_transport_location();
     TTimeRef slotFileLocation = m_lastQueuedRTBufferSlot->get_file_location();
     auto bufferSize = m_lastQueuedRTBufferSlot->get_buffer_size();
-    // int filledSlots = 0;
 
     // We need the next slot so add buffer size length to the last slot transport location
     // except when we are seeking, then the rt queueu actually is empty and we need to
@@ -479,11 +473,12 @@ void ReadSource::fill_realtime_buffers(bool seeking)
     // value to the seek transport location
     size_t slotsToFill = freeSlots - 1;  // leave one slot in the rt queue so the ringbuffer_read() Queue Buffer Slot cannot be overwritten by us
     if (seeking) {
-        slotsToFill = int(0.6 * slotcount);
+        slotsToFill = int(0.7 * slotcount);
     } else {
-        slotTransportLocation += m_bufferSlotDuration;
         slotFileLocation += m_bufferSlotDuration;
     }
+
+    QueueBufferSlot* slot = nullptr;
 
     while (slotsToFill)
     {
@@ -493,7 +488,6 @@ void ReadSource::fill_realtime_buffers(bool seeking)
             // printf("ReadSource::fill_realtime_buffers: file_read gave only %d\n", read);
         }
 
-
         if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
             PERROR("ReadSource::fill_realtime_buffers: try dequeue failed");
             m_bufferstatus.syncStatus = BufferStatus::FILL_RTBUFFER_DEQUEUE_FAILURE;
@@ -502,7 +496,7 @@ void ReadSource::fill_realtime_buffers(bool seeking)
 
         if (read > 0) {
             for (uint chan=0; chan<m_channelCount; ++chan) {
-                slot->write_buffer(slotTransportLocation, slotFileLocation, m_fileDecodeBuffer->destination[chan], chan, bufferSize);
+                slot->write_buffer(slotFileLocation, m_fileDecodeBuffer->destination[chan], chan, bufferSize);
             }
         }
 
@@ -512,9 +506,6 @@ void ReadSource::fill_realtime_buffers(bool seeking)
             return;
         }
 
-        // slot->print_state();
-
-        slotTransportLocation += m_bufferSlotDuration;
         slotFileLocation += m_bufferSlotDuration;
 
         slotsToFill--;
@@ -527,9 +518,9 @@ void ReadSource::fill_realtime_buffers(bool seeking)
 }
 
 
-nframes_t ReadSource::ringbuffer_read(audio_sample_t **dest, const TTimeRef &startLocation, nframes_t cnt)
+nframes_t ReadSource::ringbuffer_read(AudioBus *audioBus, const TTimeRef &fileLocation, nframes_t frames)
 {
-    if (! (m_bufferstatus.syncStatus == BufferStatus::SyncStatus::IN_SYNC)) {
+    if (m_bufferstatus.syncStatus != BufferStatus::SyncStatus::IN_SYNC) {
         return 0;
     }
 
@@ -538,7 +529,6 @@ nframes_t ReadSource::ringbuffer_read(audio_sample_t **dest, const TTimeRef &sta
     // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
     nframes_t read = 0;
     auto availableSlots = m_rtBufferSlotsQueue->size_approx();
-
 
     while (m_rtBufferSlotsQueue->try_dequeue(slot))
     {
@@ -550,13 +540,14 @@ nframes_t ReadSource::ringbuffer_read(audio_sample_t **dest, const TTimeRef &sta
         // whole queue, instead start a resync
 
 
-        TTimeRef slotTransportLocation = slot->get_transport_location();
-        Q_ASSERT(slotTransportLocation != TTimeRef::INVALID);
+        TTimeRef slotFileLocation = slot->get_file_location();
 
-        if (slotTransportLocation == startLocation)
+        Q_ASSERT(slotFileLocation != TTimeRef::INVALID);
+
+        if (slotFileLocation == fileLocation)
         {
             for (uint chan=0; chan < m_channelCount; ++chan) {
-                slot->read_buffer(dest[chan], chan, cnt);
+                slot->read_buffer(audioBus->get_buffer(chan, frames), chan, frames);
             }
 
             // slot->print_state();
@@ -564,21 +555,21 @@ nframes_t ReadSource::ringbuffer_read(audio_sample_t **dest, const TTimeRef &sta
             break;
         }
 
-        TTimeRef lastAvailableSlotTransportLocation = slotTransportLocation + availableSlots * m_bufferSlotDuration;
+        TTimeRef lastAvailableSlotFileLocation = slotFileLocation + (availableSlots * m_bufferSlotDuration);
 
         // Check transport location in queue range
-        if ((startLocation < slotTransportLocation) || (startLocation > lastAvailableSlotTransportLocation)) {
-            printf("ReadSource::ringbuffer_read: TransportLocation not in queue range: %s (%s - %s)\n",
-                   QS_C(TTimeRef::timeref_to_ms_3(startLocation)),
-                   QS_C(TTimeRef::timeref_to_ms_3(slotTransportLocation)),
-                   QS_C(TTimeRef::timeref_to_ms_3(lastAvailableSlotTransportLocation)));
+        if ((fileLocation < slotFileLocation) || (fileLocation > lastAvailableSlotFileLocation)) {
+            printf("ReadSource::ringbuffer_read: FileLocation not in queue range: %s (%s - %s)\n",
+                   QS_C(TTimeRef::timeref_to_ms_3(fileLocation)),
+                   QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)),
+                   QS_C(TTimeRef::timeref_to_ms_3(lastAvailableSlotFileLocation)));
             m_bufferstatus.syncStatus = BufferStatus::SyncStatus::OUT_OF_SYNC;
             read = 0;
             break;
         }
 
         printf("ReadSource::rb_read: Skipping slot %d, location %s\n",
-               slot->get_slot_number(), QS_C(TTimeRef::timeref_to_ms_3(slotTransportLocation)));
+               slot->get_slot_number(), QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)));
     }
 
     // auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
@@ -616,14 +607,20 @@ uint ReadSource::get_file_rate() const
 	return pm().get_project()->get_rate(); 
 }
 
-void ReadSource::set_diskio(DiskIO * diskio)
+// void ReadSource::set_converter_type(int converterType)
+// {
+//     if (m_resampleAudioReader) {
+//         m_resampleAudioReader->set_converter_type(converterType);
+//     }
+
+// }
+
+void ReadSource::set_decode_buffers(DecodeBuffer* fileDecodeBuffer, DecodeBuffer *resampleDecodeBuffer)
 {
-	m_diskio = diskio;
-	set_output_rate(m_diskio->get_output_rate());
-	
+    m_fileDecodeBuffer = fileDecodeBuffer;
+
     if (m_resampleAudioReader) {
-        m_resampleAudioReader->set_resample_decode_buffer(m_diskio->get_resample_decode_buffer());
-        m_resampleAudioReader->set_converter_type(m_diskio->get_resample_quality());
+        m_resampleAudioReader->set_resample_decode_buffer(resampleDecodeBuffer);
     }
 }
 

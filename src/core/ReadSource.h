@@ -31,10 +31,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 class ResampleAudioReader;
-class AudioClip;
-struct BufferStatus;
+class AudioBus;
 class DecodeBuffer;
-class DiskIO;
 
 struct BufferStatus {
 
@@ -56,7 +54,7 @@ struct BufferStatus {
 class QueueBufferSlot {
 public:
     QueueBufferSlot(int slotNumber, uint channelCount, nframes_t bufferSize) {
-        m_transportLocation = TTimeRef::INVALID;
+        m_fileLocation = TTimeRef::INVALID;
         m_slotNumber = slotNumber;
         m_bufferSize = bufferSize;
         m_channelCount = channelCount;
@@ -64,10 +62,14 @@ public:
             m_buffers.append(new audio_sample_t[bufferSize]);
         }
     }
+    ~QueueBufferSlot() {
+        for (uint i=0; i<m_channelCount; ++i) {
+            delete [] m_buffers.at(i);
+        }
+    }
 
     int get_slot_number() const {return m_slotNumber;}
-    nframes_t get_buffer_size() const {return m_bufferSize;}
-    inline TTimeRef get_transport_location() const {return m_transportLocation;}
+    inline nframes_t get_buffer_size() const {return m_bufferSize;}
     inline TTimeRef get_file_location() const {return m_fileLocation;}
 
     audio_sample_t* get_buffer(uint channel) {
@@ -82,26 +84,22 @@ public:
         memcpy(dest, m_buffers.at(channel), nframes * sizeof(audio_sample_t));
     }
 
-    void write_buffer(const TTimeRef &transportLocation, const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes) {
+    void write_buffer(const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes) {
         Q_ASSERT(nframes == m_bufferSize);
         Q_ASSERT(nframes > 0);
         memcpy(m_buffers.at(channel), source, nframes * sizeof(audio_sample_t));
-        m_transportLocation = transportLocation;
         m_fileLocation = fileLocation;
     }
 
-    void set_locations(const TTimeRef &transportLocation, const TTimeRef& fileLocation) {
-        m_transportLocation = transportLocation;
+    void set_file_location(const TTimeRef& fileLocation) {
         m_fileLocation = fileLocation;
     }
-
 
     void print_state() const {
-        printf("TransportLocation %s, slotnumber %d\n", QS_C(TTimeRef::timeref_to_ms_3(m_transportLocation)), m_slotNumber);
+        printf("TransportLocation %s, slotnumber %d\n", QS_C(TTimeRef::timeref_to_ms_3(m_fileLocation)), m_slotNumber);
     }
 
 private:
-    TTimeRef            m_transportLocation;
     TTimeRef            m_fileLocation;
     int                 m_slotNumber;
     nframes_t           m_bufferSize;
@@ -131,7 +129,7 @@ public :
 	int set_state( const QDomNode& node );
 	QDomNode get_state(QDomDocument doc);
 
-    nframes_t ringbuffer_read(audio_sample_t** dest, const TTimeRef &startLocation, nframes_t cnt);
+    nframes_t ringbuffer_read(AudioBus *audioBus, const TTimeRef &fileLocation, nframes_t frames);
 
     void rb_seek_to_transport_location(const TTimeRef &transportLocation);
 
@@ -144,27 +142,26 @@ public :
 	int set_file(const QString& filename);
 	void set_active(bool active);
 	
-	void set_audio_clip(AudioClip* clip);
-	void set_diskio(DiskIO* diskio);
-
 	nframes_t get_nframes() const;
     uint get_file_rate() const;
     uint get_output_rate() const {return m_outputRate;}
 	const TTimeRef& get_length() const {return m_length;}
 
     void fill_realtime_buffers(bool seeking=false);
-    void prepare_rt_buffers(DecodeBuffer* fileDecodeBuffer, const TTimeRef &transportLocation);
+    void prepare_rt_buffers(const TTimeRef &transportLocation);
 
     BufferStatus* get_buffer_status();
 	
-	void set_output_rate(int rate);
+    void set_output_rate_end_convertor_type(int outputRate, int converterType);
+    void set_decode_buffers(DecodeBuffer * fileReadBuffer, DecodeBuffer *resampleDecodeBuffer);
+
+    void set_transport_start_location(const TTimeRef &transportStartLocation);
+    void set_source_start_location(const TTimeRef &sourceStartLocation);
 	
 	
 private:
     ResampleAudioReader*	m_resampleAudioReader;
 
-    AudioClip*          m_clip;
-    DiskIO*             m_diskio;
     DecodeBuffer*       m_fileDecodeBuffer;
     int                 m_refcount;
     int                 m_error;
@@ -172,26 +169,20 @@ private:
     std::atomic<bool>   m_active;
 	
     TTimeRef            m_length;
+    TTimeRef            m_transportStartLocation;
+    TTimeRef            m_sourceStartLocation;
     uint                m_outputRate;
-	
-
 
     moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*> *m_rtBufferSlotsQueue;
     moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*> *m_freeBufferSlotsQueue;
     QueueBufferSlot*    m_lastQueuedRTBufferSlot;
     BufferStatus		m_bufferstatus;
     TTimeRef            m_bufferSlotDuration;
-
 	
 	int ref() { return m_refcount++;}
 	
 	void private_init();
-    void start_resync(const TTimeRef& transportLocation);
-	void finish_resync();
-	int rb_file_read(DecodeBuffer* buffer, nframes_t cnt);
-
-    void set_ringbuffer_ready(bool ready);
-    bool ringbuffer_ready();
+    void delete_readbuffer_queues();
 
 	friend class ResourcesManager;
 	friend class ProjectConverter;

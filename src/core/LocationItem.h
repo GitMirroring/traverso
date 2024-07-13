@@ -40,8 +40,8 @@ public:
 
 	void set_snap_list(SnapList *sList);
 
-    TTimeRef get_location_start() const {return m_locationStart;}
-    TTimeRef get_location_end() const {return m_locationEnd;}
+    inline TTimeRef get_location_start() const {return m_locationStart;}
+    inline TTimeRef get_location_end() const {return m_locationEnd;}
     virtual TTimeRef get_length() const {return m_locationEnd - m_locationStart;}
 
 

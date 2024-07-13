@@ -63,7 +63,7 @@ public:
 	static const int bufferdividefactor = 5;
 
 	void prepare_for_seek();
-    void output_rate_changed(uint rate);
+    void set_output_rate(uint rate);
 
 	void register_read_source(ReadSource* source);
 	void register_write_source(WriteSource* source);
@@ -102,14 +102,15 @@ private:
     trav_time_t         m_doWorkStartTime{};
     trav_time_t 		m_lastdoWorkReadTime;
     RingBufferNPT<trav_time_t>*	m_cpuTime;
-    int			m_resampleQuality;
-    bool			m_sampleRateChanged;
-    int			m_hardDiskOverLoadCounter;
+    int                 m_resampleQuality;
+    bool                m_resampleQualityChanged;
+    bool                m_sampleRateChanged;
+    int                 m_hardDiskOverLoadCounter;
     audio_sample_t*		framebuffer;
     audio_sample_t*		m_readbuffer{};
     DecodeBuffer*		m_fileDecodeBuffer;
     DecodeBuffer*		m_resampleDecodeBuffer;
-    uint			m_outputRate{};
+    uint                m_outputRate{};
 
 	
     void update_time_usage(trav_time_t time);

@@ -433,6 +433,10 @@ void VUMeterLevelView::set_orientation(Qt::Orientation orientation)
 
 void VUMeterLevelView::update_peak( )
 {
+    //FIXME
+    // We use a timer in TMainWindow to call this function at 25 frames/sec
+    // What about TVUMonitor does the calculation after having process x amount of
+    // frames and then emit the new peak value instead ?
         m_peak = m_monitor->get_peak_value();
 
         // if the meter drops to -inf, reset the 'over LED' and peak hold values

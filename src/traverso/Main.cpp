@@ -121,7 +121,8 @@ int main( int argc, char **argv )
         // fire quite often (<= 20 ms).
         // T doesn't need the glib event loop so turn it of:
 #if defined(Q_OS_UNIX)
-        setenv("QT_NO_GLIB", "1", true);
+    // july 2024: With Qt > 6.x this seems not to be the case anymore
+        // setenv("QT_NO_GLIB", "1", true);
 #endif
 
 	traverso = new Traverso(argc, argv);

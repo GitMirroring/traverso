@@ -141,7 +141,7 @@ void Sheet::init()
     m_stopTransport.store(false);
 
 	m_diskio = new DiskIO(this);
-    m_diskio->output_rate_changed(audiodevice().get_sample_rate());
+    m_diskio->set_output_rate(audiodevice().get_sample_rate());
     int converter_type = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
 	m_diskio->set_resample_quality(converter_type);
 
@@ -580,23 +580,20 @@ void Sheet::resize_buffer(nframes_t size)
 
 void Sheet::audiodevice_params_changed()
 {
-        resize_buffer(audiodevice().get_buffer_size());
+    resize_buffer(audiodevice().get_buffer_size());
 	
 	// The samplerate possibly has been changed, this initiates
 	// a seek in DiskIO, which clears the buffers and refills them
 	// with the correct resampled audio data!
 	// We need to seek to a different position then the current one,
 	// else the seek won't happen at all :)
-    auto sampleRate = audiodevice().get_sample_rate();
-    if (m_diskio->get_output_rate() != sampleRate)
+    auto outputRate = audiodevice().get_sample_rate();
+    if (m_diskio->get_output_rate() != outputRate)
     {
-        m_diskio->output_rate_changed(sampleRate);
-		
-		TTimeRef location = m_transportLocation;
-        location.add_frames(1, sampleRate);
-	
-        set_transport_location(location);
-	}
+        m_diskio->set_output_rate(outputRate);
+
+        set_transport_location(m_transportLocation + TTimeRef(audiodevice().get_buffer_size(), outputRate));
+    }
 }
 
 DiskIO * Sheet::get_diskio( ) const

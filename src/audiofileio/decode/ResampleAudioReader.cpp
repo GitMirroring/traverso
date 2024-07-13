@@ -119,20 +119,20 @@ void ResampleAudioReader::reset()
 	m_readExtraFrames = OVERFLOW_SIZE;
 }
 
-void ResampleAudioReader::set_converter_type(int converter_type)
+void ResampleAudioReader::set_converter_type(int converterType)
 {
 	PENTER;
-	
+
 	int error;
 
-    if ( (float(m_outputSampleRate) / get_file_rate()) > 2.0f && converter_type == SRC_ZERO_ORDER_HOLD ) {
+    if ( (float(m_outputSampleRate) / get_file_rate()) > 2.0f && converterType == SRC_ZERO_ORDER_HOLD ) {
         if (m_convertorType == SRC_SINC_FASTEST) {
 			return;
 		}
 		printf("ResampleAudioReader::set_converter_type: src does not support a resample ratio > 2 with converter type Fast, using quality Medium\n");
         m_convertorType = SRC_SINC_FASTEST;
 	} else {
-		m_convertorType = converter_type;
+        m_convertorType = converterType;
 	}
 	
     while (m_privateSRC->srcStates.size()) {
@@ -169,11 +169,17 @@ uint ResampleAudioReader::get_file_rate()
 	return m_reader->get_file_rate();
 }
 
+/* Note: Always call set_converter_type() after callling this function
+ * it is needed for internal reasons
+*/
 void ResampleAudioReader::set_output_rate(uint rate)
 {
 	if (!m_reader) {
 		return;
 	}
+    if (m_outputSampleRate == rate) {
+        return;
+    }
     m_outputSampleRate = rate;
     m_fileFrames = file_to_resampled_frame(m_reader->get_nframes());
     m_length = TTimeRef(m_fileFrames, m_outputSampleRate);
