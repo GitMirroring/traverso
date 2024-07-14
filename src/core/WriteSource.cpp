@@ -326,7 +326,7 @@ int WriteSource::finish_export( )
 	}
 		
 	if (m_diskio) {
-		m_diskio->unregister_write_source(this);
+        m_diskio->remove_write_source(this);
 	}
 
     // FIXME (?)

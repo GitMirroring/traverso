@@ -31,9 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
-// QMutex mutex;
-
-
 // This constructor is called at file import or recording
 AudioSource::AudioSource(QString  dir, const QString& name)
 	: m_dir(std::move(dir))
