@@ -125,11 +125,8 @@ void ResampleAudioReader::set_converter_type(int converterType)
 
 	int error;
 
-    if ( (float(m_outputSampleRate) / get_file_rate()) > 2.0f && converterType == SRC_ZERO_ORDER_HOLD ) {
-        if (m_convertorType == SRC_SINC_FASTEST) {
-			return;
-		}
-		printf("ResampleAudioReader::set_converter_type: src does not support a resample ratio > 2 with converter type Fast, using quality Medium\n");
+    if ( (float(m_outputSampleRate) / get_file_rate()) > 2.0f && (converterType == SRC_ZERO_ORDER_HOLD || converterType == SRC_LINEAR) ) {
+        printf("ResampleAudioReader::set_converter_type: src does not support a resample ratio > 2 with converter type Fast, using quality SINC FASTEST\n");
         m_convertorType = SRC_SINC_FASTEST;
 	} else {
         m_convertorType = converterType;
@@ -250,8 +247,19 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
 				m_resampleDecodeBuffer->destination[chan] += m_overflowUsed;
 			}
 		}
-		
-        bufferUsed += m_reader->read(m_resampleDecodeBuffer, fileCnt + m_readExtraFrames - nframes_t(m_overflowUsed));
+
+        int toRead = fileCnt + m_readExtraFrames - nframes_t(m_overflowUsed);
+        // It happened that fileCnt + m_readExtraFrames was smaller then m_overflowUsed
+        // since nframes_t was used in the m_reader->read() function it wrapped around and
+        // a huge number of samples were tried to read. Strangely enough, this caused the
+        // DecodeBuffer->chech_buffer_capacity() to crash while it was deleting the buffers
+        // probably the reason for this problem lies in corruption of data?
+        // This check at least tries to prevent this from happening.
+        // N.B.: problem was observed when changing audio device params
+        if (toRead < 0) {
+            toRead = 0;
+        }
+        bufferUsed += m_reader->read(m_resampleDecodeBuffer, toRead);
 		
 		if (m_overflowUsed) {
             for (uint chan = 0; chan < m_channels; chan++) {
@@ -292,7 +300,7 @@ nframes_t ResampleAudioReader::read_private(DecodeBuffer* buffer, nframes_t fram
     m_overflowUsed = bufferUsed - nframes_t(m_privateSRC->srcData.input_frames_used);
 	if (m_overflowUsed < 0) {
 		m_overflowUsed = 0;
-	}
+    }
 	if (m_overflowUsed) {
 		// If there was overflow, save it for the next read.
         for (uint chan = 0; chan < m_channels; chan++) {

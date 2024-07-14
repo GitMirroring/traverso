@@ -286,7 +286,9 @@ int ReadSource::init( )
 void ReadSource::set_output_rate_end_convertor_type(int outputRate, int converterType)
 {
     Q_ASSERT(outputRate > 0);
-	
+
+    m_resampleAudioReader->set_converter_type(converterType);
+
     if (! m_resampleAudioReader) {
 		printf("ReadSource::set_output_rate: No audioreader!\n");
 		return;
@@ -298,8 +300,6 @@ void ReadSource::set_output_rate_end_convertor_type(int outputRate, int converte
 	} else {
         m_resampleAudioReader->set_output_rate(m_resampleAudioReader->get_file_rate());
 	}
-
-    m_resampleAudioReader->set_converter_type(converterType);
 
     m_outputRate = outputRate;
 	
@@ -380,9 +380,9 @@ int ReadSource::set_file(const QString & filename)
 }
 
 
-void ReadSource::prepare_rt_buffers(const TTimeRef &transportLocation)
+void ReadSource::prepare_rt_buffers(nframes_t bufferSize)
 {
-    printf("prepare_rt_buffers: audio device buffer size %d\n", audiodevice().get_buffer_size());
+    printf("prepare_rt_buffers: audio device buffer size %d\n", bufferSize);
 
     delete_readbuffer_queues();
 
@@ -392,7 +392,6 @@ void ReadSource::prepare_rt_buffers(const TTimeRef &transportLocation)
     m_freeBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(slotcount);
 
 
-    uint bufferSize = audiodevice().get_buffer_size();
     m_bufferSlotDuration = TTimeRef(bufferSize, m_outputRate);
 
     for (size_t i=0; i<slotcount;++i) {
