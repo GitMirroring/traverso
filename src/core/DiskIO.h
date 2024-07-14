@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef DISKIO_H
 #define DISKIO_H
 
-#include <QMutex>
 #include <QList>
 #include <QPair>
 #include <QThread>
@@ -32,8 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class ReadSource;
 class WriteSource;
-class AudioSource;
-class DiskIOThread;
 class Sheet;
 class DecodeBuffer;
 
@@ -63,22 +60,14 @@ public:
 	static const int bufferdividefactor = 5;
 
 	void prepare_for_seek();
-    void set_output_rate(uint rate);
 
-	void register_read_source(ReadSource* source);
-	void register_write_source(WriteSource* source);
-	
-	void set_resample_quality(int quality);
-	
-	void unregister_read_source(ReadSource* source);
-	void unregister_write_source(WriteSource* source);
+    void remove_write_source(WriteSource* source);
 
-        float get_cpu_time();
+    float get_cpu_time();
 	int get_write_buffers_fill_status();
 	int get_read_buffers_fill_status();
-    uint get_output_rate() {return m_outputRate;}
+    uint get_output_rate() {return m_outputSampleRate;}
 	int get_resample_quality() {return m_resampleQuality;}
-	DecodeBuffer* get_resample_decode_buffer() {return m_resampleDecodeBuffer;}
 
 private:
     Sheet*              m_sheet;
@@ -94,7 +83,7 @@ private:
     QList<QPair<int, WriteSource*> > m_writersStatus;
 
     DiskIOThread		m_diskThread;
-        QMutex			mutex;
+
     std::atomic<int>    m_readBufferFillStatus;
     std::atomic<int>    m_writeBufferFillStatus;
 
@@ -102,15 +91,16 @@ private:
     trav_time_t         m_doWorkStartTime{};
     trav_time_t 		m_lastdoWorkReadTime;
     RingBufferNPT<trav_time_t>*	m_cpuTime;
+
     int                 m_resampleQuality;
     bool                m_resampleQualityChanged;
     bool                m_sampleRateChanged;
     int                 m_hardDiskOverLoadCounter;
     audio_sample_t*		framebuffer;
-    audio_sample_t*		m_readbuffer{};
+
     DecodeBuffer*		m_fileDecodeBuffer;
     DecodeBuffer*		m_resampleDecodeBuffer;
-    uint                m_outputRate{};
+    uint                m_outputSampleRate{};
 
 	
     void update_time_usage(trav_time_t time);
@@ -122,6 +112,14 @@ private:
 public slots:
     void seek();
 
+    void add_read_source(ReadSource* source);
+    void remove_read_source(ReadSource* source);
+
+    void add_write_source(WriteSource* source);
+
+    void set_output_sample_rate(uint outputSampleRate);
+    void set_resample_quality(int quality);
+
 private slots:
         void do_work();
 
@@ -129,8 +127,6 @@ signals:
 	void seekFinished();
 	void readSourceBufferUnderRun();
     void writeSourceBufferOverRun();
-    void ioStartRequested();
-    void ioStopRequested();
 
 };
 

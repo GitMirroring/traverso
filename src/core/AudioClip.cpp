@@ -122,7 +122,7 @@ AudioClip::~AudioClip()
 {
     PENTERDES;
     if (m_readSource) {
-        m_sheet->get_diskio()->unregister_read_source(m_readSource);
+        QMetaObject::invokeMethod(m_sheet->get_diskio(), "remove_read_source", Qt::QueuedConnection, m_readSource);
         delete m_readSource;
     }
     if (m_peak) {
@@ -592,7 +592,7 @@ int AudioClip::init_recording()
     m_writer->set_process_peaks( true );
     m_writer->set_recording( true );
 
-    m_sheet->get_diskio()->register_write_source(m_writer);
+    QMetaObject::invokeMethod(m_sheet->get_diskio(), "add_write_source", Qt::QueuedConnection, m_writer);
 
     // Writers exportFinished() signal comes from DiskIO thread, so we have to connect by Qt::QueuedConnection
     // or else we deadlock in DiskIO::do_work()
@@ -716,7 +716,7 @@ Q_ASSERT(m_readSource);
     if (m_readSource->set_file(m_writer->get_filename()) < 0) {
         PERROR("Setting file for ReadSource failed after finishing recording");
     } else {
-        m_sheet->get_diskio()->register_read_source(m_readSource);
+        QMetaObject::invokeMethod(m_sheet->get_diskio(), "addd_read_source()", m_readSource, Qt::QueuedConnection);
         // re-inits the lenght from the audiofile due calling rsm->set_source_for_clip()
         m_length = TTimeRef();
     }
@@ -771,7 +771,7 @@ void AudioClip::set_sheet( Sheet * sheet )
 {
     m_sheet = sheet;
     if (m_readSource && m_isReadSourceValid) {
-        m_sheet->get_diskio()->register_read_source( m_readSource );
+        QMetaObject::invokeMethod(m_sheet->get_diskio(), "add_read_source", Qt::QueuedConnection, m_readSource);
     } else {
         PWARN("AudioClip::set_sheet() : Setting Sheet, but no ReadSource available!!");
     }

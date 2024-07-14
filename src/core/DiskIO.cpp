@@ -134,8 +134,7 @@ DiskIO::DiskIO(Sheet* sheet)
 {
     m_lastdoWorkReadTime = TTimeRef::get_nanoseconds_since_epoch();
     m_stopWork.store(false);
-    m_seeking.store(false);
-    m_outputRate = 0;
+    m_outputSampleRate = 0;
     m_sampleRateChanged = false;
     m_resampleQualityChanged = false;
     m_resampleQuality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
@@ -171,67 +170,44 @@ DiskIO::~DiskIO()
 * 	Seek's all the ReadSources readbuffers to the new position.
 *	Call prepare_seek() first, to interupt do_work() if it was running.
 * 
-* @param position The position to seek too 
+*  N.B. this function resets the ReadSource buffers assuming it is the only thread
+*  accessing the buffers. If the audio thread is accessing the buffers at this point
+*  the integrity of the buffers cannot be garuanteed!
 */
 void DiskIO::seek()
 {
     PENTER;
 
-// #if defined (THREAD_CHECK)
+#if defined (THREAD_CHECK)
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "Error, running in gui thread!!!!!");
-// #endif
-
-    mutex.lock();
+#endif
 
     m_stopWork.store(false);
-    m_seeking.store(true);
-
-    TTimeRef transportLocation = m_sheet->get_new_transport_location();
 
     if (m_sampleRateChanged) {
         for (auto source : m_readSources) {
-            source->set_output_rate_end_convertor_type(m_outputRate, m_resampleQuality);
-            source->prepare_rt_buffers(transportLocation);
+            source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
+            source->prepare_rt_buffers(audiodevice().get_buffer_size());
         }
         m_sampleRateChanged = false;
     }
 
+    auto transportLocation = m_sheet->get_seek_transport_location();
     for(ReadSource* source : m_readSources) {
         source->rb_seek_to_transport_location(transportLocation);
     }
-
-    mutex.unlock();
-
-    // Now, fill the buffers like normal
-    do_work();
-
-    m_readBufferFillStatus.store(0);
-
-    m_seeking.store(false);
 
     emit seekFinished();
 }
 
 
-void DiskIO::set_output_rate(uint outputRate)
-{
-    if (m_outputRate == outputRate) {
-        return;
-    }
-
-    m_outputRate = outputRate;
-    m_sampleRateChanged = true;
-}
-
-
 // Internal function
+// This function is called everytime the audio thread has finished one processing cycle
 void DiskIO::do_work( )
 {
-// #if defined (THREAD_CHECK)
+#if defined (THREAD_CHECK)
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "Error, running in gui thread!!!!!");
-// #endif
-
-    // QMutexLocker locker(&mutex);
+#endif
 
     m_hardDiskOverLoadCounter = 0;
 
@@ -241,11 +217,10 @@ void DiskIO::do_work( )
 
     if (m_resampleQualityChanged) {
         for (auto source : m_readSources) {
-            source->set_output_rate_end_convertor_type(m_outputRate, m_resampleQuality);
+            source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
         }
         m_resampleQualityChanged = false;
     }
-
 
     for (int i=0; i<m_processableReadSources.size(); ++i) {
         ReadSource* source = m_processableReadSources.at(i);
@@ -258,10 +233,9 @@ void DiskIO::do_work( )
 
         if (source->get_buffer_status()->out_of_sync()) {
             source->rb_seek_to_transport_location(m_sheet->get_transport_location());
-            source->fill_realtime_buffers(true);
         }
         else {
-            source->fill_realtime_buffers(m_seeking.load());
+            source->fill_realtime_buffers();
         }
 
     }
@@ -340,64 +314,48 @@ int DiskIO::there_are_processable_sources( )
     return 0;
 }
 
-/**
- *      Registers the ReadSource source. The source's RingBuffer will be initialized at this point.
- *
- *	Note: This function is thread save.
- * @param source The ReadSource to register
- */
-void DiskIO::register_read_source (ReadSource* source )
+void DiskIO::add_read_source(ReadSource* source)
 {
     PENTER2;
+
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::addd_read_source", "Must be called via queued slot connection, not directly by function");
 
     if (source->get_channel_count() == 0) {
         return;
     }
 
-    source->set_output_rate_end_convertor_type(m_outputRate, m_resampleQuality);
+    source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
     source->set_decode_buffers(m_fileDecodeBuffer, m_resampleDecodeBuffer);
 
-    source->prepare_rt_buffers(m_sheet->get_transport_location());
-
-    QMutexLocker locker(&mutex);
+    source->prepare_rt_buffers(audiodevice().get_buffer_size());
 
     m_readSources.append(source);
 }
 
-/**
- *      Registers the WriteSource source. The source's RingBuffer will be initialized at this point.
- *
- *	Note: This function is thread save.
- * @param source The WriteSource to register
- */
-void DiskIO::register_write_source( WriteSource * source )
+void DiskIO::add_write_source( WriteSource * source )
 {
     PENTER2;
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::add_write_source", "Must be called via queued slot connection, not directly by function");
 
     source->set_diskio(this);
-
-    QMutexLocker locker(&mutex);
 
     m_writeSources.append(source);
 }
 
-/**
- * 	Unregisters the ReadSource from this DiskIO instance
- *
- *	Note: This function is Thread save.
- * @param source The ReadSource to be removed from the DiskIO instance.
- */
-void DiskIO::unregister_read_source( ReadSource * source )
+void DiskIO::remove_read_source(ReadSource *source)
 {
-    QMutexLocker locker(&mutex);
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::remove_read_source", "Must be called via queued slot connection, not directly by function");
 
     m_readSources.removeAll(source);
 }
 
 
+// FIXME: called from WritSource when export is finished, which is a directy function call
+// Let DiskIO handle the removal or make the removal an event so we can track it.
 // internal function
-void DiskIO::unregister_write_source( WriteSource * source )
+void DiskIO::remove_write_source( WriteSource * source )
 {
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::remove_write_source", "Must be called via queued slot connection, not directly by function");
     m_writeSources.removeAll(source);
 }
 
@@ -411,6 +369,7 @@ void DiskIO::prepare_for_seek( )
     // Stop any processing in do_work()
     m_stopWork.store(true);
 }
+
 
 // Internal function
 void DiskIO::update_time_usage(trav_time_t time)
@@ -467,10 +426,6 @@ int DiskIO::get_write_buffers_fill_status( )
  */
 int DiskIO::get_read_buffers_fill_status( )
 {
-    if (m_seeking.load()) {
-        return 100;
-    }
-
     int status = m_readBufferFillStatus.load();
     m_readBufferFillStatus.store(100);
 
@@ -504,5 +459,11 @@ void DiskIO::set_resample_quality(int quality)
 {
     m_resampleQuality = quality;
     m_resampleQualityChanged = true;
+}
+
+void DiskIO::set_output_sample_rate(uint outputSampleRate)
+{
+    m_outputSampleRate = outputSampleRate;
+    m_sampleRateChanged = true;
 }
 
