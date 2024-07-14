@@ -40,15 +40,26 @@ struct BufferStatus {
         UNKNOWN,
         OUT_OF_SYNC,
         IN_SYNC,
+        QUEUE_SEEKING_TO_NEW_LOCATION,
+        QUEUE_SYNCED_TO_NEW_LOCATION,
         FILL_RTBUFFER_DEQUEUE_FAILURE,
         FILL_RTBUFFER_ENQUEUE_FAILURE
     };
 
-    bool out_of_sync() const {return syncStatus != IN_SYNC;}
+    inline bool out_of_sync() const {return m_syncStatus.load() != IN_SYNC;}
+
+    inline void set_sync_status(int status) {
+        m_syncStatus.store(status);
+    }
+    inline int get_sync_status() {
+        return m_syncStatus.load();
+    }
 
     int     fillStatus;
     int     priority;
-    int     syncStatus;
+
+private:
+    std::atomic<int>     m_syncStatus;
 };
 
 class QueueBufferSlot {
@@ -147,12 +158,12 @@ public :
     uint get_output_rate() const {return m_outputRate;}
 	const TTimeRef& get_length() const {return m_length;}
 
-    void fill_realtime_buffers(bool seeking=false);
-    void prepare_rt_buffers(const TTimeRef &transportLocation);
+    void fill_realtime_buffers();
+    void prepare_rt_buffers(nframes_t bufferSize);
 
     BufferStatus* get_buffer_status();
 	
-    void set_output_rate_end_convertor_type(int outputRate, int converterType);
+    void set_output_rate_and_convertor_type(int outputRate, int converterType);
     void set_decode_buffers(DecodeBuffer * fileReadBuffer, DecodeBuffer *resampleDecodeBuffer);
 
     void set_transport_start_location(const TTimeRef &transportStartLocation);
