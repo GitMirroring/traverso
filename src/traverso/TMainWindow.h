@@ -210,10 +210,6 @@ public slots :
 	void change_recording_format_to_wav();
 	void change_recording_format_to_wav64();
 	void change_recording_format_to_wavpack();
-	void change_resample_quality_to_best();
-	void change_resample_quality_to_high();
-	void change_resample_quality_to_medium();
-	void change_resample_quality_to_fast();
 
         TCommand* full_screen();
         TCommand* show_fft_meter_only();

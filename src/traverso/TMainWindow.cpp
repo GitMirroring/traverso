@@ -62,6 +62,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QTabBar>
 #include <QCompleter>
 #include <QStandardItemModel>
+#include <samplerate.h>
 
 #include "ProjectManager.h"
 #include "TrackView.h"
@@ -933,18 +934,40 @@ void TMainWindow::create_menus( )
     connect(action, SIGNAL(triggered(bool)), this, SLOT(change_recording_format_to_wav64()));
 
 	m_resampleQualityMenu = menu->addMenu(tr("Resample &Quality"));
-	action = m_resampleQualityMenu->addAction(tr("Best"));
-	action->setData(0);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(change_resample_quality_to_best()));
-	action = m_resampleQualityMenu->addAction(tr("High"));
-	action->setData(1);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(change_resample_quality_to_high()));
-	action = m_resampleQualityMenu->addAction(tr("Medium"));
-	action->setData(2);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(change_resample_quality_to_medium()));
-	action = m_resampleQualityMenu->addAction(tr("Fast"));
-	action->setData(3);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(change_resample_quality_to_fast()));
+    action = m_resampleQualityMenu->addAction(tr("SINC Best Quality"));
+    action->setData(SRC_SINC_BEST_QUALITY);
+    connect(action, &QAction::triggered, this, [this]() {
+        config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_BEST_QUALITY);
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("SINC Best Quality"));
+    });
+
+    action = m_resampleQualityMenu->addAction(tr("SINC Medium Quality"));
+    action->setData(SRC_SINC_MEDIUM_QUALITY);
+    connect(action, &QAction::triggered, this, [this]() {
+        config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_MEDIUM_QUALITY);
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("SINC Medium Quality"));
+    });
+
+    action = m_resampleQualityMenu->addAction(tr("SRC Sinc Fastest"));
+    action->setData(SRC_SINC_FASTEST);
+    connect(action, &QAction::triggered, this, [this]() {
+        config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_FASTEST);
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("SINC Fastest"));
+    });
+
+    action = m_resampleQualityMenu->addAction(tr("Zero Order Hold"));
+    action->setData(SRC_ZERO_ORDER_HOLD);
+    connect(action, &QAction::triggered, this, [this]() {
+        config().set_property("Conversion", "RTResamplingConverterType", SRC_ZERO_ORDER_HOLD);
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("Zero Order Hold"));
+    });
+
+    action = m_resampleQualityMenu->addAction(tr("Linear"));
+    action->setData(SRC_LINEAR);
+    connect(action, &QAction::triggered, this, [this]() {
+        config().set_property("Conversion", "RTResamplingConverterType", SRC_LINEAR);
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("Linear"));
+    });
 
 	// fake a config changed 'signal-slot' action, to set the encoding menu icons
 	config_changed();
@@ -1645,30 +1668,6 @@ void TMainWindow::change_recording_format_to_wavpack()
 {
 	config().set_property("Recording", "FileFormat", "wavpack");
 	save_config_and_emit_message(tr("Changed encoding for recording to %1").arg("WavPack"));
-}
-
-void TMainWindow::change_resample_quality_to_best()
-{
-	config().set_property("Conversion", "RTResamplingConverterType", 0);
-	save_config_and_emit_message(tr("Changed resample quality to: %1").arg("Best"));
-}
-
-void TMainWindow::change_resample_quality_to_high()
-{
-	config().set_property("Conversion", "RTResamplingConverterType", 1);
-	save_config_and_emit_message(tr("Changed resample quality to: %1").arg("High"));
-}
-
-void TMainWindow::change_resample_quality_to_medium()
-{
-	config().set_property("Conversion", "RTResamplingConverterType", 2);
-	save_config_and_emit_message(tr("Changed resample quality to: %1").arg("Medium"));
-}
-
-void TMainWindow::change_resample_quality_to_fast()
-{
-	config().set_property("Conversion", "RTResamplingConverterType", 3);
-	save_config_and_emit_message(tr("Changed resample quality to: %1").arg("Fast"));
 }
 
 void TMainWindow::save_config_and_emit_message(const QString & message)
