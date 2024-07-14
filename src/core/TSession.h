@@ -52,7 +52,7 @@ public:
     bool is_transport_rolling() const;
 	TTimeRef get_work_location() const;
 	virtual TTimeRef get_last_location() const;
-	TTimeRef get_new_transport_location() const {return m_newTransportLocation;}
+    TTimeRef get_seek_transport_location() const {return m_seekTransportLocation;}
 	virtual TTimeRef get_transport_location() const;
 	virtual SnapList* get_snap_list() const;
 	Track* get_track(qint64 id) const;
@@ -115,7 +115,7 @@ protected:
     std::atomic<bool>   m_transportRolling;
     TTimeRef            m_transportLocation;
     TTimeRef            m_workLocation;
-    TTimeRef            m_newTransportLocation;
+    TTimeRef            m_seekTransportLocation;
 
 private:
 	friend class TTimeLineRuler;

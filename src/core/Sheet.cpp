@@ -141,7 +141,7 @@ void Sheet::init()
     m_stopTransport.store(false);
 
 	m_diskio = new DiskIO(this);
-    m_diskio->set_output_rate(audiodevice().get_sample_rate());
+    m_diskio->set_output_sample_rate(audiodevice().get_sample_rate());
     int converter_type = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
 	m_diskio->set_resample_quality(converter_type);
 
@@ -588,12 +588,8 @@ void Sheet::audiodevice_params_changed()
 	// We need to seek to a different position then the current one,
 	// else the seek won't happen at all :)
     auto outputRate = audiodevice().get_sample_rate();
-    if (m_diskio->get_output_rate() != outputRate)
-    {
-        m_diskio->set_output_rate(outputRate);
-
-        set_transport_location(m_transportLocation + TTimeRef(audiodevice().get_buffer_size(), outputRate));
-    }
+    m_diskio->set_output_sample_rate(outputRate);
+    set_transport_location(m_transportLocation + TTimeRef(audiodevice().get_buffer_size(), outputRate));
 }
 
 DiskIO * Sheet::get_diskio( ) const
@@ -716,7 +712,7 @@ TCommand* Sheet::set_recordable_and_start_transport()
 TCommand* Sheet::start_transport()
 {
 #if defined (THREAD_CHECK)
-    // Q_ASSERT(QThread::currentThread() == m_threadPointer);
+    Q_ASSERT(QThread::currentThread() == m_threadPointer);
 #endif
 	// Delegate the transport start (or if we are rolling stop)
 	// request to the audiodevice. Depending on the driver in use
@@ -803,7 +799,7 @@ void Sheet::initiate_seek_start(TTimeRef location)
         return;
     }
 
-    m_newTransportLocation = location;
+    m_seekTransportLocation = location;
     m_startSeek.store(true);
     set_seeking(true);
 
@@ -942,7 +938,7 @@ void Sheet::seek_finished()
     Q_ASSERT_X(m_threadPointer == QThread::currentThread(), "Sheet::seek_finished", "Called from other Thread!");
 #endif
 	PMESG2("Sheet :: entering seek_finished");
-    m_transportLocation  = m_newTransportLocation;
+    m_transportLocation  = m_seekTransportLocation;
     printf("seek finished, setting transport location to %s\n", QS_C(TTimeRef::timeref_to_ms_3(m_transportLocation)));
 	m_seeking = 0;
 
