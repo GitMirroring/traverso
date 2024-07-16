@@ -2,7 +2,17 @@ Later versions:
 * use https://x42.github.io/libltc/ for time keeping?
 
 TOBEDONE FOR 0.50.x
+Export Rework:
+* AudioClip/ReadSource: deal with audioclips that do not start at intervals of audiodevice buffer size
+* Finish export using Bounce Track
 
+
+CRASHES
+* Resample quality: Fast, change audiodevice params (buffer size / sample rate) -> certain combination -> crash in ResampleReader::read_private
+  Buffer overflow used then == buffersize causing the to be read < 0 which loops cause it's a nframes_t
+  Seems to happen only with SRC_ZERO_ORDER_HOLD or converterType  SRC_LINEAR
+
+OTHER
 * Select Fade shape preset from context menu does not work
 * snaplist not functional after project load. works again after a zoom
 * split clip: fade in/out on new clips is broken, sometimes they do show up, sometimes they are gone
@@ -14,12 +24,9 @@ TOBEDONE FOR 0.50.x
   Moving tracks up/down reset the internal trackindex and solved this issue but more robust solution is needed
 * Moving Track up/down moves canvas cursor to workcursor and back during jog
 * Restore original behavior of main menu bar.
-* Better feedback for alsa driver when using incompatible setup, this: printf("ALSA: use %d periods for %s\n", *nperiodsp, stream_name);
-  doesn't read like: you should do that! what about a popup that explains driver failures in more detail?
 * vertical zoom keyfact is wrong
 * new sheet/track names: force unique names ??
 * add switch to turn monitoring on/off
-* Project::process() must be suspended when starting an export!
 * child views: make them use their own snap list.
 * Notify users that if they open an old project that they won't be able to properly restore that
   project in pre 0.50.x releases !
@@ -57,7 +64,7 @@ TOBEDONE FOR 0.50.x
 * sync to fpu.cc to ardours latest version!
 * moving a clip left which also at the same time changes the length of the Sheet causes a huge cpu load!!
 * Text clips, for use as PostIt's, shares audioclips's features, except it doens't have a source :)
-* Transport console: to_start end to_end don't center the playhead!
+* Transport console: to_start and to_end don't center the playhead!
 * Curve top-left node is hardly visible
 * CD Burning doesn't work when traverso was started from clicking on the binary (sometimes, when no empty disk was inserted)
 * Ubuntu Intrepid package does not depend on libfftw3 ?
@@ -70,7 +77,6 @@ TOBEDONE FOR 0.50.x
 * xvidcap -> for creating video demos
 * new Song::get_last_location() semantics might not work well e.g. in MoveClip, TimeLineView.
 * Why does the User Manual say I need libflac++?
-* 2tracks project, seeking to start when beyond first clip: mp3 output garbled!
 * solution for project dir renamed outside of traverso: disabling write bit ?
 * http://traverso-daw.org/forum/index.php/topic,77.msg264.html#msg264
 
