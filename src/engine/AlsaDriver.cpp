@@ -697,6 +697,11 @@ int  AlsaDriver::set_parameters (nframes_t frames_per_interupt,
 
     fprintf (stderr, "AlsaDriver: configuring for %d Hz, period=%ld frames (%.1f ms), buffer=%d periods\n",
              rate, (long)m_framesPerCycle,(((float)m_framesPerCycle / (float) rate) * 1000.0f), user_nperiods);
+
+    QString configString("AlsaDriver: configuring for %1 Hz, period=%2 frames (%3 ms), buffer=%4 periods");
+    configString = configString.arg(rate).arg(m_framesPerCycle).arg(((float)m_framesPerCycle / (float) rate) * 1000.0f, 0, 'g', 4).arg(user_nperiods);
+    m_device->driverSetupMessage(configString, AudioDevice::DRIVER_SETUP_INFO);
+
     if (capture_handle) {
         if (configure_stream (
                     alsa_name_capture,
