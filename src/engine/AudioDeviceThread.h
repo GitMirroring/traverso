@@ -32,7 +32,7 @@ class AudioDeviceThread : public QThread
         Q_OBJECT
 
 public:
-        AudioDeviceThread(AudioDevice* device);
+        AudioDeviceThread(AudioDevice* device, bool realTime);
 
         void run_on_cpu(int cpu);
         void set_real_time(bool realTime);

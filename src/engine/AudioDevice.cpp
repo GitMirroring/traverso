@@ -335,11 +335,13 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
         printf("AudioDevice: Starting Audio Thread ... ");
 
 
+        bool realTime = false;
         if (!m_audioThread) {
-            m_audioThread = new AudioDeviceThread(this);
             if ((ads.driverType == "ALSA") || (ads.driverType == "Null Driver")) {
-                m_audioThread->set_real_time(true);
+                realTime = true;
             }
+
+            m_audioThread = new AudioDeviceThread(this, realTime);
         }
 
         // m_cycleStartTime/EndTime are set before/after the first cycle.
@@ -512,6 +514,9 @@ int AudioDevice::shutdown( )
             r = m_audioThread->wait(1000);
             printf("AudioDevice: Audio Thread finished, stopping driver\n");
         }
+
+        delete m_audioThread;
+        m_audioThread = nullptr;
     }
 
 

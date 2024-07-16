@@ -76,10 +76,10 @@ protected:
 	}
 };
 
-AudioDeviceThread::AudioDeviceThread(AudioDevice* device)
+AudioDeviceThread::AudioDeviceThread(AudioDevice* device, bool realTime)
 {
 	m_device = device;
-    m_realTime = false;
+    m_realTime = realTime;
 	setTerminationEnabled(true);
 
 	watchdogCheck = 1;
