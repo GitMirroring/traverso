@@ -936,30 +936,30 @@ void TMainWindow::create_menus( )
 	m_resampleQualityMenu = menu->addMenu(tr("Resample &Quality"));
     action = m_resampleQualityMenu->addAction(tr("SINC Best Quality"));
     action->setData(SRC_SINC_BEST_QUALITY);
-    connect(action, &QAction::triggered, this, [this]() {
+    connect(action, &QAction::triggered, this, [this, action]() {
         config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_BEST_QUALITY);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("SINC Best Quality"));
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
     });
 
     action = m_resampleQualityMenu->addAction(tr("SINC Medium Quality"));
     action->setData(SRC_SINC_MEDIUM_QUALITY);
-    connect(action, &QAction::triggered, this, [this]() {
+    connect(action, &QAction::triggered, this, [this, action]() {
         config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_MEDIUM_QUALITY);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("SINC Medium Quality"));
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
     });
 
-    action = m_resampleQualityMenu->addAction(tr("SRC Sinc Fastest"));
+    action = m_resampleQualityMenu->addAction(tr("Sinc Fastest"));
     action->setData(SRC_SINC_FASTEST);
-    connect(action, &QAction::triggered, this, [this]() {
+    connect(action, &QAction::triggered, this, [this, action]() {
         config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_FASTEST);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("SINC Fastest"));
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
     });
 
     action = m_resampleQualityMenu->addAction(tr("Zero Order Hold"));
     action->setData(SRC_ZERO_ORDER_HOLD);
-    connect(action, &QAction::triggered, this, [this]() {
+    connect(action, &QAction::triggered, this, [this, action]() {
         config().set_property("Conversion", "RTResamplingConverterType", SRC_ZERO_ORDER_HOLD);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("Zero Order Hold"));
+        save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
     });
 
     action = m_resampleQualityMenu->addAction(tr("Linear"));
