@@ -82,10 +82,6 @@ private:
     int             m_eventCounter;
     int             m_retryCount;
 
-#if defined (THREAD_CHECK)
-    QThread*	m_threadPointer;
-#endif
-
     void process_rt_event_slots();
     void process_rt_event_signals();
 

@@ -68,10 +68,6 @@ Tsar::Tsar()
 
     m_eventCounter = 0;
     m_retryCount = 0;
-	
-#if defined (THREAD_CHECK)
-    m_threadPointer = QThread::currentThread();
-#endif
 
     auto tsarThread = new TsarThread;
     connect(tsarThread, SIGNAL(started()), tsarThread, SLOT(process_tsar_signals()));
@@ -95,9 +91,7 @@ Tsar::~ Tsar( )
  */
 void Tsar::post_gui_event(const TsarEvent &event )
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT_X(m_threadPointer == QThread::currentThread(), "Tsar::add_event", "Adding event from other then GUI thread!!");
-#endif
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "Tsar::add_event", "Adding event from other then GUI thread!!");
 
     m_blockingGuiThreadEventBuffer->try_enqueue(std::move(event));
 
