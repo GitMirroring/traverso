@@ -41,7 +41,7 @@ public :
 	WriteSource(TExportSpecification* spec);
 	~WriteSource();
 
-    nframes_t rb_write(AudioBus* bus, nframes_t nframes);
+    nframes_t ringbuffer_write(AudioBus* bus, nframes_t nframes, bool realTime);
     int rb_file_write(QueueBufferSlot* slot);
 	void process_ringbuffer(audio_sample_t* buffer);
 
@@ -80,6 +80,7 @@ private:
     float*          m_dataBuffer;
     void*           m_outputData;
 
+    QueueBufferSlot* dequeue_from_free_queue(bool realTime);
 
     friend class DiskIO;
     void process_realtime_buffers() final;

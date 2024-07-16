@@ -323,13 +323,13 @@ int WriteSource::finish_export( )
 	return 1;
 }
 
-nframes_t WriteSource::rb_write(AudioBus* bus, nframes_t nframes)
+nframes_t WriteSource::ringbuffer_write(AudioBus* bus, nframes_t nframes, bool realTime)
 {
     Q_ASSERT(bus->get_channel_count() == m_channelCount);
 
     QueueBufferSlot* slot = nullptr;
 
-    if (m_freeBufferSlotsQueue->try_dequeue(slot))
+    if ((slot = dequeue_from_free_queue(realTime)) )
     {
         Q_ASSERT(slot);
 
@@ -347,6 +347,27 @@ nframes_t WriteSource::rb_write(AudioBus* bus, nframes_t nframes)
 
     return 0;
 }
+
+QueueBufferSlot* WriteSource::dequeue_from_free_queue(bool realTime)
+{
+    QueueBufferSlot* slot = nullptr;
+
+    if (realTime) {
+        if (m_freeBufferSlotsQueue->try_dequeue(slot)) {
+            return slot;
+        } else {
+            // FIXME
+            // What about feedback to user that we couldn't
+            // write the audiostream to storage media?
+            slot = nullptr;
+        }
+    } else {
+        m_freeBufferSlotsQueue->wait_dequeue(slot);
+    }
+
+    return slot;
+}
+
 
 void WriteSource::set_process_peaks( bool process )
 {

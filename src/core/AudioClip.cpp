@@ -522,7 +522,8 @@ void AudioClip::process_capture(nframes_t nframes)
         return;
     }
 
-    nframes_t written = nframes_t(m_writer->rb_write(bus, nframes));
+    bool realTime = false;
+    nframes_t written = m_writer->ringbuffer_write(bus, nframes, realTime);
 
     m_length.add_frames(written, get_rate());
 
