@@ -257,7 +257,7 @@ void FadeCurveView::calculate_bounding_rect()
 
 void FadeCurveView::state_changed( )
 {
-	PENTER;
+    PENTER;
 	prepareGeometryChange();
 	calculate_bounding_rect();
 	update();
@@ -278,7 +278,7 @@ TCommand* FadeCurveView::strength()
 
 TCommand* FadeCurveView::select_fade_shape()
 {
-	if (m_fadeCurve->get_fade_type() == FadeCurve::FadeIn) {
+    if (m_fadeCurve->get_fade_type() == FadeCurve::FadeIn) {
 		TMainWindow::instance()->select_fade_in_shape();
 	}
 	else {

@@ -5,6 +5,7 @@
 #include <QMetaType>
 
 #include <chrono>
+#include <climits>
 
 #include "defines.h"
 

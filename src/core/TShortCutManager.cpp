@@ -657,7 +657,7 @@ void TShortCutManager::loadFunctions()
 	function->object = "FadeCurve";
 	function->slotsignature = "toggle_raster";
 	function->m_description = tr("Toggle Raster");
-	function->commandName = "FadeCurveToggleRaster";
+    function->commandName = "FadeCurveToggleRaster";
     registerFunction(function);
 
     function = new TShortCutFunction();

@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Fade.h"
 
-#include "Curve.h"
 #include "AudioClip.h"
 #include "ContextPointer.h"
 #include <ViewPort.h>
@@ -39,7 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
-static const float CURSOR_SPEED		= 150.0;
+static const float CURSOR_SPEED		= 75.0;
 static const float RASTER_SIZE		= 0.05;
 
 
@@ -359,7 +358,7 @@ void FadeStrength::set_cursor_shape(int useX, int useY)
 
 int FadeStrength::jog()
 {
-	float dy = float(origY - cpointer().mouse_viewport_y()) / CURSOR_SPEED;
+    float dy = float(origY - cpointer().mouse_viewport_y()) / CURSOR_SPEED;
 	
 	if (m_fade->get_bend_factor() >= 0.5) {
 		m_fade->set_strength_factor(oldValue + dy );
