@@ -113,7 +113,8 @@ Sheet::~Sheet()
     delete [] mixdown;
     delete [] gainbuffer;
 
-    delete m_diskio;
+    delete m_readDiskIO;
+    delete m_writeDiskIO;
     delete m_masterOutBusTrack;
     delete m_renderBus;
     delete m_clipRenderBus;
@@ -126,9 +127,6 @@ Sheet::~Sheet()
 void Sheet::init()
 {
 	PENTER2;
-#if defined (THREAD_CHECK)
-    m_threadPointer = QThread::currentThread();
-#endif
 
 	QObject::tr("Sheet");
 
@@ -140,22 +138,25 @@ void Sheet::init()
     set_start_seek(false);
     m_stopTransport.store(false);
 
-	m_diskio = new DiskIO(this);
-    m_diskio->set_output_sample_rate(audiodevice().get_sample_rate());
     int converter_type = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
-	m_diskio->set_resample_quality(converter_type);
+    m_readDiskIO = new DiskIO();
+    m_readDiskIO->set_output_sample_rate(audiodevice().get_sample_rate());
+    m_readDiskIO->set_resample_quality(converter_type);
+
+    connect(this, SIGNAL(seekStart()), m_readDiskIO, SLOT(seek()), Qt::QueuedConnection);
+    connect(m_readDiskIO, SIGNAL(seekFinished()), this, SLOT(seek_finished()), Qt::QueuedConnection);
+    connect (m_readDiskIO, SIGNAL(readSourceBufferUnderRun()), this, SLOT(handle_diskio_readbuffer_underrun()));
+    connect (m_readDiskIO, SIGNAL(writeSourceBufferOverRun()), this, SLOT(handle_diskio_writebuffer_overrun()));
+
+    m_writeDiskIO = new DiskIO();
 
     m_acmanager = new AudioClipManager(this);
     set_core_context_item( m_acmanager );
     create_history_stack();
     m_timeline->set_history_stack(get_history_stack());
 
-    connect(this, SIGNAL(seekStart()), m_diskio, SLOT(seek()), Qt::QueuedConnection);
 	connect(this, SIGNAL(prepareRecording()), this, SLOT(prepare_recording()));
 	connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(audiodevice_params_changed()), Qt::DirectConnection);
-	connect(m_diskio, SIGNAL(seekFinished()), this, SLOT(seek_finished()), Qt::QueuedConnection);
-	connect (m_diskio, SIGNAL(readSourceBufferUnderRun()), this, SLOT(handle_diskio_readbuffer_underrun()));
-	connect (m_diskio, SIGNAL(writeSourceBufferOverRun()), this, SLOT(handle_diskio_writebuffer_overrun()));
 	connect(&config(), SIGNAL(configChanged()), this, SLOT(config_changed()));
 
     mixdown = gainbuffer = nullptr;
@@ -202,10 +203,10 @@ int Sheet::set_state( const QDomNode & node )
 	
 	bool ok;
         m_workLocation = e.attribute( "m_workLocation", "0").toLongLong(&ok);
-	m_transportLocation = TTimeRef(e.attribute( "transportlocation", "0").toLongLong(&ok));
-	
+    TTimeRef transportLocation = TTimeRef(e.attribute( "transportlocation", "0").toLongLong(&ok));
+
 	// Start seeking to the 'old' transport pos
-    set_transport_location(m_transportLocation);
+    set_transport_location(transportLocation);
 	set_snapping(e.attribute("snapping", "0").toInt());
 
     // TTimeLineRuler used to be called TimeLine so to keep old projects
@@ -538,6 +539,7 @@ int Sheet::process( nframes_t nframes )
 
 	// update the transport location
     m_transportLocation.add_frames(nframes, audiodevice().get_sample_rate());
+    m_readDiskIO->set_transport_location(m_transportLocation);
     tsar().post_rt_event(m_transportLocationChangedTsarEvent);
 
 	if (!processResult) {
@@ -588,13 +590,8 @@ void Sheet::audiodevice_params_changed()
 	// We need to seek to a different position then the current one,
 	// else the seek won't happen at all :)
     auto outputRate = audiodevice().get_sample_rate();
-    m_diskio->set_output_sample_rate(outputRate);
+    m_readDiskIO->set_output_sample_rate(outputRate);
     set_transport_location(m_transportLocation + TTimeRef(audiodevice().get_buffer_size(), outputRate));
-}
-
-DiskIO * Sheet::get_diskio( ) const
-{
-	return m_diskio;
 }
 
 AudioClipManager * Sheet::get_audioclip_manager( ) const
@@ -671,9 +668,7 @@ TCommand* Sheet::add_track(Track* track, bool historable)
 // Function is only to be called from GUI thread.
 TCommand * Sheet::set_recordable()
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT(QThread::currentThread() == m_threadPointer);
-#endif
+    Q_ASSERT(QThread::currentThread() == this->thread());
 	
 	// Do nothing if transport is rolling!
 	if (is_transport_rolling()) {
@@ -711,10 +706,10 @@ TCommand* Sheet::set_recordable_and_start_transport()
 // Function is only to be called from GUI thread.
 TCommand* Sheet::start_transport()
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT(QThread::currentThread() == m_threadPointer);
-#endif
-	// Delegate the transport start (or if we are rolling stop)
+    // FIXME: is this really true, currently not so for the export thread
+    // Q_ASSERT(QThread::currentThread() == m_threadPointer);
+
+    // Delegate the transport start (or if we are rolling stop)
 	// request to the audiodevice. Depending on the driver in use
 	// this call will return directly to us (by a call to transport_control),
 	// or handled by the driver
@@ -848,10 +843,7 @@ void Sheet::set_recording(bool recording, bool realtime)
 // NON RT thread save function, should only be called from GUI thread!!
 void Sheet::prepare_recording()
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT(QThread::currentThread() == m_threadPointer);
-#endif
-
+    Q_ASSERT(QThread::currentThread() == this->thread());
 
     if (m_recording && any_audio_track_armed()) {
         CommandGroup* group = new CommandGroup(this, "");
@@ -897,16 +889,14 @@ void Sheet::clip_finished_recording(AudioClip * clip)
 
 void Sheet::set_transport_location(TTimeRef location)
 {
+    // Q_ASSERT(QThread::currentThread() ==  this->thread());
         if (location < TTimeRef()) {
-                // do nothing
-                return;
-        }
+        // do nothing
+        return;
+    }
 
-#if defined (THREAD_CHECK)
-    // Q_ASSERT(QThread::currentThread() ==  m_threadPointer);
-#endif
-        printf("sheet: set transport to: %lld\n", location.universal_frame());
-	audiodevice().transport_seek_to(m_audiodeviceClient, location);
+    printf("Sheet::set_transport_location: set transport to: %s\n", QS_C(TTimeRef::timeref_to_ms_3(location)));
+    audiodevice().transport_seek_to(m_audiodeviceClient, location);
 }
 
 
@@ -916,9 +906,7 @@ void Sheet::set_transport_location(TTimeRef location)
 //
 void Sheet::inititate_seek()
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT(m_threadPointer != QThread::currentThread());
-#endif
+    Q_ASSERT(this->thread() != QThread::currentThread());
 	
 	if (is_transport_rolling()) {
 		m_resumeTransport = true;
@@ -927,19 +915,18 @@ void Sheet::inititate_seek()
     m_transportRolling.store(false);
     set_start_seek(false);
 	
-	// only sets a boolean flag, save to call.
-	m_diskio->prepare_for_seek();    
+    // only sets a boolean flag and the new seek location, save to call
+    m_readDiskIO->set_seek_transport_location(m_seekTransportLocation);
     tsar().post_rt_event(m_seekStartTsarEvent);
 }
 
 void Sheet::seek_finished()
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT_X(m_threadPointer == QThread::currentThread(), "Sheet::seek_finished", "Called from other Thread!");
-#endif
-	PMESG2("Sheet :: entering seek_finished");
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "Sheet::seek_finished", "Called from other Thread!");
+
+    PMESG2("Sheet :: entering seek_finished");
     m_transportLocation  = m_seekTransportLocation;
-    printf("seek finished, setting transport location to %s\n", QS_C(TTimeRef::timeref_to_ms_3(m_transportLocation)));
+    printf("Sheet::seek_finished: Transport Location is now %s\n", QS_C(TTimeRef::timeref_to_ms_3(m_transportLocation)));
 	m_seeking = 0;
 
 	if (m_resumeTransport) {
@@ -954,8 +941,8 @@ void Sheet::seek_finished()
 void Sheet::config_changed()
 {
     int quality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
-	if (m_diskio->get_resample_quality() != quality) {
-		m_diskio->set_resample_quality(quality);
+    if (m_readDiskIO->get_resample_quality() != quality) {
+        m_readDiskIO->set_resample_quality(quality);
 	}
 }
 

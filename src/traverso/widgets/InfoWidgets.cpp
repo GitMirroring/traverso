@@ -77,8 +77,9 @@ SystemResources::SystemResources(QWidget * parent)
 	m_readBufferStatus->setToolTip(tr("Read Buffer Status"));
 	m_writeBufferStatus->setToolTip(tr("Write Buffer Status"));
     m_dspCpuUsage = new SystemValueBar(this);
-    m_diskCpuUsage = new SystemValueBar(this);
-	m_icon = new QPushButton();
+    m_diskReadCpuUsage = new SystemValueBar(this);
+    m_diskWriteCpuUsage = new SystemValueBar(this);
+    m_icon = new QPushButton();
 	m_icon->setIcon(find_pixmap(":/memorysmall"));
 	m_icon->setFlat(true);
 	m_icon->setMaximumWidth(20);
@@ -93,76 +94,95 @@ SystemResources::SystemResources(QWidget * parent)
 	m_writeBufferStatus->add_range_color(40, 60, QColor(255, 255, 0));
 	m_writeBufferStatus->add_range_color(60, 100, QColor(227, 254, 227));
 	m_writeBufferStatus->setMinimumWidth(60);
-	
+    m_writeBufferStatus->set_text("W");
+
 	m_readBufferStatus->set_range(0, 100);
 	m_readBufferStatus->add_range_color(0, 40, QColor(255, 0, 0));
 	m_readBufferStatus->add_range_color(40, 60, QColor(255, 255, 0));
 	m_readBufferStatus->add_range_color(60, 100, QColor(227, 254, 227));
 	m_readBufferStatus->setMinimumWidth(60);
-	
+    m_readBufferStatus->set_text("R");
+
     m_dspCpuUsage->set_range(0, 100);
     m_dspCpuUsage->set_int_rounding(false);
     m_dspCpuUsage->setMinimumWidth(90);
     m_dspCpuUsage->add_range_color(0, 60, QColor(227, 254, 227));
     m_dspCpuUsage->add_range_color(60, 75, QColor(255, 255, 0));
     m_dspCpuUsage->add_range_color(75, 100, QColor(255, 0, 0));
+    m_dspCpuUsage->set_text("DSP CPU");
 
-    m_diskCpuUsage->set_range(0, 100);
-    m_diskCpuUsage->set_int_rounding(false);
-    m_diskCpuUsage->setMinimumWidth(90);
-    m_diskCpuUsage->add_range_color(0, 60, QColor(227, 254, 227));
-    m_diskCpuUsage->add_range_color(60, 75, QColor(255, 255, 0));
-    m_diskCpuUsage->add_range_color(75, 100, QColor(255, 0, 0));
-	
-        m_readBufferStatus->set_text("R");
-	m_writeBufferStatus->set_text("W");
-        m_dspCpuUsage->set_text("DSP CPU");
-        m_diskCpuUsage->set_text("I/O CPU");
-	
-        QHBoxLayout* lay = new QHBoxLayout(this);
-	lay->addSpacing(6);
-	lay->addWidget(m_readBufferStatus);
-//	lay->addWidget(m_icon);
-	lay->addWidget(m_writeBufferStatus);
-    lay->addWidget(m_diskCpuUsage);
+    m_diskReadCpuUsage->set_range(0, 100);
+    m_diskReadCpuUsage->set_int_rounding(false);
+    m_diskReadCpuUsage->setMinimumWidth(70);
+    m_diskReadCpuUsage->add_range_color(0, 60, QColor(227, 254, 227));
+    m_diskReadCpuUsage->add_range_color(60, 75, QColor(255, 255, 0));
+    m_diskReadCpuUsage->add_range_color(75, 100, QColor(255, 0, 0));
+    m_diskReadCpuUsage->set_text("CPU");
+
+    m_diskWriteCpuUsage->set_range(0, 100);
+    m_diskWriteCpuUsage->set_int_rounding(false);
+    m_diskWriteCpuUsage->setMinimumWidth(70);
+    m_diskWriteCpuUsage->add_range_color(0, 60, QColor(227, 254, 227));
+    m_diskWriteCpuUsage->add_range_color(60, 75, QColor(255, 255, 0));
+    m_diskWriteCpuUsage->add_range_color(75, 100, QColor(255, 0, 0));
+    m_diskWriteCpuUsage->set_text("CPU");
+
+    QHBoxLayout* lay = new QHBoxLayout(this);
+    lay->addSpacing(6);
+
+    lay->addWidget(m_readBufferStatus);
+    lay->addWidget(m_diskReadCpuUsage);
+
+    lay->addSpacing(12);
+
+    lay->addWidget(m_writeBufferStatus);
+    lay->addWidget(m_diskWriteCpuUsage);
+
+    lay->addSpacing(12);
+
     lay->addWidget(m_dspCpuUsage);
-        lay->addWidget(TMainWindow::instance()->get_track_finder());
-        lay->addWidget(m_collectedNumber);
+    lay->addSpacing(12);
+
+    lay->addWidget(TMainWindow::instance()->get_track_finder());
+    lay->addWidget(m_collectedNumber);
+
     lay->setContentsMargins(0, 0, 0, 0);
-	lay->addSpacing(6);
-	setLayout(lay);
-	setFrameStyle(QFrame::NoFrame);
-	
+    lay->addSpacing(6);
+    setLayout(lay);
+    setFrameStyle(QFrame::NoFrame);
+
 	connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(update_status()));
 	
 	update_status();
-	
-        m_updateTimer.start(750);
 
-        connect(&ied(), SIGNAL(collectedNumberChanged()), this, SLOT(collected_number_changed()));
+    m_updateTimer.start(750);
+
+    connect(&ied(), SIGNAL(collectedNumberChanged()), this, SLOT(collected_number_changed()));
 }
 
 void SystemResources::update_status( )
 {
     float time = audiodevice().get_cpu_time();
-    float diskIOtime = 0.0f;
+    float diskReadIOtime = 0.0f;
+    float diskWriteIOtime = 0.0f;
 
 	int bufReadStatus = 100;
 	int bufWriteStatus = 100;
 	
 	if (m_project) {
 		foreach(Sheet* sheet, m_project->get_sheets() ) {
-			bufReadStatus = std::min(sheet->get_diskio()->get_read_buffers_fill_status(), bufReadStatus);
-			bufWriteStatus = std::min(sheet->get_diskio()->get_write_buffers_fill_status(), bufWriteStatus);
-            diskIOtime += sheet->get_diskio()->get_cpu_time();
-		}
+            bufReadStatus = std::min(sheet->get_read_diskio()->get_buffers_fill_status(), bufReadStatus);
+            bufWriteStatus = std::min(sheet->get_write_diskio()->get_buffers_fill_status(), bufWriteStatus);
+            diskReadIOtime += sheet->get_read_diskio()->get_cpu_time();
+            diskWriteIOtime += sheet->get_write_diskio()->get_cpu_time();
+        }
 	}
 
-	
-	m_readBufferStatus->set_value(bufReadStatus);
+    m_readBufferStatus->set_value(bufReadStatus);
 	m_writeBufferStatus->set_value(bufWriteStatus);
+    m_diskReadCpuUsage->set_value(diskReadIOtime);
+    m_diskWriteCpuUsage->set_value(diskWriteIOtime);
     m_dspCpuUsage->set_value(time);
-    m_diskCpuUsage->set_value(diskIOtime);
 }
 
 

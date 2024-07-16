@@ -67,7 +67,12 @@ public:
     int get_audio_track_count() const {return m_audioTracks.size();}
 
     Project* get_project() const {return m_project;}
-    DiskIO*	get_diskio() const;
+    DiskIO*	get_read_diskio() const {
+        return m_readDiskIO;
+    }
+    DiskIO* get_write_diskio() const {
+        return m_writeDiskIO;
+    }
 
     AudioClipManager* get_audioclip_manager() const;
 
@@ -112,10 +117,6 @@ public:
     bool is_recording() const {return m_recording;}
     bool is_smaller_then(APILinkedListNode* node) {Q_UNUSED(node); return false;}
 
-#if defined (THREAD_CHECK)
-    QThread*	m_threadPointer;
-#endif
-
 private:
     QList<AudioClip*>	m_recordingClips;
     QTimer              m_skipTimer;
@@ -123,7 +124,8 @@ private:
     TAudioDeviceClient*	m_audiodeviceClient{};
     AudioBus*           m_renderBus{};
     AudioBus*           m_clipRenderBus{};
-    DiskIO*             m_diskio{};
+    DiskIO*             m_readDiskIO;
+    DiskIO*             m_writeDiskIO;
     AudioClipManager*	m_acmanager{};
     QList<TTimeRef>		m_xposList;
     QString             m_audioSourcesDir;

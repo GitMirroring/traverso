@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2006-2007 Remon Sijrier
+Copyright (C) 2006-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -20,9 +20,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "DiskIO.h"
-#include "ResampleAudioReader.h"
-#include "Sheet.h"
-#include "Utils.h"
+
+#include "AbstractAudioReader.h"
+#include "AudioDevice.h"
+
+#include "AudioSource.h"
+
+// Always put me below _all_ includes, this is needed
+// in case we run with memory leak detection enabled!
+#include "Debugger.h"
+#include <samplerate.h>
 
 #if defined (Q_OS_UNIX)
 
@@ -69,26 +76,16 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 
 #endif // endif Q_OS_UNIX
 
-#include "AbstractAudioReader.h"
-#include "AudioSource.h"
-#include "ReadSource.h"
-#include "WriteSource.h"
-#include "AudioDevice.h"
-#include "TConfig.h"
-
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
-#include "Debugger.h"
+/** \class DiskIO
+ *	\brief handles all the read's and write's of AudioSources in it's private thread.
+ *
+ *	Each Sheet class has it's own DiskIO instance.
+ * 	The DiskIO manages all the AudioSources related to a Sheet, and makes sure the RingBuffers
+ * 	from the AudioSources are processed in time. (It at least tries very hard)
+ */
 
 
-#define UPDATE_INTERVAL		40
-
-DiskIOThread::DiskIOThread()
-    : QThread()
-{
-}
-
-void DiskIOThread::run()
+void DiskIO::run()
 {
 #if defined (Q_OS_UNIX)
 
@@ -118,39 +115,29 @@ void DiskIOThread::run()
 }
 
 
-/************** END DISKIO THREAD ************/
 
-
-
-/** 	\class DiskIO 
- *	\brief handles all the read's and write's of AudioSources in it's private thread.
- *
- *	Each Sheet class has it's own DiskIO instance.
- * 	The DiskIO manages all the AudioSources related to a Sheet, and makes sure the RingBuffers
- * 	from the AudioSources are processed in time. (It at least tries very hard)
- */
-DiskIO::DiskIO(Sheet* sheet)
-    : m_sheet(sheet)
+DiskIO::DiskIO()
 {
-    m_lastdoWorkReadTime = TTimeRef::get_nanoseconds_since_epoch();
-    m_stopWork.store(false);
+    m_waitForSeek.store(false);
     m_outputSampleRate = 0;
     m_sampleRateChanged = false;
     m_resampleQualityChanged = false;
-    m_resampleQuality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
-    m_readBufferFillStatus = m_writeBufferFillStatus = 0;
-    m_hardDiskOverLoadCounter = 0;
+    m_resampleQuality = SRC_SINC_FASTEST;
+    m_bufferFillStatus = 0;
     m_cpuTime = new RingBufferNPT<trav_time_t>(1024);
+    m_lastCpuReadTime = TTimeRef::get_nanoseconds_since_epoch();
 
     // TODO This is a LARGE buffer, any ideas how to make it smaller ??
+    // FIXME: this buffer is never resized and an ugly hack so fix it!
     framebuffer = new audio_sample_t[audiodevice().get_sample_rate() * writebuffertime];
 
     m_fileDecodeBuffer = new DecodeBuffer;
     m_resampleDecodeBuffer = new DecodeBuffer;
 
-    // Move this instance to the workthread
-    moveToThread(&m_diskThread);
-    m_diskThread.start(QThread::TimeCriticalPriority);
+    // Run in our own event loop so every slot call get's processed there
+    moveToThread(this);
+    start(QThread::HighPriority);
+
     connect(&audiodevice(), SIGNAL(finishedOneProcessCycle()), this, SLOT(do_work()), Qt::QueuedConnection);
 }
 
@@ -178,25 +165,23 @@ void DiskIO::seek()
 {
     PENTER;
 
-#if defined (THREAD_CHECK)
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "Error, running in gui thread!!!!!");
-#endif
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "NOT running in DiskIO thread");
 
-    m_stopWork.store(false);
-
+    // A seek event happens for 2 reasons, for transport control and after an audiodevice reconfiguration
+    // in the latter case we need to reset rate and buffer sizes.
     if (m_sampleRateChanged) {
-        for (auto source : m_readSources) {
+        for (auto source : m_audioSources) {
             source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
             source->prepare_rt_buffers(audiodevice().get_buffer_size());
         }
         m_sampleRateChanged = false;
     }
 
-    auto transportLocation = m_sheet->get_seek_transport_location();
-    for(ReadSource* source : m_readSources) {
-        source->rb_seek_to_transport_location(transportLocation);
+    for(auto source : m_audioSources) {
+        source->rb_seek_to_transport_location(m_seekTransportLocation);
     }
 
+    m_waitForSeek.store(false);
     emit seekFinished();
 }
 
@@ -205,182 +190,77 @@ void DiskIO::seek()
 // This function is called everytime the audio thread has finished one processing cycle
 void DiskIO::do_work( )
 {
-#if defined (THREAD_CHECK)
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "Error, running in gui thread!!!!!");
-#endif
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::do_work", "NOT running in DiskIO thread");
 
-    m_hardDiskOverLoadCounter = 0;
-
-    m_doWorkStartTime = TTimeRef::get_nanoseconds_since_epoch();
-
-    there_are_processable_sources();
+    auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
     if (m_resampleQualityChanged) {
-        for (auto source : m_readSources) {
+        for (auto source : m_audioSources) {
             source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
         }
         m_resampleQualityChanged = false;
     }
 
-    for (int i=0; i<m_processableReadSources.size(); ++i) {
-        ReadSource* source = m_processableReadSources.at(i);
 
-        if (m_stopWork.load()) {
-            printf("DiskIO::do_work: Detected stop work, returning from do_work()\n");
-            update_time_usage(TTimeRef::get_nanoseconds_since_epoch());
+    for (auto source : m_audioSources)
+    {
+        if (m_waitForSeek.load()) {
+            printf("DiskIO::do_work: waiting for seek\n");
             return;
         }
 
-        if (source->get_buffer_status()->out_of_sync()) {
-            source->rb_seek_to_transport_location(m_sheet->get_transport_location());
-        }
-        else {
-            source->fill_realtime_buffers();
-        }
-
-    }
-
-    for (int i=0; i<m_processableWriteSources.size(); ++i) {
-        WriteSource* source = m_processableWriteSources.at(i);
-        source->process_ringbuffer(framebuffer);
-    }
-
-    update_time_usage(TTimeRef::get_nanoseconds_since_epoch());
-
-}
-
-
-// Internal function
-int DiskIO::there_are_processable_sources( )
-{
-    m_processableReadSources.clear();
-    m_processableSyncSources.clear();
-    m_processableWriteSources.clear();
-    m_writersStatus.clear();
-
-
-    for (int j=0; j<m_writeSources.size(); ++j) {
-        WriteSource* source = m_writeSources.at(j);
-        int space = source->get_processable_buffer_space();
-        QPair<int, WriteSource*> data(space, source);
-        m_writersStatus.append(data);
-    }
-
-    for (int j=0; j<m_readSources.size(); ++j) {
-        ReadSource* source = m_readSources.at(j);
         BufferStatus* status = source->get_buffer_status();
 
         if (status->fillStatus < 80 || status->out_of_sync()) {
 
-            if ((status->fillStatus < m_readBufferFillStatus.load()) && !status->out_of_sync()) {
-                m_readBufferFillStatus.store(status->fillStatus);
+            if (status->out_of_sync()) {
+                source->rb_seek_to_transport_location(m_transportLocation);
+            }
+            else {
+                source->process_realtime_buffers();
             }
 
-            m_processableReadSources.append(source);
-
+            if ((status->fillStatus < m_bufferFillStatus.load()) && !status->out_of_sync()) {
+                m_bufferFillStatus.store(status->fillStatus);
+            }
         }
     }
 
-
-
-        for(int pair=0; pair<m_writersStatus.size(); ++pair) {
-            WriteSource* source = m_writersStatus.at(pair).second;
-            int space = m_writersStatus.at(pair).first;
-            int prio = int(space  / source->get_chunck_size());
-
-            // If the source stopped recording, it will write it's remaining samples in the next
-            // process_buffers call, and unregister itself from this DiskIO instance!
-            if ( space > 20 ||  ! source->is_recording() ) {
-
-                if ((source->get_buffer_size() - space) < 8192) {
-                    if (! m_hardDiskOverLoadCounter++) {
-                        emit writeSourceBufferOverRun();
-                    }
-                }
-
-                if (space > m_writeBufferFillStatus.load()) {
-                    m_writeBufferFillStatus.store(space);
-                }
-
-                m_processableWriteSources.append(source);
-            }
-        }
-
-
-        if (m_processableReadSources.size() > 0 || m_processableWriteSources.size() > 0 || m_processableSyncSources.size() > 0)  {
-            return 1;
-    }
-
-    return 0;
+    auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
+    m_cpuTime->write(&totalTime, 1);
 }
 
-void DiskIO::add_read_source(ReadSource* source)
+
+void DiskIO::add_audio_source(AudioSource* source)
 {
     PENTER2;
 
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::addd_read_source", "Must be called via queued slot connection, not directly by function");
-
-    if (source->get_channel_count() == 0) {
-        return;
-    }
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::addd_read_source", "Must be called via queued slot connection, not directly by function");    
+    Q_ASSERT(source->get_channel_count() > 0);
 
     source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
     source->set_decode_buffers(m_fileDecodeBuffer, m_resampleDecodeBuffer);
 
     source->prepare_rt_buffers(audiodevice().get_buffer_size());
 
-    m_readSources.append(source);
+    // only for WriteSource change to decodebuffers instead
+    source->set_diskio_frame_buffer(framebuffer);
+
+    m_audioSources.append(source);
 }
 
-void DiskIO::add_write_source( WriteSource * source )
-{
-    PENTER2;
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::add_write_source", "Must be called via queued slot connection, not directly by function");
-
-    source->set_diskio(this);
-
-    m_writeSources.append(source);
-}
-
-void DiskIO::remove_read_source(ReadSource *source)
-{
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::remove_read_source", "Must be called via queued slot connection, not directly by function");
-
-    m_readSources.removeAll(source);
-}
-
-
-// FIXME: called from WritSource when export is finished, which is a directy function call
-// Let DiskIO handle the removal or make the removal an event so we can track it.
-// internal function
-void DiskIO::remove_write_source( WriteSource * source )
+void DiskIO::remove_and_delete_audio_source(AudioSource *source)
 {
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::remove_write_source", "Must be called via queued slot connection, not directly by function");
-    m_writeSources.removeAll(source);
-}
 
-/**
- *      Interupts any pending AudioSource's buffer processing, and returns from do_work().
- *	Use this before calling seek() to shorten the seek process.
- */
-void DiskIO::prepare_for_seek( )
-{
-    PENTER;
-    // Stop any processing in do_work()
-    m_stopWork.store(true);
-}
-
-
-// Internal function
-void DiskIO::update_time_usage(trav_time_t time)
-{
-    trav_time_t runcycleTime = time - m_doWorkStartTime;
-    m_cpuTime->write(&runcycleTime, 1);
+    m_audioSources.removeAll(source);
+    source->delete_rt_buffers();
+    delete source;
 }
 
 /**
  *
- * @return Returns the CPU time consumed by the DiskIO work thread
+ * @return Returns the CPU time consumed by the DiskIO thread
  */
 float DiskIO::get_cpu_time( )
 {
@@ -394,9 +274,9 @@ float DiskIO::get_cpu_time( )
         totaltime += value;
     }
 
-    audio_sample_t result = ( (totaltime  / (currentTime - m_lastdoWorkReadTime) ) * 100 );
+    audio_sample_t result = ( (totaltime  / (currentTime - m_lastCpuReadTime) ) * 100 );
 
-    m_lastdoWorkReadTime = currentTime;
+    m_lastCpuReadTime = currentTime;
 
     return result;
 }
@@ -408,26 +288,10 @@ float DiskIO::get_cpu_time( )
  * @return The status in procentual amount of the smallest remaining space in the writebuffers
  *		that could be used to write 'recording' data too.
  */
-int DiskIO::get_write_buffers_fill_status( )
+int DiskIO::get_buffers_fill_status( )
 {
-    int space = m_writeBufferFillStatus.load();
-    m_writeBufferFillStatus.store(0);
-
-    int size = int(audiodevice().get_sample_rate()) * writebuffertime;
-    int status = int((float(size - space) / size) * 100);
-
-    return status;
-}
-
-/**
- * 	Get the status of the readbuffers.
- *
- * @return The status is the procentual amount of the buffer which was most empty since the last call to this function
- */
-int DiskIO::get_read_buffers_fill_status( )
-{
-    int status = m_readBufferFillStatus.load();
-    m_readBufferFillStatus.store(100);
+    int status = m_bufferFillStatus.load();
+    m_bufferFillStatus.store(100);
 
     return status;
 }
@@ -435,23 +299,22 @@ int DiskIO::get_read_buffers_fill_status( )
 void DiskIO::stop_disk_thread( )
 {
     PENTER;
-    if (!m_diskThread.isRunning()) {
+    if (!isRunning()) {
         return;
     }
 
-
     // Stop any processing in do_work()
-    m_stopWork.store(true);
+    m_waitForSeek.store(true);
 
     // Exit the diskthreads event loop
-    printf("DiskIO::stop_io: calling m_diskThread->exit(0)\n");
-    m_diskThread.exit(0);
+    printf("DiskIO::stop_disk_thread: calling m_diskThread->exit(0)\n");
+    exit(0);
 
-    // Wait for the Thread to return from it's event loop. 1000 ms should be (more then) enough,
+    // Wait for the Thread to return from it's event loop. 2 seconds should be (more then) enough,
     // if not, terminate this thread and print a warning!
-    if ( ! m_diskThread.wait(2000) ) {
+    if ( ! wait(2000) ) {
         qWarning("DiskIO :: Still running after 2 second wait, terminating!");
-        m_diskThread.terminate();
+        terminate();
     }
 }
 
@@ -463,6 +326,7 @@ void DiskIO::set_resample_quality(int quality)
 
 void DiskIO::set_output_sample_rate(uint outputSampleRate)
 {
+    printf("DiskIO::set_output_sample_rate: new sample rate %d\n", outputSampleRate);
     m_outputSampleRate = outputSampleRate;
     m_sampleRateChanged = true;
 }
