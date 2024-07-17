@@ -150,7 +150,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 				clip->set_state(clip->get_dom_node());
 			}
 			clip->set_location_start(startpos);
-            startpos = clip->get_location_end();
+            startpos = clip->get_location_item()->get_location_end();
 			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
 			group->add_command(arc);
 			continue;
@@ -162,7 +162,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 			clip->set_sheet(m_importTrack->get_sheet());
 			clip->set_track(m_importTrack);
 			clip->set_location_start(startpos);
-            startpos = clip->get_location_end();
+            startpos = clip->get_location_item()->get_location_end();
 			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
 			group->add_command(arc);
 		}

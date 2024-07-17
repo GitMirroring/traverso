@@ -142,7 +142,7 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
             foreach(AudioTrack* track, tracks) {
                 QList<AudioClip*> clips = track->get_audioclips();
                 foreach(AudioClip* clip, clips) {
-                    if (clip->get_location_end() > currentLocation) {
+                    if (clip->get_location_item()->get_location_end() > currentLocation) {
                         movingClips.append(clip);
                     }
                 }

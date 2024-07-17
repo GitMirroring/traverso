@@ -32,7 +32,7 @@ class LocationItem
 {
 public:
     LocationItem();
-        virtual ~LocationItem() {}
+    ~LocationItem() {}
 
 	void set_snappable(bool snap);
 
@@ -42,10 +42,10 @@ public:
 
     inline TTimeRef get_location_start() const {return m_locationStart;}
     inline TTimeRef get_location_end() const {return m_locationEnd;}
-    virtual TTimeRef get_length() const {return m_locationEnd - m_locationStart;}
+    TTimeRef get_length() const {return m_locationEnd - m_locationStart;}
 
 
-    virtual void set_location_start(const TTimeRef& start);
+    void set_location_start(const TTimeRef& start);
     void set_location_end(const TTimeRef& end);
 
 protected:

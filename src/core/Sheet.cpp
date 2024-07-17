@@ -38,7 +38,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include "Project.h"
 #include "AudioTrack.h"
-#include "AudioSource.h"
 #include "ResampleAudioReader.h"
 #include "AudioClip.h"
 #include "TExportSpecification.h"
@@ -714,7 +713,7 @@ TCommand* Sheet::start_transport()
 	// this call will return directly to us (by a call to transport_control),
 	// or handled by the driver
 	if (is_transport_rolling()) {
-                audiodevice().transport_stop(m_audiodeviceClient, m_transportLocation);
+        audiodevice().transport_stop(m_audiodeviceClient, m_transportLocation);
 	} else {
 		audiodevice().transport_start(m_audiodeviceClient);
 	}
@@ -1078,8 +1077,8 @@ void Sheet::update_skip_positions()
 	// store all clip borders
 	QList<AudioClip* > acList = get_audioclip_manager()->get_clip_list();
 	for (int i = 0; i < acList.size(); ++i) {
-		m_xposList << acList.at(i)->get_location_start();
-        m_xposList << acList.at(i)->get_location_end();
+        m_xposList << acList.at(i)->get_location_item()->get_location_start();
+        m_xposList << acList.at(i)->get_location_item()->get_location_end();
 	}
 
 	// store all marker positions

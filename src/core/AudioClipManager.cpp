@@ -122,8 +122,8 @@ void AudioClipManager::update_last_frame( )
 	m_lastLocation = TTimeRef();
 	
 	foreach(AudioClip* clip, m_clips) {
-        if (clip->get_location_end() >= m_lastLocation)
-            m_lastLocation = clip->get_location_end();
+        if (clip->get_location_item()->get_location_end() >= m_lastLocation)
+            m_lastLocation = clip->get_location_item()->get_location_end();
 	}
 	
 	emit m_sheet->lastFramePositionChanged();

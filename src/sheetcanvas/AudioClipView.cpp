@@ -730,7 +730,7 @@ void AudioClipView::repaint( )
 void AudioClipView::update_start_pos()
 {
     // 	printf("AudioClipView::update_start_pos()\n");
-    setPos((double(m_clip->get_location_start().universal_frame()) / m_sv->timeref_scalefactor), 0);
+    setPos((double(m_clip->get_location_item()->get_location_start().universal_frame()) / m_sv->timeref_scalefactor), 0);
 }
 
 TCommand * AudioClipView::fade_range()

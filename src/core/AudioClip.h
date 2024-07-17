@@ -41,7 +41,7 @@ class Peak;
 class AudioBus;
 class PluginChain;
 
-class AudioClip : public TAudioProcessingNode, public LocationItem
+class AudioClip : public TAudioProcessingNode
 {
 	Q_OBJECT
 
@@ -93,6 +93,7 @@ public:
 	qint64 get_readsource_id() const;
 	qint64 get_sheet_id() const {return m_sheetId;}
 	ReadSource* get_readsource() const;
+    inline LocationItem* get_location_item() const {return m_locationItem;}
 	
 	QDomNode get_dom_node() const;
 	
@@ -100,10 +101,18 @@ public:
 	bool is_selected();
 	bool is_locked() const {return m_isLocked;}
 	bool has_sheet() const;
-	bool is_readsource_invalid() const {return !m_isReadSourceValid;}
-    bool is_smaller_then(APILinkedListNode* node) {return ((AudioClip*)node)->get_location_end() > get_location_start();}
-    static bool isLeftMostClip(const AudioClip* left, const AudioClip* right) {return left->get_location_start() < right->get_location_end();}
-	bool is_moving() const {return m_isMoving;}
+    bool is_readsource_invalid() const {return !m_isReadSourceValid;}
+
+    bool is_smaller_then(APILinkedListNode* node) {
+        return static_cast<AudioClip*>(node)->get_location_item()->get_location_end() > this->m_locationItem->get_location_start();
+    }
+
+    // compares if left < right, used for std::sort
+    bool operator()( AudioClip* left, AudioClip* right ) const {
+        return left->get_location_item()->get_location_start() < right->get_location_item()->get_location_end();
+    }
+
+    bool is_moving() const {return m_isMoving;}
 
 	int recording_state() const;
 
@@ -122,6 +131,7 @@ private:
     FadeCurve*		m_fadeIn;
     FadeCurve*		m_fadeOut;
 	QDomNode		m_domNode;
+    LocationItem*   m_locationItem;
 	
     TTimeRef 		m_sourceEndLocation;
     TTimeRef 		m_sourceStartLocation;

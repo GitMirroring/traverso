@@ -153,22 +153,22 @@ AudioClipView* AudioTrackView::get_nearest_audioclip_view(TTimeRef location) con
 
         // check if location is in the clipviews start/end range
         // if so, we found the 'nearest' clipview, so return it.
-        if (clip->get_location_start() < location &&
-                clip->get_location_end() > location) {
+        if (clip->get_location_item()->get_location_start() < location &&
+                clip->get_location_item()->get_location_end() > location) {
             return clipview;
         }
 
         // this clip is left of of location.
-        if (clip->get_location_end() < location) {
-            TTimeRef diff = location - clip->get_location_end();
+        if (clip->get_location_item()->get_location_end() < location) {
+            TTimeRef diff = location - clip->get_location_item()->get_location_end();
             if (diff < shortestDistance) {
                 shortestDistance = diff;
                 nearestClipView = clipview;
             }
         }
         // this clip is right of location
-        if (clip->get_location_start() > location) {
-            TTimeRef diff = clip->get_location_start() - location;
+        if (clip->get_location_item()->get_location_start() > location) {
+            TTimeRef diff = clip->get_location_item()->get_location_start() - location;
             if (diff < shortestDistance) {
                 shortestDistance = diff;
                 nearestClipView = clipview;

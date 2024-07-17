@@ -181,9 +181,9 @@ void FadeCurve::process(AudioBus *bus, const TTimeRef& startLocation, const TTim
 
 
     if (m_type == FadeIn) {
-        trackStartLocation = m_clip->get_location_start();
+        trackStartLocation = m_clip->get_location_item()->get_location_start();
     } else {
-        trackStartLocation = m_clip->get_location_end() - fadeRange;
+        trackStartLocation = m_clip->get_location_item()->get_location_end() - fadeRange;
     }
 
     trackEndLocation = trackStartLocation + fadeRange;

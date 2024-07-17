@@ -71,7 +71,7 @@ void SnapList::update_snaplist()
                 acList.append(sheet->get_audioclip_manager()->get_clip_list());
         }
 	
-    SLPRINT("acList size is %lld\n", acList.size());
+    SLPRINT("acList size is %d\n", acList.size());
 
 	// Be able to snap to trackstart
         if (m_rangeStart == TTimeRef()) {
@@ -81,12 +81,12 @@ void SnapList::update_snaplist()
 	for( int i = 0; i < acList.size(); i++ ) {
 
 		AudioClip* clip = acList.at(i);
-		if ( ! clip->is_snappable()) {
+        if ( ! clip->get_location_item()->is_snappable()) {
 			continue;
 		}
 
-		TTimeRef startlocation = clip->get_location_start();
-        TTimeRef endlocation = clip->get_location_end();
+		TTimeRef startlocation = clip->get_location_item()->get_location_start();
+        TTimeRef endlocation = clip->get_location_item()->get_location_end();
 
 		if (startlocation > endlocation) {
 			PERROR("clip xstart > xend, this must be a programming error!");
