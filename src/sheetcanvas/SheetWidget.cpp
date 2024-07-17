@@ -65,9 +65,10 @@ SheetPanelViewPort::SheetPanelViewPort(QGraphicsScene * scene, SheetWidget * sw)
     m_spv = new SheetPanelView(scene, sw->get_session());
     load_theme();
 
-    QHBoxLayout* m_mainLayout = new QHBoxLayout(this);
-    m_mainLayout->addWidget(new TTimeLabel(this, sw->get_session()));
-    setLayout(m_mainLayout);
+    // QHBoxLayout* m_mainLayout = new QHBoxLayout(this);
+
+    // m_mainLayout->addWidget(new TTimeLabel(this, sw->get_session()));
+    // setLayout(m_mainLayout);
 
     connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme()));
 }

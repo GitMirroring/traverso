@@ -21,7 +21,6 @@
 
 #include "TransportConsoleWidget.h"
 
-#include "Themer.h"
 #include "Sheet.h"
 #include "Utils.h"
 #include "AudioTrack.h"
@@ -30,7 +29,6 @@
 #include "TConfig.h"
 #include "Information.h"
 
-#include "TimeLineViewPort.h"
 
 #include <QAction>
 #include <QWidget>
@@ -48,90 +46,98 @@
 TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
 	: QToolBar(parent)
 {
-        setEnabled(false);
+    setEnabled(false);
 
-	m_timeLabel = new QPushButton(this);
-	m_timeLabel->setFocusPolicy(Qt::NoFocus);
-	m_timeLabel->setStyleSheet(
-			"color: lime;"
-			"background-color: black;"
-                        "font: 19px;"
-			"border: 2px solid gray;"
-                        "border-radius: 10px;"
-                        "padding: 0 8 0 8;");
+    m_timeLabel = new QPushButton(this);
+    m_timeLabel->setFocusPolicy(Qt::NoFocus);
+    m_timeLabel->setStyleSheet(
+        "color: lime;"
+        "background-color: black;"
+        "font: 19px;"
+        "border: 2px solid gray;"
+        "border-radius: 10px;"
+        "padding: 0 8 0 8;");
 
-        m_toStartAction = addAction(QIcon(":/skipleft"), tr("Skip to Start"), this, SLOT(to_start()));
-        m_toLeftAction = addAction(QIcon(":/seekleft"), tr("Previous Snap Position"), this, SLOT(to_left()));
-        m_recAction = addAction(QIcon(":/record"), tr("Record"), this, SLOT(rec_toggled()));
-        m_playAction = addAction(QIcon(":/playstart"), tr("Play / Stop"), this, SLOT(play_toggled()));
-        m_toRightAction = addAction(QIcon(":/seekright"), tr("Next Snap Position"), this, SLOT(to_right()));
-        m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"), this, SLOT(to_end()));
+    m_toStartAction = addAction(QIcon(":/skipleft"), tr("Skip to Start"), this, SLOT(to_start()));
+    m_toLeftAction = addAction(QIcon(":/seekleft"), tr("Previous Snap Position"), this, SLOT(to_left()));
+    m_recAction = addAction(QIcon(":/record"), tr("Record"), this, SLOT(rec_toggled()));
+    m_playAction = addAction(QIcon(":/playstart"), tr("Play / Stop"), this, SLOT(play_toggled()));
+    m_toRightAction = addAction(QIcon(":/seekright"), tr("Next Snap Position"), this, SLOT(to_right()));
+    m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"), this, SLOT(to_end()));
 
-//        addWidget(m_timeLabel);
-        m_timeLabel->hide();
+    addWidget(m_timeLabel);
+    m_timeLabel->hide();
 
-        m_recAction->setCheckable(true);
-        m_playAction->setCheckable(true);
+    m_recAction->setCheckable(true);
+    m_playAction->setCheckable(true);
 
-	m_lastSnapPosition = TTimeRef();
+    m_lastSnapPosition = TTimeRef();
 
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
-	connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(update_label()));
+    connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(update_label()));
 
-	update_layout();
+    update_layout();
 }
 
 
 void TransportConsoleWidget::set_project(Project* project)
 {
-	m_project = project;
-	if (m_project) {
-                connect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
-	} else {
-		m_updateTimer.stop();
-                set_session(nullptr);
-	}
+    m_project = project;
+    if (m_project) {
+        connect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
+    } else {
+        m_updateTimer.stop();
+        set_session(nullptr);
+    }
 }
 
 void TransportConsoleWidget::set_session(TSession* session)
 {
-        Project* project = qobject_cast<Project*>(session);
-        // if the view was changed to Project's session (mixer)
-        // then keep the current active sheet!
-        if (project) {
-                return;
-        }
+    Project* project = qobject_cast<Project*>(session);
+    // if the view was changed to Project's session (mixer)
+    // then keep the current active sheet!
+    if (project) {
+        return;
+    }
 
-        m_sheet = qobject_cast<Sheet*>(session);
-        if (!m_sheet && session) {
-                m_sheet = qobject_cast<Sheet*>(session->get_parent_session());
-        }
+    if (m_sheet) {
+        disconnect(m_sheet, SIGNAL(recordingStateChanged()), this, SLOT(update_recording_state()));
+        disconnect(m_sheet, SIGNAL(transportStarted()), this, SLOT(transport_started()));
+        disconnect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
+        disconnect(m_sheet, SIGNAL(transportLocationChanged()), this, SLOT(update_label()));
 
-        if (!m_sheet) {
-		m_updateTimer.stop();
-		setEnabled(false);
-                update_label();
-		return;
-	}
+    }
 
-        setEnabled(true);
+    m_sheet = qobject_cast<Sheet*>(session);
+    if (!m_sheet && session) {
+        m_sheet = qobject_cast<Sheet*>(session->get_parent_session());
+    }
 
-	connect(m_sheet, SIGNAL(recordingStateChanged()), this, SLOT(update_recording_state()));
-	connect(m_sheet, SIGNAL(transportStarted()), this, SLOT(transport_started()));
-	connect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
-	connect(m_sheet, SIGNAL(transportLocationChanged()), this, SLOT(update_label()));
+    if (!m_sheet) {
+        m_updateTimer.stop();
+        setEnabled(false);
+        update_label();
+        return;
+    }
+
+    setEnabled(true);
+
+    connect(m_sheet, SIGNAL(recordingStateChanged()), this, SLOT(update_recording_state()));
+    connect(m_sheet, SIGNAL(transportStarted()), this, SLOT(transport_started()));
+    connect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
+    connect(m_sheet, SIGNAL(transportLocationChanged()), this, SLOT(update_label()));
 
 	update_label();
 }
 
 void TransportConsoleWidget::to_start()
 {
-        m_sheet->skip_to_start();
+    m_sheet->skip_to_start();
 }
 
 void TransportConsoleWidget::to_left()
 {
-        m_sheet->prev_skip_pos();
+    m_sheet->prev_skip_pos();
 }
 
 void TransportConsoleWidget::rec_toggled()
@@ -146,16 +152,17 @@ void TransportConsoleWidget::play_toggled()
 
 void TransportConsoleWidget::to_end()
 {
-        m_sheet->skip_to_end();
+    m_sheet->skip_to_end();
 }
 
 void TransportConsoleWidget::to_right()
 {
-        m_sheet->next_skip_pos();
+    m_sheet->next_skip_pos();
 }
 
 void TransportConsoleWidget::transport_started()
 {
+    printf("TransportConsoleWidget::transport_started\n");
     // use an odd number for the update interval, because
 	// a round number (e.g. 100) lets the last digit stay
 	// the same most of the time, but not always, which 
@@ -207,7 +214,7 @@ void TransportConsoleWidget::update_label()
 	QString currentTime;
 	
 	if (!m_sheet) {
-                currentTime = "";
+        currentTime = "";
 	} else {
 		currentTime = TTimeRef::timeref_to_ms_2(m_sheet->get_transport_location());
 	}
