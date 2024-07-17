@@ -277,12 +277,22 @@ void ReadSource::set_transport_start_location(const TTimeRef &transportStartLoca
 {
     // printf("ReadSource::set_transport_start_location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(transportStartLocation)));
     m_transportStartLocation = transportStartLocation;
+    // FIXME
+    // can this cause a race condition that DiskIO resyncs the buffers while
+    // ringbuffer_read() is also processing the rt queueu?
+    // that will end badly I would think
+    // m_bufferstatus.set_sync_status(BufferStatus::OUT_OF_SYNC);
 }
 
 void ReadSource::set_source_start_location(const TTimeRef &sourceStartLocation)
 {
     // printf("ReadSource::set_source_start_location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(sourceStartLocation)));
     m_sourceStartLocation = sourceStartLocation;
+    // FIXME
+    // can this cause a race condition that DiskIO resyncs the buffers while
+    // ringbuffer_read() is also processing the rt queueu?
+    // that will end badly I would think
+    // m_bufferstatus.set_sync_status(BufferStatus::OUT_OF_SYNC);
 }
 
 int ReadSource::file_read(DecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const
@@ -348,7 +358,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
 
     QueueBufferSlot* slot;
     // The contents of the Slots in the RT queue are most likely useless due to seeking
-    // to another transport location.
+    // to another transport location so empty the rt queue completely
     // NB: Since we are seeking we are allowed and should clear the rt queue now
     while (m_rtBufferSlotsQueue->try_dequeue(slot)) {
         m_freeBufferSlotsQueue->try_enqueue(slot);
@@ -357,9 +367,16 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
     Q_ASSERT(m_rtBufferSlotsQueue->size_approx() == 0);
     Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == slotcount);
 
-    TTimeRef fileLocation = transportLocation - m_transportStartLocation + m_sourceStartLocation;
+    TTimeRef seekTransportLocation = transportLocation;
+    if (seekTransportLocation < m_transportStartLocation) {
+        seekTransportLocation = m_transportStartLocation;
+        printf("transport location before clip start position, adjusting to clip start position %s\n",
+               QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
+    }
+
+    TTimeRef fileLocation = seekTransportLocation - m_transportStartLocation + m_sourceStartLocation;
     printf("rb_seek_to_transport_location: seeking to transport location: %s, file location: %s\n",
-           QS_C(TTimeRef::timeref_to_ms_3(transportLocation)),
+           QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)),
            QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
 
     // check if the clip's start position is within the range
@@ -370,14 +387,6 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
                QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), QS_C(TTimeRef::timeref_to_ms_3(m_sourceStartLocation)));
         fileLocation = m_sourceStartLocation;
     }
-
-    TTimeRef seekTransportLocation = transportLocation;
-    if (seekTransportLocation < m_transportStartLocation) {
-        seekTransportLocation = m_transportStartLocation;
-        printf("transport location before clip start position, adjusting to clip start position %s\n",
-               QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
-    }
-
 
     m_lastQueuedRTBufferSlot->set_file_location(fileLocation);
     m_bufferstatus.set_sync_status(BufferStatus::QUEUE_SYNCED_TO_NEW_LOCATION);
