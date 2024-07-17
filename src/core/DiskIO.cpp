@@ -167,6 +167,8 @@ void DiskIO::seek()
 
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "NOT running in DiskIO thread");
 
+    auto startTime = TTimeRef::get_nanoseconds_since_epoch();
+
     // A seek event happens for 2 reasons, for transport control and after an audiodevice reconfiguration
     // in the latter case we need to reset rate and buffer sizes.
     if (m_sampleRateChanged) {
@@ -180,6 +182,9 @@ void DiskIO::seek()
     for(auto source : m_audioSources) {
         source->rb_seek_to_transport_location(m_seekTransportLocation);
     }
+
+    auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
+    m_cpuTime->write(&totalTime, 1);
 
     m_waitForSeek.store(false);
     emit seekFinished();
