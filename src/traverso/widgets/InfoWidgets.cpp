@@ -170,12 +170,15 @@ void SystemResources::update_status( )
 	int bufWriteStatus = 100;
 	
 	if (m_project) {
-		foreach(Sheet* sheet, m_project->get_sheets() ) {
-            bufReadStatus = std::min(sheet->get_read_diskio()->get_buffers_fill_status(), bufReadStatus);
-            bufWriteStatus = std::min(sheet->get_write_diskio()->get_buffers_fill_status(), bufWriteStatus);
-            diskReadIOtime += sheet->get_read_diskio()->get_cpu_time();
-            diskWriteIOtime += sheet->get_write_diskio()->get_cpu_time();
+        auto sheet = m_project->get_active_sheet();
+        if (!sheet) {
+            return;
         }
+
+        bufReadStatus = sheet->get_read_diskio()->get_buffers_fill_status();
+        bufWriteStatus = sheet->get_write_diskio()->get_buffers_fill_status();
+        diskReadIOtime = sheet->get_read_diskio()->get_cpu_time();
+        diskWriteIOtime = sheet->get_write_diskio()->get_cpu_time();
 	}
 
     m_readBufferStatus->set_value(bufReadStatus);
