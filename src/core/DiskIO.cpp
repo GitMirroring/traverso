@@ -240,7 +240,7 @@ void DiskIO::add_audio_source(AudioSource* source)
 {
     PENTER2;
 
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::addd_read_source", "Must be called via queued slot connection, not directly by function");    
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::addd_audio_source", "Must be called via queued slot connection, not directly by function");
     Q_ASSERT(source->get_channel_count() > 0);
 
     source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
@@ -256,9 +256,13 @@ void DiskIO::add_audio_source(AudioSource* source)
 
 void DiskIO::remove_and_delete_audio_source(AudioSource *source)
 {
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::remove_write_source", "Must be called via queued slot connection, not directly by function");
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::remove_audio_source", "Must be called via queued slot connection, not directly by function");
 
     m_audioSources.removeAll(source);
+    // FIXME
+    // Review the deletion of AudioSources and non-active AudioSources that should only
+    // be removed from DiskIO but not deleted. Currently this function is only called
+    // for removing WriteSource source since they only live while recording
     source->delete_rt_buffers();
     delete source;
 }
