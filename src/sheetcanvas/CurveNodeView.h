@@ -45,7 +45,12 @@ public:
 	void load_theme_data();
 
 	CurveNode* get_curve_node() const {return m_node;}
-        CurveView* get_curve_view() const {return m_curveview;}
+    CurveView* get_curve_view() const {return m_curveview;}
+
+    bool operator<(CurveNodeView* other) {
+        return this->get_when() < other->get_when();
+    }
+
 
 	bool is_hard_selected() const {return m_isHardSelected;}
 	

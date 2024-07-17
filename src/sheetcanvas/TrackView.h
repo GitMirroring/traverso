@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef TRACK_VIEW_H
 #define TRACK_VIEW_H
 
+#include "Track.h"
 #include "ViewItem.h"
 #include <QPropertyAnimation>
 
@@ -58,8 +59,14 @@ public:
 	int get_total_height();
 	void layout_lanes();
 
-        void calculate_bounding_rect();
-        void load_theme_data();
+    void calculate_bounding_rect();
+    void load_theme_data();
+
+    // compares if left < right, used for std::sort
+    bool operator()( TrackView* left, TrackView* right ) const {
+        return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
+    }
+
 
 protected:
 	TTrackLaneView*		m_primaryLaneView;

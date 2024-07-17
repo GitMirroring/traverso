@@ -35,14 +35,13 @@ public:
     void setAutoRepeatStartDelay(int delay) {m_autorepeatStartDelay = delay;}
     void setSlotSignature(const QString& signature) {slotsignature = signature;}
 
-    static bool smaller(const TShortCutFunction* left, const TShortCutFunction* right )
-    {
-        return left->sortorder < right->sortorder;
+    bool operator<(TShortCutFunction* other) {
+        return this->sortorder < other->sortorder;
     }
-    static bool greater(const TShortCutFunction* left, const TShortCutFunction* right )
-    {
-        return left->sortorder > right->sortorder;
+    bool operator>(TShortCutFunction* other) {
+        return this->sortorder > other->sortorder;
     }
+
 
     static void makeShortcutKeyHumanReadable(QString& key, bool formatHtml=false);
 

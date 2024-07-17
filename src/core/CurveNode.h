@@ -49,6 +49,10 @@ public:
 
     bool is_smaller_then(APILinkedListNode* node) {return ((CurveNode*)node)->when > when;}
 
+    bool operator<(CurveNode* other) {
+        return this->get_when() < other->get_when();
+    }
+
 	Curve*	m_curve{};
 	
 	// declaring friend class Curve seems not to make any difference 

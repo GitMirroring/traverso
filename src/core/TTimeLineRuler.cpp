@@ -31,11 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Debugger.h"
 
-static bool smallerMarker(const Marker* left, const Marker* right )
-{
-	return left->get_when() < right->get_when();
-}
-
 TTimeLineRuler::TTimeLineRuler(TSession * sheet)
 	: ContextItem(sheet)
 	, m_sheet(sheet)
@@ -193,7 +188,7 @@ void TTimeLineRuler::marker_position_changed()
 
 void TTimeLineRuler::index_markers()
 {
-    std::sort(m_markers.begin(), m_markers.end(), smallerMarker);
+    std::sort(m_markers.begin(), m_markers.end());
 	// let the markers know about their position (index)
 	for (int i = 0; i < m_markers.size(); i++) {
 		m_markers.at(i)->set_index(i+1);

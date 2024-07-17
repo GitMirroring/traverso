@@ -70,7 +70,11 @@ public:
 	bool get_copyprotect();
     MarkerType get_type() {return m_type;}
     int get_index() {return m_index;}
-	
+
+    bool operator<(Marker* other) {
+        return this->get_when() < other->get_when();
+    }
+
 
 public slots:
 	void set_when (const TTimeRef& when);

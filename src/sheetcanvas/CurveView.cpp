@@ -42,6 +42,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cfloat>
 
+static bool smallerpoint(const QPointF& left, const QPointF& right) {
+    return left.x() < right.x();
+}
+
 CurveView::CurveView(SheetView* sv, ViewItem* parentViewItem, Curve* curve)
     : ViewItem(parentViewItem, curve)
     , m_curve(curve)
@@ -75,10 +79,6 @@ CurveView::~ CurveView( )
 {
     m_guicurve->clear_curve();
     delete m_guicurve;
-}
-
-static bool smallerpoint(const QPointF& left, const QPointF& right) {
-    return left.x() < right.x();
 }
 
 void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
@@ -218,7 +218,7 @@ void CurveView::add_curvenode_view(CurveNode* node)
         cmd->set_instantanious(true);
         TCommand::process_command(cmd);
 
-        std::sort(m_nodeViews.begin(), m_nodeViews.end(), Curve::smallerNode);
+        std::sort(m_nodeViews.begin(), m_nodeViews.end());
 
         update();
     }

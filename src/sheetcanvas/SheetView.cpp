@@ -60,11 +60,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 
 QHash<QString, QString> SheetView::m_cursorsDict;
 
-static bool smallerTrackView(const TrackView* left, const TrackView* right )
-{
-	return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
-}
-
 SheetView::SheetView(SheetWidget* sheetwidget,
 	ClipsViewPort* viewPort,
 	TrackPanelViewPort* tpvp,
@@ -240,8 +235,8 @@ void SheetView::move_trackview_up(TrackView *trackView)
 
 	trackView->get_track()->set_sort_index(newindex);
 
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end(), smallerTrackView);
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end(), smallerTrackView);
+    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
+    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
 
 	layout_tracks();
 }
@@ -284,8 +279,8 @@ void SheetView::move_trackview_down(TrackView *trackView)
 
 	trackView->get_track()->set_sort_index(newindex);
 
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end(), smallerTrackView);
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end(), smallerTrackView);
+    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
+    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
 
 	layout_tracks();
 
@@ -316,8 +311,8 @@ void SheetView::to_bottom(TrackView *trackView)
 	}
 
 
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end(), smallerTrackView);
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end(), smallerTrackView);
+    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
+    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
 
 	layout_tracks();
 }
@@ -354,8 +349,8 @@ void SheetView::to_top(TrackView *trackView)
 	}
 
 
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end(), smallerTrackView);
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end(), smallerTrackView);
+    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
+    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
 
 	layout_tracks();
 }
@@ -389,8 +384,8 @@ void SheetView::add_new_track_view(Track* track)
         connect(view, SIGNAL(totalTrackHeightChanged()), this, SLOT(layout_tracks()));
     }
 
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end(), smallerTrackView);
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end(), smallerTrackView);
+    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
+    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
 
 	layout_tracks();
 }
@@ -1136,7 +1131,7 @@ TCommand* SheetView::browse_to_next_context_item()
 	if (data.currentContext == "AudioClipView") {
         Q_ASSERT(data.atv);
         Q_ASSERT(data.acv);
-		AudioClip* nextClip = data.atv->get_track()->get_clip_after(data.acv->get_clip()->get_location_start());
+        AudioClip* nextClip = data.atv->get_track()->get_clip_after(data.acv->get_clip()->get_location_item()->get_location_start());
 		if (!nextClip) {
 			return nullptr;
 		}
@@ -1193,7 +1188,7 @@ TCommand* SheetView::browse_to_previous_context_item()
 	}
 
 	if (data.currentContext == "AudioClipView") {
-		AudioClip* nextClip = data.atv->get_track()->get_clip_before(data.acv->get_clip()->get_location_start());
+        AudioClip* nextClip = data.atv->get_track()->get_clip_before(data.acv->get_clip()->get_location_item()->get_location_start());
 		if (!nextClip) {
 			return nullptr;
 		}

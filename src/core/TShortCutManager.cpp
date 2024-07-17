@@ -108,7 +108,7 @@ QList< TShortCutFunction* > TShortCutManager::getFunctionsFor(QString className)
 		}
 	}
 
-    std::sort(functionsList.begin(), functionsList.end(), TShortCutFunction::smaller);
+    std::sort(functionsList.begin(), functionsList.end());
     return functionsList;
 }
 

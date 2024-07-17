@@ -418,7 +418,7 @@ void TimeLineView::load_theme_data()
 MarkerView* TimeLineView::get_marker_view_after(TTimeRef location)
 {
         // FIXME: only keep this list sorted if markers are added/moved??
-        std::sort(m_markerViews.begin(), m_markerViews.end(), smallerMarker);
+        std::sort(m_markerViews.begin(), m_markerViews.end());
 
         foreach(MarkerView* markerView, m_markerViews) {
                 if (markerView->get_marker()->get_when() > location) {
@@ -431,7 +431,7 @@ MarkerView* TimeLineView::get_marker_view_after(TTimeRef location)
 MarkerView* TimeLineView::get_marker_view_before(TTimeRef location)
 {
         // FIXME: only keep this list sorted if markers are added/moved??
-        std::sort(m_markerViews.begin(), m_markerViews.end(), smallerMarker);
+        std::sort(m_markerViews.begin(), m_markerViews.end());
 
         for (int i=m_markerViews.size() - 1; i>= 0; --i) {
                 MarkerView* markerView = m_markerViews.at(i);

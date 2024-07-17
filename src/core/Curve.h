@@ -67,11 +67,7 @@ public:
 	// Set functions
 	virtual void set_range(double when);
         void set_sheet(TSession* sheet);
-	
-	static bool smallerNode(const CurveNode* left, const CurveNode* right ) {
-		return left->get_when() < right->get_when();
-	}
-	
+
 	void clear_curve() {m_nodes.clear();}
         void set_start_offset(TTimeRef offset) {m_startoffset = offset;}
         TTimeRef get_start_offset() const {return m_startoffset;}
