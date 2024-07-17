@@ -165,7 +165,7 @@ nframes_t WriteSource::process (nframes_t nframes)
 
         case SF_FORMAT_PCM_32:
             for (uint chn = 0; chn < m_channelCount; ++chn) {
-
+                Q_ASSERT(m_outputData);
                 int *ob = static_cast<int *>(m_outputData);
                 const double int_max = double(INT_MAX);
                 const double int_min = double(INT_MIN);
