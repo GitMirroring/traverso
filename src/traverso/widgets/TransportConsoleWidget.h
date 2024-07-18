@@ -1,4 +1,5 @@
 /*
+    Copyright (C) 2024 Remon Sijrier
     Copyright (C) 2008 Nicola Doebelin
  
     This file is part of Traverso
@@ -23,7 +24,6 @@
 #define TRANSPORTCONSOLEWIDGET_H
 
 
-#include <QTimer>
 #include <QToolBar>
 #include <QWidget>
 
@@ -43,20 +43,21 @@ public:
 
 private:
 	QPushButton*	m_timeLabel;
-	Project*	m_project{};
-        Sheet*		m_sheet{};
+    Project*	m_project;
+    Sheet*		m_sheet;
 	QAction*	m_toStartAction;
 	QAction*	m_toLeftAction;
 	QAction*	m_recAction;
 	QAction*	m_playAction;
 	QAction*	m_toEndAction;
 	QAction*	m_toRightAction;
-	QTimer		m_updateTimer;
-	TTimeRef		m_lastSnapPosition;
+    TTimeRef	m_lastSnapPosition;
+    TTimeRef    m_transportLocation;
+    trav_time_t m_lastTransportLocationUpdatetime;
 
 public slots:
 	void set_project(Project*);
-        void set_session(TSession*);
+    void set_session(TSession*);
 
 private slots:
 	void to_start();

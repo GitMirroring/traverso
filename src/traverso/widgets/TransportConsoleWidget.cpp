@@ -21,9 +21,9 @@
 
 #include "TransportConsoleWidget.h"
 
+#include "AudioDevice.h"
 #include "Sheet.h"
 #include "Utils.h"
-#include "AudioTrack.h"
 #include "ProjectManager.h"
 #include "Project.h"
 #include "TConfig.h"
@@ -31,10 +31,7 @@
 
 
 #include <QAction>
-#include <QWidget>
 #include <QPushButton>
-#include <QGridLayout>
-#include <QEvent>
 #include <QFont>
 #include <QString>
 
@@ -47,6 +44,12 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
 	: QToolBar(parent)
 {
     setEnabled(false);
+
+    m_project = nullptr;
+    m_sheet = nullptr;
+
+    m_transportLocation = TTimeRef();
+    m_lastTransportLocationUpdatetime = 0;
 
     m_timeLabel = new QPushButton(this);
     m_timeLabel->setFocusPolicy(Qt::NoFocus);
@@ -66,7 +69,6 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"), this, SLOT(to_end()));
 
     addWidget(m_timeLabel);
-    m_timeLabel->hide();
 
     m_recAction->setCheckable(true);
     m_playAction->setCheckable(true);
@@ -74,19 +76,24 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     m_lastSnapPosition = TTimeRef();
 
     connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
-    connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(update_label()));
+    connect(&audiodevice(), SIGNAL(finishedOneProcessCycle()), this, SLOT(update_label()));
 
     update_layout();
+    update_label();
 }
 
 
 void TransportConsoleWidget::set_project(Project* project)
 {
+    if (m_project) {
+        disconnect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
+    }
+
     m_project = project;
+
     if (m_project) {
         connect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
     } else {
-        m_updateTimer.stop();
         set_session(nullptr);
     }
 }
@@ -104,7 +111,6 @@ void TransportConsoleWidget::set_session(TSession* session)
         disconnect(m_sheet, SIGNAL(recordingStateChanged()), this, SLOT(update_recording_state()));
         disconnect(m_sheet, SIGNAL(transportStarted()), this, SLOT(transport_started()));
         disconnect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
-        disconnect(m_sheet, SIGNAL(transportLocationChanged()), this, SLOT(update_label()));
 
     }
 
@@ -114,7 +120,6 @@ void TransportConsoleWidget::set_session(TSession* session)
     }
 
     if (!m_sheet) {
-        m_updateTimer.stop();
         setEnabled(false);
         update_label();
         return;
@@ -125,9 +130,6 @@ void TransportConsoleWidget::set_session(TSession* session)
     connect(m_sheet, SIGNAL(recordingStateChanged()), this, SLOT(update_recording_state()));
     connect(m_sheet, SIGNAL(transportStarted()), this, SLOT(transport_started()));
     connect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
-    connect(m_sheet, SIGNAL(transportLocationChanged()), this, SLOT(update_label()));
-
-	update_label();
 }
 
 void TransportConsoleWidget::to_start()
@@ -162,29 +164,22 @@ void TransportConsoleWidget::to_right()
 
 void TransportConsoleWidget::transport_started()
 {
-    printf("TransportConsoleWidget::transport_started\n");
-    // use an odd number for the update interval, because
-	// a round number (e.g. 100) lets the last digit stay
-	// the same most of the time, but not always, which 
-	// looks jerky
-        m_updateTimer.start(123);
-        m_playAction->setChecked(true);
-        m_playAction->setIcon(QIcon(":/playstop"));
-        m_recAction->setEnabled(false);
+    m_playAction->setChecked(true);
+    m_playAction->setIcon(QIcon(":/playstop"));
+    m_recAction->setEnabled(false);
 
 	// this is needed when the record button is pressed, but no track is armed.
 	// uncheck the rec button in that case
-        if (m_sheet && !m_sheet->is_recording()) {
-                m_recAction->setChecked(false);
-	}
+    if (m_sheet && !m_sheet->is_recording()) {
+        m_recAction->setChecked(false);
+    }
 }
 
 void TransportConsoleWidget::transport_stopped()
 {
-	m_updateTimer.stop();
-        m_playAction->setChecked(false);
-        m_playAction->setIcon(QIcon(":/playstart"));
-        m_recAction->setEnabled(true);
+    m_playAction->setChecked(false);
+    m_playAction->setIcon(QIcon(":/playstart"));
+    m_recAction->setEnabled(true);
 }
 
 void TransportConsoleWidget::update_recording_state()
@@ -194,31 +189,45 @@ void TransportConsoleWidget::update_recording_state()
 		return;
 	}
 
-	if (m_sheet->is_recording()) {
-		QString recordFormat = config().get_property("Recording", "FileFormat", "wav").toString();
-		int count = 0;
-                foreach(AudioTrack* track, m_sheet->get_audio_tracks()) {
-			if (track->armed()) {
-				count++;
-			}
-		}
-		info().information(tr("Recording to %1 Tracks, encoding format: %2").arg(count).arg(recordFormat));
-		m_recAction->setChecked(true);
-	} else {
-		m_recAction->setChecked(false);
-	}
+    if (m_sheet->is_recording()) {
+        QString recordFormat = config().get_property("Recording", "FileFormat", "wav").toString();
+        info().information(tr("Recording to %1 Tracks, encoding format: %2").arg(m_sheet->get_armed_tracks().size()).arg(recordFormat));
+        m_recAction->setChecked(true);
+    } else {
+        m_recAction->setChecked(false);
+    }
 }
 
 void TransportConsoleWidget::update_label()
 {
-	QString currentTime;
-	
-	if (!m_sheet) {
-        currentTime = "";
-	} else {
-		currentTime = TTimeRef::timeref_to_ms_2(m_sheet->get_transport_location());
-	}
-	m_timeLabel->setText(currentTime);
+    auto newUpdateTime = TTimeRef::get_milliseconds_since_epoch();
+
+    // Limit the updating of the label to 8 frames/sec
+    if ((newUpdateTime - m_lastTransportLocationUpdatetime) < 125) {
+        return;
+    }
+
+    m_lastTransportLocationUpdatetime = newUpdateTime;
+
+    TTimeRef newTransportLocation(TTimeRef::INVALID);
+
+    if (!m_sheet) {
+        if (m_transportLocation != TTimeRef::INVALID) {
+            m_transportLocation = TTimeRef::INVALID;
+            m_timeLabel->setText(TTimeRef::timeref_to_ms_2(m_transportLocation));
+        }
+    } else {
+        newTransportLocation = m_sheet->get_transport_location();
+    }
+
+
+    if (m_transportLocation == newTransportLocation) {
+        return;
+    }
+
+    m_transportLocation = newTransportLocation;
+
+    m_timeLabel->setText(TTimeRef::timeref_to_ms_2(m_transportLocation));
 }
 
 void TransportConsoleWidget::update_layout()

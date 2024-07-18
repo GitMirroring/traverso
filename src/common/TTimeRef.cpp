@@ -68,6 +68,10 @@ QString TTimeRef::timeref_to_ms(const TTimeRef& ref)
 // TTimeRef to MM:SS.99 (hundredths)
 QString TTimeRef::timeref_to_ms_2 (const TTimeRef& ref)
 {
+    if (ref == TTimeRef::INVALID) {
+        return QString("-- : -- . --");
+    }
+
     qint64 remainder;
     int mins, secs, frames;
 
