@@ -36,6 +36,10 @@ TTimeRef::TTimeRef(double position)
 }
 QString TTimeRef::timeref_to_hms(const TTimeRef& ref)
 {
+    if (ref == TTimeRef::INVALID) {
+        return QString("-- : -- : --");
+    }
+
     qint64 remainder;
     int hours, mins, secs;
 
@@ -53,6 +57,10 @@ QString TTimeRef::timeref_to_hms(const TTimeRef& ref)
 
 QString TTimeRef::timeref_to_ms(const TTimeRef& ref)
 {
+    if (ref == TTimeRef::INVALID) {
+        return QString("-- : --");
+    }
+
     qint64 remainder;
     int mins, secs;
 
@@ -89,6 +97,10 @@ QString TTimeRef::timeref_to_ms_2 (const TTimeRef& ref)
 // TTimeRef to MM:SS.999 (ms)
 QString TTimeRef::timeref_to_ms_3(const TTimeRef& ref)
 {
+    if (ref == TTimeRef::INVALID) {
+        return QString("-- : -- . ---");
+    }
+
     qint64 remainder;
     int mins, secs, frames;
 
@@ -110,6 +122,10 @@ QString TTimeRef::timeref_to_ms_3(const TTimeRef& ref)
 // Frame to MM:SS,75 (75ths of a second, for CD burning)
 QString TTimeRef::timeref_to_cd (const TTimeRef& ref)
 {
+    if (ref == TTimeRef::INVALID) {
+        return QString("-- : -- , --");
+    }
+
     qint64 remainder;
     int mins, secs, frames;
 
@@ -127,6 +143,10 @@ QString TTimeRef::timeref_to_cd (const TTimeRef& ref)
 // Frame to HH:MM:SS,75 (75ths of a second, for CD burning)
 QString TTimeRef::timeref_to_cd_including_hours (const TTimeRef& ref)
 {
+    if (ref == TTimeRef::INVALID) {
+        return QString("-- : -- : -- , --");
+    }
+
     qint64 remainder;
     int hours, mins, secs, frames;
 
