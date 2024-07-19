@@ -142,7 +142,7 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
             foreach(AudioTrack* track, tracks) {
                 QList<AudioClip*> clips = track->get_audioclips();
                 foreach(AudioClip* clip, clips) {
-                    if (clip->get_location_item()->get_location_end() > currentLocation) {
+                    if (clip->get_location()->get_end() > currentLocation) {
                         movingClips.append(clip);
                     }
                 }
@@ -170,7 +170,7 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
     if (m_group.get_size() == 0 && m_markers.count() > 0) {
         m_trackStartLocation = m_markers[0].origin;
     } else {
-        m_trackStartLocation = m_group.get_location_start();
+        m_trackStartLocation = m_group.get_location()->get_start();
     }
     m_session = d->sv->get_sheet();
     m_d->zoom = nullptr;
@@ -203,7 +203,7 @@ int MoveClip::begin_hold()
     m_group.set_as_moving(true);
 
     m_d->sceneXStartPos = cpointer().on_first_input_event_scene_x();
-    m_d->relativeWorkCursorPos = m_session->get_work_location() - m_group.get_location_start();
+    m_d->relativeWorkCursorPos = m_session->get_work_location() - m_group.get_location()->get_start();
 
     d->sv->stop_follow_play_head();
 
@@ -215,7 +215,7 @@ int MoveClip::begin_hold()
 //        MoveCommand::begin_hold();
     }
 
-    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_group.get_location_start(), d->sv->timeref_scalefactor));
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_group.get_location()->get_start(), d->sv->timeref_scalefactor));
 
     return 1;
 }
@@ -332,7 +332,7 @@ int MoveClip::jog()
 
     // substract the snap distance, if snap is turned on.
     if ((m_session->is_snap_on() || d->doSnap) && !m_d->verticalOnly) {
-        newTrackStartLocation -= m_session->get_snap_list()->calculate_snap_diff(newTrackStartLocation, newTrackStartLocation + m_group.get_length());
+        newTrackStartLocation -= m_session->get_snap_list()->calculate_snap_diff(newTrackStartLocation, newTrackStartLocation + m_group.get_location()->get_length());
     }
 
     // Now that the new track start location is known, the position diff can be calculated
@@ -355,15 +355,15 @@ int MoveClip::jog()
 void MoveClip::next_snap_pos()
 {
 
-    do_prev_next_snap(m_session->get_snap_list()->next_snap_pos(m_group.get_location_start()),
-                      m_session->get_snap_list()->next_snap_pos(m_group.get_location_end()));
+    do_prev_next_snap(m_session->get_snap_list()->next_snap_pos(m_group.get_location()->get_start()),
+                      m_session->get_snap_list()->next_snap_pos(m_group.get_location()->get_end()));
 }
 
 void MoveClip::prev_snap_pos()
 {
 
-    do_prev_next_snap(m_session->get_snap_list()->prev_snap_pos(m_group.get_location_start()),
-                      m_session->get_snap_list()->prev_snap_pos(m_group.get_location_end()));
+    do_prev_next_snap(m_session->get_snap_list()->prev_snap_pos(m_group.get_location()->get_start()),
+                      m_session->get_snap_list()->prev_snap_pos(m_group.get_location()->get_end()));
 }
 
 void MoveClip::do_prev_next_snap(TTimeRef trackStartLocation, TTimeRef trackEndLocation)

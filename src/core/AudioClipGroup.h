@@ -25,10 +25,10 @@
 
 #include "AudioClip.h"
 
-class AudioClipGroup : public LocationItem
+class AudioClipGroup
 {
 public:
-        AudioClipGroup(){}
+    AudioClipGroup();
 	AudioClipGroup(QList<AudioClip*> clips);
 	
 	void add_clip(AudioClip* clip);
@@ -45,11 +45,14 @@ public:
 	
 	int get_size() const {return m_clips.size();}
 	int get_track_index() const {return m_topTrackIndex;}
+    TLocation* get_location() const {return m_location;}
 	
 	bool is_locked() const;
 		
 private:
 	QList<AudioClip*> m_clips;
+    TLocation*        m_location;
+
 	int	m_topTrackIndex;
 	int	m_bottomTrackIndex;
 	

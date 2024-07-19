@@ -49,7 +49,7 @@ int MoveMarker::prepare_actions()
 int MoveMarker::begin_hold()
 {
     m_origLocation = m_newLocation = m_marker->get_when();
-    m_marker->set_snappable(false);
+    m_marker->get_location()->set_snappable(false);
     mmd->view->set_dragging(true);
 	return 1;
 }
@@ -66,7 +66,7 @@ int MoveMarker::finish_hold()
 int MoveMarker::do_action()
 {
     m_marker->set_when(m_newLocation);
-	m_marker->set_snappable(true);
+    m_marker->get_location()->set_snappable(true);
 	return 1;
 }
 
@@ -74,7 +74,7 @@ int MoveMarker::undo_action()
 {
 	PENTER;
     m_marker->set_when(m_origLocation);
-	m_marker->set_snappable(true);
+    m_marker->get_location()->set_snappable(true);
 	return 1;
 }
 

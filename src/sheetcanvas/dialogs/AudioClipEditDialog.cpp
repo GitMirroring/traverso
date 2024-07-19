@@ -153,7 +153,7 @@ void AudioClipEditDialog::clip_position_changed()
 	QTime clipLengthTime = timeref_to_qtime(m_clip->get_length());
 	clipLengthEdit->setTime(clipLengthTime);
 	
-	QTime clipStartTime = timeref_to_qtime(m_clip->get_location_item()->get_location_start());
+	QTime clipStartTime = timeref_to_qtime(m_clip->get_location()->get_start());
 	clipStartEdit->setTime(clipStartTime);
 
 	update_clip_end();
@@ -223,7 +223,7 @@ void AudioClipEditDialog::clip_length_edit_changed(const QTime& time)
 		clipLengthEdit->setTime(clipLengthTime);
 	}
 
-	m_clip->set_right_edge(ref + m_clip->get_location_item()->get_location_start());
+	m_clip->set_right_edge(ref + m_clip->get_location()->get_start());
 	update_clip_end();
 	locked = false;
 }
@@ -405,7 +405,7 @@ void AudioClipEditDialog::fade_curve_added()
 
 void AudioClipEditDialog::update_clip_end()
 {
-	TTimeRef clipEndLocation = m_clip->get_location_item()->get_location_start() + m_clip->get_length();
+	TTimeRef clipEndLocation = m_clip->get_location()->get_start() + m_clip->get_length();
 	QTime clipEndTime = timeref_to_qtime(clipEndLocation);
 	clipEndLineEdit->setText(clipEndTime.toString(TIME_FORMAT));
 }

@@ -1078,8 +1078,8 @@ void Sheet::update_skip_positions()
 	// store all clip borders
 	QList<AudioClip* > acList = get_audioclip_manager()->get_clip_list();
 	for (int i = 0; i < acList.size(); ++i) {
-        m_xposList << acList.at(i)->get_location_item()->get_location_start();
-        m_xposList << acList.at(i)->get_location_item()->get_location_end();
+        m_xposList << acList.at(i)->get_location()->get_start();
+        m_xposList << acList.at(i)->get_location()->get_end();
 	}
 
 	// store all marker positions

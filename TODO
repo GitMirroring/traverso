@@ -5,17 +5,18 @@ TOBEDONE FOR 0.50.x
 Export Rework:
 * AudioClip/ReadSource: deal with audioclips that do not start at intervals of audiodevice buffer size
 * Finish export using Bounce Track
+* Update Preferences -> Playback resample -> dropdown box gives old resample values and they are wrong
 
 
 CRASHES
 * Resample quality: Fast, change audiodevice params (buffer size / sample rate) -> certain combination -> crash in ResampleReader::read_private
   Buffer overflow used then == buffersize causing the to be read < 0 which loops cause it's a nframes_t
   Seems to happen only with SRC_ZERO_ORDER_HOLD or converterType  SRC_LINEAR
+  For now fixed by not allowing these resample qualities
 
 OTHER
 * Select Fade shape preset from context menu does not work
 * snaplist not functional after project load. works again after a zoom
-* split clip: fade in/out on new clips is broken, sometimes they do show up, sometimes they are gone
 * Setting input bus for AudioTrack: update vumeter monitoring  on the newly added bus, not the configuration on the old bus
 * CurveView does not seem to overlap AudioClipView, cursor changes to early to AudioClipView from CurveView when
   moving to edge of CurveView
@@ -44,6 +45,7 @@ OTHER
 - Select clips
 - Copy/move (including un/redo) selected clips
 
+
 ### BUGS / WISHES ###
 * custom track colors
 * clips with a source start offset: qwerty navigation still broken for curve nodes!!
@@ -61,7 +63,6 @@ OTHER
 * CD Burning: abort button clicked crashed for me once, try to reproduce ?
 * class name collision: wrap everything in a namespace? RFC
 * importing multiple files from file browser in resources bin places all clips on same position!!!
-* sync to fpu.cc to ardours latest version!
 * moving a clip left which also at the same time changes the length of the Sheet causes a huge cpu load!!
 * Text clips, for use as PostIt's, shares audioclips's features, except it doens't have a source :)
 * Transport console: to_start and to_end don't center the playhead!
@@ -129,3 +130,12 @@ Future:
   global (owned by project) subgroup buses.
 * Sheets are track folders toggle: one time only action to be sure you don't messup your routing, cause it might go over the project level.
 * select region/multiple clips -> create new Sheet from region/clips.
+
+
+### DONE ####
+* sync to fpu.cc to ardours latest version!
+  Synced to Ardour 1 latest git version
+
+
+### CANNOT REPRODUCE ####
+-  split clip: fade in/out on new clips is broken, sometimes they do show up, sometimes they are gone

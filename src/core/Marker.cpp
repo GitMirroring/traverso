@@ -27,15 +27,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 Marker::Marker(TTimeLineRuler* tl, const TTimeRef when, MarkerType type)
 	: ContextItem(tl)
-	, LocationItem()
-	, m_timeline(tl)
-	, m_when(when)
+    , m_timeline(tl)
+    , m_when(when)
+    , m_location(new TLocation(this))
 	, m_type(type)
 {
 	QObject::tr("Marker");
     set_history_stack(m_timeline->get_history_stack());
 
-	set_snap_list(m_timeline->get_sheet()->get_snap_list());
+    m_location->set_snap_list(m_timeline->get_sheet()->get_snap_list());
 
 	m_description = "";
 	m_performer = "";
@@ -50,10 +50,10 @@ Marker::Marker(TTimeLineRuler* tl, const TTimeRef when, MarkerType type)
 
 Marker::Marker(TTimeLineRuler * tl, const QDomNode& node)
 	: ContextItem(tl)
-	, LocationItem()
-	, m_timeline(tl)
+    , m_timeline(tl)
+    , m_location(new TLocation(this))
 {
-	set_snap_list(m_timeline->get_sheet()->get_snap_list());
+    m_location->set_snap_list(m_timeline->get_sheet()->get_snap_list());
     set_history_stack(m_timeline->get_history_stack());
 	set_state(node);
 }

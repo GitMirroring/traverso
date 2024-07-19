@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ContextItem.h"
 #include "FadeCurve.h"
 #include "TAudioProcessingNode.h"
-#include "LocationItem.h"
+#include "TLocation.h"
 #include "defines.h"
 
 
@@ -93,7 +93,7 @@ public:
 	qint64 get_readsource_id() const;
 	qint64 get_sheet_id() const {return m_sheetId;}
 	ReadSource* get_readsource() const;
-    inline LocationItem* get_location_item() const {return m_locationItem;}
+    inline TLocation* get_location() const {return m_locationItem;}
 	
 	QDomNode get_dom_node() const;
 	
@@ -104,12 +104,12 @@ public:
     bool is_readsource_invalid() const {return !m_isReadSourceValid;}
 
     bool is_smaller_then(APILinkedListNode* node) {
-        return static_cast<AudioClip*>(node)->get_location_item()->get_location_end() > this->m_locationItem->get_location_start();
+        return static_cast<AudioClip*>(node)->get_location()->get_end() > this->m_locationItem->get_start();
     }
 
     // compares if left < right, used for std::sort
     bool operator()( AudioClip* left, AudioClip* right ) const {
-        return left->get_location_item()->get_location_start() < right->get_location_item()->get_location_end();
+        return left->get_location()->get_start() < right->get_location()->get_end();
     }
 
     bool is_moving() const {return m_isMoving;}
@@ -131,7 +131,7 @@ private:
     FadeCurve*		m_fadeIn;
     FadeCurve*		m_fadeOut;
 	QDomNode		m_domNode;
-    LocationItem*   m_locationItem;
+    TLocation*   m_locationItem;
 	
     TTimeRef 		m_sourceEndLocation;
     TTimeRef 		m_sourceStartLocation;

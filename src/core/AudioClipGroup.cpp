@@ -31,8 +31,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Debugger.h"
 
+AudioClipGroup::AudioClipGroup()
+{
+    m_location = new TLocation();
+}
+
 AudioClipGroup::AudioClipGroup(QList< AudioClip * > clips)
 {
+    m_location = new TLocation();
     m_clips = clips;
     update_state();
 }
@@ -65,7 +71,7 @@ void AudioClipGroup::move_to(int trackIndex, TTimeRef location)
             }
         }
 
-        TTimeRef offset = clip->get_location_item()->get_location_start() - get_location_start();
+        TTimeRef offset = clip->get_location()->get_start() - m_location->get_start();
         clip->set_location_start(location + offset);
     }
 
@@ -78,8 +84,8 @@ void AudioClipGroup::update_state()
         return;
     }
 
-    set_location_start(TTimeRef::max_length());
-    set_location_end(TTimeRef());
+    m_location->set_start(TTimeRef::max_length());
+    m_location->set_end(TTimeRef());
 
     m_topTrackIndex = INT_MAX;
     m_bottomTrackIndex = 0;
@@ -92,11 +98,11 @@ void AudioClipGroup::update_state()
         if (index > m_bottomTrackIndex) {
             m_bottomTrackIndex = index;
         }
-        if (m_locationStart > clip->get_location_item()->get_location_start()) {
-            m_locationStart = clip->get_location_item()->get_location_start();
+        if (m_location->get_start() > clip->get_location()->get_start()) {
+            m_location->set_start(clip->get_location()->get_start());
         }
-        if (m_locationEnd < clip->get_location_item()->get_location_end()) {
-            m_locationEnd = clip->get_location_item()->get_location_end();
+        if (m_location->get_end() < clip->get_location()->get_end()) {
+            m_location->set_end(clip->get_location()->get_end());
         }
     }
 }
@@ -104,7 +110,7 @@ void AudioClipGroup::update_state()
 void AudioClipGroup::set_snappable(bool snap)
 {
     foreach(AudioClip* clip, m_clips) {
-        clip->get_location_item()->set_snappable(snap);
+        clip->get_location()->set_snappable(snap);
     }
 }
 
@@ -123,7 +129,7 @@ QList<AudioClip*> AudioClipGroup::copy_clips()
         AudioClip* newclip = resources_manager()->get_clip(clip->get_id());
         newclip->set_sheet(clip->get_sheet());
         newclip->set_track(clip->get_track());
-        newclip->set_location_start(clip->get_location_item()->get_location_start());
+        newclip->set_location_start(clip->get_location()->get_start());
         newclips.append(newclip);
     }
 

@@ -53,7 +53,7 @@ Track.cpp
 WriteSource.cpp
 gdither.cpp
 SnapList.cpp
-LocationItem.cpp
+TLocation.cpp
 TTimeLineRuler.cpp
 Marker.cpp
 Themer.cpp

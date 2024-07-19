@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class AudioTrack;
 class SnapList;
-class LocationItem;
+class TLocation;
 class TBusTrack;
 class Track;
 class TTimeLineRuler;
@@ -65,7 +65,7 @@ public:
 	virtual QList<Track*> get_tracks() const;
 	QList<TBusTrack*> get_bus_tracks() const;
 	QList<TSession*> get_child_sessions() const {return m_childSessions;}
-	LocationItem* get_work_snap() const;
+	TLocation* get_work_snap() const;
 	virtual bool is_snap_on() const	{return m_isSnapOn;}
 
 
@@ -102,7 +102,7 @@ protected:
 	QHash<qint64, int>      m_trackHeights;
 
     SnapList*           m_snaplist;
-    LocationItem*       m_workSnap;
+    TLocation*       m_workSnap;
     TTimeLineRuler*     m_timeline;
     QString             m_name;
 

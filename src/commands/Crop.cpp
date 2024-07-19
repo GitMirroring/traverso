@@ -91,8 +91,8 @@ int CropClip::prepare_actions()
 	rightClip = resources_manager()->get_clip(m_clip->get_id());
 
 	leftClip->set_sheet(m_clip->get_sheet());
-	leftClip->set_location_start(m_clip->get_location_item()->get_location_start());
-	leftClip->set_right_edge(TTimeRef(x1 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location_item()->get_location_start());
+	leftClip->set_location_start(m_clip->get_location()->get_start());
+	leftClip->set_right_edge(TTimeRef(x1 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location()->get_start());
 	if (leftClip->get_fade_out()) {
         auto cmd = leftClip->reset_fade_out();
         cmd->set_do_not_push_to_historystack();
@@ -100,8 +100,8 @@ int CropClip::prepare_actions()
 	}
 
 	rightClip->set_sheet(m_clip->get_sheet());
-	rightClip->set_left_edge(TTimeRef(x2 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location_item()->get_location_start());
-    rightClip->get_location_item()->set_location_start(leftClip->get_location_item()->get_location_end());
+	rightClip->set_left_edge(TTimeRef(x2 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location()->get_start());
+    rightClip->get_location()->set_start(leftClip->get_location()->get_end());
 	if (rightClip->get_fade_in()) {
         auto cmd = rightClip->reset_fade_in();
         cmd->set_do_not_push_to_historystack();

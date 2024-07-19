@@ -60,7 +60,7 @@ int SplitClip::prepare_actions()
         m_splitPoint = TTimeRef(cpointer().scene_x() * d->sv->timeref_scalefactor);
     }
 
-	if (m_splitPoint <= m_clip->get_location_item()->get_location_start() || m_splitPoint >= m_clip->get_location_item()->get_location_start() + m_clip->get_length()) {
+	if (m_splitPoint <= m_clip->get_location()->get_start() || m_splitPoint >= m_clip->get_location()->get_start() + m_clip->get_length()) {
 		return -1;
 	}
 
@@ -68,7 +68,7 @@ int SplitClip::prepare_actions()
 	rightClip = resources_manager()->get_clip(m_clip->get_id());
 	
 	leftClip->set_sheet(m_clip->get_sheet());
-	leftClip->set_location_start(m_clip->get_location_item()->get_location_start());
+	leftClip->set_location_start(m_clip->get_location()->get_start());
 	leftClip->set_right_edge(m_splitPoint);
 	if (leftClip->get_fade_out()) {
 		FadeRange* cmd = (FadeRange*)leftClip->reset_fade_out();
@@ -212,11 +212,11 @@ void SplitClip::do_keyboard_move(TTimeRef location)
 {
         m_splitPoint = location;
 
-        if (m_splitPoint < m_clip->get_location_item()->get_location_start()) {
-                m_splitPoint = m_clip->get_location_item()->get_location_start();
+        if (m_splitPoint < m_clip->get_location()->get_start()) {
+                m_splitPoint = m_clip->get_location()->get_start();
         }
-        if (m_splitPoint > m_clip->get_location_item()->get_location_end()) {
-                m_splitPoint = m_clip->get_location_item()->get_location_end();
+        if (m_splitPoint > m_clip->get_location()->get_end()) {
+                m_splitPoint = m_clip->get_location()->get_end();
         }
 
         QPointF pos = m_cv->mapFromScene(m_splitPoint / d->sv->timeref_scalefactor, m_splitcursor->scenePos().y());

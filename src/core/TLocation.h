@@ -17,47 +17,49 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
-$Id: LocationItem.cpp,v 1.2 2008/02/21 20:00:48 r_sijrier Exp $
+$Id: Snappable.h,v 1.1 2007/03/29 22:18:38 benjie Exp $
 */
 
-#include "LocationItem.h"
-#include "SnapList.h"
+#ifndef T_LOCATION_H
+#define T_LOCATION_H
 
-#include <Debugger.h>
+#include "TTimeRef.h"
+#include "qobject.h"
+
+class SnapList;
 
 
-LocationItem::LocationItem()
+class TLocation : public QObject
 {
-	m_isSnappable = true;
-	snapList = 0;
-}
+public:
+    TLocation(QObject* parent = nullptr);
+    ~TLocation() {}
 
-void LocationItem::set_snappable(bool snap)
-{
-	if (snapList) {
-		snapList->mark_dirty();
-	}
-	m_isSnappable = snap;
-}
+	void set_snappable(bool snap);
 
-void LocationItem::set_snap_list(SnapList *sList)
-{
-	snapList = sList;
-}
+	bool is_snappable() const;
 
-void LocationItem::set_location_start(const TTimeRef &start)
-{
-    m_locationStart = start;
-}
+	void set_snap_list(SnapList *sList);
 
-void LocationItem::set_location_end(const TTimeRef &end)
-{
-    m_locationEnd = end;
-}
+    inline TTimeRef get_start() const {return m_start;}
+    inline TTimeRef get_end() const {return m_end;}
+    TTimeRef get_length() const {return m_end - m_start;}
 
-bool LocationItem::is_snappable() const
-{
-	return m_isSnappable;
-}
+
+    void set_start(const TTimeRef& start);
+    void set_end(const TTimeRef& end);
+
+protected:
+    TTimeRef     m_start;
+    TTimeRef     m_end;
+
+private:
+	bool		m_isSnappable;
+	SnapList	*snapList;
+
+};
+
+
+#endif
 
 /* EOF */

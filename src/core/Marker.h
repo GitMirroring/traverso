@@ -24,12 +24,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define MARKER_H
 
 #include "ContextItem.h"
-#include "LocationItem.h"
+#include "TLocation.h"
 #include <QDomNode>
 
 class TTimeLineRuler;
 
-class Marker : public ContextItem, public LocationItem
+class Marker : public ContextItem
 {
 	Q_OBJECT
 	
@@ -59,6 +59,8 @@ public:
 
 	TTimeLineRuler * get_timeline() const {return m_timeline;}
 	TTimeRef get_when() const {return m_when;}
+    TLocation* get_location() const {return m_location;}
+
 	QString get_description() const {return m_description;}
 	QString get_performer() const {return m_performer;}
 	QString get_composer() const {return m_composer;}
@@ -82,7 +84,8 @@ public slots:
 
 private:
 	TTimeLineRuler* m_timeline;
-	TTimeRef m_when;
+    TTimeRef        m_when;
+    TLocation*      m_location;
 	QString	m_description,
     m_performer,
     m_composer,

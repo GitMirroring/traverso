@@ -81,12 +81,12 @@ void SnapList::update_snaplist()
 	for( int i = 0; i < acList.size(); i++ ) {
 
 		AudioClip* clip = acList.at(i);
-        if ( ! clip->get_location_item()->is_snappable()) {
+        if ( ! clip->get_location()->is_snappable()) {
 			continue;
 		}
 
-		TTimeRef startlocation = clip->get_location_item()->get_location_start();
-        TTimeRef endlocation = clip->get_location_item()->get_location_end();
+		TTimeRef startlocation = clip->get_location()->get_start();
+        TTimeRef endlocation = clip->get_location()->get_end();
 
 		if (startlocation > endlocation) {
 			PERROR("clip xstart > xend, this must be a programming error!");
@@ -103,7 +103,7 @@ void SnapList::update_snaplist()
 	// add all on-screen markers
 	QList<Marker*> markerList = m_sheet->get_timeline()->get_markers();
 	for (int i = 0; i < markerList.size(); ++i) {
-		if (markerList.at(i)->is_snappable() && markerList.at(i)->get_when() >= m_rangeStart && markerList.at(i)->get_when() <= m_rangeEnd) {
+        if (markerList.at(i)->get_location()->is_snappable() && markerList.at(i)->get_when() >= m_rangeStart && markerList.at(i)->get_when() <= m_rangeEnd) {
 			m_xposList.append(markerList.at(i)->get_when());
 		}
 	}

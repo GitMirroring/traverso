@@ -166,16 +166,16 @@ void FadeRange::reset_length()
 void FadeRange::next_snap_pos()
 {
 
-        TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location_item()->get_location_start() + m_newRange);
-        TTimeRef newpos = snap - frp->clip->get_location_item()->get_location_start();
+        TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location()->get_start() + m_newRange);
+        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
         do_keyboard_move(newpos.universal_frame());
 }
 
 void FadeRange::prev_snap_pos()
 {
 
-        TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location_item()->get_location_start() + m_newRange);
-        TTimeRef newpos = snap - frp->clip->get_location_item()->get_location_start();
+        TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location()->get_start() + m_newRange);
+        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
         do_keyboard_move(newpos.universal_frame());
 }
 

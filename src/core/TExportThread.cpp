@@ -73,7 +73,7 @@ void TExportThread::run( )
         // ... then start the render process and wait until it's finished
         sheet->set_transport_location(m_exportSpecification->get_export_start_location());
         sheet->start_transport();
-        usleep(200 * 1000);
+        usleep(500 * 1000);
 
         emit m_exportSpecification->exportMessage(QString("Starting export of %1").arg(sheet->get_name()));
         m_exportSpecification->print_export_data();
@@ -83,7 +83,6 @@ void TExportThread::run( )
             nframes_t nframes = std::min(diff, m_exportSpecification->get_block_size());
 
             sheet->process(nframes);
-            usleep(50);
             m_exportSpecification->add_exported_range(TTimeRef(nframes, audiodevice().get_sample_rate()));
         } while(!m_exportSpecification->cancel_export_requested() && m_exportSpecification->get_remaining_export_frames() > 0);
 

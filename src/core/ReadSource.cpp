@@ -394,7 +394,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
     Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == slotcount);
 
     TTimeRef fileLocation = seekTransportLocation - m_transportStartLocation + m_sourceStartLocation;
-    printf("rb_seek_to_transport_location: seeking to transport location: %s, file location: %s\n",
+    printf("rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
            QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)),
            QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
 

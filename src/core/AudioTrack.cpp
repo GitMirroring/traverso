@@ -120,7 +120,7 @@ TTimeRef AudioTrack::get_end_location() const
 {
     TTimeRef endLocation{};
     if (!m_audioClips.isEmpty()) {
-        endLocation = m_audioClips.last()->get_location_item()->get_location_end();
+        endLocation = m_audioClips.last()->get_location()->get_end();
     }
     return endLocation;
 }
@@ -369,12 +369,12 @@ bool AudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& 
 
     for(AudioClip* clip : m_audioClips) {
         if (! clip->is_muted() ) {
-            if (clip->get_location_item()->get_location_end() > trackExportEndLocation) {
-                trackExportEndLocation = clip->get_location_item()->get_location_end();
+            if (clip->get_location()->get_end() > trackExportEndLocation) {
+                trackExportEndLocation = clip->get_location()->get_end();
             }
 
-            if (clip->get_location_item()->get_location_start() < trackExportStartLocation) {
-                trackExportStartLocation = clip->get_location_item()->get_location_start();
+            if (clip->get_location()->get_start() < trackExportStartLocation) {
+                trackExportStartLocation = clip->get_location()->get_start();
             }
         }
     }
@@ -385,7 +385,7 @@ bool AudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& 
 AudioClip* AudioTrack::get_clip_after(const TTimeRef& pos)
 {
     for(AudioClip* clip : m_audioClips) {
-        if (clip->get_location_item()->get_location_start() > pos) {
+        if (clip->get_location()->get_start() > pos) {
             return clip;
         }
     }
@@ -398,8 +398,8 @@ AudioClip* AudioTrack::get_clip_before(const TTimeRef& pos)
     AudioClip* nearest = nullptr;
 
     for(AudioClip* clip : m_audioClips) {
-        if (clip->get_location_item()->get_location_start() < pos) {
-            TTimeRef diff = pos - clip->get_location_item()->get_location_start();
+        if (clip->get_location()->get_start() < pos) {
+            TTimeRef diff = pos - clip->get_location()->get_start();
             if (diff < shortestDistance) {
                 shortestDistance = diff;
                 nearest = clip;
