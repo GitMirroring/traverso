@@ -163,8 +163,6 @@ SystemResources::SystemResources(QWidget * parent)
 void SystemResources::update_status( )
 {
     float time = audiodevice().get_cpu_time();
-    float diskReadIOtime = 0.0f;
-    float diskWriteIOtime = 0.0f;
 
 	int bufReadStatus = 100;
 	int bufWriteStatus = 100;
@@ -177,14 +175,17 @@ void SystemResources::update_status( )
 
         bufReadStatus = sheet->get_read_diskio()->get_buffers_fill_status();
         bufWriteStatus = sheet->get_write_diskio()->get_buffers_fill_status();
-        diskReadIOtime = sheet->get_read_diskio()->get_cpu_time();
-        diskWriteIOtime = sheet->get_write_diskio()->get_cpu_time();
+        float time;
+        if (sheet->get_read_diskio()->get_cpu_time(time)) {
+            m_diskReadCpuUsage->set_value(time);
+        }
+        if (sheet->get_write_diskio()->get_cpu_time(time)) {
+            m_diskWriteCpuUsage->set_value(time);
+        }
 	}
 
     m_readBufferStatus->set_value(bufReadStatus);
 	m_writeBufferStatus->set_value(bufWriteStatus);
-    m_diskReadCpuUsage->set_value(diskReadIOtime);
-    m_diskWriteCpuUsage->set_value(diskWriteIOtime);
     m_dspCpuUsage->set_value(time);
 }
 
@@ -222,7 +223,7 @@ DriverInfo::DriverInfo( QWidget * parent )
 	
 	connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(update_driver_info()));
 	connect(&audiodevice(), SIGNAL(bufferUnderRun()), this, SLOT(update_xrun_info()));
-    connect(m_driver, SIGNAL(clicked( bool )), TMainWindow::instance(), SLOT(show_settings_dialog_sound_system_page()));
+    connect(m_driver, SIGNAL(clicked(bool)), TMainWindow::instance(), SLOT(show_settings_dialog_sound_system_page()));
 	
 	update_driver_info();
 }
@@ -502,15 +503,7 @@ void SystemValueBar::set_value(float value)
 	}
 	
 	m_current = value;
-	
-        if (m_current > m_max) {
-                m_current  = m_max;
-        }
-	
-        if (m_current < m_min) {
-                m_current = m_min;
-        }
-	
+
 	update();
 }
 
@@ -528,6 +521,16 @@ void SystemValueBar::set_text(const QString & text)
 
 void SystemValueBar::paintEvent(QPaintEvent* )
 {
+    int value = m_current;
+
+    if (value > m_max) {
+        value  = m_max;
+    }
+
+    if (value < m_min) {
+        value = m_min;
+    }
+
 	QPainter painter(this);
 	painter.setRenderHints(QPainter::Antialiasing);
 	
@@ -535,7 +538,7 @@ void SystemValueBar::paintEvent(QPaintEvent* )
 	
 	for (int i=0; i<m_rangecolors.size(); ++i) {
 		RangeColor range = m_rangecolors.at(i);
-		if (m_current <= range.x1 && m_current >= range.x0) {
+        if (value <= range.x1 && value >= range.x0) {
 			color = range.color;
 			break;
 		}
@@ -547,10 +550,10 @@ void SystemValueBar::paintEvent(QPaintEvent* )
 	painter.setBrush(color);
 	painter.setPen(Qt::NoPen);
 	float scalefactor = width() / m_max;
-    rect = QRect(1, (height() - 15) / 2 + 1, width() - 2 - (int)(scalefactor* (m_max - m_current)), 13);
+    rect = QRect(1, (height() - 15) / 2 + 1, width() - 2 - (int)(scalefactor* (m_max - value)), 13);
 	painter.drawRect(rect);
 	
-	painter.setPen(Qt::black);
+    painter.setPen(Qt::black);
 	painter.setFont(themer()->get_font("InfoWidget:fontscale:values"));
 	
 	if (m_introunding) {

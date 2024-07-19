@@ -271,23 +271,26 @@ void DiskIO::remove_and_delete_audio_source(AudioSource *source)
  *
  * @return Returns the CPU time consumed by the DiskIO thread
  */
-float DiskIO::get_cpu_time( )
+bool DiskIO::get_cpu_time(float &time)
 {
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
     float totaltime = 0;
     trav_time_t value = 0;
     int read = m_cpuTime->read_space();
+    if (read == 0) {
+        return false;
+    }
 
     while (read != 0) {
         read = m_cpuTime->read(&value, 1);
         totaltime += value;
     }
 
-    audio_sample_t result = ( (totaltime  / (currentTime - m_lastCpuReadTime) ) * 100 );
+    time = ( (totaltime  / (currentTime - m_lastCpuReadTime) ) * 100 );
 
     m_lastCpuReadTime = currentTime;
 
-    return result;
+    return true;
 }
 
 

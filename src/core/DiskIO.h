@@ -52,7 +52,7 @@ public:
         m_waitForSeek.store(true);
     }
 
-    float get_cpu_time();
+    bool get_cpu_time(float &time);
     int get_buffers_fill_status();
     uint get_output_rate() {return m_outputSampleRate;}
 	int get_resample_quality() {return m_resampleQuality;}
