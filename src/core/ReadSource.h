@@ -87,6 +87,7 @@ private:
     TTimeRef            m_length;
     TTimeRef            m_transportStartLocation;
     TTimeRef            m_sourceStartLocation;
+    TTimeRef            m_aboutOneToFourSecondsTime;
 
     QueueBufferSlot* dequeue_from_rt_queue(bool realTime);
 	
