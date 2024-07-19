@@ -72,11 +72,11 @@ void AudioSource::prepare_rt_buffers(nframes_t bufferSize)
 {
     m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::OUT_OF_SYNC);
 
-    printf("AudioSource::prepare_rt_buffers: audio device buffer size %d\n", bufferSize);
+    // printf("AudioSource::prepare_rt_buffers: audio device buffer size %d\n", bufferSize);
 
     delete_rt_buffers();
 
-    QueueBufferSlot* slot;
+    QueueBufferSlot* slot = nullptr;
 
     m_rtBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(slotcount);
     m_freeBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(slotcount);
@@ -87,15 +87,15 @@ void AudioSource::prepare_rt_buffers(nframes_t bufferSize)
     for (size_t i=0; i<slotcount;++i) {
         slot = new QueueBufferSlot(i, m_channelCount, bufferSize);
         bool queued = m_freeBufferSlotsQueue->try_enqueue(slot);
-        if (i==0) {
-            // We have to assign m_lastQueuedRTBufferSlot to an existing slot
-            m_lastQueuedRTBufferSlot = slot;
-        }
         Q_ASSERT(queued);
     }
 
-    printf("AudioSource::::prepare_rt_buffers: freeBufferSlotsQueue slot count %zu\n", m_freeBufferSlotsQueue->size_approx());
-    printf("AudioSource::::prepare_rt_buffers: rtBufferSlotsQueue slot count %zu\n", m_rtBufferSlotsQueue->size_approx());
+    Q_ASSERT(slot);
+    // We have to assign m_lastQueuedRTBufferSlot to an existing slot
+    m_lastQueuedRTBufferSlot = slot;
+
+    // printf("AudioSource::::prepare_rt_buffers: freeBufferSlotsQueue slot count %zu\n", m_freeBufferSlotsQueue->size_approx());
+    // printf("AudioSource::::prepare_rt_buffers: rtBufferSlotsQueue slot count %zu\n", m_rtBufferSlotsQueue->size_approx());
 }
 
 void AudioSource::delete_rt_buffers()
