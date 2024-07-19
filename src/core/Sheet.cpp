@@ -794,6 +794,7 @@ void Sheet::initiate_seek_start(TTimeRef location)
     }
 
     m_seekTransportLocation = location;
+    m_readDiskIO->set_transport_location(m_seekTransportLocation);
     m_startSeek.store(true);
     set_seeking(true);
 
