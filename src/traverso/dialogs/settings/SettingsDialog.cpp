@@ -40,7 +40,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 	contentsWidget->setViewMode(QListView::IconMode);
 	contentsWidget->setIconSize(QSize(32, 32));
     contentsWidget->setMovement(QListView::Static);
-//	contentsWidget->setMaximumWidth(140);
+    contentsWidget->setMaximumWidth(140);
     contentsWidget->setMinimumWidth(135);
 	contentsWidget->setMinimumHeight(390);
     contentsWidget->setSpacing(12);
@@ -85,7 +85,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 	
 	connect(&config(), SIGNAL(configChanged()), this, SLOT(external_change_to_settings()));
 	
-	resize(400, 300);
+    resize(500, 600);
 }
 
 void SettingsDialog::show_page(const QString & page)

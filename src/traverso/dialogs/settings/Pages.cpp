@@ -430,7 +430,7 @@ void AudioDriverConfigPage::driver_setup_message(QString message, int severity)
                 m_driverSetupMessages.prepend("<p class=\"failure\">" + message + "</p>");
         } else if (severity == AudioDevice::DRIVER_SETUP_WARNING || severity == AudioDevice::WARNING) {
                 m_driverSetupMessages.prepend("<p class=\"warning\">" + message + "</p>");
-        } else if (severity == AudioDevice::DRIVER_SETUP_SUCCESS || severity == AudioDevice::INFO) {
+        } else if (severity == AudioDevice::DRIVER_SETUP_SUCCESS || severity == AudioDevice::DRIVER_SETUP_INFO || severity == AudioDevice::INFO) {
                 m_driverSetupMessages.prepend("<p class=\"success\">" + message + "</p>");
         } else {
                 m_driverSetupMessages.prepend("<p>" + message + "</p>");
@@ -438,10 +438,10 @@ void AudioDriverConfigPage::driver_setup_message(QString message, int severity)
 
         QString html = QString("<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n"
               "<style type=\"text/css\">\n"
-              "p {font-size: 11px; }\n"
-              ".failure {color: red; font-weight: bold;}\n"
-              ".warning {color: #ffae42; font-weight: bold;}\n"
-              ".success {color: green; font-weight: bold;}\n"
+              "p {font-size: 12px; }\n"
+              ".failure {color: red;}\n"
+              ".warning {color: darkorange;}\n"
+              ".success {color: green;}\n"
               "</style>\n"
               "</head>\n<body>\n");
 
