@@ -370,9 +370,6 @@ void AudioClip::set_location_start(const TTimeRef& location)
     PENTER2;
 
     m_locationItem->set_start(location);
-    if (m_readSource) {
-        m_readSource->set_transport_start_location(location);
-    }
 
     m_fader->get_curve()->set_start_offset(m_locationItem->get_start());
 
@@ -684,7 +681,7 @@ void AudioClip::set_audio_source(ReadSource* rs)
     }
 
     m_readSource = rs;
-    m_readSource->set_transport_start_location(m_locationItem->get_start());
+    m_readSource->set_location(m_locationItem);
     m_readSource->set_source_start_location(get_source_start_location());
     m_readSourceId = rs->get_id();
     m_sourceLength = rs->get_length();

@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ProjectManager.h"
 #include "Project.h"
 #include "AudioBus.h"
+#include "TLocation.h"
 #include "Utils.h"
 #include "AudioDevice.h"
 #include <QFile>
@@ -115,7 +116,7 @@ ReadSource::ReadSource()
 
 void ReadSource::private_init()
 {
-    m_transportStartLocation = TTimeRef();
+    m_location = nullptr;
     m_sourceStartLocation = TTimeRef();
 
     m_refcount = 0;
@@ -283,26 +284,16 @@ void ReadSource::set_output_rate_and_convertor_type(int outputRate, int converte
     m_length = m_resampleAudioReader->get_length();
 }
 
-void ReadSource::set_transport_start_location(const TTimeRef &transportStartLocation)
+void ReadSource::set_location(TLocation* location)
 {
-    // printf("ReadSource::set_transport_start_location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(transportStartLocation)));
-    m_transportStartLocation = transportStartLocation;
-    // FIXME
-    // can this cause a race condition that DiskIO resyncs the buffers while
-    // ringbuffer_read() is also processing the rt queueu?
-    // that will end badly I would think
-    // m_bufferstatus.set_sync_status(BufferStatus::OUT_OF_SYNC);
+    Q_ASSERT(location);
+    m_location = location;
 }
 
 void ReadSource::set_source_start_location(const TTimeRef &sourceStartLocation)
 {
     // printf("ReadSource::set_source_start_location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(sourceStartLocation)));
     m_sourceStartLocation = sourceStartLocation;
-    // FIXME
-    // can this cause a race condition that DiskIO resyncs the buffers while
-    // ringbuffer_read() is also processing the rt queueu?
-    // that will end badly I would think
-    // m_bufferstatus.set_sync_status(BufferStatus::OUT_OF_SYNC);
 }
 
 int ReadSource::file_read(DecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const
@@ -365,18 +356,20 @@ int ReadSource::set_file(const QString & filename)
 void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation)
 {
     // Q_ASSERT(m_bufferstatus.get_sync_status() == BufferStatus::SyncStatus::OUT_OF_SYNC);
+    Q_ASSERT(m_location);
 
     m_bufferstatus.set_sync_status(BufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
 
-    if ((transportLocation  + m_aboutOneToFourSecondsTime) < m_transportStartLocation) {
+    if ((transportLocation + m_aboutOneToFourSecondsTime) < m_location->get_start() ||
+        transportLocation > m_location->get_end()) {
         m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::OUT_OF_SYNC);
         return;
     }
 
     TTimeRef seekTransportLocation = transportLocation;
-    if (seekTransportLocation < m_transportStartLocation) {
+    if (seekTransportLocation < m_location->get_start()) {
 
-        seekTransportLocation = m_transportStartLocation;
+        seekTransportLocation = m_location->get_start();
 
         // printf("transport location before clip start position, adjusting to clip start position %s\n",
         //        QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
@@ -393,7 +386,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
     Q_ASSERT(m_rtBufferSlotsQueue->size_approx() == 0);
     Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == slotcount);
 
-    TTimeRef fileLocation = seekTransportLocation - m_transportStartLocation + m_sourceStartLocation;
+    TTimeRef fileLocation = seekTransportLocation - m_location->get_start() + m_sourceStartLocation;
     printf("rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
            QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)),
            QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));

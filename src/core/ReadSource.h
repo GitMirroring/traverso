@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 class ResampleAudioReader;
 class AudioBus;
 class DecodeBuffer;
+class TLocation;
 
 class ReadSource : public AudioSource
 {
@@ -70,8 +71,9 @@ public :
     const TTimeRef& get_length() const {return m_length;}
 
     BufferStatus* get_buffer_status() final;
-	
-    void set_transport_start_location(const TTimeRef &transportStartLocation);
+
+    void set_location(TLocation* location);
+
     void set_source_start_location(const TTimeRef &sourceStartLocation);
 	
 	
@@ -83,9 +85,9 @@ private:
     int                 m_error;
     bool                m_silent;
     std::atomic<bool>   m_active;
-	
+
+    TLocation*          m_location;
     TTimeRef            m_length;
-    TTimeRef            m_transportStartLocation;
     TTimeRef            m_sourceStartLocation;
     TTimeRef            m_aboutOneToFourSecondsTime;
 
