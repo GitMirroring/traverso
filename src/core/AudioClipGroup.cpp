@@ -64,8 +64,8 @@ void AudioClipGroup::move_to(int trackIndex, TTimeRef location)
         if (trackIndexDelta != 0) {
                         AudioTrack* track = clip->get_sheet()->get_audio_track_for_index(clip->get_track()->get_sort_index() + trackIndexDelta);
             if (track) {
-                                // Remove has to be done BEFORE adding, else the APILinkedList logic
-                                // gets messed up for the Tracks AudioClipList, which is an APILinkedList :(
+                                // Remove has to be done BEFORE adding, else the TRealTimeLinkedList logic
+                                // gets messed up for the Tracks AudioClipList, which is an TRealTimeLinkedList :(
                 TCommand::process_command(clip->get_track()->remove_clip(clip, false, true));
                 TCommand::process_command(track->add_clip(clip, false, true));
             }

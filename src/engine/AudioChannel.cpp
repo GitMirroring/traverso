@@ -115,8 +115,8 @@ void AudioChannel::process_monitoring(TVUMonitor* monitor)
                 monitor->process(peakValue);
         }
 
-        apill_foreach(TVUMonitor*, internalmonitor, m_monitors)
-                internalmonitor->process(peakValue);
+        for(TVUMonitor* internalMonitor = m_monitors.first(); internalMonitor != nullptr; internalMonitor = internalMonitor->next) {
+                internalMonitor->process(peakValue);
         }
 }
 

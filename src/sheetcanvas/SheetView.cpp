@@ -235,9 +235,6 @@ void SheetView::move_trackview_up(TrackView *trackView)
 
 	trackView->get_track()->set_sort_index(newindex);
 
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
-
 	layout_tracks();
 }
 
@@ -279,9 +276,6 @@ void SheetView::move_trackview_down(TrackView *trackView)
 
 	trackView->get_track()->set_sort_index(newindex);
 
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
-
 	layout_tracks();
 
 }
@@ -310,9 +304,6 @@ void SheetView::to_bottom(TrackView *trackView)
 		btv->get_track()->set_sort_index(list.size());
 	}
 
-
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
 
 	layout_tracks();
 }
@@ -349,9 +340,6 @@ void SheetView::to_top(TrackView *trackView)
 	}
 
 
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
-
 	layout_tracks();
 }
 
@@ -383,9 +371,6 @@ void SheetView::add_new_track_view(Track* track)
     if (view) {
         connect(view, SIGNAL(totalTrackHeightChanged()), this, SLOT(layout_tracks()));
     }
-
-    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end());
-    std::sort(m_busTrackViews.begin(), m_busTrackViews.end());
 
 	layout_tracks();
 }
@@ -537,11 +522,14 @@ void SheetView::hzoom(qreal factor)
 
 
 void SheetView::layout_tracks()
-{
+{    
 	int verticalposition = m_trackTopIndent;
 	int totalTrackHeightPrimaryLanes = 0;
 
 	QList<TrackView*> views = get_track_views();
+    std::sort(views.begin(), views.end(), [&](TrackView* left, TrackView* right) {
+        return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
+    });
 
 	for (int i=0; i<views.size(); ++i) {
 		TrackView* view = views.at(i);
@@ -568,6 +556,7 @@ void SheetView::update_tracks_bounding_rect()
 
 	layout_tracks();
 }
+
 
 TCommand* SheetView::center()
 {

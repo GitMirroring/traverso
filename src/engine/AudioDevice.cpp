@@ -277,7 +277,7 @@ int AudioDevice::run_one_cycle( nframes_t nframes, float  )
         return -1;
     }
 
-    apill_foreach(TAudioDeviceClient*, client, m_clients)
+    for(TAudioDeviceClient* client = m_clients.first(); client != nullptr; client = client->next) {
         client->process(nframes);
     }
 
@@ -848,7 +848,7 @@ int AudioDevice::transport_control(TTransportControl *state)
 
     int result = 0;
 
-    apill_foreach(TAudioDeviceClient*, client, m_clients)
+    for(TAudioDeviceClient* client = m_clients.first(); client != nullptr; client = client->next) {
         result = client->transport_control(state);
     }
 

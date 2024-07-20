@@ -484,7 +484,7 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
         std::cout << QString("AudioClip::process(): readFrames %1, framesToProcess %2").arg(readFrames).arg(framesToProcess).toLatin1().data() << &std::endl;
     }
 
-    apill_foreach(FadeCurve*, fade, m_fades)
+    for(FadeCurve* fade = m_fades.first(); fade != nullptr; fade = fade->next) {
         fade->process(bus, startLocation, endLocation, nframes);
     }
 

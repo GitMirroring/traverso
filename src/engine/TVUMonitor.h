@@ -1,18 +1,15 @@
 #ifndef TVUMONITOR_H
 #define TVUMONITOR_H
 
-#include "APILinkedList.h"
 #include "defines.h"
 
 
-class TVUMonitor : public APILinkedListNode
+class TVUMonitor
 {
 
 public:
     TVUMonitor();
     ~TVUMonitor() {}
-
-    virtual bool is_smaller_then(APILinkedListNode* /*node*/) { return true;}
 
     inline void process(float peakValue) {
         if (m_wasRead) {
@@ -37,6 +34,11 @@ public:
     }
 
     inline void set_read() {m_wasRead = true;}
+
+    bool operator<(const TVUMonitor& /*other*/) {
+        return false;
+    }
+    TVUMonitor* next = nullptr;
 
 private:
     bool    m_wasRead;

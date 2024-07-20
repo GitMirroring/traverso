@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 #include "Plugin.h"
 #include "GainEnvelope.h"
+#include "TRealTimeLinkedList.h"
 
 class TSession;
 class AudioBus;
@@ -56,7 +57,7 @@ public:
     GainEnvelope*   get_fader() const {return m_fader;}
 
 private:
-    APILinkedList	m_rtPlugins;
+    TRealTimeLinkedList<Plugin*>	m_rtPlugins;
     QList<Plugin*>  m_plugins;
     GainEnvelope*	m_fader;
     TSession*	m_session{};

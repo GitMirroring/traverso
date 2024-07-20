@@ -28,7 +28,7 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 #include <QString>
 #include <QObject>
 #include <QVarLengthArray>
-#include "APILinkedList.h"
+#include "TRealTimeLinkedList.h"
 
 class AudioChannel : public QObject
 {
@@ -69,7 +69,7 @@ public:
     qint64 get_id() const {return m_id;}
 
 private:
-    APILinkedList           m_monitors;
+    TRealTimeLinkedList<TVUMonitor*>    m_monitors;
     QVarLengthArray<audio_sample_t>     m_buffer;
     uint 			m_bufferSize;
     uint 			m_latency;

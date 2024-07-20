@@ -192,7 +192,7 @@ QList<Plugin *> PluginChain::get_post_fader_plugins()
 
 void PluginChain::process_pre_fader(AudioBus *bus, nframes_t nframes)
 {
-    apill_foreach(Plugin*, plugin, m_rtPlugins)
+    for(Plugin* plugin = m_rtPlugins.first(); plugin != nullptr; plugin = plugin->next) {
         if (plugin == m_fader) {
             return;
         }
@@ -208,7 +208,7 @@ int PluginChain::process_post_fader(AudioBus *bus, nframes_t nframes)
 
     bool faderWasReached = false;
 
-    apill_foreach(Plugin*, plugin, m_rtPlugins)
+    for(Plugin* plugin = m_rtPlugins.first(); plugin != nullptr; plugin = plugin->next) {
         if (faderWasReached) {
             plugin->process(bus, nframes);
         } else if (plugin == m_fader) {

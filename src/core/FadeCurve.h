@@ -34,7 +34,7 @@ class Sheet;
 class AudioClip;
 class AudioBus;
 
-class FadeCurve : public Curve, public APILinkedListNode
+class FadeCurve : public Curve
 {
 	Q_OBJECT	
 	
@@ -68,12 +68,18 @@ public:
     QList<QPointF> get_control_points() const;
 	
 	bool is_bypassed() const {return m_bypass;}
-	bool is_smaller_then(APILinkedListNode* node) {Q_UNUSED(node); return false;}
 	
 	void set_range(double pos);
 	void set_mode(int m);
 
     QString fade_type_to_string() const;
+
+    bool operator<(const FadeCurve& /*other*/) {
+        printf("FadeCurve < called\n");
+        return false;
+    }
+
+    FadeCurve* next;
 
 private:
 	AudioClip*	m_clip;

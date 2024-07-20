@@ -67,7 +67,9 @@ void RestoreProjectBackupDialog::populate_treeview()
 	currentDateLable->setText(QDateTime::currentDateTime ().toString("dd-MM-yy hh:mm:ss"));
 	
 	QList<uint> list = pm().get_backup_date_times(m_projectname);
-    std::sort(list.begin(), list.end());
+    std::sort(list.begin(), list.end(), [&](uint left, uint right) {
+        return left > right;
+    });
 	
 	QDateTime datetime;
 	foreach(uint time, list) {

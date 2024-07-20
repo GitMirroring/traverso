@@ -1170,10 +1170,12 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
 	// actions, a little code duplication here, adding action to the
 	// menu is also done ~10 lines up ...
 	QList<QString> keys = submenus.keys();
-	foreach(const QString &key, keys) {
-		QList<TShortCutFunction*>* list = submenus.value(key);
+    for(const QString &key : keys) {
+        QList<TShortCutFunction*> list = *submenus.value(key);
 
-        std::sort(list->begin(), list->end());
+        std::sort(list.begin(), list.end(), [&](TShortCutFunction* left, TShortCutFunction* right) {
+            return left->sortorder < right->sortorder;
+        });
 
 		QMenu* subMenu = new QMenu(this);
 		subMenu->setFont(themer()->get_font("ContextMenu:fontscale:actions"));
@@ -1184,7 +1186,7 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
 
         QAction* action = menu->insertMenu(nullptr, subMenu);
 		action->setText(tShortCutManager().get_translation_for(key));
-		foreach(TShortCutFunction* function, *list) {
+        for(TShortCutFunction* function : list) {
             add_function_to_menu(function, subMenu);
 		}
 	}

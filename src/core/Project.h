@@ -165,7 +165,7 @@ private:
         QList<Sheet*>           m_sheets;
         Sheet*                  m_activeSheet;
         TSession*               m_activeSession;
-        APILinkedList           m_RtSheets;
+        TRealTimeLinkedList<Sheet*> m_RtSheets;
 	ResourcesManager* 	m_resourcesManager;
         TExportThread*           m_exportThread;
         TAudioDeviceClient*	m_audiodeviceClient;

@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTransportControl.h"
 #include "Tsar.h"
 #include "defines.h"
-#include "APILinkedList.h"
 
 class Project;
 class AudioTrack;
@@ -44,7 +43,7 @@ class TTimeLineRuler;
 class TBusTrack;
 class Track;
 
-class Sheet : public TSession, public APILinkedListNode
+class Sheet : public TSession
 {
     Q_OBJECT
 
@@ -115,7 +114,12 @@ public:
     bool is_changed() const {return m_changed;}
     bool is_snap_on() const	{return m_isSnapOn;}
     bool is_recording() const {return m_recording;}
-    bool is_smaller_then(APILinkedListNode* node) {Q_UNUSED(node); return false;}
+
+    bool operator<(const Sheet& /*right*/) {
+        return true;
+    }
+
+    Sheet* next = nullptr;
 
 private:
     QList<AudioClip*>	m_recordingClips;

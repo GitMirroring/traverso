@@ -62,12 +62,6 @@ public:
     void calculate_bounding_rect();
     void load_theme_data();
 
-    // compares if left < right, used for std::sort
-    bool operator()( TrackView* left, TrackView* right ) const {
-        return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
-    }
-
-
 protected:
 	TTrackLaneView*		m_primaryLaneView;
 	TTrackLaneView*		m_volumeAutomationLaneView;

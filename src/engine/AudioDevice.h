@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 #include "RingBufferNPT.h"
-#include "APILinkedList.h"
+#include "TRealTimeLinkedList.h"
 #include "TAudioBusConfiguration.h"
 #include "TAudioDeviceSetup.h"
 #include "TTimeRef.h"
@@ -155,7 +155,7 @@ private:
         TAudioDeviceSetup        m_fallBackSetup;
         TAudioDriver* 		m_driver;
         AudioDeviceThread* 	m_audioThread;
-        APILinkedList		m_clients;
+        TRealTimeLinkedList<TAudioDeviceClient*> m_clients;
         QList<AudioChannel* >   m_channels;
         QList<TAudioBusConfiguration>        m_busConfigs;
         QList<TAudioChannelConfiguration>    m_channelConfigs;

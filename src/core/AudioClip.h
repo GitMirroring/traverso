@@ -103,14 +103,9 @@ public:
 	bool has_sheet() const;
     bool is_readsource_invalid() const {return !m_isReadSourceValid;}
 
-    bool is_smaller_then(APILinkedListNode* node) {
-        return static_cast<AudioClip*>(node)->get_location()->get_end() > this->m_locationItem->get_start();
-    }
-
-    // compares if left < right, used for std::sort
-    bool operator()( AudioClip* left, AudioClip* right ) const {
-        return left->get_location()->get_start() < right->get_location()->get_end();
-    }
+    bool operator<(const AudioClip &other) {
+        return this->get_location()->get_start() < other.get_location()->get_start();
+    }    
 
     bool is_moving() const {return m_isMoving;}
 
@@ -120,13 +115,15 @@ public:
 
     void removed_from_track();
 
+    AudioClip* next = nullptr;
+
 
 private:
     Sheet*          m_sheet;
     AudioTrack* 	m_track;
     ReadSource*		m_readSource;
     WriteSource*	m_writer;
-    APILinkedList	m_fades;
+    TRealTimeLinkedList<FadeCurve*>	m_fades;
 	Peak* 			m_peak;
     FadeCurve*		m_fadeIn;
     FadeCurve*		m_fadeOut;

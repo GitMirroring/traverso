@@ -54,7 +54,7 @@ FadeCurveView::FadeCurveView(SheetView* sv, AudioClipView* parent, FadeCurve * f
 
     Q_ASSERT(m_fadeCurve);
 
-    apill_foreach(CurveNode*, node, m_fadeCurve->get_nodes())
+    for(CurveNode* node = m_fadeCurve->get_nodes().first(); node != nullptr; node = node->next) {
 		CurveNode* guinode = new CurveNode(m_guicurve, 
 				node->get_when() / m_sv->timeref_scalefactor,
 				node->get_value());
@@ -224,17 +224,14 @@ void FadeCurveView::calculate_bounding_rect()
 {
     prepareGeometryChange();
 
-	APILinkedList guinodes = m_guicurve->get_nodes();
-	APILinkedList nodes = m_fadeCurve->get_nodes();
+    TRealTimeLinkedList<CurveNode*> guinodes = m_guicurve->get_nodes();
+    TRealTimeLinkedList<CurveNode*> nodes = m_fadeCurve->get_nodes();
 	
-	APILinkedListNode* node = nodes.first();
-	APILinkedListNode* guinode = guinodes.first();
+    CurveNode* node = nodes.first();
+    CurveNode* guinode = guinodes.first();
 	
 	while (node) {
-        CurveNode* cnode = static_cast<CurveNode*>(node);
-        CurveNode* cguinode = static_cast<CurveNode*>(guinode);
-		
-		cguinode->set_when_and_value(cnode->get_when() / m_sv->timeref_scalefactor, cnode->get_value());
+        guinode->set_when_and_value(node->get_when() / m_sv->timeref_scalefactor, node->get_value());
 		
 		node = node->next;
 		guinode = guinode->next;

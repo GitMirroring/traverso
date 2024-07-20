@@ -21,13 +21,13 @@
 #ifndef ringbuffer_npt_h
 #define ringbuffer_npt_h
 
+#include <atomic>
 #include <stdio.h>
 
 #if ! defined (Q_OS_WIN)
 #include <sys/mman.h>
 #endif
 
-#include "defines.h"
 
 /* ringbuffer class where the element size is not required to be a power of two */
 
@@ -119,7 +119,7 @@ class RingBufferNPT
 
   protected:
 	T *buf;
-	size_t size;
+    size_t size;
     std::atomic<int> write_ptr;
     std::atomic<int> read_ptr;
 };

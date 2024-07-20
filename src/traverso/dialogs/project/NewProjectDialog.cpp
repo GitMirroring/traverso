@@ -368,8 +368,10 @@ void NewProjectDialog::move_up()
 		return;
 	}
 
-    //QT6_FIXME
-//	std::sort(selection);
+    std::sort(selection.begin(), selection.end(), [& selection](QTreeWidgetItem* left, QTreeWidgetItem* right) {
+        return selection.indexOf(left) < selection.indexOf(right);
+    });
+
 	int firstIndex = treeWidgetFiles->topLevelItemCount();
 	QList<int> indexList;
 

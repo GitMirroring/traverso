@@ -35,14 +35,6 @@ public:
     void setAutoRepeatStartDelay(int delay) {m_autorepeatStartDelay = delay;}
     void setSlotSignature(const QString& signature) {slotsignature = signature;}
 
-    bool operator<(TShortCutFunction* other) {
-        return this->sortorder < other->sortorder;
-    }
-    bool operator>(TShortCutFunction* other) {
-        return this->sortorder > other->sortorder;
-    }
-
-
     static void makeShortcutKeyHumanReadable(QString& key, bool formatHtml=false);
 
     QVariantList arguments;

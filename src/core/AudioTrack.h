@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 
 #include "ContextItem.h"
+#include "TRealTimeLinkedList.h"
 #include "Track.h"
 
 #include "defines.h"
@@ -66,6 +67,14 @@ public :
         int disarm();
         int process(const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes);
 
+        bool operator<(const AudioTrack &other) {
+            printf("bool operator<(const AudioTrack &other)\n");
+            return this->get_sort_index() < other.get_sort_index();
+        }
+
+
+        AudioTrack* next = nullptr;
+
 protected:
         void add_input_bus(AudioBus* bus);
 
@@ -73,7 +82,7 @@ private :
         Sheet*          m_sheet;
 
         // only to be accessed/modified by AudioThread
-        APILinkedList 	m_rtAudioClips;
+        TRealTimeLinkedList<AudioClip*> m_rtAudioClipsLinkedList;
 
         // only to be accessed from GUI thread
         QList<AudioClip*>   m_audioClips;

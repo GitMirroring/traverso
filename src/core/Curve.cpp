@@ -59,9 +59,9 @@ Curve::Curve(ContextItem* parent, const QDomNode& node )
 
 Curve::~Curve()
 {
-	APILinkedListNode* node = m_nodes.first();
+    CurveNode* node = m_nodes.first();
 	while (node) {
-        CurveNode* q = static_cast<CurveNode*>(node);
+        CurveNode* q = node;
 		node = node->next;
 		delete q;
 	}
@@ -86,9 +86,9 @@ QDomNode Curve::get_state(QDomDocument doc, const QString& name)
 	QDomElement domNode = doc.createElement(name);
 	
 	QStringList nodesList;
-	
-    apill_foreach(CurveNode*, cn, m_nodes)
-        nodesList << QString::number(cn->when, 'g', 24).append(",").append(QString::number(cn->value));
+
+    for(CurveNode* cn = m_nodes.first(); cn != nullptr; cn = cn->next) {
+        nodesList << QString::number(cn->get_when(), 'g', 24).append(",").append(QString::number(cn->get_value()));
 	}
 	
 	if (m_nodes.size() == 0) {
@@ -139,7 +139,7 @@ int Curve::process(
 	
 	// Check if we are beyond the last node and only apply gain if != 1.0
 	if (endlocation > qint64(get_range())) {
-        audio_sample_t gain = audio_sample_t((static_cast<CurveNode*>(m_nodes.last()))->value) * makeupgain;
+        audio_sample_t gain = audio_sample_t((static_cast<CurveNode*>(m_nodes.last()))->get_value()) * makeupgain;
 
 		if (gain == 1.0f) {
 			return 0;
@@ -186,12 +186,10 @@ void Curve::solve ()
 
         int i;
 
-		CurveNode* cn;
 		i = 0;
-        for(APILinkedListNode* node = m_nodes.first(); node!=nullptr; node = node->next, ++i) {
-            cn = static_cast<CurveNode*>(node);
-            x[i] = cn->when;
-            y[i] = cn->value;
+        for(CurveNode* node = m_nodes.first(); node!=nullptr; node = node->next, ++i) {
+            x[i] = node->get_when();
+            y[i] = node->get_value();
 		}
 
 		double lp0, lp1, fpone;
@@ -208,14 +206,8 @@ void Curve::solve ()
 		double fplast = 0;
 
 		i = 0;
-        for(APILinkedListNode* node = m_nodes.first(); node!=nullptr; node = node->next, ++i) {
-			
-            cn = static_cast<CurveNode*>(node);
+        for(CurveNode* node = m_nodes.first(); node != nullptr; node = node->next, ++i) {
 
-            if (cn == nullptr) {
-                qFatal("programming error: non-CurvePoint event found in event list for a Curve");
-            }
-			
 			double xdelta;   /* gcc is wrong about possible uninitialized use */
 			double xdelta2;  /* ditto */
 			double ydelta;   /* ditto */
@@ -286,10 +278,10 @@ void Curve::solve ()
 
 			/* store */
 
-            cn->coeff[0] = y[i-1] - (b * x[i-1]) - (c * xim12) - (d * xim13);
-            cn->coeff[1] = b;
-            cn->coeff[2] = c;
-            cn->coeff[3] = d;
+            node->coeff[0] = y[i-1] - (b * x[i-1]) - (c * xim12) - (d * xim13);
+            node->coeff[1] = b;
+            node->coeff[2] = c;
+            node->coeff[3] = d;
 
             fplast = fpi;
 		}
@@ -315,16 +307,16 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
 
 	/* nodes is now known not to be empty */
 	
-    CurveNode* lastnode = static_cast<CurveNode*>(m_nodes.last());
-    CurveNode* firstnode = static_cast<CurveNode*>(m_nodes.first());
+    CurveNode* lastnode = m_nodes.last();
+    CurveNode* firstnode = m_nodes.first();
 
-    max_x = lastnode->when;
-    min_x = firstnode->when;
+    max_x = lastnode->get_when();
+    min_x = firstnode->get_when();
 
 	lx = max (min_x, x0);
 
 	if (x1 < 0) {
-        x1 = lastnode->when;
+        x1 = lastnode->get_when();
 	}
 
 	hx = min (max_x, x1);
@@ -343,10 +335,10 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
 		
 		subveclen = min (subveclen, veclen);
 
-//                printf("filling first %d samples %f\n", subveclen, firstnode->value);
+//                printf("filling first %d samples %f\n", subveclen, firstnode->get_value());
 
 		for (i = 0; i < subveclen; ++i) {
-            vec[i] = float(firstnode->value);
+            vec[i] = float(firstnode->get_value());
 		}
 
 		veclen -= subveclen;
@@ -365,9 +357,9 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
 		
 		subveclen = min (subveclen, veclen);
 
-        val = float(lastnode->value);
+        val = float(lastnode->get_value());
 
-//                printf("filling last %d samples %f\n", subveclen, firstnode->value);
+//                printf("filling last %d samples %f\n", subveclen, firstnode->get_value());
 
                 for (i = veclen - subveclen; i < veclen; ++i) {
 			vec[i] = val;
@@ -383,7 +375,7 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
 	if (npoints == 1 ) {
 	
 		for (i = 0; i < veclen; ++i) {
-            vec[i] = float(firstnode->value);
+            vec[i] = float(firstnode->get_value());
 		}
 		return;
 	}
@@ -404,11 +396,11 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
 			dx = 0; // not used
 		}
 	
-        double slope = (lastnode->value - firstnode->value) /
-            (lastnode->when - firstnode->when );
+        double slope = (lastnode->get_value() - firstnode->get_value()) /
+            (lastnode->get_when() - firstnode->get_when() );
 		double yfrac = dx*slope;
 
-        vec[0] = float(firstnode->value + slope * (lx - firstnode->when));
+        vec[0] = float(firstnode->get_value() + slope * (lx - firstnode->get_when()));
 
 		for (i = 1; i < veclen; ++i) {
             vec[i] = float(vec[i-1] + float(yfrac));
@@ -436,13 +428,13 @@ void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
 double Curve::multipoint_eval(double x)
 {	
 	if ((m_lookup_cache.left < 0) ||
-        ((m_lookup_cache.left > x) || (m_lookup_cache.range.second->when < x))) {
+        ((m_lookup_cache.left > x) || (m_lookup_cache.range.second->get_when() < x))) {
 		
 		CurveNode cn (this, x, 0.0);
 
-		APILinkedListNode* first = m_nodes.first();
-		APILinkedListNode* last = m_nodes.last();
-		APILinkedListNode* middle;
+        CurveNode* first = m_nodes.first();
+        CurveNode* last = m_nodes.last();
+        CurveNode* middle;
 		bool validrange = false;
 		int len = m_nodes.size() - 1;
 		int half;
@@ -456,20 +448,20 @@ double Curve::multipoint_eval(double x)
 				middle = middle->next;
 			}
 			//start compare
-            if (static_cast<CurveNode*>(middle)->when < cn.when) {
+            if (middle->get_when() < cn.get_when()) {
 				first = middle;
 				first = first->next;
 				len = len - half - 1;
-            } else if (cn.when < static_cast<CurveNode*>(middle)->when) {
+            } else if (cn.get_when() < middle->get_when()) {
 				len = half;
 			} else {
 				// lower bound (using first/middle)
-				APILinkedListNode* lbfirst = first;
-				APILinkedListNode* lblast = middle;
-				APILinkedListNode* lbmiddle;
+                CurveNode* lbfirst = first;
+                CurveNode* lblast = middle;
+                CurveNode* lbmiddle;
 				// start distance.
 				int lblen = 0;
-				APILinkedListNode* temp = lbfirst;
+                CurveNode* temp = lbfirst;
 				while (temp != lblast) {
 					temp = temp->next;
 					++lblen;
@@ -484,7 +476,7 @@ double Curve::multipoint_eval(double x)
 					while (n--) {
 						lbmiddle = lbmiddle->next;
 					}
-                    if (((CurveNode*)lbmiddle)->when < cn.when) {
+                    if (lbmiddle->get_when() < cn.get_when()) {
 						lbfirst = lbmiddle;
 						lbfirst = lbfirst->next;
 						lblen = lblen - lbhalf - 1;
@@ -492,13 +484,13 @@ double Curve::multipoint_eval(double x)
 						lblen = lbhalf;
 					}
 				}
-				m_lookup_cache.range.first = (CurveNode*)lbfirst;
+                m_lookup_cache.range.first = lbfirst;
 				
 
 				// upper bound
-				APILinkedListNode* ubfirst = middle->next;
-				APILinkedListNode* ublast = last;
-				APILinkedListNode* ubmiddle;
+                CurveNode* ubfirst = middle->next;
+                CurveNode* ublast = last;
+                CurveNode* ubmiddle;
 				// start distance.
 				int ublen = 0;
 				temp = ubfirst;
@@ -516,8 +508,8 @@ double Curve::multipoint_eval(double x)
 					while (n--) {
 						ubmiddle = ubmiddle->next;
 					}
-					
-                    if (cn.when < ((CurveNode*)ubmiddle)->when) {
+
+                    if (cn.get_when() < ubmiddle->get_when()) {
 						ublen = ubhalf;
 					} else {
 						ubfirst = ubmiddle;
@@ -525,15 +517,15 @@ double Curve::multipoint_eval(double x)
 						ublen = ublen - ubhalf - 1;
 					}
 				}
-				m_lookup_cache.range.second = (CurveNode*)ubfirst;
+                m_lookup_cache.range.second = ubfirst;
 				
 				validrange = true;
 				break;
 			}
 		}
 		if (!validrange) {
-			m_lookup_cache.range.first = (CurveNode*)first;
-			m_lookup_cache.range.second = (CurveNode*)first;
+            m_lookup_cache.range.first = first;
+            m_lookup_cache.range.second = first;
 		}
 	}
 	
@@ -563,7 +555,7 @@ double Curve::multipoint_eval(double x)
 	/* x is a control point in the data */
 	/* invalidate the cached range because its not usable */
 	m_lookup_cache.left = -1;
-    return m_lookup_cache.range.first->value;
+    return m_lookup_cache.range.first->get_value();
 }
 
 void Curve::set_range(double when)
@@ -573,9 +565,9 @@ void Curve::set_range(double when)
 		return;
 	}
 	
-	CurveNode* lastnode = (CurveNode*)m_nodes.last();
+    CurveNode* lastnode = m_nodes.last();
 	
-    if (qFuzzyCompare(lastnode->when, when)) {
+    if (qFuzzyCompare(lastnode->get_when(), when)) {
 // 		printf("Curve::set_range: new range == current range!\n");
 		return;
 	}
@@ -586,8 +578,10 @@ void Curve::set_range(double when)
 	}
 	
 	Q_ASSERT(when >= 0.0);
+    Q_ASSERT(lastnode);
+    Q_ASSERT(lastnode->get_when() != 0.0);
 	
-    double factor = when / lastnode->when;
+    double factor = when / lastnode->get_when();
 	
 	if (factor == 1.0)
 		return;
@@ -601,8 +595,8 @@ void Curve::x_scale(double factor)
 {
 	Q_ASSERT(factor != 0.0);
 
-    apill_foreach(CurveNode*, node, m_nodes)
-        node->set_when(node->when * factor);
+    for(CurveNode* node = m_nodes.first(); node != nullptr; node = node->next) {
+        node->set_when(node->get_when() * factor);
 	}
 }
 
@@ -632,8 +626,8 @@ TCommand* Curve::add_node(CurveNode* node, bool historable)
 {
 	PENTER2;
 
-    apill_foreach(CurveNode*, cn, m_nodes)
-        if (qFuzzyCompare(node->when, cn->when) && qFuzzyCompare(node->value, cn->value)) {
+    for(CurveNode* cn = m_nodes.first(); cn != nullptr; cn = cn->next) {
+        if (qFuzzyCompare(node->get_when(), cn->get_when()) && qFuzzyCompare(node->get_value(), cn->get_value())) {
 			info().warning(tr("There is allready a node at this exact position, not adding a new node"));
 			delete node;
             node = nullptr;
@@ -696,3 +690,12 @@ void Curve::set_sheet(TSession * sheet)
     set_history_stack(m_session->get_history_stack());
 }
 
+
+double Curve::get_range() const
+{
+    if (m_nodes.size() == 0) {
+        return 0;
+    }
+
+    return m_nodes.last()->get_when();
+}

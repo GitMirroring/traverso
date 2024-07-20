@@ -58,6 +58,8 @@ FadeCurve::FadeCurve(AudioClip* clip, FadeType fadeType )
     m_raster = 0;
     m_bypass = false;
 
+    next = nullptr;
+
     connect(this, SIGNAL(stateChanged()), this, SLOT(solve_node_positions()));
     connect(this, SIGNAL(bendValueChanged()), this, SIGNAL(stateChanged()));
     connect(this, SIGNAL(strengthValueChanged()), this, SIGNAL(stateChanged()));
@@ -77,8 +79,8 @@ void FadeCurve::init()
 
     // Populate the curve with 12 CurveNodes
     float f = 0.0;
-    int nodecount = 11;
-    for (int i = 0; i <= nodecount; ++i) {
+    int nodecount = 12;
+    for (int i = 0; i < nodecount; ++i) {
         QPointF p = get_curve_point(f);
 
         CurveNode* node = new CurveNode(this, p.x(), p.y());
@@ -309,15 +311,15 @@ void FadeCurve::solve_node_positions( )
 
     // calculate curve nodes values
     float f = 0.0;
-    APILinkedList list = get_nodes();
+    TRealTimeLinkedList<CurveNode*> list = Curve::get_nodes();
     int listsize = list.size();
     if (listsize > 0) {
-        APILinkedListNode* node = list.first()->next;
+        CurveNode* node = list.first()->next;
 
         while (node) {
             f += 1.0 / (listsize - 1);
             QPointF p = get_curve_point(f);
-            ((CurveNode*)node)->set_relative_when_and_value(p.x(), p.y());
+            node->set_relative_when_and_value(p.x(), p.y());
             node = node->next;
         }
     }
@@ -340,6 +342,8 @@ QPointF FadeCurve::get_curve_point( float f)
     if (m_type == FadeOut) {
         y = 1.0 - y;
     }
+
+    // printf("x: %f, y: %f\n", x, y);
 
     return QPointF(x, y);
 }

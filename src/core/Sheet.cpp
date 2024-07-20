@@ -532,7 +532,7 @@ int Sheet::process( nframes_t nframes )
     TTimeRef endLocation = startLocation + TTimeRef(nframes, audiodevice().get_sample_rate());
 
 	// Process all Tracks.
-    apill_foreach(AudioTrack*, track, m_rtAudioTracks)
+    for(AudioTrack* track = m_rtAudioTracks.first(); track != nullptr; track = track->next) {
         processResult |= track->process(startLocation, endLocation, nframes);
 	}
 
@@ -545,7 +545,7 @@ int Sheet::process( nframes_t nframes )
 		return 0;
 	}
 
-    apill_foreach(TBusTrack*, busTrack, m_rtBusTracks)
+    for(TBusTrack* busTrack = m_rtBusTracks.first(); busTrack != nullptr; busTrack = busTrack->next) {
         busTrack->process(startLocation, endLocation, nframes);
     }
 

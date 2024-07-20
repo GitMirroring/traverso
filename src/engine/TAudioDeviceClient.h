@@ -20,18 +20,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: Client.h,v 1.7 2007/11/19 11:18:54 r_sijrier Exp $
 */
 
-#ifndef CLIENT_H
-#define CLIENT_H
+#ifndef T_AUDIO_DEVICE_CLIENT_H
+#define T_AUDIO_DEVICE_CLIENT_H
 
 #include <QString>
 #include <QObject>
-#include "APILinkedList.h"
 
 #include "AudioDevice.h"
 
 class AudioBus;
 
-class TAudioDeviceClient : public QObject, public APILinkedListNode
+class TAudioDeviceClient : public QObject
 {
         Q_OBJECT
 
@@ -41,14 +40,18 @@ public:
 
 	void set_process_callback(const ProcessCallback& call);
 	void set_transport_control_callback(const TransportControlCallback& call);
-	bool is_smaller_then(APILinkedListNode* ) {return false;}
 
-	
 	ProcessCallback process;
 	TransportControlCallback transport_control;
 	
 	QString		m_name;
     AudioBus*       masterOutBus{};
+
+    bool operator<(const TAudioDeviceClient& /*other*/) {
+        return false;
+    }
+
+    TAudioDeviceClient* next = nullptr;
 
 private:
 

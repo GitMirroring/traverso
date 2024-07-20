@@ -273,7 +273,8 @@ int AudioTrack::process(const TTimeRef& startLocation, const TTimeRef& endLocati
 
 
     // Read in clip data into process bus.
-    apill_foreach(AudioClip*, clip, m_rtAudioClips)
+    for(AudioClip* clip = m_rtAudioClipsLinkedList.first(); clip != nullptr; clip = clip->next) {
+    // apill_foreach(AudioClip*, clip, m_rtAudioClips)
         if (m_isArmed && clip->recording_state() == AudioClip::NO_RECORDING) {
             if (m_isMuted || m_mutedBySolo) {
                 continue;
@@ -442,18 +443,20 @@ TCommand* AudioTrack::add_clip(AudioClip* clip, bool historable, bool ismove)
 
 void AudioTrack::private_add_clip(AudioClip* clip)
 {
-    m_rtAudioClips.add_and_sort(clip);
+    m_rtAudioClipsLinkedList.add_and_sort(clip);
 }
 
 void AudioTrack::private_remove_clip(AudioClip* clip)
 {
-    m_rtAudioClips.remove(clip);
+    m_rtAudioClipsLinkedList.remove(clip);
 }
 
 void AudioTrack::private_audioclip_added(AudioClip *clip)
 {
     m_audioClips.append(clip);
-    std::sort(m_audioClips.begin(), m_audioClips.end());
+    std::sort(m_audioClips.begin(), m_audioClips.end(), [&](AudioClip* left, AudioClip* right) {
+        return left->get_location()->get_start() < right->get_location()->get_start();
+    });
     emit audioClipAdded(clip);
 }
 
@@ -465,7 +468,9 @@ void AudioTrack::private_audioclip_removed(AudioClip* clip)
 
 void AudioTrack::clip_position_changed(AudioClip * clip)
 {
-    std::sort(m_audioClips.begin(), m_audioClips.end());
+    std::sort(m_audioClips.begin(), m_audioClips.end(), [&](AudioClip* left, AudioClip* right) {
+        return left->get_location()->get_start() < right->get_location()->get_start();
+    });
 
     if (m_sheet && m_sheet->is_transport_rolling()) {
         tsar().add_gui_event(this, clip, "private_clip_position_changed(AudioClip*)", "");
@@ -476,7 +481,7 @@ void AudioTrack::clip_position_changed(AudioClip * clip)
 
 void AudioTrack::private_clip_position_changed(AudioClip *clip)
 {
-    m_rtAudioClips.sort(clip);
+    m_rtAudioClipsLinkedList.sort(clip);
 }
 
 TCommand* AudioTrack::toggle_show_clip_volume_automation()

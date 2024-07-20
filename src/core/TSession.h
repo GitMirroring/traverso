@@ -25,7 +25,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ContextItem.h"
 
 #include <QDomNode>
-#include "APILinkedList.h"
+#include <QHash>
+
+#include "TRealTimeLinkedList.h"
 #include "defines.h"
 #include "TTimeRef.h"
 
@@ -93,8 +95,8 @@ public:
 protected:
 	TSession*               m_parentSession;
 	QList<TSession*>        m_childSessions;
-	APILinkedList           m_rtAudioTracks;
-	APILinkedList           m_rtBusTracks;
+    TRealTimeLinkedList<AudioTrack*>           m_rtAudioTracks;
+    TRealTimeLinkedList<TBusTrack*>           m_rtBusTracks;
 	QList<AudioTrack*>      m_audioTracks;
 	QList<TBusTrack*>       m_busTracks;
 	QHash<qint64, Track* >	m_tracks;

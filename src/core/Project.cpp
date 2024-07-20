@@ -1503,14 +1503,14 @@ int Project::process( nframes_t nframes )
 {
     int result = 0;
 
-    apill_foreach(Sheet*, sheet, m_RtSheets)
+    for(Sheet* sheet = m_RtSheets.first(); sheet != nullptr; sheet = sheet->next) {
         result |= sheet->process(nframes);
     }
 
     TTimeRef startLocation = get_transport_location();
     TTimeRef endLocation = startLocation + TTimeRef(nframes, audiodevice().get_sample_rate());
 
-    apill_foreach(TBusTrack*, busTrack, m_rtBusTracks)
+    for(TBusTrack* busTrack = m_rtBusTracks.first(); busTrack != nullptr; busTrack = busTrack->next) {
         busTrack->process(startLocation, endLocation, nframes);
     }
 
@@ -1541,7 +1541,7 @@ int Project::transport_control(TTransportControl *transportControl)
 {
     bool result = true;
 
-    apill_foreach(Sheet*, sheet, m_RtSheets)
+    for(Sheet* sheet = m_RtSheets.first(); sheet != nullptr; sheet = sheet->next) {
         result = sheet->transport_control(transportControl);
     }
 

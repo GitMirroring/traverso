@@ -487,10 +487,10 @@ void TSession::private_add_track(Track* track)
 {
 	switch (track->get_type()) {
 	case Track::AUDIOTRACK:
-		m_rtAudioTracks.append(track);
+        m_rtAudioTracks.append(qobject_cast<AudioTrack*>(track));
 		break;
 	case Track::BUS:
-		m_rtBusTracks.append(track);
+        m_rtBusTracks.append(qobject_cast<TBusTrack*>(track));
 		break;
 	default:
         qFatal("TSession::private_add_track() Unknown Track type, this is a programming error!");
@@ -502,10 +502,10 @@ void TSession::private_remove_track(Track* track)
 {
 	switch (track->get_type()) {
 	case Track::AUDIOTRACK:
-		m_rtAudioTracks.remove(track);
+        m_rtAudioTracks.remove(qobject_cast<AudioTrack*>(track));
 		break;
 	case Track::BUS:
-		m_rtBusTracks.remove(track);
+        m_rtBusTracks.remove(qobject_cast<TBusTrack*>(track));
 		break;
 	default:
         qFatal("TSession::private_remove_track() Unknown Track type, this is a programming error!");

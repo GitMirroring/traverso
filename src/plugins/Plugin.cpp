@@ -34,11 +34,6 @@ Plugin::Plugin(TSession* session)
     m_bypass = false;
 }
 
-bool Plugin::is_smaller_then(APILinkedListNode *node)
-{
-    return true;
-}
-
 QDomNode Plugin::get_state(QDomDocument doc)
 {
 	QDomElement node = doc.createElement("Plugin");

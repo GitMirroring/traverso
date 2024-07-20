@@ -30,9 +30,8 @@ $Id: AudioBus.h,v 1.7 2007/06/04 20:47:16 r_sijrier Exp $
 #include "TAudioBusConfiguration.h"
 #include "defines.h"
 #include "AudioChannel.h"
-#include "APILinkedList.h"
 
-class AudioBus : public QObject, public APILinkedListNode
+class AudioBus : public QObject
 {
     Q_OBJECT
 
@@ -100,7 +99,8 @@ public:
         }
     }
 
-    bool is_smaller_then(APILinkedListNode* /*node*/) {return true;}
+
+    AudioBus*               next;
 
 private:
     QList<AudioChannel* >	m_channels;
