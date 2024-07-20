@@ -75,7 +75,6 @@ public:
     QString fade_type_to_string() const;
 
     bool operator<(const FadeCurve& /*other*/) {
-        printf("FadeCurve < called\n");
         return false;
     }
 

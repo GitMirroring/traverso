@@ -20,10 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: CurveNode.h,v 1.9 2007/11/19 11:18:53 r_sijrier Exp $
 */
 
-#ifndef CURVENODE_H
-#define CURVENODE_H
+#ifndef T_CURVENODE_H
+#define T_CURVENODE_H
 
-#include <cstdio>
 class Curve;
 
 class CurveNode

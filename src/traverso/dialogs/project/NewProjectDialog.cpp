@@ -401,8 +401,10 @@ void NewProjectDialog::move_down()
 		return;
 	}
 
-    //QT6_FIXME
-//	std::sort(selection);
+    std::sort(selection.begin(), selection.end(), [& selection](QTreeWidgetItem* left, QTreeWidgetItem* right) {
+        return selection.indexOf(left) < selection.indexOf(right);
+    });
+
     int firstIndex = 0;
 	QList<int> indexList;
 
