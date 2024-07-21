@@ -22,11 +22,17 @@
 #ifndef AUDIO_CLIP_GROUP_H
 #define AUDIO_CLIP_GROUP_H
 
+#include "TTimeRef.h"
 
-#include "AudioClip.h"
+#include <QObject>
 
-class AudioClipGroup
+class AudioClip;
+class TLocation;
+
+class AudioClipGroup : QObject
 {
+    Q_OBJECT
+
 public:
     AudioClipGroup();
 	AudioClipGroup(QList<AudioClip*> clips);

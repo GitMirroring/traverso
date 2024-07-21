@@ -84,8 +84,8 @@ void AudioClipGroup::update_state()
         return;
     }
 
-    m_location->set_start(TTimeRef::max_length());
-    m_location->set_end(TTimeRef());
+    m_location->set_start(this, TTimeRef::max_length());
+    m_location->set_end(this, TTimeRef());
 
     m_topTrackIndex = INT_MAX;
     m_bottomTrackIndex = 0;
@@ -99,10 +99,10 @@ void AudioClipGroup::update_state()
             m_bottomTrackIndex = index;
         }
         if (m_location->get_start() > clip->get_location()->get_start()) {
-            m_location->set_start(clip->get_location()->get_start());
+            m_location->set_start(this, clip->get_location()->get_start());
         }
         if (m_location->get_end() < clip->get_location()->get_end()) {
-            m_location->set_end(clip->get_location()->get_end());
+            m_location->set_end(this, clip->get_location()->get_end());
         }
     }
 }

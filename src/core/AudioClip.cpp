@@ -371,7 +371,7 @@ void AudioClip::set_location_start(const TTimeRef& location)
 {
     PENTER2;
 
-    m_locationItem->set_start(location);
+    m_locationItem->set_start(this, location);
 
     m_fader->get_curve()->set_start_offset(m_locationItem->get_start());
 
@@ -385,7 +385,7 @@ void AudioClip::set_location_start(const TTimeRef& location)
 
 void AudioClip::set_track_end_location(const TTimeRef& location)
 {
-    m_locationItem->set_end(location);
+    m_locationItem->set_end(this, location);
 
     if ( (!is_moving()) && m_sheet) {
         m_sheet->get_snap_list()->mark_dirty();

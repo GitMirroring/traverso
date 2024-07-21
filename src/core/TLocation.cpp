@@ -26,8 +26,9 @@ $Id: TLocation.cpp,v 1.2 2008/02/21 20:00:48 r_sijrier Exp $
 #include <Debugger.h>
 
 
-TLocation::TLocation(QObject *parent)
-    : QObject(parent)
+TLocation::TLocation(QObject *owner)
+    : QObject(owner)
+    , m_owner(owner)
 {
 	m_isSnappable = true;
 	snapList = 0;
@@ -46,13 +47,19 @@ void TLocation::set_snap_list(SnapList *sList)
 	snapList = sList;
 }
 
-void TLocation::set_start(const TTimeRef &start)
+void TLocation::set_start(QObject* owner, const TTimeRef &start)
 {
+    Q_ASSERT(m_owner != nullptr);
+    Q_ASSERT(owner == m_owner);
+
     m_start = start;
 }
 
-void TLocation::set_end(const TTimeRef &end)
+void TLocation::set_end(QObject* owner, const TTimeRef &end)
 {
+    Q_ASSERT(m_owner != nullptr);
+    Q_ASSERT(owner == m_owner);
+
     m_end = end;
 }
 
