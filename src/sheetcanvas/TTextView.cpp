@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 TTextView::TTextView(ViewItem *parent)
     :ViewItem (parent)
 {
-    m_boundingRect = QRectF(0, 0, 223, 20);
+    m_boundingRect = QRectF(0, 0, 196, 18);
 }
 
 TTextView::~TTextView()

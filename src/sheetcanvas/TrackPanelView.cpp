@@ -109,7 +109,7 @@ TrackPanelView::TrackPanelView(TrackView* view)
 
     INDENT = 10;
     PANEL_ITEM_SPACING = 16;
-    VU_WIDTH = 8;
+    VU_WIDTH = 10;
     LED_Y_POS = int(m_trackNameView->pos().y() + m_trackNameView->boundingRect().height()) + PANEL_ITEM_SPACING;
     VUMETER_Y_POS = LED_Y_POS + LED_HEIGHT + PANEL_ITEM_SPACING;
 
@@ -180,7 +180,7 @@ void TrackPanelView::calculate_bounding_rect()
 
 void TrackPanelView::layout_panel_items()
 {
-    m_trackNameView->setPos(3, 3);
+    m_trackNameView->setPos(INDENT, 4);
 
     qreal height =  m_boundingRect.height();
     bool horizontalVuMeterViewPossible = height > (VUMETER_Y_POS + std::min(m_vuMeterView->boundingRect().height(), m_vuMeterView->boundingRect().width()));
