@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TSession.h"
 #include <QDomNode>
-#include <QTimer>
 #include "TTransportControl.h"
 #include "Tsar.h"
 #include "defines.h"
@@ -95,10 +94,6 @@ public:
     void set_recording(bool recording, bool realtime);
     void set_audio_sources_dir(const QString& dir);
 
-    void skip_to_start();
-    void skip_to_end();
-
-
     int process(nframes_t nframes);
 
     // jackd only feature
@@ -123,7 +118,6 @@ public:
 
 private:
     QList<AudioClip*>	m_recordingClips;
-    QTimer              m_skipTimer;
     Project*            m_project;
     TAudioDeviceClient*	m_audiodeviceClient{};
     AudioBus*           m_renderBus{};
@@ -131,7 +125,6 @@ private:
     DiskIO*             m_readDiskIO;
     DiskIO*             m_writeDiskIO;
     AudioClipManager*	m_acmanager{};
-    QList<TTimeRef>		m_xposList;
     QString             m_audioSourcesDir;
     TsarEvent           m_transportStoppedTsarEvent;
     TsarEvent           m_seekStartTsarEvent;
@@ -167,7 +160,6 @@ private:
     void initiate_seek_start(TTimeRef location);
     void start_transport_rolling(bool realtime);
     void stop_transport_rolling();
-    void update_skip_positions();
 
     void resize_buffer(nframes_t size);
 
@@ -180,8 +172,6 @@ public slots :
     void set_transport_location(TTimeRef location);
 
 
-    TCommand* next_skip_pos();
-    TCommand* prev_skip_pos();
     TCommand* start_transport();
     TCommand* set_recordable();
     TCommand* set_recordable_and_start_transport();

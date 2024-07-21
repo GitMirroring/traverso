@@ -233,6 +233,9 @@ public slots :
         TCommand* show_track_finder();
         TCommand* browse_to_first_track_in_active_sheet();
         TCommand* browse_to_last_track_in_active_sheet();
+
+        TCommand* set_transport_location();
+
 	
 private slots:
         void add_sheetwidget(Sheet* session);

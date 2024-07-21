@@ -50,7 +50,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBusTrack.h"
 #include "TConfig.h"
 #include "Utils.h"
-#include "ContextItem.h"
 #include "TTimeLineRuler.h"
 #include "Marker.h"
 #include "TInputEventDispatcher.h"                       
@@ -177,9 +176,7 @@ void Sheet::init()
         m_resumeTransport = m_readyToRecord = false;
 
     m_changed = m_recording = m_prepareRecording = false;
-	
-	m_skipTimer.setSingleShot(true);
-	
+		
         m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
         m_audiodeviceClient->set_process_callback( MakeDelegate(this, &Sheet::process) );
         m_audiodeviceClient->set_transport_control_callback( MakeDelegate(this, &Sheet::transport_control) );
@@ -693,6 +690,8 @@ TCommand * Sheet::set_recordable()
 // Function is only to be called from GUI thread.
 TCommand* Sheet::set_recordable_and_start_transport()
 {
+    Q_ASSERT(this->thread() == QThread::currentThread());
+
 	if (!is_recording()) {
 		set_recordable();
 	}
@@ -986,134 +985,5 @@ QList<AudioTrack *> Sheet::get_armed_tracks() const
     return armedTracks;
 }
 
-
-// the timer is used to allow 'hopping' to the left from snap position to snap position
-// even during playback.
-TCommand* Sheet::prev_skip_pos()
-{
-        if (m_snaplist->was_dirty()) {
-		update_skip_positions();
-	}
-
-	TTimeRef p = get_transport_location();
-
-	if (p < TTimeRef()) {
-		PERROR("pos < 0");
-        set_transport_location(TTimeRef());
-		return ied().failure();
-	}
-
-	QListIterator<TTimeRef> it(m_xposList);
-
-	it.toBack();
-
-	int steps = 1;
-
-	if (m_skipTimer.isActive()) 
-	{
-		++steps;
-	}
-
-	int i = 0;
-	while (it.hasPrevious()) {
-		TTimeRef pos = it.previous();
-		if (pos < p) {
-			p = pos;
-			++i;
-		}
-		if (i >= steps) {
-			break;
-		}
-	}
-
-    set_transport_location(p);
-	
-	m_skipTimer.start(500);
-	
-	return ied().succes();
-}
-
-TCommand* Sheet::next_skip_pos()
-{
-        if (m_snaplist->was_dirty()) {
-		update_skip_positions();
-	}
-
-	TTimeRef p = get_transport_location();
-
-	if (p > m_xposList.last()) {
-		PERROR("pos > last snap position");
-		return ied().failure();
-	}
-
-	QListIterator<TTimeRef> it(m_xposList);
-
-	int i = 0;
-	int steps = 1;
-	
-	while (it.hasNext()) {
-		TTimeRef pos = it.next();
-		if (pos > p) {
-			p = pos;
-			++i;
-		}
-		if (i >= steps) {
-			break;
-		}
-	}
-
-    set_transport_location(p);
-	
-	return ied().succes();
-}
-
-void Sheet::update_skip_positions()
-{
-	m_xposList.clear();
-
-	// store the beginning of the sheet and the work cursor
-	m_xposList << TTimeRef();
-	m_xposList << get_work_location();
-
-	// store all clip borders
-	QList<AudioClip* > acList = get_audioclip_manager()->get_clip_list();
-	for (int i = 0; i < acList.size(); ++i) {
-        m_xposList << acList.at(i)->get_location()->get_start();
-        m_xposList << acList.at(i)->get_location()->get_end();
-	}
-
-	// store all marker positions
-	QList<Marker*> markerList = get_timeline()->get_markers();
-	for (int i = 0; i < markerList.size(); ++i) {
-		m_xposList << markerList.at(i)->get_when();
-	}
-
-	// remove duplicates
-	QMutableListIterator<TTimeRef> it(m_xposList);
-	while (it.hasNext()) {
-		TTimeRef val = it.next();
-		if (m_xposList.count(val) > 1) {
-			it.remove();
-		}
-	}
-
-    std::sort(m_xposList.begin(), m_xposList.end());
-}
-
-void Sheet::skip_to_start()
-{
-    set_transport_location((TTimeRef()));
-	set_work_at((TTimeRef()));
-}
-
-void Sheet::skip_to_end()
-{
-	// stop the transport, no need to play any further than the end of the sheet
-	if (is_transport_rolling())
-	{
-		start_transport();
-	}
-    set_transport_location(get_last_location());
-}
 
 //eof

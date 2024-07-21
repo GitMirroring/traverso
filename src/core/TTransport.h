@@ -24,20 +24,35 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TGlobalContext.h"
 
+#include <QTimer>
+
 class TCommand;
 
 class TTransport : public TGlobalContext
 {
 	Q_OBJECT
 public:
-	TTransport();
 
 public slots:
 	TCommand* start_transport();
 	TCommand* set_recordable_and_start_transport();
 	TCommand* to_start();
 	TCommand* to_end();
-	TCommand* set_transport_location();
+
+    TCommand* next_skip_pos();
+    TCommand* prev_skip_pos();
+
+private:
+    TTransport();
+    TTransport(const TTransport&);
+
+    QTimer              m_skipTimer;
+
+    // allow this function to create one instance
+    friend TTransport& transport();
+
 };
+
+TTransport& transport();
 
 #endif // TTRANSPORT_H

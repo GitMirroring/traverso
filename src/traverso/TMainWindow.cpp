@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClipView.h"
 #include "Information.h"
 #include "Marker.h"
+#include "PlayHeadMove.h"
 #include "Project.h"
 #include "ReadSource.h"
 #include "ResampleAudioReader.h"
@@ -1905,4 +1906,27 @@ TCommand* TMainWindow::redo()
     ContextItem::get_undogroup()->redo();
     return 0;
 }
+
+TCommand* TMainWindow::set_transport_location()
+{
+    Project* project = pm().get_project();
+    if (!project) {
+        return nullptr;
+    }
+
+    Sheet* sheet = project->get_active_sheet();
+    if (!sheet) {
+        return nullptr;
+    }
+
+    SheetWidget* widget = getCurrentSheetWidget();
+    if (widget)
+    {
+        return new PlayHeadMove(widget->get_sheetview());
+
+    }
+
+    return nullptr;
+}
+
 

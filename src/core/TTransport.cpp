@@ -21,26 +21,35 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TTransport.h"
 
+#include "SnapList.h"
 #include "TCommand.h"
 #include "TSession.h"
 #include "Sheet.h"
 #include "Project.h"
-#include "TMainWindow.h"
-#include "SheetWidget.h"
-#include "PlayHeadMove.h"
+#include "TInputEventDispatcher.h"
+
+#include "Debugger.h"
+#include "TTimeLineRuler.h"
 
 TTransport::TTransport()
 {
+    m_skipTimer.setSingleShot(true);
+
+}
+
+TTransport& transport()
+{
+    static TTransport transport;
+    return transport;
 }
 
 TCommand* TTransport::start_transport()
 {
-	if (m_session)
-	{
-		m_session->start_transport();
-	}
+    if (!m_session)	{
+        return nullptr;
+    }
 
-    return nullptr;
+    return m_session->start_transport();
 }
 
 TCommand * TTransport::set_recordable_and_start_transport()
@@ -75,20 +84,22 @@ TCommand* TTransport::to_end()
     return nullptr;
 }
 
-TCommand* TTransport::set_transport_location()
+// the timer is used to allow 'hopping' to the left from snap position to snap position
+// even during playback.
+TCommand* TTransport::prev_skip_pos()
 {
-    if (m_session) {
-        Sheet* sheet = m_project->get_active_sheet();
-        if (!sheet) {
-            return nullptr;
-        }
-    }
+    TTimeRef location = m_session->get_snap_list()->prev_snap_pos(m_session->get_transport_location());
+    m_session->set_transport_location(location);
 
-    SheetWidget* widget = TMainWindow::instance()->getCurrentSheetWidget();
-    if (widget)
-    {
-        return new PlayHeadMove(widget->get_sheetview());
+    m_skipTimer.start(500);
 
-    }
-    return nullptr;
+    return ied().succes();
+}
+
+TCommand* TTransport::next_skip_pos()
+{
+    TTimeRef location = m_session->get_snap_list()->next_snap_pos(m_session->get_transport_location());
+    m_session->set_transport_location(location);
+
+    return ied().succes();
 }

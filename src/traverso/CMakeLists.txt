@@ -23,7 +23,6 @@ ${CMAKE_SOURCE_DIR}/src/common/fpu.cc
 Main.cpp
 TMainWindow.cpp
 Traverso.cpp
-TTransport.cpp
 dialogs/settings/Pages.cpp
 dialogs/settings/SettingsDialog.cpp
 dialogs/project/ProjectManagerDialog.cpp

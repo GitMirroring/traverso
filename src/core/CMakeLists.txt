@@ -59,6 +59,7 @@ Marker.cpp
 Themer.cpp
 ProjectConverter.cpp
 TGlobalContext.cpp
+TTransport.cpp TTransport.h
 )
 
 IF(UNIX)

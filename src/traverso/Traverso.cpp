@@ -29,10 +29,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Traverso.h"
 #include "Mixer.h"
 #include "ProjectManager.h"
+#include "TTransport.h"
 #include "TMainWindow.h"
 #include "Themer.h"
 #include "TConfig.h"
-#include "TTransport.h"
 #include "AudioDevice.h"
 #include "ContextPointer.h"
 #include "Information.h"
@@ -128,7 +128,9 @@ Traverso::~Traverso()
 void Traverso::create_interface( )
 {
     themer()->load();
-    cpointer().add_contextitem(new TTransport());
+
+    cpointer().add_contextitem(&transport());
+
     TMainWindow* tMainWindow = TMainWindow::instance();
     tMainWindow->show();
 

@@ -60,12 +60,7 @@ public slots:
     void set_session(TSession*);
 
 private slots:
-	void to_start();
-	void to_left();
 	void rec_toggled();
-	void play_toggled();
-	void to_end();
-	void to_right();
 
 	void transport_started();
 	void transport_stopped();

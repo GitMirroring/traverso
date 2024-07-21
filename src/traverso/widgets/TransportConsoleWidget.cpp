@@ -28,6 +28,7 @@
 #include "Project.h"
 #include "TConfig.h"
 #include "Information.h"
+#include "TTransport.h"
 
 
 #include <QAction>
@@ -61,12 +62,12 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
         "border-radius: 10px;"
         "padding: 0 8 0 8;");
 
-    m_toStartAction = addAction(QIcon(":/skipleft"), tr("Skip to Start"), this, SLOT(to_start()));
-    m_toLeftAction = addAction(QIcon(":/seekleft"), tr("Previous Snap Position"), this, SLOT(to_left()));
+    m_toStartAction = addAction(QIcon(":/skipleft"), tr("Skip to Start"), &transport(), SLOT(to_start()));
+    m_toLeftAction = addAction(QIcon(":/seekleft"), tr("Previous Snap Position"), &transport(), SLOT(prev_skip_pos()));
     m_recAction = addAction(QIcon(":/record"), tr("Record"), this, SLOT(rec_toggled()));
-    m_playAction = addAction(QIcon(":/playstart"), tr("Play / Stop"), this, SLOT(play_toggled()));
-    m_toRightAction = addAction(QIcon(":/seekright"), tr("Next Snap Position"), this, SLOT(to_right()));
-    m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"), this, SLOT(to_end()));
+    m_playAction = addAction(QIcon(":/playstart"), tr("Play / Stop"), &transport(), SLOT(start_transport()));
+    m_toRightAction = addAction(QIcon(":/seekright"), tr("Next Snap Position"), &transport(), SLOT(next_skip_pos()));
+    m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"), &transport(), SLOT(to_end()));
 
     addWidget(m_timeLabel);
 
@@ -132,34 +133,9 @@ void TransportConsoleWidget::set_session(TSession* session)
     connect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
 }
 
-void TransportConsoleWidget::to_start()
-{
-    m_sheet->skip_to_start();
-}
-
-void TransportConsoleWidget::to_left()
-{
-    m_sheet->prev_skip_pos();
-}
-
 void TransportConsoleWidget::rec_toggled()
 {
-	m_sheet->set_recordable();
-}
-
-void TransportConsoleWidget::play_toggled()
-{
-	m_sheet->start_transport();
-}
-
-void TransportConsoleWidget::to_end()
-{
-    m_sheet->skip_to_end();
-}
-
-void TransportConsoleWidget::to_right()
-{
-    m_sheet->next_skip_pos();
+    m_sheet->set_recordable();
 }
 
 void TransportConsoleWidget::transport_started()
@@ -203,6 +179,8 @@ void TransportConsoleWidget::update_label()
     auto newUpdateTime = TTimeRef::get_milliseconds_since_epoch();
 
     // Limit the updating of the label to 8 frames/sec
+    // Easier on the eyes
+    // And drawing text in Qt is very CPU intensive
     if ((newUpdateTime - m_lastTransportLocationUpdatetime) < 125) {
         return;
     }
