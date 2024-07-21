@@ -35,82 +35,82 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 #include <QDomDocument>
 
-#include "CurveNode.h"
 #include "TRealTimeLinkedList.h"
 #include "TTimeRef.h"
-#include "defines.h"
 
 
 class TSession;
+class AudioBus;
+class CurveNode;
 
 class Curve : public ContextItem
 {
-	Q_OBJECT
-	
-public:
-	Curve(ContextItem* parent);
-	Curve(ContextItem* parent, const QDomNode& node);
-        virtual ~Curve();
+    Q_OBJECT
 
-	QDomNode get_state(QDomDocument doc, const QString& name);
-	virtual int set_state( const QDomNode& node );
-	int process(audio_sample_t** buffer, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels, float makeupgain=1.0f);
-	
-	TCommand* add_node(CurveNode* node, bool historable=true);
-	TCommand* remove_node(CurveNode* node, bool historable=true);
-	
-	// Get functions
+public:
+    Curve(ContextItem* parent);
+    Curve(ContextItem* parent, const QDomNode& node);
+    virtual ~Curve();
+
+    QDomNode get_state(QDomDocument doc, const QString& name);
+    virtual int set_state( const QDomNode& node );
+    int process(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels, float makeupgain=1.0f);
+
+    TCommand* add_node(CurveNode* node, bool historable=true);
+    TCommand* remove_node(CurveNode* node, bool historable=true);
+
+    // Get functions
     double get_range() const;
     void get_vector (double x0, double x1, float *arg, nframes_t veclen);
     TRealTimeLinkedList<CurveNode*> get_nodes() const {return m_nodes;}
-        TSession* get_sheet() const {return m_session;}
+    TSession* get_sheet() const {return m_session;}
 
-	// Set functions
-	virtual void set_range(double when);
-        void set_sheet(TSession* sheet);
+    // Set functions
+    virtual void set_range(double when);
+    void set_sheet(TSession* sheet);
 
-	void clear_curve() {m_nodes.clear();}
-        void set_start_offset(TTimeRef offset) {m_startoffset = offset;}
-        TTimeRef get_start_offset() const {return m_startoffset;}
+    void clear_curve() {m_nodes.clear();}
+    void set_start_offset(TTimeRef offset) {m_startoffset = offset;}
+    TTimeRef get_start_offset() const {return m_startoffset;}
 
 
 protected:
-        TSession* m_session{};
+    TSession* m_session{};
 
 private :
-        TRealTimeLinkedList<CurveNode*> m_nodes;
-	struct LookupCache {
-		double left;  /* leftmost x coordinate used when finding "range" */
-		std::pair<CurveNode*, CurveNode*> range;
-		
-	};
-        LookupCache     m_lookup_cache;
-        bool            m_changed{};
-        double          m_defaultValue{};
-        TTimeRef		m_startoffset;
+    TRealTimeLinkedList<CurveNode*> m_nodes;
+    struct LookupCache {
+        double left;  /* leftmost x coordinate used when finding "range" */
+        std::pair<CurveNode*, CurveNode*> range;
 
-	
-	double multipoint_eval (double x);
-	void x_scale(double factor);
-	void solve ();
-	void init();
-	
-	friend class CurveNode;
+    };
+    LookupCache     m_lookup_cache;
+    bool            m_changed{};
+    double          m_defaultValue{};
+    TTimeRef		m_startoffset;
+
+
+    double multipoint_eval (double x);
+    void x_scale(double factor);
+    void solve ();
+    void init();
+
+    friend class CurveNode;
 
 protected slots:
-	void set_changed();
+    void set_changed();
 
 private slots:
-	void private_add_node(CurveNode* node);
-	void private_remove_node(CurveNode* node);
-	
+    void private_add_node(CurveNode* node);
+    void private_remove_node(CurveNode* node);
+
 
 
 signals :
-	void stateChanged();
-	void nodeAdded(CurveNode*);
-	void nodeRemoved(CurveNode*);
-	void nodePositionChanged();
+    void stateChanged();
+    void nodeAdded(CurveNode*);
+    void nodeRemoved(CurveNode*);
+    void nodePositionChanged();
 };
 
 

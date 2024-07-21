@@ -40,7 +40,7 @@ class TSession;
 class TAudioProcessingNode : public ContextItem
 {
     Q_OBJECT
-    Q_PROPERTY(float gain READ get_gain WRITE set_gain)
+    Q_PROPERTY(float gain READ get_gain WRITE set_gain NOTIFY gainChanged)
 
 
 public:
@@ -77,6 +77,8 @@ private:
     QPointer<QPropertyAnimation>  m_gainAnimation;
 
 
+    float m_gain;
+
 public slots:
     float get_gain() {
         return m_fader->get_gain();
@@ -91,6 +93,7 @@ signals:
     void stateChanged();
     void muteChanged(bool isMuted);
     void panChanged();
+    void gainChanged();
 };
 
 

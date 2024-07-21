@@ -106,16 +106,16 @@ Curve * GainEnvelope::get_curve()
 }
 
 
-void GainEnvelope::process_gain(audio_sample_t** buffer, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels)
+void GainEnvelope::process_gain(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels)
 {
-        PluginControlPort* port = m_controlPorts.at(0);
+    PluginControlPort* port = m_controlPorts.at(0);
 
-        if (port->use_automation()) {
-                port->get_curve()->process(buffer, startlocation, endlocation, nframes, channels, m_gain);
-        } else {
-                for (uint chan=0; chan<channels; ++chan) {
-                        Mixer::apply_gain_to_buffer(buffer[chan], nframes, m_gain);
-                }
+    if (port->use_automation()) {
+        port->get_curve()->process(audioBus, startlocation, endlocation, nframes, channels, m_gain);
+    } else {
+        for (uint chan=0; chan<channels; ++chan) {
+            Mixer::apply_gain_to_buffer(audioBus->get_buffer(chan, nframes), nframes, m_gain);
         }
+    }
 }
 

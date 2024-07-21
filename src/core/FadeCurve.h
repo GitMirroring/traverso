@@ -30,9 +30,8 @@ $Id: FadeCurve.h,v 1.19 2008/01/21 16:22:14 r_sijrier Exp $
 #include <QList>
 #include <QPointF>
 
-class Sheet;
-class AudioClip;
 class AudioBus;
+class TLocation;
 
 class FadeCurve : public Curve
 {
@@ -46,14 +45,14 @@ public:
         FadeOut = 1
     };
 
-    FadeCurve(AudioClip* clip, FadeType fadeType);
+    FadeCurve(ContextItem* parent, FadeType fadeType);
 	~FadeCurve();
 	
 	
 	QDomNode get_state(QDomDocument doc);
 	int set_state( const QDomNode & node );
 
-    void process(AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes);
+    void process(audio_sample_t* gainbuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes);
 	
 	float get_bend_factor() {return m_bendFactor;}
 	float get_strength_factor() {return m_strenghtFactor;}
@@ -63,6 +62,10 @@ public:
 	void set_shape(const QString &shapeName);
 	void set_bend_factor(float factor);
 	void set_strength_factor(float factor);
+
+    void set_parent_location(TLocation* location) {
+        m_parentLocation = location;
+    }
 	
 	FadeType get_fade_type() const {return m_type;}
     QList<QPointF> get_control_points() const;
@@ -81,7 +84,7 @@ public:
     FadeCurve* next;
 
 private:
-	AudioClip*	m_clip;
+    TLocation*  m_parentLocation;
 	float 		m_bendFactor;
 	float 		m_strenghtFactor;
 	bool		m_bypass;
@@ -98,7 +101,6 @@ public slots:
 	
 	TCommand* toggle_bypass();
 	TCommand* set_mode();
-	TCommand* reset();
 	TCommand* toggle_raster();
 	
 signals:

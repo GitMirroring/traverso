@@ -24,6 +24,7 @@ $Id: FadeCurveView.cpp,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 
 #include <QPainter>
 
+#include "CurveNode.h"
 #include "FadeCurve.h"
 #include "AudioClipView.h"
 #include "SheetView.h"

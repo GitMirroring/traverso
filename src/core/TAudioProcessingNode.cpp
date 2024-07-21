@@ -105,6 +105,7 @@ void TAudioProcessingNode::set_gain(float gain)
     m_fader->set_gain(gain);
 
     emit stateChanged();
+    emit gainChanged();
 }
 
 TCommand* TAudioProcessingNode::add_plugin( Plugin * plugin )

@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include "SnapList.h"
 #include "AudioTrack.h"
-#include "AudioChannel.h"
 #include <AudioBus.h>
 #include <AudioDevice.h>
 #include "Mixer.h"
@@ -174,6 +173,8 @@ int AudioClip::set_state(const QDomNode& node)
     if (!fadeInNode.isNull()) {
         if (!m_fadeIn) {
             m_fadeIn = new FadeCurve(this, FadeCurve::FadeIn);
+            m_fadeIn->set_parent_location(m_locationItem);
+
             private_add_fade(m_fadeIn);
         }
         m_fadeIn->set_state( fadeInNode );
@@ -183,6 +184,7 @@ int AudioClip::set_state(const QDomNode& node)
     if (!fadeOutNode.isNull()) {
         if (!m_fadeOut) {
             m_fadeOut = new FadeCurve(this, FadeCurve::FadeOut);
+            m_fadeOut->set_parent_location(m_locationItem);
             private_add_fade(m_fadeOut);
         }
         m_fadeOut->set_state( fadeOutNode );
@@ -447,7 +449,6 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
     AudioBus* bus = m_sheet->get_clip_render_bus();
 
     TTimeRef fileLocation;
-    audio_sample_t* mixdown[2];
     nframes_t framesToProcess = nframes;
     nframes_t offset = 0;
     uint outputRate = m_readSource->get_output_rate();
@@ -485,16 +486,13 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
     }
 
     for(FadeCurve* fade = m_fades.first(); fade != nullptr; fade = fade->next) {
-        fade->process(bus, startLocation, endLocation, nframes);
+        fade->process(m_sheet->gainbuffer, bus, startLocation, endLocation, nframes);
     }
 
-    TTimeRef faderEndLocation = fileLocation + TTimeRef(readFrames, outputRate);    
-    for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
-        audio_sample_t* buf = bus->get_buffer(chan, framesToProcess);
-        mixdown[chan] = buf + offset;
-    }
+    TTimeRef faderEndLocation = fileLocation + TTimeRef(readFrames, outputRate);
 
-    m_fader->process_gain(mixdown, fileLocation, faderEndLocation, readFrames, channelcount);
+    // FIXME: offset is no longer given to fader, so how to deal with partial buffer processing?
+    m_fader->process_gain(bus, fileLocation, faderEndLocation, readFrames, channelcount);
 
     AudioBus* processBus = m_track->get_process_bus();
 
@@ -578,7 +576,7 @@ int AudioClip::init_recording()
     spec->set_recording_state(TExportSpecification::RecordingState::RECORDING);
     spec->set_block_size(audiodevice().get_buffer_size());
     spec->set_channel_count(channelcount);
-    spec->set_render_buffer(bus->get_buffer(0, audiodevice().get_buffer_size()));
+    // spec->set_render_buffer(bus->get_buffer(0, audiodevice().get_buffer_size()));
     spec->set_sample_rate(audiodevice().get_sample_rate());
     spec->set_export_start_location(TTimeRef());
     spec->set_export_end_location(TTimeRef());
@@ -947,6 +945,8 @@ void AudioClip::create_fade(FadeCurve::FadeType fadeType)
 
     fadeCurve->set_shape("Fast");
     fadeCurve->set_history_stack(get_history_stack());
+    fadeCurve->set_parent_location(m_locationItem);
+
     tsar().add_gui_event(this, fadeCurve, "private_add_fade(FadeCurve*)", "fadeAdded(FadeCurve*)");
 }
 

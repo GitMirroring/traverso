@@ -273,14 +273,13 @@ int AudioTrack::process(const TTimeRef& startLocation, const TTimeRef& endLocati
 
 
     // Read in clip data into process bus.
-    for(AudioClip* clip = m_rtAudioClipsLinkedList.first(); clip != nullptr; clip = clip->next) {
-    // apill_foreach(AudioClip*, clip, m_rtAudioClips)
+    for(AudioClip* clip = m_rtAudioClipsLinkedList.first(); clip != nullptr; clip = clip->next)
+    {
         if (m_isArmed && clip->recording_state() == AudioClip::NO_RECORDING) {
             if (m_isMuted || m_mutedBySolo) {
                 continue;
             }
         }
-
 
         result = clip->process(startLocation, endLocation, nframes);
 
@@ -310,18 +309,8 @@ int AudioTrack::process(const TTimeRef& startLocation, const TTimeRef& endLocati
         Mixer::apply_gain_to_buffer(m_processBus->get_buffer(1, nframes), nframes, panFactor);
     }
 
-
-    // gain automation curve only understands audio_sample_t** atm
-    // so wrap the process buffers into a audio_sample_t**
-    // FIXME make it future proof so it can deal with any amount of channels?
-    audio_sample_t* mixdown[6];
-    for(uint chan=0; chan<m_processBus->get_channel_count(); chan++) {
-        mixdown[chan] = m_processBus->get_buffer(chan, nframes);
-    }
-
     // Apply fader Gain/envelope
-    m_fader->process_gain(mixdown, startLocation, endLocation, nframes, m_processBus->get_channel_count());
-
+    m_fader->process_gain(m_processBus, startLocation, endLocation, nframes, m_processBus->get_channel_count());
 
     // Post fader plugins now
     processResult |= m_pluginChain->process_post_fader(m_processBus, nframes);

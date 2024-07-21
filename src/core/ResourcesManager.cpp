@@ -20,7 +20,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "ResourcesManager.h"
-#include "WriteSource.h"
 #include "ReadSource.h"
 #include "Information.h"
 #include "AudioClip.h"
@@ -232,7 +231,7 @@ ReadSource * ResourcesManager::get_readsource(qint64 id)
 	
 	if ( source->init() < 0) {
 		info().warning( tr("ResourcesManager::  Failed to initialize ReadSource %1 (Reason: %2)")
-				.arg(source->get_filename()).arg(source->get_error_string()));
+                .arg(source->get_filename(), source->get_error_string()));
 	}
 	
 	return source;

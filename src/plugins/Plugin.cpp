@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "AddRemove.h"
 #include "Curve.h"
+#include "CurveNode.h"
 #include "TSession.h"
 
 #include "Debugger.h"

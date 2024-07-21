@@ -24,14 +24,14 @@ $Id: FadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 
 #include <QFile>
 #include <cmath>
-#include "Sheet.h"
+#include "CurveNode.h"
 #include "Fade.h"
-#include "AudioClip.h"
 #include "TCommand.h"
 #include "CommandGroup.h"
 #include <AddRemove.h>
 #include "AudioDevice.h"
 #include "AudioBus.h"
+#include "TLocation.h"
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
@@ -40,13 +40,11 @@ $Id: FadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 
 QStringList FadeCurve::defaultShapes = QStringList() << "Fastest" << "Fast" << "Linear"  << "Slow" << "Slowest";
 
-FadeCurve::FadeCurve(AudioClip* clip, FadeType fadeType )
-    : Curve(clip)
-    , m_clip(clip)
+FadeCurve::FadeCurve(ContextItem *parent, FadeType fadeType )
+    : Curve(parent)
+    , m_parentLocation(nullptr)
     , m_type(fadeType)
 {
-    m_session = m_clip->get_sheet();
-
     m_controlPoints.append(QPointF(0.0, 0.0));
     m_controlPoints.append(QPointF(0.25, 0.25));
     m_controlPoints.append(QPointF(0.75, 0.75));
@@ -79,8 +77,8 @@ void FadeCurve::init()
 
     // Populate the curve with 12 CurveNodes
     float f = 0.0;
-    int nodecount = 12;
-    for (int i = 0; i < nodecount; ++i) {
+    int nodecount = 11;
+    for (int i = 0; i <= nodecount; ++i) {
         QPointF p = get_curve_point(f);
 
         CurveNode* node = new CurveNode(this, p.x(), p.y());
@@ -160,78 +158,65 @@ int FadeCurve::set_state( const QDomNode & node )
 }
 
 
-void FadeCurve::process(AudioBus *bus, const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes)
+void FadeCurve::process(audio_sample_t* gainbuffer, AudioBus *bus, const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes)
 {
     Q_ASSERT(bus->get_channel_count() == 2);
+    Q_ASSERT(m_parentLocation);
 
     if (is_bypassed()) {
         return;
     }
 
-
-    // FIXME make it future proof so it can deal with any amount of channels?
-    audio_sample_t* mixdown[6];
-
     uint outputRate = audiodevice().get_sample_rate();
     uint framesToProcess = nframes;
     uint channelCount = bus->get_channel_count();
 
-    TTimeRef trackStartLocation, trackEndLocation, mix_pos;
+    TTimeRef fadeStartLocation, fadeEndLocation, fadeLocation;
     TTimeRef fadeRange = TTimeRef(get_range());
 
-    TTimeRef upperRange = startLocation + TTimeRef(framesToProcess, outputRate);
+    TTimeRef upperRange = startLocation + TTimeRef(nframes, outputRate);
 
 
     if (m_type == FadeIn) {
-        trackStartLocation = m_clip->get_location()->get_start();
+        fadeStartLocation = m_parentLocation->get_start();
     } else {
-        trackStartLocation = m_clip->get_location()->get_end() - fadeRange;
+        fadeStartLocation = m_parentLocation->get_end() - fadeRange;
+    }    
+
+    fadeEndLocation = fadeStartLocation + fadeRange;
+
+    if ((startLocation >= fadeEndLocation || (endLocation <= fadeStartLocation))) {
+        return;
     }
 
-    trackEndLocation = trackStartLocation + fadeRange;
+    nframes_t offset = 0;
 
-
-    if ( (trackStartLocation < upperRange) && (endLocation > startLocation) ) {
-        if (startLocation < trackStartLocation) {
-            // Using to_frame() for both the m_trackStartLocation and transportLocation seems to round
-            // better then using (m_trackStartLocation - transportLocation).to_frame()
-            // TODO : find out why!
-            uint offset = TTimeRef::to_frame(trackStartLocation - startLocation, outputRate);
-            mix_pos = TTimeRef();
-            //                        printf("offset %d\n", offset);
-
-            for (uint chan=0; chan<channelCount; ++chan) {
-                audio_sample_t* buf = bus->get_buffer(chan, framesToProcess);
-                mixdown[chan] = buf + offset;
-            }
+    if ( (fadeStartLocation < upperRange) && (endLocation > fadeStartLocation) ) {
+        if (startLocation < fadeStartLocation) {
+            offset = TTimeRef::to_frame(fadeStartLocation - startLocation, outputRate);
+            // FIXME: offset can become negative so this location calculation code
+            // needs review
+            Q_ASSERT(offset < nframes);
+            fadeLocation = TTimeRef();
             framesToProcess = framesToProcess - offset;
         } else {
-            mix_pos = (startLocation - trackStartLocation);
-
-            for (uint chan=0; chan<channelCount; ++chan) {
-                mixdown[chan] = bus->get_buffer(chan, framesToProcess);
-            }
+            fadeLocation = (startLocation - fadeStartLocation);
         }
         if (endLocation < upperRange) {
-            // Using to_frame() for both the upperRange and m_trackEndLocation seems to round
-            // better then using (upperRange - m_trackEndLocation).to_frame()
-            // TODO : find out why!
             framesToProcess -= TTimeRef::to_frame(upperRange - endLocation, outputRate);
-            // 			printf("if (m_trackEndLocation < upperRange): framesToProcess %d\n", framesToProcess);
         }
     } else {
         return;
     }
 
+    upperRange = fadeLocation + TTimeRef(framesToProcess, outputRate);
 
-    upperRange = mix_pos + TTimeRef(framesToProcess, outputRate);
-
-    get_vector(mix_pos.universal_frame(), upperRange.universal_frame(), m_session->gainbuffer, framesToProcess);
+    get_vector(fadeLocation.universal_frame(), upperRange.universal_frame(), gainbuffer, framesToProcess);
 
     for (uint chan=0; chan<channelCount; ++chan) {
+        audio_sample_t* buf = bus->get_buffer(chan, framesToProcess, offset);
         for (nframes_t frame = 0; frame < framesToProcess; ++frame) {
-            // FXME: Array access result in an undefined pointer dereference accorindg to clang tidy
-            mixdown[chan][frame] *= m_session->gainbuffer[frame];
+            buf[frame] *= gainbuffer[frame];
         }
     }
 }
@@ -281,7 +266,6 @@ void FadeCurve::set_shape(const QString& shapeName)
 
 void FadeCurve::solve_node_positions( )
 {
-    // 	printf("FadeCurve::solve_node_positions()\n");
     // calculate control points values
     if (m_mode == 0) { // bended
         if (m_type == FadeIn) {
@@ -342,8 +326,6 @@ QPointF FadeCurve::get_curve_point( float f)
     if (m_type == FadeOut) {
         y = 1.0 - y;
     }
-
-    // printf("x: %f, y: %f\n", x, y);
 
     return QPointF(x, y);
 }
@@ -412,11 +394,6 @@ QString FadeCurve::fade_type_to_string() const
         return QString("FadeOut");
     }
     return QString("Unknown Fade Type to String Conversion");
-}
-
-TCommand* FadeCurve::reset( )
-{
-    return (m_type == FadeIn) ? m_clip->reset_fade_in() : m_clip->reset_fade_out();
 }
 
 TCommand* FadeCurve::toggle_bypass( )

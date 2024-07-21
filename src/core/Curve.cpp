@@ -30,6 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Curve.h"
 #include <cmath>
 
+#include "AudioBus.h"
+#include "CurveNode.h"
 #include "TSession.h"
 #include "Utils.h"
 #include <AddRemove.h>
@@ -124,7 +126,7 @@ int Curve::set_state( const QDomNode & node )
 }
 
 int Curve::process(
-	audio_sample_t** buffer,
+    AudioBus* audioBus,
 	const TTimeRef& startlocation,
 	const TTimeRef& endlocation,
 	nframes_t nframes,
@@ -146,7 +148,7 @@ int Curve::process(
 		}
 		
 		for (uint chan=0; chan<channels; ++chan) {
-			Mixer::apply_gain_to_buffer(buffer[chan], nframes, gain);
+            Mixer::apply_gain_to_buffer(audioBus->get_buffer(chan, nframes), nframes, gain);
 		}
 		
 		return 1;
@@ -154,13 +156,14 @@ int Curve::process(
 	
 	// Calculate the vector, an apply to the buffer including the makeup gain.
         get_vector(startlocation.universal_frame(), endlocation.universal_frame(), m_session->mixdown, nframes);
-	
-	for (uint chan=0; chan<channels; ++chan) {
-		for (nframes_t n = 0; n < nframes; ++n) {
-                        buffer[chan][n] *= (m_session->mixdown[n] * makeupgain);
-		}
-	}
-	
+
+    for (uint chan=0; chan<channels; ++chan) {
+        audio_sample_t* buffer = audioBus->get_buffer(chan, nframes);
+        for (nframes_t n = 0; n < nframes; ++n) {
+            buffer[n] *= (m_session->mixdown[n] * makeupgain);
+        }
+    }
+
 	return 1;
 }
 
