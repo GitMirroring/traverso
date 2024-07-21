@@ -53,8 +53,8 @@ MoveCurveNode::MoveCurveNode(Curve* curve,
     mcnd->maxWhenDiff = maxWhenDiff;
     mcnd->minValueDiff = minValueDiff;
     mcnd->maxValueDiff = maxValueDiff;
-        mcnd->scalefactor = scalefactor;
-        mcnd->verticalOnly = false;
+    mcnd->scalefactor = scalefactor;
+    mcnd->verticalOnly = false;
 
     m_valueDiff = 0.0;
 }
@@ -98,9 +98,9 @@ void MoveCurveNode::cancel_action()
 
 int MoveCurveNode::begin_hold()
 {
-        mcnd->mousepos = QPoint(cpointer().on_first_input_event_x(), cpointer().on_first_input_event_y());
-	check_and_apply_when_and_value_diffs();
-        return 1;
+    mcnd->mousepos = QPoint(cpointer().on_first_input_event_x(), cpointer().on_first_input_event_y());
+    check_and_apply_when_and_value_diffs();
+    return 1;
 }
 
 

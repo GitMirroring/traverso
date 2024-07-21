@@ -34,12 +34,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 AudioClipGroup::AudioClipGroup()
 {
-    m_location = new TLocation();
+    m_location = new TLocation(this);
 }
 
 AudioClipGroup::AudioClipGroup(QList< AudioClip * > clips)
 {
-    m_location = new TLocation();
+    m_location = new TLocation(this);
     m_clips = clips;
     update_state();
 }

@@ -596,7 +596,6 @@ int AudioClip::init_recording()
     QMetaObject::invokeMethod(m_sheet->get_write_diskio(), "add_audio_source", Qt::QueuedConnection, qobject_cast<AudioSource*>(m_writer));
 
     // Writers exportFinished() signal comes from DiskIO thread, so we have to connect by Qt::QueuedConnection
-    // or else we deadlock in DiskIO::do_work()
     connect(m_writer, SIGNAL(exportFinished()), this, SLOT(finish_write_source()), Qt::QueuedConnection);
     connect(m_sheet, SIGNAL(transportStopped()), this, SLOT(finish_recording()));
 

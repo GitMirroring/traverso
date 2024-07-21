@@ -425,19 +425,19 @@ TCommand* CurveView::drag_node()
         return ied().failure();
     }
 
-    TTimeRef min(qint64(0));
-    TTimeRef max(qint64(DBL_MAX));
+    TTimeRef min = TTimeRef();
+    TTimeRef max = TTimeRef::max_length();
     TRealTimeLinkedList<CurveNode*> nodeList = m_curve->get_nodes();
 
     int indexFirstNode = nodeList.indexOf(selectedNodes.first());
     int indexLastNode = nodeList.indexOf(selectedNodes.last());
 
     if (indexFirstNode > 0) {
-        min = TTimeRef(((CurveNode*)nodeList.at(indexFirstNode-1))->get_when() + 1);
+        min = TTimeRef((nodeList.at(indexFirstNode-1))->get_when() + 1);
     }
 
     if (nodeList.size() > (indexLastNode + 1)) {
-        max = TTimeRef(((CurveNode*)nodeList.at(indexLastNode+1))->get_when() - 1);
+        max = TTimeRef((nodeList.at(indexLastNode+1))->get_when() - 1);
     }
 
     if (boundingRect().width() * m_sv->timeref_scalefactor < max) {

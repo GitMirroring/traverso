@@ -242,6 +242,7 @@ void DiskIO::add_audio_source(AudioSource* source)
 
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::addd_audio_source", "Must be called via queued slot connection, not directly by function");
     Q_ASSERT(source->get_channel_count() > 0);
+    Q_ASSERT(source);
 
     source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
     source->set_decode_buffers(m_fileDecodeBuffer, m_resampleDecodeBuffer);
