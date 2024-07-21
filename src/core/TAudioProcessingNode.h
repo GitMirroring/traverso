@@ -23,8 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define PROCESSING_DATA_H
 
 #include "ContextItem.h"
-#include "TRealTimeLinkedList.h"
-#include "GainEnvelope.h"
 #include "defines.h"
 
 #include <QPointer>
@@ -35,6 +33,7 @@ class AudioClip;
 class Plugin;
 class PluginChain;
 class TSession;
+class GainEnvelope;
 
 
 class TAudioProcessingNode : public ContextItem
@@ -80,9 +79,7 @@ private:
     float m_gain;
 
 public slots:
-    float get_gain() {
-        return m_fader->get_gain();
-    }
+    float get_gain();
 
     void set_gain(float gain);
     void set_gain_animated(float gain);

@@ -76,8 +76,6 @@ void TAudioProcessingNode::set_pan(float pan)
         emit panChanged();
 }
 
-
-
 void TAudioProcessingNode::set_muted( bool muted )
 {
         m_isMuted = muted;
@@ -106,6 +104,10 @@ void TAudioProcessingNode::set_gain(float gain)
 
     emit stateChanged();
     emit gainChanged();
+}
+
+float TAudioProcessingNode::get_gain() {
+    return m_fader->get_gain();
 }
 
 TCommand* TAudioProcessingNode::add_plugin( Plugin * plugin )

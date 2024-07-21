@@ -924,7 +924,7 @@ void AudioClip::private_remove_fade( FadeCurve * fade )
     m_fades.remove(fade);
 }
 
-void AudioClip::create_fade(FadeCurve::FadeType fadeType)
+void AudioClip::create_fade(int fadeType)
 {
     FadeCurve* fadeCurve = nullptr;
     switch (fadeType) {
@@ -958,6 +958,10 @@ QDomNode AudioClip::get_dom_node() const
 bool AudioClip::has_sheet() const
 {
     return m_sheet != nullptr;
+}
+
+bool AudioClip::operator<(const AudioClip &other) {
+    return this->get_location()->get_start() < other.get_location()->get_start();
 }
 
 ReadSource * AudioClip::get_readsource() const

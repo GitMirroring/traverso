@@ -25,14 +25,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClip.h"
 #include "FadeCurve.h"
 #include "ProjectManager.h"
-#include "Project.h"
 #include "ReadSource.h"
+#include "TLocation.h"
 #include "Utils.h"
 #include "Mixer.h"
 #include "TCommand.h"
 #include "AudioClipExternalProcessing.h"
 #include "TInputEventDispatcher.h"
-#include "AudioDevice.h"
 
 #define TIME_FORMAT "hh:mm:ss.zzz"
 
@@ -78,17 +77,17 @@ AudioClipEditDialog::AudioClipEditDialog(AudioClip* clip, QWidget* parent)
 	
 	connect(clipGainSpinBox, SIGNAL(valueChanged(double)), this, SLOT(gain_spinbox_value_changed(double)));
 	
-	connect(clipStartEdit, SIGNAL(timeChanged(const QTime&)), this, SLOT(clip_start_edit_changed(const QTime&)));
-	connect(clipLengthEdit, SIGNAL(timeChanged(const QTime&)), this, SLOT(clip_length_edit_changed(const QTime&)));
+    connect(clipStartEdit, SIGNAL(timeChanged(QTime)), this, SLOT(clip_start_edit_changed(QTime)));
+    connect(clipLengthEdit, SIGNAL(timeChanged(QTime)), this, SLOT(clip_length_edit_changed(QTime)));
 	
-	connect(fadeInEdit, SIGNAL(timeChanged(const QTime&)), this, SLOT(fadein_edit_changed(const QTime&)));
+    connect(fadeInEdit, SIGNAL(timeChanged(QTime)), this, SLOT(fadein_edit_changed(QTime)));
 	connect(fadeInModeBox, SIGNAL(currentIndexChanged(int)), this, SLOT(fadein_mode_edit_changed(int)));
 	connect(fadeInBendingBox, SIGNAL(valueChanged(double)), this, SLOT(fadein_bending_edit_changed(double)));
 	connect(fadeInStrengthBox, SIGNAL(valueChanged(double)), this, SLOT(fadein_strength_edit_changed(double)));
 	connect(fadeInLinearButton, SIGNAL(clicked()), this, SLOT(fadein_linear()));
 	connect(fadeInDefaultButton, SIGNAL(clicked()), this, SLOT(fadein_default()));
 
-	connect(fadeOutEdit, SIGNAL(timeChanged(const QTime&)), this, SLOT(fadeout_edit_changed(const QTime&)));
+    connect(fadeOutEdit, SIGNAL(timeChanged(QTime)), this, SLOT(fadeout_edit_changed(QTime)));
 	connect(fadeOutModeBox, SIGNAL(currentIndexChanged(int)), this, SLOT(fadeout_mode_edit_changed(int)));
 	connect(fadeOutBendingBox, SIGNAL(valueChanged(double)), this, SLOT(fadeout_bending_edit_changed(double)));
 	connect(fadeOutStrengthBox, SIGNAL(valueChanged(double)), this, SLOT(fadeout_strength_edit_changed(double)));

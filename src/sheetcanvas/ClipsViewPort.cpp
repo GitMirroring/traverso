@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "SheetView.h"
 #include "Sheet.h"
 #include "AudioTrackView.h"
+#include "TLocation.h"
 #include "ViewItem.h"
 #include "TAudioFileImportCommand.h"
 #include "CommandGroup.h"

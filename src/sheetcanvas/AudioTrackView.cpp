@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioTrackView.h"
 #include "AudioClipView.h"
 #include "PluginChainView.h"
+#include "TLocation.h"
 #include "Themer.h"
 #include "SheetView.h"
 #include "TrackPanelView.h"

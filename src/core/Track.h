@@ -24,7 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TRACK_H
 
 #include "TAudioProcessingNode.h"
+#include "TRealTimeLinkedList.h"
 #include "defines.h"
+
+#include <QDomDocument>
 
 class TSend;
 class TVUMonitor;

@@ -19,17 +19,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef AUDIOCLIP_H
-#define AUDIOCLIP_H
+#ifndef T_AUDIOCLIP_H
+#define T_AUDIOCLIP_H
 
 #include <QString>
 #include <QList>
 #include <QDomNode>
 
-#include "ContextItem.h"
-#include "FadeCurve.h"
 #include "TAudioProcessingNode.h"
-#include "TLocation.h"
+#include "TRealTimeLinkedList.h"
+#include "TTimeRef.h"
 #include "defines.h"
 
 
@@ -40,6 +39,8 @@ class AudioTrack;
 class Peak;
 class AudioBus;
 class PluginChain;
+class TLocation;
+class FadeCurve;
 
 class AudioClip : public TAudioProcessingNode
 {
@@ -103,9 +104,7 @@ public:
 	bool has_sheet() const;
     bool is_readsource_invalid() const {return !m_isReadSourceValid;}
 
-    bool operator<(const AudioClip &other) {
-        return this->get_location()->get_start() < other.get_location()->get_start();
-    }    
+    bool operator<(const AudioClip &other);
 
     bool is_moving() const {return m_isMoving;}
 
@@ -145,7 +144,7 @@ private:
 	qint64			m_readSourceId;
 	qint64			m_sheetId;
 
-    void create_fade(FadeCurve::FadeType fadeType);
+    void create_fade(int fadeType);
 	void init();
     void set_source_end_location(const TTimeRef& location);
     void set_source_start_location(const TTimeRef& location);

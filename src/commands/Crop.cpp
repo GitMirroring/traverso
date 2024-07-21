@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include "AudioTrack.h"
 #include "TInputEventDispatcher.h"
+#include "TLocation.h"
 #include <limits.h>
 
 

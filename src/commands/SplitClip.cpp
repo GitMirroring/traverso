@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClipView.h"
 #include "LineView.h"
 #include "SnapList.h"
+#include "TLocation.h"
 #include "ViewItem.h"
 #include "Fade.h"
 #include "Themer.h"
