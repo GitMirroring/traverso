@@ -43,7 +43,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
-#include "qthread.h"
 
 
 /**	\class ProjectManager
@@ -56,7 +55,7 @@ ProjectManager::ProjectManager()
 	: ContextItem()
 {
 	PENTERCONS;
-        m_currentProject = (Project*) 0;
+    m_currentProject = nullptr;
 	m_exitInProgress = false;
 	
 	m_watcher = new QFileSystemWatcher(0);

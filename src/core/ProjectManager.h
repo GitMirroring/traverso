@@ -32,78 +32,82 @@ class Sheet;
 class TCommand;
 class ResourcesManager;
 class QFileSystemWatcher;
+class TTransport;
 
 class ProjectManager : public ContextItem
 {
-	Q_OBJECT
-	
+    Q_OBJECT
+
 public:
-	Project* create_new_project(int numSheet, int numTracks, const QString& projectName);
-	Project* create_new_project(const QString& templatefile, const QString& projectName);
-	
-	int load_project(const QString& projectName);
-	int load_renamed_project(const QString& name);
+    Project* create_new_project(int numSheet, int numTracks, const QString& projectName);
+    Project* create_new_project(const QString& templatefile, const QString& projectName);
 
-	bool project_exists(const QString& title);
+    int load_project(const QString& projectName);
+    int load_renamed_project(const QString& name);
 
-	int create_projectfilebackup_dir(const QString& rootDir);
-	int remove_project(const QString& title);
-	
-	void scheduled_for_deletion(Sheet* sheet);
-	void delete_sheet(Sheet* sheet);
-	void set_current_project_dir(const QString& path);
-	void add_valid_project_path(const QString& path);
-	void remove_wrong_project_path(const QString& path);
-	
-	int rename_project_dir(const QString& olddir, const QString& newdir);
-	int restore_project_from_backup(const QString& projectdir, uint restoretime);
+    bool project_exists(const QString& title);
 
-	QList<uint> get_backup_date_times(const QString& projectdir);
-        QStringList get_projects_list();
-        QString get_projects_directory();
-        void start_incremental_backup(Project* project);
+    int create_projectfilebackup_dir(const QString& rootDir);
+    int remove_project(const QString& title);
 
-	Project* get_project();
+    void scheduled_for_deletion(Sheet* sheet);
+    void delete_sheet(Sheet* sheet);
+    void set_current_project_dir(const QString& path);
+    void add_valid_project_path(const QString& path);
+    void remove_wrong_project_path(const QString& path);
 
-	void start(const QString& basepath, const QString& projectname);
+    int rename_project_dir(const QString& olddir, const QString& newdir);
+    int restore_project_from_backup(const QString& projectdir, uint restoretime);
+
+    QList<uint> get_backup_date_times(const QString& projectdir);
+    QStringList get_projects_list();
+    QString get_projects_directory();
+    void start_incremental_backup(Project* project);
+
+    Project* get_project();
+
+    TTransport* get_transport() const {return m_transport;}
+
+    void start(const QString& basepath, const QString& projectname);
 
 
 public slots:
-	TCommand* save_project();
+    TCommand* save_project();
     TCommand* close_current_project();
     TCommand* exit();
 
 
 private:
-        ProjectManager();
-	ProjectManager(const ProjectManager&);
+    ProjectManager();
+    ProjectManager(const ProjectManager&);
 
-        Project*        m_currentProject;
-	QList<Sheet*>	m_deletionSheetList;
-	bool		m_exitInProgress;
-	QStringList	m_projectDirs;
-	QFileSystemWatcher*	m_watcher;
+    Project*        m_currentProject;
+    TTransport*     m_transport;
+    QList<Sheet*>	m_deletionSheetList;
+    bool		m_exitInProgress;
+    QStringList	m_projectDirs;
+    QFileSystemWatcher*	m_watcher;
 
-        static QUndoGroup	m_undogroup;
-	
-	void set_current_project(Project* project);
-	void cleanup_backupfiles_for_project(const QString& projectname);
-	bool project_is_current(const QString& title);
-	
-	// allow this function to create one instance
-	friend ProjectManager& pm();
+    static QUndoGroup	m_undogroup;
+
+    void set_current_project(Project* project);
+    void cleanup_backupfiles_for_project(const QString& projectname);
+    bool project_is_current(const QString& title);
+
+    // allow this function to create one instance
+    friend ProjectManager& pm();
 
 signals:
-	void projectLoaded(Project* );
-	void currentProjectDirChanged();
-        void projectsListChanged();
-	void unsupportedProjectDirChangeDetected();
-	void projectDirChangeDetected();
-	void projectLoadFailed(QString,QString);
-	void projectFileVersionMismatch(QString,QString);
-	
+    void projectLoaded(Project* );
+    void currentProjectDirChanged();
+    void projectsListChanged();
+    void unsupportedProjectDirChangeDetected();
+    void projectDirChangeDetected();
+    void projectLoadFailed(QString,QString);
+    void projectFileVersionMismatch(QString,QString);
+
 private slots:
-	void project_dir_rename_detected(const QString& dirname);
+    void project_dir_rename_detected(const QString& dirname);
 };
 
 
