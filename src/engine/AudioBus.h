@@ -57,13 +57,14 @@ public:
     QList<qint64> get_channel_ids() const;
 
     /**
-	 *        Get a pointer to the buffer associated with AudioChannel \a channel 
+     * Get a pointer to the buffer associated with AudioChannel \a channel
 	 * @param channel The channel number to get the buffer from
 	 * @param nframes The buffer size to get
 	 * @return 
 	 */
-    audio_sample_t* get_buffer(uint channel, nframes_t nframes) {
-        return m_channels.at(channel)->get_buffer(nframes);
+    audio_sample_t* get_buffer(uint channel, nframes_t nframes, nframes_t offset = 0) {
+        Q_ASSERT(channel < get_channel_count());
+        return m_channels.at(channel)->get_buffer(nframes, offset);
     }
 
     void set_monitoring(bool monitor);
