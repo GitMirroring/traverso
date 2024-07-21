@@ -89,9 +89,14 @@ TCommand* TTransport::to_end()
 TCommand* TTransport::prev_skip_pos()
 {
     TTimeRef location = m_session->get_snap_list()->prev_snap_pos(m_session->get_transport_location());
-    m_session->set_transport_location(location);
+
+    if (m_skipTimer.isActive()) {
+        location = m_session->get_snap_list()->prev_snap_pos(location);
+    }
 
     m_skipTimer.start(500);
+
+    m_session->set_transport_location(location);
 
     return ied().succes();
 }
