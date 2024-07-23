@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 
 #include "TAudioProcessingNode.h"
+#include "TProcessCallBackData.h"
 #include "TRealTimeLinkedList.h"
 #include "TTimeRef.h"
 #include "defines.h"
@@ -60,7 +61,7 @@ public:
 	
 	void set_audio_source(ReadSource* source);
     int init_recording();
-    int process(const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes);
+    int process(TProcessCallBackData *processData);
 
     // Re-implemented from LocationItem::set_location_start
     // preferably we wouldn't have to re-implement this function

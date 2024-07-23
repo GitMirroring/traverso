@@ -178,8 +178,8 @@ void Sheet::init()
     m_changed = m_recording = m_prepareRecording = false;
 		
         m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
-        m_audiodeviceClient->set_process_callback( MakeDelegate(this, &Sheet::process) );
-        m_audiodeviceClient->set_transport_control_callback( MakeDelegate(this, &Sheet::transport_control) );
+        m_audiodeviceClient->set_process_callback( TProcessCallBack(this, &Sheet::process) );
+        m_audiodeviceClient->set_transport_control_callback( TransportControlCallback(this, &Sheet::transport_control) );
 }
 
 int Sheet::set_state( const QDomNode & node )
@@ -497,7 +497,7 @@ void Sheet::solo_track(Track *track)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int Sheet::process( nframes_t nframes )
+int Sheet::process(TProcessCallBackData *processData)
 {
     if (start_seek()) {
         printf("Sheet::process: starting seek\n");
@@ -525,12 +525,12 @@ int Sheet::process( nframes_t nframes )
 
 	int processResult = 0;
 
-    TTimeRef startLocation = get_transport_location();
-    TTimeRef endLocation = startLocation + TTimeRef(nframes, audiodevice().get_sample_rate());
+    nframes_t nframes = processData->get_nframes_to_process();
+    processData->set_ringbuffer_read_bus(m_clipRenderBus);
 
 	// Process all Tracks.
     for(AudioTrack* track = m_rtAudioTracks.first(); track != nullptr; track = track->next) {
-        processResult |= track->process(startLocation, endLocation, nframes);
+        processResult |= track->process(processData);
 	}
 
 	// update the transport location
@@ -543,11 +543,11 @@ int Sheet::process( nframes_t nframes )
 	}
 
     for(TBusTrack* busTrack = m_rtBusTracks.first(); busTrack != nullptr; busTrack = busTrack->next) {
-        busTrack->process(startLocation, endLocation, nframes);
+        busTrack->process(processData);
     }
 
     // Mix the result into the AudioDevice "physical" buffers
-    m_masterOutBusTrack->process(startLocation, endLocation, nframes);
+    m_masterOutBusTrack->process(processData);
 
     // m_masterOutBusTrack.get
 

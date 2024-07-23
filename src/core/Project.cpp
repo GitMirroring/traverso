@@ -94,8 +94,8 @@ Project::Project(const QString& title)
     create_history_stack();
 
     m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
-    m_audiodeviceClient->set_process_callback( MakeDelegate(this, &Project::process) );
-    m_audiodeviceClient->set_transport_control_callback( MakeDelegate(this, &Project::transport_control) );
+    m_audiodeviceClient->set_process_callback( TProcessCallBack(this, &Project::process) );
+    m_audiodeviceClient->set_transport_control_callback( TransportControlCallback(this, &Project::transport_control) );
 
     m_disconnectAudioDeviceClientForExport = false;
     m_exportSpecification = nullptr;
@@ -1499,19 +1499,20 @@ void Project::set_sheets_are_tracks_folder(bool isFolder)
 }
 
 
-int Project::process( nframes_t nframes )
+int Project::process(TProcessCallBackData *processData)
 {
     int result = 0;
+    nframes_t nframes = processData->get_nframes_to_process();
+
+    processData->set_start_location(get_transport_location());
 
     for(Sheet* sheet = m_RtSheets.first(); sheet != nullptr; sheet = sheet->next) {
-        result |= sheet->process(nframes);
+        result |= sheet->process(processData);
     }
 
-    TTimeRef startLocation = get_transport_location();
-    TTimeRef endLocation = startLocation + TTimeRef(nframes, audiodevice().get_sample_rate());
 
     for(TBusTrack* busTrack = m_rtBusTracks.first(); busTrack != nullptr; busTrack = busTrack->next) {
-        busTrack->process(startLocation, endLocation, nframes);
+        busTrack->process(processData);
     }
 
 
@@ -1532,7 +1533,7 @@ int Project::process( nframes_t nframes )
     }
 
     // Mix the result into the AudioDevice "physical" buffers
-    m_masterOutBusTrack->process(startLocation, endLocation, nframes);
+    m_masterOutBusTrack->process(processData);
 
     return result;
 }

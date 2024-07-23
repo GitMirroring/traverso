@@ -38,10 +38,10 @@ public:
         TAudioDeviceClient(const QString& name);
         ~TAudioDeviceClient();
 
-	void set_process_callback(const ProcessCallback& call);
+    void set_process_callback(const TProcessCallBack &call);
 	void set_transport_control_callback(const TransportControlCallback& call);
 
-	ProcessCallback process;
+    TProcessCallBack process;
 	TransportControlCallback transport_control;
 	
 	QString		m_name;

@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 
 #include "TSession.h"
-#include "defines.h"
+#include "TProcessCallBackData.h"
 
 class AudioBus;
 class AudioChannel;
@@ -52,7 +52,7 @@ class Project : public TSession
 public :
 	~Project();
 
-        int process(nframes_t nframes);
+        int process(TProcessCallBackData *processData);
         // jackd only feature
         int transport_control(TTransportControl* transportControl);
 

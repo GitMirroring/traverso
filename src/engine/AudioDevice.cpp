@@ -113,7 +113,7 @@ RELAYTOOL_JACK
     void MyApp::connect_to_audiodevice()
     {
         m_client = new Client("MyApplication");
-        m_client->set_process_callback( MakeDelegate(this, &MyApp::process) );
+        m_client->set_process_callback( TProcessCallBack(this, &MyApp::process) );
         audiodevice().add_client(m_client);
     }
     \endcode
@@ -160,9 +160,10 @@ AudioDevice::AudioDevice()
     m_rate = 0;
     m_bitdepth = 0;
     m_xrunCount = 0;
-    m_cpuTime = new RingBufferNPT<trav_time_t>(4096 * 16);
+    m_cpuTime = new RingBufferNPT<trav_time_t>(65536);
     m_cycleStartTime = {};
     m_lastCpuReadTime = {};
+    m_isFreeWheeling = false;
 
     m_driverType = tr("No Driver Loaded");
 
@@ -240,6 +241,7 @@ void AudioDevice::set_buffer_size( nframes_t size )
 void AudioDevice::set_sample_rate( uint rate )
 {
     m_rate = rate;
+    m_processCallBackData.set_sample_rate(m_rate);
 }
 
 void AudioDevice::set_bit_depth( uint depth )
@@ -272,16 +274,20 @@ int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
 int AudioDevice::run_one_cycle( nframes_t nframes, float  )
 {
 
-    if (m_driver->read(nframes) < 0) {
+    if (m_driver->_read(nframes) < 0) {
         qDebug("driver read failed!");
         return -1;
     }
 
     for(TAudioDeviceClient* client = m_clients.first(); client != nullptr; client = client->next) {
-        client->process(nframes);
+        m_processCallBackData.set_nframes_to_process(nframes);
+        client->process(&m_processCallBackData);
+        auto ringBufferReadTime = m_processCallBackData.get_ringbuffer_read_wait_time();
+        // printf("processing wait time (micro seconds): %ld\n", ringBufferReadTime / 1000);
+        m_processingPathWaitTime += ringBufferReadTime;
     }
 
-    if (m_driver->write(nframes) < 0) {
+    if (m_driver->_write(nframes) < 0) {
         qDebug("driver write failed!");
         return -1;
     }
@@ -389,6 +395,14 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
     }
 
     emit started();
+}
+
+void AudioDevice::set_free_wheeling(bool freeWheeling)
+{
+    m_isFreeWheeling = freeWheeling;
+    m_processCallBackData.set_real_time(!m_isFreeWheeling);
+
+    emit freeWheelingChanged();
 }
 
 int AudioDevice::create_driver(const QString& driverType, bool capture, bool playback, const QString& cardDevice)
@@ -740,7 +754,7 @@ float AudioDevice::get_cpu_time( )
 
 
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
-    float totaltime = 0;
+    trav_time_t totaltime = 0;
     trav_time_t value = 0;
     int read = m_cpuTime->read_space();
 
@@ -749,7 +763,10 @@ float AudioDevice::get_cpu_time( )
         totaltime += value;
     }
 
-    audio_sample_t result = ( (totaltime  / (currentTime - m_lastCpuReadTime) ) * 100 );
+    totaltime -= m_processingPathWaitTime;
+    m_processingPathWaitTime = 0;
+
+    audio_sample_t result = ( (double(totaltime)  / (currentTime - m_lastCpuReadTime) ) * 100 );
 
     m_lastCpuReadTime = currentTime;
 

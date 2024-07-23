@@ -38,8 +38,8 @@
 PADriver::PADriver( AudioDevice * device)
         : TAudioDriver(device)
 {
-	read = MakeDelegate(this, &PADriver::_read);
-	write = MakeDelegate(this, &PADriver::_write);
+    read = TAudioDriverReadWriteCallBack(this, &PADriver::_read);
+    write = TAudioDriverReadWriteCallBack(this, &PADriver::_write);
         run_cycle = RunCycleCallback(this, &PADriver::_run_cycle);
 }
 

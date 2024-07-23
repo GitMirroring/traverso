@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef SONG_H
 #define SONG_H
 
+#include "TProcessCallBackData.h"
 #include "TSession.h"
 #include <QDomNode>
 #include "TTransportControl.h"
@@ -75,7 +76,6 @@ public:
     AudioClipManager* get_audioclip_manager() const;
 
     AudioBus* get_render_bus() const {return m_renderBus;}
-    AudioBus* get_clip_render_bus() const {return m_clipRenderBus;}
 
 
     QString get_audio_sources_dir() const;
@@ -94,7 +94,7 @@ public:
     void set_recording(bool recording, bool realtime);
     void set_audio_sources_dir(const QString& dir);
 
-    int process(nframes_t nframes);
+    int process(TProcessCallBackData *processData);
 
     // jackd only feature
     int transport_control(TTransportControl* state);

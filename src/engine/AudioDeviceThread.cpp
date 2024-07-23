@@ -105,7 +105,7 @@ void AudioDeviceThread::run()
 	}
 
 	while (m_device->run_audio_thread()) {
-		if (m_device->get_driver()->run_cycle() < 0) {
+        if (m_device->get_driver()->_run_cycle() < 0) {
 			PERROR("Driver cycle error, exiting!");
 			break;
 		}

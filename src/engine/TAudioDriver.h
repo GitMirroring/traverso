@@ -70,8 +70,8 @@ public:
         virtual int remove_playback_channel(const QString& ) {return -1;}
 
 
-        ProcessCallback read;
-        ProcessCallback write;
+        TAudioDriverReadWriteCallBack read;
+        TAudioDriverReadWriteCallBack write;
         RunCycleCallback run_cycle;
 
 
@@ -89,7 +89,6 @@ protected:
         nframes_t               m_framesPerCycle;
         nframes_t               m_captureFrameLatency{};
         nframes_t               m_playbackFrameLatency{};
-        bool                    m_freeWheeling;
 
 signals:
         void errorMessage(const QString& message);

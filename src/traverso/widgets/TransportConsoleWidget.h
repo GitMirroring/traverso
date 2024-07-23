@@ -51,6 +51,7 @@ private:
 	QAction*	m_playAction;
 	QAction*	m_toEndAction;
 	QAction*	m_toRightAction;
+    QAction*    m_freeWheelingAction;
     TTimeRef	m_lastSnapPosition;
     TTimeRef    m_transportLocation;
     trav_time_t m_lastTransportLocationUpdatetime;
@@ -64,7 +65,7 @@ private slots:
 
 	void transport_started();
 	void transport_stopped();
-	void update_recording_state();
+    void update_recording_state();
 	void update_label();
 	void update_layout();
 };

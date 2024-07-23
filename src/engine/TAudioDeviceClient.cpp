@@ -59,14 +59,14 @@ TAudioDeviceClient::~ TAudioDeviceClient( )
  *
  * The ProcessCallback is of type FastDelegate. 
  *
- * Use the convenience function MakeDelegate(this, &MyApp::process); to create a 
+ * Use the convenience function TProcessCallBack(this, &MyApp::process); to create a
  * ProcessCallback delegate. See the AudioDevice for a code example
  *
  * @param call The FastDelegate \a call to use as the callback function 
  */
-void TAudioDeviceClient::set_process_callback( const ProcessCallback& call)
+void TAudioDeviceClient::set_process_callback(const TProcessCallBack& call)
 {
-	process = call;
+    process = call;
 }
 
 void TAudioDeviceClient::set_transport_control_callback(const TransportControlCallback& callback)

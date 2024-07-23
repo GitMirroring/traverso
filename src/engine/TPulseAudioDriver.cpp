@@ -33,8 +33,8 @@
 TPulseAudioDriver::TPulseAudioDriver(AudioDevice* device )
     : TAudioDriver(device)
 {
-    read = MakeDelegate(this, &TPulseAudioDriver::_read);
-    write = MakeDelegate(this, &TPulseAudioDriver::_write);
+    read = TAudioDriverReadWriteCallBack(this, &TPulseAudioDriver::_read);
+    write = TAudioDriverReadWriteCallBack(this, &TPulseAudioDriver::_write);
     run_cycle = RunCycleCallback(this, &TPulseAudioDriver::_run_cycle);
 
     m_paSimple = nullptr;

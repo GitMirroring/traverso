@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 
 #include "ContextItem.h"
+#include "TProcessCallBackData.h"
 #include "TRealTimeLinkedList.h"
 #include "TTimeRef.h"
 #include "Track.h"
@@ -66,7 +67,7 @@ public :
         int arm();
         bool armed();
         int disarm();
-        int process(const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes);
+        int process(TProcessCallBackData *processData);
 
         bool operator<(const AudioTrack &other) {
             printf("bool operator<(const AudioTrack &other)\n");

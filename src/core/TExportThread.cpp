@@ -82,7 +82,7 @@ void TExportThread::run( )
             nframes_t diff = m_exportSpecification->get_remaining_export_frames();
             nframes_t nframes = std::min(diff, m_exportSpecification->get_block_size());
 
-            sheet->process(nframes);
+            // sheet->process(nframes);
             m_exportSpecification->add_exported_range(TTimeRef(nframes, audiodevice().get_sample_rate()));
         } while(!m_exportSpecification->cancel_export_requested() && m_exportSpecification->get_remaining_export_frames() > 0);
 

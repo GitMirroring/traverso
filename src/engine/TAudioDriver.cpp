@@ -37,12 +37,11 @@ TAudioDriver::TAudioDriver(AudioDevice* device)
     , m_frameRate(0)
     , m_framesPerCycle(0)
 {
-    read = MakeDelegate(this, &TAudioDriver::_read);
-    write = MakeDelegate(this, &TAudioDriver::_write);
+    read = TAudioDriverReadWriteCallBack(this, &TAudioDriver::_read);
+    write = TAudioDriverReadWriteCallBack(this, &TAudioDriver::_write);
     run_cycle = RunCycleCallback(this, &TAudioDriver::_run_cycle);
 
     m_runCycleStartTime = m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
-    m_freeWheeling = false;
 }
 
 TAudioDriver::~ TAudioDriver( )
@@ -63,7 +62,7 @@ int TAudioDriver::_run_cycle( )
 
     trav_time_t runCycleTime = (m_runCycleEndTime - m_runCycleStartTime);
 
-    if (m_freeWheeling) {
+    if (m_device->get_is_free_wheeling()) {
         // 20 microseconds to ryn_cycles() / second == 1.000.000 / 20 = 50.000
         trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 20);
         // Limit the amount of runcycles to 50.000 per second.

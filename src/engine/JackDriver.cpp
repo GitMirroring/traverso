@@ -47,8 +47,8 @@
 JackDriver::JackDriver(AudioDevice* device)
     : TAudioDriver(device)
 {
-        read = MakeDelegate(this, &JackDriver::_read);
-        write = MakeDelegate(this, &JackDriver::_write);
+        read = TAudioDriverReadWriteCallBack(this, &JackDriver::_read);
+        write = TAudioDriverReadWriteCallBack(this, &JackDriver::_write);
         run_cycle = RunCycleCallback(this, &JackDriver::_run_cycle);
     m_running = 0;
         m_transportControl = new TTransportControl();

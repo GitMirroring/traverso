@@ -57,8 +57,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 AlsaDriver::AlsaDriver(AudioDevice* device)
     : TAudioDriver(device)
 {
-    read = MakeDelegate(this, &AlsaDriver::_read);
-    write = MakeDelegate(this, &AlsaDriver::_write);
+    read = TAudioDriverReadWriteCallBack(this, &AlsaDriver::_read);
+    write = TAudioDriverReadWriteCallBack(this, &AlsaDriver::_write);
     run_cycle = RunCycleCallback(this, &AlsaDriver::_run_cycle);
 }
 

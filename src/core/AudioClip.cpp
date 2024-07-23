@@ -419,12 +419,17 @@ void AudioClip::set_selected(bool /*selected*/)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes)
+int AudioClip::process(TProcessCallBackData *processData)
 {
     // Handle silence clips
     if (get_channel_count() == 0) {
         return 0;
     }
+
+    nframes_t nframes = processData->get_nframes_to_process();
+    const TTimeRef startLocation = processData->get_start_location();
+    const TTimeRef endLocation = processData->get_end_location();
+    AudioBus* bus = processData->get_ringbuffer_read_bus();
 
     if (m_recordingStatus == RECORDING) {
         process_capture(nframes);
@@ -445,8 +450,6 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
 
     Q_ASSERT(m_sheet);
     Q_ASSERT(m_readSource);
-
-    AudioBus* bus = m_sheet->get_clip_render_bus();
 
     TTimeRef fileLocation;
     nframes_t framesToProcess = nframes;
@@ -472,8 +475,8 @@ int AudioClip::process(const TTimeRef& startLocation, const TTimeRef& endLocatio
 
     // Read the frames from the ringbuffers
     // FIXME change when audio thread supports realtime/freewheeling
-    bool realTime = true;
-    nframes_t readFrames = m_readSource->ringbuffer_read(bus, fileLocation, nframes, realTime);
+    bool realTime = false;
+    nframes_t readFrames = m_readSource->ringbuffer_read(processData, fileLocation);
 
 
     if (readFrames == 0) {
@@ -520,7 +523,7 @@ void AudioClip::process_capture(nframes_t nframes)
         return;
     }
 
-    bool realTime = false;
+    bool realTime = true;
     nframes_t written = m_writer->ringbuffer_write(bus, nframes, realTime);
 
     m_length.add_frames(written, get_rate());

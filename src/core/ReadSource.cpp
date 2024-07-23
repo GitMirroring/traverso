@@ -123,15 +123,9 @@ void ReadSource::private_init()
 	m_error = 0;
     m_resampleAudioReader = nullptr;
 
-    // TODO: make this work
-    // used to detect if the transport location comes
-    // close to our transport location and the buffers should
-    // be filled. Using random number between 0.5 and 3.0 so
-    // no all buffers are synced at the same time
     float oneToFourSeconds = 1.0f;
     oneToFourSeconds += ((std::rand() * 3.0) / float(RAND_MAX));
     m_aboutOneToFourSecondsTime = TTimeRef::UNIVERSAL_SAMPLE_RATE * oneToFourSeconds;
-    printf("m_aboutHalfToThreeSecondsTime %s\n", QS_C(TTimeRef::timeref_to_ms_2(m_aboutOneToFourSecondsTime)));
 }
 
 ReadSource::~ReadSource()
@@ -387,9 +381,9 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
     Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == slotcount);
 
     TTimeRef fileLocation = seekTransportLocation - m_location->get_start() + m_sourceStartLocation;
-    printf("rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
-           QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)),
-           QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
+    // printf("rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
+    //        QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)),
+    //        QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
 
     // check if the clip's start position is within the range
     // if not, fill the buffer from the earliest point this clip
@@ -433,7 +427,7 @@ void ReadSource::process_realtime_buffers()
     // except when we are seeking, then the rt queueu actually is empty and we need to
     // read to the m_lastQueuedRTBufferSlot->get_transport_location(); since we set that
     // value to the seek transport location
-    size_t slotsToFill = freeSlots - 1;  // leave one slot in the rt queue so the ringbuffer_read() Queue Buffer Slot cannot be overwritten by us
+    size_t slotsToFill = freeSlots;
     if (m_bufferstatus.get_sync_status() == BufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION) {
         slotsToFill = int(0.7 * slotcount);
     } else {
@@ -487,7 +481,7 @@ void ReadSource::process_realtime_buffers()
 }
 
 
-nframes_t ReadSource::ringbuffer_read(AudioBus *audioBus, const TTimeRef &fileLocation, nframes_t frames, bool realTime)
+nframes_t ReadSource::ringbuffer_read(TProcessCallBackData *processData, const TTimeRef &fileLocation)
 {
     if (m_bufferstatus.out_of_sync()) {
         // printf("ReadSource::ringbuffer_read: Buffer out of sync, skipping file location %s\n",
@@ -499,9 +493,13 @@ nframes_t ReadSource::ringbuffer_read(AudioBus *audioBus, const TTimeRef &fileLo
 
     // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
     nframes_t read = 0;
+    nframes_t nframes = processData->get_nframes_to_process();
+    AudioBus* bus = processData->get_ringbuffer_read_bus();
+
+
     auto availableSlots = m_rtBufferSlotsQueue->size_approx();
 
-    while ((slot = dequeue_from_rt_queue(realTime)))
+    while ((slot = dequeue_from_rt_queue(processData)))
     {
         Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
 
@@ -520,7 +518,7 @@ nframes_t ReadSource::ringbuffer_read(AudioBus *audioBus, const TTimeRef &fileLo
         if (slotFileLocation == fileLocation)
         {
             for (uint chan=0; chan < m_channelCount; ++chan) {
-                slot->read_buffer(audioBus->get_buffer(chan, frames), chan, frames);
+                slot->read_buffer(bus->get_buffer(chan, nframes), chan, nframes);
             }
 
             read = slot->get_buffer_size();
@@ -550,22 +548,22 @@ nframes_t ReadSource::ringbuffer_read(AudioBus *audioBus, const TTimeRef &fileLo
     return read;
 }
 
-QueueBufferSlot* ReadSource::dequeue_from_rt_queue(bool realTime)
+QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData *processData)
 {
     QueueBufferSlot* slot = nullptr;
+    auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
-    if (realTime) {
-        if (m_rtBufferSlotsQueue->try_dequeue(slot)) {
-            return slot;
-        } else {
+    if (processData->get_is_real_time()) {
+        if (!m_rtBufferSlotsQueue->try_dequeue(slot)) {
             // FIXME
             // What about feedback to user that we're missing out on the
             // audio stream?
-            slot = nullptr;
         }
     } else {
         m_rtBufferSlotsQueue->wait_dequeue(slot);
     }
+
+    processData->add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
 
     return slot;
 }

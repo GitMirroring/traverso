@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define READSOURCE_H
 
 #include "AudioSource.h"
+#include "TProcessCallBackData.h"
 
 #include <QDomDocument>
 
@@ -55,7 +56,7 @@ public :
 	int set_state( const QDomNode& node );
 	QDomNode get_state(QDomDocument doc);
 
-    nframes_t ringbuffer_read(AudioBus *audioBus, const TTimeRef &fileLocation, nframes_t frames, bool realTime);
+    nframes_t ringbuffer_read(TProcessCallBackData *processData, const TTimeRef &fileLocation);
 
     int file_read(DecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const;
     int file_read(DecodeBuffer* buffer, nframes_t fileLocation, nframes_t cnt);
@@ -91,7 +92,7 @@ private:
     TTimeRef            m_sourceStartLocation;
     TTimeRef            m_aboutOneToFourSecondsTime;
 
-    QueueBufferSlot* dequeue_from_rt_queue(bool realTime);
+    QueueBufferSlot* dequeue_from_rt_queue(TProcessCallBackData *processData);
 	
 	int ref() { return m_refcount++;}
 	
