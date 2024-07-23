@@ -19,8 +19,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef SNAPLIST_H
-#define SNAPLIST_H
+#ifndef T_SNAPLIST_H
+#define T_SNAPLIST_H
 
 #include <QList>
 
@@ -32,34 +32,35 @@ class SnapList
 {
 
 public:
-    SnapList(TSession* sheet);
+    SnapList(TSession* session);
     ~SnapList() {}
 
     TTimeRef get_snap_value(const TTimeRef& location);
     TTimeRef get_snap_value(const TTimeRef& location, bool& didSnap);
-    qint64 get_snap_diff(const TTimeRef& location);
+    TTimeRef get_snap_diff(const TTimeRef& location);
     TTimeRef next_snap_pos(const TTimeRef& location);
     TTimeRef prev_snap_pos(const TTimeRef& location);
 
-    TTimeRef calculate_snap_diff(TTimeRef leftlocation, TTimeRef rightlocation);
+    TTimeRef calculate_snap_diff(const TTimeRef &leftlocation, const TTimeRef &rightlocation);
 
     void set_range(const TTimeRef& start, const TTimeRef& end, qint64 scalefactor);
     void mark_dirty();
     bool was_dirty();
 
 private:
-    TSession*	m_sheet;
+    TSession*           m_session;
     QList<TTimeRef> 	m_xposList;
     QList<TTimeRef> 	m_xposLut;
-    QList<bool> 	m_xposBool;
-    bool		m_isDirty;
-    bool		m_wasDirty{};
-    TTimeRef		m_rangeStart;
-    TTimeRef		m_rangeEnd;
-    qint64		m_scalefactor;
+    QList<bool>         m_xposBool;
+    bool                m_isDirty;
+    bool                m_wasDirty;
+    TTimeRef            m_rangeStart;
+    TTimeRef            m_rangeEnd;
+    qint64              m_scalefactor;
 
     void update_snaplist();
     bool is_snap_value(const TTimeRef& location);
+    int closest_xposlist_index_for_location(TTimeRef location);
 };
 
 #endif

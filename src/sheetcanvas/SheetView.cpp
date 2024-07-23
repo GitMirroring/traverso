@@ -685,12 +685,16 @@ TCommand * SheetView::touch_play_cursor( )
 	return nullptr;
 }
 
-void SheetView::set_snap_range(int start)
+void SheetView::set_snap_range(int /*start*/)
 {
 // 	printf("SheetView::set_snap_range\n");
-	m_session->get_snap_list()->set_range(TTimeRef(start * timeref_scalefactor),
-				TTimeRef((start + m_clipsViewPort->viewport()->width()) * timeref_scalefactor),
-				timeref_scalefactor);
+    m_session->get_snap_list()->set_range(TTimeRef(), m_session->get_last_location(), timeref_scalefactor);
+// TODO: setting range like this makes snaplist->next_snap_pos broken
+    // also, do we really want to limit snaplist prev/next snap location to be bound
+    // the the viewport range ?
+    // m_session->get_snap_list()->set_range(TTimeRef(start * timeref_scalefactor),
+    // 			TTimeRef((start + m_clipsViewPort->viewport()->width()) * timeref_scalefactor),
+    // 			timeref_scalefactor);
 }
 
 TCommand* SheetView::scroll_up( )
