@@ -76,14 +76,15 @@ private:
     friend class AudioDevice;
     friend class TsarThread;
 
-    moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>*   m_blockingGuiThreadEventBuffer;
-    moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>*   m_blockingEmitEventSignalsInGuiThreadQueue;
+    moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>*   m_postedFromGuiThreadQueue;
+    moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>*   m_postedFromRTThreadQueue;
+    moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>*   m_processedByRTThreadQueue;
 
     int             m_eventCounter;
     int             m_retryCount;
 
-    void process_rt_event_slots();
-    void process_rt_event_signals();
+    void process_posted_gui_events();
+    void process_processed_events_by_rt_thread_queue();
 
 signals:
     void audioThreadEventBufferFull(QString);

@@ -724,8 +724,10 @@ TCommand* Sheet::start_transport()
 // So ALL functions called here need to be RT thread save!!
 int Sheet::transport_control(TTransportControl *transportControl)
 {
-    switch(transportControl->get_state()) {
+    switch(transportControl->get_state())
+    {
     case TTransportControl::Stopped:
+        printf("Sheet::transport_control: Stopped\n");
         if (transportControl->get_location() != m_transportLocation) {
             initiate_seek_start(transportControl->get_location());
         }
@@ -738,34 +740,37 @@ int Sheet::transport_control(TTransportControl *transportControl)
         return true;
 
     case TTransportControl::Starting:
-        printf("TransportStarting\n");
+        printf("Sheet::transport_control: TransportStarting\n");
         if (transportControl->get_location() != m_transportLocation) {
             initiate_seek_start(transportControl->get_location());
             return false;
         }
-        if (! is_seeking()) {
-            if (is_recording()) {
-                if (!m_prepareRecording) {
-                    m_prepareRecording = true;
-                    // prepare_recording() is only to be called from the GUI thread
-                    // so we delegate the prepare_recording() function call via a
-                    // RT thread save signal!
-                    Q_ASSERT(transportControl->is_realtime());
-                    tsar().add_rt_event(this, nullptr, "prepareRecording()");
-                    PMESG("transport starting: initiating prepare for record");
-                    return false;
-                }
-                if (!m_readyToRecord) {
-                    PMESG("transport starting: still preparing for record");
-                    return false;
-                }
-            }
-            PMESG("tranport starting: seek finished");
-            return true;
-        } else {
-            PMESG("tranport starting: still seeking");
+        if (is_seeking()) {
+            printf("Sheet::transport_control: Tranport Starting: Still seeking");
             return false;
         }
+        if (is_recording())
+        {
+            if (!m_prepareRecording) {
+                m_prepareRecording = true;
+                // prepare_recording() is only to be called from the GUI thread
+                // so we delegate the prepare_recording() function call via a
+                // RT thread save signal!
+                Q_ASSERT(transportControl->is_realtime());
+                Q_ASSERT(this->thread() != QThread::currentThread());
+                tsar().add_rt_event(this, nullptr, "prepareRecording()");
+                printf("Sheet::transport_control: Transport Starting: posting 'prepareRecording()' signal to Tsar\n");
+                return false;
+            }
+            if (!m_readyToRecord) {
+                PMESG("transport starting: still preparing for record");
+                return false;
+            }
+            printf("Sheet::transort_starting: Transport Starting: Ready for recording\n");
+        }
+        PMESG("tranport starting: seek finished");
+        return true;
+
 
     case TTransportControl::Rolling:
         if (!is_transport_rolling()) {
@@ -793,12 +798,51 @@ void Sheet::initiate_seek_start(TTimeRef location)
     }
 
     m_seekTransportLocation = location;
-    m_readDiskIO->set_transport_location(m_seekTransportLocation);
     m_startSeek.store(true);
     set_seeking(true);
 
     PMESG("tranport starting: initiating seek");
 }
+
+//
+//  Function is ALWAYS called in RealTime AudioThread processing path
+//  Be EXTREMELY carefull to not call functions() that have blocking behavior!!
+//
+void Sheet::inititate_seek()
+{
+    Q_ASSERT(this->thread() != QThread::currentThread());
+
+    if (is_transport_rolling()) {
+        m_resumeTransport = true;
+    }
+
+    m_transportRolling.store(false);
+    set_start_seek(false);
+
+    // only sets a boolean flag and the new seek location, save to call
+    m_readDiskIO->set_seek_transport_location(m_seekTransportLocation);
+    tsar().post_rt_event(m_seekStartTsarEvent);
+}
+
+void Sheet::seek_finished()
+{
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "Sheet::seek_finished", "Called from other Thread!");
+
+    m_transportLocation  = m_seekTransportLocation;
+    printf("Sheet::seek_finished: Transport Location is now %s (Sheet: %s)\n",
+           QS_C(TTimeRef::timeref_to_ms_3(m_transportLocation)),
+           QS_C(get_name()));
+    set_seeking(false);
+
+    if (m_resumeTransport) {
+        start_transport_rolling(false);
+        m_resumeTransport = false;
+    }
+
+    emit transportLocationChanged();
+    PMESG2("Sheet :: leaving seek_finished");
+}
+
 
 // RT thread save function
 void Sheet::start_transport_rolling(bool realtime)
@@ -846,7 +890,6 @@ void Sheet::prepare_recording()
 
     if (m_recording && any_audio_track_armed()) {
         CommandGroup* group = new CommandGroup(this, "");
-        int clipcount = 0;
         const auto armedTracks = get_armed_tracks();
         for(AudioTrack* track : armedTracks) {
             AudioClip* clip = track->init_recording();
@@ -861,10 +904,9 @@ void Sheet::prepare_recording()
                 m_recordingClips.append(clip);
 
                 group->add_command(new AddRemoveClip(clip, AddRemoveClip::ADD));
-                clipcount++;
             }
         }
-        group->setText(tr("Recording to %n Clip(s)", "", clipcount));
+        group->setText(tr("Recording to %n Clip(s)", "", m_recordingClips.size()));
         TCommand::process_command(group);
     }
 
@@ -895,47 +937,9 @@ void Sheet::set_transport_location(TTimeRef location)
     }
 
     printf("Sheet::set_transport_location: set transport to: %s\n", QS_C(TTimeRef::timeref_to_ms_3(location)));
-    audiodevice().transport_seek_to(m_audiodeviceClient, location);
+    audiodevice().transport_locate(m_audiodeviceClient, location);
 }
 
-
-//
-//  Function is ALWAYS called in RealTime AudioThread processing path
-//  Be EXTREMELY carefull to not call functions() that have blocking behavior!!
-//
-void Sheet::inititate_seek()
-{
-    Q_ASSERT(this->thread() != QThread::currentThread());
-	
-	if (is_transport_rolling()) {
-		m_resumeTransport = true;
-	}
-
-    m_transportRolling.store(false);
-    set_start_seek(false);
-	
-    // only sets a boolean flag and the new seek location, save to call
-    m_readDiskIO->set_seek_transport_location(m_seekTransportLocation);
-    tsar().post_rt_event(m_seekStartTsarEvent);
-}
-
-void Sheet::seek_finished()
-{
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "Sheet::seek_finished", "Called from other Thread!");
-
-    PMESG2("Sheet :: entering seek_finished");
-    m_transportLocation  = m_seekTransportLocation;
-    printf("Sheet::seek_finished: Transport Location is now %s\n", QS_C(TTimeRef::timeref_to_ms_3(m_transportLocation)));
-	m_seeking = 0;
-
-	if (m_resumeTransport) {
-		start_transport_rolling(false);
-		m_resumeTransport = false;
-	}
-
-    emit transportLocationChanged();
-	PMESG2("Sheet :: leaving seek_finished");
-}
 
 void Sheet::config_changed()
 {
@@ -944,7 +948,6 @@ void Sheet::config_changed()
         m_readDiskIO->set_resample_quality(quality);
 	}
 }
-
 
 
 QList< AudioTrack * > Sheet::get_audio_tracks() const

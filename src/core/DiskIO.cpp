@@ -124,7 +124,7 @@ DiskIO::DiskIO()
     m_resampleQualityChanged = false;
     m_resampleQuality = SRC_SINC_FASTEST;
     m_bufferFillStatus = 0;
-    m_cpuTime = new RingBufferNPT<trav_time_t>(1024);
+    m_cpuTime = new RingBufferNPT<trav_time_t>(65536);
     m_lastCpuReadTime = TTimeRef::get_nanoseconds_since_epoch();
 
     // TODO This is a LARGE buffer, any ideas how to make it smaller ??
@@ -153,6 +153,12 @@ DiskIO::~DiskIO()
 
 }
 
+void DiskIO::set_seek_transport_location(const TTimeRef &transportLocation) {
+    printf("DiskIO::set_seek_transport_location: Seek location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(transportLocation)));
+    m_seekTransportLocation = transportLocation;
+    m_waitForSeek.store(true);
+}
+
 /**
 * 	Seek's all the ReadSources readbuffers to the new position.
 *	Call prepare_seek() first, to interupt do_work() if it was running.
@@ -166,6 +172,8 @@ void DiskIO::seek()
     PENTER;
 
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "NOT running in DiskIO thread");
+    Q_ASSERT(m_waitForSeek.load() == true);
+
 
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
@@ -182,6 +190,8 @@ void DiskIO::seek()
     for(auto source : m_audioSources) {
         source->rb_seek_to_transport_location(m_seekTransportLocation);
     }
+
+    m_transportLocation = m_seekTransportLocation;
 
     auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
     m_cpuTime->write(&totalTime, 1);

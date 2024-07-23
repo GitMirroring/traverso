@@ -84,7 +84,7 @@ public:
 	
         void transport_start(TAudioDeviceClient* client);
         void transport_stop(TAudioDeviceClient* client, const TTimeRef& location);
-        int transport_seek_to(TAudioDeviceClient* client, const TTimeRef &location);
+        int transport_locate(TAudioDeviceClient* client, const TTimeRef &location);
 
         TAudioDeviceSetup get_device_setup() {return m_setup;}
 
@@ -198,7 +198,9 @@ private:
     void set_transport_cycle_end_time(trav_time_t time)
 	{
 		trav_time_t runcycleTime = time - m_cycleStartTime;
-		m_cpuTime->write(&runcycleTime, 1);
+        if (m_cpuTime->write(&runcycleTime, 1) == 0) {
+            // printf("AudioDevice::set_transport_cycle_end_time: No write space in m_cpuTime\n");
+        }
 	}
 
         TAudioDriver* get_driver() const {return m_driver;}

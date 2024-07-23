@@ -160,7 +160,7 @@ AudioDevice::AudioDevice()
     m_rate = 0;
     m_bitdepth = 0;
     m_xrunCount = 0;
-    m_cpuTime = new RingBufferNPT<trav_time_t>(4096);
+    m_cpuTime = new RingBufferNPT<trav_time_t>(4096 * 16);
     m_cycleStartTime = {};
     m_lastCpuReadTime = {};
 
@@ -263,7 +263,7 @@ int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         }
     }
 
-    tsar().process_rt_event_slots();
+    tsar().process_posted_gui_events();
     tsar().post_rt_event(finishedOneProcessCycleEvent);
 
     return 1;
@@ -401,7 +401,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
             m_driver = new JackDriver(this);
             JackDriver* jackDriver = qobject_cast<JackDriver*>(m_driver);
             if (jackDriver && jackDriver->setup(m_setup.jackChannels) < 0) {
-                message(tr("Audiodevice: Failed to create the Jack Driver"), WARNING);
+                message(tr("Audiodevice: Failed to create the Jack Driver"), DRIVER_SETUP_FAILURE);
                 delete m_driver;
                 m_driver = nullptr;
                 return -1;
@@ -417,7 +417,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
         m_driver =  new AlsaDriver(this);
         AlsaDriver* alsaDriver = qobject_cast<AlsaDriver*>(m_driver);
         if (alsaDriver && alsaDriver->setup(capture,playback, cardDevice, m_ditherShape) < 0) {
-            message(tr("Audiodevice: Failed to create the ALSA Driver"), WARNING);
+            message(tr("Audiodevice: Failed to create the ALSA Driver"), DRIVER_SETUP_FAILURE);
             delete m_driver;
             m_driver = nullptr;
             return -1;
@@ -432,7 +432,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
         m_driver = new PADriver(this);
         PADriver* paDriver = qobject_cast<PADriver*>(m_driver);
         if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
-            message(tr("Audiodevice: Failed to create the PortAudio Driver"), WARNING);
+            message(tr("Audiodevice: Failed to create the PortAudio Driver"), DRIVER_SETUP_FAILURE);
             delete m_driver;
             m_driver = nullptr;
             return -1;
@@ -447,7 +447,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
         m_driver = new TPulseAudioDriver(this);
         TPulseAudioDriver* paDriver = qobject_cast<TPulseAudioDriver*>(m_driver);
         if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
-            message(tr("Audiodevice: Failed to create the PulseAudio Driver"), WARNING);
+            message(tr("Audiodevice: Failed to create the PulseAudio Driver"), DRIVER_SETUP_FAILURE);
             delete m_driver;
             m_driver = nullptr;
             return -1;
@@ -463,7 +463,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
         m_driver = new CoreAudioDriver(this, m_rate, m_bufferSize);
         CoreAudioDriver* coreAudioDriver = qojbect_cast<CoreAudioDriver*>(m_driver);
         if (coreAudioDriver && coreAudiodriver->setup(capture, playback, cardDevice) < 0) {
-            message(tr("Audiodevice: Failed to create the CoreAudio Driver"), WARNING);
+            message(tr("Audiodevice: Failed to create the CoreAudio Driver"), DRIVER_SETUP_FAILURE);
             delete m_driver;
             m_driver = nullptr;
             return -1;
@@ -894,7 +894,7 @@ void AudioDevice::transport_stop(TAudioDeviceClient * client, const TTimeRef &lo
 }
 
 // return 0 if valid request, non-zero otherwise.
-int AudioDevice::transport_seek_to(TAudioDeviceClient* client, const TTimeRef& location)
+int AudioDevice::transport_locate(TAudioDeviceClient* client, const TTimeRef& location)
 {
 #if defined (JACK_SUPPORT)
     JackDriver* jackdriver = slaved_jack_driver();

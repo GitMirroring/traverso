@@ -278,7 +278,7 @@ int PADriver::setup(bool capture, bool playback, const QString& deviceInfo)
 
                         snprintf (buf, sizeof(buf) - 1, "playback_%d", chn+1);
 
-                        audiochannel = add_playback_channel(buf);
+                        audiochannel = TAudioDriver::add_playback_channel(buf);
                         audiochannel->set_latency(m_framesPerCycle + m_captureFrameLatency);
                 }
         }
@@ -288,7 +288,7 @@ int PADriver::setup(bool capture, bool playback, const QString& deviceInfo)
 
                         snprintf (buf, sizeof(buf) - 1, "capture_%d", chn+1);
 
-                        audiochannel = add_capture_channel(buf);
+                        audiochannel = TAudioDriver::add_capture_channel(buf);
                         audiochannel->set_latency(m_framesPerCycle + m_captureFrameLatency);
                 }
         }

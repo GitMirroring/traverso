@@ -81,12 +81,15 @@ protected:
         QList<AudioChannel* >   m_playbackChannels;
         int             		m_dither{};
         dither_state_t*			m_ditherState{};
-        trav_time_t 			m_periodUSecs{};
+        trav_time_t 			m_periodTimeInMicroSeconds{};
         trav_time_t 			m_lastWaitUsecond{};
+        trav_time_t             m_runCycleEndTime;
+        trav_time_t             m_runCycleStartTime;
         nframes_t               m_frameRate;
         nframes_t               m_framesPerCycle;
         nframes_t               m_captureFrameLatency{};
         nframes_t               m_playbackFrameLatency{};
+        bool                    m_freeWheeling;
 
 signals:
         void errorMessage(const QString& message);

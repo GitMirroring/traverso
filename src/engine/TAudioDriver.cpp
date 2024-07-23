@@ -40,6 +40,9 @@ TAudioDriver::TAudioDriver(AudioDevice* device)
     read = MakeDelegate(this, &TAudioDriver::_read);
     write = MakeDelegate(this, &TAudioDriver::_write);
     run_cycle = RunCycleCallback(this, &TAudioDriver::_run_cycle);
+
+    m_runCycleStartTime = m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
+    m_freeWheeling = false;
 }
 
 TAudioDriver::~ TAudioDriver( )
@@ -54,13 +57,28 @@ TAudioDriver::~ TAudioDriver( )
 
 int TAudioDriver::_run_cycle( )
 {
-	// * 1000, we want it in millisecond
-	// / 2, 2 bytes (16 bit)
-    m_device->set_transport_cycle_end_time (TTimeRef::get_nanoseconds_since_epoch());
+    m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
 
-    QThread::currentThread()->sleep(std::chrono::nanoseconds (1000 * 1000 * 23));
+    m_device->set_transport_cycle_end_time (m_runCycleEndTime);
 
-    m_device->set_transport_cycle_start_time (TTimeRef::get_nanoseconds_since_epoch());
+    trav_time_t runCycleTime = (m_runCycleEndTime - m_runCycleStartTime);
+
+    if (m_freeWheeling) {
+        // 20 microseconds to ryn_cycles() / second == 1.000.000 / 20 = 50.000
+        trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 20);
+        // Limit the amount of runcycles to 50.000 per second.
+        // We have to set this limit to not overload the Tsar event queues.
+        if (runCycleTime < minimumRunCycleTimeInNanoSeconds) {
+            QThread::currentThread()->sleep(std::chrono::nanoseconds (minimumRunCycleTimeInNanoSeconds));
+        }
+    } else
+    {
+        trav_time_t sleepTime = (m_periodTimeInMicroSeconds * 1000) - runCycleTime;
+        QThread::currentThread()->sleep(std::chrono::nanoseconds (sleepTime));
+    }
+
+    m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
+    m_device->set_transport_cycle_start_time (m_runCycleStartTime);
 
     return m_device->run_cycle( m_framesPerCycle, 0);
 }
@@ -70,12 +88,8 @@ int TAudioDriver::_read( nframes_t  )
 	return 1;
 }
 
-int TAudioDriver::_write( nframes_t nframes )
+int TAudioDriver::_write( nframes_t )
 {
-        foreach(AudioChannel* chan, m_playbackChannels) {
-                // chan->silence_buffer(nframes);
-        }
-
         return 1;
 }
 
@@ -91,8 +105,10 @@ int TAudioDriver::attach( )
 
     AudioChannel* chan;
 
-    m_frameRate = 44100;
-    m_framesPerCycle = 1024;
+    m_frameRate = m_device->get_sample_rate();
+    m_framesPerCycle = m_device->get_buffer_size();
+
+    m_periodTimeInMicroSeconds = (trav_time_t) floor ((((float) m_framesPerCycle) / m_frameRate) * 1000000.0f);
 
     m_device->set_buffer_size (m_framesPerCycle);
     m_device->set_sample_rate (m_frameRate);

@@ -47,10 +47,7 @@ public:
         m_transportLocation = transportLocation;
     }
 
-    void set_seek_transport_location(const TTimeRef& transportLocation) {
-        m_seekTransportLocation = transportLocation;
-        m_waitForSeek.store(true);
-    }
+    void set_seek_transport_location(const TTimeRef& transportLocation);
 
     bool get_cpu_time(float &time);
     int get_buffers_fill_status();

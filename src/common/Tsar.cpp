@@ -47,7 +47,7 @@ $Id: Tsar.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 void TsarThread::process_tsar_signals() {
     while(true) {
         // printf("calling tsar process_tsar_signals\n");
-        tsar().process_rt_event_signals();
+        tsar().process_processed_events_by_rt_thread_queue();
     }
 }
 
@@ -63,8 +63,9 @@ Tsar& tsar()
 
 Tsar::Tsar()
 {
-    m_blockingGuiThreadEventBuffer = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(1024);
-    m_blockingEmitEventSignalsInGuiThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(1024);
+    m_postedFromGuiThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(16384);
+    m_postedFromRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(65536);
+    m_processedByRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(65536 + 16384);
 
     m_eventCounter = 0;
     m_retryCount = 0;
@@ -93,7 +94,12 @@ void Tsar::post_gui_event(const TsarEvent &event )
 {
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "Tsar::add_event", "Adding event from other then GUI thread!!");
 
-    m_blockingGuiThreadEventBuffer->try_enqueue(std::move(event));
+    if (!m_postedFromGuiThreadQueue->try_enqueue(event)) {
+        // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
+        // and the program will potentially stall the GUI thread for some time till the RT thread has processed pending events
+        Q_ASSERT_X(true, "Tsar::post_gui_event", "Could not post gui event to posted from GUI thread queue, this is a problem that needs to be investigated by the developers");
+        m_postedFromGuiThreadQueue->wait_enqueue(event);
+    }
 
     m_eventCounter++;
 }
@@ -102,59 +108,71 @@ void Tsar::post_gui_event(const TsarEvent &event )
  * 	Use this function to add events to the event queue when
  * 	called from the audio processing (real time) thread
  *
- *	Note: This function should be called ONLY from the realtime audio thread and has a
- *	blocking behaviour if the event buffer is full, we don't want to lose events do we?
+ *	Note: This function should be called ONLY from the realtime audio thread
  *
  * @param event The event to add to the event queue
  */
 void Tsar::post_rt_event(const TsarEvent &event )
 {
-    #if defined (THREAD_CHECK)
-        Q_ASSERT_X(m_threadPointer != QThread::currentThread(), "Tsar::add_rt_event", "Adding event from NON-RT Thread!!");
-    #endif
+    Q_ASSERT_X(this->thread() != QThread::currentThread(), "Tsar::post_rt_event", "Adding event from NON-RT Thread!!");
 
-    // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
-
-    m_blockingEmitEventSignalsInGuiThreadQueue->try_enqueue(event);
-
-    // auto totaltime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
-    // printf("post_rt_event took: %ld\n", totaltime);
+    if (!m_postedFromRTThreadQueue->try_enqueue(event)) {
+        // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
+        // and the program will potentially stall the RT thread for some time till the system has processed pending events
+        // this could occur in rare cases when in freewheeling mode and nothing to process in RT Thread
+        Q_ASSERT_X(true, "Tsar::post_rt_event", "Could not post rt event to posted from RT thread queue, this is a problem that needs to be investigated by the developers");
+        m_postedFromRTThreadQueue->wait_enqueue(event);
+    }
 }
 
 
 //
 //  Function called in RealTime AudioThread processing path
 //
-void Tsar::process_rt_event_slots( )
+void Tsar::process_posted_gui_events( )
 {
    TsarEvent event;
-   // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
-   // Blocking queue
-    while (m_blockingGuiThreadEventBuffer->try_dequeue(event)) {
+    while (m_postedFromGuiThreadQueue->try_dequeue(event)) {
         process_event_slot(event);
         // printf("Processed %s slot: %s, signal: %s\n", event.caller->metaObject()->className(),
         //        (event.slotindex >= 0) ? event.caller->metaObject()->method(event.slotindex).methodSignature().data() : "no_slot_supplied",
         //        (event.signalindex >= 0) ? event.caller->metaObject()->method(event.signalindex).methodSignature().data() : "so_signal_supplied");
+
+        // The gui event wants to emit a signal so we move the event back
+        // into the GUI event loop for the signal to be emitted
         if (event.signalindex >= 0) {
-            m_blockingEmitEventSignalsInGuiThreadQueue->try_enqueue(event);
+            if (!m_processedByRTThreadQueue->try_enqueue(event)) {
+                // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
+                // and the program will potentially stall the RT thread for some time till the system has processed pending events
+                // this could occur in rare cases when in freewheeling mode and nothing to process in RT Thread
+                Q_ASSERT_X(true, "Tsar::process_posted_gui_events", "Could not post RT event to processed by RT thread queue, this is a problem that needs to be investigated by the developers");
+                m_processedByRTThreadQueue->wait_enqueue(event);
+            }
         } else {
             --m_eventCounter;
         }
     }
-
-    // auto totaltime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
-    // printf("process_rt_event_slots took: %ld\n", totaltime);
 }
 
 // Called by TsarThread which is allowed to block on the wait_dequeue()
-void Tsar::process_rt_event_signals( )
+void Tsar::process_processed_events_by_rt_thread_queue( )
 {
     static TsarEvent event;
 
-    m_blockingEmitEventSignalsInGuiThreadQueue->wait_dequeue(event);
+    while(m_processedByRTThreadQueue->try_dequeue(event)) {
+        process_event_signal(event);
+    }
 
+    while(m_postedFromRTThreadQueue->try_dequeue(event)) {
+        process_event_signal(event);
+    }
+
+    // Block the TsarThread until new events are posted to the m_postedFromRTThreadQueue
+    // This will happen every run_cycle from AudioDevice
+    m_postedFromRTThreadQueue->wait_dequeue(event);
     process_event_signal(event);
+
 
     --m_eventCounter;
     m_retryCount++;
@@ -167,7 +185,7 @@ void Tsar::process_rt_event_signals( )
 				tr("The Audiodriver Thread seems to be stalled/stopped, but Traverso didn't ask for it!\n"
 				"This effectively makes Traverso unusable, since it relies heavily on the AudioDriver Thread\n"
 				"To ensure proper operation, Traverso will fallback to the 'Null Driver'.\n"
-				"Potential issues why this can show up are: \n\n"
+                "Potential issues why this can show up are: \n\n"
 				"* You're not running with real time privileges! Please make sure this is setup properly.\n\n"
 				"* The audio chipset isn't supported (completely), you probably have to turn off some of it's features.\n"
 				"\nFor more information, see the Help file, section: \n\n AudioDriver: 'Thread stalled error'\n\n"),

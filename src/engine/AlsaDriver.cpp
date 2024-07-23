@@ -184,14 +184,14 @@ int AlsaDriver::setup(bool capture, bool playback, const QString& devicename, co
         if (snd_pcm_open (&playback_handle, alsa_name_playback, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
             switch (errno) {
             case EBUSY:
-                m_device->driverSetupMessage(tr("The playback device '%1'' is already in use. Please stop the"
+                m_device->driverSetupMessage(tr("The playback device '%1'' is already in use. Please stop the "
                                               "application using it and run Traverso again").
-                                           arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_FAILURE);
+                                           arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
                 return -1;
 
             case EPERM:
                 m_device->driverSetupMessage(tr("You do not have permission to open the audio device '%1' for playback").
-                                           arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_FAILURE);
+                                           arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
                 return -1;
             default:
                 m_device->driverSetupMessage(tr("Opening Playback Device '%1' failed with unknown error type").
@@ -211,12 +211,12 @@ int AlsaDriver::setup(bool capture, bool playback, const QString& devicename, co
             switch (errno) {
             case EBUSY:
                 m_device->driverSetupMessage(tr("The Capture Device %1 is already in use. Please stop the"
-                                              " application using it and run Traverso again").arg(capture_pcm_name), AudioDevice::DRIVER_SETUP_FAILURE);
+                                              " application using it and run Traverso again").arg(capture_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
                 return -1;
 
             case EPERM:
                 m_device->driverSetupMessage(tr("You do not have permission to open Device %1 for capture").
-                                           arg(capture_pcm_name), AudioDevice::DRIVER_SETUP_FAILURE);
+                                           arg(capture_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
                 return -1;
             default:
                 m_device->driverSetupMessage(tr("Opening Capture Device %1 failed with unknown error type").
@@ -903,8 +903,8 @@ int  AlsaDriver::set_parameters (nframes_t frames_per_interupt,
         memset (capture_interleave_skip, 0, sizeof (unsigned long *) * capture_nchannels);
     }
 
-    m_periodUSecs = (trav_time_t) floor ((((float) m_framesPerCycle) / m_frameRate) * 1000000.0f);
-    poll_timeout = (int) floor (1.5f * m_periodUSecs);
+    m_periodTimeInMicroSeconds = (trav_time_t) floor ((((float) m_framesPerCycle) / m_frameRate) * 1000000.0f);
+    poll_timeout = (int) floor (1.5f * m_periodTimeInMicroSeconds);
 
     return 0;
 }
@@ -1239,7 +1239,7 @@ again:
                 *delayed_usecs = poll_ret - poll_next;
             }
             poll_last = poll_ret;
-            poll_next = poll_ret + m_periodUSecs;
+            poll_next = poll_ret + m_periodTimeInMicroSeconds;
             m_device->set_transport_cycle_start_time (poll_ret);
         }
 
@@ -1584,13 +1584,13 @@ int AlsaDriver::attach()
 
     for (chn = 0; chn < capture_nchannels; chn++) {
         QString channelName = QString("capture_%1").arg(chn+1);
-        chan = add_capture_channel(channelName.toLatin1().data());
+        chan = TAudioDriver::add_capture_channel(channelName.toLatin1().data());
         chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
     }
 
     for (chn = 0; chn < playback_nchannels; chn++) {
         QString channelName = QString("playback_%1").arg(chn+1);
-        chan = add_playback_channel(channelName.toLatin1().data());
+        chan = TAudioDriver::add_playback_channel(channelName.toLatin1().data());
         chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
     }
 
