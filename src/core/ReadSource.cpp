@@ -551,7 +551,6 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData *processData, const T
 QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData *processData)
 {
     QueueBufferSlot* slot = nullptr;
-    auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
     if (processData->get_is_real_time()) {
         if (!m_rtBufferSlotsQueue->try_dequeue(slot)) {
@@ -560,10 +559,10 @@ QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData *process
             // audio stream?
         }
     } else {
+        auto startTime = TTimeRef::get_nanoseconds_since_epoch();
         m_rtBufferSlotsQueue->wait_dequeue(slot);
+        processData->add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
     }
-
-    processData->add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
 
     return slot;
 }
