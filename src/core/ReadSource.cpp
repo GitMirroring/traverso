@@ -481,7 +481,7 @@ void ReadSource::process_realtime_buffers()
 }
 
 
-nframes_t ReadSource::ringbuffer_read(TProcessCallBackData *processData, const TTimeRef &fileLocation)
+nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation)
 {
     if (m_bufferstatus.out_of_sync()) {
         // printf("ReadSource::ringbuffer_read: Buffer out of sync, skipping file location %s\n",
@@ -493,8 +493,8 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData *processData, const T
 
     // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
     nframes_t read = 0;
-    nframes_t nframes = processData->get_nframes_to_process();
-    AudioBus* bus = processData->get_ringbuffer_read_bus();
+    nframes_t nframes = processData.get_nframes_to_process();
+    AudioBus* bus = processData.get_ringbuffer_read_bus();
 
 
     auto availableSlots = m_rtBufferSlotsQueue->size_approx();
@@ -548,11 +548,11 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData *processData, const T
     return read;
 }
 
-QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData *processData)
+QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData &processData)
 {
     QueueBufferSlot* slot = nullptr;
 
-    if (processData->get_is_real_time()) {
+    if (processData.get_is_real_time()) {
         if (!m_rtBufferSlotsQueue->try_dequeue(slot)) {
             // FIXME
             // What about feedback to user that we're missing out on the
@@ -561,7 +561,7 @@ QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData *process
     } else {
         auto startTime = TTimeRef::get_nanoseconds_since_epoch();
         m_rtBufferSlotsQueue->wait_dequeue(slot);
-        processData->add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
+        processData.add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
     }
 
     return slot;

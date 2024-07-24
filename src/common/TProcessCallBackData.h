@@ -11,6 +11,7 @@ class TProcessCallBackData {
 public:
     TProcessCallBackData() {
         m_ringBufferReadBus = nullptr;
+        m_ringBufferWriteBus = nullptr;
         m_nFramesToProcess = 0;
         m_startLocation = TTimeRef();
         m_endLocation = TTimeRef();
@@ -22,6 +23,9 @@ public:
     void set_ringbuffer_read_bus(AudioBus* bus) {
         m_ringBufferReadBus = bus;
     }
+    void set_ringbuffer_write_bus(AudioBus* bus) {
+        m_ringBufferWriteBus = bus;
+    }
     void set_start_location(const TTimeRef& location) {
         m_startLocation = location;
         m_endLocation = m_startLocation + TTimeRef(m_nFramesToProcess, m_sampleRate);
@@ -30,6 +34,12 @@ public:
     AudioBus* get_ringbuffer_read_bus() const {
         Q_ASSERT(m_ringBufferReadBus);
         return m_ringBufferReadBus;
+    }
+    AudioBus* get_ringbuffer_write_bus() {
+        Q_ASSERT(m_ringBufferWriteBus);
+        AudioBus* bus = m_ringBufferWriteBus;
+        m_ringBufferWriteBus = nullptr;
+        return bus;
     }
     nframes_t get_nframes_to_process() const {return m_nFramesToProcess;}
     TTimeRef get_start_location() const {return m_startLocation;}
@@ -46,6 +56,7 @@ public:
 
 private:
     AudioBus*   m_ringBufferReadBus;
+    AudioBus*   m_ringBufferWriteBus;
     nframes_t   m_nFramesToProcess;
     TTimeRef    m_startLocation;
     TTimeRef    m_endLocation;
@@ -62,7 +73,7 @@ private:
     void set_sample_rate(uint rate) {
         m_sampleRate= rate;
     }
-    trav_time_t get_ringbuffer_read_wait_time() {
+    trav_time_t get_ringbuffers_read_write_wait_time() {
         auto time = m_ringBufferReadWaitTime;
         m_ringBufferReadWaitTime = 0;
         return time;

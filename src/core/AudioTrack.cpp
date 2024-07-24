@@ -256,7 +256,7 @@ void AudioTrack::add_input_bus(AudioBus *bus)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int AudioTrack::process(TProcessCallBackData *processData)
+int AudioTrack::process(TProcessCallBackData &processData)
 {
     int processResult = 0;
 
@@ -264,9 +264,9 @@ int AudioTrack::process(TProcessCallBackData *processData)
         return 0;
     }
 
-    nframes_t nframes = processData->get_nframes_to_process();
-    const TTimeRef startLocation = processData->get_start_location();
-    const TTimeRef endLocation = processData->get_end_location();
+    nframes_t nframes = processData.get_nframes_to_process();
+    const TTimeRef startLocation = processData.get_start_location();
+    const TTimeRef endLocation = processData.get_end_location();
 
 
     // Get the 'render bus' from sheet, a bit hackish solution, but
@@ -330,6 +330,11 @@ int AudioTrack::process(TProcessCallBackData *processData)
 
         // And finally do the post sends
         process_post_sends(nframes);
+    }
+
+    if (m_type == BOUNCE) {
+        m_inputBus->process_monitoring(m_vumonitors);
+        m_inputBus->silence_buffers(nframes);
     }
 
     return processResult;
@@ -485,4 +490,17 @@ TCommand* AudioTrack::toggle_show_clip_volume_automation()
     emit automationVisibilityChanged();
 
     return nullptr;
+}
+
+TBounceTrack::TBounceTrack(Sheet *sheet, const QString &name, int height)
+    : AudioTrack(sheet, name, height)
+{
+    m_type = BOUNCE;
+    TAudioBusConfiguration busConfig;
+    busConfig.name = "Bounce Input Bus";
+    busConfig.channelcount = 2;
+    busConfig.type = "input";
+    busConfig.isInternalBus = true;
+
+    m_inputBus = new AudioBus(busConfig);
 }

@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 
 class AudioTrack;
+class TBounceTrack;
 class SnapList;
 class TLocation;
 class TBusTrack;
@@ -101,7 +102,7 @@ protected:
 	QList<TBusTrack*>       m_busTracks;
 	QHash<qint64, Track* >	m_tracks;
     TBusTrack*              m_masterOutBusTrack;
-    AudioTrack*              m_bounceTrack;
+    TBounceTrack*           m_bounceTrack;
     QHash<qint64, int>      m_trackHeights;
 
     SnapList*           m_snaplist;

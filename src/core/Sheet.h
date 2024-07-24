@@ -94,7 +94,7 @@ public:
     void set_recording(bool recording, bool realtime);
     void set_audio_sources_dir(const QString& dir);
 
-    int process(TProcessCallBackData *processData);
+    int process(TProcessCallBackData &processData);
 
     // jackd only feature
     int transport_control(TTransportControl* state);

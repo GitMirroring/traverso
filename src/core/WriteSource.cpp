@@ -281,6 +281,10 @@ int WriteSource::finish_export( )
 {
 	PENTER;
 
+    if (m_peak && m_peak->finish_processing() < 0) {
+        PERROR("WriteSource::finish_export : peak->finish_processing() failed!");
+    }
+
 	if (m_writer) {
 		m_writer->close();
 		delete m_writer;
@@ -311,10 +315,7 @@ int WriteSource::finish_export( )
         m_srcState = nullptr;
 	}
 
-	if (m_peak && m_peak->finish_processing() < 0) {
-		PERROR("WriteSource::finish_export : peak->finish_processing() failed!");
-	}
-		
+
     // FIXME (?)
     // Be sure to connect to this signal using Qt::queuedConnection!
     // This signal is emited from DiskIO thread!!!!
@@ -323,13 +324,16 @@ int WriteSource::finish_export( )
 	return 1;
 }
 
-nframes_t WriteSource::ringbuffer_write(AudioBus* bus, nframes_t nframes, bool realTime)
+nframes_t WriteSource::ringbuffer_write(TProcessCallBackData &processData)
 {
+    nframes_t nframes = processData.get_nframes_to_process();
+    AudioBus* bus = processData.get_ringbuffer_write_bus();
+
     Q_ASSERT(bus->get_channel_count() == m_channelCount);
 
     QueueBufferSlot* slot = nullptr;
 
-    if ((slot = dequeue_from_free_queue(realTime)) )
+    if ((slot = dequeue_from_free_queue(processData)) )
     {
         Q_ASSERT(slot);
 
@@ -348,26 +352,42 @@ nframes_t WriteSource::ringbuffer_write(AudioBus* bus, nframes_t nframes, bool r
     return 0;
 }
 
-QueueBufferSlot* WriteSource::dequeue_from_free_queue(bool realTime)
+QueueBufferSlot* WriteSource::dequeue_from_free_queue(TProcessCallBackData &processData)
 {
     QueueBufferSlot* slot = nullptr;
 
-    if (realTime) {
-        if (m_freeBufferSlotsQueue->try_dequeue(slot)) {
-            return slot;
-        } else {
+    if (processData.get_is_real_time()) {
+        if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
             // FIXME
-            // What about feedback to user that we couldn't
-            // write the audiostream to storage media?
-            slot = nullptr;
+            // What about feedback to user that we're missing out on the
+            // audio stream?
         }
     } else {
+        auto startTime = TTimeRef::get_nanoseconds_since_epoch();
         m_freeBufferSlotsQueue->wait_dequeue(slot);
+        processData.add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
     }
 
     return slot;
 }
 
+// Called from DiskIO::do_work in DiskAudioThread
+// TODO: make sure this function is thread save
+void WriteSource::process_realtime_buffers()
+{
+    m_exportSpecification->set_render_buffer(m_diskIOFramebuffer);
+
+    QueueBufferSlot* slot = nullptr;
+
+    while (m_rtBufferSlotsQueue->try_dequeue(slot)) {
+        rb_file_write(slot);
+        m_freeBufferSlotsQueue->try_enqueue(slot);
+    }
+
+    if (! m_isRecording ) {
+        finish_export();
+    }
+}
 
 void WriteSource::set_process_peaks( bool process )
 {
@@ -441,24 +461,6 @@ int WriteSource::rb_file_write(QueueBufferSlot* slot)
 void WriteSource::set_recording(bool rec )
 {
 	m_isRecording = rec;
-}
-
-// Called from DiskIO::do_work in DiskAudioThread
-// TODO: make sure this function is thread save
-void WriteSource::process_realtime_buffers()
-{
-    m_exportSpecification->set_render_buffer(m_diskIOFramebuffer);
-
-    QueueBufferSlot* slot = nullptr;
-
-    while (m_rtBufferSlotsQueue->try_dequeue(slot)) {
-        rb_file_write(slot);
-        m_freeBufferSlotsQueue->try_enqueue(slot);
-    }
-
-	if (! m_isRecording ) {
-		finish_export();
-	}
 }
 
 BufferStatus* WriteSource::get_buffer_status()

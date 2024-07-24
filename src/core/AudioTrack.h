@@ -66,7 +66,7 @@ public :
         int arm();
         bool armed();
         int disarm();
-        int process(TProcessCallBackData *processData);
+        int process(TProcessCallBackData &processData);
 
         bool operator<(const AudioTrack &other) {
             printf("bool operator<(const AudioTrack &other)\n");
@@ -125,11 +125,7 @@ class TBounceTrack : public AudioTrack
     Q_OBJECT
 
 public:
-    TBounceTrack(Sheet* sheet, const QString& name, int height)
-        : AudioTrack(sheet, name, height)
-    {
-        m_type = BOUNCE;
-    }
+    TBounceTrack(Sheet* sheet, const QString& name, int height);
 
 };
 

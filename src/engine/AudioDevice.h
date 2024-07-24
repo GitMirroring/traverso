@@ -60,7 +60,7 @@ class CoreAudioDriver;
 using namespace fastdelegate;
 
 typedef FastDelegate1<nframes_t, int> TAudioDriverReadWriteCallBack;
-typedef FastDelegate1<TProcessCallBackData*, int> TProcessCallBack;
+typedef FastDelegate1<TProcessCallBackData&, int> TProcessCallBack;
 typedef FastDelegate0<int> RunCycleCallback;
 typedef FastDelegate1<TTransportControl*, int> TransportControlCallback;
 
@@ -152,14 +152,14 @@ private:
 #if defined (COREAUDIO_SUPPORT)
     friend class CoreAudioDriver;
 #endif
-    TTransportControl*     m_transportControl;
+    TTransportControl     m_transportControl;
 
-    TAudioDeviceSetup        m_setup;
-    TAudioDeviceSetup        m_fallBackSetup;
+    TAudioDeviceSetup   m_setup;
+    TAudioDeviceSetup   m_fallBackSetup;
     TAudioDriver* 		m_driver;
     AudioDeviceThread* 	m_audioThread;
     TRealTimeLinkedList<TAudioDeviceClient*> m_clients;
-    QList<AudioChannel* >   m_channels;
+    QList<AudioChannel* >   m_audioChannels;
     QList<TAudioBusConfiguration>        m_busConfigs;
     QList<TAudioChannelConfiguration>    m_channelConfigs;
     QStringList		m_availableDrivers;

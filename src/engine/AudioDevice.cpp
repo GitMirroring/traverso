@@ -152,7 +152,6 @@ TsarEvent finishedOneProcessCycleEvent;
 
 AudioDevice::AudioDevice()
 {
-    m_transportControl = new TTransportControl();
     m_runAudioThread = false;
     m_driver = nullptr;
     m_audioThread = nullptr;
@@ -167,7 +166,7 @@ AudioDevice::AudioDevice()
 
     m_driverType = tr("No Driver Loaded");
 
-    m_fallBackSetup.driverType = "Null Driver";
+    m_fallBackSetup.driverType = "Dummy Driver";
 
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
@@ -192,7 +191,7 @@ AudioDevice::AudioDevice()
 #endif
 
 
-    m_availableDrivers << "Null Driver";
+    m_availableDrivers << "Dummy Driver";
 
     // This will create the event queueu and tsar thread for us
     // has to be running before the audio thread in order to make
@@ -232,7 +231,7 @@ void AudioDevice::set_buffer_size( nframes_t size )
     Q_ASSERT(size > 0);
     m_bufferSize = size;
 
-    for (auto chan : m_channels) {
+    for (auto chan : m_audioChannels) {
         chan->set_buffer_size(m_bufferSize);
     }
 
@@ -281,8 +280,8 @@ int AudioDevice::run_one_cycle( nframes_t nframes, float  )
 
     for(TAudioDeviceClient* client = m_clients.first(); client != nullptr; client = client->next) {
         m_processCallBackData.set_nframes_to_process(nframes);
-        client->process(&m_processCallBackData);
-        auto ringBufferReadTime = m_processCallBackData.get_ringbuffer_read_wait_time();
+        client->process(m_processCallBackData);
+        auto ringBufferReadTime = m_processCallBackData.get_ringbuffers_read_write_wait_time();
         // printf("processing wait time (micro seconds): %ld\n", ringBufferReadTime / 1000);
         m_processingPathWaitTime += ringBufferReadTime;
     }
@@ -320,7 +319,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
     m_bufferSize = ads.bufferSize;
     m_xrunCount = 0;
     m_ditherShape = ads.ditherShape;
-    //        if (!(ads.driverType == "Null Driver")) {
+    //        if (!(ads.driverType == "Dummy Driver")) {
     m_setup = ads;
     //        }
 
@@ -337,14 +336,14 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     m_runAudioThread = 1;
 
-    if ((ads.driverType == "ALSA") || (ads.driverType == "Null Driver") || (ads.driverType == "PulseAudio") ) {
+    if ((ads.driverType == "ALSA") || (ads.driverType == "Dummy Driver") || (ads.driverType == "PulseAudio") ) {
 
         printf("AudioDevice: Starting Audio Thread ... ");
 
 
         bool realTime = false;
         if (!m_audioThread) {
-            if ((ads.driverType == "ALSA") || (ads.driverType == "Null Driver")) {
+            if ((ads.driverType == "ALSA") || (ads.driverType == "Dummy Driver")) {
                 realTime = true;
             }
 
@@ -376,7 +375,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
         if (ads.driverType == "Jack") {
 
             if (m_driver->start() == -1) {
-                // jack driver failed to start, fallback to Null Driver:
+                // jack driver failed to start, fallback to Dummy Driver:
                 set_parameters(m_fallBackSetup);
                 return;
             }
@@ -389,7 +388,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     if (ads.driverType == "PortAudio"|| (ads.driverType == "PulseAudio") || (ads.driverType == "CoreAudio")) {
         if (m_driver->start() == -1) {
-            // PortAudio driver failed to start, fallback to Null Driver:
+            // PortAudio driver failed to start, fallback to Dummy Driver:
             set_parameters(m_fallBackSetup);
             return;
         }
@@ -490,8 +489,8 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
 #endif
 
 
-    if (driverType == "Null Driver") {
-        printf("AudioDevice: Creating Null Driver...\n");
+    if (driverType == "Dummy Driver") {
+        printf("AudioDevice: Creating Dummy Driver...\n");
         m_driver = new TAudioDriver(this);
         m_driverType = driverType;
         return 1;
@@ -542,7 +541,7 @@ int AudioDevice::shutdown( )
         QList<AudioChannel*> channels = m_driver->get_capture_channels();
         channels.append(m_driver->get_playback_channels());
         foreach(AudioChannel* chan, channels) {
-            m_channels.removeAll(chan);
+            m_audioChannels.removeAll(chan);
         }
 
         delete m_driver;
@@ -657,13 +656,13 @@ AudioChannel* AudioDevice::create_channel(const QString& name, uint channelNumbe
 {
     AudioChannel* chan = new AudioChannel(name, channelNumber, type);
     chan->set_buffer_size(m_bufferSize);
-    m_channels.append(chan);
+    m_audioChannels.append(chan);
     return chan;
 }
 
 void AudioDevice::delete_channel(AudioChannel* channel)
 {
-    m_channels.removeAll(channel);
+    m_audioChannels.removeAll(channel);
     delete channel;
 }
 
@@ -814,7 +813,7 @@ void AudioDevice::audiothread_finished()
     if (m_runAudioThread) {
         // AudioThread stopped, but we didn't do it ourselves
         // so something certainly did go wrong when starting the beast
-        // Start the Null Driver to avoid problems with Tsar
+        // Start the Dummy Driver to avoid problems with Tsar
         PERROR("Alsa/Jack AudioThread stopped, but we didn't ask for it! Something apparently did go wrong :-(");
         set_parameters(m_fallBackSetup);
     }
@@ -852,7 +851,7 @@ void AudioDevice::check_jack_shutdown()
 
 void AudioDevice::switch_to_null_driver()
 {
-    message(tr("AudioDevice:: Buffer underrun 'Storm' detected, switching to Null Driver"), CRITICAL);
+    message(tr("AudioDevice:: Buffer underrun 'Storm' detected, switching to Dummy Driver"), CRITICAL);
     message(tr("AudioDevice:: For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
     set_parameters(m_fallBackSetup);
 }
@@ -885,12 +884,12 @@ void AudioDevice::transport_start(TAudioDeviceClient * client)
     }
 #endif
 
-    m_transportControl->set_state(TTransportControl::Rolling);
-    m_transportControl->set_slave(false);
-    m_transportControl->set_realtime(false);
-    m_transportControl->set_location(TTimeRef()); // get from client!!
+    m_transportControl.set_state(TTransportControl::Rolling);
+    m_transportControl.set_slave(false);
+    m_transportControl.set_realtime(false);
+    m_transportControl.set_location(TTimeRef()); // get from client!!
 
-    client->transport_control(m_transportControl);
+    client->transport_control(&m_transportControl);
 }
 
 void AudioDevice::transport_stop(TAudioDeviceClient * client, const TTimeRef &location)
@@ -904,12 +903,12 @@ void AudioDevice::transport_stop(TAudioDeviceClient * client, const TTimeRef &lo
     }
 #endif
 
-    m_transportControl->set_state(TTransportControl::Stopped);
-    m_transportControl->set_slave(false);
-    m_transportControl->set_realtime(false);
-    m_transportControl->set_location(location);
+    m_transportControl.set_state(TTransportControl::Stopped);
+    m_transportControl.set_slave(false);
+    m_transportControl.set_realtime(false);
+    m_transportControl.set_location(location);
 
-    client->transport_control(m_transportControl);
+    client->transport_control(&m_transportControl);
 }
 
 // return 0 if valid request, non-zero otherwise.
@@ -924,12 +923,12 @@ int AudioDevice::transport_locate(TAudioDeviceClient* client, const TTimeRef& lo
     }
 #endif
 
-    m_transportControl->set_state(TTransportControl::Starting);
-    m_transportControl->set_slave(false);
-    m_transportControl->set_realtime(false);
-    m_transportControl->set_location(location);
+    m_transportControl.set_state(TTransportControl::Starting);
+    m_transportControl.set_slave(false);
+    m_transportControl.set_realtime(false);
+    m_transportControl.set_location(location);
 
-    client->transport_control(m_transportControl);
+    client->transport_control(&m_transportControl);
 
     return 0;
 }

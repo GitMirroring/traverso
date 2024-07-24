@@ -173,6 +173,7 @@ void Sheet::init()
     m_masterOutBusTrack->set_gain(0.5);
 
     m_bounceTrack = new TBounceTrack(this, tr("Bounce"), Track::INITIAL_HEIGHT);
+    m_masterOutBusTrack->add_post_send(m_bounceTrack->get_input_bus());
 
     resize_buffers(audiodevice().get_buffer_size());
 
@@ -317,7 +318,7 @@ QDomNode Sheet::get_state(QDomDocument doc, bool istemplate)
 
 bool Sheet::any_audio_track_armed()
 {
-    return get_armed_tracks().size() > 0;
+    return get_armed_tracks().size() > 0 || m_bounceTrack->armed();
 }
 
 // Get the CD export range based on the TimeLineRuler Marker positions
@@ -500,7 +501,7 @@ void Sheet::solo_track(Track *track)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int Sheet::process(TProcessCallBackData *processData)
+int Sheet::process(TProcessCallBackData &processData)
 {
     if (start_seek()) {
         printf("Sheet::process: starting seek\n");
@@ -528,8 +529,8 @@ int Sheet::process(TProcessCallBackData *processData)
 
     int processResult = 0;
 
-    nframes_t nframes = processData->get_nframes_to_process();
-    processData->set_ringbuffer_read_bus(m_clipRenderBus);
+    nframes_t nframes = processData.get_nframes_to_process();
+    processData.set_ringbuffer_read_bus(m_clipRenderBus);
 
     // Process all Tracks.
     for(AudioTrack* track = m_rtAudioTracks.first(); track != nullptr; track = track->next) {
@@ -552,7 +553,9 @@ int Sheet::process(TProcessCallBackData *processData)
     // Mix the result into the AudioDevice "physical" buffers
     m_masterOutBusTrack->process(processData);
 
-    // m_masterOutBusTrack.get
+    if (m_bounceTrack->armed()) {
+        m_bounceTrack->process(processData);
+    }
 
     return 1;
 }
@@ -892,27 +895,56 @@ void Sheet::prepare_recording()
 {
     Q_ASSERT(QThread::currentThread() == this->thread());
 
-    if (m_recording && any_audio_track_armed()) {
-        CommandGroup* group = new CommandGroup(this, "");
-        const auto armedTracks = get_armed_tracks();
-        for(AudioTrack* track : armedTracks) {
-            AudioClip* clip = track->init_recording();
-            if (clip) {
-                // For autosave purposes, we connect the recordingfinished
-                // signal to the clip_finished_recording() slot, and add this
-                // clip to our recording clip list.
-                // At the time the cliplist is empty, we're sure the recording
-                // session is finished, at which time an autosave makes sense.
-                connect(clip, SIGNAL(recordingFinished(AudioClip*)),
-                        this, SLOT(clip_finished_recording(AudioClip*)));
-                m_recordingClips.append(clip);
-
-                group->add_command(new AddRemoveClip(clip, AddRemoveClip::ADD));
-            }
-        }
-        group->setText(tr("Recording to %n Clip(s)", "", m_recordingClips.size()));
-        TCommand::process_command(group);
+    if (!m_recording) {
+        return;
     }
+
+    if (!any_audio_track_armed()) {
+        return;
+    }
+
+
+    CommandGroup* group = new CommandGroup(this, "");
+
+    QList<AudioTrack*> armedTracks;
+    if (m_bounceTrack->armed()) {
+        armedTracks.append(m_bounceTrack);
+        group->setText(tr("Bouncing"));
+    } else {
+        armedTracks = get_armed_tracks();
+        group->setText(tr("Recording to %n Clip(s)", "", m_recordingClips.size()));
+    }
+
+    for(AudioTrack* track : armedTracks) {
+        AudioClip* clip = track->init_recording();
+        if (clip) {
+            // For autosave purposes, we connect the recordingfinished
+            // signal to the clip_finished_recording() slot, and add this
+            // clip to our recording clip list.
+            // At the time the cliplist is empty, we're sure the recording
+            // session is finished, at which time an autosave makes sense.
+            connect(clip, SIGNAL(recordingFinished(AudioClip*)),
+                    this, SLOT(clip_finished_recording(AudioClip*)));
+            m_recordingClips.append(clip);
+
+            group->add_command(new AddRemoveClip(clip, AddRemoveClip::ADD));
+        }
+    }
+    if (m_bounceTrack->armed()) {
+        armedTracks.append(m_bounceTrack);
+        if (m_recordingClips.size() > 0) {
+            group->setText(tr("Bouncing"));
+        } else {
+            info().warning(tr("Failed to create Bounce recording source"));
+            group->deleteLater();
+            return;
+        }
+    } else {
+        armedTracks = get_armed_tracks();
+        group->setText(tr("Recording to %n Clip(s)", "", m_recordingClips.size()));
+    }
+
+    TCommand::process_command(group);
 
     m_readyToRecord = true;
 }

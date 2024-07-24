@@ -39,7 +39,7 @@ public:
     QDomNode get_state(QDomDocument doc, bool istemplate=false);
     virtual int set_state( const QDomNode & node );
     void set_name(const QString& name);
-    int process(TProcessCallBackData *processData);
+    int process(TProcessCallBackData &processData);
 
     bool operator<(const TBusTrack& other) {
         return this->get_sort_index() < other.get_sort_index();

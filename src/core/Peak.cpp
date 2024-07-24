@@ -522,6 +522,9 @@ void Peak::process(uint channel, const audio_sample_t* buffer, nframes_t nframes
     ChannelData* data = m_channelData.at(channel);
     ProcessData* pd = data->pd;
 
+    Q_ASSERT(data);
+    Q_ASSERT(pd);
+
     for (uint i=0; i < nframes; i++) {
 
         pd->processLocation += pd->stepSize;

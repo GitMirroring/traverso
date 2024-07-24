@@ -419,20 +419,20 @@ void AudioClip::set_selected(bool /*selected*/)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int AudioClip::process(TProcessCallBackData *processData)
+int AudioClip::process(TProcessCallBackData &processData)
 {
     // Handle silence clips
     if (get_channel_count() == 0) {
         return 0;
     }
 
-    nframes_t nframes = processData->get_nframes_to_process();
-    const TTimeRef startLocation = processData->get_start_location();
-    const TTimeRef endLocation = processData->get_end_location();
-    AudioBus* bus = processData->get_ringbuffer_read_bus();
+    nframes_t nframes = processData.get_nframes_to_process();
+    const TTimeRef startLocation = processData.get_start_location();
+    const TTimeRef endLocation = processData.get_end_location();
+    AudioBus* bus = processData.get_ringbuffer_read_bus();
 
     if (m_recordingStatus == RECORDING) {
-        process_capture(nframes);
+        process_capture(processData);
         return 0;
     }
 
@@ -515,7 +515,7 @@ int AudioClip::process(TProcessCallBackData *processData)
 //
 //  Function called in RealTime AudioThread processing path
 //
-void AudioClip::process_capture(nframes_t nframes)
+void AudioClip::process_capture(TProcessCallBackData &processData)
 {
     AudioBus* bus = m_track->get_input_bus();
 
@@ -523,13 +523,14 @@ void AudioClip::process_capture(nframes_t nframes)
         return;
     }
 
-    bool realTime = true;
-    nframes_t written = m_writer->ringbuffer_write(bus, nframes, realTime);
+    processData.set_ringbuffer_write_bus(bus);
+    nframes_t written = m_writer->ringbuffer_write(processData);
 
     m_length.add_frames(written, get_rate());
 
-    if (written != nframes) {
-        printf("AudioClip::process_capture: couldn't write nframes %d to recording buffer for channel 0, only %d\n", nframes, written);
+    nframes_t toWrite = processData.get_nframes_to_process();
+    if (written != toWrite) {
+        printf("AudioClip::process_capture: couldn't write nframes %d to recording buffer for channel 0, only %d\n", toWrite, written);
     }
 }
 

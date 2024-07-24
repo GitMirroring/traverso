@@ -52,7 +52,7 @@ class Project : public TSession
 public :
 	~Project();
 
-        int process(TProcessCallBackData *processData);
+    int process(TProcessCallBackData &processData);
         // jackd only feature
         int transport_control(TTransportControl* transportControl);
 

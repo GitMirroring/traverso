@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioSource.h"
 
 #include <samplerate.h>
+#include "TProcessCallBackData.h"
 #include "gdither_types.h"
 
 class TExportSpecification;
@@ -41,7 +42,8 @@ public :
 	WriteSource(TExportSpecification* spec);
 	~WriteSource();
 
-    nframes_t ringbuffer_write(AudioBus* bus, nframes_t nframes, bool realTime);
+    nframes_t ringbuffer_write(TProcessCallBackData &processData);
+
     int rb_file_write(QueueBufferSlot* slot);
 	void process_ringbuffer(audio_sample_t* buffer);
 
@@ -80,7 +82,7 @@ private:
     float*          m_dataBuffer;
     void*           m_outputData;
 
-    QueueBufferSlot* dequeue_from_free_queue(bool realTime);
+    QueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
 
     friend class DiskIO;
     void process_realtime_buffers() final;

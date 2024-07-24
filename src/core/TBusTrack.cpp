@@ -106,15 +106,15 @@ void TBusTrack::set_name( const QString & name )
         Track::set_name(name);
 }
 
-int TBusTrack::process(TProcessCallBackData *processData)
+int TBusTrack::process(TProcessCallBackData &processData)
 {
     if (m_isMuted || (get_gain() == 0.0f) ) {
         return 0;
     }
 
-    nframes_t nframes = processData->get_nframes_to_process();
-    const TTimeRef startLocation = processData->get_start_location();
-    const TTimeRef endLocation = processData->get_end_location();
+    nframes_t nframes = processData.get_nframes_to_process();
+    const TTimeRef startLocation = processData.get_start_location();
+    const TTimeRef endLocation = processData.get_end_location();
 
 
     process_pre_sends(nframes);

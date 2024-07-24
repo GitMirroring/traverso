@@ -1499,12 +1499,12 @@ void Project::set_sheets_are_tracks_folder(bool isFolder)
 }
 
 
-int Project::process(TProcessCallBackData *processData)
+int Project::process(TProcessCallBackData &processData)
 {
     int result = 0;
-    nframes_t nframes = processData->get_nframes_to_process();
+    nframes_t nframes = processData.get_nframes_to_process();
 
-    processData->set_start_location(get_transport_location());
+    processData.set_start_location(get_transport_location());
 
     for(Sheet* sheet = m_RtSheets.first(); sheet != nullptr; sheet = sheet->next) {
         result |= sheet->process(processData);

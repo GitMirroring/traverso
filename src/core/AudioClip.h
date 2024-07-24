@@ -61,7 +61,7 @@ public:
 	
 	void set_audio_source(ReadSource* source);
     int init_recording();
-    int process(TProcessCallBackData *processData);
+    int process(TProcessCallBackData &processData);
 
     // Re-implemented from LocationItem::set_location_start
     // preferably we wouldn't have to re-implement this function
@@ -151,7 +151,7 @@ private:
     void set_source_start_location(const TTimeRef& location);
     void set_track_end_location(const TTimeRef& location);
 	void set_sources_active_state();
-	void process_capture(nframes_t nframes);
+    void process_capture(TProcessCallBackData &processData);
 		
 	friend class ResourcesManager;
 
