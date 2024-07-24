@@ -314,6 +314,8 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 {
     PENTER;
 
+    shutdown();
+
     m_rate = ads.rate;
     m_bufferSize = ads.bufferSize;
     m_xrunCount = 0;
@@ -322,7 +324,6 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
     m_setup = ads;
     //        }
 
-    shutdown();
 
     if (create_driver(ads.driverType, ads.capture, ads.playback, ads.cardDevice) < 0) {
         set_parameters(m_fallBackSetup);
@@ -400,6 +401,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 void AudioDevice::set_free_wheeling(bool freeWheeling)
 {
     m_isFreeWheeling = freeWheeling;
+    // FIXME Only set if AudioDriver supports freewheeling
     m_processCallBackData.set_real_time(!m_isFreeWheeling);
 
     emit freeWheelingChanged();
