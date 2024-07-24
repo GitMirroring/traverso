@@ -40,9 +40,10 @@ public:
     Track (TSession* session=0);
     virtual ~Track ();
 
-    enum {
-        AUDIOTRACK = 0,
-        BUS = 1
+    enum TRACKTYPE{
+        AUDIO,
+        BUS = 1,
+        BOUNCE = 2
     };
 
     static const int INITIAL_HEIGHT = 90;

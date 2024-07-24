@@ -109,7 +109,7 @@ Project::Project(const QString& title)
     AudioBus* bus = m_masterOutBusTrack->get_process_bus();
     for(uint i=0; i<bus->get_channel_count(); i++) {
         if (AudioChannel* chan = bus->get_channel(i)) {
-            chan->set_buffer_size(2048);
+            chan->set_buffer_size(audiodevice().get_buffer_size());
         }
     }
 

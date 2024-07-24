@@ -79,7 +79,7 @@ void AudioTrack::init()
 {
     QObject::tr("Track");
 
-    m_type = AUDIOTRACK;
+    m_type = TRACKTYPE::AUDIO;
     m_isArmed = false;
     m_processBus = m_sheet->get_render_bus();
 

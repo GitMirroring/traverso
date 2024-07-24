@@ -196,7 +196,7 @@ void FadeCurve::process(audio_sample_t* gainbuffer, AudioBus *bus, const TTimeRe
             offset = TTimeRef::to_frame(fadeStartLocation - startLocation, outputRate);
             // FIXME: offset can become negative so this location calculation code
             // needs review
-            Q_ASSERT(offset < nframes);
+            Q_ASSERT(offset <= nframes);
             fadeLocation = TTimeRef();
             framesToProcess = framesToProcess - offset;
         } else {

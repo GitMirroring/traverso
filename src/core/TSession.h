@@ -100,8 +100,9 @@ protected:
 	QList<AudioTrack*>      m_audioTracks;
 	QList<TBusTrack*>       m_busTracks;
 	QHash<qint64, Track* >	m_tracks;
-	TBusTrack*              m_masterOutBusTrack{};
-	QHash<qint64, int>      m_trackHeights;
+    TBusTrack*              m_masterOutBusTrack;
+    AudioTrack*              m_bounceTrack;
+    QHash<qint64, int>      m_trackHeights;
 
     SnapList*           m_snaplist;
     TLocation*       m_workSnap;
@@ -121,9 +122,6 @@ protected:
 
 private:
 	friend class TTimeLineRuler;
-
-	void init();
-
 
 public slots:
 	void set_temp_follow_state(bool state);

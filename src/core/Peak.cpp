@@ -259,8 +259,9 @@ int Peak::calculate_peaks(
         // Check if this zoom level has as many data as requested.
         if ( (peakDataCount + offset) > data->headerdata.peakDataSizeForLevel[index]) {
             truncate = peakDataCount - (data->headerdata.peakDataSizeForLevel[index] - offset);
+            // FIXME: truncate should not be needed or? drawing of peaks is not correct sometimes!
             //FIXME: nothing done here?
-                       qDebug("Peak::calculate_peaks truncate: %d", truncate);
+                       // qDebug("Peak::calculate_peaks truncate: %d", truncate);
             //            peakDataCount = data->headerdata.peakDataSizeForLevel[index] - offset;
         }
 

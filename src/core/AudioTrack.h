@@ -33,7 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 #include "Track.h"
 
-#include "defines.h"
 
 class Sheet;
 
@@ -119,6 +118,19 @@ private slots:
         void private_audioclip_removed(AudioClip* clip);
 
         void private_clip_position_changed(AudioClip* clip);
+};
+
+class TBounceTrack : public AudioTrack
+{
+    Q_OBJECT
+
+public:
+    TBounceTrack(Sheet* sheet, const QString& name, int height)
+        : AudioTrack(sheet, name, height)
+    {
+        m_type = BOUNCE;
+    }
+
 };
 
 #endif

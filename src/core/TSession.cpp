@@ -39,6 +39,8 @@ TSession::TSession(TSession *parentSession)
 	: ContextItem()
 {
 	m_parentSession = nullptr;
+    m_masterOutBusTrack = nullptr;
+    m_bounceTrack = nullptr;
 
 	if (!parentSession) {
 		m_timeline = new TTimeLineRuler(this);
@@ -49,22 +51,17 @@ TSession::TSession(TSession *parentSession)
 		set_parent_session(parentSession);
 	}
 
-	init();
-}
-
-void TSession::init()
-{
-	// TODO seek to old position on project exit ?
-	m_workLocation = TTimeRef();
-	m_transportLocation = TTimeRef();
+    // TODO seek to old position on project exit ?
+    m_workLocation = TTimeRef();
+    m_transportLocation = TTimeRef();
     m_scrollBarXValue = m_scrollBarYValue = 0;
-	m_hzoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
+    m_hzoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
     m_transportRolling.store(false);
-	m_isSnapOn=true;
-	m_isProjectSession = false;
+    m_isSnapOn=true;
+    m_isProjectSession = false;
 
-	connect(this, SIGNAL(privateTrackAdded(Track*)), this, SLOT(private_track_added(Track*)));
-	connect(this, SIGNAL(privateTrackRemoved(Track*)), this, SLOT(private_track_removed(Track*)));
+    connect(this, SIGNAL(privateTrackAdded(Track*)), this, SLOT(private_track_added(Track*)));
+    connect(this, SIGNAL(privateTrackRemoved(Track*)), this, SLOT(private_track_removed(Track*)));
 }
 
 void TSession::set_parent_session(TSession *parentSession)
@@ -179,6 +176,11 @@ QList<Track*> TSession::get_tracks() const
     for(TBusTrack* track : m_busTracks) {
 		list.append(track);
 	}
+
+    if (m_bounceTrack) {
+        m_bounceTrack->set_sort_index(1);
+        list.append(m_bounceTrack);
+    }
 
 	return list;
 }
@@ -486,10 +488,10 @@ TCommand* TSession::remove_track(Track* track, bool historable)
 void TSession::private_add_track(Track* track)
 {
 	switch (track->get_type()) {
-	case Track::AUDIOTRACK:
+    case Track::AUDIO:
         m_rtAudioTracks.append(qobject_cast<AudioTrack*>(track));
 		break;
-	case Track::BUS:
+    case Track::BUS:
         m_rtBusTracks.append(qobject_cast<TBusTrack*>(track));
 		break;
 	default:
@@ -501,7 +503,7 @@ void TSession::private_add_track(Track* track)
 void TSession::private_remove_track(Track* track)
 {
 	switch (track->get_type()) {
-	case Track::AUDIOTRACK:
+    case Track::AUDIO:
         m_rtAudioTracks.remove(qobject_cast<AudioTrack*>(track));
 		break;
 	case Track::BUS:
@@ -515,7 +517,7 @@ void TSession::private_remove_track(Track* track)
 void TSession::private_track_added(Track *track)
 {
 	switch(track->get_type()) {
-	case Track::AUDIOTRACK:
+    case Track::AUDIO:
         m_audioTracks.append(qobject_cast<AudioTrack*>(track));
 		break;
 	case Track::BUS:
@@ -537,7 +539,7 @@ void TSession::private_track_added(Track *track)
 void TSession::private_track_removed(Track *track)
 {
 	switch(track->get_type()) {
-	case Track::AUDIOTRACK:
+    case Track::AUDIO:
         m_audioTracks.removeAll(qobject_cast<AudioTrack*>(track));
 		break;
 	case Track::BUS:

@@ -161,7 +161,7 @@ private:
     void start_transport_rolling(bool realtime);
     void stop_transport_rolling();
 
-    void resize_buffer(nframes_t size);
+    void resize_buffers(nframes_t size);
 
     friend class AudioClipManager;
 

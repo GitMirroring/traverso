@@ -70,7 +70,7 @@ TTrackManagerDialog::TTrackManagerDialog(Track *track, QWidget *parent)
 
         nameLineEdit->setText(m_track->get_name());
 
-        if (m_track->get_type() == Track::AUDIOTRACK) {
+        if (m_track->get_type() == Track::AUDIO) {
                 trackLabel->setText(tr("Audio Track:"));
                 routingInputButton->setText("Set Input");
         }
@@ -89,6 +89,9 @@ TTrackManagerDialog::TTrackManagerDialog(Track *track, QWidget *parent)
                 // Master Buses are not allowed to be renamed to avoid confusion
                 nameLineEdit->setEnabled(false);
                 trackLabel->setText(tr("Master Bus:"));
+        }
+        if (m_track->get_type() == Track::BOUNCE) {
+            setEnabled(false);
         }
 
         connect(m_track, SIGNAL(panChanged()), this, SLOT(update_pan_indicator()));
@@ -126,7 +129,7 @@ void TTrackManagerDialog::create_routing_input_menu()
 
         m_routingInputMenu = new QMenu;
 
-        if (m_track->get_type() == Track::AUDIOTRACK) {
+        if (m_track->get_type() == Track::AUDIO) {
                 foreach(AudioBus* bus, pm().get_project()->get_hardware_buses()) {
                         if (bus->is_input() && bus->is_valid()) {
                                 QAction* action = m_routingInputMenu->addAction(bus->get_name());
@@ -293,7 +296,7 @@ void TTrackManagerDialog::routingInputMenuActionTriggered(QAction *action)
                 return;
         }
 
-        if (m_track->get_type() == Track::AUDIOTRACK) {
+        if (m_track->get_type() == Track::AUDIO) {
                 m_track->add_input_bus(action->text());
         }
 
@@ -339,7 +342,7 @@ void TTrackManagerDialog::update_routing_input_output_widget_view()
         //FIXME
         // What does this code actually do?
         // clang says, item is a potentential memory leak
-        if (m_track->get_type() == Track::AUDIOTRACK) {
+        if (m_track->get_type() == Track::AUDIO) {
                 QListWidgetItem* item = new QListWidgetItem(routingInputListWidget);
                 AudioBus* bus = m_track->get_input_bus();
                 if (bus) {
