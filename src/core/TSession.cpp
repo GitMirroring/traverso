@@ -178,7 +178,7 @@ QList<Track*> TSession::get_tracks() const
 	}
 
     if (m_bounceTrack) {
-        m_bounceTrack->set_sort_index(1);
+        m_bounceTrack->set_sort_index(0);
         list.append(m_bounceTrack);
     }
 

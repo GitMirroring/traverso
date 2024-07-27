@@ -42,6 +42,7 @@ struct BufferStatus {
         QUEUE_SEEKED_TO_NEW_LOCATION,
         FILL_RTBUFFER_DEQUEUE_FAILURE,
         FILL_RTBUFFER_ENQUEUE_FAILURE,
+        QUEUE_ABOUT_TO_BE_DELETED
     };
 
     inline bool out_of_sync() const {return m_syncStatus.load() != IN_SYNC;}
@@ -154,7 +155,7 @@ protected:
 
     TTimeRef            m_bufferSlotDuration;
     uint                m_outputRate;
-    size_t slotcount = 50;
+    size_t              m_slotcount;
 
     // Used for WriteSource, change to DecodeBuffer
     audio_sample_t* m_diskIOFramebuffer;

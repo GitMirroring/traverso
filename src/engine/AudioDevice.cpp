@@ -162,7 +162,7 @@ AudioDevice::AudioDevice()
     m_cpuTime = new RingBufferNPT<trav_time_t>(65536);
     m_cycleStartTime = {};
     m_lastCpuReadTime = {};
-    m_isFreeWheeling = false;
+    m_isRealTime = true;
 
     m_driverType = tr("No Driver Loaded");
 
@@ -248,6 +248,26 @@ void AudioDevice::set_bit_depth( uint depth )
     m_bitdepth = depth;
 }
 
+int AudioDevice::start_driver()
+{
+    Q_ASSERT(m_driver);
+
+    return m_driver->start();
+}
+
+
+int AudioDevice::_run_cycle()
+{
+    int result;
+    if (running_real_time()) {
+        result = m_driver->_run_cycle();
+    } else {
+        result = m_driver->TAudioDriver::_run_cycle();
+    }
+
+    return result;
+}
+
 int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
 {
     nframes_t left;
@@ -273,7 +293,8 @@ int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
 int AudioDevice::run_one_cycle( nframes_t nframes, float  )
 {
 
-    if (m_driver->_read(nframes) < 0) {
+
+    if (m_isRealTime && m_driver->_read(nframes) < 0) {
         qDebug("driver read failed!");
         return -1;
     }
@@ -286,7 +307,7 @@ int AudioDevice::run_one_cycle( nframes_t nframes, float  )
         m_processingPathWaitTime += ringBufferReadTime;
     }
 
-    if (m_driver->_write(nframes) < 0) {
+    if (m_isRealTime && m_driver->_write(nframes) < 0) {
         qDebug("driver write failed!");
         return -1;
     }
@@ -399,9 +420,9 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
 void AudioDevice::set_free_wheeling(bool freeWheeling)
 {
-    m_isFreeWheeling = freeWheeling;
+    m_isRealTime = !freeWheeling;
     // FIXME Only set if AudioDriver supports freewheeling
-    m_processCallBackData.set_real_time(!m_isFreeWheeling);
+    m_processCallBackData.set_real_time(m_isRealTime);
 
     emit freeWheelingChanged();
 }

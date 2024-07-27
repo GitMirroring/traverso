@@ -378,7 +378,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
     }
 
     Q_ASSERT(m_rtBufferSlotsQueue->size_approx() == 0);
-    Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == slotcount);
+    Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == m_slotcount);
 
     TTimeRef fileLocation = seekTransportLocation - m_location->get_start() + m_sourceStartLocation;
     // printf("rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
@@ -429,7 +429,7 @@ void ReadSource::process_realtime_buffers()
     // value to the seek transport location
     size_t slotsToFill = freeSlots;
     if (m_bufferstatus.get_sync_status() == BufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION) {
-        slotsToFill = int(0.7 * slotcount);
+        slotsToFill = int(0.7 * m_slotcount);
     } else {
         slotFileLocation += m_bufferSlotDuration;
     }
@@ -502,7 +502,7 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
     while ((slot = dequeue_from_rt_queue(processData)))
     {
         Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
-
+        Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
         Q_ASSERT(slot);
 
         m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
@@ -550,6 +550,9 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
 
 QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData &processData)
 {
+    Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
+    Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+
     QueueBufferSlot* slot = nullptr;
 
     if (processData.get_is_real_time()) {
@@ -575,7 +578,7 @@ BufferStatus* ReadSource::get_buffer_status()
     if (!m_active.load()) {
         m_bufferstatus.fillStatus =  100;
 	} else {
-        m_bufferstatus.fillStatus = 100 - ((m_freeBufferSlotsQueue->size_approx() * 100) / slotcount);
+        m_bufferstatus.fillStatus = 100 - ((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount);
 	}
 
     return &m_bufferstatus;

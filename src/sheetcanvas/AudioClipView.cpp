@@ -92,10 +92,10 @@ AudioClipView::AudioClipView(SheetView* sv, AudioTrackView* parent, AudioClip* c
     m_gainCurveView->set_start_offset(m_clip->get_source_start_location());
     connect(m_gainCurveView, SIGNAL(curveModified()), m_sv, SLOT(stop_follow_play_head()));
 
-    connect(m_clip, SIGNAL(muteChanged()), this, SLOT(repaint()));
-    connect(m_clip, SIGNAL(stateChanged()), this, SLOT(clip_state_changed()));
+    connect(m_clip, &AudioClip::muteChanged, this, [this](){update();});
+    connect(m_clip, &AudioClip::stateChanged, this, [this](){update();});
     connect(m_clip, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
-    connect(m_clip, SIGNAL(lockChanged()), this, SLOT(repaint()));
+    connect(m_clip, &AudioClip::lockChanged, this, [this](){update();});
     connect(m_clip, SIGNAL(fadeAdded(FadeCurve*)), this, SLOT(add_new_fade_curve_view(FadeCurve*)));
     connect(m_clip, SIGNAL(fadeRemoved(FadeCurve*)), this, SLOT(remove_fade_curve_view(FadeCurve*)));
     connect(m_clip, SIGNAL(positionChanged()), this, SLOT(position_changed()));
@@ -649,7 +649,7 @@ void AudioClipView::create_clipinfo_string()
     QFont font = themer()->get_font("AudioClip:fontscale:title");
     QFontMetrics fm(font);
 
-    QString clipinfoString = fm.elidedText(m_clip->get_name(), Qt::ElideRight, 200);
+    QString clipinfoString = fm.elidedText(m_clip->get_name(), Qt::ElideRight, 400);
 
     int clipInfoWidth = fm.boundingRect(clipinfoString).width();
 
@@ -720,12 +720,6 @@ void AudioClipView::calculate_bounding_rect()
 
     update_start_pos();
     ViewItem::calculate_bounding_rect();
-}
-
-
-void AudioClipView::repaint( )
-{
-    update(m_boundingRect);
 }
 
 void AudioClipView::update_start_pos()
@@ -914,10 +908,5 @@ TCommand * AudioClipView::edit_properties()
     editdialog->show();
 
     return nullptr;
-}
-
-void AudioClipView::clip_state_changed()
-{
-    update();
 }
 

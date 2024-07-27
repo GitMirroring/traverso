@@ -59,7 +59,7 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
         driverInformationTextEdit->setTextInteractionFlags(Qt::NoTextInteraction);
         driverInformationTextEdit->hide();
 
-    periodBufferSizesList << 16 << 32 << 64 << 128 << 256 << 512 << 1024 << 2048 << 4096;
+        periodBufferSizesList << 16 << 32 << 64 << 128 << 256 << 512 << 1024 << 2048 << 4096;
 
     m_mainLayout = qobject_cast<QVBoxLayout*>(layout());
 

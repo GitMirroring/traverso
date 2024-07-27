@@ -70,21 +70,30 @@ AudioSource::~AudioSource()
 
 void AudioSource::prepare_rt_buffers(nframes_t bufferSize)
 {
-    m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::OUT_OF_SYNC);
+    Q_ASSERT(m_outputRate > 0);
+
+    m_bufferstatus.set_sync_status(BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+
 
     // printf("AudioSource::prepare_rt_buffers: audio device buffer size %d\n", bufferSize);
+
+    m_slotcount = (m_outputRate / bufferSize);
+    // Make sure we have enough slots to keep the buffer status logic intact
+    if (m_slotcount < 5) {
+        m_slotcount = 5;
+    }
 
     delete_rt_buffers();
 
     QueueBufferSlot* slot = nullptr;
 
-    m_rtBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(slotcount);
-    m_freeBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(slotcount);
+    m_rtBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(m_slotcount);
+    m_freeBufferSlotsQueue = new moodycamel::BlockingReaderWriterCircularBuffer<QueueBufferSlot*>(m_slotcount);
 
 
     m_bufferSlotDuration = TTimeRef(bufferSize, m_outputRate);
 
-    for (size_t i=0; i<slotcount;++i) {
+    for (size_t i=0; i<m_slotcount;++i) {
         slot = new QueueBufferSlot(i, m_channelCount, bufferSize);
         bool queued = m_freeBufferSlotsQueue->try_enqueue(slot);
         Q_ASSERT(queued);
@@ -93,6 +102,8 @@ void AudioSource::prepare_rt_buffers(nframes_t bufferSize)
     Q_ASSERT(slot);
     // We have to assign m_lastQueuedRTBufferSlot to an existing slot
     m_lastQueuedRTBufferSlot = slot;
+
+    m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::OUT_OF_SYNC);
 
     // printf("AudioSource::::prepare_rt_buffers: freeBufferSlotsQueue slot count %zu\n", m_freeBufferSlotsQueue->size_approx());
     // printf("AudioSource::::prepare_rt_buffers: rtBufferSlotsQueue slot count %zu\n", m_rtBufferSlotsQueue->size_approx());

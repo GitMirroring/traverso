@@ -69,7 +69,7 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     m_toRightAction = addAction(QIcon(":/seekright"), tr("Next Snap Position"), &transport(), SLOT(next_skip_pos()));
     m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"), &transport(), SLOT(to_end()));
     m_freeWheelingAction = addAction(QIcon(":/seekright"), tr("Start/Stop FreeWheeling"), this, [](){
-        audiodevice().set_free_wheeling(!audiodevice().get_is_free_wheeling());
+        audiodevice().set_free_wheeling(audiodevice().running_real_time());
     });
     m_freeWheelingAction->setCheckable(true);
 
@@ -83,7 +83,7 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
     connect(&audiodevice(), SIGNAL(finishedOneProcessCycle()), this, SLOT(update_label()));
     connect(&audiodevice(), &AudioDevice::freeWheelingChanged, this, [this](){
-        m_freeWheelingAction->setChecked(audiodevice().get_is_free_wheeling());
+        m_freeWheelingAction->setChecked(!audiodevice().running_real_time());
     });
 
     update_layout();

@@ -62,18 +62,20 @@ int TAudioDriver::_run_cycle( )
 
     trav_time_t runCycleTime = (m_runCycleEndTime - m_runCycleStartTime);
 
-    if (m_device->get_is_free_wheeling()) {
-        // 20 microseconds to ryn_cycles() / second == 1.000.000 / 20 = 50.000
-        trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 20);
+    if (m_device->running_real_time()) {
+        trav_time_t sleepTime = (m_periodTimeInMicroSeconds * 1000) - runCycleTime;
+        QThread::currentThread()->sleep(std::chrono::nanoseconds (sleepTime));
+    } else
+    {
+        // We're free wheeling
         // Limit the amount of runcycles to 50.000 per second.
         // We have to set this limit to not overload the Tsar event queues.
+
+        // 20 microseconds to ryn_cycles() / second == 1.000.000 / 20 = 50.000
+        trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 20);
         if (runCycleTime < minimumRunCycleTimeInNanoSeconds) {
             QThread::currentThread()->sleep(std::chrono::nanoseconds (minimumRunCycleTimeInNanoSeconds));
         }
-    } else
-    {
-        trav_time_t sleepTime = (m_periodTimeInMicroSeconds * 1000) - runCycleTime;
-        QThread::currentThread()->sleep(std::chrono::nanoseconds (sleepTime));
     }
 
     m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();

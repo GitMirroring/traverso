@@ -23,7 +23,6 @@ $Id: AudioDeviceThread.cpp,v 1.21 2007/10/20 17:38:19 r_sijrier Exp $
 #include "AudioDeviceThread.h"
 
 #include "AudioDevice.h"
-#include "TAudioDriver.h"
 
 #if defined (Q_OS_UNIX)
 #include <dlfcn.h>
@@ -98,17 +97,17 @@ void AudioDeviceThread::run()
         become_realtime();
     }
 	
-	if (m_device->m_driver->start() < 0) {
+    if (m_device->start_driver() < 0) {
 		watchdog.terminate();
 		watchdog.wait();
 		return;
 	}
 
 	while (m_device->run_audio_thread()) {
-        if (m_device->get_driver()->_run_cycle() < 0) {
-			PERROR("Driver cycle error, exiting!");
-			break;
-		}
+        if (m_device->_run_cycle() < 0) {
+            PERROR("Driver cycle error, exiting!");
+            break;
+        }
 		watchdogCheck = 1;
 	}
 	

@@ -326,9 +326,12 @@ int WriteSource::finish_export( )
 
 nframes_t WriteSource::ringbuffer_write(TProcessCallBackData &processData)
 {
+    Q_ASSERT(m_rtBufferSlotsQueue);
+    Q_ASSERT(m_freeBufferSlotsQueue);
+
     nframes_t nframes = processData.get_nframes_to_process();
     AudioBus* bus = processData.get_ringbuffer_write_bus();
-
+    Q_ASSERT(bus);
     Q_ASSERT(bus->get_channel_count() == m_channelCount);
 
     QueueBufferSlot* slot = nullptr;
@@ -338,13 +341,13 @@ nframes_t WriteSource::ringbuffer_write(TProcessCallBackData &processData)
         Q_ASSERT(slot);
 
         for (uint chan=0; chan < m_channelCount; ++chan) {
-            AudioChannel* audioChannel = bus->get_channel(chan);
-            Q_ASSERT(audioChannel);
-
-            slot->write_buffer(TTimeRef(), audioChannel->get_buffer(nframes), chan, nframes);
+            slot->write_buffer(TTimeRef(), bus->get_buffer(chan, nframes), chan, nframes);
         }
 
-        m_rtBufferSlotsQueue->try_enqueue(slot);
+        if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
+            printf("WriteSource::ringbuffer_write: Failed to write to rt buffer queue\n");
+            return 0;
+        }
 
         return slot->get_buffer_size();
     }
@@ -375,6 +378,16 @@ QueueBufferSlot* WriteSource::dequeue_from_free_queue(TProcessCallBackData &proc
 // TODO: make sure this function is thread save
 void WriteSource::process_realtime_buffers()
 {
+    if(!m_writer && !m_isRecording) {
+        // FIXME: can we remove ourselves from DiskIO Thread directly after we've finished recording
+        // instead of this hack ?
+        // recording finished and writer has been deleted, we're waiting on removal from DiskIO Thread
+        // just return here
+        return;
+    }
+
+    Q_ASSERT(m_writer);
+
     m_exportSpecification->set_render_buffer(m_diskIOFramebuffer);
 
     QueueBufferSlot* slot = nullptr;
@@ -465,7 +478,7 @@ void WriteSource::set_recording(bool rec )
 
 BufferStatus* WriteSource::get_buffer_status()
 {
-    m_bufferstatus.fillStatus = ((m_freeBufferSlotsQueue->size_approx() * 100) / slotcount);
+    m_bufferstatus.fillStatus = ((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount);
     // FIXME
     // Ugly hack to let DiskIO keep calling process_realtime_buffers()
     // which will then call finish_export()

@@ -298,7 +298,10 @@ int PADriver::setup(bool capture, bool playback, const QString& deviceInfo)
 
 int PADriver::attach()
 {
-	return 1;
+    m_device->set_buffer_size (m_framesPerCycle);
+    m_device->set_sample_rate (m_frameRate);
+
+    return 1;
 }
 
 int PADriver::start( )

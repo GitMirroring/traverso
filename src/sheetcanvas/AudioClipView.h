@@ -117,7 +117,6 @@ private:
 public slots:
         void add_new_fade_curve_view(FadeCurve* fade);
         void remove_fade_curve_view(FadeCurve* fade);
-	void repaint();
 	void update_start_pos();
 	void position_changed();
 	
@@ -136,8 +135,7 @@ private slots:
 	void start_recording();
 	void finish_recording();
 	void update_recording();
-	void clip_state_changed();
-        void active_context_changed();
+    void active_context_changed();
 };
 
 #endif

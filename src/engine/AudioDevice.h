@@ -81,7 +81,7 @@ public:
 
     void set_parameters(TAudioDeviceSetup ads);
     void set_free_wheeling(bool freeWheeling);
-    bool get_is_free_wheeling() const {return m_isFreeWheeling;}
+    bool running_real_time() const {return m_isRealTime;}
 
     void add_client(TAudioDeviceClient* client);
     void remove_client(TAudioDeviceClient* client);
@@ -172,7 +172,7 @@ private:
 
     RingBufferNPT<trav_time_t>*	m_cpuTime;
     volatile size_t		m_runAudioThread;
-    bool            m_isFreeWheeling;
+    bool            m_isRealTime;
     trav_time_t		m_cycleStartTime;
     trav_time_t		m_lastCpuReadTime;
     trav_time_t     m_processingPathWaitTime; // in nanoseconds
@@ -188,6 +188,9 @@ private:
 
     int run_cycle(nframes_t nframes, float delayed_usecs);
     int run_one_cycle(nframes_t nframes, float delayed_usecs);
+
+    int _run_cycle(); // called by AudioDeviceThread;
+    int start_driver();
 
     int create_driver(const QString& driverType, bool capture, bool playback, const QString& cardDevice);
     int transport_control(TTransportControl* state);
