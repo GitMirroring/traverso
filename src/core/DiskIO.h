@@ -49,6 +49,9 @@ public:
 
     void set_seek_transport_location(const TTimeRef& transportLocation);
 
+    void add_audio_source(AudioSource* source);
+    void remove_audio_source(AudioSource* source);
+
     bool get_cpu_time(float &time);
     int get_buffers_fill_status();
     uint get_output_rate() {return m_outputSampleRate;}
@@ -84,14 +87,15 @@ private:
 public slots:
     void seek();
 
-    void add_audio_source(AudioSource* source);
-    void remove_and_delete_audio_source(AudioSource* source);
 
     void set_output_sample_rate(uint outputSampleRate);
     void set_resample_quality(int quality);
 
 private slots:
     void do_work();
+
+    void private_add_to_work(AudioSource* source);
+    void private_remove_from_work(AudioSource* source);
 
 signals:
 	void seekFinished();

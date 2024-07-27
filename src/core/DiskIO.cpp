@@ -226,7 +226,7 @@ void DiskIO::do_work( )
 
         BufferStatus* status = source->get_buffer_status();
 
-        if (status->fillStatus < 80 || status->out_of_sync()) {
+        if (status->fillStatus <= 80 || status->out_of_sync()) {
 
             if (status->out_of_sync()) {
                 source->rb_seek_to_transport_location(m_transportLocation);
@@ -245,12 +245,10 @@ void DiskIO::do_work( )
     m_cpuTime->write(&totalTime, 1);
 }
 
-
 void DiskIO::add_audio_source(AudioSource* source)
 {
     PENTER2;
 
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::addd_audio_source", "Must be called via queued slot connection, not directly by function");
     Q_ASSERT(source->get_channel_count() > 0);
     Q_ASSERT(source);
 
@@ -262,20 +260,30 @@ void DiskIO::add_audio_source(AudioSource* source)
     // only for WriteSource change to decodebuffers instead
     source->set_diskio_frame_buffer(framebuffer);
 
+    QMetaObject::invokeMethod(this, "private_add_to_work", Qt::QueuedConnection, source);
+}
+
+void DiskIO::private_add_to_work(AudioSource *source)
+{
+    Q_ASSERT(this->thread() == QThread::currentThread());
     m_audioSources.append(source);
 }
 
-void DiskIO::remove_and_delete_audio_source(AudioSource *source)
+void DiskIO::remove_audio_source(AudioSource *source)
 {
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::remove_audio_source", "Must be called via queued slot connection, not directly by function");
+    QMetaObject::invokeMethod(this, "private_remove_from_work", Qt::QueuedConnection, source);
+}
 
+void DiskIO::private_remove_from_work(AudioSource *source)
+{
+    Q_ASSERT(this->thread() == QThread::currentThread());
     m_audioSources.removeAll(source);
+
     // FIXME
     // Review the deletion of AudioSources and non-active AudioSources that should only
     // be removed from DiskIO but not deleted. Currently this function is only called
     // for removing WriteSource source since they only live while recording
     source->delete_rt_buffers();
-    delete source;
 }
 
 /**
