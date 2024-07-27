@@ -46,14 +46,11 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	
 	channelComboBox->addItem("Mono", 1);
 	channelComboBox->addItem("Stereo", 2);
-	
-	sampleRateComboBox->addItem("8.000 Hz", 8000);
-	sampleRateComboBox->addItem("11.025 Hz", 11025);
-	sampleRateComboBox->addItem("22.050 Hz", 22050);
-	sampleRateComboBox->addItem("44.100 Hz", 44100);
-	sampleRateComboBox->addItem("48.000 Hz", 48000);
-	sampleRateComboBox->addItem("88.200 Hz", 88200);
-	sampleRateComboBox->addItem("96.000 Hz", 96000);
+
+    QLocale local;
+    for (uint sampleRate : TAudioDeviceSetup::get_sample_rates_list()) {
+        sampleRateComboBox->addItem(local.toString(sampleRate) + " Hz", sampleRate);
+    }
 	
     resampleQualityComboBox->addItem(tr("Best"), SRC_SINC_BEST_QUALITY);
     resampleQualityComboBox->addItem(tr("High"), SRC_SINC_MEDIUM_QUALITY);

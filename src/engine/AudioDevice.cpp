@@ -166,7 +166,7 @@ AudioDevice::AudioDevice()
 
     m_driverType = tr("No Driver Loaded");
 
-    m_fallBackSetup.driverType = "Dummy Driver";
+    m_fallBackSetup.set_driver_type("Dummy Driver");
 
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
@@ -336,16 +336,16 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     shutdown();
 
-    m_rate = ads.rate;
-    m_bufferSize = ads.bufferSize;
+    m_rate = ads.get_sample_rate();
+    m_bufferSize = ads.get_buffer_size();
     m_xrunCount = 0;
-    m_ditherShape = ads.ditherShape;
+    m_ditherShape = ads.get_dither_shape();
     //        if (!(ads.driverType == "Dummy Driver")) {
     m_setup = ads;
     //        }
 
 
-    if (create_driver(ads.driverType, ads.capture, ads.playback, ads.cardDevice) < 0) {
+    if (create_driver(ads.get_driver_type(), ads.get_capture(), ads.get_playback(), ads.get_card_device()) < 0) {
         set_parameters(m_fallBackSetup);
         return;
     }
@@ -357,14 +357,14 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     m_runAudioThread = 1;
 
-    if ((ads.driverType == "ALSA") || (ads.driverType == "Dummy Driver") || (ads.driverType == "PulseAudio") ) {
+    if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy Driver") || (ads.get_driver_type() == "PulseAudio") ) {
 
         printf("AudioDevice: Starting Audio Thread ... ");
 
 
         bool realTime = false;
         if (!m_audioThread) {
-            if ((ads.driverType == "ALSA") || (ads.driverType == "Dummy Driver")) {
+            if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy Driver")) {
                 realTime = true;
             }
 
@@ -393,7 +393,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 #if defined (JACK_SUPPORT)
     // This will activate the jack client
     if (libjack_is_present) {
-        if (ads.driverType == "Jack") {
+        if (ads.get_driver_type() == "Jack") {
 
             if (m_driver->start() == -1) {
                 // jack driver failed to start, fallback to Dummy Driver:
@@ -407,7 +407,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
     }
 #endif
 
-    if (ads.driverType == "PortAudio"|| (ads.driverType == "PulseAudio") || (ads.driverType == "CoreAudio")) {
+    if (ads.get_driver_type() == "PortAudio"|| (ads.get_driver_type() == "PulseAudio") || (ads.get_driver_type() == "CoreAudio")) {
         if (m_driver->start() == -1) {
             // PortAudio driver failed to start, fallback to Dummy Driver:
             set_parameters(m_fallBackSetup);
@@ -436,7 +436,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
         if (driverType == "Jack") {
             m_driver = new JackDriver(this);
             JackDriver* jackDriver = qobject_cast<JackDriver*>(m_driver);
-            if (jackDriver && jackDriver->setup(m_setup.jackChannels) < 0) {
+            if (jackDriver && jackDriver->setup(m_setup.get_jack_channels()) < 0) {
                 message(tr("Audiodevice: Failed to create the Jack Driver"), DRIVER_SETUP_FAILURE);
                 delete m_driver;
                 m_driver = nullptr;
@@ -750,7 +750,7 @@ QString AudioDevice::get_driver_type( ) const
 QString AudioDevice::get_driver_information() const
 {
     if (m_driverType == "PortAudio") {
-        QStringList list = m_setup.cardDevice.split("::");
+        QStringList list = m_setup.get_card_device().split("::");
         return "PA: " + list.at(0);
     }
     return m_driverType;

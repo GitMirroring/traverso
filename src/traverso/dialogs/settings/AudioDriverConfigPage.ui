@@ -162,38 +162,7 @@ p, li { white-space: pre-wrap; }
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="rateComboBox">
-          <item>
-           <property name="text">
-            <string>22050</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>32000</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>44100</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>48000</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>88200</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>96000</string>
-           </property>
-          </item>
-         </widget>
+         <widget class="QComboBox" name="rateComboBox"/>
         </item>
        </layout>
       </item>

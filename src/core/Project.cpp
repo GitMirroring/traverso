@@ -565,8 +565,8 @@ QDomNode Project::get_state(QDomDocument doc, bool istemplate)
     QDomElement audioDriverConfigs = doc.createElement("AudioDriverConfigurations");
     QDomElement audioDriverConfig = doc.createElement("AudioDriverConfiguration");
 
-    audioDriverConfig.setAttribute("device", audiodevice().get_device_setup().cardDevice);
-    audioDriverConfig.setAttribute("driver", audiodevice().get_device_setup().driverType);
+    audioDriverConfig.setAttribute("device", audiodevice().get_device_setup().get_card_device());
+    audioDriverConfig.setAttribute("driver", audiodevice().get_device_setup().get_driver_type());
     audioDriverConfig.setAttribute("samplerate", audiodevice().get_sample_rate());
     audioDriverConfig.setAttribute("buffersize", audiodevice().get_buffer_size());
 
@@ -652,66 +652,58 @@ QDomNode Project::get_state(QDomDocument doc, bool istemplate)
 
 void Project::prepare_audio_device(QDomDocument doc)
 {
-    TAudioDeviceSetup ads;
+    TAudioDeviceSetup audioDeviceSetup;
 
     QDomNode audioDriverConfigurations = doc.documentElement().firstChildElement("AudioDriverConfigurations");
     QDomNode audioConfigurationNode = audioDriverConfigurations.firstChildElement("AudioDriverConfiguration");
 
     QDomElement e = audioConfigurationNode.toElement();
-    ads.driverType = e.attribute("driver", "");
-    ads.cardDevice = e.attribute("device", "");
-    ads.rate = e.attribute("samplerate", "44100").toUInt();
-    ads.bufferSize = e.attribute("buffersize", "1024").toUInt();
-    //        ads.jackChannels.append(m_softwareAudioChannels.values());
+    audioDeviceSetup.set_driver_type(e.attribute("driver", ""));
+    audioDeviceSetup.set_card_device(e.attribute("device", ""));
+    audioDeviceSetup.set_sample_rate(e.attribute("samplerate", "44100").toUInt());
+    audioDeviceSetup.set_buffer_size(e.attribute("buffersize", "1024").toUInt());
+    //        audioDeviceSetup.jackChannels.append(m_softwareAudioChannels.values());
 
-    if (ads.driverType.isEmpty() || ads.driverType.isNull()) {
+    if (audioDeviceSetup.get_driver_type().isEmpty() || audioDeviceSetup.get_driver_type().isNull()) {
 #if defined (Q_OS_UNIX)
-        ads.driverType = config().get_property("Hardware", "drivertype", "ALSA").toString();
+        audioDeviceSetup.set_driver_type(config().get_property("Hardware", "drivertype", "ALSA").toString());
 #else
-        ads.driverType = config().get_property("Hardware", "drivertype", "PortAudio").toString();
+        audioDeviceSetup.set_driver_type(config().get_property("Hardware", "drivertype", "PortAudio").toString());
 #endif
     }
-    ads.ditherShape = config().get_property("Hardware", "DitherShape", "None").toString();
-    ads.capture = config().get_property("Hardware", "capture", 1).toInt();
-    ads.playback = config().get_property("Hardware", "playback", 1).toInt();
+    audioDeviceSetup.set_dither_shape(config().get_property("Hardware", "DitherShape", "None").toString());
+    audioDeviceSetup.set_capture(config().get_property("Hardware", "capture", 1).toInt());
+    audioDeviceSetup.set_playback(config().get_property("Hardware", "playback", 1).toInt());
 
-    if (ads.bufferSize == 0) {
-        qWarning("BufferSize read from Settings is 0 !!!");
-        ads.bufferSize = 1024;
-    }
-    if (ads.rate == 0) {
-        qWarning("Samplerate read from Settings is 0 !!!");
-        ads.rate = 44100;
-    }
-    if (ads.driverType.isEmpty()) {
+    if (audioDeviceSetup.get_driver_type().isEmpty()) {
         qWarning("Driver type read from Settings is an empty String !!!");
-        ads.driverType = "ALSA";
+        audioDeviceSetup.set_driver_type("ALSA");
     }
 
 #if defined (ALSA_SUPPORT)
-    if (ads.driverType == "ALSA") {
-        if (ads.cardDevice.isEmpty()) {
-            ads.cardDevice = config().get_property("Hardware", "carddevice", "default").toString();
+    if (audioDeviceSetup.get_driver_type() == "ALSA") {
+        if (audioDeviceSetup.get_card_device().isEmpty()) {
+            audioDeviceSetup.set_card_device(config().get_property("Hardware", "carddevice", "default").toString());
         }
     }
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
-    if (ads.driverType == "PortAudio") {
-        if (ads.cardDevice.isEmpty()) {
+    if (audioDeviceSetup.get_driver_type() == "PortAudio") {
+        if (audioDeviceSetup.get_card_device().isEmpty()) {
 #if defined (Q_OS_UNIX)
-            ads.cardDevice = config().get_property("Hardware", "pahostapi", "alsa").toString();
+            audioDeviceSetup.set_card_device(config().get_property("Hardware", "pahostapi", "alsa").toString());
 #elif defined (Q_OS_MAC)
-            ads.cardDevice = config().get_property("Hardware", "pahostapi", "coreaudio").toString();
+            audioDeviceSetup.set_card_device(config().get_property("Hardware", "pahostapi", "coreaudio").toString());
 #elif defined (Q_OS_WIN)
-            ads.cardDevice = config().get_property("Hardware", "pahostapi", "wmme").toString();
+            audioDeviceSetup.set_card_devce(config().get_property("Hardware", "pahostapi", "wmme").toString());
 #endif
         }
     }
 #endif // end PORTAUDIO_SUPPORT
 
 
-    audiodevice().set_parameters(ads);
+    audiodevice().set_parameters(audioDeviceSetup);
 }
 
 void Project::connect_to_audio_device()

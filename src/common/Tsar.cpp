@@ -190,9 +190,9 @@ void Tsar::process_processed_events_by_rt_thread_queue( )
 				"* The audio chipset isn't supported (completely), you probably have to turn off some of it's features.\n"
 				"\nFor more information, see the Help file, section: \n\n AudioDriver: 'Thread stalled error'\n\n"),
                 QMessageBox::Ok);
-            TAudioDeviceSetup ads;
-            ads.driverType = "Dummy Driver";
-            audiodevice().set_parameters(ads);
+            TAudioDeviceSetup audioDeviceSetup;
+            audioDeviceSetup.set_driver_type("Dummy Driver");
+            audiodevice().set_parameters(audioDeviceSetup);
 			m_retryCount = 0;
 		} else {
             QMessageBox::critical( nullptr,

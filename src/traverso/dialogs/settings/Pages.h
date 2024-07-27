@@ -86,8 +86,7 @@ private:
 	AudioDriverConfigPage* m_driverConfigPage;
 	AlsaDevicesPage* m_alsadevices;
 	PaDriverPage* m_portaudiodrivers;
-	QList<int>	periodBufferSizesList;
-        QStringList     m_driverSetupMessages;
+    QStringList     m_driverSetupMessages;
 	
 private slots:
 	void update_latency_combobox();

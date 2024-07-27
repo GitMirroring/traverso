@@ -474,8 +474,6 @@ int AudioClip::process(TProcessCallBackData &processData)
     }
 
     // Read the frames from the ringbuffers
-    // FIXME change when audio thread supports realtime/freewheeling
-    bool realTime = false;
     nframes_t readFrames = m_readSource->ringbuffer_read(processData, fileLocation);
 
 

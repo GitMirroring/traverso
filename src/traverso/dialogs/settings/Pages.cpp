@@ -59,13 +59,14 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
         driverInformationTextEdit->setTextInteractionFlags(Qt::NoTextInteraction);
         driverInformationTextEdit->hide();
 
-        periodBufferSizesList << 16 << 32 << 64 << 128 << 256 << 512 << 1024 << 2048 << 4096;
-
     m_mainLayout = qobject_cast<QVBoxLayout*>(layout());
 
     QStringList drivers = audiodevice().get_available_drivers();
-    foreach(const QString &name, drivers) {
+    for(QString name : drivers) {
         driverCombo->addItem(name);
+    }
+    for (uint sampleRate : TAudioDeviceSetup::get_sample_rates_list()) {
+        rateComboBox->addItem(QString::number(sampleRate), sampleRate);
     }
 
 
@@ -93,8 +94,9 @@ void AudioDriverConfigPage::save_config()
     config().set_property("Hardware", "samplerate", rateComboBox->currentText());
     int bufferindex = latencyComboBox->currentIndex();
     int buffersize = 1024;
-    if (bufferindex >= 0) {
-        buffersize = periodBufferSizesList.at(bufferindex);
+    auto bufferSizesList = TAudioDeviceSetup::get_buffer_sizes_list();
+    if (bufferindex >= 0 && bufferindex < bufferSizesList.size()) {
+        buffersize = bufferSizesList.at(bufferindex);
     }
     config().set_property("Hardware", "buffersize", buffersize);
 
@@ -187,7 +189,7 @@ void AudioDriverConfigPage::load_config( )
 
     driver_combobox_index_changed(driverType);
 
-    int buffersizeIndex = periodBufferSizesList.indexOf(buffersize);
+    int buffersizeIndex = TAudioDeviceSetup::get_buffer_sizes_list().indexOf(buffersize);
     int samplerateIndex = rateComboBox->findText(QString::number(samplerate));
 
     rateComboBox->setCurrentIndex(samplerateIndex);
@@ -282,29 +284,29 @@ void AudioDriverConfigPage::restart_driver_button_clicked()
         m_driverSetupMessages.clear();
         driverInformationTextEdit->clear();
 
-        TAudioDeviceSetup ads = audiodevice().get_device_setup();
+        TAudioDeviceSetup audioDeviceSetup = audiodevice().get_device_setup();
     QString driver = driverCombo->currentText();
-        ads.rate = rateComboBox->currentText().toInt();
-        ads.bufferSize =  periodBufferSizesList.at(latencyComboBox->currentIndex());
+        audioDeviceSetup.set_sample_rate(rateComboBox->currentText().toInt());
+    audioDeviceSetup.set_buffer_size(TAudioDeviceSetup::get_buffer_sizes_list().at(latencyComboBox->currentIndex()));
 
-        ads.playback = true;
-        ads.capture = true;
+        audioDeviceSetup.set_playback(true);
+    audioDeviceSetup.set_capture(true);
     if(duplexComboBox->currentIndex() == 1) {
-                ads.capture = false;
+        audioDeviceSetup.set_capture(false);
     }
 
     if(duplexComboBox->currentIndex() == 2) {
-                ads.playback = false;
+        audioDeviceSetup.set_playback(false);
     }
 
 
-        ads.cardDevice = "";
-        ads.ditherShape = "None";
+    audioDeviceSetup.set_card_device("");
+    audioDeviceSetup.set_dither_shape("None");
 
 
 #if defined (ALSA_SUPPORT)
     int periods = m_alsadevices->periodsCombo->currentText().toInt();
-        ads.ditherShape = m_alsadevices->ditherShapeComboBox->currentText();
+    audioDeviceSetup.set_dither_shape(m_alsadevices->ditherShapeComboBox->currentText());
     // The AlsaDriver retrieves it's periods number directly from config()
     // So there is no way to use the current selected one, other then
     // setting it now, and restoring it afterwards...
@@ -313,21 +315,22 @@ void AudioDriverConfigPage::restart_driver_button_clicked()
 
     if (driver == "ALSA") {
         int index = m_alsadevices->devicesCombo->currentIndex();
-                ads.cardDevice = m_alsadevices->devicesCombo->itemData(index).toString();
+        audioDeviceSetup.set_card_device(m_alsadevices->devicesCombo->itemData(index).toString());
     }
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
     if (driver == "PortAudio") {
         int index = m_portaudiodrivers->driverCombo->currentIndex();
-                ads.cardDevice = m_portaudiodrivers->driverCombo->itemData(index).toString();
-                ads.cardDevice += "::" + m_portaudiodrivers->inputDevicesCombo->currentText();
-                ads.cardDevice += "::" + m_portaudiodrivers->outputDevicesCombo->currentText();
-        }
+        QString cardDevice = m_portaudiodrivers->driverCombo->itemData(index).toString();
+        cardDevice += "::" + m_portaudiodrivers->inputDevicesCombo->currentText();
+        cardDevice += "::" + m_portaudiodrivers->outputDevicesCombo->currentText();
+        audioDeviceSetup.set_card_device(cardDevice);
+    }
 #endif
 
-        ads.driverType = driver;
-        audiodevice().set_parameters(ads);
+    audioDeviceSetup.set_driver_type(driver);
+    audiodevice().set_parameters(audioDeviceSetup);
 
 #if defined (ALSA_SUPPORT)
     config().set_property("Hardware", "numberofperiods", currentperiods);
@@ -405,12 +408,12 @@ void AudioDriverConfigPage::update_latency_combobox( )
     int rate = rateComboBox->currentText().toInt();
     int buffersize = audiodevice().get_buffer_size();
 
-    for (int i=0; i<periodBufferSizesList.size(); ++i) {
-        QString latency = QString::number( ((float)(periodBufferSizesList.at(i)) / rate) * 1000 * 2, 'f', 2);
+    for (int i=0; i<TAudioDeviceSetup::get_buffer_sizes_list().size(); ++i) {
+        QString latency = QString::number( ((float)(TAudioDeviceSetup::get_buffer_sizes_list().at(i)) / rate) * 1000 * 2, 'f', 2);
         latencyComboBox->addItem(latency);
     }
 
-    int index = periodBufferSizesList.indexOf(buffersize);
+    int index = TAudioDeviceSetup::get_buffer_sizes_list().indexOf(buffersize);
     latencyComboBox->setCurrentIndex(index);
 }
 
