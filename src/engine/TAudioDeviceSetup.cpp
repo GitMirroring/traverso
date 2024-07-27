@@ -81,7 +81,7 @@ QList<uint> TAudioDeviceSetup::get_buffer_sizes_list()
 QList<uint> TAudioDeviceSetup::get_sample_rates_list()
 {
     if (sampleRatesList.isEmpty()) {
-        sampleRatesList << 8000 << 11025 << 22050 << 32000 << 44100 << 48000 << 88200 << 9600;
+        sampleRatesList << 8000 << 11025 << 22050 << 32000 << 44100 << 48000 << 88200 << 96000;
     }
 
     return sampleRatesList;

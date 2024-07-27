@@ -700,7 +700,7 @@ p, li { white-space: pre-wrap; }
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Sample Rate</string>
+              <string>Sample Rate (Hz)</string>
              </property>
             </widget>
            </item>

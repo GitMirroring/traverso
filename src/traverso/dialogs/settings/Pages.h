@@ -90,7 +90,6 @@ private:
 	
 private slots:
 	void update_latency_combobox();
-        void rate_combobox_index_changed(int);
         void driver_combobox_index_changed(QString);
 #if defined (PORTAUDIO_SUPPORT)
         void portaudio_host_api_combobox_index_changed(int);

@@ -40,7 +40,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include <Utils.h>
 #include <Themer.h>
-#include "TInputEventDispatcher.h"
 #include "ContextPointer.h"
 #include "TMainWindow.h"
 #include "TShortCutManager.h"
@@ -65,8 +64,9 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
     for(QString name : drivers) {
         driverCombo->addItem(name);
     }
+    QLocale local;
     for (uint sampleRate : TAudioDeviceSetup::get_sample_rates_list()) {
-        rateComboBox->addItem(QString::number(sampleRate), sampleRate);
+        rateComboBox->addItem(local.toString(sampleRate), sampleRate);
     }
 
 
@@ -79,7 +79,9 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
 
         connect(driverCombo, SIGNAL(currentTextChanged(QString)), this, SLOT(driver_combobox_index_changed(QString)));
     connect(restartDriverButton, SIGNAL(clicked()), this, SLOT(restart_driver_button_clicked()));
-        connect(rateComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(rate_combobox_index_changed(int)));
+        connect(rateComboBox, &QComboBox::currentIndexChanged, this, [this]() {
+        update_latency_combobox();
+    });
     connect(&audiodevice(), SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
         connect(&audiodevice(), SIGNAL(message(QString,int)), this, SLOT(driver_setup_message(QString,int)));
 
@@ -91,7 +93,7 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
 
 void AudioDriverConfigPage::save_config()
 {
-    config().set_property("Hardware", "samplerate", rateComboBox->currentText());
+    config().set_property("Hardware", "samplerate", rateComboBox->currentData());
     int bufferindex = latencyComboBox->currentIndex();
     int buffersize = 1024;
     auto bufferSizesList = TAudioDeviceSetup::get_buffer_sizes_list();
@@ -190,7 +192,7 @@ void AudioDriverConfigPage::load_config( )
     driver_combobox_index_changed(driverType);
 
     int buffersizeIndex = TAudioDeviceSetup::get_buffer_sizes_list().indexOf(buffersize);
-    int samplerateIndex = rateComboBox->findText(QString::number(samplerate));
+    int samplerateIndex = rateComboBox->findData(samplerate);
 
     rateComboBox->setCurrentIndex(samplerateIndex);
     latencyComboBox->setCurrentIndex(buffersizeIndex);
@@ -286,7 +288,7 @@ void AudioDriverConfigPage::restart_driver_button_clicked()
 
         TAudioDeviceSetup audioDeviceSetup = audiodevice().get_device_setup();
     QString driver = driverCombo->currentText();
-        audioDeviceSetup.set_sample_rate(rateComboBox->currentText().toInt());
+        audioDeviceSetup.set_sample_rate(rateComboBox->currentData().toInt());
     audioDeviceSetup.set_buffer_size(TAudioDeviceSetup::get_buffer_sizes_list().at(latencyComboBox->currentIndex()));
 
         audioDeviceSetup.set_playback(true);
@@ -405,22 +407,16 @@ void AudioDriverConfigPage::portaudio_host_api_combobox_index_changed(int index)
 void AudioDriverConfigPage::update_latency_combobox( )
 {
     latencyComboBox->clear();
-    int rate = rateComboBox->currentText().toInt();
-    int buffersize = audiodevice().get_buffer_size();
+    int rate = rateComboBox->currentData().toInt();
 
-    for (int i=0; i<TAudioDeviceSetup::get_buffer_sizes_list().size(); ++i) {
-        QString latency = QString::number( ((float)(TAudioDeviceSetup::get_buffer_sizes_list().at(i)) / rate) * 1000 * 2, 'f', 2);
-        latencyComboBox->addItem(latency);
+    for (uint bufferSize : TAudioDeviceSetup::get_buffer_sizes_list()) {
+        QString latency = QString::number( ((float)(bufferSize) / rate) * 1000 * 2, 'f', 2);
+        latencyComboBox->addItem(latency, bufferSize);
     }
 
-    int index = TAudioDeviceSetup::get_buffer_sizes_list().indexOf(buffersize);
-    latencyComboBox->setCurrentIndex(index);
+    latencyComboBox->setCurrentIndex(latencyComboBox->findData(audiodevice().get_buffer_size()));
 }
 
-void AudioDriverConfigPage::rate_combobox_index_changed(int )
-{
-    update_latency_combobox();
-}
 
 void AudioDriverConfigPage::driver_setup_message(QString message, int severity)
 {

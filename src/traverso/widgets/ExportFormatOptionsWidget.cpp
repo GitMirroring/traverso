@@ -49,7 +49,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 
     QLocale local;
     for (uint sampleRate : TAudioDeviceSetup::get_sample_rates_list()) {
-        sampleRateComboBox->addItem(local.toString(sampleRate) + " Hz", sampleRate);
+        sampleRateComboBox->addItem(local.toString(sampleRate), sampleRate);
     }
 	
     resampleQualityComboBox->addItem(tr("Best"), SRC_SINC_BEST_QUALITY);
