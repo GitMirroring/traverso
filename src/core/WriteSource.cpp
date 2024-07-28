@@ -191,15 +191,10 @@ nframes_t WriteSource::process (nframes_t nframes)
             break;
         // default is SF_FORMAT_FLOAT
         default:
-            // TODO / FIXME
-            // we're clipping to max/min 1.0f but do we want this?
-            for (nframes_t x = 0; x < toWrite * m_channelCount; ++x) {
-                if (writeBuffer[x] > 1.0f) {
-                    writeBuffer[x] = 1.0f;
-                } else if (writeBuffer[x] < -1.0f) {
-                    writeBuffer[x] = -1.0f;
-                }
-            }
+            // We used to clip to max/min 1.0f here but that defeats the
+            // 'purpose' of saving the sound in float format i.e. avoid clipping
+            // of the audio if the user mixed with too high gain
+
             /* and export to disk */
             written += m_writer->write(writeBuffer, toWrite);
             break;
