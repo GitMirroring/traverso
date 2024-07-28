@@ -65,6 +65,14 @@ typedef FastDelegate1<TProcessCallBackData&, int> TProcessCallBack;
 typedef FastDelegate0<int> RunCycleCallback;
 typedef FastDelegate1<TTransportControl*, int> TransportControlCallback;
 
+struct TAudioDriverSetupMessage
+{
+    QString message;
+    QString driverType;
+    int     severity;
+    qint64  createdOn; // msecs since epoch
+};
+
 class AudioDevice : public QObject
 {
     Q_OBJECT
@@ -115,6 +123,9 @@ public:
     bool is_driver_loaded() const {return m_driver ? true : false;}
 
     QStringList get_available_drivers() const;
+    QList<TAudioDriverSetupMessage> get_audio_driver_setup_messages() const {
+        return m_audioDriverSetupMessages.values();
+    }
 
     uint get_sample_rate() const;
     uint get_bit_depth() const;
@@ -184,6 +195,7 @@ private:
     QString			m_driverType;
     QString			m_ditherShape;
     QHash<QString, QVariant> m_driverProperties;
+    QMap<int, TAudioDriverSetupMessage> m_audioDriverSetupMessages;
 
     TProcessCallBackData    m_processCallBackData;
 
@@ -193,7 +205,8 @@ private:
     int _run_cycle(); // called by AudioDeviceThread;
     int start_driver();
 
-    int create_driver(const QString& driverType, bool capture, bool playback, const QString& cardDevice);
+    void create_driver();
+    int setup_driver();
     int transport_control(TTransportControl* state);
 
     void set_buffer_size(uint size);
@@ -258,8 +271,8 @@ signals:
 
     void xrunStormDetected();
 
-    void message(QString, int);
-    void driverSetupMessage(QString, int);
+    void newDriverSetupMessage();
+
     void finishedOneProcessCycle();
     void freeWheelingChanged();
 
@@ -270,6 +283,7 @@ private slots:
     void switch_to_null_driver();
     void reset_xrun_counter() {m_xrunCount = 0;}
     void check_jack_shutdown();
+    void driver_setup_message(QString message, int severity);
 };
 
 

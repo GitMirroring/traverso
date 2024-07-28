@@ -177,7 +177,7 @@ int TAudioDriver::detach( )
 
 int TAudioDriver::start( )
 {
-    m_device->driverSetupMessage(tr("Succesfully started Dummy Driver!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+    emit driverSetupMessage(tr("Succesfully started Dummy Driver!"), AudioDevice::DRIVER_SETUP_SUCCESS);
     return 1;
 }
 

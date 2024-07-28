@@ -192,15 +192,15 @@ int PADriver::setup(bool capture, bool playback, const QString& deviceInfo)
                 outputDeviceName = deviceInfos.at(2);
         }
 
-        m_device->driverSetupMessage(tr("Setting up PortAudio using %1").arg(Pa_GetVersionText()), AudioDevice::DRIVER_SETUP_INFO);
-        m_device->driverSetupMessage(tr("Driver: %1, capture: %2, playback: %3 <br />Input Device: %4 <br />Output Device: %5").
+        emit driverSetupMessage(tr("Setting up PortAudio using %1").arg(Pa_GetVersionText()), AudioDevice::DRIVER_SETUP_INFO);
+        emit driverSetupMessage(tr("Driver: %1, capture: %2, playback: %3 <br />Input Device: %4 <br />Output Device: %5").
                         arg(hostapi).arg(capture ? tr("yes") : tr("no")).arg(playback ? tr("yes") : tr("no")).
                         arg(inputDeviceName).arg(outputDeviceName), AudioDevice::DRIVER_SETUP_INFO);
 	
 	PaError err = Pa_Initialize();
 	
 	if( err != paNoError ) {
-                m_device->driverSetupMessage((tr("Failed to initialize PortAudio: %1").arg(Pa_GetErrorText( err ))), AudioDevice::DRIVER_SETUP_FAILURE);
+                emit driverSetupMessage((tr("Failed to initialize PortAudio: %1").arg(Pa_GetErrorText( err ))), AudioDevice::DRIVER_SETUP_FAILURE);
                 Pa_Terminate();
 		return -1;
         }
@@ -212,7 +212,7 @@ int PADriver::setup(bool capture, bool playback, const QString& deviceInfo)
         PaHostApiIndex hostIndex = host_index_for_host_api(hostapi);
 
         if (hostIndex == paHostApiNotFound) {
-                m_device->driverSetupMessage(tr("PADriver:: hostapi %1 was not found by Portaudio!").arg(hostapi), AudioDevice::DRIVER_SETUP_FAILURE);
+                emit driverSetupMessage(tr("PADriver:: hostapi %1 was not found by Portaudio!").arg(hostapi), AudioDevice::DRIVER_SETUP_FAILURE);
                 Pa_Terminate();
                 return -1;
 	}
@@ -265,7 +265,7 @@ int PADriver::setup(bool capture, bool playback, const QString& deviceInfo)
 			this );
 	
 	if( err != paNoError ) {
-                m_device->driverSetupMessage((tr("Failed to open PortAudio stream: %1").arg(Pa_GetErrorText( err ))), AudioDevice::DRIVER_SETUP_FAILURE);
+                emit driverSetupMessage((tr("Failed to open PortAudio stream: %1").arg(Pa_GetErrorText( err ))), AudioDevice::DRIVER_SETUP_FAILURE);
                 Pa_Terminate();
 		return -1;
         }
@@ -311,11 +311,11 @@ int PADriver::start( )
 	PaError err = Pa_StartStream( m_paStream );
 	
 	if( err != paNoError ) {
-                m_device->driverSetupMessage((tr("Failed to start PortAudio stream: %1").arg(Pa_GetErrorText( err ))), AudioDevice::DRIVER_SETUP_FAILURE);
+                emit driverSetupMessage((tr("Failed to start PortAudio stream: %1").arg(Pa_GetErrorText( err ))), AudioDevice::DRIVER_SETUP_FAILURE);
                 Pa_Terminate();
 		return -1;
 	} else {
-                m_device->driverSetupMessage(tr("Succesfully started PortAudio stream!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+                emit driverSetupMessage(tr("Succesfully started PortAudio stream!"), AudioDevice::DRIVER_SETUP_SUCCESS);
 	}
 	
 	return 1;
@@ -327,7 +327,7 @@ int PADriver::stop( )
 	PaError err = Pa_CloseStream( m_paStream );
 	
 	if( err != paNoError ) {
-                m_device->message((tr("PADriver:: Failed to close PortAudio stream: %1").arg(Pa_GetErrorText( err ))), AudioDevice::WARNING);
+        emit driverSetupMessage((tr("PADriver:: Failed to close PortAudio stream: %1").arg(Pa_GetErrorText( err ))), AudioDevice::WARNING);
 		Pa_Terminate();
 	} else {
 		printf("PADriver:: Succesfully closed portaudio stream\n\n");

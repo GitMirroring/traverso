@@ -108,11 +108,11 @@ int TPulseAudioDriver::setup(bool capture, bool playback, const QString& )
     m_paSimple = pa_simple_new(NULL, "Traverso", PA_STREAM_PLAYBACK, NULL, "playback", &m_sampleSpec, NULL, NULL, &error);
 
     if (!m_paSimple) {
-        m_device->driverSetupMessage(tr("Unable to connect to PulseAudio server!"), AudioDevice::DRIVER_SETUP_FAILURE);
+        emit driverSetupMessage(tr("Unable to connect to PulseAudio server!"), AudioDevice::DRIVER_SETUP_FAILURE);
         return -1;
     }
 
-    m_device->driverSetupMessage(tr("Succesfully connected to PulseAudio server!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+    emit driverSetupMessage(tr("Succesfully connected to PulseAudio server!"), AudioDevice::DRIVER_SETUP_SUCCESS);
 
     return 1;
 }

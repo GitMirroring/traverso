@@ -345,13 +345,24 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
     //        }
 
 
-    if (create_driver(ads.get_driver_type(), ads.get_capture(), ads.get_playback(), ads.get_card_device()) < 0) {
+    create_driver();
+
+    if (m_driver) {
+        connect(m_driver, SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
+        if (setup_driver() > 0) {
+            m_driverType = m_setup.get_driver_type();
+            m_driver->attach();
+        } else {
+            disconnect(m_driver, SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
+            delete m_driver;
+            m_driver = nullptr;
+            set_parameters(m_fallBackSetup);
+            return;
+        }
+    } else {
         set_parameters(m_fallBackSetup);
         return;
     }
-
-    m_driver->attach();
-
 
     emit driverParamsChanged();
 
@@ -427,23 +438,16 @@ void AudioDevice::set_free_wheeling(bool freeWheeling)
     emit freeWheelingChanged();
 }
 
-int AudioDevice::create_driver(const QString& driverType, bool capture, bool playback, const QString& cardDevice)
+void AudioDevice::create_driver()
 {
     Q_ASSERT(!m_driver);
+    QString driverType = m_setup.get_driver_type();
 
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
         if (driverType == "Jack") {
             m_driver = new JackDriver(this);
-            JackDriver* jackDriver = qobject_cast<JackDriver*>(m_driver);
-            if (jackDriver && jackDriver->setup(m_setup.get_jack_channels()) < 0) {
-                message(tr("Audiodevice: Failed to create the Jack Driver"), DRIVER_SETUP_FAILURE);
-                delete m_driver;
-                m_driver = nullptr;
-                return -1;
-            }
-            m_driverType = driverType;
-            return 1;
+            return;
         }
     }
 #endif
@@ -451,45 +455,21 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
 #if defined (ALSA_SUPPORT)
     if (driverType == "ALSA") {
         m_driver =  new AlsaDriver(this);
-        AlsaDriver* alsaDriver = qobject_cast<AlsaDriver*>(m_driver);
-        if (alsaDriver && alsaDriver->setup(capture,playback, cardDevice, m_ditherShape) < 0) {
-            message(tr("Audiodevice: Failed to create the ALSA Driver"), DRIVER_SETUP_FAILURE);
-            delete m_driver;
-            m_driver = nullptr;
-            return -1;
-        }
-        m_driverType = driverType;
-        return 1;
+        return;
     }
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
     if (driverType == "PortAudio") {
         m_driver = new PADriver(this);
-        PADriver* paDriver = qobject_cast<PADriver*>(m_driver);
-        if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
-            message(tr("Audiodevice: Failed to create the PortAudio Driver"), DRIVER_SETUP_FAILURE);
-            delete m_driver;
-            m_driver = nullptr;
-            return -1;
-        }
-        m_driverType = driverType;
-        return 1;
+        return;
     }
 #endif
 
 #if defined (PULSEAUDIO_SUPPORT)
     if (driverType == "PulseAudio") {
         m_driver = new TPulseAudioDriver(this);
-        TPulseAudioDriver* paDriver = qobject_cast<TPulseAudioDriver*>(m_driver);
-        if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
-            message(tr("Audiodevice: Failed to create the PulseAudio Driver"), DRIVER_SETUP_FAILURE);
-            delete m_driver;
-            m_driver = nullptr;
-            return -1;
-        }
-        m_driverType = driverType;
-        return 1;
+        return;
     }
 #endif
 
@@ -497,15 +477,7 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
 #if defined (COREAUDIO_SUPPORT)
     if (driverType == "CoreAudio") {
         m_driver = new CoreAudioDriver(this, m_rate, m_bufferSize);
-        CoreAudioDriver* coreAudioDriver = qojbect_cast<CoreAudioDriver*>(m_driver);
-        if (coreAudioDriver && coreAudiodriver->setup(capture, playback, cardDevice) < 0) {
-            message(tr("Audiodevice: Failed to create the CoreAudio Driver"), DRIVER_SETUP_FAILURE);
-            delete m_driver;
-            m_driver = nullptr;
-            return -1;
-        }
-        m_driverType = driverType;
-        return 1;
+        return;
     }
 #endif
 
@@ -513,7 +485,81 @@ int AudioDevice::create_driver(const QString& driverType, bool capture, bool pla
     if (driverType == "Dummy Driver") {
         printf("AudioDevice: Creating Dummy Driver...\n");
         m_driver = new TAudioDriver(this);
-        m_driverType = driverType;
+        return;
+    }
+}
+
+
+int AudioDevice::setup_driver()
+{
+    Q_ASSERT(m_driver);
+
+    QString driverType = m_setup.get_driver_type();
+    bool capture = m_setup.get_capture();
+    bool playback = m_setup.get_playback();
+    QString cardDevice = m_setup.get_card_device();
+
+#if defined (JACK_SUPPORT)
+    if (libjack_is_present) {
+        if (driverType == "Jack") {
+            JackDriver* jackDriver = qobject_cast<JackDriver*>(m_driver);
+            if (jackDriver && jackDriver->setup(m_setup.get_jack_channels()) < 0) {
+                driver_setup_message(tr("Audiodevice: Failed to setup the Jack Driver"), DRIVER_SETUP_FAILURE);
+                return -1;
+            }
+            return 1;
+        }
+    }
+#endif
+
+#if defined (ALSA_SUPPORT)
+    if (driverType == "ALSA") {
+        AlsaDriver* alsaDriver = qobject_cast<AlsaDriver*>(m_driver);
+        if (alsaDriver && alsaDriver->setup(capture,playback, cardDevice, m_ditherShape) < 0) {
+            driver_setup_message(tr("Audiodevice: Failed to setup the ALSA Driver"), DRIVER_SETUP_FAILURE);
+            return -1;
+        }
+        return 1;
+    }
+#endif
+
+#if defined (PORTAUDIO_SUPPORT)
+    if (driverType == "PortAudio") {
+        PADriver* paDriver = qobject_cast<PADriver*>(m_driver);
+        if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
+            driver_setup_message(tr("Audiodevice: Failed to setup the PortAudio Driver"), DRIVER_SETUP_FAILURE);
+            return -1;
+        }
+        return 1;
+    }
+#endif
+
+#if defined (PULSEAUDIO_SUPPORT)
+    if (driverType == "PulseAudio") {
+        TPulseAudioDriver* paDriver = qobject_cast<TPulseAudioDriver*>(m_driver);
+        if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
+            driver_setup_message(tr("Audiodevice: Failed to setup the PulseAudio Driver"), DRIVER_SETUP_FAILURE);
+            return -1;
+        }
+        return 1;
+    }
+#endif
+
+
+#if defined (COREAUDIO_SUPPORT)
+    if (driverType == "CoreAudio") {
+        CoreAudioDriver* coreAudioDriver = qojbect_cast<CoreAudioDriver*>(m_driver);
+        if (coreAudioDriver && coreAudiodriver->setup(capture, playback, cardDevice) < 0) {
+            message(tr("Audiodevice: Failed to create the CoreAudio Driver"), DRIVER_SETUP_FAILURE);
+            return -1;
+        }
+        return 1;
+    }
+#endif
+
+
+    if (driverType == "Dummy Driver") {
+        printf("AudioDevice: Creating Dummy Driver...\n");
         return 1;
     }
 
@@ -859,7 +905,7 @@ void AudioDevice::check_jack_shutdown()
             if ( ! jackdriver->is_running()) {
                 jackShutDownChecker.stop();
                 printf("jack shutdown detected\n");
-                message(tr("The Jack server has been shutdown!"), CRITICAL);
+                driver_setup_message(tr("The Jack server has been shutdown!"), CRITICAL);
                 delete m_driver;
                 m_driver = nullptr;
                 set_parameters(m_fallBackSetup);
@@ -869,11 +915,22 @@ void AudioDevice::check_jack_shutdown()
 #endif
 }
 
+void AudioDevice::driver_setup_message(QString message, int severity)
+{
+    TAudioDriverSetupMessage setupMessage;
+    setupMessage.message = message;
+    setupMessage.driverType = m_setup.get_driver_type();
+    setupMessage.severity = severity;
+    setupMessage.createdOn = TTimeRef::get_milliseconds_since_epoch();
+    m_audioDriverSetupMessages.insert(setupMessage.createdOn, setupMessage);
+    emit newDriverSetupMessage();
+}
+
 
 void AudioDevice::switch_to_null_driver()
 {
-    message(tr("AudioDevice:: Buffer underrun 'Storm' detected, switching to Dummy Driver"), CRITICAL);
-    message(tr("AudioDevice:: For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
+    driver_setup_message(tr("AudioDevice:: Buffer underrun 'Storm' detected, switching to Dummy Driver"), CRITICAL);
+    driver_setup_message(tr("AudioDevice:: For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
     set_parameters(m_fallBackSetup);
 }
 

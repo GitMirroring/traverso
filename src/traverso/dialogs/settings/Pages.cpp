@@ -78,12 +78,14 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
     m_mainLayout->addWidget(m_alsadevices);
 
         connect(driverCombo, SIGNAL(currentTextChanged(QString)), this, SLOT(driver_combobox_index_changed(QString)));
+    connect(m_alsadevices->periodsCombo, &QComboBox::currentIndexChanged, this, [this]() {
+            update_latency_combobox();
+        });
     connect(restartDriverButton, SIGNAL(clicked()), this, SLOT(restart_driver_button_clicked()));
         connect(rateComboBox, &QComboBox::currentIndexChanged, this, [this]() {
         update_latency_combobox();
     });
-    connect(&audiodevice(), SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
-        connect(&audiodevice(), SIGNAL(message(QString,int)), this, SLOT(driver_setup_message(QString,int)));
+    connect(&audiodevice(), SIGNAL(newDriverSetupMessage()), this, SLOT(new_driver_setup_message()));
 
 #if defined (PORTAUDIO_SUPPORT)
         connect(m_portaudiodrivers->driverCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(portaudio_host_api_combobox_index_changed(int)));
@@ -283,15 +285,14 @@ void AudioDriverConfigPage::load_config( )
 
 void AudioDriverConfigPage::restart_driver_button_clicked()
 {
-        m_driverSetupMessages.clear();
-        driverInformationTextEdit->clear();
+    driverInformationTextEdit->clear();
 
-        TAudioDeviceSetup audioDeviceSetup = audiodevice().get_device_setup();
+    TAudioDeviceSetup audioDeviceSetup = audiodevice().get_device_setup();
     QString driver = driverCombo->currentText();
-        audioDeviceSetup.set_sample_rate(rateComboBox->currentData().toInt());
+    audioDeviceSetup.set_sample_rate(rateComboBox->currentData().toInt());
     audioDeviceSetup.set_buffer_size(TAudioDeviceSetup::get_buffer_sizes_list().at(latencyComboBox->currentIndex()));
 
-        audioDeviceSetup.set_playback(true);
+    audioDeviceSetup.set_playback(true);
     audioDeviceSetup.set_capture(true);
     if(duplexComboBox->currentIndex() == 1) {
         audioDeviceSetup.set_capture(false);
@@ -409,8 +410,9 @@ void AudioDriverConfigPage::update_latency_combobox( )
     latencyComboBox->clear();
     int rate = rateComboBox->currentData().toInt();
 
+    int periods = m_alsadevices->periodsCombo->currentText().toInt();
     for (uint bufferSize : TAudioDeviceSetup::get_buffer_sizes_list()) {
-        QString latency = QString::number( ((float)(bufferSize) / rate) * 1000 * 2, 'f', 2);
+        QString latency = QString::number( ((float)(bufferSize) / rate) * 1000 * periods, 'f', 2);
         latencyComboBox->addItem(latency, bufferSize);
     }
 
@@ -418,40 +420,49 @@ void AudioDriverConfigPage::update_latency_combobox( )
 }
 
 
-void AudioDriverConfigPage::driver_setup_message(QString message, int severity)
+void AudioDriverConfigPage::new_driver_setup_message()
 {
-        driverInformationTextEdit->clear();
-        if (driverInformationTextEdit->isHidden()) {
-                driverInformationTextEdit->show();
-        }
+    driverInformationTextEdit->clear();
+    if (driverInformationTextEdit->isHidden()) {
+        driverInformationTextEdit->show();
+    }
+
+    QStringList stringList;
+    auto driverSetupMessages = audiodevice().get_audio_driver_setup_messages();
+    for (const TAudioDriverSetupMessage &driverSetupMessage : driverSetupMessages) {
+        int severity = driverSetupMessage.severity;
+        QString createdOnString = QDateTime::fromMSecsSinceEpoch(driverSetupMessage.createdOn).toString("hh:mm:ss");
+        QString message = createdOnString + ": " + driverSetupMessage.driverType +" Driver<br>" + driverSetupMessage.message;
 
         if (severity == AudioDevice::DRIVER_SETUP_FAILURE || severity == AudioDevice::CRITICAL) {
-                m_driverSetupMessages.prepend("<p class=\"failure\">" + message + "</p>");
+            stringList.prepend("<p class=\"failure\">" + message + "</p>");
         } else if (severity == AudioDevice::DRIVER_SETUP_WARNING || severity == AudioDevice::WARNING) {
-                m_driverSetupMessages.prepend("<p class=\"warning\">" + message + "</p>");
+            stringList.prepend("<p class=\"warning\">" + message + "</p>");
         } else if (severity == AudioDevice::DRIVER_SETUP_SUCCESS || severity == AudioDevice::DRIVER_SETUP_INFO || severity == AudioDevice::INFO) {
-                m_driverSetupMessages.prepend("<p class=\"success\">" + message + "</p>");
+            stringList.prepend("<p class=\"success\">" + message + "</p>");
         } else {
-                m_driverSetupMessages.prepend("<p>" + message + "</p>");
+            stringList.prepend("<p>" + message + "</p>");
         }
 
-        QString html = QString("<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n"
-              "<style type=\"text/css\">\n"
-              "p {font-size: 12px; }\n"
-              ".failure {color: red;}\n"
-              ".warning {color: #FF5F15;}\n"
-              ".success {color: green;}\n"
-              "</style>\n"
-              "</head>\n<body>\n");
+    }
 
-        foreach(QString string, m_driverSetupMessages) {
-                html += string;
-        }
+    QString html = QString("<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n"
+                           "<style type=\"text/css\">\n"
+                           "p {font-size: 12px; }\n"
+                           ".failure {color: red;}\n"
+                           ".warning {color: #FF5F15;}\n"
+                           ".success {color: green;}\n"
+                           "</style>\n"
+                           "</head>\n<body>\n");
 
-        html += "</body>\n</html>";
+    for(const QString &string : stringList) {
+        html += string;
+    }
+
+    html += "</body>\n</html>";
 
 
-        driverInformationTextEdit->insertHtml(html);
+    driverInformationTextEdit->insertHtml(html);
 
 }
 

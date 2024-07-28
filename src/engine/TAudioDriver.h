@@ -91,7 +91,9 @@ protected:
         nframes_t               m_playbackFrameLatency{};
 
 signals:
-        void errorMessage(const QString& message);
+    void errorMessage(const QString& message);
+    void driverSetupMessage(QString, int);
+
 
 };
 

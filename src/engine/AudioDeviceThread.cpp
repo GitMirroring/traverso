@@ -129,7 +129,7 @@ int AudioDeviceThread::become_realtime()
     struct sched_param param;
     param.sched_priority = 70;
     if (pthread_setschedparam (pthread_self(), SCHED_FIFO, &param) != 0) {
-        m_device->message(tr("Unable to set Audiodevice Thread to realtime priority!!!"
+        m_device->driver_setup_message(tr("Unable to set Audiodevice Thread to realtime priority!!!"
             "This most likely results in unreliable playback/capture and "
             "lots of buffer underruns (== sound drops)."
             "In the worst case the program can even malfunction!"
