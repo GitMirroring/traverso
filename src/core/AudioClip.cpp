@@ -122,7 +122,7 @@ AudioClip::~AudioClip()
 {
     PENTERDES;
     if (m_readSource) {
-        QMetaObject::invokeMethod(m_sheet->get_read_diskio(), "remove_and_delete_audio_source", Qt::QueuedConnection, qobject_cast<AudioSource*>(m_readSource));
+        m_sheet->get_read_diskio()->remove_audio_source(m_readSource);
     }
 
     if (m_peak) {

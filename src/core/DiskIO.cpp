@@ -265,25 +265,30 @@ void DiskIO::add_audio_source(AudioSource* source)
 
 void DiskIO::private_add_to_work(AudioSource *source)
 {
+    PENTER2;
     Q_ASSERT(this->thread() == QThread::currentThread());
     m_audioSources.append(source);
 }
 
 void DiskIO::remove_audio_source(AudioSource *source)
 {
+    PENTER2;
     QMetaObject::invokeMethod(this, "private_remove_from_work", Qt::QueuedConnection, source);
 }
 
 void DiskIO::private_remove_from_work(AudioSource *source)
 {
+    PENTER2;
+
     Q_ASSERT(this->thread() == QThread::currentThread());
     m_audioSources.removeAll(source);
 
     // FIXME
     // Review the deletion of AudioSources and non-active AudioSources that should only
-    // be removed from DiskIO but not deleted. Currently this function is only called
-    // for removing WriteSource source since they only live while recording
+    // be removed from DiskIO but not deleted.
+    source->m_bufferstatus.set_sync_status(BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
     source->delete_rt_buffers();
+    delete source;
 }
 
 /**

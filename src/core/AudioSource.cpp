@@ -111,6 +111,8 @@ void AudioSource::prepare_rt_buffers(nframes_t bufferSize)
 
 void AudioSource::delete_rt_buffers()
 {
+    Q_ASSERT(m_bufferstatus.get_sync_status() == BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+
     QueueBufferSlot* slot;
 
     if (m_freeBufferSlotsQueue) {
@@ -120,6 +122,7 @@ void AudioSource::delete_rt_buffers()
         }
         Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == 0);
         delete m_freeBufferSlotsQueue;
+        m_freeBufferSlotsQueue = nullptr;
     }
 
     if (m_rtBufferSlotsQueue) {
@@ -129,6 +132,7 @@ void AudioSource::delete_rt_buffers()
         }
         Q_ASSERT(m_rtBufferSlotsQueue->size_approx() == 0);
         delete m_rtBufferSlotsQueue;
+        m_rtBufferSlotsQueue = nullptr;
     }
 }
 
