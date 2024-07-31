@@ -177,8 +177,6 @@ void DiskIO::seek()
 
     printf("DiskIO::seek: Seeking to %s\n", QS_C(TTimeRef::timeref_to_ms_3(m_seekTransportLocation)));
 
-    auto startTime = TTimeRef::get_nanoseconds_since_epoch();
-
     // A seek event happens for 2 reasons, for transport control and after an audiodevice reconfiguration
     // in the latter case we need to reset rate and buffer sizes.
     if (m_sampleRateChanged) {
@@ -194,11 +192,8 @@ void DiskIO::seek()
     }
 
     m_transportLocation = m_seekTransportLocation;
-
-    auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
-    m_cpuTime->write(&totalTime, 1);
-
     m_waitForSeek.store(false);
+
     emit seekFinished();
 }
 
@@ -223,7 +218,7 @@ void DiskIO::do_work( )
     {
         if (m_waitForSeek.load()) {
             printf("DiskIO::do_work: waiting for seek\n");
-            return;
+            seek();
         }
 
         TAudioSourceBufferStatus* status = source->get_buffer_status();

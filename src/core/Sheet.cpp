@@ -141,7 +141,6 @@ void Sheet::init()
     m_readDiskIO->set_output_sample_rate(audiodevice().get_sample_rate());
     m_readDiskIO->set_resample_quality(converter_type);
 
-    connect(this, SIGNAL(seekStart()), m_readDiskIO, SLOT(seek()), Qt::QueuedConnection);
     connect(m_readDiskIO, SIGNAL(seekFinished()), this, SLOT(seek_finished()), Qt::QueuedConnection);
     connect (m_readDiskIO, SIGNAL(readSourceBufferUnderRun()), this, SLOT(handle_diskio_readbuffer_underrun()));
     connect (m_readDiskIO, SIGNAL(writeSourceBufferOverRun()), this, SLOT(handle_diskio_writebuffer_overrun()));
