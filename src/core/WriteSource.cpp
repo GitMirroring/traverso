@@ -336,7 +336,7 @@ nframes_t WriteSource::ringbuffer_write(TProcessCallBackData &processData)
         Q_ASSERT(slot);
 
         for (uint chan=0; chan < m_channelCount; ++chan) {
-            slot->write_buffer(TTimeRef(), bus->get_buffer(chan, nframes), chan, nframes);
+            slot->write_buffer(processData.get_start_location(), TTimeRef(), bus->get_buffer(chan, nframes), chan, nframes);
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {

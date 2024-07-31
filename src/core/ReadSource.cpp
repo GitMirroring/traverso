@@ -349,24 +349,27 @@ int ReadSource::set_file(const QString & filename)
 
 void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation)
 {
-    // Q_ASSERT(m_bufferstatus.get_sync_status() == BufferStatus::SyncStatus::OUT_OF_SYNC);
     Q_ASSERT(m_location);
 
     m_bufferstatus.set_sync_status(BufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
 
+    // If the transport location lies (much) in front of our start location
+    // or after our end location no need to fill the buffers
     if ((transportLocation + m_aboutOneToFourSecondsTime) < m_location->get_start() ||
         transportLocation > m_location->get_end()) {
         m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::OUT_OF_SYNC);
         return;
     }
 
+    // Transport Location is in our range or at least close. since we want to start to fill
+    // the buffers in advance the transport location can still be in front of our start location
+    // In which case we set the seek transport location to our start location
     TTimeRef seekTransportLocation = transportLocation;
     if (seekTransportLocation < m_location->get_start()) {
-
         seekTransportLocation = m_location->get_start();
 
-        // printf("transport location before clip start position, adjusting to clip start position %s\n",
-        //        QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
+        printf("transport location before clip start position, adjusting to clip start position %s\n",
+               QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
     }
 
     QueueBufferSlot* slot;
@@ -377,24 +380,75 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
         m_freeBufferSlotsQueue->try_enqueue(slot);
     }
 
+    // check if the queue's are still valid and no slots were lost somwhere in the process
     Q_ASSERT(m_rtBufferSlotsQueue->size_approx() == 0);
     Q_ASSERT(m_freeBufferSlotsQueue->size_approx() == m_slotcount);
 
+    // Since we can represent a 'view' of a complete audiofile, always add the source start
+    // location to the seek transport location to file location calculation.
     TTimeRef fileLocation = seekTransportLocation - m_location->get_start() + m_sourceStartLocation;
-    // printf("rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
-    //        QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)),
-    //        QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
+    printf("ReadSource::rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
+           QS_C(TTimeRef::timeref_to_ms_3(transportLocation)),
+           QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
 
-    // check if the clip's start position is within the range
-    // if not, fill the buffer from the earliest point this clip
-    // will come into play.
-    if (fileLocation < TTimeRef()) {
-        printf("not seeking to file location %s, but to file location %s\n",
-               QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), QS_C(TTimeRef::timeref_to_ms_3(m_sourceStartLocation)));
-        fileLocation = m_sourceStartLocation;
+
+    // Since the seek transport location and our own start location don't have to align
+    // in multiples of buffer slot duration, check if this is true and align the file location
+    // accordingly
+    TTimeRef timeDiff = seekTransportLocation - transportLocation;
+    TTimeRef modulus = TTimeRef(timeDiff.universal_frame() % m_bufferSlotDuration.universal_frame());
+    nframes_t bufferSize = audiodevice().get_buffer_size();
+    // if modules != 0 then the seek transport location is not a multiple of transport location + x * buffer slot duration
+    if (modulus != TTimeRef()) {
+        // effectively this means that the start location of a buffer and the corresponding file location becomes negative
+        fileLocation -= modulus;
+        // keep track of the seek transport location as well, probably not usefull to keep track of 2 locations in slot buffers?
+        seekTransportLocation -= modulus;
+
+        // convert the modulus to frames
+        nframes_t offset = TTimeRef::to_frame(modulus, m_outputRate);
+        printf("file location after adjustment %s, offset nframes %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
+
+        // and only read in the amount of frames needed for this buffer slot
+        nframes_t toRead = bufferSize - offset;
+
+        m_fileDecodeBuffer->check_buffers_capacity(toRead, m_channelCount);
+
+        // and read in the samples. We have to use the source start location as the start location, see explenation above
+        nframes_t read = file_read(m_fileDecodeBuffer, m_sourceStartLocation, toRead);
+        if (read != toRead) {
+            printf("Could not read %d frames, only %d\n", toRead, read);
+        }
+
+        if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
+            printf("ReadSource::rb_seek_to_transport_location:: try dequeue failed");
+            m_bufferstatus.set_sync_status(BufferStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
+            return;
+        }
+
+        for (uint chan=0; chan<m_channelCount; ++chan) {
+            Q_ASSERT(m_fileDecodeBuffer->destinationBufferSize >= toRead);
+            // FIXME: use function to get destination buffer that checks if the request is valid
+            // and now write it into the buffer using the offset
+            // FIXME: should we zero out the part we don't write into?
+            slot->write_buffer(seekTransportLocation, fileLocation, m_fileDecodeBuffer->destination[chan], chan, bufferSize - offset, offset);
+        }
+
+        if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
+            printf("ReadSource::fill_realtime_buffers: try enqueue failed");
+            m_bufferstatus.set_sync_status(BufferStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
+            return;
+        }
+
+        fileLocation = m_sourceStartLocation + m_bufferSlotDuration - modulus;
+        seekTransportLocation += m_bufferSlotDuration;
     }
 
+    printf("\n");
+
+
     m_lastQueuedRTBufferSlot->set_file_location(fileLocation);
+    m_lastQueuedRTBufferSlot->set_transport_location(seekTransportLocation);
     m_bufferstatus.set_sync_status(BufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION);
 
     process_realtime_buffers();
@@ -421,6 +475,7 @@ void ReadSource::process_realtime_buffers()
     }
 
     TTimeRef slotFileLocation = m_lastQueuedRTBufferSlot->get_file_location();
+    TTimeRef transportLocation = m_lastQueuedRTBufferSlot->get_transport_location();
     auto bufferSize = m_lastQueuedRTBufferSlot->get_buffer_size();
 
     // We need the next slot so add buffer size length to the last slot transport location
@@ -432,6 +487,7 @@ void ReadSource::process_realtime_buffers()
         slotsToFill = int(0.7 * m_slotcount);
     } else {
         slotFileLocation += m_bufferSlotDuration;
+        transportLocation += m_bufferSlotDuration;
     }
 
     QueueBufferSlot* slot = nullptr;
@@ -458,7 +514,7 @@ void ReadSource::process_realtime_buffers()
         for (uint chan=0; chan<m_channelCount; ++chan) {
             Q_ASSERT(m_fileDecodeBuffer->destinationBufferSize >= offset+bufferSize);
             // FIXME: use function to get destination buffer that checks if the request is valid
-            slot->write_buffer(slotFileLocation, m_fileDecodeBuffer->destination[chan] + offset, chan, bufferSize);
+            slot->write_buffer(transportLocation, slotFileLocation, m_fileDecodeBuffer->destination[chan] + offset, chan, bufferSize);
         }
 
         offset += bufferSize;
@@ -470,6 +526,7 @@ void ReadSource::process_realtime_buffers()
         }
 
         slotFileLocation += m_bufferSlotDuration;
+        transportLocation += m_bufferSlotDuration;
 
         slotsToFill--;
     }
@@ -505,8 +562,6 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
         Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
         Q_ASSERT(slot);
 
-        m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
-
         // check if this slot or any available is a candidate slot, if not, no need to process the
         // whole queue, instead start a resync
 
@@ -517,11 +572,14 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
 
         if (slotFileLocation == fileLocation)
         {
+            Q_ASSERT(processData.get_start_location() == slot->get_transport_location());
+
             for (uint chan=0; chan < m_channelCount; ++chan) {
                 slot->read_buffer(bus->get_buffer(chan, nframes), chan, nframes);
             }
 
-            read = slot->get_buffer_size();
+            read = slot->get_read_nframes();
+            m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
         }
 
@@ -535,11 +593,14 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
                    QS_C(TTimeRef::timeref_to_ms_3(lastAvailableSlotFileLocation)));
             m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::OUT_OF_SYNC);
             read = 0;
+            m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
         }
 
         printf("ReadSource::rb_read: Skipping slot %d, location %s\n",
                slot->get_slot_number(), QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)));
+
+        m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
     }
 
     // auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;

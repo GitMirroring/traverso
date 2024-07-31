@@ -459,13 +459,16 @@ int AudioClip::process(TProcessCallBackData &processData)
     Q_ASSERT(bus->get_channel_count() >= channelcount);
 
     if (startLocation < m_locationItem->get_start()) {
-        fileLocation = m_sourceStartLocation;
         offset = TTimeRef::to_frame(m_locationItem->get_start() - startLocation, outputRate);
         framesToProcess -= offset;
+        printf("framesToProcess %d\n", framesToProcess);
         Q_ASSERT(offset < nframes);
         Q_ASSERT(framesToProcess > 0);
-    } else {
-        fileLocation = (startLocation - m_locationItem->get_start() + m_sourceStartLocation);
+    }
+
+    fileLocation = (startLocation - m_locationItem->get_start() + m_sourceStartLocation);
+    if (offset != 0) {
+        printf("AudioClip: fileLocation using offset is %s, %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
     }
 
     if (m_locationItem->get_end() < endLocation) {
