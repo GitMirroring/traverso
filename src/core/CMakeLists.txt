@@ -10,7 +10,7 @@ ${CMAKE_SOURCE_DIR}/src/plugins/native
 
 SET(TRAVERSO_CORE_SOURCES
 ${CMAKE_SOURCE_DIR}/src/common/Utils.cpp
-${CMAKE_SOURCE_DIR}/src/common/Tsar.cpp
+${CMAKE_SOURCE_DIR}/src/common/ThreadSaveMessagePosting.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Mixer.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Resampler.cpp

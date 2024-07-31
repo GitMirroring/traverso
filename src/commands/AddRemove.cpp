@@ -77,7 +77,7 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
         // true: 	this command should be considered historable
         // this: 	A pointer to Sheet, which in this case is this, which will be used in the AddRemove
         // 		Command logic to detect if the private_add/remove slots can be called directly or
-        //		thread save via Tsar's thread save logic.
+        //		thread save via TSMP's thread save logic.
         // tr("Add Track")	The (tranlated) description of this action as it will show up in the HistoryView
         return new AddRemove(this, track, true, this,
             "private_add_track(Track*)", "trackAdded(Track*)",
@@ -220,8 +220,8 @@ int AddRemove::prepare_actions()
     Q_ASSERT(m_doActionSlot != QString(""));
     Q_ASSERT(m_undoActionSlot != QString(""));
 
-    tsar().prepare_event(m_doActionEvent, m_parentItem, m_arg, m_doActionSlot, m_doSignal);
-    tsar().prepare_event(m_undoActionEvent, m_parentItem, m_arg, m_undoActionSlot, m_undoSignal);
+    tsmp().prepare_event(m_doActionEvent, m_parentItem, m_arg, m_doActionSlot, m_doSignal);
+    tsmp().prepare_event(m_undoActionEvent, m_parentItem, m_arg, m_undoActionSlot, m_undoSignal);
 
     return 1;
 }
@@ -241,7 +241,7 @@ int AddRemove::undo_action()
 
 int AddRemove::un_redo_action(ActionType actionType)
 {
-    TsarEvent event;
+    TSMPEvent event;
     switch (actionType) {
 
     case TCommand::UNDO:
@@ -253,20 +253,20 @@ int AddRemove::un_redo_action(ActionType actionType)
     }
 
     if (m_instantanious) {
-        tsar().process_event(event);
+        tsmp().process_event(event);
         return 1;
     }
 
     if (m_sheet) {
         if (m_sheet->is_transport_rolling()) {
             PMESG("AddRemove::un_redo_action: Using Thread Save add/remove");
-            tsar().post_gui_event(event);
+            tsmp().post_gui_event(event);
         } else {
-            tsar().process_event(event);
+            tsmp().process_event(event);
         }
     } else {
         PMESG("Using direct add/remove/signaling");
-        tsar().post_gui_event(event);
+        tsmp().post_gui_event(event);
     }
 
     // update the cursor to the context item that we are adding here
@@ -282,7 +282,7 @@ int AddRemove::un_redo_action(ActionType actionType)
  * 	Set's the command as instantanious
  
     The do/undo actions will call the slot and emit the signal (if they exist)
-    directly, and thus bypassing the RT thread save nature of Tsar.
+    directly, and thus bypassing the RT thread save nature of TSMP.
  */
 void AddRemove::set_instantanious(bool instant)
 {

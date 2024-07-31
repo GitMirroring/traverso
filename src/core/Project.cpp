@@ -277,7 +277,7 @@ int Project::load(const QString& projectfile)
     m_rate = e.attribute( "rate", "" ).toUInt();
     m_bitDepth = e.attribute( "bitdepth", "" ).toUInt();
     set_id(e.attribute("id", "0").toLongLong());
-    m_sheetsAreTrackFolder = e.attribute("sheetsaretrackfolder", "0").toInt();
+    m_sheeTSMPeTrackFolder = e.attribute("sheeTSMPetrackfolder", "0").toInt();
     m_importDir = e.attribute("importdir", QDir::homePath());
 
 
@@ -551,7 +551,7 @@ QDomNode Project::get_state(QDomDocument doc, bool istemplate)
     properties.setAttribute("rate", m_rate);
     properties.setAttribute("bitdepth", m_bitDepth);
     properties.setAttribute("projectfileversion", PROJECT_FILE_VERSION);
-    properties.setAttribute("sheetsaretrackfolder", m_sheetsAreTrackFolder);
+    properties.setAttribute("sheeTSMPetrackfolder", m_sheeTSMPeTrackFolder);
     if (! istemplate) {
         properties.setAttribute("id", get_id());
     } else {
@@ -1482,8 +1482,8 @@ void Project::set_work_at(TTimeRef worklocation, bool isFolder)
 
 void Project::set_sheets_are_tracks_folder(bool isFolder)
 {
-    m_sheetsAreTrackFolder = isFolder;
-    if (m_sheetsAreTrackFolder) {
+    m_sheeTSMPeTrackFolder = isFolder;
+    if (m_sheeTSMPeTrackFolder) {
         info().information(tr("Sheets behave as Tracks Folder"));
     } else {
         info().information(tr("Sheets NO longer behave as Tracks Folder"));

@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ResourcesManager.h"
 #include "Curve.h"
 #include "FadeCurve.h"
-#include "Tsar.h"
+#include "ThreadSaveMessagePosting.h"
 #include "ProjectManager.h"
 #include "Peak.h"
 #include "ContextPointer.h"
@@ -952,7 +952,7 @@ void AudioClip::create_fade(int fadeType)
     fadeCurve->set_history_stack(get_history_stack());
     fadeCurve->set_parent_location(m_locationItem);
 
-    tsar().add_gui_event(this, fadeCurve, "private_add_fade(FadeCurve*)", "fadeAdded(FadeCurve*)");
+    tsmp().add_gui_event(this, fadeCurve, "private_add_fade(FadeCurve*)", "fadeAdded(FadeCurve*)");
 }
 
 QDomNode AudioClip::get_dom_node() const

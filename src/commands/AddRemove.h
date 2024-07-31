@@ -24,7 +24,7 @@
 #define ADD_ITEM_COMMAND_H
 
 #include "TCommand.h"
-#include <Tsar.h>
+#include "ThreadSaveMessagePosting.h"
 
 class ContextItem;
 class TSession;
@@ -66,8 +66,8 @@ public :
 private :
 	ContextItem*	m_parentItem;
 	void* 		m_arg;
-    TsarEvent	m_doActionEvent;
-    TsarEvent	m_undoActionEvent;
+    TSMPEvent	m_doActionEvent;
+    TSMPEvent	m_undoActionEvent;
 	TSession*	m_sheet;
 
 	const char*	m_doActionSlot;

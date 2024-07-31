@@ -174,6 +174,7 @@ void DiskIO::seek()
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "NOT running in DiskIO thread");
     Q_ASSERT(m_waitForSeek.load() == true);
 
+    printf("DiskIO::seek: Seeking to %s\n", QS_C(TTimeRef::timeref_to_ms_3(m_seekTransportLocation)));
 
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
@@ -267,6 +268,8 @@ void DiskIO::private_add_to_work(AudioSource *source)
 {
     PENTER2;
     Q_ASSERT(this->thread() == QThread::currentThread());
+    Q_ASSERT(!m_audioSources.contains(source));
+
     m_audioSources.append(source);
 }
 

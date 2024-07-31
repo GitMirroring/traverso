@@ -69,7 +69,7 @@ int TAudioDriver::_run_cycle( )
     {
         // We're free wheeling
         // Limit the amount of runcycles to 50.000 per second.
-        // We have to set this limit to not overload the Tsar event queues.
+        // We have to set this limit to not overload the TSMP event queues.
 
         // 20 microseconds to ryn_cycles() / second == 1.000.000 / 20 = 50.000
         trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 5);

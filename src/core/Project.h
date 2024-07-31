@@ -136,7 +136,7 @@ public :
 	bool has_changed();
 	bool is_save_to_close() const;
 	bool is_recording() const;
-    bool sheets_are_track_folder() const {return m_sheetsAreTrackFolder;}
+    bool sheets_are_track_folder() const {return m_sheeTSMPeTrackFolder;}
 
 	int save(bool autosave=false);
 	int load(const QString &projectfile = "");
@@ -199,7 +199,7 @@ private:
     uint		m_bitDepth;
         int             m_keyboardArrowNavigationSpeed;
 	bool		m_useResampling;
-        bool            m_sheetsAreTrackFolder{};
+        bool            m_sheeTSMPeTrackFolder{};
 
     bool    m_disconnectAudioDeviceClientForExport;
         bool    m_projectClosed;

@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSession.h"
 #include <QDomNode>
 #include "TTransportControl.h"
-#include "Tsar.h"
+#include "ThreadSaveMessagePosting.h"
 #include "defines.h"
 
 class Project;
@@ -126,9 +126,9 @@ private:
     DiskIO*             m_writeDiskIO;
     AudioClipManager*	m_acmanager{};
     QString             m_audioSourcesDir;
-    TsarEvent           m_transportStoppedTsarEvent;
-    TsarEvent           m_seekStartTsarEvent;
-    TsarEvent           m_transportLocationChangedTsarEvent;
+    TSMPEvent           m_transportStoppedTSMPEvent;
+    TSMPEvent           m_seekStartTSMPEvent;
+    TSMPEvent           m_transportLocationChangedTSMPEvent;
 
     std::atomic<bool>   m_seeking;
     std::atomic<bool>   m_startSeek;

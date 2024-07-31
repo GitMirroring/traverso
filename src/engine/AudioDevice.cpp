@@ -22,7 +22,7 @@ $Id: AudioDevice.cpp,v 1.57 2009/11/16 19:50:43 n_doebelin Exp $
 
 #include "AudioDevice.h"
 #include "AudioDeviceThread.h"
-#include "Tsar.h"
+#include "ThreadSaveMessagePosting.h"
 
 #if defined (ALSA_SUPPORT)
 #include "AlsaDriver.h"
@@ -49,7 +49,7 @@ RELAYTOOL_JACK
 #include "TAudioDriver.h"
 #include "TAudioDeviceClient.h"
 #include "AudioChannel.h"
-#include "Tsar.h"
+#include "ThreadSaveMessagePosting.h"
 
 //#include <sys/mman.h>
 #include <QDebug>
@@ -66,7 +66,7 @@ RELAYTOOL_JACK
     This will initialize the real audiodevice in case of the Alsa driver, or connect to the jack deamon.
     In the latter case, the rate and bufferSize don't do anything, since they are provided by the jack itself
 
-        This class and/or related classes depend on RingBuffer, Tsar and FastDelegate which are found in 'src/common' directory.
+        This class and/or related classes depend on RingBuffer, TSMP and FastDelegate which are found in 'src/common' directory.
     The signal/slot feature as supplied by Qt is also used, which makes the Qt dependency a bit deeper, though
     it shouldn't be to hard to get rid of it if you like to use the libtraversoaudiobackend in an application not
     using Qt, or if you don't want a dependency to Qt.
@@ -148,7 +148,7 @@ AudioDevice& audiodevice()
     return device;
 }
 
-TsarEvent finishedOneProcessCycleEvent;
+TSMPEvent finishedOneProcessCycleEvent;
 
 AudioDevice::AudioDevice()
 {
@@ -193,10 +193,10 @@ AudioDevice::AudioDevice()
 
     m_availableDrivers << "Dummy";
 
-    // This will create the event queueu and tsar thread for us
+    // This will create the event queueu and TSMP thread for us
     // has to be running before the audio thread in order to make
     // sure no events will get lost
-    tsar();
+    tsmp();
 
     connect(this, SIGNAL(xrunStormDetected()), this, SLOT(switch_to_null_driver()));
     connect(&m_xrunResetTimer, SIGNAL(timeout()), this, SLOT(reset_xrun_counter()));
@@ -204,7 +204,7 @@ AudioDevice::AudioDevice()
     m_xrunResetTimer.start(30000);
 
 
-    tsar().prepare_event(finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");
+    tsmp().prepare_event(finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");
 }
 
 AudioDevice::~AudioDevice()
@@ -284,8 +284,8 @@ int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         }
     }
 
-    tsar().process_posted_gui_events();
-    tsar().post_rt_event(finishedOneProcessCycleEvent);
+    tsmp().process_posted_gui_events();
+    tsmp().post_rt_event(finishedOneProcessCycleEvent);
 
     return 1;
 }
@@ -861,7 +861,7 @@ void AudioDevice::private_remove_client(TAudioDeviceClient* client)
  */
 void AudioDevice::add_client( TAudioDeviceClient * client )
 {
-    tsar().add_gui_event(this, client, "private_add_client(TAudioDeviceClient*)", "audioDeviceClientAdded(TAudioDeviceClient*)");
+    tsmp().add_gui_event(this, client, "private_add_client(TAudioDeviceClient*)", "audioDeviceClientAdded(TAudioDeviceClient*)");
 }
 
 /**
@@ -872,7 +872,7 @@ void AudioDevice::add_client( TAudioDeviceClient * client )
  */
 void AudioDevice::remove_client( TAudioDeviceClient * client )
 {
-    tsar().add_gui_event(this, client, "private_remove_client(TAudioDeviceClient*)", "audioDeviceClientRemoved(TAudioDeviceClient*)");
+    tsmp().add_gui_event(this, client, "private_remove_client(TAudioDeviceClient*)", "audioDeviceClientRemoved(TAudioDeviceClient*)");
 }
 
 void AudioDevice::audiothread_finished() 
@@ -880,7 +880,7 @@ void AudioDevice::audiothread_finished()
     if (m_runAudioThread) {
         // AudioThread stopped, but we didn't do it ourselves
         // so something certainly did go wrong when starting the beast
-        // Start the Dummy Driver to avoid problems with Tsar
+        // Start the Dummy Driver to avoid problems with TSMP
         PERROR("Alsa/Jack AudioThread stopped, but we didn't ask for it! Something apparently did go wrong :-(");
         set_parameters(m_fallBackSetup);
     }
@@ -888,11 +888,11 @@ void AudioDevice::audiothread_finished()
 
 void AudioDevice::xrun( )
 {
-    tsar().add_rt_event(this, nullptr, "bufferUnderRun()");
+    tsmp().add_rt_event(this, nullptr, "bufferUnderRun()");
 
     m_xrunCount++;
     if (m_xrunCount > 30) {
-        tsar().add_rt_event(this, nullptr, "xrunStormDetected()");
+        tsmp().add_rt_event(this, nullptr, "xrunStormDetected()");
     }
 }
 

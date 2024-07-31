@@ -49,14 +49,17 @@ ResourcesManager::ResourcesManager(Project* project)
 ResourcesManager::~ResourcesManager()
 {
 	PENTERDES;
-	foreach(SourceData* data, m_sources) {
+    for(SourceData* data : std::as_const(m_sources)) {
+        if (data->clipCount == 0) {
+            printf("Unused source file: %s\n", QS_C(data->source->get_dir()));
+        }
 		if (! data->source->ref()) {
 			delete data->source;
 		}
 		delete data;
 	}
-	
-	foreach(ClipData* data, m_clips) {
+
+    for(ClipData* data : std::as_const(m_clips)) {
 		delete data->clip;
 		delete data;
 	}

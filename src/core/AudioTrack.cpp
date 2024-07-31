@@ -473,7 +473,7 @@ void AudioTrack::clip_position_changed(AudioClip * clip)
     });
 
     if (m_sheet && m_sheet->is_transport_rolling()) {
-        tsar().add_gui_event(this, clip, "private_clip_position_changed(AudioClip*)", "");
+        tsmp().add_gui_event(this, clip, "private_clip_position_changed(AudioClip*)", "");
     } else {
         private_clip_position_changed(clip);
     }

@@ -80,7 +80,7 @@ TCommand * TTimeLineRuler::add_marker(Marker* marker, bool historable)
 		"private_remove_marker(Marker*)", "markerRemoved(Marker*)",
   		tr("Add Marker"));
 	
-	// Bypass the real time thread save logic in tsar, since a Marker doesn't have YET
+	// Bypass the real time thread save logic in TSMP, since a Marker doesn't have YET
 	// anything to do with audio processing routines.
 	// WARNING: this should change as soon as Markers modify anything related to audio 
 	// processing objects!!!!!!
@@ -97,7 +97,7 @@ TCommand* TTimeLineRuler::remove_marker(Marker* marker, bool historable)
 		"private_add_marker(Marker*)", "markerAdded(Marker*)",
   		tr("Remove Marker"));
 	
-	// Bypass the real time thread save logic in tsar, since a Marker doesn't have YET
+	// Bypass the real time thread save logic in TSMP, since a Marker doesn't have YET
 	// anything to do with audio processing routines.
 	// WARNING: this should change as soon as Markers modify anything related to audio 
 	// processing objects!!!!!!

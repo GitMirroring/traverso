@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2006 Remon Sijrier 
+Copyright (C) 2006 - 2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -17,10 +17,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
-$Id: Tsar.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
+$Id: TSMP.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 */
 
-#include "Tsar.h"
+#include "ThreadSaveMessagePosting.h"
 
 #include "AudioDevice.h"
 
@@ -36,47 +36,49 @@ $Id: Tsar.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 #include "TAudioDeviceSetup.h"
 
 /**
- * 	\class Tsar
- * 	\brief Tsar (Thread Save Add and Remove) is a singleton class to call  
+ * 	\class TSMP
+ * 	\brief TSMP (Thread Save Add and Remove) is a singleton class to call
  *		functions (both signals and slots) in a thread save way without
  *		using any mutual exclusion primitives (mutex)
  *
  */
 
-
-void TsarThread::process_tsar_signals() {
-    while(true) {
-        // printf("calling tsar process_tsar_signals\n");
-        tsar().process_processed_events_by_rt_thread_queue();
+class ThreadSaveMessagePostingThread : public QThread
+{
+    void run() {
+        while(true) {
+            // printf("calling TSMP process_TSMP_signals\n");
+            tsmp().process_processed_events_by_rt_thread_queue();
+        }
     }
-}
+};
+
 
 /**
- * 
- * @return The Tsar instance. 
+ *
+ * @return The ThreadSaveMessagePosting instance.
  */
-Tsar& tsar()
+ThreadSaveMessagePosting& tsmp()
 {
-	static Tsar ThreadSaveAddRemove;
+    static ThreadSaveMessagePosting ThreadSaveAddRemove;
 	return ThreadSaveAddRemove;
 }
 
-Tsar::Tsar()
+ThreadSaveMessagePosting::ThreadSaveMessagePosting()
 {
-    m_postedFromGuiThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(16384);
-    m_postedFromRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(65536);
-    m_processedByRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TsarEvent>(65536 + 16384);
+    m_postedFromGuiThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TSMPEvent>(16384);
+    m_postedFromRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TSMPEvent>(65536);
+    m_processedByRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TSMPEvent>(65536 + 16384);
 
     m_eventCounter = 0;
     m_retryCount = 0;
 
-    auto tsarThread = new TsarThread;
-    connect(tsarThread, SIGNAL(started()), tsarThread, SLOT(process_tsar_signals()));
-    tsarThread->start();
-    tsarThread->moveToThread(tsarThread);
+    auto TSMPThread = new ThreadSaveMessagePostingThread;
+    TSMPThread->start();
+    TSMPThread->moveToThread(TSMPThread);
 }
 
-Tsar::~ Tsar( )
+ThreadSaveMessagePosting::~ ThreadSaveMessagePosting( )
 {
 }
 
@@ -90,14 +92,14 @@ Tsar::~ Tsar( )
  *	Note: This function should be called ONLY from the GUI thread! 
  * @param event  The event to add to the event queue
  */
-void Tsar::post_gui_event(const TsarEvent &event )
+void ThreadSaveMessagePosting::post_gui_event(const TSMPEvent &event )
 {
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "Tsar::add_event", "Adding event from other then GUI thread!!");
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "TSMP::add_event", "Adding event from other then GUI thread!!");
 
     if (!m_postedFromGuiThreadQueue->try_enqueue(event)) {
         // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
         // and the program will potentially stall the GUI thread for some time till the RT thread has processed pending events
-        Q_ASSERT_X(true, "Tsar::post_gui_event", "Could not post gui event to posted from GUI thread queue, this is a problem that needs to be investigated by the developers");
+        Q_ASSERT_X(true, "TSMP::post_gui_event", "Could not post gui event to posted from GUI thread queue, this is a problem that needs to be investigated by the developers");
         m_postedFromGuiThreadQueue->wait_enqueue(event);
     }
 
@@ -112,15 +114,15 @@ void Tsar::post_gui_event(const TsarEvent &event )
  *
  * @param event The event to add to the event queue
  */
-void Tsar::post_rt_event(const TsarEvent &event )
+void ThreadSaveMessagePosting::post_rt_event(const TSMPEvent &event )
 {
-    Q_ASSERT_X(this->thread() != QThread::currentThread(), "Tsar::post_rt_event", "Adding event from NON-RT Thread!!");
+    Q_ASSERT_X(this->thread() != QThread::currentThread(), "TSMP::post_rt_event", "Adding event from NON-RT Thread!!");
 
     if (!m_postedFromRTThreadQueue->try_enqueue(event)) {
         // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
         // and the program will potentially stall the RT thread for some time till the system has processed pending events
         // this could occur in rare cases when in freewheeling mode and nothing to process in RT Thread
-        Q_ASSERT_X(true, "Tsar::post_rt_event", "Could not post rt event to posted from RT thread queue, this is a problem that needs to be investigated by the developers");
+        Q_ASSERT_X(true, "TSMP::post_rt_event", "Could not post rt event to posted from RT thread queue, this is a problem that needs to be investigated by the developers");
         m_postedFromRTThreadQueue->wait_enqueue(event);
     }
 }
@@ -129,9 +131,9 @@ void Tsar::post_rt_event(const TsarEvent &event )
 //
 //  Function called in RealTime AudioThread processing path
 //
-void Tsar::process_posted_gui_events( )
+void ThreadSaveMessagePosting::process_posted_gui_events( )
 {
-   TsarEvent event;
+   TSMPEvent event;
 
     while (m_postedFromGuiThreadQueue->try_dequeue(event)) {
         process_event_slot(event);
@@ -146,7 +148,7 @@ void Tsar::process_posted_gui_events( )
                 // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
                 // and the program will potentially stall the RT thread for some time till the system has processed pending events
                 // this could occur in rare cases when in freewheeling mode and nothing to process in RT Thread
-                Q_ASSERT_X(true, "Tsar::process_posted_gui_events", "Could not post RT event to processed by RT thread queue, this is a problem that needs to be investigated by the developers");
+                Q_ASSERT_X(true, "TSMP::process_posted_gui_events", "Could not post RT event to processed by RT thread queue, this is a problem that needs to be investigated by the developers");
                 m_processedByRTThreadQueue->wait_enqueue(event);
             }
         } else {
@@ -155,10 +157,12 @@ void Tsar::process_posted_gui_events( )
     }
 }
 
-// Called by TsarThread which is allowed to block on the wait_dequeue()
-void Tsar::process_processed_events_by_rt_thread_queue( )
+// Called by TSMPThread which is allowed to block on the wait_dequeue()
+void ThreadSaveMessagePosting::process_processed_events_by_rt_thread_queue( )
 {
-    static TsarEvent event;
+    Q_ASSERT_X(this->thread() != QThread::currentThread(), "TSMP::process_processed_events_by_rt_thread_queue", "Runs in wrong trhead");
+
+    TSMPEvent event;
 
     while(m_processedByRTThreadQueue->try_dequeue(event)) {
         process_event_signal(event);
@@ -168,7 +172,7 @@ void Tsar::process_processed_events_by_rt_thread_queue( )
         process_event_signal(event);
     }
 
-    // Block the TsarThread until new events are posted to the m_postedFromRTThreadQueue
+    // Block the TSMPThread until new events are posted to the m_postedFromRTThreadQueue
     // This will happen every run_cycle from AudioDevice
     m_postedFromRTThreadQueue->wait_dequeue(event);
     process_event_signal(event);
@@ -211,37 +215,37 @@ void Tsar::process_processed_events_by_rt_thread_queue( )
 
 /**
 *	This function can be used to process the events 'slot' part.
-*	Usefull when you have a Tsar event, but don't want/need to use tsar
+*	Usefull when you have a ThreadSaveMessagePosting event, but don't want/need to use TSMP
 *	to call the events slot in a thread save way
 *
-* @param event The TsarEvent to be processed 
+* @param event The TSMPEvent to be processed
 */
-void Tsar::process_event_slot(const TsarEvent& event )
+void ThreadSaveMessagePosting::process_event_slot(const TSMPEvent& event )
 {
     Q_ASSERT(event.slotindex >= 0);
 
     void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&event.argument)) };
 
     if ( ! (event.caller->qt_metacall(QMetaObject::InvokeMetaMethod, event.slotindex, _a) < 0) ) {
-        qDebug("Tsar::process_event_slot failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.slotindex).methodSignature().data());
+        qDebug("TSMP::process_event_slot failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.slotindex).methodSignature().data());
     }
 }
 
 /**
 *	This function can be used to process the events 'signal' part.
-*	Usefull when you have a Tsar event, but don't want/need to use tsar
+*	Usefull when you have a ThreadSaveMessagePosting event, but don't want/need to use TSMP
 *	to call the events signal in a thread save way
 *
-* @param event The TsarEvent to be processed 
+* @param event The TSMPEvent to be processed
 */
-void Tsar::process_event_signal(const TsarEvent & event )
+void ThreadSaveMessagePosting::process_event_signal(const TSMPEvent & event )
 {
     Q_ASSERT(event.signalindex >= 0);
 
     void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&event.argument))};
 
     if ( ! (event.caller->qt_metacall(QMetaObject::InvokeMetaMethod, event.signalindex, _a) < 0) ) {
-            qDebug("Tsar::process_event_signal failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.signalindex).methodSignature().data());
+            qDebug("TSMP::process_event_signal failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.signalindex).methodSignature().data());
     }
 }
 
@@ -253,17 +257,17 @@ void Tsar::process_event_signal(const TsarEvent & event )
 *	Note: This function doesn't provide the thread safetyness you get with
 *		the add_event() function!
 *
-* @param event The TsarEvent to be processed 
+* @param event The TSMPEvent to be processed
 */
-void Tsar::process_event(const TsarEvent & event )
+void ThreadSaveMessagePosting::process_event(const TSMPEvent & event )
 {
 	process_event_slot(event);
 	process_event_signal(event);
 }
 
-void Tsar::add_rt_event(QObject *cal, void* arg, const char* signalSignature)
+void ThreadSaveMessagePosting::add_rt_event(QObject *cal, void* arg, const char* signalSignature)
 {
-    TsarEvent event;
+    TSMPEvent event;
     event.caller = cal;
     event.argument = arg;
     event.slotindex = -1;
@@ -273,17 +277,17 @@ void Tsar::add_rt_event(QObject *cal, void* arg, const char* signalSignature)
     post_rt_event(event);
 }
 
-void Tsar::add_gui_event(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
+void ThreadSaveMessagePosting::add_gui_event(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
 {
     PENTER;
-    TsarEvent event;
+    TSMPEvent event;
     prepare_event(event, caller, arg, slotSignature, signalSignature);
     post_gui_event(event);
 }
 
 /**
  */
-void Tsar::prepare_event(TsarEvent &event, QObject* caller, void* argument, const char* slotSignature, const char* signalSignature )
+void ThreadSaveMessagePosting::prepare_event(TSMPEvent &event, QObject* caller, void* argument, const char* slotSignature, const char* signalSignature )
 {
     PENTER3;
     event.caller = caller;

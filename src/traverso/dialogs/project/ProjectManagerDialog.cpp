@@ -68,7 +68,7 @@ ProjectManagerDialog::ProjectManagerDialog( QWidget * parent )
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 
 	connect(treeSheetWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(sheetitem_clicked(QTreeWidgetItem*,int)));
-        connect(sheetsAreTrackFolderCheckBox, SIGNAL(stateChanged(int)), this, SLOT(sheets_are_track_folder_check_box_state_changed(int)));
+        connect(sheeTSMPeTrackFolderCheckBox, SIGNAL(stateChanged(int)), this, SLOT(sheets_are_track_folder_check_box_state_changed(int)));
 	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
 }
 
@@ -100,7 +100,7 @@ void ProjectManagerDialog::set_project(Project* project)
 		redoButton->setText(m_project->get_history_stack()->redoText());
 		undoButton->setText(m_project->get_history_stack()->undoText());
 
-                sheetsAreTrackFolderCheckBox->setChecked(m_project->sheets_are_track_folder());
+                sheeTSMPeTrackFolderCheckBox->setChecked(m_project->sheets_are_track_folder());
                 if (m_project->sheets_are_track_folder()) {
                         sheetAudioSourcesFrame->show();
                 } else {

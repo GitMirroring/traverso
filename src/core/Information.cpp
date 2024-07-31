@@ -22,7 +22,7 @@
 #include "Information.h"
 #include "Utils.h"
 #include "AudioDevice.h"
-#include "Tsar.h"
+#include "ThreadSaveMessagePosting.h"
 
 #include "Debugger.h"
 
@@ -38,8 +38,8 @@ Information::Information()
 {
     connect(&audiodevice(), SIGNAL(message(QString,int)),
             this, SLOT(audiodevice_message(QString,int)));
-    connect(&tsar(), SIGNAL(audioThreadEventBufferFull(QString)),
-            this, SLOT(tsar_message(QString)));
+    connect(&tsmp(), SIGNAL(audioThreadEventBufferFull(QString)),
+            this, SLOT(TSMP_message(QString)));
 }
 
 
@@ -84,7 +84,7 @@ void Information::audiodevice_message(const QString& message, int severity)
 	}
 }
 
-void Information::tsar_message(const QString& message)
+void Information::TSMP_message(const QString& message)
 {
     critical(message);
 }

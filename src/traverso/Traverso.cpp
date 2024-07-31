@@ -80,15 +80,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
     for the audio hardware, currently ALSA, PortAudio and Jack are supported as drivers.
 
     <br />
-    The Tsar class (singleton) is the key behind lockless, thus non blocking removing
+    The TSMP class (singleton) is the key behind lockless, thus non blocking removing
     and adding of audio processing objects in the audio processing chain.
 
     <br />
     The AddRemove Command class is to be used for adding/removing items
     to/from ContextItem objects. <br />This class detects if the add/remove function
     can be called directly, or in a thread save way, and uses therefore the
-    Tsar class, and the Sheet object in case it was given as a parameter.<br />
-    See for more information the AddRemove, AudioDevice and Tsar class
+    TSMP class, and the Sheet object in case it was given as a parameter.<br />
+    See for more information the AddRemove, AudioDevice and TSMP class
     documentation.
  */
 

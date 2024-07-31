@@ -30,7 +30,7 @@
 
 #include "AudioDevice.h"
 #include "AudioChannel.h"
-#include "Tsar.h"
+#include "ThreadSaveMessagePosting.h"
 #include "TTimeRef.h"
 
 // Always put me below _all_ includes, this is needed
@@ -76,7 +76,7 @@ int JackDriver::_read( nframes_t nframes )
 
                 if (pcpair->unregister) {
                         m_inputs.removeAll(pcpair);
-                        tsar().add_rt_event(this, pcpair, "pcpairRemoved(PortChannelPair*)");
+                        tsmp().add_rt_event(this, pcpair, "pcpairRemoved(PortChannelPair*)");
                         continue;
                 }
 
@@ -92,7 +92,7 @@ int JackDriver::_write( nframes_t nframes )
 
                 if (pcpair->unregister) {
                         m_outputs.removeAll(pcpair);
-                        tsar().add_rt_event(this, pcpair, "pcpairRemoved(PortChannelPair*)");
+                        tsmp().add_rt_event(this, pcpair, "pcpairRemoved(PortChannelPair*)");
                         continue;
                 }
 
@@ -151,7 +151,7 @@ void JackDriver::add_channel(AudioChannel* channel)
 
 
         if (is_running()) {
-            tsar().add_gui_event(this, pcpair, "private_add_port_channel_pair(PortChannelPair*)", "");
+            tsmp().add_gui_event(this, pcpair, "private_add_port_channel_pair(PortChannelPair*)", "");
         } else {
             private_add_port_channel_pair(pcpair);
         }
@@ -245,7 +245,7 @@ int JackDriver::process_callback (nframes_t nframes)
 }
 
 // NOTE:  note that in jack2 they (process and sync callback) occur asynchronously in 2 different threads
-//        How to handle that properly in Traverso? The TSAR RT event buffer assumes only one RT thread.
+//        How to handle that properly in Traverso? The TSMP RT event buffer assumes only one RT thread.
 int JackDriver::jack_sync_callback (jack_transport_state_t state, jack_position_t* pos)
 {
     m_transportControl->set_state(state);

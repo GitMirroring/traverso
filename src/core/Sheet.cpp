@@ -45,7 +45,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TExportThread.h"
 #include "WriteSource.h"
 #include "AudioClipManager.h"
-#include "Tsar.h"
+#include "ThreadSaveMessagePosting.h"
 #include "SnapList.h"
 #include "TBusTrack.h"
 #include "TConfig.h"
@@ -128,9 +128,9 @@ void Sheet::init()
 
     QObject::tr("Sheet");
 
-    tsar().prepare_event(m_transportStoppedTsarEvent, this, nullptr, "", "transportStopped()");
-    tsar().prepare_event(m_seekStartTsarEvent, this, nullptr, "", "seekStart()");
-    tsar().prepare_event(m_transportLocationChangedTsarEvent, this, nullptr, "", "transportLocationChanged()");
+    tsmp().prepare_event(m_transportStoppedTSMPEvent, this, nullptr, "", "transportStopped()");
+    tsmp().prepare_event(m_seekStartTSMPEvent, this, nullptr, "", "seekStart()");
+    tsmp().prepare_event(m_transportLocationChangedTSMPEvent, this, nullptr, "", "transportLocationChanged()");
 
     set_seeking(false);
     set_start_seek(false);
@@ -522,7 +522,7 @@ int Sheet::process(TProcessCallBackData &processData)
         m_transportRolling.store(false);
         m_stopTransport = false;
         printf("Sheet::process transport stop post time: %ld\n", TTimeRef::get_microseconds_since_epoch());
-        tsar().post_rt_event(m_transportStoppedTsarEvent);
+        tsmp().post_rt_event(m_transportStoppedTSMPEvent);
 
         return 0;
     }
@@ -540,7 +540,7 @@ int Sheet::process(TProcessCallBackData &processData)
     // update the transport location
     m_transportLocation.add_frames(nframes, audiodevice().get_sample_rate());
     m_readDiskIO->set_transport_location(m_transportLocation);
-    tsar().post_rt_event(m_transportLocationChangedTsarEvent);
+    tsmp().post_rt_event(m_transportLocationChangedTSMPEvent);
 
     if (!processResult) {
         return 0;
@@ -765,8 +765,8 @@ int Sheet::transport_control(TTransportControl *transportControl)
                 // RT thread save signal!
                 Q_ASSERT(transportControl->is_realtime());
                 Q_ASSERT(this->thread() != QThread::currentThread());
-                tsar().add_rt_event(this, nullptr, "prepareRecording()");
-                printf("Sheet::transport_control: Transport Starting: posting 'prepareRecording()' signal to Tsar\n");
+                tsmp().add_rt_event(this, nullptr, "prepareRecording()");
+                printf("Sheet::transport_control: Transport Starting: posting 'prepareRecording()' signal to TSMP\n");
                 return false;
             }
             if (!m_readyToRecord) {
@@ -828,7 +828,7 @@ void Sheet::inititate_seek()
 
     // only sets a boolean flag and the new seek location, save to call
     m_readDiskIO->set_seek_transport_location(m_seekTransportLocation);
-    tsar().post_rt_event(m_seekStartTsarEvent);
+    tsmp().post_rt_event(m_seekStartTSMPEvent);
 }
 
 void Sheet::seek_finished()
@@ -857,7 +857,7 @@ void Sheet::start_transport_rolling(bool realtime)
     m_transportRolling.store(true);
 
     if (realtime) {
-        tsar().add_rt_event(this, nullptr, "transportStarted()");
+        tsmp().add_rt_event(this, nullptr, "transportStarted()");
     } else {
         emit transportStarted();
     }
@@ -883,7 +883,7 @@ void Sheet::set_recording(bool recording, bool realtime)
     }
 
     if (realtime) {
-        tsar().add_rt_event(this, nullptr, "recordingStateChanged()");
+        tsmp().add_rt_event(this, nullptr, "recordingStateChanged()");
     } else {
         emit recordingStateChanged();
     }
