@@ -65,7 +65,8 @@ public :
 	int get_error() const {return m_error;}
 	QString get_error_string() const;
 	int set_file(const QString& filename);
-	void set_active(bool active);
+    void set_active(bool active);
+    bool is_active() const {return m_active.load();}
 	
 	nframes_t get_nframes() const;
     uint get_file_rate() const;

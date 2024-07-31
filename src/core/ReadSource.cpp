@@ -596,8 +596,6 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
 
         if (slotFileLocation == fileLocation)
         {
-            Q_ASSERT(processData.get_start_location() == slot->get_transport_location());
-
             for (uint chan=0; chan < m_channelCount; ++chan) {
                 slot->read_buffer(bus->get_buffer(chan, nframes), chan, nframes);
             }
@@ -638,6 +636,7 @@ TQueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData &proces
 {
     Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
     Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+    Q_ASSERT(is_active()); // A non active read source won't process it's buffer queues so we can't ever enter this function in this state
 
     TQueueBufferSlot* slot = nullptr;
 
@@ -661,7 +660,7 @@ TAudioSourceBufferStatus* ReadSource::get_buffer_status()
 {
     Q_ASSERT(m_channelCount > 0);
 
-    if (!m_active.load()) {
+    if (!is_active()) {
         m_bufferstatus.set_fill_status(100);
 	} else {
         m_bufferstatus.set_fill_status(100 - ((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount));
