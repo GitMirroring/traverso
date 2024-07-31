@@ -24,6 +24,8 @@ AudioFileCopyConvert.cpp
 AudioFileMerger.cpp
 AudioTrack.cpp
 AudioSource.cpp
+TAudioSourceBufferStatus.h
+TQueueBufferSlot.h
 AbstractViewPort.cpp
 TCommand.cpp
 TConfig.cpp

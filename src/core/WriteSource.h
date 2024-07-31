@@ -44,10 +44,10 @@ public :
 
     nframes_t ringbuffer_write(TProcessCallBackData &processData);
 
-    int rb_file_write(QueueBufferSlot* slot);
+    int rb_file_write(TQueueBufferSlot* slot);
 	void process_ringbuffer(audio_sample_t* buffer);
 
-    BufferStatus* get_buffer_status() final;
+    TAudioSourceBufferStatus* get_buffer_status() final;
 
 	Peak* get_peak() {return m_peak;}
 
@@ -82,7 +82,7 @@ private:
     float*          m_dataBuffer;
     void*           m_outputData;
 
-    QueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
+    TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
 
     friend class DiskIO;
     void process_realtime_buffers() final;

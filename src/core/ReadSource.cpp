@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Project.h"
 #include "AudioBus.h"
 #include "TLocation.h"
+#include "TQueueBufferSlot.h"
 #include "Utils.h"
 #include "AudioDevice.h"
 #include <QFile>
@@ -204,8 +205,8 @@ int ReadSource::init( )
         m_length = TTimeRef::max_length();
 		m_channelCount = 0;
 		m_origBitDepth = 16;
-        m_bufferstatus.fillStatus =  100;
-        m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::IN_SYNC);
+        m_bufferstatus.set_fill_status(100);
+        m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::IN_SYNC);
 		return 1;
 	}
 	
@@ -351,13 +352,13 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
 {
     Q_ASSERT(m_location);
 
-    m_bufferstatus.set_sync_status(BufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
+    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
 
     // If the transport location lies (much) in front of our start location
     // or after our end location no need to fill the buffers
     if ((transportLocation + m_aboutOneToFourSecondsTime) < m_location->get_start() ||
         transportLocation > m_location->get_end()) {
-        m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::OUT_OF_SYNC);
+        m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::OUT_OF_SYNC);
         return;
     }
 
@@ -372,7 +373,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
                QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
     }
 
-    QueueBufferSlot* slot;
+    TQueueBufferSlot* slot;
     // The contents of the Slots in the RT queue are most likely useless due to seeking
     // to another transport location so empty the rt queue completely
     // NB: Since we are seeking we are allowed and should clear the rt queue now
@@ -422,7 +423,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
 
         if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
             printf("ReadSource::rb_seek_to_transport_location:: try dequeue failed");
-            m_bufferstatus.set_sync_status(BufferStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
+            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
             return;
         }
 
@@ -436,7 +437,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
             printf("ReadSource::fill_realtime_buffers: try enqueue failed");
-            m_bufferstatus.set_sync_status(BufferStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
+            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
             return;
         }
 
@@ -449,7 +450,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
 
     m_lastQueuedRTBufferSlot->set_file_location(fileLocation);
     m_lastQueuedRTBufferSlot->set_transport_location(seekTransportLocation);
-    m_bufferstatus.set_sync_status(BufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION);
+    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION);
 
     process_realtime_buffers();
 }
@@ -483,14 +484,14 @@ void ReadSource::process_realtime_buffers()
     // read to the m_lastQueuedRTBufferSlot->get_transport_location(); since we set that
     // value to the seek transport location
     size_t slotsToFill = freeSlots;
-    if (m_bufferstatus.get_sync_status() == BufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION) {
+    if (m_bufferstatus.get_sync_status() == TAudioSourceBufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION) {
         slotsToFill = int(0.7 * m_slotcount);
     } else {
         slotFileLocation += m_bufferSlotDuration;
         transportLocation += m_bufferSlotDuration;
     }
 
-    QueueBufferSlot* slot = nullptr;
+    TQueueBufferSlot* slot = nullptr;
     nframes_t totalReadSize = slotsToFill * bufferSize;
     // file_read can return 0 in which case m_fileDecodeBuffer internal
     // buffers are the wrong size or not created at all.
@@ -507,7 +508,7 @@ void ReadSource::process_realtime_buffers()
     {
         if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
             PERROR("ReadSource::fill_realtime_buffers: try dequeue failed");
-            m_bufferstatus.set_sync_status(BufferStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
+            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
             return;
         }
 
@@ -521,7 +522,7 @@ void ReadSource::process_realtime_buffers()
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
             PERROR("ReadSource::fill_realtime_buffers: try enqueue failed");
-            m_bufferstatus.set_sync_status(BufferStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
+            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
             return;
         }
 
@@ -534,7 +535,7 @@ void ReadSource::process_realtime_buffers()
     m_lastQueuedRTBufferSlot = slot;
     Q_ASSERT(m_lastQueuedRTBufferSlot);
 
-    m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::IN_SYNC);
+    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::IN_SYNC);
 }
 
 
@@ -546,7 +547,7 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
         return 0;
     }
 
-    QueueBufferSlot* slot = nullptr;
+    TQueueBufferSlot* slot = nullptr;
 
     // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
     nframes_t read = 0;
@@ -558,8 +559,8 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
 
     while ((slot = dequeue_from_rt_queue(processData)))
     {
-        Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
-        Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+        Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
+        Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
         Q_ASSERT(slot);
 
         // check if this slot or any available is a candidate slot, if not, no need to process the
@@ -596,7 +597,7 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
             // detect if this is the case.
             Q_ASSERT(processData.get_is_real_time() == false);
 
-            m_bufferstatus.set_sync_status(BufferStatus::SyncStatus::OUT_OF_SYNC);
+            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::OUT_OF_SYNC);
             read = 0;
             m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
@@ -614,12 +615,12 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
     return read;
 }
 
-QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData &processData)
+TQueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData &processData)
 {
-    Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
-    Q_ASSERT(m_bufferstatus.get_sync_status() != BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+    Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
+    Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
 
-    QueueBufferSlot* slot = nullptr;
+    TQueueBufferSlot* slot = nullptr;
 
     if (processData.get_is_real_time()) {
         if (!m_rtBufferSlotsQueue->try_dequeue(slot)) {
@@ -637,14 +638,14 @@ QueueBufferSlot* ReadSource::dequeue_from_rt_queue(TProcessCallBackData &process
 }
 
 
-BufferStatus* ReadSource::get_buffer_status()
+TAudioSourceBufferStatus* ReadSource::get_buffer_status()
 {
     Q_ASSERT(m_channelCount > 0);
 
     if (!m_active.load()) {
-        m_bufferstatus.fillStatus =  100;
+        m_bufferstatus.set_fill_status(100);
 	} else {
-        m_bufferstatus.fillStatus = 100 - ((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount);
+        m_bufferstatus.set_fill_status(100 - ((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount));
 	}
 
     return &m_bufferstatus;

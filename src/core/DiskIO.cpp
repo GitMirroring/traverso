@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
+#include "Utils.h"
 #include <samplerate.h>
 
 #if defined (Q_OS_UNIX)
@@ -225,9 +226,9 @@ void DiskIO::do_work( )
             return;
         }
 
-        BufferStatus* status = source->get_buffer_status();
+        TAudioSourceBufferStatus* status = source->get_buffer_status();
 
-        if (status->fillStatus <= 80 || status->out_of_sync()) {
+        if (status->get_fill_status() <= 80 || status->out_of_sync()) {
 
             if (status->out_of_sync()) {
                 source->rb_seek_to_transport_location(m_transportLocation);
@@ -236,8 +237,8 @@ void DiskIO::do_work( )
                 source->process_realtime_buffers();
             }
 
-            if ((status->fillStatus < m_bufferFillStatus.load()) && !status->out_of_sync()) {
-                m_bufferFillStatus.store(status->fillStatus);
+            if ((status->get_fill_status() < m_bufferFillStatus.load()) && !status->out_of_sync()) {
+                m_bufferFillStatus.store(status->get_fill_status());
             }
         }
     }
@@ -289,7 +290,7 @@ void DiskIO::private_remove_from_work(AudioSource *source)
     // FIXME
     // Review the deletion of AudioSources and non-active AudioSources that should only
     // be removed from DiskIO but not deleted.
-    source->m_bufferstatus.set_sync_status(BufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+    source->m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
     source->delete_rt_buffers();
     delete source;
 }

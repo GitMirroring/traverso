@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <AudioDevice.h>
 #include "AbstractAudioWriter.h"
 #include "Peak.h"
+#include "TQueueBufferSlot.h"
 #include "Utils.h"
 
 #include "gdither.h"
@@ -329,7 +330,7 @@ nframes_t WriteSource::ringbuffer_write(TProcessCallBackData &processData)
     Q_ASSERT(bus);
     Q_ASSERT(bus->get_channel_count() == m_channelCount);
 
-    QueueBufferSlot* slot = nullptr;
+    TQueueBufferSlot* slot = nullptr;
 
     if ((slot = dequeue_from_free_queue(processData)) )
     {
@@ -350,9 +351,9 @@ nframes_t WriteSource::ringbuffer_write(TProcessCallBackData &processData)
     return 0;
 }
 
-QueueBufferSlot* WriteSource::dequeue_from_free_queue(TProcessCallBackData &processData)
+TQueueBufferSlot* WriteSource::dequeue_from_free_queue(TProcessCallBackData &processData)
 {
-    QueueBufferSlot* slot = nullptr;
+    TQueueBufferSlot* slot = nullptr;
 
     if (processData.get_is_real_time()) {
         if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
@@ -385,7 +386,7 @@ void WriteSource::process_realtime_buffers()
 
     m_exportSpecification->set_render_buffer(m_diskIOFramebuffer);
 
-    QueueBufferSlot* slot = nullptr;
+    TQueueBufferSlot* slot = nullptr;
 
     while (m_rtBufferSlotsQueue->try_dequeue(slot)) {
         rb_file_write(slot);
@@ -419,7 +420,7 @@ void WriteSource::set_process_peaks( bool process )
 	}
 }
 
-int WriteSource::rb_file_write(QueueBufferSlot* slot)
+int WriteSource::rb_file_write(TQueueBufferSlot* slot)
 {
     nframes_t written = 0;
     uint chan;
@@ -471,16 +472,16 @@ void WriteSource::set_recording(bool rec )
 	m_isRecording = rec;
 }
 
-BufferStatus* WriteSource::get_buffer_status()
+TAudioSourceBufferStatus* WriteSource::get_buffer_status()
 {
-    m_bufferstatus.fillStatus = ((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount);
+    m_bufferstatus.set_fill_status((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount);
     // FIXME
     // Ugly hack to let DiskIO keep calling process_realtime_buffers()
     // which will then call finish_export()
     if (!m_isRecording) {
-        m_bufferstatus.fillStatus = 70;
+        m_bufferstatus.set_fill_status(70);
     }
-    m_bufferstatus.set_sync_status(BufferStatus::IN_SYNC);
+    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::IN_SYNC);
     return &m_bufferstatus;
 }
 

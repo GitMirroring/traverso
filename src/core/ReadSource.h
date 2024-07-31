@@ -71,7 +71,7 @@ public :
     uint get_file_rate() const;
     const TTimeRef& get_length() const {return m_length;}
 
-    BufferStatus* get_buffer_status() final;
+    TAudioSourceBufferStatus* get_buffer_status() final;
 
     void set_location(TLocation* location);
 
@@ -92,7 +92,7 @@ private:
     TTimeRef            m_sourceStartLocation;
     TTimeRef            m_aboutOneToFourSecondsTime;
 
-    QueueBufferSlot* dequeue_from_rt_queue(TProcessCallBackData &processData);
+    TQueueBufferSlot* dequeue_from_rt_queue(TProcessCallBackData &processData);
 	
 	int ref() { return m_refcount++;}
 	
