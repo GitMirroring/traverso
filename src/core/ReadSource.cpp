@@ -35,6 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
+#include "qthread.h"
 
 
 /**
@@ -542,9 +543,31 @@ void ReadSource::process_realtime_buffers()
 nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation)
 {
     if (m_bufferstatus.out_of_sync()) {
-        // printf("ReadSource::ringbuffer_read: Buffer out of sync, skipping file location %s\n",
-        //        QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
-        return 0;
+        if (processData.get_is_real_time()) {
+            printf("ReadSource::ringbuffer_read: RealTime: Buffer out of sync, skipping file location %s\n",
+                   QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
+            printf("ReadSource::ringbuffer_read: RealTime: Buffer status %s\n", QS_C(m_bufferstatus.get_readable_sync_status()));
+            return 0;
+        } else {
+            // During freewheeling the status of the buffers can get out of sync
+            // Reason: Buffers get only filled when the transport location get's close to the start
+            // of an AudioClip, about 3-4 seconds the buffers get filled. If the DiskIO thread
+            // is slow or overloaded compared to the audio thread, the latter one can get in front of the disk thread
+            // It's perfectly valid and in fact mandatory to start waiting here to let the disk thread
+            // fill the buffers and then continue freewheeling
+            printf("ReadSource::ringbuffer_read: FreeWheeling: Buffer status %s\n", QS_C(m_bufferstatus.get_readable_sync_status()));
+            uint counter = 0;
+            while(m_bufferstatus.out_of_sync() && (counter < 1000000)) {
+                QThread::sleep(std::chrono::nanoseconds(1000));
+                counter++;
+            }
+            if (m_bufferstatus.out_of_sync()) {
+                printf("ReadSource::ringbuffer_read: FreeWheeling: Buffers still out of sync after 1 second wait, giving up\n");
+                return 0;
+            } else {
+                printf("ReadSource::ringbuffer_read: Buffers back in sync after %d micro second\n", counter);
+            }
+        }
     }
 
     TQueueBufferSlot* slot = nullptr;
