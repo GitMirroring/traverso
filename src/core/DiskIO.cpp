@@ -112,14 +112,25 @@ void DiskIO::run()
         }
     }
 #endif
-    exec();
+
+    while(do_work()) {
+
+    }
+
+    printf("DiskIO::run(): leaving now...\n");
+
 }
 
 
 
 DiskIO::DiskIO()
 {
+    m_audioThreadProcessedFramesQueue = new moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>(64);
+    m_audioSourcesToBeAdded = new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512);
+    m_audioSourcesToBeRemoved = new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512);
+
     m_waitForSeek.store(false);
+    m_stopDiskIOThreadRequested = false;
     m_outputSampleRate = 0;
     m_sampleRateChanged = false;
     m_resampleQualityChanged = false;
@@ -138,8 +149,6 @@ DiskIO::DiskIO()
     // Run in our own event loop so every slot call get's processed there
     moveToThread(this);
     start(QThread::HighPriority);
-
-    connect(&audiodevice(), SIGNAL(finishedOneProcessCycle()), this, SLOT(do_work()), Qt::QueuedConnection);
 }
 
 
@@ -155,7 +164,6 @@ DiskIO::~DiskIO()
 }
 
 void DiskIO::set_seek_transport_location(const TTimeRef &transportLocation) {
-    printf("DiskIO::set_seek_transport_location: Seek location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(transportLocation)));
     m_seekTransportLocation = transportLocation;
     m_waitForSeek.store(true);
 }
@@ -198,11 +206,30 @@ void DiskIO::seek()
 }
 
 
-// Internal function
-// This function is called everytime the audio thread has finished one processing cycle
-void DiskIO::do_work( )
+bool DiskIO::do_work( )
 {
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::do_work", "NOT running in DiskIO thread");
+
+    if (m_stopDiskIOThreadRequested) {
+        return false;
+    }
+
+    nframes_t audioThreadProcessedFrames;
+    m_audioThreadProcessedFramesQueue->wait_dequeue(audioThreadProcessedFrames);
+
+    nframes_t totalFrames = audioThreadProcessedFrames;
+    while(m_audioThreadProcessedFramesQueue->try_dequeue(audioThreadProcessedFrames)) {
+        totalFrames += audioThreadProcessedFrames;
+    }
+    Q_UNUSED(totalFrames);
+
+    AudioSource* source;
+    while (m_audioSourcesToBeAdded->try_dequeue(source)) {
+        private_add_to_work(source);
+    }
+    while (m_audioSourcesToBeRemoved->try_dequeue(source)) {
+        private_remove_from_work(source);
+    }
 
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
@@ -240,6 +267,8 @@ void DiskIO::do_work( )
 
     auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
     m_cpuTime->write(&totalTime, 1);
+
+    return true;
 }
 
 void DiskIO::add_audio_source(AudioSource* source)
@@ -257,7 +286,8 @@ void DiskIO::add_audio_source(AudioSource* source)
     // only for WriteSource change to decodebuffers instead
     source->set_diskio_frame_buffer(framebuffer);
 
-    QMetaObject::invokeMethod(this, "private_add_to_work", Qt::QueuedConnection, source);
+    m_audioSourcesToBeAdded->wait_enqueue(source);
+    // QMetaObject::invokeMethod(this, "private_add_to_work", Qt::QueuedConnection, source);
 }
 
 void DiskIO::private_add_to_work(AudioSource *source)
@@ -272,7 +302,9 @@ void DiskIO::private_add_to_work(AudioSource *source)
 void DiskIO::remove_audio_source(AudioSource *source)
 {
     PENTER2;
-    QMetaObject::invokeMethod(this, "private_remove_from_work", Qt::QueuedConnection, source);
+
+    m_audioSourcesToBeRemoved->wait_enqueue(source);
+    // QMetaObject::invokeMethod(this, "private_remove_from_work", Qt::QueuedConnection, source);
 }
 
 void DiskIO::private_remove_from_work(AudioSource *source)
@@ -331,25 +363,27 @@ int DiskIO::get_buffers_fill_status( )
     return status;
 }
 
+void DiskIO::add_processed_audio_thread_frames(nframes_t nframes)
+{
+    m_audioThreadProcessedFramesQueue->try_enqueue(nframes);
+}
+
 void DiskIO::stop_disk_thread( )
 {
     PENTER;
-    if (!isRunning()) {
-        return;
-    }
 
     // Stop any processing in do_work()
-    m_waitForSeek.store(true);
-
-    // Exit the diskthreads event loop
-    printf("DiskIO::stop_disk_thread: calling m_diskThread->exit(0)\n");
-    exit(0);
-
-    // Wait for the Thread to return from it's event loop. 2 seconds should be (more then) enough,
-    // if not, terminate this thread and print a warning!
-    if ( ! wait(2000) ) {
-        qWarning("DiskIO :: Still running after 2 second wait, terminating!");
+    m_stopDiskIOThreadRequested = true;
+    // this function is called from the DiskIO destructor
+    // most likely we're waiting on an empty blocking queue so do_work() will never be called
+    // so make sure we wake up the thread by adding an item to the queue
+    // Since we are disconnected from the audio processing callback it's safe to do so.
+    add_processed_audio_thread_frames(0);
+    quit();
+    add_processed_audio_thread_frames(0);
+    if (!wait(500)) {
         terminate();
+        wait();
     }
 }
 

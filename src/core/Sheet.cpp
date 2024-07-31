@@ -502,6 +502,9 @@ void Sheet::solo_track(Track *track)
 //
 int Sheet::process(TProcessCallBackData &processData)
 {
+    m_readDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
+    m_writeDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
+
     if (start_seek()) {
         printf("Sheet::process: starting seek\n");
         inititate_seek();

@@ -29,6 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 #include "defines.h"
 
+#include "cameron/readerwritercircularbuffer.h"
+
 class AudioSource;
 class DecodeBuffer;
 
@@ -57,11 +59,18 @@ public:
     uint get_output_rate() {return m_outputSampleRate;}
 	int get_resample_quality() {return m_resampleQuality;}
 
+    void add_processed_audio_thread_frames(nframes_t nframes);
+
 protected:
     void run() override;
 
 private:
+    moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>*   m_audioThreadProcessedFramesQueue;
+    moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>*   m_audioSourcesToBeAdded;
+    moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>*   m_audioSourcesToBeRemoved;
+
     std::atomic<bool>   m_waitForSeek;
+    bool                m_stopDiskIOThreadRequested;
 
     QList<AudioSource*>	m_audioSources;
 
@@ -92,7 +101,7 @@ public slots:
     void set_resample_quality(int quality);
 
 private slots:
-    void do_work();
+    bool do_work();
 
     void private_add_to_work(AudioSource* source);
     void private_remove_from_work(AudioSource* source);
