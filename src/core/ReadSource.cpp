@@ -616,10 +616,6 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
                    QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)),
                    QS_C(TTimeRef::timeref_to_ms_3(lastAvailableSlotFileLocation)));
 
-            // in a free wheeling world it should be impossible to get out of sync
-            // detect if this is the case.
-            Q_ASSERT(processData.get_is_real_time() == false);
-
             m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::OUT_OF_SYNC);
             read = 0;
             m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
