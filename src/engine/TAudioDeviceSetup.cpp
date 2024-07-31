@@ -72,7 +72,7 @@ int TAudioDeviceSetup::set_dither_shape(const QString &ditherShape)
 QList<uint> TAudioDeviceSetup::get_buffer_sizes_list()
 {
     if (periodBufferSizesList.isEmpty()) {
-        periodBufferSizesList << 32 << 64 << 128 << 256 << 512 << 1024 << 2048 << 4096;
+        periodBufferSizesList << 32 << 64 << 128 << 256 << 512 << 1024 << 2048 << 4096 << 8192;
     }
 
     return periodBufferSizesList;
@@ -81,7 +81,7 @@ QList<uint> TAudioDeviceSetup::get_buffer_sizes_list()
 QList<uint> TAudioDeviceSetup::get_sample_rates_list()
 {
     if (sampleRatesList.isEmpty()) {
-        sampleRatesList << 8000 << 11025 << 22050 << 32000 << 44100 << 48000 << 88200 << 96000;
+        sampleRatesList << 44100 << 48000 << 96000 << 192000 << 8000 << 11025 << 22050 << 32000 << 88200 ;
     }
 
     return sampleRatesList;
