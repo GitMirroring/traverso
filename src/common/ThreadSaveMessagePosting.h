@@ -73,6 +73,7 @@ private:
 
     int             m_eventCounter;
     int             m_retryCount;
+    ThreadSaveMessagePostingThread* m_threadSaveMessagePostingThread;
 
     void process_posted_gui_events();
     void process_processed_events_by_rt_thread_queue();
