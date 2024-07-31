@@ -440,6 +440,10 @@ int AudioClip::process(TProcessCallBackData &processData)
         return -1;
     }
 
+    if (!m_readSource->is_active()) {
+        return 0;
+    }
+
     if (m_isMuted || (get_gain() == 0.0f) ) {
         return 0;
     }
