@@ -73,9 +73,9 @@ ThreadSaveMessagePosting::ThreadSaveMessagePosting()
     m_eventCounter = 0;
     m_retryCount = 0;
 
-    auto TSMPThread = new ThreadSaveMessagePostingThread;
-    TSMPThread->start();
-    TSMPThread->moveToThread(TSMPThread);
+    m_threadSaveMessagePostingThread = new ThreadSaveMessagePostingThread;
+    m_threadSaveMessagePostingThread->start();
+    m_threadSaveMessagePostingThread->moveToThread(m_threadSaveMessagePostingThread);
 }
 
 ThreadSaveMessagePosting::~ ThreadSaveMessagePosting( )
@@ -160,7 +160,7 @@ void ThreadSaveMessagePosting::process_posted_gui_events( )
 // Called by TSMPThread which is allowed to block on the wait_dequeue()
 void ThreadSaveMessagePosting::process_processed_events_by_rt_thread_queue( )
 {
-    Q_ASSERT_X(this->thread() != QThread::currentThread(), "TSMP::process_processed_events_by_rt_thread_queue", "Runs in wrong trhead");
+    Q_ASSERT_X(m_threadSaveMessagePostingThread->thread() == QThread::currentThread(), "TSMP::process_processed_events_by_rt_thread_queue", "Runs in wrong trhead");
 
     TSMPEvent event;
 
