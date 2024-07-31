@@ -150,7 +150,7 @@ void AudioDriverConfigPage::reset_default_config()
     if (libjack_is_present)
         config().set_property("Hardware", "drivertype", "Jack");
 #else
-    config().set_property("Hardware", "drivertype", "Dummy Driver");
+    config().set_property("Hardware", "drivertype", "Dummy");
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)

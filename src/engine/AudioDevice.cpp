@@ -166,7 +166,7 @@ AudioDevice::AudioDevice()
 
     m_driverType = tr("No Driver Loaded");
 
-    m_fallBackSetup.set_driver_type("Dummy Driver");
+    m_fallBackSetup.set_driver_type("Dummy");
 
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
@@ -191,7 +191,7 @@ AudioDevice::AudioDevice()
 #endif
 
 
-    m_availableDrivers << "Dummy Driver";
+    m_availableDrivers << "Dummy";
 
     // This will create the event queueu and tsar thread for us
     // has to be running before the audio thread in order to make
@@ -340,7 +340,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
     m_bufferSize = ads.get_buffer_size();
     m_xrunCount = 0;
     m_ditherShape = ads.get_dither_shape();
-    //        if (!(ads.driverType == "Dummy Driver")) {
+    //        if (!(ads.driverType == "Dummy")) {
     m_setup = ads;
     //        }
 
@@ -368,14 +368,14 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     m_runAudioThread = 1;
 
-    if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy Driver") || (ads.get_driver_type() == "PulseAudio") ) {
+    if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy") || (ads.get_driver_type() == "PulseAudio") ) {
 
         printf("AudioDevice: Starting Audio Thread ... ");
 
 
         bool realTime = false;
         if (!m_audioThread) {
-            if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy Driver")) {
+            if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy")) {
                 realTime = true;
             }
 
@@ -482,7 +482,7 @@ void AudioDevice::create_driver()
 #endif
 
 
-    if (driverType == "Dummy Driver") {
+    if (driverType == "Dummy") {
         printf("AudioDevice: Creating Dummy Driver...\n");
         m_driver = new TAudioDriver(this);
         return;
@@ -558,7 +558,7 @@ int AudioDevice::setup_driver()
 #endif
 
 
-    if (driverType == "Dummy Driver") {
+    if (driverType == "Dummy") {
         printf("AudioDevice: Creating Dummy Driver...\n");
         return 1;
     }

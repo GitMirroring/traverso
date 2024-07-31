@@ -72,7 +72,7 @@ int TAudioDriver::_run_cycle( )
         // We have to set this limit to not overload the Tsar event queues.
 
         // 20 microseconds to ryn_cycles() / second == 1.000.000 / 20 = 50.000
-        trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 20);
+        trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 5);
         if (runCycleTime < minimumRunCycleTimeInNanoSeconds) {
             QThread::currentThread()->sleep(std::chrono::nanoseconds (minimumRunCycleTimeInNanoSeconds));
         }

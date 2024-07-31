@@ -179,19 +179,19 @@ void Tsar::process_processed_events_by_rt_thread_queue( )
 	
     if (m_retryCount > 200)
 	{
-		if (audiodevice().get_driver_type() != "Dummy Driver") {
+		if (audiodevice().get_driver_type() != "Dummy") {
             QMessageBox::critical( nullptr,
 				tr("Traverso - Malfunction!"), 
 				tr("The Audiodriver Thread seems to be stalled/stopped, but Traverso didn't ask for it!\n"
 				"This effectively makes Traverso unusable, since it relies heavily on the AudioDriver Thread\n"
-				"To ensure proper operation, Traverso will fallback to the 'Dummy Driver'.\n"
+				"To ensure proper operation, Traverso will fallback to the 'Dummy'.\n"
                 "Potential issues why this can show up are: \n\n"
 				"* You're not running with real time privileges! Please make sure this is setup properly.\n\n"
 				"* The audio chipset isn't supported (completely), you probably have to turn off some of it's features.\n"
 				"\nFor more information, see the Help file, section: \n\n AudioDriver: 'Thread stalled error'\n\n"),
                 QMessageBox::Ok);
             TAudioDeviceSetup audioDeviceSetup;
-            audioDeviceSetup.set_driver_type("Dummy Driver");
+            audioDeviceSetup.set_driver_type("Dummy");
             audiodevice().set_parameters(audioDeviceSetup);
 			m_retryCount = 0;
 		} else {
