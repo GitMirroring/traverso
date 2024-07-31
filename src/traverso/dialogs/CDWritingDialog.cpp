@@ -218,7 +218,7 @@ void CDWritingDialog::start_burn_process()
 	cd_render();
 	
 	int index = cdDeviceComboBox->currentIndex();
-	if (index != -1 && cdDeviceComboBox->itemData(index) != QVariant::Invalid) {
+    if (index != -1 && cdDeviceComboBox->itemData(index) != QVariant()) {
 		config().set_property("Cdrdao", "drive", cdDeviceComboBox->itemData(index));
 	}
 }

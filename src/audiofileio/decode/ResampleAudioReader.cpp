@@ -351,11 +351,11 @@ void ResampleAudioReader::create_overflow_buffers()
 
 void ResampleAudioReader::set_resample_decode_buffer(DecodeBuffer * buffer)
 {
-	if (m_resampleDecodeBufferIsMine && m_resampleDecodeBuffer) {
-		delete m_resampleDecodeBuffer;
-		m_resampleDecodeBufferIsMine = false;
-	}
-	m_resampleDecodeBuffer = buffer;
+    if (m_resampleDecodeBufferIsMine && m_resampleDecodeBuffer) {
+        delete m_resampleDecodeBuffer;
+        m_resampleDecodeBufferIsMine = false;
+    }
+    m_resampleDecodeBuffer = buffer;
 	reset();
 }
 

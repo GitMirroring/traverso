@@ -1024,7 +1024,7 @@ void TShortCutManager::exportFunctions()
 void TShortCutManager::loadShortcuts()
 {
     PENTER;
-    foreach(TShortCut* shortCut, m_shortcuts)
+    for(TShortCut* shortCut : m_shortcuts)
 	{
 		delete shortCut;
 	}
