@@ -502,8 +502,9 @@ void Sheet::solo_track(Track *track)
 //
 int Sheet::process(TProcessCallBackData &processData)
 {
-    m_readDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
-    m_writeDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
+    // DiskIO always needs a wakeup call in case we're
+    // seeking or want to seek
+    m_readDiskIO->wakeup();
 
     if (start_seek()) {
         printf("Sheet::process: starting seek\n");
@@ -558,6 +559,9 @@ int Sheet::process(TProcessCallBackData &processData)
     if (m_bounceTrack->armed()) {
         m_bounceTrack->process(processData);
     }
+
+    m_readDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
+    m_writeDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
 
     return 1;
 }
