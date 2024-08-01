@@ -64,8 +64,7 @@ SpectralMeterView::SpectralMeterView(SpectralMeterWidget* widget)
 
 	m_config = 0;
 
-        m_meter = new SpectralMeter();
-        m_meter->init();
+    m_meter = new SpectralMeter();
 
 	load_configuration();
 	

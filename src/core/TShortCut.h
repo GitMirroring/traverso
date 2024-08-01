@@ -10,7 +10,7 @@ class TShortCut
 {
 public:
     TShortCut(int keyValue);
-    ~ TShortCut() {}
+    ~ TShortCut();
 
     int getKeyValue() const {return m_keyValue;}
 

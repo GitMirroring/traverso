@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QModelIndex>
 #include <QTimer>
 #include <QGridLayout>
+#include <qcompleter.h>
+#include <qstandarditemmodel.h>
 
 class Sheet;
 class TSession;
@@ -172,8 +174,8 @@ private:
 	QMenu*			m_resampleQualityMenu{};
         QList<QAction*>         m_projectMenuToolbarActions;
         QLineEdit*              m_trackFinder;
-        QCompleter*             m_trackFinderCompleter;
-        QStandardItemModel*     m_trackFinderModel;
+        QCompleter             m_trackFinderCompleter;
+        QStandardItemModel     m_trackFinderModel;
         QTreeView*              m_trackFinderTreeView;
 
         QList<AbstractVUMeterLevel*> m_vuLevels;

@@ -45,6 +45,7 @@ TConfig& config()
 
 TConfig::~ TConfig( )
 {
+    delete m_commands;
 }
 
 void TConfig::load_configuration()
@@ -59,8 +60,8 @@ void TConfig::load_configuration()
 	
 	set_audiodevice_driver_properties();
 
-    TraversoCommands* commands = new TraversoCommands();
-    tShortCutManager().register_command_plugin(commands, "TraversoCommands");
+    m_commands = new TraversoCommands();
+    tShortCutManager().register_command_plugin(m_commands, "TraversoCommands");
 	tShortCutManager().loadFunctions();
 	tShortCutManager().loadShortcuts();
 }

@@ -71,6 +71,8 @@ private:
 	RingBufferNPT<float>*	m_databufferL;
 	RingBufferNPT<float>*	m_databufferR;
 
+    void free_fftw_data();
+
 	float   *NFArray(int size){
 		float *p;
 		p = (float *)calloc(size,sizeof(*p));

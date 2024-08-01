@@ -42,6 +42,14 @@ SpectralMeter::SpectralMeter()
 	m_windowingFunction = 1;
 	m_bufferreadouts = 0;
 
+    fftsigl  = nullptr;
+    fftsigr  = nullptr;
+    fftspecl = nullptr;
+    fftspecr = nullptr;
+    pfegl = nullptr;
+    pfegr = nullptr;
+    win = nullptr;
+
     SpectralMeter::init();
 
 	// constructs a ringbuffer that can hold 16384 samples
@@ -54,6 +62,8 @@ SpectralMeter::~SpectralMeter()
 {
 	delete m_databufferL;
 	delete m_databufferR;
+
+    free_fftw_data();
 }
 
 
@@ -77,15 +87,17 @@ int SpectralMeter::set_state(const QDomNode & node )
 
 int SpectralMeter::init()
 {
+    free_fftw_data();
+
 	fftsigl  = NDArray(m_frlen);		// array of input values (windowed samples)
 	fftsigr  = NDArray(m_frlen);		// array of input values (windowed samples)
 	fftspecl = NFFTWArray(m_frlen/2 + 1);	// array of output values (complex numbers)
 	fftspecr = NFFTWArray(m_frlen/2 + 1);	// array of output values (complex numbers)
 	pfegl = fftw_plan_dft_r2c_1d(m_frlen, fftsigl, fftspecl, FFTW_ESTIMATE);
 	pfegr = fftw_plan_dft_r2c_1d(m_frlen, fftsigr, fftspecr, FFTW_ESTIMATE);
-
 	win = NDArray(m_frlen);
-	switch (m_windowingFunction)
+
+    switch (m_windowingFunction)
 	{
 		case 0: // rectangle
 			for (int i = 0; i < m_frlen; ++i) {
@@ -245,5 +257,16 @@ int SpectralMeter::get_data(QVector<float> &specl, QVector<float> &specr)
 	}
 
 	return 1;
+}
+
+void SpectralMeter::free_fftw_data()
+{
+    free(fftsigl);
+    free(fftsigr);
+    fftw_free(fftspecl);
+    fftw_free(fftspecr);
+    fftw_destroy_plan(pfegl);
+    fftw_destroy_plan(pfegr);
+    free(win);
 }
 

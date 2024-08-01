@@ -27,35 +27,37 @@ $Id: Config.h,v 1.9 2007/10/20 17:38:17 r_sijrier Exp $
 #include <QHash>
 #include <QVariant>
 
+class TraversoCommands;
+
 class TConfig : public QObject
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
-	QVariant get_property(const QString& type, const QString& property, const QVariant &defaultValue);
-	void set_property(const QString& type, const QString& property, const QVariant &newValue);
-	
-	void check_and_load_configuration();
-	void reset_settings( );
-	
-	void save();
+    QVariant get_property(const QString& type, const QString& property, const QVariant &defaultValue);
+    void set_property(const QString& type, const QString& property, const QVariant &newValue);
+
+    void check_and_load_configuration();
+    void reset_settings( );
+
+    void save();
 
 signals:
-	void configChanged();
+    void configChanged();
 
 private:
-        TConfig() {}
-        ~TConfig();
+    TConfig() {}
+    ~TConfig();
 
-        TConfig(const TConfig&);
+    TConfig(const TConfig&);
 
-	// allow this function to create one instance
-        friend TConfig& config();
-	
-	void load_configuration();
-	void set_audiodevice_driver_properties();
-	
-	QHash<QString, QVariant>	m_configs;
+    // allow this function to create one instance
+    friend TConfig& config();
 
+    void load_configuration();
+    void set_audiodevice_driver_properties();
+
+    QHash<QString, QVariant>	m_configs;
+    TraversoCommands*           m_commands;
 };
 
 

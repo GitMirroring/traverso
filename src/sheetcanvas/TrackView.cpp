@@ -49,7 +49,7 @@ TrackView::TrackView(SheetView* sv, Track * track)
         PENTERCONS;
 	m_sv = sv;
 	m_track = track;
-    m_animation = new QPropertyAnimation(this, "yPosition");
+    m_animation = new QPropertyAnimation(this, "yPosition", this);
 	setZValue(sv->zValue() + 1);
 
 	setFlags(QGraphicsItem::ItemUsesExtendedStyleOption);

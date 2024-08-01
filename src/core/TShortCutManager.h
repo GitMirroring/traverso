@@ -87,6 +87,8 @@ private:
     QMap<QString, QStringList>	m_classes;
 
     TShortCutManager();
+    void extracted();
+    ~TShortCutManager();
     TShortCutManager(const TShortCutManager&) : QObject() {}
 
     friend TShortCutManager& tShortCutManager();

@@ -89,7 +89,7 @@ SheetView::SheetView(SheetWidget* sheetwidget,
     m_canvasCursor = new TCanvasCursor(this);
     scene()->addItem(m_canvasCursor);
 
-    m_canvasCursorMoveAnimation = new QPropertyAnimation(m_canvasCursor, "position");
+    m_canvasCursorMoveAnimation = new QPropertyAnimation(m_canvasCursor, "position", this);
     m_canvasCursorMoveAnimation->setEasingCurve(QEasingCurve::InOutQuad);
 
 	Sheet* sheet = qobject_cast<Sheet*>(m_session);

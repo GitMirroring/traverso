@@ -93,9 +93,6 @@ AlsaDriver::~AlsaDriver()
         free (pfd);
     }
 
-    free (alsa_name_playback);
-    free (alsa_name_capture);
-
     release_channel_dependent_memory ();
 }
 
@@ -113,8 +110,6 @@ int AlsaDriver::setup(bool capture, bool playback, const QString& devicename, co
         printf(" devicename %s\n", devicename.toLatin1().data());
     }
 
-    char *playback_pcm_name = strdup(pcmName.toLatin1().data());
-    char *capture_pcm_name = strdup(pcmName.toLatin1().data());
     int shorts_first = false;
 
     /* duplex is the default */
@@ -177,25 +172,25 @@ int AlsaDriver::setup(bool capture, bool playback, const QString& devicename, co
 
     process_count = 0;
 
-    alsa_name_playback = strdup (playback_pcm_name);
-    alsa_name_capture = strdup (capture_pcm_name);
+    alsa_name_playback = pcmName;
+    alsa_name_capture = pcmName;
 
     if (playback) {
-        if (snd_pcm_open (&playback_handle, alsa_name_playback, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
+        if (snd_pcm_open (&playback_handle, QS_C(alsa_name_playback), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
             switch (errno) {
             case EBUSY:
                 emit driverSetupMessage(tr("The playback device '%1'' is already in use. Please stop the "
                                               "application using it and restart the driver").
-                                           arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
+                                           arg(pcmName), AudioDevice::DRIVER_SETUP_WARNING);
                 return -1;
 
             case EPERM:
                 emit driverSetupMessage(tr("You do not have permission to open the audio device '%1' for playback").
-                                           arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
+                                           arg(pcmName), AudioDevice::DRIVER_SETUP_WARNING);
                 return -1;
             default:
                 emit driverSetupMessage(tr("Opening Playback Device '%1' failed with unknown error type").
-                                           arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
+                                           arg(pcmName), AudioDevice::DRIVER_SETUP_WARNING);
             }
 
             playback_handle = nullptr;
@@ -207,20 +202,20 @@ int AlsaDriver::setup(bool capture, bool playback, const QString& devicename, co
     }
 
     if (capture) {
-        if (snd_pcm_open (&capture_handle, alsa_name_capture, SND_PCM_STREAM_CAPTURE,  SND_PCM_NONBLOCK) < 0) {
+        if (snd_pcm_open (&capture_handle, QS_C(alsa_name_capture), SND_PCM_STREAM_CAPTURE,  SND_PCM_NONBLOCK) < 0) {
             switch (errno) {
             case EBUSY:
                 emit driverSetupMessage(tr("The Capture Device %1 is already in use. Please stop the"
-                                              " application using it and restart the driver").arg(capture_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
+                                              " application using it and restart the driver").arg(pcmName), AudioDevice::DRIVER_SETUP_WARNING);
                 return -1;
 
             case EPERM:
                 emit driverSetupMessage(tr("You do not have permission to open Device %1 for capture").
-                                           arg(capture_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
+                                           arg(pcmName), AudioDevice::DRIVER_SETUP_WARNING);
                 return -1;
             default:
                 emit driverSetupMessage(tr("Opening Capture Device %1 failed with unknown error type").
-                                           arg(capture_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
+                                           arg(pcmName), AudioDevice::DRIVER_SETUP_WARNING);
             }
 
             capture_handle = nullptr;
@@ -241,7 +236,7 @@ int AlsaDriver::setup(bool capture, bool playback, const QString& devicename, co
             }
 
             /* they asked for playback, but we can't do it */
-            emit driverSetupMessage(tr("Falling back to capture-only mode for device %1").arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
+            emit driverSetupMessage(tr("Falling back to capture-only mode for device %1").arg(pcmName), AudioDevice::DRIVER_SETUP_WARNING);
 
             playback = false;
         }
@@ -257,7 +252,7 @@ int AlsaDriver::setup(bool capture, bool playback, const QString& devicename, co
             }
 
             /* they asked for capture, but we can't do it */
-            emit driverSetupMessage(tr("Falling back to playback-only mode for device %1").arg(playback_pcm_name), AudioDevice::DRIVER_SETUP_WARNING);
+            emit driverSetupMessage(tr("Falling back to playback-only mode for device %1").arg(pcmName), AudioDevice::DRIVER_SETUP_WARNING);
 
             capture = false;
         }
@@ -474,7 +469,7 @@ void AlsaDriver::setup_io_function_pointers()
     }
 }
 
-int AlsaDriver::configure_stream(char *device_name,
+int AlsaDriver::configure_stream(const QString &device_name,
                                  const char *stream_name,
                                  snd_pcm_t *handle,
                                  snd_pcm_hw_params_t *hw_params,
@@ -530,7 +525,7 @@ int AlsaDriver::configure_stream(char *device_name,
 
             if (( (sample_width == 4) ? (format++ >= int(NUMFORMATS) - 1) : (format-- <= 0))) {
                 printf("ALSA Driver: Sorry. The audio interface \"%s\" doesn't support any of the"
-                       " hardware sample formats that Traverso's alsa-driver can use.\n", device_name);
+                       " hardware sample formats that Traverso's alsa-driver can use.\n", QS_C(device_name));
                 return -1;
             }
         } else {

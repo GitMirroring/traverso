@@ -52,6 +52,17 @@ TShortCutManager::TShortCutManager()
 	cpointer().add_contextitem(this);
 }
 
+TShortCutManager::~TShortCutManager()
+{
+    for(TShortCut* shortCut : std::as_const(m_shortcuts))
+    {
+        delete shortCut;
+    }
+    for(TShortCutFunction* function : std::as_const(m_functions)) {
+        delete function;
+    }
+}
+
 void TShortCutManager::registerFunction(TShortCutFunction *function)
 {
     Q_ASSERT(!function->object.isEmpty());
@@ -1024,7 +1035,7 @@ void TShortCutManager::exportFunctions()
 void TShortCutManager::loadShortcuts()
 {
     PENTER;
-    for(TShortCut* shortCut : m_shortcuts)
+    for(TShortCut* shortCut : std::as_const(m_shortcuts))
 	{
 		delete shortCut;
 	}

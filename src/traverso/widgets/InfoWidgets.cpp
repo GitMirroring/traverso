@@ -79,7 +79,7 @@ SystemResources::SystemResources(QWidget * parent)
     m_dspCpuUsage = new SystemValueBar(this);
     m_diskReadCpuUsage = new SystemValueBar(this);
     m_diskWriteCpuUsage = new SystemValueBar(this);
-    m_icon = new QPushButton();
+    m_icon = new QPushButton(this);
 	m_icon->setIcon(find_pixmap(":/memorysmall"));
 	m_icon->setFlat(true);
 	m_icon->setMaximumWidth(20);

@@ -72,7 +72,7 @@ private:
 	void setup_io_function_pointers();
 	void silence_untouched_channels(nframes_t nframes);
 	void release_channel_dependent_memory();
-	int configure_stream(char *device_name,
+    int configure_stream(const QString &device_name,
 			const char *stream_name,
 			snd_pcm_t *handle,
 			snd_pcm_hw_params_t *hw_params,
@@ -191,8 +191,8 @@ private:
 
 
 	unsigned long                *silent{};
-	char                         *alsa_name_playback{};
-	char                         *alsa_name_capture{};
+    QString                      alsa_name_playback;
+    QString                      alsa_name_capture;
 	char                         *alsa_driver{};
 	bitset_t			channels_not_done{};
 	bitset_t			channels_done{};

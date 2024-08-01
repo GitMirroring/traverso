@@ -165,19 +165,17 @@ TMainWindow::TMainWindow()
 	m_trackFinder = new QLineEdit(this);
 	m_trackFinder->setMinimumWidth(100);
 	m_trackFinder->installEventFilter(this);
-	m_trackFinderCompleter = new QCompleter;
-	m_trackFinder->setCompleter(m_trackFinderCompleter);
-	m_trackFinderModel = new QStandardItemModel();
-	m_trackFinderCompleter->setModel(m_trackFinderModel);
-	m_trackFinderCompleter->setCaseSensitivity(Qt::CaseInsensitive);
-	m_trackFinder->setCompleter(m_trackFinderCompleter);
-	connect(m_trackFinderCompleter, SIGNAL(activated(const QModelIndex&)),
-		this, SLOT(track_finder_model_index_changed(const QModelIndex&)));
+    m_trackFinder->setCompleter(&m_trackFinderCompleter);
+    m_trackFinderCompleter.setModel(&m_trackFinderModel);
+    m_trackFinderCompleter.setCaseSensitivity(Qt::CaseInsensitive);
+    m_trackFinder->setCompleter(&m_trackFinderCompleter);
+    connect(&m_trackFinderCompleter, SIGNAL(activated(QModelIndex)),
+        this, SLOT(track_finder_model_index_changed(QModelIndex)));
 	connect(m_trackFinder, SIGNAL(returnPressed()), this, SLOT(track_finder_return_pressed()));
 
 	m_trackFinderTreeView = new QTreeView;
 	m_trackFinderTreeView->setMinimumWidth(250);
-	m_trackFinderCompleter->setPopup(m_trackFinderTreeView);
+    m_trackFinderCompleter.setPopup(m_trackFinderTreeView);
 	m_trackFinderTreeView->setRootIsDecorated(false);
 	m_trackFinderTreeView->header()->hide();
 	m_trackFinderTreeView->header()->setStretchLastSection(false);
@@ -405,7 +403,7 @@ void TMainWindow::set_project(Project* project)
 
 	m_project = project;
 
-	m_trackFinderModel->clear();
+    m_trackFinderModel.clear();
 	track_finder_show_initial_text();
 
 	if ( m_project ) {
@@ -1761,7 +1759,7 @@ TCommand* TMainWindow::show_track_finder()
 	m_trackFinder->setText("Type to locate");
 	m_trackFinder->selectAll();
 
-	m_trackFinderModel->clear();
+    m_trackFinderModel.clear();
 
 	QList<Sheet*> sheets = m_project->get_sheets();
 
@@ -1776,7 +1774,7 @@ TCommand* TMainWindow::show_track_finder()
 			items.append(sItem);
 			sItem = new QStandardItem(sheet->get_name());
 			items.append(sItem);
-			m_trackFinderModel->appendRow(items);
+            m_trackFinderModel.appendRow(items);
 		}
 	}
 
@@ -1814,9 +1812,9 @@ void TMainWindow::track_finder_return_pressed()
 	}
 
 	QString name = m_trackFinder->text();
-	QList<QStandardItem*> items = m_trackFinderModel->findItems(name, Qt::MatchStartsWith);
+    QList<QStandardItem*> items = m_trackFinderModel.findItems(name, Qt::MatchStartsWith);
 	if (items.size()) {
-		track_finder_model_index_changed(m_trackFinderModel->indexFromItem(items.at(0)));
+        track_finder_model_index_changed(m_trackFinderModel.indexFromItem(items.at(0)));
 		return;
 	}
 }
