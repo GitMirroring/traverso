@@ -23,12 +23,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TSEND_H
 
 #include <QDomElement>
+#include <QObject>
 
 class AudioBus;
 class Track;
 
-class TSend
+class TSend : public QObject
 {
+    Q_OBJECT
 
 public:
     TSend(Track* track);

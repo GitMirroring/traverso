@@ -74,6 +74,7 @@ ResampleAudioReader::~ResampleAudioReader()
         src_delete(m_privateSRC->srcStates.back());
         m_privateSRC->srcStates.pop_back();
 	}
+    delete m_privateSRC;
 	
 	if (m_overflowBuffers) {
         for (uint chan = 0; chan < m_channels; chan++) {

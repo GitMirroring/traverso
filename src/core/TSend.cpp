@@ -29,7 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 TSend::TSend(Track* track)
-        : m_track(track)
+    : QObject(track)
+    , m_track(track)
 {
         m_type = POSTSEND;
         m_bus = nullptr;
@@ -37,7 +38,8 @@ TSend::TSend(Track* track)
 }
 
 TSend::TSend(Track* track, AudioBus* bus)
-        : m_track(track)
+    : QObject(track)
+    , m_track(track)
 {
         m_bus = bus;
         m_id = create_id();

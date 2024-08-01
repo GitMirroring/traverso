@@ -156,7 +156,12 @@ DiskIO::~DiskIO()
 {
     PENTERDES;
     stop_disk_thread();
-    delete framebuffer;
+
+    delete m_audioThreadProcessedFramesQueue;
+    delete m_audioSourcesToBeAdded;
+    delete m_audioSourcesToBeRemoved;
+
+    delete [] framebuffer;
     delete m_fileDecodeBuffer;
     delete m_resampleDecodeBuffer;
 }
@@ -242,7 +247,7 @@ bool DiskIO::do_work( )
     for (auto source : m_audioSources)
     {
         if (m_seekRequested.load()) {
-            printf("DiskIO::do_work: waiting for seek\n");
+            printf("DiskIO::do_work: Seek requested, starting seek now\n");
             seek();
         }
 

@@ -26,6 +26,7 @@
 
 #include "AudioChannel.h"
 #include "TConfig.h"
+#include "TVUMonitor.h"
 #include "Themer.h"
 #include "Mixer.h"
 #include <AudioDevice.h>

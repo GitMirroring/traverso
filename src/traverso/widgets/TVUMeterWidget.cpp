@@ -31,6 +31,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 
+#include "TVUMonitor.h"
 #include "Themer.h"
 #include "Mixer.h"
 #include <AudioDevice.h>
