@@ -80,8 +80,8 @@ SystemResources::SystemResources(QWidget * parent)
     m_diskReadCpuUsage = new SystemValueBar(this);
     m_diskWriteCpuUsage = new SystemValueBar(this);
     m_icon = new QPushButton(this);
-	m_icon->setIcon(find_pixmap(":/memorysmall"));
-	m_icon->setFlat(true);
+    m_icon->setIcon(find_pixmap(":/memorysmall"));
+    m_icon->setFlat(true);
 	m_icon->setMaximumWidth(20);
 	m_icon->setFocusPolicy(Qt::NoFocus);
 
@@ -129,6 +129,8 @@ SystemResources::SystemResources(QWidget * parent)
 
     QHBoxLayout* lay = new QHBoxLayout(this);
     lay->addSpacing(6);
+
+    lay->addWidget(m_icon);
 
     lay->addWidget(m_readBufferStatus);
     lay->addWidget(m_diskReadCpuUsage);
