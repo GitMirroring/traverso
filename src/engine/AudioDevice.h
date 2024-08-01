@@ -32,7 +32,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QVariant>
 
 
-#include "RingBufferNPT.h"
 #include "TAudioChannelConfiguration.h"
 #include "TRealTimeLinkedList.h"
 #include "TAudioBusConfiguration.h"
@@ -182,12 +181,12 @@ private:
     friend class JackDriver;
 #endif
 
-    RingBufferNPT<trav_time_t>*	m_cpuTime;
+    std::atomic<trav_time_t> m_processCallBackCpuTime;
     volatile size_t		m_runAudioThread;
     bool            m_isRealTime;
     trav_time_t		m_cycleStartTime;
     trav_time_t		m_lastCpuReadTime;
-    trav_time_t     m_processingPathWaitTime; // in nanoseconds
+    trav_time_t     m_processCallBackWaitTime; // in nanoseconds
     uint 			m_bufferSize;
     uint 			m_rate;
     uint			m_bitdepth;
@@ -221,10 +220,7 @@ private:
 
     void set_transport_cycle_end_time(trav_time_t time)
     {
-        trav_time_t runcycleTime = time - m_cycleStartTime;
-        if (m_cpuTime->write(&runcycleTime, 1) == 0) {
-            // printf("AudioDevice::set_transport_cycle_end_time: No write space in m_cpuTime\n");
-        }
+        m_processCallBackCpuTime.fetch_add(time - m_cycleStartTime);
     }
 
     TAudioDriver* get_driver() const {return m_driver;}

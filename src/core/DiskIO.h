@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 #include <QThread>
 
-#include "RingBufferNPT.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -60,6 +59,7 @@ public:
 	int get_resample_quality() {return m_resampleQuality;}
 
     void add_processed_audio_thread_frames(nframes_t nframes);
+    void wakeup();
 
 protected:
     void run() override;
@@ -69,14 +69,13 @@ private:
     moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>*   m_audioSourcesToBeAdded;
     moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>*   m_audioSourcesToBeRemoved;
 
-    std::atomic<bool>   m_waitForSeek;
+    std::atomic<bool>   m_seekRequested;
     bool                m_stopDiskIOThreadRequested;
 
     QList<AudioSource*>	m_audioSources;
 
     std::atomic<int>    m_bufferFillStatus;
-
-    RingBufferNPT<trav_time_t>*	m_cpuTime;
+    std::atomic<trav_time_t> m_doWorktTime;
     trav_time_t         m_lastCpuReadTime;
 
     int                 m_resampleQuality;

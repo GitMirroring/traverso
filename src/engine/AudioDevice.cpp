@@ -159,7 +159,7 @@ AudioDevice::AudioDevice()
     m_rate = 0;
     m_bitdepth = 0;
     m_xrunCount = 0;
-    m_cpuTime = new RingBufferNPT<trav_time_t>(65536);
+    m_processCallBackCpuTime.store(0);
     m_cycleStartTime = {};
     m_lastCpuReadTime = {};
     m_isRealTime = true;
@@ -214,7 +214,6 @@ AudioDevice::~AudioDevice()
     shutdown();
 
     delete m_audioThread;
-    delete m_cpuTime;
 }
 
 /**
@@ -304,7 +303,7 @@ int AudioDevice::run_one_cycle( nframes_t nframes, float  )
         client->process(m_processCallBackData);
         auto ringBufferReadTime = m_processCallBackData.get_ringbuffers_read_write_wait_time();
         // printf("processing wait time (micro seconds): %ld\n", ringBufferReadTime / 1000);
-        m_processingPathWaitTime += ringBufferReadTime;
+        m_processCallBackWaitTime += ringBufferReadTime;
     }
 
     if (m_isRealTime && m_driver->_write(nframes) < 0) {
@@ -822,19 +821,13 @@ float AudioDevice::get_cpu_time( )
 
 
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
-    trav_time_t totaltime = 0;
-    trav_time_t value = 0;
-    int read = m_cpuTime->read_space();
+    trav_time_t totalTime = m_processCallBackCpuTime.load();
 
-    while (read != 0) {
-        read = m_cpuTime->read(&value, 1);
-        totaltime += value;
-    }
+    totalTime -= m_processCallBackWaitTime;
+    m_processCallBackWaitTime = 0;
+    m_processCallBackCpuTime.store(0);
 
-    totaltime -= m_processingPathWaitTime;
-    m_processingPathWaitTime = 0;
-
-    audio_sample_t result = ( (double(totaltime)  / (currentTime - m_lastCpuReadTime) ) * 100 );
+    audio_sample_t result = ( (double(totalTime)  / (currentTime - m_lastCpuReadTime) ) * 100 );
 
     m_lastCpuReadTime = currentTime;
 

@@ -117,7 +117,7 @@ void DiskIO::run()
 
     }
 
-    printf("DiskIO::run(): leaving now...\n");
+    printf("DiskIO::run(): bye\n");
 
 }
 
@@ -129,14 +129,14 @@ DiskIO::DiskIO()
     m_audioSourcesToBeAdded = new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512);
     m_audioSourcesToBeRemoved = new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512);
 
-    m_waitForSeek.store(false);
+    m_seekRequested.store(false);
     m_stopDiskIOThreadRequested = false;
     m_outputSampleRate = 0;
     m_sampleRateChanged = false;
     m_resampleQualityChanged = false;
     m_resampleQuality = SRC_SINC_FASTEST;
     m_bufferFillStatus = 0;
-    m_cpuTime = new RingBufferNPT<trav_time_t>(65536);
+    m_doWorktTime.store(0);
     m_lastCpuReadTime = TTimeRef::get_nanoseconds_since_epoch();
 
     // TODO This is a LARGE buffer, any ideas how to make it smaller ??
@@ -159,13 +159,11 @@ DiskIO::~DiskIO()
     delete framebuffer;
     delete m_fileDecodeBuffer;
     delete m_resampleDecodeBuffer;
-    delete m_cpuTime;
-
 }
 
 void DiskIO::set_seek_transport_location(const TTimeRef &transportLocation) {
     m_seekTransportLocation = transportLocation;
-    m_waitForSeek.store(true);
+    m_seekRequested.store(true);
 }
 
 /**
@@ -181,7 +179,7 @@ void DiskIO::seek()
     PENTER;
 
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "NOT running in DiskIO thread");
-    Q_ASSERT(m_waitForSeek.load() == true);
+    Q_ASSERT(m_seekRequested.load() == true);
 
     printf("DiskIO::seek: Seeking to %s\n", QS_C(TTimeRef::timeref_to_ms_3(m_seekTransportLocation)));
 
@@ -200,7 +198,7 @@ void DiskIO::seek()
     }
 
     m_transportLocation = m_seekTransportLocation;
-    m_waitForSeek.store(false);
+    m_seekRequested.store(false);
 
     emit seekFinished();
 }
@@ -243,7 +241,7 @@ bool DiskIO::do_work( )
 
     for (auto source : m_audioSources)
     {
-        if (m_waitForSeek.load()) {
+        if (m_seekRequested.load()) {
             printf("DiskIO::do_work: waiting for seek\n");
             seek();
         }
@@ -266,7 +264,7 @@ bool DiskIO::do_work( )
     }
 
     auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
-    m_cpuTime->write(&totalTime, 1);
+    m_doWorktTime.fetch_add(totalTime);
 
     return true;
 }
@@ -329,20 +327,10 @@ void DiskIO::private_remove_from_work(AudioSource *source)
 bool DiskIO::get_cpu_time(float &time)
 {
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
-    float totaltime = 0;
-    trav_time_t value = 0;
-    int read = m_cpuTime->read_space();
-    if (read == 0) {
-        return false;
-    }
 
-    while (read != 0) {
-        read = m_cpuTime->read(&value, 1);
-        totaltime += value;
-    }
+    time = (m_doWorktTime.load()  / float(currentTime - m_lastCpuReadTime)) * 100;
 
-    time = ( (totaltime  / (currentTime - m_lastCpuReadTime) ) * 100 );
-
+    m_doWorktTime.store(0);
     m_lastCpuReadTime = currentTime;
 
     return true;
@@ -368,6 +356,11 @@ void DiskIO::add_processed_audio_thread_frames(nframes_t nframes)
     m_audioThreadProcessedFramesQueue->try_enqueue(nframes);
 }
 
+void DiskIO::wakeup()
+{
+    m_audioThreadProcessedFramesQueue->try_enqueue(0);
+}
+
 void DiskIO::stop_disk_thread( )
 {
     PENTER;
@@ -378,9 +371,9 @@ void DiskIO::stop_disk_thread( )
     // most likely we're waiting on an empty blocking queue so do_work() will never be called
     // so make sure we wake up the thread by adding an item to the queue
     // Since we are disconnected from the audio processing callback it's safe to do so.
-    add_processed_audio_thread_frames(0);
+    wakeup();
     quit();
-    add_processed_audio_thread_frames(0);
+    wakeup();
     if (!wait(500)) {
         terminate();
         wait();
