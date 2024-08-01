@@ -433,6 +433,9 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
             // FIXME: use function to get destination buffer that checks if the request is valid
             // and now write it into the buffer using the offset
             // FIXME: should we zero out the part we don't write into?
+            // YES for now we do, else AudioClip reads the whole buffer which can contain noise
+            // and produce very loud cracks/pops
+            slot->silence_buffers();
             slot->write_buffer(seekTransportLocation, fileLocation, m_fileDecodeBuffer->destination[chan], chan, bufferSize - offset, offset);
         }
 

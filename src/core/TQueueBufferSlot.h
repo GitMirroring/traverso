@@ -80,6 +80,11 @@ public:
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation = transportLocation;
     }
+    void silence_buffers() {
+        for (uint i=0; i<m_channelCount; ++i) {
+            memset (m_buffers.at(i), 0, sizeof (audio_sample_t) * m_bufferSize);
+        }
+    }
 
 private:
     TTimeRef            m_fileLocation;

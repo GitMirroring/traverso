@@ -290,7 +290,6 @@ void DiskIO::add_audio_source(AudioSource* source)
     source->set_diskio_frame_buffer(framebuffer);
 
     m_audioSourcesToBeAdded->wait_enqueue(source);
-    // QMetaObject::invokeMethod(this, "private_add_to_work", Qt::QueuedConnection, source);
 }
 
 void DiskIO::private_add_to_work(AudioSource *source)
@@ -307,7 +306,6 @@ void DiskIO::remove_audio_source(AudioSource *source)
     PENTER2;
 
     m_audioSourcesToBeRemoved->wait_enqueue(source);
-    // QMetaObject::invokeMethod(this, "private_remove_from_work", Qt::QueuedConnection, source);
 }
 
 void DiskIO::private_remove_from_work(AudioSource *source)
