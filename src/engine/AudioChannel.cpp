@@ -23,6 +23,7 @@
 
 #include "Mixer.h"
 
+#include "TVUMonitor.h"
 #include "ThreadSaveMessagePosting.h"
 #include "Utils.h"
 
@@ -47,95 +48,99 @@
 
 AudioChannel::AudioChannel(const QString& name, uint channelNumber, int type, qint64 id)
 {
-        m_name = name;
-        m_number = channelNumber;
-        m_type = type;
-        m_monitoring = true;
-        m_bufferSize = 0;
-        m_buffer = QVarLengthArray<audio_sample_t>(2048);
-        mlocked = false;
-        m_latency = 0;
-        if (id == 0) {
-                m_id = create_id();
-        } else {
-                m_id = id;
-        }
+    m_name = name;
+    m_number = channelNumber;
+    m_type = type;
+    m_monitoring = true;
+    m_bufferSize = 0;
+    m_buffer = nullptr;
+    m_mlocked = false;
+    m_latency = 0;
+    if (id == 0) {
+        m_id = create_id();
+    } else {
+        m_id = id;
+    }
 }
 
 AudioChannel::~ AudioChannel( )
 {
-        PENTERDES2;
+    PENTERDES2;
 
 #ifdef USE_MLOCK
 
-//        if (mlocked) {
-//                munlock (m_buffer, m_bufferSize);
-//        }
+    if (m_mlocked) {
+        munlock (m_buffer, m_bufferSize);
+    }
 #endif /* USE_MLOCK */
+
+    delete [] m_buffer;
 
 }
 
 void AudioChannel::set_latency( uint latency )
 {
-        m_latency = latency;
+    m_latency = latency;
 }
 
 void AudioChannel::set_buffer_size( nframes_t size )
 {
 #ifdef USE_MLOCK
-//        if (mlocked) {
-//                if (munlock (m_buffer, m_bufferSize) == -1) {
-//                	PERROR("Couldn't lock buffer into memory");
-//				}
-//                mlocked = false;
-//        }
+    if (m_mlocked) {
+        if (munlock (m_buffer, m_bufferSize) == -1) {
+            PERROR("Couldn't unlock buffer from memory");
+        }
+        m_mlocked = false;
+    }
 #endif /* USE_MLOCK */
 
-        m_buffer.resize(int(size));
-        m_bufferSize = size;
-        silence_buffer(size);
+    delete [] m_buffer;
+    m_buffer = new audio_sample_t[size];
+    m_bufferSize = size;
+    silence_buffer(size);
 
 
 #ifdef USE_MLOCK
-//        if (mlock (m_buffer, size) == -1) {
-//        	PERROR("Couldn't lock buffer into memory");
-//        }
-//        mlocked = true;
+    if (mlock (m_buffer, size) == -1) {
+        PERROR("Couldn't lock buffer into memory");
+    } else {
+        m_mlocked = true;
+    }
 #endif /* USE_MLOCK */
 }
 
 
 void AudioChannel::process_monitoring(TVUMonitor* monitor)
 {
-        Q_ASSERT(m_bufferSize > 0);
-        float peakValue = 0;
-        peakValue = Mixer::compute_peak( m_buffer.data(), m_bufferSize, peakValue );
+    Q_ASSERT(m_bufferSize > 0);
+    float peakValue = 0;
+    peakValue = Mixer::compute_peak( m_buffer, m_bufferSize, peakValue );
 
-        if (monitor) {
-                monitor->process(peakValue);
-        }
+    if (monitor) {
+        monitor->process(peakValue);
+    }
 
-        for(TVUMonitor* internalMonitor = m_monitors.first(); internalMonitor != nullptr; internalMonitor = internalMonitor->next) {
-                internalMonitor->process(peakValue);
-        }
+    for(TVUMonitor* internalMonitor = m_monitors.first(); internalMonitor != nullptr; internalMonitor = internalMonitor->next) {
+        internalMonitor->process(peakValue);
+    }
 }
 
 void AudioChannel::set_monitoring( bool monitor )
 {
-        m_monitoring = monitor;
+    m_monitoring = monitor;
 }
 
 
 void AudioChannel::private_add_monitor(TVUMonitor *monitor)
 {
-        m_monitors.append(monitor);
+    m_monitors.append(monitor);
 }
 
 void AudioChannel::private_remove_monitor(TVUMonitor *monitor)
 {
-        if (!m_monitors.remove(monitor)) {
-                printf("AudioChannel:: VUMonitor was not in monitors list, failed to remove it!\n");
-        }
+    if (!m_monitors.remove(monitor)) {
+        printf("AudioChannel:: VUMonitor was not in monitors list, failed to remove it!\n");
+    }
 }
 
 void AudioChannel::add_monitor(TVUMonitor *monitor)
@@ -150,10 +155,13 @@ void AudioChannel::remove_monitor(TVUMonitor *monitor)
 
 void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes)
 {
-        memcpy (m_buffer.data(), buf, sizeof(audio_sample_t) * nframes);
-        if (m_monitoring) {
-                process_monitoring();
-        }
+    Q_ASSERT(nframes <= m_bufferSize);
+
+    memcpy (m_buffer, buf, sizeof(audio_sample_t) * nframes);
+
+    if (m_monitoring) {
+        process_monitoring();
+    }
 }
 
 

@@ -39,7 +39,7 @@ class RingBufferNPT
 		size = sz;
 		buf = new T[size];
 #ifdef USE_MLOCK
-		if (mlock (buf, size)) {
+        if (mlock (buf, size) < 0) {
 			printf("Unable to lock memory\n");
 		}
 #endif /* USE_MLOCK */

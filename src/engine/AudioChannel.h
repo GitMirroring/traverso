@@ -23,12 +23,12 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 #ifndef AUDIOCHANNEL_H
 #define AUDIOCHANNEL_H
 
-#include "TVUMonitor.h"
 #include "defines.h"
 #include <QString>
 #include <QObject>
-#include <QVarLengthArray>
 #include "TRealTimeLinkedList.h"
+
+class TVUMonitor;
 
 class AudioChannel : public QObject
 {
@@ -44,15 +44,15 @@ public:
     };
 
     inline audio_sample_t* get_buffer(nframes_t nframes, nframes_t offset = 0) {
-        Q_ASSERT(int(nframes + offset) <= m_buffer.size());
-        return (m_buffer.data() + offset);
+        Q_ASSERT((nframes + offset) <= m_bufferSize);
+        return (m_buffer + offset);
     }
 
     void set_latency(unsigned int latency);
 
     inline void silence_buffer(nframes_t nframes) {
-        Q_ASSERT(int(nframes) <= m_buffer.size());
-        memset (m_buffer.data(), 0, sizeof (audio_sample_t) * nframes);
+        Q_ASSERT(nframes <= m_bufferSize);
+        memset (m_buffer, 0, sizeof (audio_sample_t) * nframes);
     }
 
     void set_buffer_size(nframes_t size);
@@ -70,13 +70,13 @@ public:
 
 private:
     TRealTimeLinkedList<TVUMonitor*>    m_monitors;
-    QVarLengthArray<audio_sample_t>     m_buffer;
+    audio_sample_t* m_buffer;
     uint 			m_bufferSize;
     uint 			m_latency;
     uint 			m_number;
     qint64                  m_id;
     int                     m_type;
-    bool			mlocked;
+    bool			m_mlocked;
     bool			m_monitoring;
     QString 		m_name;
 

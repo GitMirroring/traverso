@@ -4,6 +4,10 @@
 #include "defines.h"
 #include "TTimeRef.h"
 
+#if ! defined (Q_OS_WIN)
+#include <sys/mman.h>
+#endif
+
 class TQueueBufferSlot {
 public:
     TQueueBufferSlot(int slotNumber, uint channelCount, nframes_t bufferSize) {
@@ -13,13 +17,28 @@ public:
         m_bufferSize = bufferSize;
         m_bufferWriteOffset = 0;
         m_channelCount = channelCount;
+        m_mlocked = false;
         for (uint i=0; i<channelCount; ++i) {
-            m_buffers.append(new audio_sample_t[bufferSize]);
+            audio_sample_t* buf = new audio_sample_t[bufferSize];
+            m_buffers.append(buf);
+#ifdef USE_MLOCK
+            if (mlock (buf, bufferSize) < 0) {
+                printf("Unable to lock memory\n");
+            } else {
+                m_mlocked = true;
+            }
+#endif /* USE_MLOCK */
         }
     }
     ~TQueueBufferSlot() {
         for (uint i=0; i<m_channelCount; ++i) {
-            delete [] m_buffers.at(i);
+            auto buf = m_buffers.at(i);
+#ifdef USE_MLOCK
+            if (m_mlocked) {
+                munlock (buf, m_bufferSize);
+            }
+#endif /* USE_MLOCK */
+            delete [] buf;
         }
     }
 
@@ -70,6 +89,7 @@ private:
     uint                m_channelCount;
     QList<audio_sample_t*>   m_buffers;
     nframes_t           m_bufferWriteOffset;
+    bool                m_mlocked;
 };
 
 #endif // TQUEUEBUFFERSLOT_H
