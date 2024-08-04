@@ -265,18 +265,6 @@ void ThreadSaveMessagePosting::process_event(const TSMPEvent & event )
 	process_event_signal(event);
 }
 
-void ThreadSaveMessagePosting::add_rt_event(QObject *cal, void* arg, const char* signalSignature)
-{
-    TSMPEvent event;
-    event.caller = cal;
-    event.argument = arg;
-    event.slotindex = -1;
-    int retrievedsignalindex = cal->metaObject()->indexOfSignal(signalSignature);
-    Q_ASSERT(retrievedsignalindex >= 0);
-    event.signalindex = retrievedsignalindex;
-    post_rt_event(event);
-}
-
 void ThreadSaveMessagePosting::add_gui_event(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
 {
     PENTER;

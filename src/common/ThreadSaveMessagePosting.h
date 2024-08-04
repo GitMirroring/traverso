@@ -51,8 +51,7 @@ public:
     void process_event_slot(const TSMPEvent& event);
     void process_event_signal(const TSMPEvent &event);
 
-    [[deprecated]] void add_rt_event(QObject *cal, void* arg, const char* signalSignature);
-    [[deprecated]] void add_gui_event(QObject* caller, void* arg, const char* slotSignature, const char* signalSignature);
+    void add_gui_event(QObject* caller, void* arg, const char* slotSignature, const char* signalSignature);
 
 private:
     ThreadSaveMessagePosting();
