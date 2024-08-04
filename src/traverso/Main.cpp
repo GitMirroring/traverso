@@ -65,9 +65,6 @@ void catch_signal(int sig_num)
 
 int main( int argc, char **argv )
 {
-	TRACE_OFF();
-	MEM_ON();
-
 #if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
 	signal(SIGINT, catch_signal);
 	signal(SIGSEGV, catch_signal);
@@ -101,8 +98,6 @@ int main( int argc, char **argv )
                                 printf("\n");
 				return 0;
 			}
-			if (strcmp(argv[i],"--memtrace")==0)
-					TRACE_ON();
 			if (strcmp(argv[i],"-v")==0) {
 				printf("Traverso %s\n", VERSION);
 				return 0;
@@ -163,8 +158,6 @@ int main( int argc, char **argv )
 	traverso->exec();
 	
 	delete traverso;
-
-	MEM_OFF();
 
 	printf("Thank you for using Traverso !\n");
 	return 0;
