@@ -542,7 +542,7 @@ int AlsaDriver::configure_stream(const QString &device_name,
 
     uint requestedFrameRate = m_frameRate;
     if ( (err = snd_pcm_hw_params_set_rate_near (handle, hw_params, &m_frameRate, NULL)) < 0) {
-        printf("AlsaDriver: cannot set sample/frame rate to % for %s\n", (double)m_frameRate, stream_name);
+        printf("AlsaDriver: cannot set sample/frame rate to %d for %s\n", m_frameRate, stream_name);
         return -1;
     }
 
@@ -684,6 +684,7 @@ int  AlsaDriver::set_parameters (nframes_t frames_per_interupt,
     channel_t chn;
     unsigned int pr = 0;
     unsigned int cr = 0;
+    QStringList errorMessages;
     int err;
 
     m_frameRate = rate;
@@ -766,13 +767,20 @@ int  AlsaDriver::set_parameters (nframes_t frames_per_interupt,
     if (playback_handle) {
         snd_pcm_access_t access;
 
-        err = snd_pcm_hw_params_get_period_size (playback_hw_params, &p_period_size, &dir);
-        err = snd_pcm_hw_params_get_format (playback_hw_params,	&playback_sample_format);
-        err = snd_pcm_hw_params_get_access (playback_hw_params, &access);
+        if ((err = snd_pcm_hw_params_get_period_size (playback_hw_params, &p_period_size, &dir) < 0)) {
+            errorMessages.append(snd_strerror(err));
+        }
+        if ((err = snd_pcm_hw_params_get_format (playback_hw_params,	&playback_sample_format) < 0)) {
+            errorMessages.append(snd_strerror(err));
+        }
+        if ((err = snd_pcm_hw_params_get_access (playback_hw_params, &access) < 0)) {
+            errorMessages.append(snd_strerror(err));
+        }
         playback_interleaved = (access == SND_PCM_ACCESS_MMAP_INTERLEAVED)
                 || (access == SND_PCM_ACCESS_MMAP_COMPLEX);
 
         if (p_period_size != m_framesPerCycle) {
+            print_alsa_error_messages(errorMessages);
             //			PERROR ("alsa_pcm: requested an interrupt every %ld frames but got %ld frames for playback", (long)frames_per_cycle, p_period_size);
             return -1;
         }
@@ -781,14 +789,23 @@ int  AlsaDriver::set_parameters (nframes_t frames_per_interupt,
     if (capture_handle) {
         snd_pcm_access_t access;
 
-        err = snd_pcm_hw_params_get_period_size (capture_hw_params, &c_period_size, &dir);
-        err = snd_pcm_hw_params_get_format (capture_hw_params, &(capture_sample_format));
-        err = snd_pcm_hw_params_get_access (capture_hw_params, &access);
+        if ((err = snd_pcm_hw_params_get_period_size (capture_hw_params, &c_period_size, &dir) < 0)) {
+            errorMessages.append(snd_strerror(err));
+        }
+        if ((err = snd_pcm_hw_params_get_format (capture_hw_params, &(capture_sample_format)) < 0)) {
+            errorMessages.append(snd_strerror(err));
+
+        }
+        if ((err = snd_pcm_hw_params_get_access (capture_hw_params, &access) < 0)) {
+            errorMessages.append(snd_strerror(err));
+
+        }
         capture_interleaved = (access == SND_PCM_ACCESS_MMAP_INTERLEAVED)
                 || (access == SND_PCM_ACCESS_MMAP_COMPLEX);
 
 
         if (c_period_size != m_framesPerCycle) {
+            print_alsa_error_messages(errorMessages);
             //			PERROR ("alsa_pcm: requested an interrupt every %ld frames but got %ld frames for capture", (long)frames_per_cycle, p_period_size);
             return -1;
         }
@@ -1371,6 +1388,14 @@ again:
     return avail - (avail % m_framesPerCycle);
 }
 
+void AlsaDriver::print_alsa_error_messages(QStringList &list)
+{
+    for (const QString &string : list) {
+        printf("ALSA: %s\n", QS_C(string));
+    }
+    list.clear();
+}
+
 int AlsaDriver::_null_cycle(nframes_t nframes)
 {
     nframes_t nf;
@@ -1443,7 +1468,6 @@ int AlsaDriver::_read(nframes_t nframes)
     snd_pcm_uframes_t contiguous;
     snd_pcm_uframes_t nread;
     snd_pcm_uframes_t offset;
-    nframes_t  orig_nframes;
     audio_sample_t* buf;
     int err;
 
@@ -1457,7 +1481,6 @@ int AlsaDriver::_read(nframes_t nframes)
 
     nread = 0;
     contiguous = 0;
-    orig_nframes = nframes;
 
     while (nframes) {
 
@@ -1478,7 +1501,7 @@ int AlsaDriver::_read(nframes_t nframes)
         }
 
         if ((err = snd_pcm_mmap_commit (capture_handle, offset, contiguous)) < 0) {
-            //			PERROR ("AlsaDriver: could not complete read of %ld frames: error = %d\n", contiguous, err);
+            PERROR (QString("AlsaDriver: could not complete read of %1 frames: error = %2").arg(contiguous).arg(snd_strerror(err)));
             return -1;
         }
 
@@ -1492,7 +1515,6 @@ int AlsaDriver::_read(nframes_t nframes)
 int AlsaDriver::_write(nframes_t nframes)
 {
     audio_sample_t* buf;
-    nframes_t orig_nframes;
     snd_pcm_uframes_t nwritten;
     snd_pcm_uframes_t contiguous;
     snd_pcm_uframes_t offset;
@@ -1510,7 +1532,6 @@ int AlsaDriver::_write(nframes_t nframes)
 
     nwritten = 0;
     contiguous = 0;
-    orig_nframes = nframes;
 
     while (nframes) {
 
@@ -1533,7 +1554,7 @@ int AlsaDriver::_write(nframes_t nframes)
         }
 
         if ((err = snd_pcm_mmap_commit (playback_handle, offset, contiguous)) < 0) {
-            //			PERROR ("AlsaDriver: could not complete playback of %ld frames: error = %d", contiguous, err);
+            PERROR (QString("AlsaDriver: could not complete playback of %1 frames: error = %2").arg(contiguous).arg(snd_strerror(err)));
             if (err != EPIPE && err != ESTRPIPE)
                 return -1;
         }

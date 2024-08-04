@@ -94,6 +94,7 @@ private:
 
 	int wait(int extra_fd, int *status, float *delayed_usecs);
 
+    void print_alsa_error_messages(QStringList & list);
 
 	inline void mark_channel_done (channel_t chn)
 	{
