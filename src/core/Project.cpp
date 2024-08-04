@@ -35,7 +35,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include "ProjectManager.h"
 #include "Information.h"
-#include "TExportThread.h"
 #include "TInputEventDispatcher.h"
 #include "ResourcesManager.h"
 #include "TExportSpecification.h"
@@ -50,6 +49,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSend.h"
 #include "SpectralMeter.h"
 #include "CorrelationMeter.h"
+#include "qapplication.h"
 
 #define PROJECT_FILE_VERSION 	3
 #define MASTER_OUT_SOFTWARE_BUS_ID 1
@@ -73,7 +73,6 @@ Project::Project(const QString& title)
 {
     PENTERCONS;
     m_name = title;
-    m_exportThread = nullptr;
     m_activeSheet = nullptr;
     m_spectralMeter = nullptr;
     m_correlationMeter = nullptr;
@@ -97,7 +96,6 @@ Project::Project(const QString& title)
     m_audiodeviceClient->set_process_callback( TProcessCallBack(this, &Project::process) );
     m_audiodeviceClient->set_transport_control_callback( TransportControlCallback(this, &Project::transport_control) );
 
-    m_disconnectAudioDeviceClientForExport = false;
     m_exportSpecification = nullptr;
 
     m_masterOutBusTrack = new MasterOutSubGroup(this, "");
@@ -277,7 +275,7 @@ int Project::load(const QString& projectfile)
     m_rate = e.attribute( "rate", "" ).toUInt();
     m_bitDepth = e.attribute( "bitdepth", "" ).toUInt();
     set_id(e.attribute("id", "0").toLongLong());
-    m_sheeTSMPeTrackFolder = e.attribute("sheeTSMPetrackfolder", "0").toInt();
+    m_sheetsAreTrackFolder = e.attribute("sheeTSMPetrackfolder", "0").toInt();
     m_importDir = e.attribute("importdir", QDir::homePath());
 
 
@@ -551,7 +549,7 @@ QDomNode Project::get_state(QDomDocument doc, bool istemplate)
     properties.setAttribute("rate", m_rate);
     properties.setAttribute("bitdepth", m_bitDepth);
     properties.setAttribute("projectfileversion", PROJECT_FILE_VERSION);
-    properties.setAttribute("sheeTSMPetrackfolder", m_sheeTSMPeTrackFolder);
+    properties.setAttribute("sheeTSMPetrackfolder", m_sheetsAreTrackFolder);
     if (! istemplate) {
         properties.setAttribute("id", get_id());
     } else {
@@ -1145,16 +1143,80 @@ int Project::export_project()
 {
     PENTER;
 
-    m_disconnectAudioDeviceClientForExport = true;
+    m_exportSpecification->start_export(this);
 
-    disconnect_from_audio_device();
+    for (Sheet* sheet : m_exportSpecification->get_sheets_to_export()) {
+
+        emit m_exportSpecification->exportMessage(QString("Starting export of %1").arg(sheet->get_name()));
+
+        m_exportSpecification->resumeTransportLocation = sheet->get_transport_location();
+        m_exportSpecification->resumeTransport = sheet->is_transport_rolling();
+        if (sheet->is_transport_rolling()) {
+            sheet->start_transport();
+        }
+        m_exportSpecification->set_export_file_name("Sheet_" + QString::number(get_sheet_index(sheet->get_id())) +"-" + sheet->get_name());
+
+        TTimeRef exportStartLocation, exportEndLocation;
+        bool exportRangeAvailable = false;
+
+        if (m_exportSpecification->is_cd_export()) {
+            exportRangeAvailable = sheet->get_cd_export_range(exportStartLocation, exportEndLocation);
+        } else {
+            exportRangeAvailable = sheet->get_export_range(exportStartLocation, exportEndLocation);
+        }
+
+        if (!exportRangeAvailable) {
+            printf("No export range available for Sheet %s\n", QS_C(sheet->get_name()));
+            return -1;
+        }
+
+        m_exportSpecification->set_export_start_location(exportStartLocation);
+        m_exportSpecification->set_export_end_location(exportEndLocation);
+
+        // ... then start the render process and wait until it's finished
+        sheet->set_transport_location(m_exportSpecification->get_export_start_location());
+
+        while (sheet->get_transport_location() != m_exportSpecification->get_export_start_location()) {
+            printf("Export: waiting on Sheet seek to finish\n");
+            usleep(100 * 1000);
+            qApp->processEvents();
+        }
+
+        printf("Export: Sheet finished seeking\n");
+
+        sheet->set_recordable_and_start_transport();
+
+        emit m_exportSpecification->exportMessage(QString("Starting export of %1").arg(sheet->get_name()));
+        m_exportSpecification->print_export_data();
+
+        do {
+            nframes_t diff = m_exportSpecification->get_remaining_export_frames();
+            nframes_t nframes = std::min(diff, m_exportSpecification->get_block_size());
+
+            // sheet->process(nframes);
+            m_exportSpecification->add_exported_range(TTimeRef(nframes, audiodevice().get_sample_rate()));
+        } while(!m_exportSpecification->cancel_export_requested() && m_exportSpecification->get_remaining_export_frames() > 0);
+
+        sheet->start_transport();
+
+        emit m_exportSpecification->exportMessage(QString("Finished export of %1").arg(sheet->get_name()));
+
+
+        sheet->set_transport_location(m_exportSpecification->resumeTransportLocation);
+        if (m_exportSpecification->resumeTransport) {
+            sheet->start_transport();
+        }
+
+    }
+
+    emit exportFinished();
 
     return 0;
 }
 
 void Project::export_finished()
 {
-    connect_to_audio_device();
+    // connect_to_audio_device();
 }
 
 void Project::audio_device_removed_client(TAudioDeviceClient *client)
@@ -1163,11 +1225,6 @@ void Project::audio_device_removed_client(TAudioDeviceClient *client)
 
     if (client != m_audiodeviceClient) {
         return;
-    }
-
-    if (m_disconnectAudioDeviceClientForExport) {
-        m_exportSpecification->start_export(this);
-        m_disconnectAudioDeviceClientForExport = false;
     }
 
     if (m_projectClosed) {
@@ -1482,8 +1539,8 @@ void Project::set_work_at(TTimeRef worklocation, bool isFolder)
 
 void Project::set_sheets_are_tracks_folder(bool isFolder)
 {
-    m_sheeTSMPeTrackFolder = isFolder;
-    if (m_sheeTSMPeTrackFolder) {
+    m_sheetsAreTrackFolder = isFolder;
+    if (m_sheetsAreTrackFolder) {
         info().information(tr("Sheets behave as Tracks Folder"));
     } else {
         info().information(tr("Sheets NO longer behave as Tracks Folder"));

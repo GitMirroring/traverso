@@ -1,7 +1,6 @@
 #include "TExportSpecification.h"
 
 #include "Information.h"
-#include "TExportThread.h"
 #include "Utils.h"
 
 #include <samplerate.h>
@@ -12,7 +11,6 @@
 
 TExportSpecification::TExportSpecification()
 {
-    m_exportThread = nullptr;
     m_sampleRate = 44100;
     m_channelCount = 0;
     m_blockSize = 1024;
@@ -97,14 +95,6 @@ int TExportSpecification::is_valid()
 
 int TExportSpecification::start_export(Project* project)
 {
-    if (!m_exportThread) {
-        m_exportThread = new TExportThread(project);
-    }
-
-    if (m_exportThread->isRunning()) {
-        info().warning(tr("Export already in progress, cannot start it twice!"));
-        return -1;
-    }
 
     QDir dir(m_exportDir);
     if (!m_exportDir.isEmpty() && !dir.exists()) {
@@ -117,9 +107,6 @@ int TExportSpecification::start_export(Project* project)
     }
 
     m_cancelExportRequested = false;
-
-    m_exportThread->set_specification(this);
-    m_exportThread->start();
 
     return 0;
 }

@@ -125,12 +125,12 @@ void ExportDialog::on_startButton_clicked( )
     QFileInfo fi(exportSpecification->get_export_file_name());
 	name += fi.completeBaseName() + ".toc";
     exportSpecification->tocFileName = name;
-
-    m_project->export_project();
 	
 	startButton->hide();
 	closeButton->hide();
     cancelExportButton->show();
+
+    m_project->export_project();
 }
 
 

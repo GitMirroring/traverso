@@ -10,7 +10,6 @@
 #include "gdither_types.h"
 
 class Marker;
-class TExportThread;
 class Project;
 class Sheet;
 
@@ -104,10 +103,7 @@ public:
     bool 		resumeTransport;
     TTimeRef	resumeTransportLocation;
 
-    TExportThread* 	thread;
-
 private:
-    TExportThread*  m_exportThread;
     QList<Sheet* >  m_sheetsToExport;
     int             m_fileFormat;
     uint            m_sampleRate;
