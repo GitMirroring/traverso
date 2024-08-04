@@ -26,8 +26,8 @@
 #include "AudioDevice.h"
 #include "AudioChannel.h"
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 TPulseAudioDriver::TPulseAudioDriver(AudioDevice* device )
@@ -43,6 +43,7 @@ TPulseAudioDriver::TPulseAudioDriver(AudioDevice* device )
 
 TPulseAudioDriver::~TPulseAudioDriver( )
 {
+    delete [] m_interleavedBuffer;
 }
 
 int TPulseAudioDriver::_read( nframes_t nframes )

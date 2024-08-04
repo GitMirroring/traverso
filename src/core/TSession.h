@@ -45,6 +45,7 @@ class TSession : public ContextItem
 
 public:
     TSession(TSession* parentSession = nullptr);
+    ~TSession();
 
 	QDomNode get_state(QDomDocument doc);
 	int set_state( const QDomNode & node );

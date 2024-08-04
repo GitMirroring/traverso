@@ -53,8 +53,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #define PROJECT_FILE_VERSION 	3
 #define MASTER_OUT_SOFTWARE_BUS_ID 1
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 /**	\class Project
@@ -129,8 +129,14 @@ Project::~Project()
 
     delete m_resourcesManager;
 
-    foreach(Sheet* sheet, m_sheets) {
+    for(Sheet* sheet : m_sheets) {
         delete sheet;
+    }
+    for (AudioBus* bus : m_hardwareAudioBuses) {
+        delete bus;
+    }
+    for (AudioBus* bus : m_softwareAudioBuses) {
+        delete bus;
     }
 
     delete m_masterOutBusTrack;
@@ -321,9 +327,11 @@ int Project::load(const QString& projectfile)
 
         AudioBus* bus = new AudioBus(conf);
 
-        if (bus->get_bus_type() == AudioBus::BusIsSoftware) {
+        switch(bus->get_bus_type()) {
+        case AudioBus::BusIsSoftware:
+        {
             AudioChannel* channel;
-            foreach(QString idString, channelIds) {
+            for(const QString &idString : channelIds) {
                 qint64 id = idString.toLongLong();
                 channel = m_softwareAudioChannels.value(id);
                 if (channel) {
@@ -331,12 +339,19 @@ int Project::load(const QString& projectfile)
                 }
             }
             m_softwareAudioBuses.insert(bus->get_id(), bus);
+            break;
         }
-        if (bus->get_bus_type() == AudioBus::BusIsHardware) {
-            foreach(QString channelName, conf.channelNames) {
+        case AudioBus::BusIsHardware:
+        {
+            for(const QString &channelName : conf.channelNames) {
                 bus->add_channel(channelName);
             }
             m_hardwareAudioBuses.append(bus);
+            break;
+        }
+        default:
+            PERROR("Unknown Bus type");
+            delete bus;
         }
 
         busNode = busNode.nextSibling();

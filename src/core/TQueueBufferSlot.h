@@ -34,7 +34,6 @@ public:
     }
 
     ~TQueueBufferSlot() {
-        printf("destructor queuebufferslot\n");
         for (uint i=0; i<m_channelCount; ++i) {
             auto buf = m_buffers.at(i);
 #ifdef USE_MLOCK

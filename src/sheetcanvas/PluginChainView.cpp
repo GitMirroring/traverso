@@ -29,8 +29,8 @@
 #include "PluginChain.h"
 #include "Plugin.h"
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 

@@ -28,8 +28,8 @@ $Id: SpectralMeter.cpp,v 1.9 2008/02/15 15:58:57 n_doebelin Exp $
 
 #include <Debugger.h>
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 #define PI 3.141592653589

@@ -33,8 +33,8 @@ $Id: Themer.cpp,v 1.14 2009/04/16 19:38:18 n_doebelin Exp $
 #include <QDebug>
 
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 Themer* Themer::m_instance = nullptr;

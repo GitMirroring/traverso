@@ -32,8 +32,8 @@
 #include "TConfig.h"
 #include <cmath> // used for fabs
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 //static const float SMOOTH_SHIFT = 0.05;

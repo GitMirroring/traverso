@@ -27,8 +27,8 @@ $Id: Command.cpp,v 1.21 2008/02/12 20:39:08 r_sijrier Exp $
 #include <Themer.h>
 #include "ContextItem.h"
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 /**

@@ -126,6 +126,7 @@ class TBounceTrack : public AudioTrack
 
 public:
     TBounceTrack(Sheet* sheet, const QString& name, int height);
+    ~TBounceTrack();
 
 
 };

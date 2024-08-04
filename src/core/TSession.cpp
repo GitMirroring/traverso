@@ -41,6 +41,9 @@ TSession::TSession(TSession *parentSession)
 	m_parentSession = nullptr;
     m_masterOutBusTrack = nullptr;
     m_bounceTrack = nullptr;
+    m_snaplist = nullptr;
+    m_timeline = nullptr;
+    m_workSnap = nullptr;
 
 	if (!parentSession) {
 		m_timeline = new TTimeLineRuler(this);
@@ -62,6 +65,11 @@ TSession::TSession(TSession *parentSession)
 
     connect(this, SIGNAL(privateTrackAdded(Track*)), this, SLOT(private_track_added(Track*)));
     connect(this, SIGNAL(privateTrackRemoved(Track*)), this, SLOT(private_track_removed(Track*)));
+}
+
+TSession::~TSession()
+{
+    delete m_snaplist;
 }
 
 void TSession::set_parent_session(TSession *parentSession)

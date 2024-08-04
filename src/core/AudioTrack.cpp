@@ -40,8 +40,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Mixer.h"
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 
@@ -503,4 +503,9 @@ TBounceTrack::TBounceTrack(Sheet *sheet, const QString &name, int height)
     busConfig.isInternalBus = true;
 
     m_inputBus = new AudioBus(busConfig);
+}
+
+TBounceTrack::~TBounceTrack()
+{
+    delete m_inputBus;
 }

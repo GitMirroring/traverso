@@ -30,8 +30,8 @@ $Id: TSMP.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 #include <QThread>
 #include <unistd.h>
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 #include "TAudioDeviceSetup.h"
 

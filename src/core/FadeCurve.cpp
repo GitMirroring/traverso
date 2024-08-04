@@ -33,8 +33,8 @@ $Id: FadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 #include "AudioBus.h"
 #include "TLocation.h"
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 

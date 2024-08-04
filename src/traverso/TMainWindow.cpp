@@ -107,8 +107,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "dialogs/TTrackSelector.h"
 #include "dialogs/TShortcutEditorDialog.h"
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 
@@ -1368,8 +1368,6 @@ void TMainWindow::import_audio()
 
 	QList<AudioTrack*> tracks = sheet->get_audio_tracks();
 	AudioTrack*	track = tracks.first();
-    // FIXME: markers isn't actually used
-	bool markers = false;
 
 	ImportClipsDialog *importClips = new ImportClipsDialog(this);
 
@@ -1382,7 +1380,6 @@ void TMainWindow::import_audio()
 		}
 
 		track = importClips->get_selected_track();
-		markers = importClips->get_add_markers();
 	}
 
 	// append the clips to the selected track

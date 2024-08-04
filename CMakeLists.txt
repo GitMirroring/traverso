@@ -38,7 +38,7 @@ OPTION(WANT_DEBUG   	"Debug build" ON)
 OPTION(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug ouput on the command line, always on for DEBUG builds" ON)
 OPTION(WANT_VECLIB_OPTIMIZATIONS "Build with veclib optimizations (Only for PPC based Mac OS X)" OFF)
 OPTION(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)
-OPTION(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu, and compile with an optimal set of compiler flags" ON)
+OPTION(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu, and compile with an optimal set of compiler flags" OFF)
 OPTION(WANT_SSE "Use sse instruction set. This option is only effective if DETECT_HOST_CPU_FEATURES is OFF." ON)
 
 
@@ -108,7 +108,8 @@ SET(MINIMAL_PULSAUDIO_VERSION 0.9)
 SET(HAVE_COREAUDIO FALSE)
 SET(HOST_SUPPORTS_SSE FALSE)
 
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wall -Wno-unused-local-typedefs ${CXX_FLAGS}")
+# SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wall -Wno-unused-local-typedefs ${CXX_FLAGS}")
+SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wall -Wno-unused-local-typedefs -fsanitize=address ${CXX_FLAGS}")
 SET(CMAKE_CXX_FLAGS_RELEASE "-O2 -Wall -fPIC -Wno-unused-local-typedefs  ${CXX_FLAGS}")
 
 # Detect the flags to be used for large file support

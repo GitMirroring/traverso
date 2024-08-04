@@ -54,8 +54,8 @@ RELAYTOOL_JACK
 //#include <sys/mman.h>
 #include <QDebug>
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 /*! 	\class AudioDevice
@@ -217,6 +217,9 @@ AudioDevice::~AudioDevice()
     shutdown();
 
     delete m_audioThread;
+    for (AudioChannel* audioChannel : m_audioChannels) {
+        delete audioChannel;
+    }
 }
 
 /**

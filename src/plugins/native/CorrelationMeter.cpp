@@ -28,8 +28,8 @@ $Id: CorrelationMeter.cpp,v 1.6 2008/02/10 23:47:06 n_doebelin Exp $
 #include <cmath>
 #include <climits>
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 		
 #define BUFFER_READOUT_TOLERANCE 2  // recommended: 1-10

@@ -26,8 +26,8 @@ $Id: CurveNode.cpp,v 1.8 2007/11/23 14:56:36 r_sijrier Exp $
 #include "qassert.h"
 #include <cmath>
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 CurveNode::CurveNode(Curve *curve, double when, double value)

@@ -24,8 +24,8 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
 #include "ContextItem.h"
 #include <Sheet.h>
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 /** 	\class AddRemove 

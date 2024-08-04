@@ -25,8 +25,8 @@ $Id: Client.cpp,v 1.5 2007/06/21 14:31:10 r_sijrier Exp $
 
 #include <QString>
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 

@@ -60,11 +60,11 @@ Track::Track(TSession* session)
 
 Track::~Track()
 {
-        // FIXME, we delete ourselves, but audiodevice could still be
-        // monitoring our monitors!!!!
-//        for (int i=0; i<2; ++i) {
-//                delete m_vumonitors.at(i);
-//        }
+    // FIXME, we delete ourselves, but audiodevice could still be
+    // monitoring our monitors!!!!
+   for (int i=0; i<2; ++i) {
+           delete m_vumonitors.at(i);
+   }
 }
 
 

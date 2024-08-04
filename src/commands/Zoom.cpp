@@ -30,8 +30,8 @@
 #include "TInputEventDispatcher.h"
 #include <QPoint>
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
+
+
 #include "Debugger.h"
 
 Zoom::Zoom(SheetView* sv, const QVariantList& args)
