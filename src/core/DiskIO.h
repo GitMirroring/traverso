@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "cameron/readerwritercircularbuffer.h"
 
 class AudioSource;
-class DecodeBuffer;
+class TFileDecodeBuffer;
 
 class DiskIO : public QThread
 {
@@ -48,7 +48,10 @@ public:
         m_transportLocation = transportLocation;
     }
 
-    void set_seek_transport_location(const TTimeRef& transportLocation);
+    void set_seek_transport_location(const TTimeRef& transportLocation) {
+        m_seekTransportLocation = transportLocation;
+        m_seekRequested.store(true);
+    }
 
     void add_audio_source(AudioSource* source);
     void remove_audio_source(AudioSource* source);
@@ -83,8 +86,8 @@ private:
     bool                m_sampleRateChanged;
     audio_sample_t*		framebuffer;
 
-    DecodeBuffer*		m_fileDecodeBuffer;
-    DecodeBuffer*		m_resampleDecodeBuffer;
+    TFileDecodeBuffer*		m_fileDecodeBuffer;
+    TFileDecodeBuffer*		m_resampleDecodeBuffer;
     uint                m_outputSampleRate{};
 
     TTimeRef            m_transportLocation;

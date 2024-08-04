@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class ResampleAudioReader;
 class AudioBus;
-class DecodeBuffer;
+class TFileDecodeBuffer;
 class TLocation;
 
 class ReadSource : public AudioSource
@@ -58,8 +58,8 @@ public :
 
     nframes_t ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation);
 
-    int file_read(DecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const;
-    int file_read(DecodeBuffer* buffer, nframes_t fileLocation, nframes_t cnt);
+    int file_read(TFileDecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const;
+    int file_read(TFileDecodeBuffer* buffer, nframes_t fileLocation, nframes_t cnt);
 
 	int init();
 	int get_error() const {return m_error;}
@@ -82,7 +82,7 @@ public :
 private:
     ResampleAudioReader*	m_resampleAudioReader;
 
-    DecodeBuffer*       m_fileDecodeBuffer;
+    TFileDecodeBuffer*       m_fileDecodeBuffer;
     int                 m_refcount;
     int                 m_error;
     bool                m_silent;
@@ -107,7 +107,7 @@ private:
     void process_realtime_buffers() final;
     void rb_seek_to_transport_location(const TTimeRef &transportLocation) final;
     void set_output_rate_and_convertor_type(int outputRate, int converterType) final;
-    void set_decode_buffers(DecodeBuffer * fileReadBuffer, DecodeBuffer *resampleDecodeBuffer);
+    void set_decode_buffers(TFileDecodeBuffer * fileReadBuffer, TFileDecodeBuffer *resampleDecodeBuffer);
 
 signals:
 	void stateChanged();

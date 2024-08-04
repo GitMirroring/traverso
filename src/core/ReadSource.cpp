@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ProjectManager.h"
 #include "Project.h"
 #include "AudioBus.h"
+#include "TFileDecodeBuffer.h"
 #include "TLocation.h"
 #include "TQueueBufferSlot.h"
 #include "Utils.h"
@@ -292,14 +293,14 @@ void ReadSource::set_source_start_location(const TTimeRef &sourceStartLocation)
     m_sourceStartLocation = sourceStartLocation;
 }
 
-int ReadSource::file_read(DecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const
+int ReadSource::file_read(TFileDecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const
 {
     Q_ASSERT(m_resampleAudioReader);
     return m_resampleAudioReader->read_from(buffer, fileLocation, cnt);
 }
 
 
-int ReadSource::file_read(DecodeBuffer * buffer, nframes_t fileLocation, nframes_t cnt)
+int ReadSource::file_read(TFileDecodeBuffer * buffer, nframes_t fileLocation, nframes_t cnt)
 {
     Q_ASSERT(m_resampleAudioReader);
     return m_resampleAudioReader->read_from(buffer, fileLocation, cnt);
@@ -370,8 +371,8 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
     if (seekTransportLocation < m_location->get_start()) {
         seekTransportLocation = m_location->get_start();
 
-        printf("transport location before clip start position, adjusting to clip start position %s\n",
-               QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
+        // printf("transport location before clip start position, adjusting to clip start position %s\n",
+        //        QS_C(TTimeRef::timeref_to_ms_3(seekTransportLocation)));
     }
 
     TQueueBufferSlot* slot;
@@ -389,9 +390,9 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
     // Since we can represent a 'view' of a complete audiofile, always add the source start
     // location to the seek transport location to file location calculation.
     TTimeRef fileLocation = seekTransportLocation - m_location->get_start() + m_sourceStartLocation;
-    printf("ReadSource::rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
-           QS_C(TTimeRef::timeref_to_ms_3(transportLocation)),
-           QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
+    // printf("ReadSource::rb_seek_to_transport_location: seeking to location transport: %s, file: %s\n",
+    //        QS_C(TTimeRef::timeref_to_ms_3(transportLocation)),
+    //        QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
 
 
     // Since the seek transport location and our own start location don't have to align
@@ -409,14 +410,14 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
 
         // convert the modulus to frames
         nframes_t offset = TTimeRef::to_frame(modulus, m_outputRate);
-        printf("file location after adjustment %s, offset nframes %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
+        // printf("file location after adjustment %s, offset nframes %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
 
         // and only read in the amount of frames needed for this buffer slot
         nframes_t toRead = bufferSize - offset;
 
         m_fileDecodeBuffer->check_buffers_capacity(toRead, m_channelCount);
 
-        // and read in the samples. We have to use the source start location as the start location, see explenation above
+        // and read in the samples. We have to use the source start location as the start location, see explanation above
         nframes_t read = file_read(m_fileDecodeBuffer, m_sourceStartLocation, toRead);
         if (read != toRead) {
             printf("Could not read %d frames, only %d\n", toRead, read);
@@ -429,14 +430,8 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
         }
 
         for (uint chan=0; chan<m_channelCount; ++chan) {
-            Q_ASSERT(m_fileDecodeBuffer->destinationBufferSize >= toRead);
-            // FIXME: use function to get destination buffer that checks if the request is valid
             // and now write it into the buffer using the offset
-            // FIXME: should we zero out the part we don't write into?
-            // YES for now we do, else AudioClip reads the whole buffer which can contain noise
-            // and produce very loud cracks/pops
-            slot->silence_buffers();
-            slot->write_buffer(seekTransportLocation, fileLocation, m_fileDecodeBuffer->destination[chan], chan, bufferSize - offset, offset);
+            slot->write_buffer(seekTransportLocation, fileLocation, m_fileDecodeBuffer->get_destination_buffer(chan, toRead), chan, toRead, offset);
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
@@ -449,9 +444,6 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
         seekTransportLocation += m_bufferSlotDuration;
     }
 
-    printf("\n");
-
-
     m_lastQueuedRTBufferSlot->set_file_location(fileLocation);
     m_lastQueuedRTBufferSlot->set_transport_location(seekTransportLocation);
     m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION);
@@ -461,12 +453,6 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
 
 void ReadSource::process_realtime_buffers()
 {
-    // FIXME: filling still only done on multiples of buffersize
-    // however start locations on the time line can start in the middle
-    // of a buffer, AudioClip knows this, we don't so in that case a re-sync
-    // gets triggered. E.g. play back on different sample rate and the
-    // buffer boundaries and the transport location don't line up anymore
-
     Q_ASSERT(m_lastQueuedRTBufferSlot);
     Q_ASSERT(m_fileDecodeBuffer);
     Q_ASSERT(m_channelCount > 0);
@@ -517,9 +503,7 @@ void ReadSource::process_realtime_buffers()
         }
 
         for (uint chan=0; chan<m_channelCount; ++chan) {
-            Q_ASSERT(m_fileDecodeBuffer->destinationBufferSize >= offset+bufferSize);
-            // FIXME: use function to get destination buffer that checks if the request is valid
-            slot->write_buffer(transportLocation, slotFileLocation, m_fileDecodeBuffer->destination[chan] + offset, chan, bufferSize);
+            slot->write_buffer(transportLocation, slotFileLocation, m_fileDecodeBuffer->get_destination_buffer(chan, totalReadSize) + offset, chan, bufferSize);
         }
 
         offset += bufferSize;
@@ -589,10 +573,6 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
         Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
         Q_ASSERT(slot);
 
-        // check if this slot or any available is a candidate slot, if not, no need to process the
-        // whole queue, instead start a resync
-
-
         TTimeRef slotFileLocation = slot->get_file_location();
 
         Q_ASSERT(slotFileLocation != TTimeRef::INVALID);
@@ -604,13 +584,15 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
             }
 
             read = slot->get_read_nframes();
+
             m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
         }
 
         TTimeRef lastAvailableSlotFileLocation = slotFileLocation + (availableSlots * m_bufferSlotDuration);
 
-        // Check transport location in queue range
+        // check if this slot or any available is a candidate slot, if not, no need to process the
+        // whole queue, instead start a resync
         if ((fileLocation < slotFileLocation) || (fileLocation > lastAvailableSlotFileLocation)) {
             printf("ReadSource::ringbuffer_read: FileLocation not in queue range: %s (%s - %s)\n",
                    QS_C(TTimeRef::timeref_to_ms_3(fileLocation)),
@@ -688,7 +670,7 @@ uint ReadSource::get_file_rate() const
 	return pm().get_project()->get_rate(); 
 }
 
-void ReadSource::set_decode_buffers(DecodeBuffer* fileDecodeBuffer, DecodeBuffer *resampleDecodeBuffer)
+void ReadSource::set_decode_buffers(TFileDecodeBuffer* fileDecodeBuffer, TFileDecodeBuffer *resampleDecodeBuffer)
 {
     m_fileDecodeBuffer = fileDecodeBuffer;
 

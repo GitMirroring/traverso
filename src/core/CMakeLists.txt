@@ -1,6 +1,7 @@
 INCLUDE_DIRECTORIES(
 ${CMAKE_SOURCE_DIR}/src/audiofileio/decode
 ${CMAKE_SOURCE_DIR}/src/audiofileio/encode
+${CMAKE_SOURCE_DIR}/src/audiofileio
 ${CMAKE_SOURCE_DIR}/src/commands
 ${CMAKE_SOURCE_DIR}/src/common
 ${CMAKE_SOURCE_DIR}/src/engine
@@ -36,7 +37,6 @@ Curve.cpp
 CurveNode.cpp
 TCommandPlugin.h
 DiskIO.cpp
-TExportThread.cpp TExportThread.h
 FadeCurve.cpp
 FileHelpers.cpp
 Information.cpp

@@ -92,7 +92,7 @@ private:
     void set_output_rate_and_convertor_type(int /*outputRate*/, int /*converterType*/) final {
         // WriteSource does not support rate/convert type change atm
     }
-    void set_decode_buffers(DecodeBuffer * /*fileReadBuffer*/, DecodeBuffer */*resampleDecodeBuffer*/) final {
+    void set_decode_buffers(TFileDecodeBuffer * /*fileReadBuffer*/, TFileDecodeBuffer */*resampleDecodeBuffer*/) final {
         // Writesource does not support DecodeBuffers yet
     }
 

@@ -27,29 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QString>
 
-class DecodeBuffer {
-	
-public:
-	DecodeBuffer();
-	~DecodeBuffer() {
-		delete_destination_buffers();
-		delete_readbuffer();
-	}
-	
-	void check_buffers_capacity(uint size, uint channels);
-	
-	audio_sample_t** destination;
-	audio_sample_t* readBuffer;
-	uint destinationBufferSize;
-	uint readBufferSize;
-
-private:
-	uint m_channels;
-	
-	void delete_destination_buffers();
-	void delete_readbuffer();
-
-};
+class TFileDecodeBuffer;
 
 class AbstractAudioReader
 {
@@ -65,9 +43,9 @@ public:
 	bool eof();
 	nframes_t pos();
 	
-	nframes_t read_from(DecodeBuffer* buffer, nframes_t start, nframes_t count);
+    nframes_t read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count);
 	bool seek(nframes_t start);
-	nframes_t read(DecodeBuffer* buffer, nframes_t frameCount);
+    nframes_t read(TFileDecodeBuffer* buffer, nframes_t frameCount);
 	
     bool is_valid() {return (m_channels > 0 && m_fileFrames > 0);}
 	virtual QString decoder_type() const = 0;
@@ -77,7 +55,7 @@ public:
 	
 protected:
 	virtual bool seek_private(nframes_t start) = 0;
-	virtual nframes_t read_private(DecodeBuffer* buffer, nframes_t frameCount) = 0;
+    virtual nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount) = 0;
 	
 	QString		m_fileName;
 

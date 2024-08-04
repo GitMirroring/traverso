@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QMutexLocker>
 
 #include "TExportSpecification.h"
-#include "AbstractAudioReader.h"
+#include "TFileDecodeBuffer.h"
 #include "ReadSource.h"
 #include "WriteSource.h"
 #include "Peak.h"
@@ -76,8 +76,8 @@ void AudioFileMerger::process_task(MergeTask task)
 
     emit taskStarted(name.left(length-28));
 
-    DecodeBuffer decodebuffer0;
-	DecodeBuffer decodebuffer1;
+    TFileDecodeBuffer decodebuffer0;
+	TFileDecodeBuffer decodebuffer1;
 	
     TExportSpecification spec;
     spec.set_export_start_location(TTimeRef());
@@ -114,17 +114,19 @@ void AudioFileMerger::process_task(MergeTask task)
 		
         task.readsource0->file_read(&decodebuffer0, spec.get_export_location(), nframes);
         task.readsource1->file_read(&decodebuffer1, spec.get_export_location(), nframes);
-			
-		for (uint x = 0; x < nframes; ++x) {
-            spec.get_render_buffer()[x*spec.get_channel_count()] = decodebuffer0.destination[0][x];
-            spec.get_render_buffer()[1+(x*spec.get_channel_count())] = decodebuffer1.destination[0][x];
+
+        audio_sample_t* destinationLeft = decodebuffer0.get_destination_buffer(0, nframes);
+        audio_sample_t* destinationRight = decodebuffer1.get_destination_buffer(0, nframes);
+        for (uint x = 0; x < nframes; ++x) {
+            spec.get_render_buffer()[x*spec.get_channel_count()] = destinationLeft[x];
+            spec.get_render_buffer()[1+(x*spec.get_channel_count())] = destinationRight[x];
 		}
 		
 		// due the fact peak generating does _not_ happen in writesource->process
 		// but in a function used by DiskIO, we have to hack the peak processing 
 		// in here.
-        writesource.get_peak()->process(0, decodebuffer0.destination[0], nframes);
-        writesource.get_peak()->process(1, decodebuffer1.destination[0], nframes);
+        writesource.get_peak()->process(0, destinationLeft, nframes);
+        writesource.get_peak()->process(1, destinationRight, nframes);
 		
 		// Process the data, and write to disk
         // FIXME

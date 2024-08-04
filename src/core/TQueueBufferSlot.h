@@ -29,8 +29,12 @@ public:
             }
 #endif /* USE_MLOCK */
         }
+
+        silence_buffers();
     }
+
     ~TQueueBufferSlot() {
+        printf("destructor queuebufferslot\n");
         for (uint i=0; i<m_channelCount; ++i) {
             auto buf = m_buffers.at(i);
 #ifdef USE_MLOCK
@@ -61,6 +65,8 @@ public:
         Q_ASSERT(channel < m_channelCount);
         Q_ASSERT(nframes > 0);
         memcpy(dest + offset, m_buffers.at(channel), nframes * sizeof(audio_sample_t));
+        // always zero content of complete buffer for now to avoid noise being played
+        memset (m_buffers.at(channel), 0, sizeof (audio_sample_t) * m_bufferSize);
     }
 
     void write_buffer(const TTimeRef &transportLocation, const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes, nframes_t offset = 0) {
@@ -77,9 +83,11 @@ public:
     void set_file_location(const TTimeRef& fileLocation) {
         m_fileLocation = fileLocation;
     }
+
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation = transportLocation;
     }
+
     void silence_buffers() {
         for (uint i=0; i<m_channelCount; ++i) {
             memset (m_buffers.at(i), 0, sizeof (audio_sample_t) * m_bufferSize);

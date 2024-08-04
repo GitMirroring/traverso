@@ -38,7 +38,7 @@ class ReadSource;
 class AudioSource;
 class Peak;
 class PPThread;
-class DecodeBuffer;
+class TFileDecodeBuffer;
 class PeakDataReader;
 
 class PeakProcessor : public QObject
@@ -178,7 +178,7 @@ private:
 		PeakHeaderData	headerdata;
 		PeakDataReader*	peakreader;
 		ProcessData* 	pd;
-		DecodeBuffer*	peakdataDecodeBuffer;
+		TFileDecodeBuffer*	peakdataDecodeBuffer;
 		QHash<uchar *, QPair<int /*offset*/, int /*handle|len*/> > maps;
 	};
 	
@@ -203,7 +203,7 @@ public:
 	PeakDataReader(Peak::ChannelData* data);
 	~PeakDataReader(){};
 
-	nframes_t read_from(DecodeBuffer* buffer, nframes_t start, nframes_t count);
+	nframes_t read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count);
 
 private:
 	Peak::ChannelData* m_d;
@@ -211,7 +211,7 @@ private:
 	nframes_t	m_nframes;
 
 	bool seek(nframes_t start);
-	nframes_t read(DecodeBuffer* buffer, nframes_t frameCount);
+	nframes_t read(TFileDecodeBuffer* buffer, nframes_t frameCount);
 };
 
 inline QHash< int, int > * Peak::cache_index_lut()

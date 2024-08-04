@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ProjectManager.h"
 #include "ResourcesManager.h"
 #include "ReadSource.h"
+#include "TFileDecodeBuffer.h"
 #include "WriteSource.h"
 #include "Peak.h"
 #include "defines.h"
@@ -92,7 +93,7 @@ void AudioFileCopyConvert::process_task(CopyTask task)
 {
 	emit taskStarted(task.readsource->get_name());
 
-	DecodeBuffer decodebuffer;
+	TFileDecodeBuffer decodebuffer;
 
     task.spec->set_export_start_location(TTimeRef());
     task.spec->set_export_end_location(task.readsource->get_length());
@@ -131,7 +132,7 @@ void AudioFileCopyConvert::process_task(CopyTask task)
 			
 		for (uint x = 0; x < nframes; ++x) {
             for (uint y = 0; y < task.spec->get_channel_count(); ++y) {
-                task.spec->get_render_buffer()[y + x*task.spec->get_channel_count()] = decodebuffer.destination[y][x];
+                task.spec->get_render_buffer()[y + x*task.spec->get_channel_count()] = decodebuffer.get_destination_buffer(y, nframes)[x];
 			}
 		}
 		
@@ -139,7 +140,7 @@ void AudioFileCopyConvert::process_task(CopyTask task)
 		// but in a function used by DiskIO, we have to hack the peak processing 
 		// in here.
         for (uint y = 0; y < task.spec->get_channel_count(); ++y) {
-			writesource->get_peak()->process(y, decodebuffer.destination[y], nframes);
+            writesource->get_peak()->process(y, decodebuffer.get_destination_buffer(y, nframes), nframes);
 		}
 		
 		// Process the data, and write to disk

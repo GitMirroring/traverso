@@ -34,10 +34,10 @@ public:
     ResampleAudioReader(const QString &filename);
 	~ResampleAudioReader();
 	
-	nframes_t read_from(DecodeBuffer* buffer, nframes_t start, nframes_t count) {
+	nframes_t read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count) {
 		return AbstractAudioReader::read_from(buffer, start, count);
 	}
-	nframes_t read_from(DecodeBuffer* buffer, const TTimeRef& start, nframes_t count) {
+	nframes_t read_from(TFileDecodeBuffer* buffer, const TTimeRef& start, nframes_t count) {
         return AbstractAudioReader::read_from(buffer, TTimeRef::to_frame(start, m_outputSampleRate), count);
 	}
 	QString decoder_type() const {return (m_reader) ? m_reader->decoder_type() : "";}
@@ -48,7 +48,7 @@ public:
 	int get_convertor_type() const {return m_convertorType;}
 	void set_output_rate(uint rate);
     void set_converter_type(int converterType);
-	void set_resample_decode_buffer(DecodeBuffer* buffer);
+	void set_resample_decode_buffer(TFileDecodeBuffer* buffer);
 
     static int get_default_resample_quality();
 	
@@ -56,7 +56,7 @@ protected:
 	void reset();
 	
 	bool seek_private(nframes_t start);
-	nframes_t read_private(DecodeBuffer* buffer, nframes_t frameCount);
+	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount);
 	
 	nframes_t resampled_to_file_frame(nframes_t frame);
 	nframes_t file_to_resampled_frame(nframes_t frame);
@@ -72,7 +72,7 @@ protected:
 	
 private:
 	void create_overflow_buffers();
-	DecodeBuffer* m_resampleDecodeBuffer;
+	TFileDecodeBuffer* m_resampleDecodeBuffer;
 	bool m_resampleDecodeBufferIsMine;
 };
 

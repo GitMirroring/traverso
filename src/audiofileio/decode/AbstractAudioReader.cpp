@@ -20,6 +20,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "AbstractAudioReader.h"
+#include "TFileDecodeBuffer.h"
+
 #include "SFAudioReader.h"
 #include "WPAudioReader.h"
 
@@ -42,14 +44,14 @@ AbstractAudioReader::AbstractAudioReader(const QString& filename)
 
 
 AbstractAudioReader::~AbstractAudioReader()
-= default;
+    = default;
 
 
 // Read cnt frames starting at start from the AudioReader, into dst
 // uses seek() and read() from AudioReader subclass
-nframes_t AbstractAudioReader::read_from(DecodeBuffer* buffer, nframes_t start, nframes_t count)
+nframes_t AbstractAudioReader::read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count)
 {
-// 	printf("read_from:: before_seek from %d, framepos is %d\n", start, m_readPos);
+    // 	printf("read_from:: before_seek from %d, framepos is %d\n", start, m_readPos);
 
     if (!seek(start)) {
         return 0;
@@ -97,7 +99,7 @@ bool AbstractAudioReader::seek(nframes_t start)
 }
 
 
-nframes_t AbstractAudioReader::read(DecodeBuffer* buffer, nframes_t count)
+nframes_t AbstractAudioReader::read(TFileDecodeBuffer* buffer, nframes_t count)
 {
     if (count && m_readPos < m_fileFrames) {
 
@@ -132,87 +134,10 @@ AbstractAudioReader* AbstractAudioReader::create_audio_reader(const QString& fil
 
 
     if (newReader && !newReader->is_valid()) {
-//        PERROR("new %s reader is invalid! (channels: %d, frames: %d)", QS_C(newReader->decoder_type()), newReader->get_num_channels(), newReader->get_nframes());
+        //        PERROR("new %s reader is invalid! (channels: %d, frames: %d)", QS_C(newReader->decoder_type()), newReader->get_num_channels(), newReader->get_nframes());
         delete newReader;
         newReader = nullptr;
     }
 
     return newReader;
-}
-
-DecodeBuffer::DecodeBuffer()
-{
-    destination = nullptr;
-    readBuffer = nullptr;
-    m_channels = destinationBufferSize = readBufferSize = 0;
-}
-
-
-void DecodeBuffer::check_buffers_capacity(uint size, uint channels)
-{
-/*	m_bufferSizeCheckCounter++;
-    m_totalCheckSize += size;
-
-    float meanvalue = (m_totalCheckSize / (float)m_bufferSizeCheckCounter);
-
-    if (meanvalue < destinationBufferSize && ((meanvalue + 256) < destinationBufferSize) && !(destinationBufferSize == size)) {
-        m_smallerReadCounter++;
-        if (m_smallerReadCounter > 8) {
-            delete_destination_buffers();
-            delete_readbuffer();
-            m_bufferSizeCheckCounter = m_smallerReadCounter = 0;
-            m_totalCheckSize = 0;
-        }
-    }*/
-
-
-    if (destinationBufferSize < size || m_channels < channels) {
-
-        delete_destination_buffers();
-
-        m_channels = channels;
-
-        destination = new audio_sample_t*[m_channels];
-
-        for (uint chan = 0; chan < m_channels; chan++) {
-            destination[chan] = new audio_sample_t[size];
-        }
-
-        destinationBufferSize = size;
-// 		printf("resizing destination to %.3f KB\n", (float)size*4/1024);
-    }
-
-    if (readBufferSize < (size*m_channels)) {
-
-        delete_readbuffer();
-
-        readBuffer = new audio_sample_t[size*m_channels];
-        readBufferSize = (size*m_channels);
-    }
-}
-
-void DecodeBuffer::delete_destination_buffers()
-{
-    if (destination) {
-        for (uint chan = 0; chan < m_channels; chan++) {
-            delete [] destination[chan];
-        }
-
-        delete [] destination;
-
-        destination = nullptr;
-        destinationBufferSize = 0;
-        m_channels = 0;
-    }
-}
-
-void DecodeBuffer::delete_readbuffer()
-{
-    if (readBuffer) {
-
-        delete [] readBuffer;
-
-        readBuffer = nullptr;
-        readBufferSize = 0;
-    }
 }

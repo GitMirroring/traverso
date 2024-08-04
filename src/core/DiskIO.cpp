@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
+#include "TFileDecodeBuffer.h"
 #include "Utils.h"
 #include <samplerate.h>
 
@@ -143,10 +144,9 @@ DiskIO::DiskIO()
     // FIXME: this buffer is never resized and an ugly hack so fix it!
     framebuffer = new audio_sample_t[audiodevice().get_sample_rate() * writebuffertime];
 
-    m_fileDecodeBuffer = new DecodeBuffer;
-    m_resampleDecodeBuffer = new DecodeBuffer;
+    m_fileDecodeBuffer = new TFileDecodeBuffer;
+    m_resampleDecodeBuffer = new TFileDecodeBuffer;
 
-    // Run in our own event loop so every slot call get's processed there
     moveToThread(this);
     start(QThread::HighPriority);
 }
@@ -166,10 +166,7 @@ DiskIO::~DiskIO()
     delete m_resampleDecodeBuffer;
 }
 
-void DiskIO::set_seek_transport_location(const TTimeRef &transportLocation) {
-    m_seekTransportLocation = transportLocation;
-    m_seekRequested.store(true);
-}
+
 
 /**
 * 	Seek's all the ReadSources readbuffers to the new position.
@@ -319,7 +316,7 @@ void DiskIO::private_remove_from_work(AudioSource *source)
     // Review the deletion of AudioSources and non-active AudioSources that should only
     // be removed from DiskIO but not deleted.
     source->m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
-    source->delete_rt_buffers();
+    source->delete_queue_buffers();
     delete source;
 }
 
@@ -379,7 +376,7 @@ void DiskIO::stop_disk_thread( )
     wakeup();
     if (!wait(500)) {
         terminate();
-        wait();
+        wait(500);
     }
 }
 
