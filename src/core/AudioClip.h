@@ -45,21 +45,21 @@ class FadeCurve;
 
 class AudioClip : public TAudioProcessingNode
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public:
 
-	AudioClip(const QString& name);
-	AudioClip(const QDomNode& node);
-	~AudioClip();
+    AudioClip(const QString& name);
+    AudioClip(const QDomNode& node);
+    ~AudioClip();
 
-	enum RecordingStatus {
-		NO_RECORDING,
-		RECORDING,
-  		FINISHING_RECORDING
-	};
-	
-	void set_audio_source(ReadSource* source);
+    enum RecordingStatus {
+        NO_RECORDING,
+        RECORDING,
+        FINISHING_RECORDING
+    };
+
+    void set_audio_source(ReadSource* source);
     int init_recording();
     int process(TProcessCallBackData &processData);
 
@@ -67,49 +67,49 @@ public:
     // preferably we wouldn't have to re-implement this function
     // TODO: make every location dependent item not have to re-implement ?
     void set_location_start(const TTimeRef& location);
-	void set_fade_in(double range);
-	void set_fade_out(double range);
-	void set_track(AudioTrack* track);
-	void set_sheet(Sheet* sheet);
+    void set_fade_in(double range);
+    void set_fade_out(double range);
+    void set_track(AudioTrack* track);
+    void set_sheet(Sheet* sheet);
 
-	void set_selected(bool selected);
-	void set_as_moving(bool moving);
-	int set_state( const QDomNode& node );
+    void set_selected(bool selected);
+    void set_as_moving(bool moving);
+    int set_state( const QDomNode& node );
 
-	AudioClip* create_copy();
-	AudioTrack* get_track() const;
-	Sheet* get_sheet() const;
-	Peak* get_peak() const {return m_peak;}
-	QDomNode get_state(QDomDocument doc);
-	FadeCurve* get_fade_in() const;
-	FadeCurve* get_fade_out() const;
-	
+    AudioClip* create_copy();
+    AudioTrack* get_track() const;
+    Sheet* get_sheet() const;
+    Peak* get_peak() const {return m_peak;}
+    QDomNode get_state(QDomDocument doc);
+    FadeCurve* get_fade_in() const;
+    FadeCurve* get_fade_out() const;
+
     TTimeRef get_source_length() const;
     TTimeRef get_length() const {return m_length;}
     TTimeRef get_source_start_location() const {return m_sourceStartLocation;}
     TTimeRef get_source_end_location() const {return m_sourceEndLocation;}
-	
+
     uint get_channel_count() const;
     uint get_rate() const;
     uint get_bitdepth() const;
-	qint64 get_readsource_id() const;
-	qint64 get_sheet_id() const {return m_sheetId;}
-	ReadSource* get_readsource() const;
-    inline TLocation* get_location() const {return m_locationItem;}
-	
-	QDomNode get_dom_node() const;
-	
-	bool is_take() const;
-	bool is_selected();
-	bool is_locked() const {return m_isLocked;}
-	bool has_sheet() const;
+    qint64 get_readsource_id() const;
+    qint64 get_sheet_id() const {return m_sheetId;}
+    ReadSource* get_readsource() const;
+    inline TLocation* get_location() const {return m_location;}
+
+    QDomNode get_dom_node() const;
+
+    bool is_take() const;
+    bool is_selected();
+    bool is_locked() const {return m_isLocked;}
+    bool has_sheet() const;
     bool is_readsource_invalid() const {return !m_isReadSourceValid;}
 
     bool operator<(const AudioClip &other);
 
     bool is_moving() const {return m_isMoving;}
 
-	int recording_state() const;
+    int recording_state() const;
 
     float calculate_normalization_factor(float targetdB = 0.0);
 
@@ -119,70 +119,70 @@ public:
 
 
 private:
+    TRealTimeLinkedList<FadeCurve*>	m_fades;
     Sheet*          m_sheet;
     AudioTrack* 	m_track;
     ReadSource*		m_readSource;
     WriteSource*	m_writer;
-    TRealTimeLinkedList<FadeCurve*>	m_fades;
-	Peak* 			m_peak;
+    Peak* 			m_peak;
     FadeCurve*		m_fadeIn;
     FadeCurve*		m_fadeOut;
-	QDomNode		m_domNode;
-    TLocation*   m_locationItem;
-	
+    QDomNode		m_domNode;
+    TLocation*      m_location;
+
     TTimeRef 		m_sourceEndLocation;
     TTimeRef 		m_sourceStartLocation;
-    TTimeRef			m_sourceLength;
+    TTimeRef        m_sourceLength;
     TTimeRef 		m_length;
 
-	bool 			m_isTake;
-	bool			m_isLocked;
-	bool			m_isReadSourceValid;
-	bool			m_isMoving;
+    bool 			m_isTake;
+    bool			m_isLocked;
+    bool			m_isReadSourceValid;
+    bool			m_isMoving;
     bool            m_syncDuringDrag;
     RecordingStatus m_recordingStatus;
-	
-	qint64			m_readSourceId;
-	qint64			m_sheetId;
+
+    qint64			m_readSourceId;
+    qint64			m_sheetId;
 
     void create_fade(int fadeType);
-	void init();
+    void init();
     void set_source_end_location(const TTimeRef& location);
     void set_source_start_location(const TTimeRef& location);
     void set_track_end_location(const TTimeRef& location);
-	void set_sources_active_state();
+    void set_sources_active_state();
     void process_capture(TProcessCallBackData &processData);
-		
-	friend class ResourcesManager;
+
+    friend class ResourcesManager;
 
 signals:
     void muteChanged();
     void lockChanged();
-	void positionChanged();
-	void fadeAdded(FadeCurve*);
-	void fadeRemoved(FadeCurve*);
-	void recordingFinished(AudioClip*);
+    void positionChanged();
+    void fadeAdded(FadeCurve*);
+    void fadeRemoved(FadeCurve*);
+    void recordingFinished(AudioClip*);
 
 public slots:
-	void finish_recording();
-	void finish_write_source();
+    void finish_recording();
+    void finish_write_source();
     void set_left_edge(TTimeRef newLeftLocation);
     void set_right_edge(TTimeRef newRightLocation);
-	void track_audible_state_changed();
-	void toggle_mute();
-	void toggle_lock();
-	
-	TCommand* mute();
-	TCommand* reset_fade_in();
-	TCommand* reset_fade_out();
-	TCommand* reset_fade_both();
+    void track_audible_state_changed();
+    void toggle_mute();
+    void toggle_lock();
+
+    TCommand* mute();
+    TCommand* reset_fade_in();
+    TCommand* reset_fade_out();
+    TCommand* reset_fade_both();
     TCommand* normalize();
-	TCommand* lock();
+    TCommand* lock();
     TCommand* toggle_show_gain_automation_curve();
 
 private slots:
-	void private_add_fade(FadeCurve* fade);
-	void private_remove_fade(FadeCurve* fade);
+    void private_add_fade(FadeCurve* fade);
+    void private_remove_fade(FadeCurve* fade);
     void update_global_configuration();
 };
 

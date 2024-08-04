@@ -85,7 +85,7 @@ AudioClip::AudioClip(const QString& name)
     m_fadeOut = nullptr;
     m_fader->automate_port(0, true);
     m_maxGainAmplification = dB_to_scale_factor(24);
-    m_locationItem = new TLocation(this);
+    m_location = new TLocation(this);
 
     // read in the configuration from the global configuration settings.
     update_global_configuration();
@@ -129,7 +129,7 @@ AudioClip::~AudioClip()
         m_peak->close();
     }
 
-    delete m_locationItem;
+    delete m_location;
 }
 
 void AudioClip::init()
@@ -173,7 +173,7 @@ int AudioClip::set_state(const QDomNode& node)
     if (!fadeInNode.isNull()) {
         if (!m_fadeIn) {
             m_fadeIn = new FadeCurve(this, FadeCurve::FadeIn);
-            m_fadeIn->set_parent_location(m_locationItem);
+            m_fadeIn->set_parent_location(m_location);
 
             private_add_fade(m_fadeIn);
         }
@@ -184,7 +184,7 @@ int AudioClip::set_state(const QDomNode& node)
     if (!fadeOutNode.isNull()) {
         if (!m_fadeOut) {
             m_fadeOut = new FadeCurve(this, FadeCurve::FadeOut);
-            m_fadeOut->set_parent_location(m_locationItem);
+            m_fadeOut->set_parent_location(m_location);
             private_add_fade(m_fadeOut);
         }
         m_fadeOut->set_state( fadeOutNode );
@@ -207,7 +207,7 @@ int AudioClip::set_state(const QDomNode& node)
 QDomNode AudioClip::get_state( QDomDocument doc )
 {
     QDomElement node = doc.createElement("Clip");
-    node.setAttribute("trackstart", m_locationItem->get_start().universal_frame());
+    node.setAttribute("trackstart", m_location->get_start().universal_frame());
     node.setAttribute("sourcestart", m_sourceStartLocation.universal_frame());
     node.setAttribute("length", m_length.universal_frame());
     node.setAttribute("mute", m_isMuted);
@@ -290,30 +290,30 @@ void AudioClip::set_left_edge(TTimeRef newLeftLocation)
         newLeftLocation = TTimeRef();
     }
 
-    if (newLeftLocation < m_locationItem->get_start()) {
+    if (newLeftLocation < m_location->get_start()) {
 
         TTimeRef availableTimeLeft = m_sourceStartLocation;
 
-        TTimeRef movingToLeft = m_locationItem->get_start() - newLeftLocation;
+        TTimeRef movingToLeft = m_location->get_start() - newLeftLocation;
 
         if (movingToLeft > availableTimeLeft) {
             movingToLeft = availableTimeLeft;
         }
 
         set_source_start_location( m_sourceStartLocation - movingToLeft );
-        AudioClip::set_location_start(m_locationItem->get_start() - movingToLeft);
-    } else if (newLeftLocation > m_locationItem->get_start()) {
+        AudioClip::set_location_start(m_location->get_start() - movingToLeft);
+    } else if (newLeftLocation > m_location->get_start()) {
 
         TTimeRef availableTimeRight = m_length;
 
-        TTimeRef movingToRight = newLeftLocation - m_locationItem->get_start();
+        TTimeRef movingToRight = newLeftLocation - m_location->get_start();
 
         if (movingToRight > (availableTimeRight - TTimeRef(nframes_t(4), get_rate())) ) {
             movingToRight = (availableTimeRight - TTimeRef(nframes_t(4), get_rate()));
         }
 
         set_source_start_location( m_sourceStartLocation + movingToRight );
-        AudioClip::set_location_start(m_locationItem->get_start() + movingToRight);
+        AudioClip::set_location_start(m_location->get_start() + movingToRight);
     }
 }
 
@@ -324,31 +324,31 @@ void AudioClip::set_right_edge(TTimeRef newRightLocation)
         newRightLocation = TTimeRef();
     }
 
-    if (newRightLocation > m_locationItem->get_end()) {
+    if (newRightLocation > m_location->get_end()) {
 
         TTimeRef availableTimeRight = m_sourceLength - m_sourceEndLocation;
 
-        TTimeRef movingToRight = newRightLocation - m_locationItem->get_end();
+        TTimeRef movingToRight = newRightLocation - m_location->get_end();
 
         if (movingToRight > availableTimeRight) {
             movingToRight = availableTimeRight;
         }
 
         set_source_end_location( m_sourceEndLocation + movingToRight );
-        set_track_end_location( m_locationItem->get_end() + movingToRight );
+        set_track_end_location( m_location->get_end() + movingToRight );
 
-    } else if (newRightLocation < m_locationItem->get_end()) {
+    } else if (newRightLocation < m_location->get_end()) {
 
         TTimeRef availableTimeLeft = m_length;
 
-        TTimeRef movingToLeft = m_locationItem->get_end() - newRightLocation;
+        TTimeRef movingToLeft = m_location->get_end() - newRightLocation;
 
         if (movingToLeft > availableTimeLeft - TTimeRef(nframes_t(4), get_rate())) {
             movingToLeft = availableTimeLeft - TTimeRef(nframes_t(4), get_rate());
         }
 
         set_source_end_location( m_sourceEndLocation - movingToLeft);
-        set_track_end_location( m_locationItem->get_end() - movingToLeft );
+        set_track_end_location( m_location->get_end() - movingToLeft );
     }
 }
 
@@ -371,21 +371,21 @@ void AudioClip::set_location_start(const TTimeRef& location)
 {
     PENTER2;
 
-    m_locationItem->set_start(this, location);
+    m_location->set_start(this, location);
 
-    m_fader->get_curve()->set_start_offset(m_locationItem->get_start());
+    m_fader->get_curve()->set_start_offset(m_location->get_start());
 
     // set_track_end_location will emit positionChanged(), so we
     // don't emit it in this function to avoid emitting it twice
     // (although it seems more logical to emit it here, there are
     // situations where only set_track_end_location() is called, and
     // then we also want to emit positionChanged())
-    set_track_end_location(m_locationItem->get_start() + m_length);
+    set_track_end_location(m_location->get_start() + m_length);
 }
 
 void AudioClip::set_track_end_location(const TTimeRef& location)
 {
-    m_locationItem->set_end(this, location);
+    m_location->set_end(this, location);
 
     if ( (!is_moving()) && m_sheet) {
         m_sheet->get_snap_list()->mark_dirty();
@@ -448,7 +448,7 @@ int AudioClip::process(TProcessCallBackData &processData)
         return 0;
     }
 
-    if ((startLocation >= m_locationItem->get_end()) || (endLocation <= m_locationItem->get_start())) {
+    if ((startLocation >= m_location->get_end()) || (endLocation <= m_location->get_start())) {
         return 0;
     }
 
@@ -462,21 +462,21 @@ int AudioClip::process(TProcessCallBackData &processData)
     uint channelcount = get_channel_count();
     Q_ASSERT(bus->get_channel_count() >= channelcount);
 
-    if (startLocation < m_locationItem->get_start()) {
-        offset = TTimeRef::to_frame(m_locationItem->get_start() - startLocation, outputRate);
+    if (startLocation < m_location->get_start()) {
+        offset = TTimeRef::to_frame(m_location->get_start() - startLocation, outputRate);
         framesToProcess -= offset;
         printf("framesToProcess %d\n", framesToProcess);
         Q_ASSERT(offset < nframes);
         Q_ASSERT(framesToProcess > 0);
     }
 
-    fileLocation = (startLocation - m_locationItem->get_start() + m_sourceStartLocation);
+    fileLocation = (startLocation - m_location->get_start() + m_sourceStartLocation);
     if (offset != 0) {
         printf("AudioClip: fileLocation using offset is %s, %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
     }
 
-    if (m_locationItem->get_end() < endLocation) {
-        framesToProcess -= TTimeRef::to_frame(endLocation - m_locationItem->get_end(), outputRate);
+    if (m_location->get_end() < endLocation) {
+        framesToProcess -= TTimeRef::to_frame(endLocation - m_location->get_end(), outputRate);
         Q_ASSERT(framesToProcess > 0);
     }
 
@@ -687,7 +687,7 @@ void AudioClip::set_audio_source(ReadSource* rs)
     }
 
     m_readSource = rs;
-    m_readSource->set_location(m_locationItem);
+    m_readSource->set_location(m_location);
     m_readSource->set_source_start_location(get_source_start_location());
     m_readSourceId = rs->get_id();
     m_sourceLength = rs->get_length();
@@ -713,7 +713,7 @@ void AudioClip::set_audio_source(ReadSource* rs)
     }
 
     // This will also emit positionChanged() which is more or less what we want.
-    set_track_end_location(m_locationItem->get_start() + m_sourceLength - m_sourceStartLocation);
+    set_track_end_location(m_location->get_start() + m_sourceLength - m_sourceStartLocation);
 }
 
 void AudioClip::finish_write_source()
@@ -791,7 +791,7 @@ void AudioClip::set_sheet( Sheet * sheet )
     
     set_history_stack(m_sheet->get_history_stack());
     m_pluginChain->set_session(m_sheet);
-    m_locationItem->set_snap_list(m_sheet->get_snap_list());
+    m_location->set_snap_list(m_sheet->get_snap_list());
 }
 
 
@@ -954,7 +954,7 @@ void AudioClip::create_fade(int fadeType)
 
     fadeCurve->set_shape("Fast");
     fadeCurve->set_history_stack(get_history_stack());
-    fadeCurve->set_parent_location(m_locationItem);
+    fadeCurve->set_parent_location(m_location);
 
     tsmp().add_gui_event(this, fadeCurve, "private_add_fade(FadeCurve*)", "fadeAdded(FadeCurve*)");
 }
@@ -981,7 +981,7 @@ ReadSource * AudioClip::get_readsource() const
 void AudioClip::set_as_moving(bool moving)
 {
     m_isMoving = moving;
-    m_locationItem->set_snappable(!m_isMoving);
+    m_location->set_snappable(!m_isMoving);
     set_sources_active_state();
 
     // if moving is false, then the user stopped moving this audioclip
