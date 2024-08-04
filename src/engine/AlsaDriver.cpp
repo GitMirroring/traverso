@@ -1061,17 +1061,9 @@ int AlsaDriver::start()
 int AlsaDriver::stop()
 {
     int err;
-    audio_sample_t* buf;
 
-    /* silence all capture port buffers, because we might
-    be entering offline mode.
-    */
-
-    for (int i=0; i<m_captureChannels.size(); ++i) {
-        AudioChannel* chan = m_captureChannels.at(i);
-        buf = chan->get_buffer(m_framesPerCycle);
-        memset (buf, 0, sizeof (audio_sample_t) * m_framesPerCycle);
-    }
+    // silence capture channels
+    TAudioDriver::stop();
 
     if (playback_handle) {
         if ((err = snd_pcm_drop (playback_handle)) < 0) {

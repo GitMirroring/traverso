@@ -373,14 +373,14 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     m_runAudioThread = 1;
 
-    if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy") || (ads.get_driver_type() == "PulseAudio") ) {
+    if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy") || (ads.get_driver_type() == "PulseAudio") || (ads.get_driver_type() == "PortAudio")) {
 
         printf("AudioDevice: Starting Audio Thread ... ");
 
 
         bool realTime = false;
         if (!m_audioThread) {
-            if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy")) {
+            if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy") || (ads.get_driver_type() == "PortAudio")) {
                 realTime = true;
             }
 
@@ -423,7 +423,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
     }
 #endif
 
-    if (ads.get_driver_type() == "PortAudio"|| (ads.get_driver_type() == "PulseAudio") || (ads.get_driver_type() == "CoreAudio")) {
+    if (/*ads.get_driver_type() == "PortAudio"|| */(ads.get_driver_type() == "PulseAudio") || (ads.get_driver_type() == "CoreAudio")) {
         if (m_driver->start() == -1) {
             // PortAudio driver failed to start, fallback to Dummy Driver:
             set_parameters(m_fallBackSetup);
@@ -436,6 +436,12 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
 
 void AudioDevice::set_free_wheeling(bool freeWheeling)
 {
+    if (freeWheeling) {
+        m_driver->stop();
+    } else {
+        m_driver->start();
+    }
+
     m_isRealTime = !freeWheeling;
     // FIXME Only set if AudioDriver supports freewheeling
     m_processCallBackData.set_real_time(m_isRealTime);
@@ -820,10 +826,10 @@ float AudioDevice::get_cpu_time( )
             return qobject_cast<JackDriver*>(m_driver)->get_cpu_load();
 #endif
 
-#if defined (PORTAUDIO_SUPPORT)
-    if (m_driver && m_driverType == "PortAudio")
-        return ((PADriver*)m_driver)->get_cpu_load();
-#endif
+// #if defined (PORTAUDIO_SUPPORT)
+//     if (m_driver && m_driverType == "PortAudio")
+//         return ((PADriver*)m_driver)->get_cpu_load();
+// #endif
 
 
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();

@@ -127,6 +127,8 @@ int TAudioDriver::attach( )
         chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
     }
 
+    emit driverSetupMessage(tr("Succesfully started Dummy Driver!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+
     return 1;
 }
 
@@ -176,13 +178,20 @@ int TAudioDriver::detach( )
 }
 
 int TAudioDriver::start( )
-{
-    emit driverSetupMessage(tr("Succesfully started Dummy Driver!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+{    
+    for (auto channel : m_playbackChannels) {
+        channel->silence_buffer(m_framesPerCycle);
+    }
+
     return 1;
 }
 
 int TAudioDriver::stop( )
 {
+    for (AudioChannel* chan : m_captureChannels) {
+        chan->silence_buffer(m_framesPerCycle);
+    }
+
 	return 1;
 }
 

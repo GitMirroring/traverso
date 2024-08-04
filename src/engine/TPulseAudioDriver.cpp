@@ -43,6 +43,8 @@ TPulseAudioDriver::TPulseAudioDriver(AudioDevice* device )
 
 TPulseAudioDriver::~TPulseAudioDriver( )
 {
+    pa_simple_free(m_paSimple);
+
     delete [] m_interleavedBuffer;
 }
 
@@ -128,14 +130,21 @@ int TPulseAudioDriver::attach( )
 int TPulseAudioDriver::start( )
 {
     PENTER;
+
+    // silences the playback buffers
+    TAudioDriver::start();
+
     return 1;
 }
 
 int TPulseAudioDriver::stop( )
 {
 	PENTER;
+    int error;
+    pa_simple_flush(m_paSimple, &error);
 
-    pa_simple_free(m_paSimple);
+    // silence capture channels
+    TAudioDriver::stop();
 
 	return 1;
 }

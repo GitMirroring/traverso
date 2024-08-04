@@ -27,41 +27,41 @@
 
 class PADriver : public TAudioDriver
 {
-        Q_OBJECT
+    Q_OBJECT
 
 public:
     PADriver(AudioDevice* device);
-	~PADriver();
+    ~PADriver();
 
-	int  process_callback (nframes_t nframes);
-	int _read(nframes_t nframes);
-	int _write(nframes_t nframes);
-	int _run_cycle() {return 1;}
-        int setup(bool capture=true, bool playback=true, const QString& deviceInfo="alsa::default::default");
-	int attach();
-	int start();
-	int stop();
+    int  process_callback (nframes_t nframes);
+    int _read(nframes_t nframes);
+    int _write(nframes_t nframes);
+    int _run_cycle();
+    int setup(bool capture=true, bool playback=true, const QString& deviceInfo="alsa::default::default");
+    int attach();
+    int start();
+    int stop();
 
-	QString get_device_name();
-	QString get_device_longname();
-        static QStringList devices_info(const QString& hostApi);
-        static int host_index_for_host_api(const QString& hostapi);
+    QString get_device_name();
+    QString get_device_longname();
+    static QStringList devices_info(const QString& hostApi);
+    static int host_index_for_host_api(const QString& hostapi);
 
-	float get_cpu_load();
+    float get_cpu_load();
 
 private:
-	PaStream* m_paStream;
-        void* m_paInputBuffer;
-        void* m_paOutputBuffer;
+    PaStream* m_paStream;
+    audio_sample_t* m_paInputBuffer;
+    audio_sample_t* m_paOutputBuffer;
 
 
- 	static int _xrun_callback(void *arg);
-	static void _on_pa_shutdown_callback(void* arg);
-	static int _process_callback( const void *inputBuffer, void *outputBuffer,
-					unsigned long framesPerBuffer,
-					const PaStreamCallbackTimeInfo* timeInfo,
-					PaStreamCallbackFlags statusFlags,
-					void *arg );
+    static int _xrun_callback(void *arg);
+    static void _on_pa_shutdown_callback(void* arg);
+    static int _process_callback( const void *inputBuffer, void *outputBuffer,
+                                 unsigned long framesPerBuffer,
+                                 const PaStreamCallbackTimeInfo* timeInfo,
+                                 PaStreamCallbackFlags statusFlags,
+                                 void *arg );
 
 };
 
