@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QObject>
 
-class DecodeBuffer;
+class TFileDecodeBuffer;
 class TQueueBufferSlot;
 
 /// The base class for AudioSources like ReadSource and WriteSource
@@ -95,11 +95,11 @@ private:
     // when it is save to do so
     friend class DiskIO;
     void prepare_rt_buffers(nframes_t bufferSize);
-    void delete_rt_buffers();
+    void delete_queue_buffers();
     virtual void process_realtime_buffers() = 0;
     virtual void rb_seek_to_transport_location(const TTimeRef &transportLocation) = 0;
     virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
-    virtual void set_decode_buffers(DecodeBuffer * fileReadBuffer, DecodeBuffer *resampleDecodeBuffer) = 0;
+    virtual void set_decode_buffers(TFileDecodeBuffer * fileReadBuffer, TFileDecodeBuffer *resampleDecodeBuffer) = 0;
     // Used in WriteSource, change to use DecodeBuffers instead
     void set_diskio_frame_buffer(audio_sample_t* frameBuffer) {
         m_diskIOFramebuffer = frameBuffer;
