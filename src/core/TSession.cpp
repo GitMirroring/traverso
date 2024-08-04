@@ -56,7 +56,7 @@ TSession::TSession(TSession *parentSession)
     m_transportLocation = TTimeRef();
     m_scrollBarXValue = m_scrollBarYValue = 0;
     m_hzoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
-    m_transportRolling.store(false);
+    set_transport_rolling_state(false);
     m_isSnapOn=true;
     m_isProjectSession = false;
 
@@ -282,7 +282,7 @@ bool TSession::is_transport_rolling() const
 	if (m_parentSession) {
 		return m_parentSession->is_transport_rolling();
 	}
-    return m_transportRolling.load();
+    return get_transport_rolling_state();
 }
 
 bool TSession::is_child_session() const

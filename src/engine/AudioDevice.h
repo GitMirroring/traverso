@@ -39,6 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 #include "TTransportControl.h"
 #include "TProcessCallBackData.h"
+#include "ThreadSaveMessagePosting.h"
 #include "defines.h"
 
 #include "FastDelegate.h"
@@ -163,17 +164,27 @@ private:
 #if defined (COREAUDIO_SUPPORT)
     friend class CoreAudioDriver;
 #endif
-    TTransportControl     m_transportControl;
+    TRealTimeLinkedList<TAudioDeviceClient*> m_clients;
+
+    TProcessCallBackData    m_processCallBackData;
+    TTransportControl   m_transportControl;
 
     TAudioDeviceSetup   m_setup;
     TAudioDeviceSetup   m_fallBackSetup;
     TAudioDriver* 		m_driver;
     AudioDeviceThread* 	m_audioThread;
-    TRealTimeLinkedList<TAudioDeviceClient*> m_clients;
-    QList<AudioChannel* >   m_audioChannels;
-    QList<TAudioBusConfiguration>        m_busConfigs;
-    QList<TAudioChannelConfiguration>    m_channelConfigs;
+
+    TSMPEvent           m_bufferUnderRunEvent;
+    TSMPEvent           m_xrunStormDetectedEvent;
+
+    QList<AudioChannel* >               m_audioChannels;
+    QList<TAudioBusConfiguration>       m_busConfigs;
+    QList<TAudioChannelConfiguration>   m_channelConfigs;
     QStringList		m_availableDrivers;
+
+    QHash<QString, QVariant> m_driverProperties;
+    QMap<int, TAudioDriverSetupMessage> m_audioDriverSetupMessages;
+
     QTimer			m_xrunResetTimer;
 #if defined (JACK_SUPPORT)
     QTimer			jackShutDownChecker;
@@ -182,7 +193,7 @@ private:
 #endif
 
     std::atomic<trav_time_t> m_processCallBackCpuTime;
-    volatile size_t		m_runAudioThread;
+    volatile size_t	m_runAudioThread;
     bool            m_isRealTime;
     trav_time_t		m_cycleStartTime;
     trav_time_t		m_lastCpuReadTime;
@@ -193,10 +204,7 @@ private:
     uint			m_xrunCount;
     QString			m_driverType;
     QString			m_ditherShape;
-    QHash<QString, QVariant> m_driverProperties;
-    QMap<int, TAudioDriverSetupMessage> m_audioDriverSetupMessages;
 
-    TProcessCallBackData    m_processCallBackData;
 
     int run_cycle(nframes_t nframes, float delayed_usecs);
     int run_one_cycle(nframes_t nframes, float delayed_usecs);

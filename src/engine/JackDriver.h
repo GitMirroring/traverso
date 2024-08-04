@@ -31,71 +31,72 @@
 
 class JackDriver : public TAudioDriver
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
-        JackDriver(AudioDevice* device);
-        ~JackDriver();
+    JackDriver(AudioDevice* device);
+    ~JackDriver();
 
-        int  process_callback (nframes_t nframes);
-        int _read(nframes_t nframes);
-        int _write(nframes_t nframes);
-        int _run_cycle() {return 1;}
-        int setup(QList<AudioChannel* > channels);
-        int attach();
-        int start();
-        int stop();
+    int  process_callback (nframes_t nframes);
+    int _read(nframes_t nframes);
+    int _write(nframes_t nframes);
+    int _run_cycle() {return 1;}
+    int setup(QList<AudioChannel* > channels);
+    int attach();
+    int start();
+    int stop();
 
-        QString get_device_name();
-        QString get_device_longname();
+    QString get_device_name();
+    QString get_device_longname();
 
-        void add_channel(AudioChannel* channel);
-        void remove_channel(AudioChannel* channel);
+    void add_channel(AudioChannel* channel);
+    void remove_channel(AudioChannel* channel);
 
-        float get_cpu_load();
-	
-        size_t is_running() const {return m_running == 1;}
-        jack_client_t* get_client() const {return m_jack_client;}
-	bool is_slave() const {return m_isSlave;}
-	void update_config();
+    float get_cpu_load();
+
+    size_t is_running() const {return m_running == 1;}
+    jack_client_t* get_client() const {return m_jackClient;}
+    bool is_slave() const {return m_isSlave;}
+    void update_config();
 
 private:
-        struct PortChannelPair {
-                PortChannelPair() {
-                        jackport = nullptr;
-                        channel = nullptr;
-                        unregister = false;
-                }
+    struct PortChannelPair {
+        PortChannelPair() {
+            jackport = nullptr;
+            channel = nullptr;
+            unregister = false;
+        }
 
-                jack_port_t*    jackport;
-                AudioChannel*   channel;
-                QString         name;
-                bool            unregister;
-        };
+        jack_port_t*    jackport;
+        AudioChannel*   channel;
+        QString         name;
+        bool            unregister;
+    };
 
-        volatile size_t         m_running;
-        jack_client_t*          m_jack_client{};
-        QList<PortChannelPair*> m_inputs;
-        QList<PortChannelPair*> m_outputs;
-        TTransportControl*        m_transportControl;
+    volatile size_t         m_running;
+    jack_client_t*          m_jackClient;
+    QList<PortChannelPair*> m_inputs;
+    QList<PortChannelPair*> m_outputs;
+    TTransportControl       m_transportControl;
 
-        bool                    m_isSlave{};
+    bool                    m_isSlave;
 
-	int  jack_sync_callback (jack_transport_state_t, jack_position_t*);
+    int  jack_sync_callback (jack_transport_state_t, jack_position_t*);
 
-        static int _xrun_callback(void *arg);
-        static int  _process_callback (nframes_t nframes, void *arg);
-        static int _bufsize_callback(jack_nframes_t nframes, void *arg);
-	static void _on_jack_shutdown_callback(void* arg);
-	static int  _jack_sync_callback (jack_transport_state_t, jack_position_t*, void *arg);	
+    static int _xrun_callback(void *arg);
+    static int  _process_callback (nframes_t nframes, void *arg);
+    static int _bufsize_callback(jack_nframes_t nframes, void *arg);
+    static void _on_jack_shutdown_callback(void* arg);
+    static int  _jack_sync_callback (jack_transport_state_t, jack_position_t*, void *arg);
 
 private slots:
-        void private_add_port_channel_pair(PortChannelPair* pair);
-        void cleanup_removed_port_channel_pair(PortChannelPair* pair);
+    void private_add_port_channel_pair(PortChannelPair* pair);
+    void private_remove_port_channel_pair(PortChannelPair* pair);
+    void cleanup_removed_port_channel_pair(PortChannelPair* pair);
 
 signals:
-	void jackShutDown();
-        void pcpairRemoved(PortChannelPair*);
-	
+    void jackShutDown();
+    void pcpairRemoved(PortChannelPair*);
+
 };
 
 

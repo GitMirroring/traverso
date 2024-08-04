@@ -30,8 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <commands.h>
 
-#include <AudioDevice.h>
-#include <AudioBus.h>
+#include "AudioDevice.h"
+#include "AudioBus.h"
 #include "TAudioDeviceClient.h"
 #include "ProjectManager.h"
 #include "Information.h"
@@ -42,7 +42,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClip.h"
 #include "TExportSpecification.h"
 #include "DiskIO.h"
-#include "TExportThread.h"
 #include "WriteSource.h"
 #include "AudioClipManager.h"
 #include "ThreadSaveMessagePosting.h"
@@ -54,8 +53,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Marker.h"
 #include "TInputEventDispatcher.h"                       
 #include "TSend.h"
-#include <Plugin.h>
-#include <PluginChain.h>
+#include "Plugin.h"
+#include "PluginChain.h"
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
@@ -128,13 +127,15 @@ void Sheet::init()
 
     QObject::tr("Sheet");
 
-    tsmp().prepare_event(m_transportStoppedTSMPEvent, this, nullptr, "", "transportStopped()");
-    tsmp().prepare_event(m_seekStartTSMPEvent, this, nullptr, "", "seekStart()");
-    tsmp().prepare_event(m_transportLocationChangedTSMPEvent, this, nullptr, "", "transportLocationChanged()");
+    tsmp().prepare_event(m_transportStartedEvent, this, nullptr, "", "transportStarted()");
+    tsmp().prepare_event(m_transportStoppedEvent, this, nullptr, "", "transportStopped()");
+    tsmp().prepare_event(m_transportLocationChangedEvent, this, nullptr, "", "transportLocationChanged()");
+    tsmp().prepare_event(m_prepareRecordingEvent, this, nullptr, "", "prepareRecording()");
+    tsmp().prepare_event(m_recordingStateChangedEvent, this, nullptr, "", "recordingStateChanged()");
 
-    set_seeking(false);
-    set_start_seek(false);
-    m_stopTransport.store(false);
+    set_transport_seeking_state(false);
+    set_transport_locate_requested_state(false);
+    set_transport_stop_requested_state(false);
 
     int converter_type = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
     m_readDiskIO = new DiskIO();
@@ -147,8 +148,8 @@ void Sheet::init()
 
     m_writeDiskIO = new DiskIO();
 
-    m_acmanager = new AudioClipManager(this);
-    set_core_context_item( m_acmanager );
+    m_audioClipManager = new AudioClipManager(this);
+    set_core_context_item( m_audioClipManager );
     create_history_stack();
     m_timeline->set_history_stack(get_history_stack());
 
@@ -243,7 +244,7 @@ int Sheet::set_state( const QDomNode & node )
         trackNode = trackNode.nextSibling();
     }
 
-    m_acmanager->set_state(node.firstChildElement("ClipManager"));
+    m_audioClipManager->set_state(node.firstChildElement("ClipManager"));
 
     QDomNode workSheetsNode = node.firstChildElement("WorkSheets");
     QDomNode workSheetNode = workSheetsNode.firstChild();
@@ -281,7 +282,7 @@ QDomNode Sheet::get_state(QDomDocument doc, bool istemplate)
     properties.setAttribute("snapping", m_isSnapOn);
     sheetNode.appendChild(properties);
 
-    sheetNode.appendChild(m_acmanager->get_state(doc));
+    sheetNode.appendChild(m_audioClipManager->get_state(doc));
 
     sheetNode.appendChild(m_timeline->get_state(doc));
 
@@ -506,9 +507,9 @@ int Sheet::process(TProcessCallBackData &processData)
     // seeking or want to seek
     m_readDiskIO->wakeup();
 
-    if (start_seek()) {
+    if (transport_locate_requested()) {
         printf("Sheet::process: starting seek\n");
-        inititate_seek();
+        rt_inititate_seek();
         return 0;
     }
 
@@ -521,11 +522,11 @@ int Sheet::process(TProcessCallBackData &processData)
         return 0;
     }
 
-    if (m_stopTransport) {
-        m_transportRolling.store(false);
-        m_stopTransport = false;
+    if (transport_stop_requested()) {
+        set_transport_rolling_state(false);
+        set_transport_stop_requested_state(false);
         printf("Sheet::process transport stop post time: %ld\n", TTimeRef::get_microseconds_since_epoch());
-        tsmp().post_rt_event(m_transportStoppedTSMPEvent);
+        tsmp().post_rt_event(m_transportStoppedEvent);
 
         return 0;
     }
@@ -543,7 +544,7 @@ int Sheet::process(TProcessCallBackData &processData)
     // update the transport location
     m_transportLocation.add_frames(nframes, audiodevice().get_sample_rate());
     m_readDiskIO->set_transport_location(m_transportLocation);
-    tsmp().post_rt_event(m_transportLocationChangedTSMPEvent);
+    tsmp().post_rt_event(m_transportLocationChangedEvent);
 
     if (!processResult) {
         return 0;
@@ -605,7 +606,7 @@ void Sheet::audiodevice_params_changed()
 
 AudioClipManager * Sheet::get_audioclip_manager( ) const
 {
-    return m_acmanager;
+    return m_audioClipManager;
 }
 
 QString Sheet::get_audio_sources_dir() const
@@ -661,7 +662,7 @@ void Sheet::handle_diskio_writebuffer_overrun( )
 
 TTimeRef Sheet::get_last_location() const
 {
-    TTimeRef lastAudio = m_acmanager->get_last_location();
+    TTimeRef lastAudio = m_audioClipManager->get_last_location();
     TTimeRef endMarkerLocation = TTimeRef();
     m_timeline->get_end_location(endMarkerLocation);
     return std::max(lastAudio , endMarkerLocation);
@@ -739,8 +740,8 @@ int Sheet::transport_control(TTransportControl *transportControl)
 {
     switch(transportControl->get_state())
     {
-    case TTransportControl::Stopped:
-        printf("Sheet::transport_control: Stopped\n");
+    case TTransportControl::TransportStopped:
+        // printf("Sheet::transport_control: Stopped\n");
         if (transportControl->get_location() != m_transportLocation) {
             initiate_seek_start(transportControl->get_location());
         }
@@ -752,7 +753,7 @@ int Sheet::transport_control(TTransportControl *transportControl)
         }
         return true;
 
-    case TTransportControl::Starting:
+    case TTransportControl::TransportStarting:
         printf("Sheet::transport_control: TransportStarting\n");
         if (transportControl->get_location() != m_transportLocation) {
             initiate_seek_start(transportControl->get_location());
@@ -771,7 +772,7 @@ int Sheet::transport_control(TTransportControl *transportControl)
                 // RT thread save signal!
                 Q_ASSERT(transportControl->is_realtime());
                 Q_ASSERT(this->thread() != QThread::currentThread());
-                tsmp().add_rt_event(this, nullptr, "prepareRecording()");
+                tsmp().post_rt_event(m_prepareRecordingEvent);
                 printf("Sheet::transport_control: Transport Starting: posting 'prepareRecording()' signal to TSMP\n");
                 return false;
             }
@@ -785,7 +786,7 @@ int Sheet::transport_control(TTransportControl *transportControl)
         return true;
 
 
-    case TTransportControl::Rolling:
+    case TTransportControl::TransportRolling:
         if (!is_transport_rolling()) {
             // When the transport rolling request came from a non slave
             // driver, we currently can assume it's comming from the GUI
@@ -803,6 +804,7 @@ int Sheet::transport_control(TTransportControl *transportControl)
     return false;
 }
 
+// can be called from GUI and RT thread
 void Sheet::initiate_seek_start(TTimeRef location)
 {
     if (is_seeking()) {
@@ -810,9 +812,11 @@ void Sheet::initiate_seek_start(TTimeRef location)
         return;
     }
 
+    set_transport_seeking_state(true);
+
     m_seekTransportLocation = location;
-    m_startSeek.store(true);
-    set_seeking(true);
+
+    set_transport_locate_requested_state(true);
 
     PMESG("tranport starting: initiating seek");
 }
@@ -821,7 +825,7 @@ void Sheet::initiate_seek_start(TTimeRef location)
 //  Function is ALWAYS called in RealTime AudioThread processing path
 //  Be EXTREMELY carefull to not call functions() that have blocking behavior!!
 //
-void Sheet::inititate_seek()
+void Sheet::rt_inititate_seek()
 {
     Q_ASSERT(this->thread() != QThread::currentThread());
 
@@ -829,12 +833,11 @@ void Sheet::inititate_seek()
         m_resumeTransport = true;
     }
 
-    m_transportRolling.store(false);
-    set_start_seek(false);
+    set_transport_rolling_state(false);
+    set_transport_locate_requested_state(false);
 
     // only sets a boolean flag and the new seek location, save to call
     m_readDiskIO->set_seek_transport_location(m_seekTransportLocation);
-    tsmp().post_rt_event(m_seekStartTSMPEvent);
 }
 
 void Sheet::seek_finished()
@@ -845,7 +848,7 @@ void Sheet::seek_finished()
     printf("Sheet::seek_finished: Transport Location is now %s (Sheet: %s)\n",
            QS_C(TTimeRef::timeref_to_ms_3(m_transportLocation)),
            QS_C(get_name()));
-    set_seeking(false);
+    set_transport_seeking_state(false);
 
     if (m_resumeTransport) {
         start_transport_rolling(false);
@@ -860,10 +863,10 @@ void Sheet::seek_finished()
 // RT thread save function
 void Sheet::start_transport_rolling(bool realtime)
 {
-    m_transportRolling.store(true);
+    set_transport_rolling_state(true);
 
     if (realtime) {
-        tsmp().add_rt_event(this, nullptr, "transportStarted()");
+        tsmp().post_rt_event(m_transportStartedEvent);
     } else {
         emit transportStarted();
     }
@@ -874,7 +877,7 @@ void Sheet::start_transport_rolling(bool realtime)
 // RT thread save function
 void Sheet::stop_transport_rolling()
 {
-    m_stopTransport = 1;
+    set_transport_stop_requested_state(true);
     PMESG("transport stopped");
 }
 
@@ -889,7 +892,7 @@ void Sheet::set_recording(bool recording, bool realtime)
     }
 
     if (realtime) {
-        tsmp().add_rt_event(this, nullptr, "recordingStateChanged()");
+        tsmp().post_rt_event(m_recordingStateChangedEvent);
     } else {
         emit recordingStateChanged();
     }

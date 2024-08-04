@@ -197,6 +197,9 @@ AudioDevice::AudioDevice()
     // has to be running before the audio thread in order to make
     // sure no events will get lost
     tsmp();
+    tsmp().prepare_event(m_bufferUnderRunEvent, this, nullptr, "", "bufferUnderRun()");
+    tsmp().prepare_event(m_xrunStormDetectedEvent, this, nullptr, "", "xrunStormDetected()");
+
 
     connect(this, SIGNAL(xrunStormDetected()), this, SLOT(switch_to_null_driver()));
     connect(&m_xrunResetTimer, SIGNAL(timeout()), this, SLOT(reset_xrun_counter()));
@@ -881,11 +884,11 @@ void AudioDevice::audiothread_finished()
 
 void AudioDevice::xrun( )
 {
-    tsmp().add_rt_event(this, nullptr, "bufferUnderRun()");
+    tsmp().post_rt_event(m_bufferUnderRunEvent);
 
     m_xrunCount++;
     if (m_xrunCount > 30) {
-        tsmp().add_rt_event(this, nullptr, "xrunStormDetected()");
+        tsmp().post_rt_event(m_xrunStormDetectedEvent);
     }
 }
 
@@ -955,7 +958,7 @@ void AudioDevice::transport_start(TAudioDeviceClient * client)
     }
 #endif
 
-    m_transportControl.set_state(TTransportControl::Rolling);
+    m_transportControl.set_state(TTransportControl::TransportRolling);
     m_transportControl.set_slave(false);
     m_transportControl.set_realtime(false);
     m_transportControl.set_location(TTimeRef()); // get from client!!
@@ -974,7 +977,7 @@ void AudioDevice::transport_stop(TAudioDeviceClient * client, const TTimeRef &lo
     }
 #endif
 
-    m_transportControl.set_state(TTransportControl::Stopped);
+    m_transportControl.set_state(TTransportControl::TransportStopped);
     m_transportControl.set_slave(false);
     m_transportControl.set_realtime(false);
     m_transportControl.set_location(location);
@@ -994,7 +997,7 @@ int AudioDevice::transport_locate(TAudioDeviceClient* client, const TTimeRef& lo
     }
 #endif
 
-    m_transportControl.set_state(TTransportControl::Starting);
+    m_transportControl.set_state(TTransportControl::TransportStarting);
     m_transportControl.set_slave(false);
     m_transportControl.set_realtime(false);
     m_transportControl.set_location(location);

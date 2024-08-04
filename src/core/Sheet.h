@@ -124,27 +124,35 @@ private:
     AudioBus*           m_clipRenderBus{};
     DiskIO*             m_readDiskIO;
     DiskIO*             m_writeDiskIO;
-    AudioClipManager*	m_acmanager{};
+    AudioClipManager*	m_audioClipManager{};
     QString             m_audioSourcesDir;
-    TSMPEvent           m_transportStoppedTSMPEvent;
-    TSMPEvent           m_seekStartTSMPEvent;
-    TSMPEvent           m_transportLocationChangedTSMPEvent;
+    TSMPEvent           m_transportStoppedEvent;
+    TSMPEvent           m_transportLocationChangedEvent;
+    TSMPEvent           m_transportStartedEvent;
+    TSMPEvent           m_prepareRecordingEvent;
+    TSMPEvent           m_recordingStateChangedEvent;
 
-    std::atomic<bool>   m_seeking;
-    std::atomic<bool>   m_startSeek;
-    std::atomic<bool>   m_stopTransport;
+    std::atomic<bool>   m_isSeeking;
+    std::atomic<bool>   m_transportLocateRequested;
+    std::atomic<bool>   m_transportStopRequested;
 
-    inline void set_start_seek(bool startSeek) {
-        m_startSeek.store(startSeek);
+    inline void set_transport_locate_requested_state(bool transportLocate) {
+        m_transportLocateRequested.store(transportLocate);
     }
-    inline bool start_seek() const {
-        return m_startSeek.load();
+    inline bool transport_locate_requested() const {
+        return m_transportLocateRequested.load();
     }
-    inline void set_seeking(bool seeking) {
-        m_seeking.store(seeking);
+    inline void set_transport_seeking_state(bool seeking) {
+        m_isSeeking.store(seeking);
     }
     inline bool is_seeking() const {
-        return m_seeking.load();
+        return m_isSeeking.load();
+    }
+    void set_transport_stop_requested_state(bool stop) {
+        m_transportStopRequested.store(stop);
+    }
+    bool transport_stop_requested() const {
+        return m_transportStopRequested.load();
     }
 
     QString 	m_artists;
@@ -156,7 +164,7 @@ private:
 
     void init();
 
-    void inititate_seek();
+    void rt_inititate_seek();
     void initiate_seek_start(TTimeRef location);
     void start_transport_rolling(bool realtime);
     void stop_transport_rolling();
@@ -178,7 +186,6 @@ public slots :
     TCommand* toggle_snap();
 
 signals:
-    void seekStart();
     void snapChanged();
     void setCursorAtEdge();
     void recordingStateChanged();

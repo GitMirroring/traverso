@@ -106,7 +106,7 @@ protected:
     QHash<qint64, int>      m_trackHeights;
 
     SnapList*           m_snaplist;
-    TLocation*       m_workSnap;
+    TLocation*          m_workSnap;
     TTimeLineRuler*     m_timeline;
     QString             m_name;
 
@@ -120,6 +120,15 @@ protected:
     TTimeRef            m_transportLocation;
     TTimeRef            m_workLocation;
     TTimeRef            m_seekTransportLocation;
+
+    bool get_transport_rolling_state() const {
+        return m_transportRolling.load();
+    }
+    void set_transport_rolling_state(bool rolling) {
+        m_transportRolling.store(rolling);
+    }
+
+
 
 private:
 	friend class TTimeLineRuler;
