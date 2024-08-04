@@ -8,12 +8,16 @@ class TTransportControl
 public:
     TTransportControl();
 
-    enum {
-        Stopped = 0,
-        Rolling = 1,
-        Looping = 2,
-        Starting = 3
-    };
+    // Same as Jackd transport states so we are compatible with Jack Audio Connection Kit
+    typedef enum {
+        /* the order matters for binary compatibility */
+        TransportStopped = 0,       /**< Transport halted */
+        TransportRolling = 1,       /**< Transport playing */
+        TransportLooping = 2,       /**< For OLD_TRANSPORT, now ignored */
+        TransportStarting = 3,      /**< Waiting for sync ready */
+        TransportNetStarting = 4,       /**< Waiting for sync ready on the network*/
+
+    } trav_transport_state_t;
 
 
     int get_state() const {return m_state;}
