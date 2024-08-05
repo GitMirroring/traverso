@@ -14,8 +14,8 @@ SET(TRAVERSO_ENGINE_SOURCES
 AudioBus.cpp
 AudioChannel.cpp
 TAudioDeviceSetup.h TAudioDeviceSetup.cpp
-AudioDevice.cpp
-AudioDeviceThread.cpp
+TAudioDevice.cpp
+TAudioDeviceThread.cpp
 TAudioDeviceClient.cpp
 TAudioDriver.cpp
 TAudioBusConfiguration.h TAudioBusConfiguration.cpp
@@ -26,33 +26,33 @@ memops.cpp
 
 IF(HAVE_ALSA)
 	SET(TRAVERSO_ENGINE_SOURCES
-	AlsaDriver.cpp
+		TAlsaDriver.cpp
 	${TRAVERSO_ENGINE_SOURCES}
 	)
         SET(TRAVERSO_ENGINE_MOC_CLASSES
-        AlsaDriver.h
+		TAlsaDriver.h
         ${TRAVERSO_ENGINE_MOC_CLASSES}
         )
 ENDIF(HAVE_ALSA)
 
 IF(HAVE_JACK)
 	SET(TRAVERSO_ENGINE_SOURCES
-	JackDriver.cpp
+		TJackDriver.cpp
 	${TRAVERSO_ENGINE_SOURCES}
 	)
 	SET(TRAVERSO_ENGINE_MOC_CLASSES
-	JackDriver.h
+		TJackDriver.h
 	${TRAVERSO_ENGINE_MOC_CLASSES}
 	)
 ENDIF(HAVE_JACK)
 
 IF(HAVE_PORTAUDIO)
 	SET(TRAVERSO_ENGINE_SOURCES
-	PADriver.cpp
+		TPortAudioDriver.cpp
 	${TRAVERSO_ENGINE_SOURCES}
 	)
         SET(TRAVERSO_ENGINE_MOC_CLASSES
-        PADriver.h
+		TPortAudioDriver.h
         ${TRAVERSO_ENGINE_MOC_CLASSES}
         )
 ENDIF(HAVE_PORTAUDIO)

@@ -32,7 +32,7 @@ class TPulseAudioDriver : public TAudioDriver
     Q_OBJECT
 
 public:
-    TPulseAudioDriver(AudioDevice* device);
+    TPulseAudioDriver(TAudioDevice* device);
 	~TPulseAudioDriver();
 
 	int _read(nframes_t nframes);

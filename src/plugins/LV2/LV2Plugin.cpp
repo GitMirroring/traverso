@@ -22,10 +22,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "LV2Plugin.h"
 
-#include <PluginManager.h>
-#include <AudioBus.h>
-#include <AudioDevice.h>
-#include <Utils.h>
+#include "PluginManager.h"
+#include "AudioBus.h"
+#include "TAudioDevice.h"
+#include "Utils.h"
 
 #if defined Q_OS_MAC
 	#include <cmath>

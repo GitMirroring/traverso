@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2006 Remon Sijrier
+Copyright (C) 2005-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -16,23 +16,19 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
-$Id: Driver.cpp,v 1.6 2007/03/19 11:18:57 r_sijrier Exp $
 */
 
 #include "TAudioDriver.h"
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "AudioChannel.h"
 
 #include <QString>
-
-
 
 #include "Debugger.h"
 #include "qthread.h"
 
 
-TAudioDriver::TAudioDriver(AudioDevice* device)
+TAudioDriver::TAudioDriver(TAudioDevice* device)
     : m_device(device)
     , m_frameRate(0)
     , m_framesPerCycle(0)
@@ -127,7 +123,7 @@ int TAudioDriver::attach( )
         chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
     }
 
-    emit driverSetupMessage(tr("Succesfully started Dummy Driver!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+    emit driverSetupMessage(tr("Succesfully started Dummy Driver!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
     return 1;
 }

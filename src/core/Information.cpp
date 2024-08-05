@@ -21,7 +21,7 @@
 
 #include "Information.h"
 #include "Utils.h"
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "ThreadSaveMessagePosting.h"
 
 #include "Debugger.h"
@@ -74,11 +74,11 @@ void Information::critical( const QString & mes )
 void Information::audiodevice_message(const QString& message, int severity)
 {
 	switch(severity) {
-        case AudioDevice::INFO: information(message);
+        case TAudioDevice::INFO: information(message);
 		break;
-        case AudioDevice::WARNING: warning(message);
+        case TAudioDevice::WARNING: warning(message);
 		break;
-        case AudioDevice::CRITICAL: critical(message);
+        case TAudioDevice::CRITICAL: critical(message);
 		break;
         default: ;// do nothing;
 	}

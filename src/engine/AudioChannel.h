@@ -80,10 +80,10 @@ private:
     bool			m_monitoring;
     QString 		m_name;
 
-    friend class JackDriver;
-    friend class AlsaDriver;
-    friend class PADriver;
-    friend class PulseAudioDriver;
+    friend class TJackDriver;
+    friend class TAlsaDriver;
+    friend class TPortAudioDriver;
+    friend class TPulseAudioDriver;
     friend class TAudioDriver;
     friend class CoreAudioDriver;
 

@@ -30,8 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include "SnapList.h"
 #include "AudioTrack.h"
-#include <AudioBus.h>
-#include <AudioDevice.h>
+#include "AudioBus.h"
+#include "TAudioDevice.h"
 #include "Mixer.h"
 #include "DiskIO.h"
 #include "TExportSpecification.h"

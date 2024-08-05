@@ -1,4 +1,4 @@
-/*Copyright (C) 2006 Remon Sijrier
+/*Copyright (C) 2006 - 2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -16,21 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
-$Id: CorrelationMeter.cpp,v 1.6 2008/02/10 23:47:06 n_doebelin Exp $
-
 */
 
 
 #include "CorrelationMeter.h"
 #include <AudioBus.h>
-#include <AudioDevice.h>
+#include "TAudioDevice.h"
 #include <Debugger.h>
 #include <cmath>
 #include <climits>
-
-
-
-#include "Debugger.h"
 		
 #define BUFFER_READOUT_TOLERANCE 2  // recommended: 1-10
 #define RINGBUFFER_SIZE 150

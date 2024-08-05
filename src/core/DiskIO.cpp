@@ -21,15 +21,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "DiskIO.h"
 
-#include "AudioDevice.h"
-
+#include "TAudioDevice.h"
 #include "AudioSource.h"
-
-
-
 #include "Debugger.h"
 #include "TFileDecodeBuffer.h"
 #include "Utils.h"
+
 #include <samplerate.h>
 
 #if defined (Q_OS_UNIX)

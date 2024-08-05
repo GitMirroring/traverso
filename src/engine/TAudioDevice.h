@@ -45,13 +45,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "FastDelegate.h"
 
 
-class AudioDeviceThread;
+class TAudioDeviceThread;
 class TAudioDriver;
 class TAudioDeviceClient;
 class AudioChannel;
 class AudioBus;
 #if defined (JACK_SUPPORT)
-class JackDriver;
+class TJackDriver;
 #endif
 
 #if defined (COREAUDIO_SUPPORT)
@@ -73,7 +73,7 @@ struct TAudioDriverSetupMessage
     qint64  createdOn; // msecs since epoch
 };
 
-class AudioDevice : public QObject
+class TAudioDevice : public QObject
 {
     Q_OBJECT
 
@@ -149,18 +149,18 @@ public:
     float get_cpu_time();
 
 private:
-    AudioDevice();
-    ~AudioDevice();
-    AudioDevice(const AudioDevice&) : QObject() {}
+    TAudioDevice();
+    ~TAudioDevice();
+    TAudioDevice(const TAudioDevice&) : QObject() {}
 
     // allow this function to create one instance
-    friend AudioDevice& audiodevice();
+    friend TAudioDevice& audiodevice();
 
-    friend class AlsaDriver;
-    friend class PADriver;
+    friend class TAlsaDriver;
+    friend class TPortAudioDriver;
     friend class TAudioDriver;
     friend class TPulseAudioDriver;
-    friend class AudioDeviceThread;
+    friend class TAudioDeviceThread;
 #if defined (COREAUDIO_SUPPORT)
     friend class CoreAudioDriver;
 #endif
@@ -172,7 +172,7 @@ private:
     TAudioDeviceSetup   m_setup;
     TAudioDeviceSetup   m_fallBackSetup;
     TAudioDriver* 		m_driver;
-    AudioDeviceThread* 	m_audioThread;
+    TAudioDeviceThread* 	m_audioThread;
 
     TSMPEvent           m_bufferUnderRunEvent;
     TSMPEvent           m_xrunStormDetectedEvent;
@@ -188,8 +188,8 @@ private:
     QTimer			m_xrunResetTimer;
 #if defined (JACK_SUPPORT)
     QTimer			jackShutDownChecker;
-    JackDriver* slaved_jack_driver();
-    friend class JackDriver;
+    TJackDriver* slaved_jack_driver();
+    friend class TJackDriver;
 #endif
 
     std::atomic<trav_time_t> m_processCallBackCpuTime;
@@ -243,7 +243,7 @@ signals:
     /**
 	 *      The stopped() signal is emited just before the AudioDeviceThread will be stopped.
 	 *	Connect this signal to all Objects that have a pointer to an AudioBus (For example a VU meter),
-	 *	since all he Buses will be deleted, and new ones created when the AudioDevice re-inits
+     *	since all he Buses will be deleted, and new ones created when the TAudioDevice re-inits
 	 *	the AudioDriver.
 	 */
     void stopped();
@@ -257,7 +257,7 @@ signals:
     /**
 	 *      The driverParamsChanged() signal is emited just before the started() signal, you should 
 	 *	connect all objects to this signal who need a pointer to one of the AudioBuses supplied by 
-	 *	the AudioDevice!
+     *	the TAudioDevice!
 	 */
     void driverParamsChanged();
 
@@ -268,7 +268,7 @@ signals:
 
     /**
 	 *        This signal will be emited after succesfull Client removal from within the GUI Thread!
-	 * @param  The Client \a client which as been removed from the AudioDevice
+     * @param  The Client \a client which as been removed from the TAudioDevice
 	 */
     void audioDeviceClientRemoved(TAudioDeviceClient*);
     void audioDeviceClientAdded(TAudioDeviceClient*);
@@ -292,7 +292,7 @@ private slots:
 
 
 // use this function to get the audiodevice object
-AudioDevice& audiodevice();
+TAudioDevice& audiodevice();
 
 
 #endif

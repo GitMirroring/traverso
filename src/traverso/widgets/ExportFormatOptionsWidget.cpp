@@ -21,16 +21,12 @@
 
 #include "ExportFormatOptionsWidget.h"
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "TConfig.h"
 #include "TExportSpecification.h"
 #include <samplerate.h>
 
 RELAYTOOL_WAVPACK;
-
-
-
-#include "Debugger.h"
 
 
 ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )

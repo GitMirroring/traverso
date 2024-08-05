@@ -20,9 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: AudioDeviceThread.cpp,v 1.21 2007/10/20 17:38:19 r_sijrier Exp $
 */
 
-#include "AudioDeviceThread.h"
+#include "TAudioDeviceThread.h"
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 
 #if defined (Q_OS_UNIX)
 #include <dlfcn.h>
@@ -34,16 +34,14 @@ $Id: AudioDeviceThread.cpp,v 1.21 2007/10/20 17:38:19 r_sijrier Exp $
 #include <unistd.h>
 #include <csignal>
 
-
-
 #include "Debugger.h"
 
 class WatchDogThread : public QThread
 {
-	AudioDeviceThread* guardedThread;
+    TAudioDeviceThread* guardedThread;
 
 public:
-	WatchDogThread(AudioDeviceThread* thread)
+    WatchDogThread(TAudioDeviceThread* thread)
 	{
 		guardedThread = thread;
 	}
@@ -75,7 +73,7 @@ protected:
 	}
 };
 
-AudioDeviceThread::AudioDeviceThread(AudioDevice* device, bool realTime)
+TAudioDeviceThread::TAudioDeviceThread(TAudioDevice* device, bool realTime)
 {
 	m_device = device;
     m_realTime = realTime;
@@ -85,7 +83,7 @@ AudioDeviceThread::AudioDeviceThread(AudioDevice* device, bool realTime)
 }
 
 
-void AudioDeviceThread::run()
+void TAudioDeviceThread::run()
 {
     run_on_cpu( 0 );
 
@@ -115,13 +113,13 @@ void AudioDeviceThread::run()
 	watchdog.wait();
 }
 
-void AudioDeviceThread::set_real_time(bool realTime)
+void TAudioDeviceThread::set_real_time(bool realTime)
 {
     m_realTime = realTime;
 }
 
 
-int AudioDeviceThread::become_realtime()
+int TAudioDeviceThread::become_realtime()
 {
 #if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
 
@@ -133,7 +131,7 @@ int AudioDeviceThread::become_realtime()
             "This most likely results in unreliable playback/capture and "
             "lots of buffer underruns (== sound drops)."
             "In the worst case the program can even malfunction!"
-            "Please make sure you run this program with realtime privileges!!!"), AudioDevice::CRITICAL);
+            "Please make sure you run this program with realtime privileges!!!"), TAudioDevice::CRITICAL);
         return -1;
     } else {
         printf("AudioThread: Running with realtime priority\n");
@@ -150,7 +148,7 @@ int AudioDeviceThread::become_realtime()
 typedef int* (*setaffinity_func_type)(pid_t,unsigned int,cpu_set_t *);
 #endif
 
-void AudioDeviceThread::run_on_cpu( int cpu )
+void TAudioDeviceThread::run_on_cpu( int cpu )
 {
 #if defined (Q_OS_UNIX)
     void *setaffinity_handle = dlopen(nullptr, RTLD_LAZY);

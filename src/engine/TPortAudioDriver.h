@@ -19,19 +19,19 @@
  
 */
 
-#ifndef PORTAUDIO_DRIVER_H
-#define PORTAUDIO_DRIVER_H
+#ifndef T_PORTAUDIO_DRIVER_H
+#define T_PORTAUDIO_DRIVER_H
 
 #include "TAudioDriver.h"
 #include "portaudio.h"
 
-class PADriver : public TAudioDriver
+class TPortAudioDriver : public TAudioDriver
 {
     Q_OBJECT
 
 public:
-    PADriver(AudioDevice* device);
-    ~PADriver();
+    TPortAudioDriver(TAudioDevice* device);
+    ~TPortAudioDriver();
 
     int  process_callback (nframes_t nframes);
     int _read(nframes_t nframes);

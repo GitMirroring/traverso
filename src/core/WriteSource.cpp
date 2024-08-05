@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2006-2007 Remon Sijrier
+Copyright (C) 2006-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -25,17 +25,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <math.h>
 
 #include "AudioBus.h"
-#include <AudioDevice.h>
+#include "TAudioDevice.h"
 #include "AbstractAudioWriter.h"
 #include "Peak.h"
 #include "TQueueBufferSlot.h"
 #include "Utils.h"
+#include "Debugger.h"
 
 #include "gdither.h"
-
-
-
-#include "Debugger.h"
 
 
 WriteSource::WriteSource( TExportSpecification* specification )

@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2010 Remon Sijrier
+Copyright (C) 2005-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -17,24 +17,23 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
-$Id: AudioDevice.cpp,v 1.57 2009/11/16 19:50:43 n_doebelin Exp $
 */
 
-#include "AudioDevice.h"
-#include "AudioDeviceThread.h"
+#include "TAudioDevice.h"
+#include "TAudioDeviceThread.h"
 #include "ThreadSaveMessagePosting.h"
 
 #if defined (ALSA_SUPPORT)
-#include "AlsaDriver.h"
+#include "TAlsaDriver.h"
 #endif
 
 #if defined (JACK_SUPPORT)
 RELAYTOOL_JACK
-#include "JackDriver.h"
+#include "TJackDriver.h"
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
-#include "PADriver.h"
+#include "TPortAudioDriver.h"
 #endif
 
 #if defined (PULSEAUDIO_SUPPORT)
@@ -138,19 +137,19 @@ RELAYTOOL_JACK
     */
 
 /**
- * A global function, used to get the AudioDevice instance. Due the nature of singletons, the
-   AudioDevice intance will be created automatically!
- * @return The AudioDevice instance, it will be automatically created on first call
+ * A global function, used to get the TAudioDevice instance. Due the nature of singletons, the
+   TAudioDevice intance will be created automatically!
+ * @return The TAudioDevice instance, it will be automatically created on first call
  */
-AudioDevice& audiodevice()
+TAudioDevice& audiodevice()
 { 
-    static AudioDevice device;
+    static TAudioDevice device;
     return device;
 }
 
 TSMPEvent finishedOneProcessCycleEvent;
 
-AudioDevice::AudioDevice()
+TAudioDevice::TAudioDevice()
 {
     m_runAudioThread = false;
     m_driver = nullptr;
@@ -210,7 +209,7 @@ AudioDevice::AudioDevice()
     tsmp().prepare_event(finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");
 }
 
-AudioDevice::~AudioDevice()
+TAudioDevice::~TAudioDevice()
 {
     PENTERDES;
 
@@ -226,12 +225,12 @@ AudioDevice::~AudioDevice()
  *
  * Not yet implemented
  */
-void AudioDevice::show_descriptors( )
+void TAudioDevice::show_descriptors( )
 {
     // Needs to be implemented
 }
 
-void AudioDevice::set_buffer_size( nframes_t size )
+void TAudioDevice::set_buffer_size( nframes_t size )
 {
     Q_ASSERT(size > 0);
     m_bufferSize = size;
@@ -242,18 +241,18 @@ void AudioDevice::set_buffer_size( nframes_t size )
 
 }
 
-void AudioDevice::set_sample_rate( uint rate )
+void TAudioDevice::set_sample_rate( uint rate )
 {
     m_rate = rate;
     m_processCallBackData.set_sample_rate(m_rate);
 }
 
-void AudioDevice::set_bit_depth( uint depth )
+void TAudioDevice::set_bit_depth( uint depth )
 {
     m_bitdepth = depth;
 }
 
-int AudioDevice::start_driver()
+int TAudioDevice::start_driver()
 {
     Q_ASSERT(m_driver);
 
@@ -261,7 +260,7 @@ int AudioDevice::start_driver()
 }
 
 
-int AudioDevice::_run_cycle()
+int TAudioDevice::_run_cycle()
 {
     int result;
     if (running_real_time()) {
@@ -273,7 +272,7 @@ int AudioDevice::_run_cycle()
     return result;
 }
 
-int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
+int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
 {
     nframes_t left;
 
@@ -295,9 +294,8 @@ int AudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
     return 1;
 }
 
-int AudioDevice::run_one_cycle( nframes_t nframes, float  )
+int TAudioDevice::run_one_cycle( nframes_t nframes, float  )
 {
-
 
     if (m_isRealTime && m_driver->_read(nframes) < 0) {
         qDebug("driver read failed!");
@@ -321,21 +319,21 @@ int AudioDevice::run_one_cycle( nframes_t nframes, float  )
     return 0;
 }
 
-void AudioDevice::delay( float  )
+void TAudioDevice::delay( float  )
 {
 }
 
 
 /**
- * This function is used to initialize the AudioDevice's audioThread with the supplied
- * rate, bufferSize, channel/bus config, and driver type. In case the AudioDevice allready was configured,
- * it will stop the AudioDeviceThread and emits the stopped() signal,
+ * This function is used to initialize the TAudioDevice's audioThread with the supplied
+ * rate, bufferSize, channel/bus config, and driver type. In case the TAudioDevice allready was configured,
+ * it will stop the TAudioDeviceThread and emits the stopped() signal,
  * re-inits the AlsaDriver with the new paramaters, when succesfull emits the driverParamsChanged() signal,
- * restarts the AudioDeviceThread and emits the started() signal
+ * restarts the TAudioDeviceThread and emits the started() signal
  *
- * @param TAudioDeviceSetup Contains all parameters the AudioDevice needs
+ * @param TAudioDeviceSetup Contains all parameters the TAudioDevice needs
  */
-void AudioDevice::set_parameters(TAudioDeviceSetup ads)
+void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
 {
     PENTER;
 
@@ -384,7 +382,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
                 realTime = true;
             }
 
-            m_audioThread = new AudioDeviceThread(this, realTime);
+            m_audioThread = new TAudioDeviceThread(this, realTime);
         }
 
         // m_cycleStartTime/EndTime are set before/after the first cycle.
@@ -434,7 +432,7 @@ void AudioDevice::set_parameters(TAudioDeviceSetup ads)
     emit started();
 }
 
-void AudioDevice::set_free_wheeling(bool freeWheeling)
+void TAudioDevice::set_free_wheeling(bool freeWheeling)
 {
     if (freeWheeling) {
         m_driver->stop();
@@ -449,7 +447,7 @@ void AudioDevice::set_free_wheeling(bool freeWheeling)
     emit freeWheelingChanged();
 }
 
-void AudioDevice::create_driver()
+void TAudioDevice::create_driver()
 {
     Q_ASSERT(!m_driver);
     QString driverType = m_setup.get_driver_type();
@@ -457,7 +455,7 @@ void AudioDevice::create_driver()
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
         if (driverType == "Jack") {
-            m_driver = new JackDriver(this);
+            m_driver = new TJackDriver(this);
             return;
         }
     }
@@ -465,14 +463,14 @@ void AudioDevice::create_driver()
 
 #if defined (ALSA_SUPPORT)
     if (driverType == "ALSA") {
-        m_driver =  new AlsaDriver(this);
+        m_driver =  new TAlsaDriver(this);
         return;
     }
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
     if (driverType == "PortAudio") {
-        m_driver = new PADriver(this);
+        m_driver = new TPortAudioDriver(this);
         return;
     }
 #endif
@@ -501,7 +499,7 @@ void AudioDevice::create_driver()
 }
 
 
-int AudioDevice::setup_driver()
+int TAudioDevice::setup_driver()
 {
     Q_ASSERT(m_driver);
 
@@ -513,7 +511,7 @@ int AudioDevice::setup_driver()
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
         if (driverType == "Jack") {
-            JackDriver* jackDriver = qobject_cast<JackDriver*>(m_driver);
+            TJackDriver* jackDriver = qobject_cast<TJackDriver*>(m_driver);
             if (jackDriver && jackDriver->setup(m_setup.get_jack_channels()) < 0) {
                 driver_setup_message(tr("Audiodevice: Failed to setup the Jack Driver"), DRIVER_SETUP_FAILURE);
                 return -1;
@@ -525,7 +523,7 @@ int AudioDevice::setup_driver()
 
 #if defined (ALSA_SUPPORT)
     if (driverType == "ALSA") {
-        AlsaDriver* alsaDriver = qobject_cast<AlsaDriver*>(m_driver);
+        TAlsaDriver* alsaDriver = qobject_cast<TAlsaDriver*>(m_driver);
         if (alsaDriver && alsaDriver->setup(capture,playback, cardDevice, m_ditherShape) < 0) {
             driver_setup_message(tr("Audiodevice: Failed to setup the ALSA Driver"), DRIVER_SETUP_FAILURE);
             return -1;
@@ -536,7 +534,7 @@ int AudioDevice::setup_driver()
 
 #if defined (PORTAUDIO_SUPPORT)
     if (driverType == "PortAudio") {
-        PADriver* paDriver = qobject_cast<PADriver*>(m_driver);
+        TPortAudioDriver* paDriver = qobject_cast<TPortAudioDriver*>(m_driver);
         if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
             driver_setup_message(tr("Audiodevice: Failed to setup the PortAudio Driver"), DRIVER_SETUP_FAILURE);
             return -1;
@@ -579,16 +577,16 @@ int AudioDevice::setup_driver()
 
 
 /**
- * Stops the AudioDevice's AudioThread, free's any related memory.
+ * Stops the TAudioDevice's AudioThread, free's any related memory.
  
- * Use this to properly shut down the AudioDevice on application exit,
+ * Use this to properly shut down the TAudioDevice on application exit,
  * or to explicitely release the real 'audiodevice'.
  
  * Use set_parameters() to reinitialize the audiodevice if you want to use it again.
  *
  * @return 1 on succes, 0 on failure
  */
-int AudioDevice::shutdown( )
+int TAudioDevice::shutdown( )
 {
     PENTER;
     int r = 1;
@@ -629,7 +627,7 @@ int AudioDevice::shutdown( )
     return r;
 }
 
-QStringList AudioDevice::get_capture_channel_names() const
+QStringList TAudioDevice::get_capture_channel_names() const
 {
     QStringList names;
     foreach(AudioChannel* chan, m_driver->get_capture_channels()) {
@@ -638,7 +636,7 @@ QStringList AudioDevice::get_capture_channel_names() const
     return names;
 }
 
-QStringList AudioDevice::get_playback_channel_names() const
+QStringList TAudioDevice::get_playback_channel_names() const
 {
     QStringList names;
     foreach(AudioChannel* chan, m_driver->get_playback_channels()) {
@@ -647,7 +645,7 @@ QStringList AudioDevice::get_playback_channel_names() const
     return names;
 }
 
-QList<AudioChannel*> AudioDevice::get_channels() const
+QList<AudioChannel*> TAudioDevice::get_channels() const
 {
     QList<AudioChannel*> channels;
     if (!m_driver) {
@@ -660,7 +658,7 @@ QList<AudioChannel*> AudioDevice::get_channels() const
     return channels;
 }
 
-QList<AudioChannel*> AudioDevice::get_capture_channels() const
+QList<AudioChannel*> TAudioDevice::get_capture_channels() const
 {
     QList<AudioChannel*> channels;
     if (!m_driver) {
@@ -670,7 +668,7 @@ QList<AudioChannel*> AudioDevice::get_capture_channels() const
     return m_driver->get_capture_channels();
 }
 
-QList<AudioChannel*> AudioDevice::get_playback_channels() const
+QList<AudioChannel*> TAudioDevice::get_playback_channels() const
 {
     QList<AudioChannel*> channels;
     if (!m_driver) {
@@ -680,11 +678,11 @@ QList<AudioChannel*> AudioDevice::get_playback_channels() const
     return m_driver->get_playback_channels();
 }
 
-int AudioDevice::add_jack_channel(AudioChannel *channel)
+int TAudioDevice::add_jack_channel(AudioChannel *channel)
 {
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
-        JackDriver* jackdriver = qobject_cast<JackDriver*>(m_driver);
+        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
         if (!jackdriver) {
             return -1;
         }
@@ -698,11 +696,11 @@ int AudioDevice::add_jack_channel(AudioChannel *channel)
     return -1;
 }
 
-void AudioDevice::remove_jack_channel(AudioChannel *channel)
+void TAudioDevice::remove_jack_channel(AudioChannel *channel)
 {
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
-        JackDriver* jackdriver = qobject_cast<JackDriver*>(m_driver);
+        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
         if (!jackdriver) {
             return;
         }
@@ -713,7 +711,7 @@ void AudioDevice::remove_jack_channel(AudioChannel *channel)
 #endif
 }
 
-AudioChannel* AudioDevice::get_capture_channel_by_name(const QString &name)
+AudioChannel* TAudioDevice::get_capture_channel_by_name(const QString &name)
 {
     if (!m_driver) {
         return nullptr;
@@ -722,7 +720,7 @@ AudioChannel* AudioDevice::get_capture_channel_by_name(const QString &name)
 }
 
 
-AudioChannel* AudioDevice::get_playback_channel_by_name(const QString &name)
+AudioChannel* TAudioDevice::get_playback_channel_by_name(const QString &name)
 {
     if (!m_driver) {
         return nullptr;
@@ -730,7 +728,7 @@ AudioChannel* AudioDevice::get_playback_channel_by_name(const QString &name)
     return m_driver->get_playback_channel_by_name(name);
 }
 
-AudioChannel* AudioDevice::create_channel(const QString& name, uint channelNumber, int type)
+AudioChannel* TAudioDevice::create_channel(const QString& name, uint channelNumber, int type)
 {
     AudioChannel* chan = new AudioChannel(name, channelNumber, type);
     chan->set_buffer_size(m_bufferSize);
@@ -738,7 +736,7 @@ AudioChannel* AudioDevice::create_channel(const QString& name, uint channelNumbe
     return chan;
 }
 
-void AudioDevice::delete_channel(AudioChannel* channel)
+void TAudioDevice::delete_channel(AudioChannel* channel)
 {
     m_audioChannels.removeAll(channel);
     delete channel;
@@ -749,7 +747,7 @@ void AudioDevice::delete_channel(AudioChannel* channel)
  *
  * @return The real audiodevices sample rate
  */
-uint AudioDevice::get_sample_rate( ) const
+uint TAudioDevice::get_sample_rate( ) const
 {
     return m_rate;
 }
@@ -759,7 +757,7 @@ uint AudioDevice::get_sample_rate( ) const
  * @return The real bit depth, which is 32 bit float.... FIXME Need to get the real bitdepth as
  *		reported by the 'real audiodevice'
  */
-uint AudioDevice::get_bit_depth( ) const
+uint TAudioDevice::get_bit_depth( ) const
 {
     return m_bitdepth;
 }
@@ -768,7 +766,7 @@ uint AudioDevice::get_bit_depth( ) const
  *
  * @return The short description of the 'real audio device'
  */
-QString AudioDevice::get_device_name( ) const
+QString TAudioDevice::get_device_name( ) const
 {
     if (m_driver)
         return m_driver->get_device_name();
@@ -779,7 +777,7 @@ QString AudioDevice::get_device_name( ) const
  *
  * @return The long description of the 'real audio device'
  */
-QString AudioDevice::get_device_longname( ) const
+QString TAudioDevice::get_device_longname( ) const
 {
     if (m_driver)
         return m_driver->get_device_longname();
@@ -790,7 +788,7 @@ QString AudioDevice::get_device_longname( ) const
  *
  * @return A list of supported Drivers
  */
-QStringList AudioDevice::get_available_drivers( ) const
+QStringList TAudioDevice::get_available_drivers( ) const
 {
     return m_availableDrivers;
 }
@@ -799,12 +797,12 @@ QStringList AudioDevice::get_available_drivers( ) const
  *
  * @return The currently used Driver type
  */
-QString AudioDevice::get_driver_type( ) const
+QString TAudioDevice::get_driver_type( ) const
 {
     return m_driverType;
 }
 
-QString AudioDevice::get_driver_information() const
+QString TAudioDevice::get_driver_information() const
 {
     if (m_driverType == "PortAudio") {
         QStringList list = m_setup.get_card_device().split("::");
@@ -818,12 +816,12 @@ QString AudioDevice::get_driver_information() const
  *
  * @return The cpu load, call this at least 1 time per second to keep data consistent
  */
-float AudioDevice::get_cpu_time( )
+float TAudioDevice::get_cpu_time( )
 {
 #if defined (JACK_SUPPORT)
     if (libjack_is_present)
         if (m_driver && m_driverType == "Jack")
-            return qobject_cast<JackDriver*>(m_driver)->get_cpu_load();
+            return qobject_cast<TJackDriver*>(m_driver)->get_cpu_load();
 #endif
 
 // #if defined (PORTAUDIO_SUPPORT)
@@ -846,12 +844,12 @@ float AudioDevice::get_cpu_time( )
     return result;
 }
 
-void AudioDevice::private_add_client(TAudioDeviceClient* client)
+void TAudioDevice::private_add_client(TAudioDeviceClient* client)
 {
     m_clients.prepend(client);
 }
 
-void AudioDevice::private_remove_client(TAudioDeviceClient* client)
+void TAudioDevice::private_remove_client(TAudioDeviceClient* client)
 {
     PENTER;
     if (!m_clients.remove(client)) {
@@ -864,7 +862,7 @@ void AudioDevice::private_remove_client(TAudioDeviceClient* client)
 
  * WARNING: This function assumes the Clients callback function is set to an existing objects function!
  */
-void AudioDevice::add_client( TAudioDeviceClient * client )
+void TAudioDevice::add_client( TAudioDeviceClient * client )
 {
     tsmp().add_gui_event(this, client, "private_add_client(TAudioDeviceClient*)", "audioDeviceClientAdded(TAudioDeviceClient*)");
 }
@@ -875,12 +873,12 @@ void AudioDevice::add_client( TAudioDeviceClient * client )
  * The clientRemoved(Client* client); signal will be emited after succesfull removal
  * from within the GUI Thread!
  */
-void AudioDevice::remove_client( TAudioDeviceClient * client )
+void TAudioDevice::remove_client( TAudioDeviceClient * client )
 {
     tsmp().add_gui_event(this, client, "private_remove_client(TAudioDeviceClient*)", "audioDeviceClientRemoved(TAudioDeviceClient*)");
 }
 
-void AudioDevice::audiothread_finished() 
+void TAudioDevice::audiothread_finished()
 {
     if (m_runAudioThread) {
         // AudioThread stopped, but we didn't do it ourselves
@@ -891,7 +889,7 @@ void AudioDevice::audiothread_finished()
     }
 }
 
-void AudioDevice::xrun( )
+void TAudioDevice::xrun( )
 {
     tsmp().post_rt_event(m_bufferUnderRunEvent);
 
@@ -901,11 +899,11 @@ void AudioDevice::xrun( )
     }
 }
 
-void AudioDevice::check_jack_shutdown()
+void TAudioDevice::check_jack_shutdown()
 {
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
-        JackDriver* jackdriver = qobject_cast<JackDriver*>(m_driver);
+        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
         if (jackdriver) {
             if ( ! jackdriver->is_running()) {
                 jackShutDownChecker.stop();
@@ -920,7 +918,7 @@ void AudioDevice::check_jack_shutdown()
 #endif
 }
 
-void AudioDevice::driver_setup_message(QString message, int severity)
+void TAudioDevice::driver_setup_message(QString message, int severity)
 {
     TAudioDriverSetupMessage setupMessage;
     setupMessage.message = message;
@@ -932,14 +930,14 @@ void AudioDevice::driver_setup_message(QString message, int severity)
 }
 
 
-void AudioDevice::switch_to_null_driver()
+void TAudioDevice::switch_to_null_driver()
 {
     driver_setup_message(tr("AudioDevice:: Buffer underrun 'Storm' detected, switching to Dummy Driver"), CRITICAL);
     driver_setup_message(tr("AudioDevice:: For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
     set_parameters(m_fallBackSetup);
 }
 
-int AudioDevice::transport_control(TTransportControl *state)
+int TAudioDevice::transport_control(TTransportControl *state)
 {
 #if defined (JACK_SUPPORT)
     if (!slaved_jack_driver()) {
@@ -956,10 +954,10 @@ int AudioDevice::transport_control(TTransportControl *state)
     return result;
 }
 
-void AudioDevice::transport_start(TAudioDeviceClient * client)
+void TAudioDevice::transport_start(TAudioDeviceClient * client)
 {
 #if defined (JACK_SUPPORT)
-    JackDriver* jackdriver = slaved_jack_driver();
+    TJackDriver* jackdriver = slaved_jack_driver();
     if (jackdriver) {
         PMESG("using jack_transport_start");
         jack_transport_start(jackdriver->get_client());
@@ -975,10 +973,10 @@ void AudioDevice::transport_start(TAudioDeviceClient * client)
     client->transport_control(&m_transportControl);
 }
 
-void AudioDevice::transport_stop(TAudioDeviceClient * client, const TTimeRef &location)
+void TAudioDevice::transport_stop(TAudioDeviceClient * client, const TTimeRef &location)
 {
 #if defined (JACK_SUPPORT)
-    JackDriver* jackdriver = slaved_jack_driver();
+    TJackDriver* jackdriver = slaved_jack_driver();
     if (jackdriver) {
         PMESG("using jack_transport_stop");
         jack_transport_stop(jackdriver->get_client());
@@ -995,10 +993,10 @@ void AudioDevice::transport_stop(TAudioDeviceClient * client, const TTimeRef &lo
 }
 
 // return 0 if valid request, non-zero otherwise.
-int AudioDevice::transport_locate(TAudioDeviceClient* client, const TTimeRef& location)
+int TAudioDevice::transport_locate(TAudioDeviceClient* client, const TTimeRef& location)
 {
 #if defined (JACK_SUPPORT)
-    JackDriver* jackdriver = slaved_jack_driver();
+    TJackDriver* jackdriver = slaved_jack_driver();
     if (jackdriver) {
         PMESG("using jack_transport_locate");
         nframes_t frames = TTimeRef::to_frame(location, get_sample_rate());
@@ -1017,10 +1015,10 @@ int AudioDevice::transport_locate(TAudioDeviceClient* client, const TTimeRef& lo
 }
 
 #if defined (JACK_SUPPORT)
-JackDriver* AudioDevice::slaved_jack_driver()
+TJackDriver* TAudioDevice::slaved_jack_driver()
 {
     if (libjack_is_present) {
-        JackDriver* jackdriver = qobject_cast<JackDriver*>(m_driver);
+        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
         if (jackdriver && jackdriver->is_slave()) {
             return jackdriver;
         }
@@ -1030,17 +1028,17 @@ JackDriver* AudioDevice::slaved_jack_driver()
 }
 #endif
 
-TTimeRef AudioDevice::get_buffer_latency()
+TTimeRef TAudioDevice::get_buffer_latency()
 {
     return {m_bufferSize, m_rate};
 }
 
-void AudioDevice::set_driver_properties(QHash< QString, QVariant > & properties)
+void TAudioDevice::set_driver_properties(QHash< QString, QVariant > & properties)
 {
     m_driverProperties = properties;
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
-        JackDriver* jackdriver = qobject_cast<JackDriver*>(m_driver);
+        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
         if (jackdriver) {
             jackdriver->update_config();
         }
@@ -1048,7 +1046,7 @@ void AudioDevice::set_driver_properties(QHash< QString, QVariant > & properties)
 #endif
 }
 
-QVariant AudioDevice::get_driver_property(const QString& property, const QVariant& defaultValue)
+QVariant TAudioDevice::get_driver_property(const QString& property, const QVariant& defaultValue)
 {
     return m_driverProperties.value(property, defaultValue);
 }

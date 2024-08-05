@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2005-2010 Remon Sijrier
+    Copyright (C) 2005-224 Remon Sijrier
  
     This file is part of Traverso
  
@@ -16,19 +16,17 @@
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
- 
-    $Id: JackDriver.cpp,v 1.24 2007/12/07 13:21:49 r_sijrier Exp $
-*/
+ */
 
-#include "JackDriver.h"
+#include "TJackDriver.h"
 
 #include <jack/jack.h>
 
 #if defined (ALSA_SUPPORT)
-#include "AlsaDriver.h"
+#include "TAlsaDriver.h"
 #endif
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "AudioChannel.h"
 #include "ThreadSaveMessagePosting.h"
 #include "TTimeRef.h"
@@ -44,12 +42,12 @@
 #define JACK_DEFAULT_AUDIO_TYPE "32 bit float mono audio"
 
 
-JackDriver::JackDriver(AudioDevice* device)
+TJackDriver::TJackDriver(TAudioDevice* device)
     : TAudioDriver(device)
 {
-    read = TAudioDriverReadWriteCallBack(this, &JackDriver::_read);
-    write = TAudioDriverReadWriteCallBack(this, &JackDriver::_write);
-    run_cycle = RunCycleCallback(this, &JackDriver::_run_cycle);
+    read = TAudioDriverReadWriteCallBack(this, &TJackDriver::_read);
+    write = TAudioDriverReadWriteCallBack(this, &TJackDriver::_write);
+    run_cycle = RunCycleCallback(this, &TJackDriver::_run_cycle);
 
     m_jackClient = nullptr;
     m_isSlave = false;
@@ -58,7 +56,7 @@ JackDriver::JackDriver(AudioDevice* device)
     connect(this, SIGNAL(pcpairRemoved(PortChannelPair*)), this, SLOT(cleanup_removed_port_channel_pair(PortChannelPair*)));
 }
 
-JackDriver::~JackDriver( )
+TJackDriver::~TJackDriver( )
 {
     PENTER;
     Q_ASSERT(!is_running());
@@ -71,7 +69,7 @@ JackDriver::~JackDriver( )
     jack_client_close (m_jackClient);
 }
 
-int JackDriver::_read( nframes_t nframes )
+int TJackDriver::_read( nframes_t nframes )
 {
     for (int i=0; i<m_inputs.size(); i++) {
         PortChannelPair* pcpair = m_inputs.at(i);
@@ -81,7 +79,7 @@ int JackDriver::_read( nframes_t nframes )
     return 1;
 }
 
-int JackDriver::_write( nframes_t nframes )
+int TJackDriver::_write( nframes_t nframes )
 {
     for (int i=0; i<m_outputs.size(); i++) {
         PortChannelPair* pcpair = m_outputs.at(i);
@@ -92,7 +90,7 @@ int JackDriver::_write( nframes_t nframes )
     return 1;
 }
 
-int JackDriver::setup(QList<AudioChannel* > channels)
+int TJackDriver::setup(QList<AudioChannel* > channels)
 {
     PENTER;
 
@@ -104,7 +102,7 @@ int JackDriver::setup(QList<AudioChannel* > channels)
     printf("Connecting to the Jack server...\n");
 
     if ( (m_jackClient = jack_client_open(client_name, JackNoStartServer, nullptr)) == nullptr) {
-        emit driverSetupMessage(tr("Couldn't connect to the jack server, is jack running?"), AudioDevice::DRIVER_SETUP_FAILURE);
+        emit driverSetupMessage(tr("Couldn't connect to the jack server, is jack running?"), TAudioDevice::DRIVER_SETUP_FAILURE);
         return -1;
     }
 
@@ -116,7 +114,7 @@ int JackDriver::setup(QList<AudioChannel* > channels)
 }
 
 
-void JackDriver::add_channel(AudioChannel* channel)
+void TJackDriver::add_channel(AudioChannel* channel)
 {
     PENTER;
     PortChannelPair* pcpair = new PortChannelPair();
@@ -147,7 +145,7 @@ void JackDriver::add_channel(AudioChannel* channel)
     }
 }
 
-void JackDriver::private_add_port_channel_pair(PortChannelPair *pair)
+void TJackDriver::private_add_port_channel_pair(PortChannelPair *pair)
 {
     if (pair->channel->get_type() == AudioChannel::ChannelIsInput) {
         m_inputs.append(pair);
@@ -157,7 +155,7 @@ void JackDriver::private_add_port_channel_pair(PortChannelPair *pair)
     }
 }
 
-void JackDriver::private_remove_port_channel_pair(PortChannelPair *pair)
+void TJackDriver::private_remove_port_channel_pair(PortChannelPair *pair)
 {
     if (pair->channel->get_type() == AudioChannel::ChannelIsInput) {
         m_inputs.removeAll(pair);
@@ -167,7 +165,7 @@ void JackDriver::private_remove_port_channel_pair(PortChannelPair *pair)
     }
 }
 
-void JackDriver::remove_channel(AudioChannel* channel)
+void TJackDriver::remove_channel(AudioChannel* channel)
 {
     PENTER;
     foreach(PortChannelPair* pcpair, m_outputs) {
@@ -187,7 +185,7 @@ void JackDriver::remove_channel(AudioChannel* channel)
     }
 }
 
-int JackDriver::attach( )
+int TJackDriver::attach( )
 {
     PENTER;
 
@@ -204,7 +202,7 @@ int JackDriver::attach( )
     return 1;
 }
 
-int JackDriver::start( )
+int TJackDriver::start( )
 {
     PENTER;
     if (jack_activate (m_jackClient)) {
@@ -212,13 +210,13 @@ int JackDriver::start( )
         return -1;
     }
 
-    emit driverSetupMessage(tr("Succesfully connected to jack server %1!").arg(jack_get_version_string()), AudioDevice::DRIVER_SETUP_SUCCESS);
+    emit driverSetupMessage(tr("Succesfully connected to jack server %1!").arg(jack_get_version_string()), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
     m_running = 1;
     return 1;
 }
 
-int JackDriver::stop( )
+int TJackDriver::stop( )
 {
     PENTER;
     jack_deactivate(m_jackClient);
@@ -228,7 +226,7 @@ int JackDriver::stop( )
     return 1;
 }
 
-int JackDriver::process_callback (nframes_t nframes)
+int TJackDriver::process_callback (nframes_t nframes)
 {
     jack_position_t pos;
     jack_transport_state_t state = jack_transport_query (m_jackClient, &pos);
@@ -246,7 +244,7 @@ int JackDriver::process_callback (nframes_t nframes)
 
 // NOTE:  note that in jack2 they (process and sync callback) occur asynchronously in 2 different threads
 //        How to handle that properly in Traverso? The TSMP RT event buffer assumes only one RT thread.
-int JackDriver::jack_sync_callback (jack_transport_state_t state, jack_position_t* pos)
+int TJackDriver::jack_sync_callback (jack_transport_state_t state, jack_position_t* pos)
 {
     m_transportControl.set_state(state);
     m_transportControl.set_location(TTimeRef(pos->frame, audiodevice().get_sample_rate()));
@@ -261,31 +259,31 @@ int JackDriver::jack_sync_callback (jack_transport_state_t state, jack_position_
 
 // Is there a way to get the device name from Jack? Can't find it :-(
 // Since Jack uses ALSA, we ask it from ALSA directly :-)
-QString JackDriver::get_device_name( )
+QString TJackDriver::get_device_name( )
 {
     return "JACK";
 }
 
-QString JackDriver::get_device_longname( )
+QString TJackDriver::get_device_longname( )
 {
 #if defined (ALSA_SUPPORT)
-    return AlsaDriver::alsa_device_name(true);
+    return TAlsaDriver::alsa_device_name(true);
 #endif
     return "JACK Audio Server";
 }
 
-int JackDriver::_xrun_callback( void * arg )
+int TJackDriver::_xrun_callback( void * arg )
 {
-    JackDriver* driver  = static_cast<JackDriver *> (arg);
+    TJackDriver* driver  = static_cast<TJackDriver *> (arg);
     if (driver->is_running()) {
         driver->m_device->xrun();
     }
     return 0;
 }
 
-int JackDriver::_process_callback (nframes_t nframes, void *arg)
+int TJackDriver::_process_callback (nframes_t nframes, void *arg)
 {
-    JackDriver* driver  = static_cast<JackDriver *> (arg);
+    TJackDriver* driver  = static_cast<TJackDriver *> (arg);
     if (!driver->is_running()) {
         return 0;
     }
@@ -293,32 +291,32 @@ int JackDriver::_process_callback (nframes_t nframes, void *arg)
     return driver->process_callback (nframes);
 }
 
-int JackDriver::_bufsize_callback( nframes_t nframes, void * arg )
+int TJackDriver::_bufsize_callback( nframes_t nframes, void * arg )
 {
-    JackDriver* driver  = static_cast<JackDriver *> (arg);
+    TJackDriver* driver  = static_cast<TJackDriver *> (arg);
     driver->m_device->set_buffer_size( nframes );
 
     emit driver->m_device->driverParamsChanged();
     return 0;
 }
 
-float JackDriver::get_cpu_load( )
+float TJackDriver::get_cpu_load( )
 {
     return jack_cpu_load(m_jackClient);
 }
 
-void JackDriver::_on_jack_shutdown_callback( void * arg )
+void TJackDriver::_on_jack_shutdown_callback( void * arg )
 {
-    JackDriver* driver  = static_cast<JackDriver *> (arg);
+    TJackDriver* driver  = static_cast<TJackDriver *> (arg);
     driver->m_running = 2;
 }
 
-int JackDriver::_jack_sync_callback (jack_transport_state_t state, jack_position_t* pos, void* arg)
+int TJackDriver::_jack_sync_callback (jack_transport_state_t state, jack_position_t* pos, void* arg)
 {
-    return static_cast<JackDriver*> (arg)->jack_sync_callback (state, pos);
+    return static_cast<TJackDriver*> (arg)->jack_sync_callback (state, pos);
 }
 
-void JackDriver::update_config()
+void TJackDriver::update_config()
 {
     m_isSlave = m_device->get_driver_property("jackslave", false).toBool();
 
@@ -329,7 +327,7 @@ void JackDriver::update_config()
     }
 }
 
-void JackDriver::cleanup_removed_port_channel_pair(PortChannelPair* pcpair)
+void TJackDriver::cleanup_removed_port_channel_pair(PortChannelPair* pcpair)
 {
     PENTER;
     jack_port_unregister(m_jackClient, pcpair->jackport);

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2005-2006 Remon Sijrier
+    Copyright (C) 2005-2024 Remon Sijrier
 
     This file is part of Traverso
 
@@ -20,19 +20,19 @@
     $Id: AudioDeviceThread.h,v 1.4 2007/03/16 00:10:26 r_sijrier Exp $
 */
 
-#ifndef AUDIODEVICETHREAD_H
-#define AUDIODEVICETHREAD_H
+#ifndef T_AUDIODEVICETHREAD_H
+#define T_AUDIODEVICETHREAD_H
 
 #include <QThread>
 
-class AudioDevice;
+class TAudioDevice;
 
-class AudioDeviceThread : public QThread
+class TAudioDeviceThread : public QThread
 {
         Q_OBJECT
 
 public:
-        AudioDeviceThread(AudioDevice* device, bool realTime);
+        TAudioDeviceThread(TAudioDevice* device, bool realTime);
 
         void run_on_cpu(int cpu);
         void set_real_time(bool realTime);
@@ -43,7 +43,7 @@ protected:
         void run();
 
 private:
-        AudioDevice* m_device;
+        TAudioDevice* m_device;
         bool m_realTime;
         int become_realtime();
 };

@@ -22,7 +22,9 @@ $Id: TSMP.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 
 #include "ThreadSaveMessagePosting.h"
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
+#include "Debugger.h"
+#include "TAudioDeviceSetup.h"
 
 #include <QMetaMethod>
 #include <QMessageBox>
@@ -31,13 +33,9 @@ $Id: TSMP.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 #include <unistd.h>
 
 
-
-#include "Debugger.h"
-#include "TAudioDeviceSetup.h"
-
 /**
  * 	\class TSMP
- * 	\brief TSMP (Thread Save Add and Remove) is a singleton class to call
+ * 	\brief TSMP (Thread Save Message Postinge) is a singleton class to call
  *		functions (both signals and slots) in a thread save way without
  *		using any mutual exclusion primitives (mutex)
  *

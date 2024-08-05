@@ -28,7 +28,7 @@
 #include <SpectralMeter.h>
 #include "TCommand.h"
 #include <Project.h>
-#include <AudioDevice.h>
+#include "TAudioDevice.h"
 #include <Sheet.h>
 #include <TBusTrack.h>
 #include <Themer.h>

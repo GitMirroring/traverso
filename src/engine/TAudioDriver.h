@@ -24,17 +24,14 @@
 #define T_AUDIO_DRIVER_H
 
 #include "defines.h"
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include <memops.h>
-
-
-#define DEFAULTDRIVERBUFFERSIZE  1024
 
 #include <QList>
 #include <QString>
 #include <QObject>
 
-class AudioDevice;
+class TAudioDevice;
 class AudioChannel;
 
 class TAudioDriver : public QObject
@@ -42,7 +39,7 @@ class TAudioDriver : public QObject
     Q_OBJECT
 
 public:
-        TAudioDriver(AudioDevice* device);
+        TAudioDriver(TAudioDevice* device);
         virtual ~TAudioDriver();
 
         virtual int _run_cycle();
@@ -76,7 +73,7 @@ public:
 
 
 protected:
-        AudioDevice*            m_device;
+        TAudioDevice*            m_device;
         QList<AudioChannel* >   m_captureChannels;
         QList<AudioChannel* >   m_playbackChannels;
         int             		m_dither{};

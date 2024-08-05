@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2006-2007 Remon Sijrier 
+Copyright (C) 2006-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -29,15 +29,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TLocation.h"
 #include "TQueueBufferSlot.h"
 #include "Utils.h"
-#include "AudioDevice.h"
-#include <QFile>
+#include "TAudioDevice.h"
 #include "TConfig.h"
-
-
-
 #include "Debugger.h"
-#include "qthread.h"
 
+#include <QFile>
+#include <QThread>
 
 /**
  *	\class ReadSource

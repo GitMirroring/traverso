@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <commands.h>
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "AudioBus.h"
 #include "TAudioDeviceClient.h"
 #include "ProjectManager.h"

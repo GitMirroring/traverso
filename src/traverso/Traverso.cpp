@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 #include "Themer.h"
 #include "TConfig.h"
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "ContextPointer.h"
 #include "Information.h"
 #include "TShortCutManager.h"

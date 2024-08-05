@@ -28,13 +28,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Pages.h"
 #include "ResampleAudioReader.h"
 #include "dialogs/ThemeModifierDialog.h"
-#include <AudioDevice.h>
+#include "TAudioDevice.h"
 #if defined (ALSA_SUPPORT)
-#include <AlsaDriver.h>
+#include "TAlsaDriver.h"
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
-#include "PADriver.h"
+#include "TPortAudioDriver.h"
 #endif
 
 #include "TConfig.h"
@@ -228,8 +228,8 @@ void AudioDriverConfigPage::load_config( )
     // according to alsa, and add them to the devices list.
     QString name, longName;
     for (int i=0; i<6; ++i) {
-        name = AlsaDriver::alsa_device_name(i);
-        longName = AlsaDriver::alsa_device_longname(i);
+        name = TAlsaDriver::alsa_device_name(i);
+        longName = TAlsaDriver::alsa_device_longname(i);
         if (name != "") {
                 m_alsadevices->devicesCombo->addItem(name + ", " + longName + "", name);
         }
@@ -382,7 +382,7 @@ void AudioDriverConfigPage::portaudio_host_api_combobox_index_changed(int index)
                 return;
         }
 
-        QStringList list = PADriver::devices_info(m_portaudiodrivers->driverCombo->itemData(index).toString());
+        QStringList list = TPortAudioDriver::devices_info(m_portaudiodrivers->driverCombo->itemData(index).toString());
 
         m_portaudiodrivers->inputDevicesCombo->clear();
         m_portaudiodrivers->outputDevicesCombo->clear();
@@ -434,11 +434,11 @@ void AudioDriverConfigPage::new_driver_setup_message()
         QString createdOnString = QDateTime::fromMSecsSinceEpoch(driverSetupMessage.createdOn).toString("hh:mm:ss");
         QString message = createdOnString + ": " + driverSetupMessage.driverType +" Driver<br>" + driverSetupMessage.message;
 
-        if (severity == AudioDevice::DRIVER_SETUP_FAILURE || severity == AudioDevice::CRITICAL) {
+        if (severity == TAudioDevice::DRIVER_SETUP_FAILURE || severity == TAudioDevice::CRITICAL) {
             stringList.prepend("<p class=\"failure\">" + message + "</p>");
-        } else if (severity == AudioDevice::DRIVER_SETUP_WARNING || severity == AudioDevice::WARNING) {
+        } else if (severity == TAudioDevice::DRIVER_SETUP_WARNING || severity == TAudioDevice::WARNING) {
             stringList.prepend("<p class=\"warning\">" + message + "</p>");
-        } else if (severity == AudioDevice::DRIVER_SETUP_SUCCESS || severity == AudioDevice::DRIVER_SETUP_INFO || severity == AudioDevice::INFO) {
+        } else if (severity == TAudioDevice::DRIVER_SETUP_SUCCESS || severity == TAudioDevice::DRIVER_SETUP_INFO || severity == TAudioDevice::INFO) {
             stringList.prepend("<p class=\"success\">" + message + "</p>");
         } else {
             stringList.prepend("<p>" + message + "</p>");

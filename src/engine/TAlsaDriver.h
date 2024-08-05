@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2010 Remon Sijrier
+Copyright (C) 2005-2024 Remon Sijrier
 
 (December 2005) Ported to C++ for Traverso by Remon Sijrier
 Copyright (C) 2001 Paul Davis 
@@ -22,8 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef ALSADRIVER_H
-#define ALSADRIVER_H
+#ifndef T_ALSADRIVER_H
+#define T_ALSADRIVER_H
 
 #include "TAudioDriver.h"
 
@@ -43,12 +43,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #endif
 
 
-class AlsaDriver : public TAudioDriver
+class TAlsaDriver : public TAudioDriver
 {
         Q_OBJECT
 public:
-    AlsaDriver(AudioDevice* device);
-	~AlsaDriver();
+    TAlsaDriver(TAudioDevice* device);
+    ~TAlsaDriver();
 
 	int start();
 	int stop();

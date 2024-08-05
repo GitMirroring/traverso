@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "InfoWidgets.h"
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "TConfig.h"
 #include "DiskIO.h"
 #include "TMainWindow.h"
@@ -33,7 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Themer.h"
 #include "AudioTrack.h"
 #include "Utils.h"
-#include "Mixer.h"
 
 #include <QPainter>
 #include <QLineEdit>
@@ -59,7 +58,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 
-#include "Debugger.h"
 
 #if defined (Q_OS_MAC)
 static const int SONG_TOOLBAR_HEIGHT = 27;

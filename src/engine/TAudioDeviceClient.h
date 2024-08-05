@@ -26,7 +26,7 @@ $Id: Client.h,v 1.7 2007/11/19 11:18:54 r_sijrier Exp $
 #include <QString>
 #include <QObject>
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 
 class AudioBus;
 

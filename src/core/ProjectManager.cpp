@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2006 Remon Sijrier
+Copyright (C) 2005-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -37,11 +37,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInputEventDispatcher.h"
 #include "TConfig.h"
 #include "FileHelpers.h"
-#include <AudioDevice.h>
-#include <Utils.h>
-
-
-
+#include "TAudioDevice.h"
+#include "Utils.h"
 #include "Debugger.h"
 
 

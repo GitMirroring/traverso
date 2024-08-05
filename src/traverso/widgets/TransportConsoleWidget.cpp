@@ -1,4 +1,5 @@
 /*
+    Copyright (C) 2024 Remon Sijrier
     Copyright (C) 2008 Nicola Doebelin
 
     This file is part of Traverso
@@ -21,7 +22,7 @@
 
 #include "TransportConsoleWidget.h"
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "Sheet.h"
 #include "Utils.h"
 #include "ProjectManager.h"
@@ -30,16 +31,10 @@
 #include "Information.h"
 #include "TTransport.h"
 
-
 #include <QAction>
 #include <QPushButton>
 #include <QFont>
 #include <QString>
-
-
-
-#include "Debugger.h"
-
 
 TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
 	: QToolBar(parent)
@@ -82,7 +77,7 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
 
     connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
     connect(&audiodevice(), SIGNAL(finishedOneProcessCycle()), this, SLOT(update_label()));
-    connect(&audiodevice(), &AudioDevice::freeWheelingChanged, this, [this](){
+    connect(&audiodevice(), &TAudioDevice::freeWheelingChanged, this, [this](){
         m_freeWheelingAction->setChecked(!audiodevice().running_real_time());
     });
 

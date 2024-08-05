@@ -34,7 +34,7 @@
 #include "TVUMonitor.h"
 #include "Themer.h"
 #include "Mixer.h"
-#include <AudioDevice.h>
+#include "TAudioDevice.h"
 #include <AudioChannel.h>
 #include <AudioBus.h>
 

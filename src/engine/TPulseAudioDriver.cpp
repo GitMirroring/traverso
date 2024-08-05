@@ -23,14 +23,14 @@
 
 #include <pulse/error.h>
 
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "AudioChannel.h"
 
 
 
 #include "Debugger.h"
 
-TPulseAudioDriver::TPulseAudioDriver(AudioDevice* device )
+TPulseAudioDriver::TPulseAudioDriver(TAudioDevice* device )
     : TAudioDriver(device)
 {
     read = TAudioDriverReadWriteCallBack(this, &TPulseAudioDriver::_read);
@@ -111,11 +111,11 @@ int TPulseAudioDriver::setup(bool capture, bool playback, const QString& )
     m_paSimple = pa_simple_new(NULL, "Traverso", PA_STREAM_PLAYBACK, NULL, "playback", &m_sampleSpec, NULL, NULL, &error);
 
     if (!m_paSimple) {
-        emit driverSetupMessage(tr("Unable to connect to PulseAudio server!"), AudioDevice::DRIVER_SETUP_FAILURE);
+        emit driverSetupMessage(tr("Unable to connect to PulseAudio server!"), TAudioDevice::DRIVER_SETUP_FAILURE);
         return -1;
     }
 
-    emit driverSetupMessage(tr("Succesfully connected to PulseAudio server!"), AudioDevice::DRIVER_SETUP_SUCCESS);
+    emit driverSetupMessage(tr("Succesfully connected to PulseAudio server!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
     return 1;
 }

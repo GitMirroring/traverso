@@ -63,7 +63,7 @@ private:
 
     // The AudioDevice instance is the _only_ one who
     // is allowed to call process_events_slot() !!
-    friend class AudioDevice;
+    friend class TAudioDevice;
     friend class ThreadSaveMessagePostingThread;
 
     moodycamel::BlockingReaderWriterCircularBuffer<TSMPEvent>*   m_postedFromGuiThreadQueue;

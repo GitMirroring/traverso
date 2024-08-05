@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TConfig.h"
 #include "../config.h"
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "Utils.h"
 #include "TShortCutManager.h"
 #include "../commands/plugins/TraversoCommands/TraversoCommands.h"
@@ -29,10 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QSettings>
 #include <QString>
 #include <QDir>
-
-
-
-#include "Debugger.h"
 
 static const char* CONFIG_FILE_VERSION = "8";
 

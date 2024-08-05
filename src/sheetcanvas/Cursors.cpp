@@ -22,7 +22,7 @@
 #include "Cursors.h"
 #include "SheetView.h"
 #include "ClipsViewPort.h"
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include <Sheet.h>
 #include "TConfig.h"
 #include <Themer.h>

@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClip.h"
 #include "AudioClipManager.h"
 #include "AudioBus.h"
-#include "AudioDevice.h"
+#include "TAudioDevice.h"
 #include "PluginChain.h"
 #include "Information.h"
 #include "ProjectManager.h"

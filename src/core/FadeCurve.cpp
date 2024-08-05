@@ -24,17 +24,15 @@ $Id: FadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 
 #include <QFile>
 #include <cmath>
+
 #include "CurveNode.h"
 #include "Fade.h"
 #include "TCommand.h"
 #include "CommandGroup.h"
-#include <AddRemove.h>
-#include "AudioDevice.h"
+#include "AddRemove.h"
+#include "TAudioDevice.h"
 #include "AudioBus.h"
 #include "TLocation.h"
-
-
-
 #include "Debugger.h"
 
 
