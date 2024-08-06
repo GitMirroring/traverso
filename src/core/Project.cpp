@@ -671,6 +671,7 @@ void Project::prepare_audio_device(QDomDocument doc)
     QDomNode audioConfigurationNode = audioDriverConfigurations.firstChildElement("AudioDriverConfiguration");
 
     QDomElement e = audioConfigurationNode.toElement();
+    audioDeviceSetup.set_project_name(m_name);
     audioDeviceSetup.set_driver_type(e.attribute("driver", ""));
     audioDeviceSetup.set_card_device(e.attribute("device", ""));
     audioDeviceSetup.set_sample_rate(e.attribute("samplerate", "44100").toUInt());

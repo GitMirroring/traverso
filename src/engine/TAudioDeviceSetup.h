@@ -25,9 +25,12 @@ public:
     void set_capture(bool capture);
     void set_playback(bool playback);
 
+    void set_project_name(const QString &projectName);
+
     uint get_sample_rate() const {return m_sampleRate;}
     uint get_buffer_size() const {return m_bufferSize;}
     QString get_driver_type() const {return m_driverType;}
+    QString get_project_name() const {return m_projectName;}
     bool get_capture() const {return m_capture;}
     bool get_playback() const {return m_playback;}
     QString get_card_device() const {return m_cardDevice;}
@@ -47,6 +50,7 @@ private:
     uint            m_sampleRate;
     nframes_t       m_bufferSize;
     QString         m_driverType;
+    QString         m_projectName;
     bool            m_capture;
     bool            m_playback;
     QString         m_cardDevice;

@@ -57,6 +57,11 @@ void TAudioDeviceSetup::set_playback(bool playback)
     m_playback = playback;
 }
 
+void TAudioDeviceSetup::set_project_name(const QString &projectName)
+{
+    m_projectName = projectName;
+}
+
 int TAudioDeviceSetup::set_card_device(const QString &cardDevice)
 {
     m_cardDevice = cardDevice;
