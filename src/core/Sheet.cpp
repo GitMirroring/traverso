@@ -577,6 +577,9 @@ void Sheet::resize_buffers(nframes_t size)
     mixdown = new audio_sample_t[size];
     gainbuffer = new audio_sample_t[size];
 
+    memset(mixdown, 0, size * sizeof(audio_sample_t));
+    memset(gainbuffer, 0, size * sizeof(audio_sample_t));
+
     QList<AudioChannel*> audioChannels;
     audioChannels.append(m_masterOutBusTrack->get_process_bus()->get_channels());
     audioChannels.append(m_bounceTrack->get_process_bus()->get_channels());
