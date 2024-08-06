@@ -39,7 +39,7 @@ public:
         m_destinationBufferReadOffset = offset;
     }
 
-    void silence_buffer() {
+    void silence_buffers() {
         memset (m_readBuffer, 0, sizeof (audio_sample_t) * m_readBufferSize);
         for (uint channel = 0; channel < m_channelCount; ++channel) {
             memset (m_destinationBuffers.at(channel), 0, sizeof (audio_sample_t) * m_destinationBufferSize);
@@ -85,6 +85,8 @@ public:
             m_readBuffer = new audio_sample_t[size*m_channelCount];
             m_readBufferSize = (size*m_channelCount);
         }
+
+        silence_buffers();
     }
 
 private:
