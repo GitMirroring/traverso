@@ -413,6 +413,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
         nframes_t toRead = bufferSize - offset;
 
         m_fileDecodeBuffer->check_buffers_capacity(toRead, m_channelCount);
+        m_fileDecodeBuffer->silence_buffers();
 
         // and read in the samples. We have to use the source start location as the start location, see explanation above
         nframes_t read = file_read(m_fileDecodeBuffer, m_sourceStartLocation, toRead);
