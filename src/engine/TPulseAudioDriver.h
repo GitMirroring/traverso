@@ -48,6 +48,10 @@ public:
 
 	void update_config();
 
+    virtual bool is_realtime_capable() const {
+        return false;
+    }
+
 private:
     // Simple PulseAudio
     pa_simple*  m_paSimple;

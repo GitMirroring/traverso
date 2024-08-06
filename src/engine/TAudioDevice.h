@@ -176,6 +176,7 @@ private:
 
     TSMPEvent           m_bufferUnderRunEvent;
     TSMPEvent           m_xrunStormDetectedEvent;
+    TSMPEvent           m_finishedOneProcessCycleEvent;
 
     QList<AudioChannel* >               m_audioChannels;
     QList<TAudioBusConfiguration>       m_busConfigs;
@@ -192,8 +193,8 @@ private:
     friend class TJackDriver;
 #endif
 
-    std::atomic<trav_time_t> m_processCallBackCpuTime;
-    volatile size_t	m_runAudioThread;
+    std::atomic<trav_time_t>    m_processCallBackCpuTime;
+    std::atomic<bool>           m_runAudioThread;
     bool            m_isRealTime;
     trav_time_t		m_cycleStartTime;
     trav_time_t		m_lastCpuReadTime;
@@ -216,6 +217,8 @@ private:
     int setup_driver();
     int transport_control(TTransportControl* state);
 
+    void driver_changed_free_wheel_mode();
+
     void set_buffer_size(uint size);
     void set_sample_rate(uint rate);
     void set_bit_depth(uint depth);
@@ -235,7 +238,7 @@ private:
 
     void xrun();
 
-    size_t run_audio_thread() const {return m_runAudioThread;}
+    inline bool run_audio_thread() const {return m_runAudioThread.load();}
 
     QVariant get_driver_property(const QString& property, const QVariant& defaultValue);
 
@@ -287,7 +290,7 @@ private slots:
     void switch_to_null_driver();
     void reset_xrun_counter() {m_xrunCount = 0;}
     void check_jack_shutdown();
-    void driver_setup_message(QString message, int severity);
+    void driver_setup_message(const QString &driver, const QString &message, int severity, trav_time_t creatonOn = TTimeRef::get_milliseconds_since_epoch());
 };
 
 

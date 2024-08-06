@@ -206,15 +206,15 @@ int TPortAudioDriver::setup(bool capture, bool playback, const QString& deviceIn
         outputDeviceName = deviceInfos.at(2);
     }
 
-    emit driverSetupMessage(tr("Setting up PortAudio using %1").arg(Pa_GetVersionText()), TAudioDevice::DRIVER_SETUP_INFO);
-    emit driverSetupMessage(tr("Driver: %1, capture: %2, playback: %3 <br />Input Device: %4 <br />Output Device: %5").
+    emit driverSetupMessage("PortAudio", tr("Setting up PortAudio using %1").arg(Pa_GetVersionText()), TAudioDevice::DRIVER_SETUP_INFO);
+    emit driverSetupMessage("PortAudio", tr("Driver: %1, capture: %2, playback: %3 <br />Input Device: %4 <br />Output Device: %5").
                             arg(hostapi).arg(capture ? tr("yes") : tr("no")).arg(playback ? tr("yes") : tr("no")).
                             arg(inputDeviceName).arg(outputDeviceName), TAudioDevice::DRIVER_SETUP_INFO);
 
     PaError err = Pa_Initialize();
 
     if( err != paNoError ) {
-        emit driverSetupMessage((tr("Failed to initialize PortAudio: %1").arg(Pa_GetErrorText( err ))), TAudioDevice::DRIVER_SETUP_FAILURE);
+        emit driverSetupMessage("PortAudio", (tr("Failed to initialize PortAudio: %1").arg(Pa_GetErrorText( err ))), TAudioDevice::DRIVER_SETUP_FAILURE);
         Pa_Terminate();
         return -1;
     }
@@ -226,7 +226,7 @@ int TPortAudioDriver::setup(bool capture, bool playback, const QString& deviceIn
     PaHostApiIndex hostIndex = host_index_for_host_api(hostapi);
 
     if (hostIndex == paHostApiNotFound) {
-        emit driverSetupMessage(tr("PADriver:: hostapi %1 was not found by Portaudio!").arg(hostapi), TAudioDevice::DRIVER_SETUP_FAILURE);
+        emit driverSetupMessage("PortAudio", tr("PADriver:: hostapi %1 was not found by Portaudio!").arg(hostapi), TAudioDevice::DRIVER_SETUP_FAILURE);
         Pa_Terminate();
         return -1;
     }
@@ -279,9 +279,9 @@ int TPortAudioDriver::setup(bool capture, bool playback, const QString& deviceIn
         this );
 
     if( err == paNoError ) {
-        emit driverSetupMessage(tr("Succesfully connected to PortAudio: %1").arg(Pa_GetVersionText()), TAudioDevice::DRIVER_SETUP_SUCCESS);
+        emit driverSetupMessage("PortAudio", tr("Succesfully connected to PortAudio: %1").arg(Pa_GetVersionText()), TAudioDevice::DRIVER_SETUP_SUCCESS);
     } else {
-        emit driverSetupMessage((tr("Failed to open PortAudio stream: %1").arg(Pa_GetErrorText( err ))), TAudioDevice::DRIVER_SETUP_FAILURE);
+        emit driverSetupMessage("PortAudio", (tr("Failed to open PortAudio stream: %1").arg(Pa_GetErrorText( err ))), TAudioDevice::DRIVER_SETUP_FAILURE);
         Pa_Terminate();
         return -1;
     }
@@ -333,9 +333,9 @@ int TPortAudioDriver::start( )
     PaError err = Pa_StartStream( m_paStream );
 
     if( err == paNoError ) {
-        emit driverSetupMessage(tr("Succesfully started PortAudio stream."), TAudioDevice::DRIVER_SETUP_SUCCESS);
+        emit driverSetupMessage("PortAudio", tr("Succesfully started PortAudio stream."), TAudioDevice::DRIVER_SETUP_SUCCESS);
     } else {
-        emit driverSetupMessage((tr("Failed to start PortAudio stream: %1").arg(Pa_GetErrorText( err ))), TAudioDevice::DRIVER_SETUP_FAILURE);
+        emit driverSetupMessage("PortAudio", (tr("Failed to start PortAudio stream: %1").arg(Pa_GetErrorText( err ))), TAudioDevice::DRIVER_SETUP_FAILURE);
         return -1;
     }
 
@@ -351,9 +351,9 @@ int TPortAudioDriver::stop( )
     PaError err = Pa_StopStream(m_paStream);
 
     if( err == paNoError ) {
-        emit driverSetupMessage(tr("PADriver:: Successfully stopped PortAudio stream."), TAudioDevice::DRIVER_SETUP_SUCCESS);
+        emit driverSetupMessage("PortAudio", tr("PADriver:: Successfully stopped PortAudio stream."), TAudioDevice::DRIVER_SETUP_SUCCESS);
     } else {
-        emit driverSetupMessage((tr("PADriver:: Failed to close PortAudio stream: %1").arg(Pa_GetErrorText( err ))), TAudioDevice::WARNING);
+        emit driverSetupMessage("PortAudio", (tr("PADriver:: Failed to close PortAudio stream: %1").arg(Pa_GetErrorText( err ))), TAudioDevice::WARNING);
     }
 
     // silence capture channels

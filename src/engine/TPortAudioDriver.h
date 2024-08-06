@@ -49,6 +49,13 @@ public:
 
     float get_cpu_load();
 
+    virtual bool runs_in_blocking_mode() const {
+        return true;
+    }
+    virtual bool is_realtime_capable() const {
+        return false;
+    }
+
 private:
     PaStream* m_paStream;
     audio_sample_t* m_paInputBuffer;

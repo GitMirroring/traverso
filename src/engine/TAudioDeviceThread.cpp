@@ -94,12 +94,16 @@ void TAudioDeviceThread::run()
     if (m_realTime) {
         become_realtime();
     }
-	
+
+    printf("TAudioDeviceThread: Starting Driver\n");
     if (m_device->start_driver() < 0) {
-		watchdog.terminate();
+        printf("TAudioDeviceThread: Starting Driver Failed\n");
+        watchdog.terminate();
 		watchdog.wait();
 		return;
 	}
+
+    printf("TAudioDeviceThread: Running\n");
 
 	while (m_device->run_audio_thread()) {
         if (m_device->_run_cycle() < 0) {
@@ -111,6 +115,8 @@ void TAudioDeviceThread::run()
 	
 	watchdog.terminate();
 	watchdog.wait();
+
+    printf("TAudioDeviceThread: Bye.\n");
 }
 
 void TAudioDeviceThread::set_real_time(bool realTime)
@@ -127,7 +133,7 @@ int TAudioDeviceThread::become_realtime()
     struct sched_param param;
     param.sched_priority = 70;
     if (pthread_setschedparam (pthread_self(), SCHED_FIFO, &param) != 0) {
-        m_device->driver_setup_message(tr("Unable to set Audiodevice Thread to realtime priority!!!"
+        m_device->driver_setup_message("AudioDeviceThread", tr("Unable to set Thread to realtime priority!!!"
             "This most likely results in unreliable playback/capture and "
             "lots of buffer underruns (== sound drops)."
             "In the worst case the program can even malfunction!"

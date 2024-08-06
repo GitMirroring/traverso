@@ -39,57 +39,72 @@ class TAudioDriver : public QObject
     Q_OBJECT
 
 public:
-        TAudioDriver(TAudioDevice* device);
-        virtual ~TAudioDriver();
+    TAudioDriver(TAudioDevice* device);
+    virtual ~TAudioDriver();
 
-        virtual int _run_cycle();
-        virtual int _read(nframes_t nframes);
-        virtual int _write(nframes_t nframes);
-        virtual int _null_cycle(nframes_t nframes);
-        virtual int attach();
-        virtual int detach();
-        virtual int start();
-        virtual int stop();
-        virtual bool supports_software_channels() {return true;}
-        virtual QString get_device_name();
-        virtual QString get_device_longname();
+    virtual int _run_cycle();
+    virtual int _read(nframes_t nframes);
+    virtual int _write(nframes_t nframes);
+    virtual int _null_cycle(nframes_t nframes);
+    virtual int attach();
+    virtual int detach();
+    virtual int start();
+    virtual int stop();
+    virtual bool supports_software_channels() {return true;}
+    virtual QString get_device_name();
+    virtual QString get_device_longname();
 
-        QList<AudioChannel* > get_capture_channels() const {return m_captureChannels;}
-        QList<AudioChannel* > get_playback_channels() const {return m_playbackChannels;}
+    QList<AudioChannel* > get_capture_channels() const {return m_captureChannels;}
+    QList<AudioChannel* > get_playback_channels() const {return m_playbackChannels;}
 
-        AudioChannel* get_capture_channel_by_name(const QString& name);
-        AudioChannel* get_playback_channel_by_name(const QString& name);
+    AudioChannel* get_capture_channel_by_name(const QString& name);
+    AudioChannel* get_playback_channel_by_name(const QString& name);
 
-        virtual AudioChannel* add_playback_channel(const QString& chanName);
-        virtual AudioChannel* add_capture_channel(const QString& chanName);
+    virtual AudioChannel* add_playback_channel(const QString& chanName);
+    virtual AudioChannel* add_capture_channel(const QString& chanName);
 
-        virtual int remove_capture_channel(const QString& ) {return -1;}
-        virtual int remove_playback_channel(const QString& ) {return -1;}
+    virtual int remove_capture_channel(const QString& ) {return -1;}
+    virtual int remove_playback_channel(const QString& ) {return -1;}
 
+    virtual void start_free_wheeling() {}
+    virtual void stop_free_wheeling() {}
+    bool is_free_wheeling() const {return m_isFreeWheeling;}
 
-        TAudioDriverReadWriteCallBack read;
-        TAudioDriverReadWriteCallBack write;
-        RunCycleCallback run_cycle;
+    virtual bool supports_free_wheeling() const {
+        return false;
+    }
+
+    virtual bool runs_in_blocking_mode() const {
+        return true;
+    }
+    virtual bool is_realtime_capable() const {
+        return true;
+    }
+
+    TAudioDriverReadWriteCallBack read;
+    TAudioDriverReadWriteCallBack write;
+    RunCycleCallback run_cycle;
 
 
 protected:
-        TAudioDevice*            m_device;
-        QList<AudioChannel* >   m_captureChannels;
-        QList<AudioChannel* >   m_playbackChannels;
-        int             		m_dither{};
-        dither_state_t*			m_ditherState{};
-        trav_time_t 			m_periodTimeInMicroSeconds{};
-        trav_time_t 			m_lastWaitUsecond{};
-        trav_time_t             m_runCycleEndTime;
-        trav_time_t             m_runCycleStartTime;
-        nframes_t               m_frameRate;
-        nframes_t               m_framesPerCycle;
-        nframes_t               m_captureFrameLatency{};
-        nframes_t               m_playbackFrameLatency{};
+    TAudioDevice*            m_device;
+    QList<AudioChannel* >   m_captureChannels;
+    QList<AudioChannel* >   m_playbackChannels;
+    int             		m_dither{};
+    dither_state_t*			m_ditherState{};
+    trav_time_t 			m_periodTimeInMicroSeconds{};
+    trav_time_t 			m_lastWaitUsecond{};
+    trav_time_t             m_runCycleEndTime;
+    trav_time_t             m_runCycleStartTime;
+    nframes_t               m_frameRate;
+    nframes_t               m_framesPerCycle;
+    nframes_t               m_captureFrameLatency{};
+    nframes_t               m_playbackFrameLatency{};
+    bool                    m_isFreeWheeling;
 
 signals:
     void errorMessage(const QString& message);
-    void driverSetupMessage(QString, int);
+    void driverSetupMessage(QString, QString, int);
 
 
 };

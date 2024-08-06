@@ -432,7 +432,7 @@ void AudioDriverConfigPage::new_driver_setup_message()
     for (const TAudioDriverSetupMessage &driverSetupMessage : driverSetupMessages) {
         int severity = driverSetupMessage.severity;
         QString createdOnString = QDateTime::fromMSecsSinceEpoch(driverSetupMessage.createdOn).toString("hh:mm:ss");
-        QString message = createdOnString + ": " + driverSetupMessage.driverType +" Driver<br>" + driverSetupMessage.message;
+        QString message = createdOnString + ": " + driverSetupMessage.driverType + "<br>" + driverSetupMessage.message;
 
         if (severity == TAudioDevice::DRIVER_SETUP_FAILURE || severity == TAudioDevice::CRITICAL) {
             stringList.prepend("<p class=\"failure\">" + message + "</p>");

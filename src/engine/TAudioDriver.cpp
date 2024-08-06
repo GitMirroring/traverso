@@ -38,6 +38,7 @@ TAudioDriver::TAudioDriver(TAudioDevice* device)
     run_cycle = RunCycleCallback(this, &TAudioDriver::_run_cycle);
 
     m_runCycleStartTime = m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
+    m_isFreeWheeling = false;
 }
 
 TAudioDriver::~ TAudioDriver( )
@@ -123,8 +124,6 @@ int TAudioDriver::attach( )
         chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
     }
 
-    emit driverSetupMessage(tr("Succesfully started Dummy Driver!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
-
     return 1;
 }
 
@@ -174,7 +173,7 @@ int TAudioDriver::detach( )
 }
 
 int TAudioDriver::start( )
-{    
+{
     for (auto channel : m_playbackChannels) {
         channel->silence_buffer(m_framesPerCycle);
     }

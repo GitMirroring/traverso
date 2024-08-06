@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TAudioDeviceThread.h"
 #include "ThreadSaveMessagePosting.h"
+#include "Utils.h"
 
 #if defined (ALSA_SUPPORT)
 #include "TAlsaDriver.h"
@@ -52,10 +53,8 @@ RELAYTOOL_JACK
 
 //#include <sys/mman.h>
 #include <QDebug>
-
-
-
 #include "Debugger.h"
+
 
 /*! 	\class AudioDevice
     \brief An Interface to the 'real' audio device, and the hearth of the libtraversoaudiobackend
@@ -147,11 +146,9 @@ TAudioDevice& audiodevice()
     return device;
 }
 
-TSMPEvent finishedOneProcessCycleEvent;
-
 TAudioDevice::TAudioDevice()
 {
-    m_runAudioThread = false;
+    m_runAudioThread.store(false);
     m_driver = nullptr;
     m_audioThread = nullptr;
     m_bufferSize = 1024;
@@ -198,15 +195,13 @@ TAudioDevice::TAudioDevice()
     tsmp();
     tsmp().prepare_event(m_bufferUnderRunEvent, this, nullptr, "", "bufferUnderRun()");
     tsmp().prepare_event(m_xrunStormDetectedEvent, this, nullptr, "", "xrunStormDetected()");
+    tsmp().prepare_event(m_finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");
 
 
     connect(this, SIGNAL(xrunStormDetected()), this, SLOT(switch_to_null_driver()));
     connect(&m_xrunResetTimer, SIGNAL(timeout()), this, SLOT(reset_xrun_counter()));
 
     m_xrunResetTimer.start(30000);
-
-
-    tsmp().prepare_event(finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");
 }
 
 TAudioDevice::~TAudioDevice()
@@ -289,7 +284,7 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
     }
 
     tsmp().process_posted_gui_events();
-    tsmp().post_rt_event(finishedOneProcessCycleEvent);
+    tsmp().post_rt_event(m_finishedOneProcessCycleEvent);
 
     return 1;
 }
@@ -351,12 +346,13 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
     create_driver();
 
     if (m_driver) {
-        connect(m_driver, SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
+        connect(m_driver, SIGNAL(driverSetupMessage(QString,QString,int)), this, SLOT(driver_setup_message(QString,QString,int)));
         if (setup_driver() > 0) {
             m_driverType = m_setup.get_driver_type();
             m_driver->attach();
         } else {
-            disconnect(m_driver, SIGNAL(driverSetupMessage(QString,int)), this, SLOT(driver_setup_message(QString,int)));
+            printf("AudioDevice:set_parameters: Failed to setup driver %s, falling back to Dummy Driver\n", QS_C(m_driverType));
+            disconnect(m_driver, SIGNAL(driverSetupMessage(QString,QString,int)), this, SLOT(driver_setup_message(QString,QString,int)));
             delete m_driver;
             m_driver = nullptr;
             set_parameters(m_fallBackSetup);
@@ -369,16 +365,16 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     emit driverParamsChanged();
 
-    m_runAudioThread = 1;
+    m_runAudioThread.store(true);
 
-    if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy") || (ads.get_driver_type() == "PulseAudio") || (ads.get_driver_type() == "PortAudio")) {
+    if (m_driver->runs_in_blocking_mode()) {
 
         printf("AudioDevice: Starting Audio Thread ... ");
 
 
         bool realTime = false;
         if (!m_audioThread) {
-            if ((ads.get_driver_type() == "ALSA") || (ads.get_driver_type() == "Dummy") || (ads.get_driver_type() == "PortAudio")) {
+            if (m_driver->is_realtime_capable()) {
                 realTime = true;
             }
 
@@ -397,35 +393,17 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
         // Start the audio thread, the driver->start() will be called from there!!
         m_audioThread->start();
 
-        // It appears this check is a little silly because it always returns true
-        // this close after calling the QThread::start() function :-(
-        if (m_audioThread->isRunning()) {
-            printf("Running!\n");
-        }
-    }
-
-#if defined (JACK_SUPPORT)
-    // This will activate the jack client
-    if (libjack_is_present) {
-        if (ads.get_driver_type() == "Jack") {
-
-            if (m_driver->start() == -1) {
-                // jack driver failed to start, fallback to Dummy Driver:
-                set_parameters(m_fallBackSetup);
-                return;
-            }
-
-            connect(&jackShutDownChecker, SIGNAL(timeout()), this, SLOT(check_jack_shutdown()));
-            jackShutDownChecker.start(500);
-        }
-    }
-#endif
-
-    if (/*ads.get_driver_type() == "PortAudio"|| */(ads.get_driver_type() == "PulseAudio") || (ads.get_driver_type() == "CoreAudio")) {
+    } else {
         if (m_driver->start() == -1) {
             // PortAudio driver failed to start, fallback to Dummy Driver:
             set_parameters(m_fallBackSetup);
             return;
+        }
+
+        if (ads.get_driver_type() == "Jack") {
+
+            connect(&jackShutDownChecker, SIGNAL(timeout()), this, SLOT(check_jack_shutdown()));
+            jackShutDownChecker.start(500);
         }
     }
 
@@ -434,6 +412,22 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
 
 void TAudioDevice::set_free_wheeling(bool freeWheeling)
 {
+    if (!m_driver) {
+        return;
+    }
+
+    if (m_driver->supports_free_wheeling()) {
+        if (freeWheeling) {
+            m_driver->start_free_wheeling();
+        } else {
+            m_driver->stop_free_wheeling();
+        }
+        return;
+    }
+
+
+    // FIXME Freewheeling on current drivers that do not support
+    // freewheeling natively is working somewhat on ALSA and PulseAudio but not PortAudio
     if (freeWheeling) {
         m_driver->stop();
     } else {
@@ -445,6 +439,18 @@ void TAudioDevice::set_free_wheeling(bool freeWheeling)
     m_processCallBackData.set_real_time(m_isRealTime);
 
     emit freeWheelingChanged();
+}
+
+void TAudioDevice::driver_changed_free_wheel_mode()
+{
+    Q_ASSERT(m_driver && m_driver->supports_free_wheeling());
+
+    m_isRealTime = !m_driver->is_free_wheeling();
+    // FIXME Only set if AudioDriver supports freewheeling
+    m_processCallBackData.set_real_time(m_isRealTime);
+
+    emit freeWheelingChanged();
+
 }
 
 void TAudioDevice::create_driver()
@@ -492,8 +498,9 @@ void TAudioDevice::create_driver()
 
 
     if (driverType == "Dummy") {
-        printf("AudioDevice: Creating Dummy Driver...\n");
+        printf("AudioDevice: Creating Dummy Driver...\n");        
         m_driver = new TAudioDriver(this);
+        driver_setup_message("Dummy Driver", tr("Started successfully"), TAudioDevice::DRIVER_SETUP_SUCCESS);
         return;
     }
 }
@@ -512,8 +519,8 @@ int TAudioDevice::setup_driver()
     if (libjack_is_present) {
         if (driverType == "Jack") {
             TJackDriver* jackDriver = qobject_cast<TJackDriver*>(m_driver);
-            if (jackDriver && jackDriver->setup(m_setup.get_jack_channels()) < 0) {
-                driver_setup_message(tr("Audiodevice: Failed to setup the Jack Driver"), DRIVER_SETUP_FAILURE);
+            if (jackDriver && jackDriver->setup(m_setup.get_jack_channels(), m_setup.get_project_name()) < 0) {
+                driver_setup_message("AudioDevice", tr("Failed to setup the Jack Driver"), DRIVER_SETUP_FAILURE);
                 return -1;
             }
             return 1;
@@ -525,7 +532,7 @@ int TAudioDevice::setup_driver()
     if (driverType == "ALSA") {
         TAlsaDriver* alsaDriver = qobject_cast<TAlsaDriver*>(m_driver);
         if (alsaDriver && alsaDriver->setup(capture,playback, cardDevice, m_ditherShape) < 0) {
-            driver_setup_message(tr("Audiodevice: Failed to setup the ALSA Driver"), DRIVER_SETUP_FAILURE);
+            driver_setup_message("AudioDevice", tr("Failed to setup the ALSA Driver"), DRIVER_SETUP_FAILURE);
             return -1;
         }
         return 1;
@@ -536,7 +543,7 @@ int TAudioDevice::setup_driver()
     if (driverType == "PortAudio") {
         TPortAudioDriver* paDriver = qobject_cast<TPortAudioDriver*>(m_driver);
         if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
-            driver_setup_message(tr("Audiodevice: Failed to setup the PortAudio Driver"), DRIVER_SETUP_FAILURE);
+            driver_setup_message("AudioDevice", tr("Failed to setup the PortAudio Driver"), DRIVER_SETUP_FAILURE);
             return -1;
         }
         return 1;
@@ -547,7 +554,7 @@ int TAudioDevice::setup_driver()
     if (driverType == "PulseAudio") {
         TPulseAudioDriver* paDriver = qobject_cast<TPulseAudioDriver*>(m_driver);
         if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
-            driver_setup_message(tr("Audiodevice: Failed to setup the PulseAudio Driver"), DRIVER_SETUP_FAILURE);
+            driver_setup_message("AudioDevice", tr("Failed to setup the PulseAudio Driver"), DRIVER_SETUP_FAILURE);
             return -1;
         }
         return 1;
@@ -568,7 +575,7 @@ int TAudioDevice::setup_driver()
 
 
     if (driverType == "Dummy") {
-        printf("AudioDevice: Creating Dummy Driver...\n");
+        // nothing to do for the Dummy Driver here
         return 1;
     }
 
@@ -593,7 +600,7 @@ int TAudioDevice::shutdown( )
 
     emit stopped();
 
-    m_runAudioThread = 0;
+    m_runAudioThread.store(false);
 
     if (m_audioThread) {
         disconnect(m_audioThread, SIGNAL(finished()), this, SLOT(audiothread_finished()));
@@ -603,7 +610,6 @@ int TAudioDevice::shutdown( )
         if (m_audioThread->isRunning()) {
             printf("AudioDevice: Starting to shutdown Audio Thread ... \n");
             r = m_audioThread->wait(1000);
-            printf("AudioDevice: Audio Thread finished, stopping driver\n");
         }
 
         delete m_audioThread;
@@ -806,7 +812,7 @@ QString TAudioDevice::get_driver_information() const
 {
     if (m_driverType == "PortAudio") {
         QStringList list = m_setup.get_card_device().split("::");
-        return "PA: " + list.at(0);
+        return "PortAudio: " + list.at(0);
     }
     return m_driverType;
 }
@@ -818,18 +824,6 @@ QString TAudioDevice::get_driver_information() const
  */
 float TAudioDevice::get_cpu_time( )
 {
-#if defined (JACK_SUPPORT)
-    if (libjack_is_present)
-        if (m_driver && m_driverType == "Jack")
-            return qobject_cast<TJackDriver*>(m_driver)->get_cpu_load();
-#endif
-
-// #if defined (PORTAUDIO_SUPPORT)
-//     if (m_driver && m_driverType == "PortAudio")
-//         return ((PADriver*)m_driver)->get_cpu_load();
-// #endif
-
-
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
     trav_time_t totalTime = m_processCallBackCpuTime.load();
 
@@ -846,7 +840,7 @@ float TAudioDevice::get_cpu_time( )
 
 void TAudioDevice::private_add_client(TAudioDeviceClient* client)
 {
-    m_clients.prepend(client);
+    m_clients.append(client);
 }
 
 void TAudioDevice::private_remove_client(TAudioDeviceClient* client)
@@ -880,7 +874,7 @@ void TAudioDevice::remove_client( TAudioDeviceClient * client )
 
 void TAudioDevice::audiothread_finished()
 {
-    if (m_runAudioThread) {
+    if (m_runAudioThread.load() && m_xrunCount <= 30) {
         // AudioThread stopped, but we didn't do it ourselves
         // so something certainly did go wrong when starting the beast
         // Start the Dummy Driver to avoid problems with TSMP
@@ -896,6 +890,8 @@ void TAudioDevice::xrun( )
     m_xrunCount++;
     if (m_xrunCount > 30) {
         tsmp().post_rt_event(m_xrunStormDetectedEvent);
+        m_driver->stop();
+        m_runAudioThread.store(false);
     }
 }
 
@@ -908,7 +904,7 @@ void TAudioDevice::check_jack_shutdown()
             if ( ! jackdriver->is_running()) {
                 jackShutDownChecker.stop();
                 printf("jack shutdown detected\n");
-                driver_setup_message(tr("The Jack server has been shutdown!"), CRITICAL);
+                driver_setup_message("Jack", tr("The Jack server has been shutdown!"), CRITICAL);
                 delete m_driver;
                 m_driver = nullptr;
                 set_parameters(m_fallBackSetup);
@@ -918,13 +914,13 @@ void TAudioDevice::check_jack_shutdown()
 #endif
 }
 
-void TAudioDevice::driver_setup_message(QString message, int severity)
+void TAudioDevice::driver_setup_message(const QString &driver, const QString &message, int severity, trav_time_t creatonOn)
 {
     TAudioDriverSetupMessage setupMessage;
     setupMessage.message = message;
-    setupMessage.driverType = m_setup.get_driver_type();
+    setupMessage.driverType = driver;
     setupMessage.severity = severity;
-    setupMessage.createdOn = TTimeRef::get_milliseconds_since_epoch();
+    setupMessage.createdOn = creatonOn;
     m_audioDriverSetupMessages.insert(setupMessage.createdOn, setupMessage);
     emit newDriverSetupMessage();
 }
@@ -932,8 +928,8 @@ void TAudioDevice::driver_setup_message(QString message, int severity)
 
 void TAudioDevice::switch_to_null_driver()
 {
-    driver_setup_message(tr("AudioDevice:: Buffer underrun 'Storm' detected, switching to Dummy Driver"), CRITICAL);
-    driver_setup_message(tr("AudioDevice:: For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
+    driver_setup_message("AudioDevice", tr("Buffer underrun 'Storm' detected, switching to Dummy Driver"), CRITICAL);
+    driver_setup_message("AudioDevice", tr("For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
     set_parameters(m_fallBackSetup);
 }
 

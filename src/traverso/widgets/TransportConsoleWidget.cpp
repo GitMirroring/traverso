@@ -63,10 +63,11 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     m_playAction = addAction(QIcon(":/playstart"), tr("Play / Stop"), &transport(), SLOT(start_transport()));
     m_toRightAction = addAction(QIcon(":/seekright"), tr("Next Snap Position"), &transport(), SLOT(next_skip_pos()));
     m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"), &transport(), SLOT(to_end()));
-    m_freeWheelingAction = addAction(QIcon(":/seekright"), tr("Start/Stop FreeWheeling"), this, [](){
+    m_freeWheelingAction = addAction("RT", tr("Start/Stop FreeWheeling"), this, [](){
         audiodevice().set_free_wheeling(audiodevice().running_real_time());
     });
     m_freeWheelingAction->setCheckable(true);
+    m_freeWheelingAction->setToolTip(tr("Turn Free Wheeling ON"));
 
     addWidget(m_timeLabel);
 
@@ -79,6 +80,13 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     connect(&audiodevice(), SIGNAL(finishedOneProcessCycle()), this, SLOT(update_label()));
     connect(&audiodevice(), &TAudioDevice::freeWheelingChanged, this, [this](){
         m_freeWheelingAction->setChecked(!audiodevice().running_real_time());
+        if (audiodevice().running_real_time()) {
+            m_freeWheelingAction->setText("RT");
+            m_freeWheelingAction->setToolTip(tr("Turn Free Wheeling ON"));
+        } else {
+            m_freeWheelingAction->setText("FW");
+            m_freeWheelingAction->setToolTip(tr("Turn Free Wheeling OFF"));
+        }
     });
 
     update_layout();
