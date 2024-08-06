@@ -19,6 +19,7 @@
  */
 
 #include "TJackDriver.h"
+#include "Utils.h"
 
 #include <jack/jack.h>
 
@@ -90,23 +91,24 @@ int TJackDriver::_write( nframes_t nframes )
     return 1;
 }
 
-int TJackDriver::setup(QList<AudioChannel* > channels)
+int TJackDriver::setup(QList<AudioChannel* > channels, const QString &projectName)
 {
     PENTER;
 
-    const char *client_name = "Traverso";
+    QString clientName = QString("Traverso_" + projectName);
+    clientName = clientName.replace(" ", "_");
     m_jackClient = nullptr;
     m_captureFrameLatency = m_playbackFrameLatency =0 ;
 
 
     printf("Connecting to the Jack server...\n");
 
-    if ( (m_jackClient = jack_client_open(client_name, JackNoStartServer, nullptr)) == nullptr) {
-        emit driverSetupMessage(tr("Couldn't connect to the jack server, is jack running?"), TAudioDevice::DRIVER_SETUP_FAILURE);
+    if ( (m_jackClient = jack_client_open(QS_C(clientName), JackNoStartServer, nullptr)) == nullptr) {
+        emit driverSetupMessage("Jack", tr("Couldn't connect to the jack server, is jack running?"), TAudioDevice::DRIVER_SETUP_FAILURE);
         return -1;
     }
 
-    foreach(AudioChannel* channel, channels) {
+    for(AudioChannel* channel : channels) {
         add_channel(channel);
     }
 
@@ -195,6 +197,7 @@ int TJackDriver::attach( )
     jack_set_process_callback (m_jackClient, _process_callback, this);
     jack_set_xrun_callback (m_jackClient, _xrun_callback, this);
     jack_set_buffer_size_callback (m_jackClient, _bufsize_callback, this);
+    jack_set_freewheel_callback(m_jackClient, _freewheel_callback, this);
     jack_on_shutdown(m_jackClient, _on_jack_shutdown_callback, this);
 
     update_config();
@@ -210,7 +213,7 @@ int TJackDriver::start( )
         return -1;
     }
 
-    emit driverSetupMessage(tr("Succesfully connected to jack server %1!").arg(jack_get_version_string()), TAudioDevice::DRIVER_SETUP_SUCCESS);
+    emit driverSetupMessage("Jack", tr("Succesfully connected to jack server %1!").arg(jack_get_version_string()), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
     m_running = 1;
     return 1;
@@ -238,7 +241,14 @@ int TJackDriver::process_callback (nframes_t nframes)
 
     m_device->transport_control(&m_transportControl);
 
+    m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
+    m_device->set_transport_cycle_start_time (m_runCycleStartTime);
+
     m_device->run_cycle( nframes, 0.0);
+
+    m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
+    m_device->set_transport_cycle_end_time (m_runCycleEndTime);
+
     return 0;
 }
 
@@ -254,22 +264,6 @@ int TJackDriver::jack_sync_callback (jack_transport_state_t state, jack_position
     printf("jack transport callback, location is %lld\n", m_transportControl.get_location().universal_frame());
 
     return m_device->transport_control(&m_transportControl);
-}
-
-
-// Is there a way to get the device name from Jack? Can't find it :-(
-// Since Jack uses ALSA, we ask it from ALSA directly :-)
-QString TJackDriver::get_device_name( )
-{
-    return "JACK";
-}
-
-QString TJackDriver::get_device_longname( )
-{
-#if defined (ALSA_SUPPORT)
-    return TAlsaDriver::alsa_device_name(true);
-#endif
-    return "JACK Audio Server";
 }
 
 int TJackDriver::_xrun_callback( void * arg )
@@ -300,11 +294,6 @@ int TJackDriver::_bufsize_callback( nframes_t nframes, void * arg )
     return 0;
 }
 
-float TJackDriver::get_cpu_load( )
-{
-    return jack_cpu_load(m_jackClient);
-}
-
 void TJackDriver::_on_jack_shutdown_callback( void * arg )
 {
     TJackDriver* driver  = static_cast<TJackDriver *> (arg);
@@ -315,6 +304,37 @@ int TJackDriver::_jack_sync_callback (jack_transport_state_t state, jack_positio
 {
     return static_cast<TJackDriver*> (arg)->jack_sync_callback (state, pos);
 }
+
+void TJackDriver::_freewheel_callback(int starting, void *arg)
+{
+    TJackDriver* driver  = static_cast<TJackDriver *> (arg);
+
+    driver->m_isFreeWheeling = ((starting == 1) ? true : false);
+    driver->m_device->driver_changed_free_wheel_mode();
+
+    printf("Jack freewheel callback %d\n", starting);
+}
+
+void TJackDriver::start_free_wheeling()
+{
+    Q_ASSERT(m_jackClient);
+
+    jack_set_freewheel(m_jackClient, 1);
+}
+
+void TJackDriver::stop_free_wheeling()
+{
+    Q_ASSERT(m_jackClient);
+
+    jack_set_freewheel(m_jackClient, 0);
+}
+
+
+float TJackDriver::get_cpu_load( )
+{
+    return jack_cpu_load(m_jackClient);
+}
+
 
 void TJackDriver::update_config()
 {
@@ -335,6 +355,21 @@ void TJackDriver::cleanup_removed_port_channel_pair(PortChannelPair* pcpair)
     m_device->delete_channel(pcpair->channel);
     delete pcpair;
     pcpair = nullptr;
+}
+
+// Is there a way to get the device name from Jack? Can't find it :-(
+// Since Jack uses ALSA, we ask it from ALSA directly :-)
+QString TJackDriver::get_device_name( )
+{
+    return "JACK";
+}
+
+QString TJackDriver::get_device_longname( )
+{
+#if defined (ALSA_SUPPORT)
+    return TAlsaDriver::alsa_device_name(true);
+#endif
+    return "JACK Audio Server";
 }
 
 

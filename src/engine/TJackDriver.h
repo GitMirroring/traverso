@@ -38,7 +38,7 @@ public:
     int _read(nframes_t nframes);
     int _write(nframes_t nframes);
     int _run_cycle() {return 1;}
-    int setup(QList<AudioChannel* > channels);
+    int setup(QList<AudioChannel* > channels, const QString &projectName);
     int attach();
     int start();
     int stop();
@@ -56,18 +56,28 @@ public:
     bool is_slave() const {return m_isSlave;}
     void update_config();
 
+    virtual bool supports_free_wheeling() const {
+        return true;
+    }
+
+    void start_free_wheeling() final;
+    void stop_free_wheeling() final;
+
+    virtual bool runs_in_blocking_mode() const {
+        return false;
+    }
+
+
 private:
     struct PortChannelPair {
         PortChannelPair() {
             jackport = nullptr;
             channel = nullptr;
-            unregister = false;
         }
 
         jack_port_t*    jackport;
         AudioChannel*   channel;
         QString         name;
-        bool            unregister;
     };
 
     volatile size_t         m_running;
@@ -83,6 +93,7 @@ private:
     static int _xrun_callback(void *arg);
     static int  _process_callback (nframes_t nframes, void *arg);
     static int _bufsize_callback(jack_nframes_t nframes, void *arg);
+    static void _freewheel_callback(int starting, void* arg);
     static void _on_jack_shutdown_callback(void* arg);
     static int  _jack_sync_callback (jack_transport_state_t, jack_position_t*, void *arg);
 
