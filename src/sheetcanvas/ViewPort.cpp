@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QResizeEvent>
 #include <QEvent>
 #include <QRect>
-#include <QPainter>
 #include <QPixmap>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
@@ -39,8 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ViewItem.h"
 #include "ContextPointer.h"
 
-
-
+#include "TInformUser.h"
 
 #include "Debugger.h"
 
@@ -89,6 +87,19 @@ ViewPort::ViewPort(QGraphicsScene* scene, QWidget* parent)
     // but we do enable mouse enter/leave/move events of course so we
     // can inform cpointer and tinputeventdispatcher aoubt soft selected items
     setMouseTracking(true);
+
+    // Although rare it used to be possible to leave the viewport with the mouse
+    // without the viewport knowing, which meant, the mouse was grabbed for all eternity
+    // which is very bad: no more interaction possible with other Widgets.
+    // To remedy this situation, let's always release the mouse after 30 seconds, most
+    // hold actions will keep working just fine anyways,and the few that don't, well, it is what it is
+    m_mouseGrabCheckTime = 30000; // 30 seconds
+    connect(&m_grabMouseGuardTimer, &QTimer::timeout, this, [this]() {
+        if (QWidget::mouseGrabber() == this->viewport()) {
+            tInformUser().information(tr("Mouse was grabbed for more then %1 seconds, releasing mouse now").arg(m_mouseGrabCheckTime / 1000));
+            release_mouse();
+        }
+    });
 }
 
 ViewPort::~ViewPort()
@@ -129,11 +140,13 @@ bool ViewPort::event(QEvent * event)
 
 void ViewPort::grab_mouse()
 {
-//    viewport()->grabMouse();
+    m_grabMouseGuardTimer.start(m_mouseGrabCheckTime);
+   viewport()->grabMouse();
 }
 
 void ViewPort::release_mouse()
 {
+    m_grabMouseGuardTimer.stop();
     viewport()->releaseMouse();
 }
 

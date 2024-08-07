@@ -24,6 +24,7 @@
 
 #include <QGraphicsView>
 #include <QGraphicsItem>
+#include <QTimer>
 #include "AbstractViewPort.h"
 
 class ViewItem;
@@ -85,6 +86,8 @@ protected:
 
 private:
     QPoint      m_previousMousePos;
+    QTimer      m_grabMouseGuardTimer;
+    int         m_mouseGrabCheckTime;
 };
 
 #endif
