@@ -301,9 +301,8 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 	if (m_overflowUsed) {
 		// If there was overflow, save it for the next read.
         m_resampleDecodeBuffer->set_destination_buffer_read_offset(m_privateSRC->srcData.input_frames_used);
-        nframes_t framesToCopy = nframes_t(m_overflowUsed) * sizeof(audio_sample_t);
         for (uint chan = 0; chan < m_channels; chan++) {
-            memcpy(m_overflowBuffers[chan], m_resampleDecodeBuffer->get_destination_buffer(chan, framesToCopy), framesToCopy);
+            memcpy(m_overflowBuffers[chan], m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
 		}
         m_resampleDecodeBuffer->set_destination_buffer_read_offset(0);
 	}
