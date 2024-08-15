@@ -14,7 +14,9 @@ public:
         m_bufferSize = bufferSize;
         m_bufferWriteOffset = 0;
         m_channelCount = channelCount;
-        m_buffers.resize(channelCount, TAudioBuffer(bufferSize, false));
+        for (uint chan=0; chan < channelCount; ++chan) {
+            m_buffers.push_back(std::unique_ptr<TAudioBuffer>(new TAudioBuffer(bufferSize, false)));
+        }
     }
 
     ~TQueueBufferSlot()
@@ -29,7 +31,7 @@ public:
 
     audio_sample_t* get_buffer(uint channel) {
         Q_ASSERT(channel < m_channelCount);
-        return m_buffers.at(channel).get_buffer(m_bufferSize);
+        return m_buffers.at(channel)->get_buffer(m_bufferSize);
     }
 
     nframes_t get_buffer_write_offset() const {return m_bufferWriteOffset;}
@@ -39,7 +41,7 @@ public:
         Q_ASSERT(offset + nframes <= m_bufferSize);
         Q_ASSERT(channel < m_channelCount);
         Q_ASSERT(nframes > 0);
-        memcpy(dest + offset, m_buffers.at(channel).get_buffer(nframes), nframes * sizeof(audio_sample_t));
+        memcpy(dest + offset, m_buffers.at(channel)->get_buffer(nframes), nframes * sizeof(audio_sample_t));
     }
 
     void write_buffer(const TTimeRef &transportLocation, const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes, nframes_t offset = 0) {
@@ -47,7 +49,7 @@ public:
         Q_ASSERT(offset + nframes <= m_bufferSize);
         Q_ASSERT(channel < m_channelCount);
         Q_ASSERT(nframes > 0);
-        memcpy(m_buffers.at(channel).get_buffer(nframes) + offset, source, nframes * sizeof(audio_sample_t));
+        memcpy(m_buffers.at(channel)->get_buffer(nframes) + offset, source, nframes * sizeof(audio_sample_t));
         m_transportLocation = transportLocation;
         m_fileLocation = fileLocation;
         m_bufferWriteOffset = offset;
@@ -62,8 +64,8 @@ public:
     }
 
     void silence_buffers() {
-        for (auto audioBuffer : m_buffers) {
-            audioBuffer.silence_buffer();
+        for(size_t i=0; i<m_buffers.size(); ++i) {
+            m_buffers.at(i)->silence_buffer();
         }
     }
 
@@ -72,7 +74,7 @@ private:
     TTimeRef            m_transportLocation;
     int                 m_slotNumber;
     uint                m_channelCount;
-    QList<TAudioBuffer> m_buffers;
+    std::vector<std::unique_ptr<TAudioBuffer>> m_buffers;
     nframes_t           m_bufferSize;
     nframes_t           m_bufferWriteOffset;
 };

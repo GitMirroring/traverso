@@ -81,8 +81,8 @@ ResampleAudioReader::~ResampleAudioReader()
 
 void ResampleAudioReader::clear_buffers()
 {
-    for (auto audioBuffer : m_overflowBuffers) {
-        audioBuffer.silence_buffer();
+    for (uint chan = 0; chan < m_overflowBuffers.size(); ++chan)  {
+        m_overflowBuffers.at(chan)->silence_buffer();
     }
 
 	if (m_reader) {
@@ -224,7 +224,7 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 	if (m_overflowUsed) {
 		// Copy pre-existing overflow into the buffer
         for (uint chan = 0; chan < m_channels; chan++) {
-            memcpy(m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), m_overflowBuffers[chan].get_buffer(m_overflowUsed), m_overflowUsed * sizeof(audio_sample_t));
+            memcpy(m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), m_overflowBuffers.at(chan)->get_buffer(m_overflowUsed), m_overflowUsed * sizeof(audio_sample_t));
 		}
 	}
 		
@@ -288,7 +288,7 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 		// If there was overflow, save it for the next read.
         m_resampleDecodeBuffer->set_destination_buffer_read_offset(m_privateSRC->srcData.input_frames_used);
         for (uint chan = 0; chan < m_channels; chan++) {
-            memcpy(m_overflowBuffers[chan].get_buffer(nframes_t(m_overflowUsed)), m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
+            memcpy(m_overflowBuffers.at(chan)->get_buffer(nframes_t(m_overflowUsed)), m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
 		}
         m_resampleDecodeBuffer->set_destination_buffer_read_offset(0);
 	}
@@ -331,7 +331,9 @@ nframes_t ResampleAudioReader::file_to_resampled_frame(nframes_t frame)
 
 void ResampleAudioReader::create_overflow_buffers()
 {
-    m_overflowBuffers.resize(m_channels, TAudioBuffer(OVERFLOW_SIZE, false));
+    for (uint chan=0; chan < m_channels; ++chan) {
+        m_overflowBuffers.push_back(std::unique_ptr<TAudioBuffer>(new TAudioBuffer(OVERFLOW_SIZE, false)));
+    }
 }
 
 void ResampleAudioReader::set_resample_decode_buffer(TFileDecodeBuffer * buffer)

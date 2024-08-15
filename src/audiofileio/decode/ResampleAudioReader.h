@@ -70,7 +70,7 @@ protected:
 	
 	AbstractAudioReader*	m_reader;
     PrivateSRC*             m_privateSRC;
-    QList<TAudioBuffer>     m_overflowBuffers;
+    std::vector<std::unique_ptr<TAudioBuffer>> m_overflowBuffers;
     long                    m_overflowUsed;
     uint                    m_outputSampleRate;
     int                     m_convertorType;
