@@ -323,7 +323,7 @@ void ResourcesWidget::add_clip(AudioClip * clip)
 		clipitem->setTextAlignment(2, Qt::AlignHCenter);
 		clipitem->setTextAlignment(3, Qt::AlignLeft);
 		
-		connect(clip, SIGNAL(positionChanged()), clipitem, SLOT(clip_state_changed()));
+        connect(clip->get_location(), SIGNAL(locationChanged()), clipitem, SLOT(clip_state_changed()));
 	}
 	
 	update_clip_state(clip);

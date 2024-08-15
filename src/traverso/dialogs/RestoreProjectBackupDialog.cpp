@@ -24,7 +24,7 @@
 #include <QTreeWidgetItem>
 #include <QDateTime>
 
-#include "Information.h"
+#include "TInformUser.h"
 
 RestoreProjectBackupDialog::RestoreProjectBackupDialog(QWidget * parent)
 	: QDialog(parent)

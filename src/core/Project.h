@@ -40,7 +40,7 @@ class TExportSpecification;
 class TAudioDeviceClient;
 class TBusTrack;
 class TSend;
-class Plugin;
+class TAudioPlugin;
 class SpectralMeter;
 class CorrelationMeter;
 
@@ -151,7 +151,7 @@ public :
     void connect_to_audio_device();
     int disconnect_from_audio_device();
 
-    void add_meter(Plugin* meter);
+    void add_meter(TAudioPlugin* meter);
 
 
 public slots:
@@ -161,12 +161,12 @@ public slots:
 private:
     Project(const QString& title);
 
-    TRealTimeLinkedList<Sheet*> m_RtSheets;
 
+    ResourcesManager*       m_resourcesManager;
     QList<Sheet*>           m_sheets;
+    TRealTimeLinkedList<Sheet*> m_RtSheets;
     Sheet*                  m_activeSheet;
     TSession*               m_activeSession;
-    ResourcesManager*       m_resourcesManager;
     TAudioDeviceClient*     m_audiodeviceClient;
     SpectralMeter*          m_spectralMeter;
     CorrelationMeter*       m_correlationMeter;

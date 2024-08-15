@@ -19,29 +19,29 @@
 
 */
 
-#ifndef PLUGIN_VIEW_H
-#define PLUGIN_VIEW_H
+#ifndef T_AUDIO_PLUGIN_VIEW_H
+#define T_AUDIO_PLUGIN_VIEW_H
 
 
 #include "ViewItem.h"
 #include <QString>
 
-class PluginPropertiesDialog;
+class TAudioPluginPropertiesDialog;
 
 class AudioTrackView;
 class PluginChainView;
-class Plugin;
-class PluginChain;
+class TAudioPlugin;
+class TAudioPluginChain;
 
-class PluginView : public ViewItem
+class TAudioPluginView : public ViewItem
 {
     Q_OBJECT
 
 public:
-    PluginView(PluginChainView* pcv, PluginChain* chain, Plugin* plugin, int index);
-    ~PluginView();
+    TAudioPluginView(PluginChainView* pcv, TAudioPluginChain* chain, TAudioPlugin* plugin, int index);
+    ~TAudioPluginView();
 
-    Plugin* get_plugin();
+    TAudioPlugin* get_plugin();
     void set_index(int index);
     void set_moving(bool move);
 
@@ -49,15 +49,15 @@ public:
     void calculate_bounding_rect();
 
 private:
-    PluginChain*	m_pluginchain;
-    Plugin*         m_plugin;
+    TAudioPluginChain*	m_pluginchain;
+    TAudioPlugin*         m_plugin;
 
     int             m_index;
     bool            m_moving;
     int             m_textwidth;
     QString         m_name;
 
-    PluginPropertiesDialog* m_propertiesDialog;
+    TAudioPluginPropertiesDialog* m_propertiesDialog;
 
 public slots:
     TCommand* edit_properties();

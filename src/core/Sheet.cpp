@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioBus.h"
 #include "TAudioDeviceClient.h"
 #include "ProjectManager.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "Sheet.h"
 #include "Project.h"
 #include "AudioTrack.h"
@@ -53,8 +53,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Marker.h"
 #include "TInputEventDispatcher.h"                       
 #include "TSend.h"
-#include "Plugin.h"
-#include "PluginChain.h"
+#include "TAudioPlugin.h"
+#include "TAudioPluginChain.h"
 
 
 
@@ -107,8 +107,7 @@ Sheet::~Sheet()
 {
     PENTERDES;
 
-    delete [] mixdown;
-    delete [] gainbuffer;
+    // delete [] m_curveProcessBuffer;
 
     delete m_readDiskIO;
     delete m_writeDiskIO;
@@ -154,8 +153,6 @@ void Sheet::init()
     connect(this, SIGNAL(prepareRecording()), this, SLOT(prepare_recording()));
     connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(audiodevice_params_changed()), Qt::DirectConnection);
     connect(&config(), SIGNAL(configChanged()), this, SLOT(config_changed()));
-
-    mixdown = gainbuffer = nullptr;
 
     TAudioBusConfiguration busConfig;
     busConfig.name = "Sheet Render Bus";
@@ -504,6 +501,10 @@ int Sheet::process(TProcessCallBackData &processData)
     // DiskIO always needs a wakeup call in case we're
     // seeking or want to seek
     m_readDiskIO->wakeup();
+    // Write DiskIO goes to sleep if we're transport rolling == false
+    // however, after recording it needs to run a little longer to finish
+    // the write sources export. For now just wake it up all the time
+    m_writeDiskIO->wakeup();
 
     if (transport_locate_requested()) {
         printf("Sheet::process: starting seek\n");
@@ -523,7 +524,6 @@ int Sheet::process(TProcessCallBackData &processData)
     if (transport_stop_requested()) {
         set_transport_rolling_state(false);
         set_transport_stop_requested_state(false);
-        printf("Sheet::process transport stop post time: %ld\n", TTimeRef::get_microseconds_since_epoch());
         tsmp().post_rt_event(m_transportStoppedEvent);
 
         return 0;
@@ -557,6 +557,9 @@ int Sheet::process(TProcessCallBackData &processData)
 
     if (m_bounceTrack->armed()) {
         m_bounceTrack->process(processData);
+    } else {
+        // FIXME: should only be done when arm state changes for BouncTrack
+        m_bounceTrack->get_input_bus()->silence_buffers();
     }
 
     m_readDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
@@ -567,18 +570,7 @@ int Sheet::process(TProcessCallBackData &processData)
 
 void Sheet::resize_buffers(nframes_t size)
 {
-    if (mixdown) {
-        delete [] mixdown;
-    }
-    if (gainbuffer) {
-        delete [] gainbuffer;
-    }
-
-    mixdown = new audio_sample_t[size];
-    gainbuffer = new audio_sample_t[size];
-
-    memset(mixdown, 0, size * sizeof(audio_sample_t));
-    memset(gainbuffer, 0, size * sizeof(audio_sample_t));
+    m_curveProcessBuffer.resize(size);
 
     QList<AudioChannel*> audioChannels;
     audioChannels.append(m_masterOutBusTrack->get_process_bus()->get_channels());
@@ -637,7 +629,7 @@ void Sheet::set_audio_sources_dir(const QString &dir)
     if (!asDir.exists(m_audioSourcesDir)) {
         printf("creating new audio sources dir: %s\n", dir.toLatin1().data());
         if (!asDir.mkdir(m_audioSourcesDir)) {
-            info().critical(tr("Cannot create dir %1").arg(m_audioSourcesDir));
+            tInformUser().critical(tr("Cannot create dir %1").arg(m_audioSourcesDir));
         }
     }
 }
@@ -646,8 +638,8 @@ void Sheet::handle_diskio_readbuffer_underrun( )
 {
     if (is_transport_rolling()) {
         printf("Sheet:: DiskIO ReadBuffer UnderRun signal received!\n");
-        info().critical(tr("Hard Disk overload detected!"));
-        info().critical(tr("Failed to fill ReadBuffer in time"));
+        tInformUser().critical(tr("Hard Disk overload detected!"));
+        tInformUser().critical(tr("Failed to fill ReadBuffer in time"));
     }
 }
 
@@ -655,8 +647,8 @@ void Sheet::handle_diskio_writebuffer_overrun( )
 {
     if (is_transport_rolling()) {
         printf("Sheet:: DiskIO WriteBuffer OverRun signal received!\n");
-        info().critical(tr("Hard Disk overload detected!"));
-        info().critical(tr("Failed to empty WriteBuffer in time"));
+        tInformUser().critical(tr("Hard Disk overload detected!"));
+        tInformUser().critical(tr("Failed to empty WriteBuffer in time"));
     }
 }
 
@@ -692,7 +684,7 @@ TCommand * Sheet::set_recordable()
         set_recording(false, false);
     } else {
         if (!any_audio_track_armed()) {
-            info().critical(tr("No Tracks armed for recording!"));
+            tInformUser().critical(tr("No Tracks armed for recording!"));
             return nullptr;
         }
 
@@ -945,7 +937,7 @@ void Sheet::prepare_recording()
         if (m_recordingClips.size() > 0) {
             group->setText(tr("Bouncing"));
         } else {
-            info().warning(tr("Failed to create Bounce recording source"));
+            tInformUser().warning(tr("Failed to create Bounce recording source"));
             group->deleteLater();
             return;
         }

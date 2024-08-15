@@ -25,14 +25,14 @@
 
 #include "TCommand.h"
 
-class PluginView;
+class TAudioPluginView;
 
 class MovePlugin : public TCommand
 {
     Q_OBJECT
 
 public :
-    MovePlugin(PluginView* view);
+    MovePlugin(TAudioPluginView* view);
     ~MovePlugin();
 
     int begin_hold();
@@ -44,7 +44,7 @@ public :
     int jog();
 
 private:
-    PluginView*      m_pluginView;
+    TAudioPluginView*      m_pluginView;
     qreal            m_sceneXStartPos;
     qreal           m_pluginViewOrigXPos;
 

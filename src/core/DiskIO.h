@@ -25,13 +25,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 #include <QThread>
 
+#include "TFileDecodeBuffer.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
 #include "cameron/readerwritercircularbuffer.h"
 
 class AudioSource;
-class TFileDecodeBuffer;
 
 class DiskIO : public QThread
 {
@@ -42,7 +42,6 @@ public:
 	~DiskIO();
 	
 	static const int writebuffertime = 5;
-	static const int bufferdividefactor = 5;
 
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation = transportLocation;
@@ -68,9 +67,9 @@ protected:
     void run() override;
 
 private:
-    moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>*   m_audioThreadProcessedFramesQueue;
-    moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>*   m_audioSourcesToBeAdded;
-    moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>*   m_audioSourcesToBeRemoved;
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>      m_audioThreadProcessedFramesQueue;
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>>   m_audioSourcesToBeAdded;
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>>   m_audioSourcesToBeRemoved;
 
     std::atomic<bool>   m_seekRequested;
     bool                m_stopDiskIOThreadRequested;
@@ -86,8 +85,8 @@ private:
     bool                m_sampleRateChanged;
     audio_sample_t*		framebuffer;
 
-    TFileDecodeBuffer*		m_fileDecodeBuffer;
-    TFileDecodeBuffer*		m_resampleDecodeBuffer;
+    TFileDecodeBuffer		m_fileDecodeBuffer{};
+    TFileDecodeBuffer		m_resampleDecodeBuffer{};
     uint                m_outputSampleRate{};
 
     TTimeRef            m_transportLocation;

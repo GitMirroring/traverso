@@ -111,14 +111,14 @@ void Gain::cancel_action()
 
 void Gain::increase_gain(  )
 {
-    audio_sample_t dbFactor = coefficient_to_dB(m_newGain);
+    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
     dbFactor += 0.2f;
     apply_new_gain_to_object(dB_to_scale_factor(dbFactor));
 }
 
 void Gain::decrease_gain()
 {
-    audio_sample_t dbFactor = coefficient_to_dB(m_newGain);
+    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
     dbFactor -= 0.2f;
     apply_new_gain_to_object(dB_to_scale_factor(dbFactor));
 }
@@ -137,7 +137,7 @@ void Gain::set_new_gain_numerical_input(float newGain)
 int Gain::process_mouse_move(qreal diffY)
 {
     qreal of = 0;
-    audio_sample_t dbFactor = coefficient_to_dB(m_newGain);
+    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
 
 
     if (dbFactor > -1) {

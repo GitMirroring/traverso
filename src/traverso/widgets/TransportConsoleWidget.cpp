@@ -28,7 +28,7 @@
 #include "ProjectManager.h"
 #include "Project.h"
 #include "TConfig.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "TTransport.h"
 
 #include <QAction>
@@ -55,7 +55,7 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
         "font: 19px;"
         "border: 2px solid gray;"
         "border-radius: 10px;"
-        "padding: 0 8 0 8;");
+        "padding: 0 20 0 20;");
 
     m_toStartAction = addAction(QIcon(":/skipleft"), tr("Skip to Start"), &transport(), SLOT(to_start()));
     m_toLeftAction = addAction(QIcon(":/seekleft"), tr("Previous Snap Position"), &transport(), SLOT(prev_skip_pos()));
@@ -177,7 +177,7 @@ void TransportConsoleWidget::update_recording_state()
 
     if (m_sheet->is_recording()) {
         QString recordFormat = config().get_property("Recording", "FileFormat", "wav").toString();
-        info().information(tr("Recording to %1 Tracks, encoding format: %2").arg(m_sheet->get_armed_tracks().size()).arg(recordFormat));
+        tInformUser().information(tr("Recording to %1 Tracks, encoding format: %2").arg(m_sheet->get_armed_tracks().size()).arg(recordFormat));
         m_recAction->setChecked(true);
     } else {
         m_recAction->setChecked(false);

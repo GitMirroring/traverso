@@ -39,85 +39,86 @@ class Sheet;
 
 class AudioTrack : public Track
 {
-        Q_OBJECT
+    Q_OBJECT
 
 public :
-        AudioTrack(Sheet* sheet, const QString& name, int height);
-        AudioTrack(Sheet* sheet, const QDomNode node);
-        ~AudioTrack();
+    AudioTrack(Sheet* sheet, const QString& name, int height);
+    AudioTrack(Sheet* sheet, const QDomNode node);
+    ~AudioTrack();
 
-        AudioClip* init_recording();
-        TCommand* add_clip(AudioClip* clip, bool historable=true, bool ismove=false);
-        TCommand* remove_clip(AudioClip* clip, bool historable=true, bool ismove=false);
-        AudioClip* get_clip_after(const TTimeRef& pos);
-        AudioClip* get_clip_before(const TTimeRef& pos);
-        Sheet* get_sheet() const {return m_sheet;}
-        QDomNode get_state(QDomDocument doc, bool istemplate=false);
-        QList<AudioClip*> get_audioclips() const {return  m_audioClips;}
+    AudioClip* init_recording();
+    TCommand* add_clip(AudioClip* clip, bool historable=true, bool ismove=false);
+    TCommand* remove_clip(AudioClip* clip, bool historable=true, bool ismove=false);
+    AudioClip* get_clip_after(const TTimeRef& pos);
+    AudioClip* get_clip_before(const TTimeRef& pos);
+    Sheet* get_sheet() const {return m_sheet;}
+    QDomNode get_state(QDomDocument doc, bool istemplate=false);
+    QList<AudioClip*> get_audioclips() const {return  m_guiAudioClips;}
 
-        // Return the rightmost AudioClip track end location
-        TTimeRef get_end_location() const;
+    // Return the rightmost AudioClip track end location
+    TTimeRef get_end_location() const;
 
-        bool get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& trackExportEndLocation);
-	bool show_clip_volume_automation() const {return m_showClipVolumeAutomation;}
+    bool get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& trackExportEndLocation);
+    bool show_clip_volume_automation() const {return m_showClipVolumeAutomation;}
 
-        int set_state( const QDomNode& node );
+    int set_state( const QDomNode& node );
 
-        int arm();
-        bool armed();
-        int disarm();
-        int process(TProcessCallBackData &processData);
+    int arm();
+    bool armed();
+    int disarm();
+    int process(TProcessCallBackData &processData);
 
-        bool operator<(const AudioTrack &other) {
-            printf("bool operator<(const AudioTrack &other)\n");
-            return this->get_sort_index() < other.get_sort_index();
-        }
+    bool operator<(const AudioTrack &other) {
+        printf("bool operator<(const AudioTrack &other)\n");
+        return this->get_sort_index() < other.get_sort_index();
+    }
 
 
-        AudioTrack* next = nullptr;
+    AudioTrack* next = nullptr;
 
 protected:
-        void add_input_bus(AudioBus* bus);
+    void add_input_bus(AudioBus* bus);
 
 private :
-        Sheet*          m_sheet;
+    Sheet*          m_sheet;
 
-        // only to be accessed/modified by AudioThread
-        TRealTimeLinkedList<AudioClip*> m_rtAudioClipsLinkedList;
+    // only to be accessed/modified by AudioThread
+    TRealTimeLinkedList<AudioClip*> m_rtAudioClips;
 
-        // only to be accessed from GUI thread
-        QList<AudioClip*>   m_audioClips;
+    // only to be accessed from GUI thread
+    QList<AudioClip*>   m_guiAudioClips;
 
-        int             m_numtakes{};
-        bool            m_isArmed{};
-	bool		m_showClipVolumeAutomation{};
+    int             m_numtakes{};
+    bool            m_isArmed{};
+    bool		m_showClipVolumeAutomation{};
 
-        void set_armed(bool armed);
-        void init();
-
-signals:
-        void audioClipAdded(AudioClip* clip);
-        void audioClipRemoved(AudioClip* clip);
-
-        void privateAudioClipAdded(AudioClip* clip);
-        void privateAudioClipRemoved(AudioClip* clip);
-
-        void armedChanged(bool isArmed);
+    void set_armed(bool armed);
+    void init();
 
 public slots:
-        void clip_position_changed(AudioClip* clip);
+    void clip_position_changed(AudioClip* clip);
 
-        TCommand* toggle_arm();
-        TCommand* silence_others();
-	TCommand* toggle_show_clip_volume_automation();
+    TCommand* toggle_arm();
+    TCommand* silence_others();
+    TCommand* toggle_show_clip_volume_automation();
 
 private slots:
-        void private_add_clip(AudioClip* clip);
-        void private_remove_clip(AudioClip* clip);
-        void private_audioclip_added(AudioClip* clip);
-        void private_audioclip_removed(AudioClip* clip);
+    void private_add_clip(AudioClip* clip);
+    void private_remove_clip(AudioClip* clip);
+    void private_audioclip_added(AudioClip* clip);
+    void private_audioclip_removed(AudioClip* clip);
 
-        void private_clip_position_changed(AudioClip* clip);
+    void private_clip_position_changed(AudioClip* clip);
+
+
+signals:
+    void audioClipAdded(AudioClip* clip);
+    void audioClipRemoved(AudioClip* clip);
+
+    void privateAudioClipAdded(AudioClip* clip);
+    void privateAudioClipRemoved(AudioClip* clip);
+
+    void armedChanged(bool isArmed);
 };
 
 class TBounceTrack : public AudioTrack

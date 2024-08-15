@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2006-2007 Remon Sijrier
+Copyright (C) 2006-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -20,27 +20,27 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef LV2_PLUGIN_PROPERTIES_DIALOG_H
-#define LV2_PLUGIN_PROPERTIES_DIALOG_H
+#ifndef T_AUDIO_PLUGIN_PROPERTIES_DIALOG_H
+#define T_AUDIO_PLUGIN_PROPERTIES_DIALOG_H
 
 #include <QDialog>
 
-class Plugin;
-class PluginSlider;
+class TAudioPlugin;
+class TAudioPluginSliderWidget;
 class QPushButton;
 
-class PluginPropertiesDialog : public QDialog
+class TAudioPluginPropertiesDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	PluginPropertiesDialog(QWidget* parent, Plugin* plugin);
-	~PluginPropertiesDialog(){};
+    TAudioPluginPropertiesDialog(QWidget* parent, TAudioPlugin* plugin);
+    ~TAudioPluginPropertiesDialog(){};
 
 
 private:
-	Plugin*	m_plugin;
-	QList<PluginSlider*> m_sliders;
+	TAudioPlugin*	m_plugin;
+	QList<TAudioPluginSliderWidget*> m_sliders;
 	QPushButton* m_bypassButton;
 	
 private slots:

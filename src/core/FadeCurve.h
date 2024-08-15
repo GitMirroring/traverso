@@ -52,7 +52,7 @@ public:
 	QDomNode get_state(QDomDocument doc);
 	int set_state( const QDomNode & node );
 
-    void process(audio_sample_t* gainbuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes);
+    void process(audio_sample_t* curveBuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes);
 	
 	float get_bend_factor() {return m_bendFactor;}
 	float get_strength_factor() {return m_strenghtFactor;}

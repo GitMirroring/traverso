@@ -35,7 +35,7 @@ static const char* CONFIG_FILE_VERSION = "8";
 
 TConfig& config()
 {
-        static TConfig conf;
+    static TConfig conf;
 	return conf;
 }
 

@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInputEventDispatcher.h"
 
 #include "ContextPointer.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "TCommand.h"
 #include "TMoveCommand.h"
 #include "TCommandPlugin.h"
@@ -256,13 +256,13 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
                 TCommandPlugin* plug = tShortCutManager().getCommandPlugin(pluginname);
                 if (!plug)
                 {
-                    info().critical(tr("Command Plugin %1 not found!").arg(pluginname));
+                    tInformUser().critical(tr("Command Plugin %1 not found!").arg(pluginname));
                     continue;
                 }
 
                 if ( ! plug->implements(commandname) )
                 {
-                    info().critical(tr("Plugin %1 doesn't implement Command %2").arg(pluginname, commandname));
+                    tInformUser().critical(tr("Plugin %1 doesn't implement Command %2").arg(pluginname, commandname));
                 } else
                 {
                     PMESG("InputEngine:: Using plugin %s for command %s", QS_C(pluginname), QS_C(shortCutFunction->commandName));
@@ -630,11 +630,11 @@ void TInputEventDispatcher::process_press_event(int keyValue)
 
     if (m_isHolding && shortCut)
     {
-        HoldModifierKey* hmk = new HoldModifierKey;
-        hmk->keycode = keyValue;
-        hmk->wasExecuted = false;
-        hmk->lastTimeExecuted = 0;
-        hmk->shortcut = shortCut;
+        HoldModifierKey hmk;
+        hmk.keycode = keyValue;
+        hmk.wasExecuted = false;
+        hmk.lastTimeExecuted = 0;
+        hmk.shortcut = shortCut;
         m_holdModifierKeys.insert(keyValue, hmk);
         // execute the first one directly, this is needed
         // if the release event comes before the timer actually
@@ -661,8 +661,7 @@ void TInputEventDispatcher::process_release_event(int eventcode)
 
     if (m_isHolding) {
         if (m_holdModifierKeys.contains(eventcode)) {
-            HoldModifierKey* hmk = m_holdModifierKeys.take(eventcode);
-            delete hmk;
+            m_holdModifierKeys.remove(eventcode);
             if (m_holdModifierKeys.isEmpty()) {
                 m_holdKeyRepeatTimer.stop();
             }
@@ -691,20 +690,20 @@ void TInputEventDispatcher::process_hold_modifier_keys()
         return;
     }
 
-    foreach(HoldModifierKey* hmk, m_holdModifierKeys) {
-        if (!hmk->wasExecuted) {
-            hmk->wasExecuted = true;
-            dispatch_shortcut(hmk->shortcut);
-            hmk->lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch() + hmk->shortcut->autorepeatStartDelay;
+    for(HoldModifierKey &hmk : m_holdModifierKeys) {
+        if (!hmk.wasExecuted) {
+            hmk.wasExecuted = true;
+            dispatch_shortcut(hmk.shortcut);
+            hmk.lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch() + hmk.shortcut->autorepeatStartDelay;
             continue;
         }
 
-        trav_time_t timeDiff = (TTimeRef::get_milliseconds_since_epoch() - hmk->lastTimeExecuted);
+        trav_time_t timeDiff = (TTimeRef::get_milliseconds_since_epoch() - hmk.lastTimeExecuted);
         // if timeDiff is very close (-2 ms) to it's interval value, execute it still
         // else the next interval might be too long between the previous one.
-        if ((timeDiff + 2) >= hmk->shortcut->autorepeatInterval) {
-            hmk->lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch();
-            dispatch_shortcut(hmk->shortcut);
+        if ((timeDiff + 2) >= hmk.shortcut->autorepeatInterval) {
+            hmk.lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch();
+            dispatch_shortcut(hmk.shortcut);
         }
     }
 }
@@ -777,9 +776,6 @@ void TInputEventDispatcher::finish_hold()
 void TInputEventDispatcher::clear_hold_modifier_keys()
 {
     m_holdKeyRepeatTimer.stop();
-    foreach(HoldModifierKey* hmk, m_holdModifierKeys) {
-        delete hmk;
-    }
     m_holdModifierKeys.clear();
 }
 

@@ -22,6 +22,7 @@
 #ifndef T_PORTAUDIO_DRIVER_H
 #define T_PORTAUDIO_DRIVER_H
 
+#include "TAudioBuffer.h"
 #include "TAudioDriver.h"
 #include "portaudio.h"
 
@@ -58,8 +59,8 @@ public:
 
 private:
     PaStream* m_paStream;
-    audio_sample_t* m_paInputBuffer;
-    audio_sample_t* m_paOutputBuffer;
+    TAudioBuffer m_paInputBuffer{0, true};
+    TAudioBuffer m_paOutputBuffer{0, true};
 
 
     static int _xrun_callback(void *arg);

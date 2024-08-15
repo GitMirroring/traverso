@@ -886,7 +886,7 @@ void SheetView::browse_to_marker_view(MarkerView *markerView)
 		}
 	}
 
-    keyboard_move_canvas_cursor_to_location(TTimeRef(markerView->get_marker()->get_when()), cpointer().scene_y());
+    keyboard_move_canvas_cursor_to_location(TTimeRef(markerView->get_marker()->get_location()->get_start()), cpointer().scene_y());
 
 	contexts.prepend(markerView);
 	cpointer().set_active_context_items_by_keyboard_input(contexts);

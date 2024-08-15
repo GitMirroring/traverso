@@ -20,7 +20,6 @@
 */
 
 #include "Utils.h"
-#include "Mixer.h"
 
 #include <QString>
 #include <QStringList>
@@ -30,29 +29,6 @@
 #include <QTranslator>
 #include <QDir>
 #include <cmath>
-
-QString coefficient_to_dbstring ( float coeff, int decimals)
-{
-	float db = coefficient_to_dB ( coeff );
-
-	QString gainIndB;
-
-	if (std::fabs(db) < (1/::pow(10, decimals))) {
-		db = 0.0f;
-	}
-
-	if ( db < -99 )
-		gainIndB = "- INF";
-	else if ( db < 0 )
-		gainIndB = "- " + QByteArray::number ( ( -1 * db ), 'f', decimals ) + " dB";
-	else if ( db > 0 )
-		gainIndB = "+ " + QByteArray::number ( db, 'f', decimals ) + " dB";
-	else {
-		gainIndB = "  " + QByteArray::number ( db, 'f', decimals ) + " dB";
-	}
-
-	return gainIndB;
-}
 
 qint64 create_id( )
 {
@@ -107,15 +83,3 @@ QString language_name_from_qm_file(const QString& lang)
 
     return QString("Failed to load language name from qm file");
 }
-
-bool t_MetaobjectInheritsClass(const QMetaObject *mo, const QString& className)
-{
-	while (mo) {
-		if (mo->className() == className) {
-			return true;
-		}
-		mo = mo->superClass();
-	}
-	return false;
-}
-

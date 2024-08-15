@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "AudioSource.h"
 #include "Debugger.h"
-#include "TFileDecodeBuffer.h"
 #include "Utils.h"
 
 #include <samplerate.h>
@@ -75,9 +74,9 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 #endif // endif Q_OS_UNIX
 
 /** \class DiskIO
- *	\brief handles all the read's and write's of AudioSources in it's private thread.
+ *	\brief handles all the read's and write's of AudioSources
  *
- *	Each Sheet class has it's own DiskIO instance.
+ *	Each Sheet class has it's own DiskIO instance (one for Reading one for Writing)
  * 	The DiskIO manages all the AudioSources related to a Sheet, and makes sure the RingBuffers
  * 	from the AudioSources are processed in time. (It at least tries very hard)
  */
@@ -122,9 +121,9 @@ void DiskIO::run()
 
 DiskIO::DiskIO()
 {
-    m_audioThreadProcessedFramesQueue = new moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>(64);
-    m_audioSourcesToBeAdded = new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512);
-    m_audioSourcesToBeRemoved = new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512);
+    m_audioThreadProcessedFramesQueue = std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>(new moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>(64));
+    m_audioSourcesToBeAdded = std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>>(new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512));
+    m_audioSourcesToBeRemoved = std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>>(new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512));
 
     m_seekRequested.store(false);
     m_stopDiskIOThreadRequested = false;
@@ -140,9 +139,6 @@ DiskIO::DiskIO()
     // FIXME: this buffer is never resized and an ugly hack so fix it!
     framebuffer = new audio_sample_t[audiodevice().get_sample_rate() * writebuffertime];
 
-    m_fileDecodeBuffer = new TFileDecodeBuffer;
-    m_resampleDecodeBuffer = new TFileDecodeBuffer;
-
     moveToThread(this);
     start(QThread::HighPriority);
 }
@@ -153,13 +149,7 @@ DiskIO::~DiskIO()
     PENTERDES;
     stop_disk_thread();
 
-    delete m_audioThreadProcessedFramesQueue;
-    delete m_audioSourcesToBeAdded;
-    delete m_audioSourcesToBeRemoved;
-
     delete [] framebuffer;
-    delete m_fileDecodeBuffer;
-    delete m_resampleDecodeBuffer;
 }
 
 
@@ -213,6 +203,8 @@ bool DiskIO::do_work( )
     nframes_t audioThreadProcessedFrames;
     m_audioThreadProcessedFramesQueue->wait_dequeue(audioThreadProcessedFrames);
 
+    auto startTime = TTimeRef::get_nanoseconds_since_epoch();
+
     nframes_t totalFrames = audioThreadProcessedFrames;
     while(m_audioThreadProcessedFramesQueue->try_dequeue(audioThreadProcessedFrames)) {
         totalFrames += audioThreadProcessedFrames;
@@ -226,8 +218,6 @@ bool DiskIO::do_work( )
     while (m_audioSourcesToBeRemoved->try_dequeue(source)) {
         private_remove_from_work(source);
     }
-
-    auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
     if (m_resampleQualityChanged) {
         for (auto source : m_audioSources) {
@@ -271,11 +261,11 @@ void DiskIO::add_audio_source(AudioSource* source)
 {
     PENTER2;
 
-    Q_ASSERT(source->get_channel_count() > 0);
     Q_ASSERT(source);
+    Q_ASSERT(source->get_channel_count() > 0);
 
     source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
-    source->set_decode_buffers(m_fileDecodeBuffer, m_resampleDecodeBuffer);
+    source->set_decode_buffers(&m_fileDecodeBuffer, &m_resampleDecodeBuffer);
 
     source->prepare_rt_buffers(audiodevice().get_buffer_size());
 

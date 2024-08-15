@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 Marker::Marker(TTimeLineRuler* tl, const TTimeRef when, MarkerType type)
 	: ContextItem(tl)
     , m_timeline(tl)
-    , m_when(when)
     , m_location(new TLocation(this))
 	, m_type(type)
 {
@@ -36,6 +35,7 @@ Marker::Marker(TTimeLineRuler* tl, const TTimeRef when, MarkerType type)
     set_history_stack(m_timeline->get_history_stack());
 
     m_location->set_snap_list(m_timeline->get_sheet()->get_snap_list());
+    m_location->set_location(this, when, when);
 
 	m_description = "";
 	m_performer = "";
@@ -62,7 +62,7 @@ QDomNode Marker::get_state(QDomDocument doc)
 {
 	QDomElement domNode = doc.createElement("Marker");
 	
-	domNode.setAttribute("position",  m_when.universal_frame());
+    domNode.setAttribute("position",  m_location->get_start().universal_frame());
 	domNode.setAttribute("description",  m_description);
     domNode.setAttribute("id",  get_id());
 	domNode.setAttribute("performer", m_performer);
@@ -92,7 +92,8 @@ int Marker::set_state(const QDomNode & node)
 
 	m_description = e.attribute("description", "");
 	QString tp = e.attribute("type", "CDTRACK");
-	m_when = TTimeRef(e.attribute("position", "0").toLongLong());
+    TTimeRef location = TTimeRef(e.attribute("position", "0").toLongLong());
+    m_location->set_location(this, location, location);
     set_id(e.attribute("id", "0").toLongLong());
 	m_performer = e.attribute("performer", "");
 	m_composer = e.attribute("composer", "");
@@ -111,8 +112,7 @@ int Marker::set_state(const QDomNode & node)
 
 void Marker::set_when(const TTimeRef& when)
 {
-	m_when = when;
-	emit positionChanged();
+    m_location->set_location(this, when, when);
 }
 
 void Marker::set_description(const QString &s)

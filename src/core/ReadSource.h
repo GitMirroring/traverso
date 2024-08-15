@@ -80,15 +80,15 @@ public :
 	
 	
 private:
-    ResampleAudioReader*	m_resampleAudioReader;
+    ResampleAudioReader*        m_resampleAudioReader;
+    TFileDecodeBuffer*          m_fileDecodeBuffer;
+    TLocation*                  m_location;
 
-    TFileDecodeBuffer*       m_fileDecodeBuffer;
     int                 m_refcount;
     int                 m_error;
     bool                m_silent;
     std::atomic<bool>   m_active;
 
-    TLocation*          m_location;
     TTimeRef            m_length;
     TTimeRef            m_sourceStartLocation;
     TTimeRef            m_aboutOneToFourSecondsTime;

@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Project.h"
 #include "Sheet.h"
 #include "ProjectManager.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 #include "ResourcesManager.h"
 #include "TExportSpecification.h"
@@ -127,6 +127,7 @@ Project::~Project()
 
     cpointer().remove_contextitem(this);
 
+    // Need to delete AudioClips/AudioSource first before deleting Sheets
     delete m_resourcesManager;
 
     for(Sheet* sheet : m_sheets) {
@@ -150,7 +151,7 @@ int Project::create(int sheetcount, int numtracks)
 
     QDir dir;
     if (!dir.mkdir(m_rootDir)) {
-        info().critical(tr("Cannot create dir %1").arg(m_rootDir));
+        tInformUser().critical(tr("Cannot create dir %1").arg(m_rootDir));
         return -1;
     }
 
@@ -186,7 +187,7 @@ int Project::create(int sheetcount, int numtracks)
     QDomDocument doc;
     prepare_audio_device(doc);
 
-    info().information(tr("Created new Project %1").arg(m_name));
+    tInformUser().information(tr("Created new Project %1").arg(m_name));
     return 1;
 }
 
@@ -194,7 +195,7 @@ int Project::create_audiosources_dir()
 {
     QDir dir;
     if (!dir.mkdir(m_sourcesDir)) {
-        info().critical(tr("Cannot create dir %1").arg(m_sourcesDir));
+        tInformUser().critical(tr("Cannot create dir %1").arg(m_sourcesDir));
         return -1;
     }
 
@@ -208,7 +209,7 @@ int Project::create_peakfiles_dir()
     QString peaksDir = m_rootDir + "/peakfiles/";
 
     if (!dir.mkdir(peaksDir)) {
-        info().critical(tr("Cannot create dir %1").arg(peaksDir));
+        tInformUser().critical(tr("Cannot create dir %1").arg(peaksDir));
         return -1;
     }
 
@@ -234,7 +235,7 @@ int Project::load(const QString& projectfile)
 
     if (!file.open(QIODevice::ReadOnly)) {
         m_errorString = tr("Project %1: Cannot open project.tpf file! (Reason: %2)").arg(m_name).arg(file.errorString());
-        info().critical(m_errorString);
+        tInformUser().critical(m_errorString);
         return PROJECT_FILE_COULD_NOT_BE_OPENED;
     }
 
@@ -252,7 +253,7 @@ int Project::load(const QString& projectfile)
     QString errorMsg;
     if (!doc.setContent(&file, &errorMsg)) {
         m_errorString = tr("Project %1: Failed to parse project.tpf file! (Reason: %2)").arg(m_name).arg(errorMsg);
-        info().critical(m_errorString);
+        tInformUser().critical(m_errorString);
         return SETTING_XML_CONTENT_FAILED;
     }
 
@@ -264,7 +265,7 @@ int Project::load(const QString& projectfile)
 
     if (e.attribute("projectfileversion", "-1").toInt() != PROJECT_FILE_VERSION) {
         m_errorString = tr("Project File Version does not match, unable to load Project!");
-        info().warning(m_errorString);
+        tInformUser().warning(m_errorString);
         return PROJECT_FILE_VERSION_MISMATCH;
     }
 
@@ -457,7 +458,7 @@ int Project::load(const QString& projectfile)
         set_current_session(activeSessionId);
     }
 
-    info().information( tr("Project %1 loaded").arg(m_name) );
+    tInformUser().information( tr("Project %1 loaded").arg(m_name) );
 
     emit projectLoadFinished();
 
@@ -473,7 +474,7 @@ int Project::save_from_template_to_project_file(const QString& templateFile, con
 
     if (!file.open(QIODevice::ReadOnly)) {
         m_errorString = tr("Project %1: Cannot open project.tpf file! (Reason: %2)").arg(m_name, file.errorString());
-        info().critical(m_errorString);
+        tInformUser().critical(m_errorString);
         return PROJECT_FILE_COULD_NOT_BE_OPENED;
     }
 
@@ -481,7 +482,7 @@ int Project::save_from_template_to_project_file(const QString& templateFile, con
     QString errorMsg;
     if (!doc.setContent(&file, &errorMsg)) {
         m_errorString = tr("Project %1: Failed to parse project.tpf file! (Reason: %2)").arg(m_name, errorMsg);
-        info().critical(m_errorString);
+        tInformUser().critical(m_errorString);
         return SETTING_XML_CONTENT_FAILED;
     }
 
@@ -491,7 +492,7 @@ int Project::save_from_template_to_project_file(const QString& templateFile, con
 
     if (e.attribute("projectfileversion", "-1").toInt() != PROJECT_FILE_VERSION) {
         m_errorString = tr("Project File Version does not match, unable to load Project!");
-        info().warning(m_errorString);
+        tInformUser().warning(m_errorString);
         return PROJECT_FILE_VERSION_MISMATCH;
     }
 
@@ -501,7 +502,7 @@ int Project::save_from_template_to_project_file(const QString& templateFile, con
 
     if (!data.open( QIODevice::WriteOnly ) ) {
         QString errorstring = FileHelper::fileerror_to_string(data.error());
-        info().critical( tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(saveFileName).arg(errorstring) );
+        tInformUser().critical( tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(saveFileName).arg(errorstring) );
         return -1;
     }
 
@@ -523,7 +524,7 @@ int Project::save(bool autosave)
 
     if (!data.open( QIODevice::WriteOnly ) ) {
         QString errorstring = FileHelper::fileerror_to_string(data.error());
-        info().critical( tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(fileName).arg(errorstring) );
+        tInformUser().critical( tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(fileName).arg(errorstring) );
         return -1;
     }
 
@@ -533,7 +534,7 @@ int Project::save(bool autosave)
     data.close();
 
     if (!autosave) {
-        info().information( tr("Project %1 saved ").arg(m_name) );
+        tInformUser().information( tr("Project %1 saved ").arg(m_name) );
     }
 
     pm().start_incremental_backup(this);
@@ -732,7 +733,7 @@ int Project::disconnect_from_audio_device()
     return 1;
 }
 
-void Project::add_meter(Plugin *meter)
+void Project::add_meter(TAudioPlugin *meter)
 {
     SpectralMeter* sm = qobject_cast<SpectralMeter*>(meter);
     if (sm) {
@@ -973,7 +974,7 @@ void Project::set_title(const QString& title)
     }
 
     if (pm().project_exists(title)) {
-        info().critical(tr("Project with title '%1' allready exists, not setting new title!").arg(title));
+        tInformUser().critical(tr("Project with title '%1' allready exists, not setting new title!").arg(title));
         return;
     }
 
@@ -982,7 +983,7 @@ void Project::set_title(const QString& title)
     QDir dir(m_rootDir);
 
     if ( ! dir.exists() ) {
-        info().critical(tr("Project directory %1 no longer exists, did you rename it? "
+        tInformUser().critical(tr("Project directory %1 no longer exists, did you rename it? "
                            "Shame on you! Please undo that, and come back later to rename your Project...").arg(m_rootDir));
         return;
     }
@@ -1557,9 +1558,9 @@ void Project::set_sheets_are_tracks_folder(bool isFolder)
 {
     m_sheetsAreTrackFolder = isFolder;
     if (m_sheetsAreTrackFolder) {
-        info().information(tr("Sheets behave as Tracks Folder"));
+        tInformUser().information(tr("Sheets behave as Tracks Folder"));
     } else {
-        info().information(tr("Sheets NO longer behave as Tracks Folder"));
+        tInformUser().information(tr("Sheets NO longer behave as Tracks Folder"));
     }
 }
 

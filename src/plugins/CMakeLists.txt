@@ -14,14 +14,14 @@ IF(USE_INTERNAL_SLV2_LIB)
 ENDIF(USE_INTERNAL_SLV2_LIB)
 
 SET(TRAVERSO_PLUGINS_SOURCES
-PluginChain.cpp
-Plugin.cpp
-PluginManager.cpp
-PluginSlider.cpp
+	TAudioPluginChain.cpp TAudioPluginChain.h
+TAudioPlugin.cpp TAudioPlugin.h
+PluginManager.cpp PluginManager.h
+TAudioPluginSliderWidget.cpp TAudioPluginSliderWidget.h
 native/CorrelationMeter.cpp
 native/SpectralMeter.cpp
 native/GainEnvelope.cpp
-PluginPropertiesDialog.cpp
+TAudioPluginPropertiesDialog.cpp TAudioPluginPropertiesDialog.h
 )
 
 IF(HAVE_LILV)
@@ -37,7 +37,11 @@ ENDIF(HAVE_LILV)
 SET(TRAVERSO_PLUGINS_LIBRARY "traversoplugins")
 
 
-ADD_LIBRARY(${TRAVERSO_PLUGINS_LIBRARY} STATIC ${TRAVERSO_PLUGINS_SOURCES})
+ADD_LIBRARY(${TRAVERSO_PLUGINS_LIBRARY} STATIC ${TRAVERSO_PLUGINS_SOURCES}
+	TAudioPluginPort.h TAudioPluginPort.cpp
+	TAudioPluginControlPort.h TAudioPluginControlPort.cpp
+	TAudioPluginInputPort.h TAudioPluginInputPort.cpp
+	TAudioPluginOutputPort.h TAudioPluginOutputPort.cpp)
 
 IF(USE_PCH)
     ADD_DEPENDENCIES(traversoplugins precompiled_headers)

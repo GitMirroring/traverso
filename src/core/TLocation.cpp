@@ -40,6 +40,7 @@ void TLocation::set_snappable(bool snap)
 		snapList->mark_dirty();
 	}
 	m_isSnappable = snap;
+
 }
 
 void TLocation::set_snap_list(SnapList *sList)
@@ -47,12 +48,26 @@ void TLocation::set_snap_list(SnapList *sList)
 	snapList = sList;
 }
 
+void TLocation::set_location(QObject* owner, const TTimeRef &start, TTimeRef end)
+{
+    Q_ASSERT(m_owner != nullptr);
+    Q_ASSERT(owner == m_owner);
+
+    m_start = start;
+    m_end = end;
+
+    emit locationChanged();
+}
+
+
 void TLocation::set_start(QObject* owner, const TTimeRef &start)
 {
     Q_ASSERT(m_owner != nullptr);
     Q_ASSERT(owner == m_owner);
 
     m_start = start;
+
+    emit locationChanged();
 }
 
 void TLocation::set_end(QObject* owner, const TTimeRef &end)
@@ -61,6 +76,8 @@ void TLocation::set_end(QObject* owner, const TTimeRef &end)
     Q_ASSERT(owner == m_owner);
 
     m_end = end;
+
+    emit locationChanged();
 }
 
 bool TLocation::is_snappable() const

@@ -29,15 +29,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QString>
 #include <QObject>
 
-#include "Plugin.h"
+#include "TAudioPlugin.h"
 
 class AudioBus;
 class LV2ControlPort;
-class AudioInputPort;
-class AudioOutputPort;
+class TAudioPluginInputPort;
+class TAudioPluginOutputPort;
 class TSession;
 
-class LV2Plugin : public Plugin
+class LV2Plugin : public TAudioPlugin
 {
 	Q_OBJECT
 
@@ -58,7 +58,7 @@ public:
 	int init();
 	int set_state(const QDomNode & node );
 	
-	static PluginInfo get_plugin_info(const LilvPlugin* plugin);
+	static TAudioPluginInfo get_plugin_info(const LilvPlugin* plugin);
 
 private:
 	QString		m_pluginUri;
@@ -83,7 +83,7 @@ public slots:
 };
 
 
-class LV2ControlPort : public PluginControlPort
+class LV2ControlPort : public TAudioPluginControlPort
 {
 
 public:

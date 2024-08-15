@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "PluginView.h"
+#include "TAudioPluginView.h"
 
 #include <QPainter>
 
@@ -28,18 +28,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 
 #include <Themer.h>
-#include <Plugin.h>
-#include <PluginChain.h>
+#include "TAudioPlugin.h"
+#include "TAudioPluginChain.h"
 #include <Track.h>
 #include <Utils.h>
 
-#include <PluginPropertiesDialog.h>
+#include <TAudioPluginPropertiesDialog.h>
 
 
 
 #include "Debugger.h"
 
-PluginView::PluginView(PluginChainView* parent, PluginChain* chain, Plugin* plugin, int index)
+TAudioPluginView::TAudioPluginView(PluginChainView* parent, TAudioPluginChain* chain, TAudioPlugin* plugin, int index)
 	: ViewItem(parent, plugin)
 	, m_pluginchain(chain)
 	, m_plugin(plugin)
@@ -57,13 +57,13 @@ PluginView::PluginView(PluginChainView* parent, PluginChain* chain, Plugin* plug
 	QFontMetrics fm(themer()->get_font("Plugin:fontscale:name"));
     m_textwidth = fm.horizontalAdvance(m_name);
 
-    PluginView::calculate_bounding_rect();
+    TAudioPluginView::calculate_bounding_rect();
 	
 	connect(m_plugin, SIGNAL(bypassChanged()), this, SLOT(repaint()));
         connect(m_plugin, SIGNAL(activeContextChanged()), this, SLOT(repaint()));
 }
 
-PluginView::~PluginView( )
+TAudioPluginView::~TAudioPluginView( )
 {
 	PENTERDES2;
 	
@@ -71,7 +71,7 @@ PluginView::~PluginView( )
 	
 }
 
-void PluginView::paint(QPainter* painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+void TAudioPluginView::paint(QPainter* painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
@@ -100,43 +100,43 @@ void PluginView::paint(QPainter* painter, const QStyleOptionGraphicsItem *option
 }
 
 
-TCommand * PluginView::edit_properties( )
+TCommand * TAudioPluginView::edit_properties( )
 {
 	if (! m_propertiesDialog) {
-		m_propertiesDialog = new PluginPropertiesDialog(TMainWindow::instance(), m_plugin);
+        m_propertiesDialog = new TAudioPluginPropertiesDialog(TMainWindow::instance(), m_plugin);
 		m_propertiesDialog->setWindowTitle(m_name);
 	} 
 	m_propertiesDialog->show();
     return nullptr;
 }
 
-TCommand* PluginView::remove_plugin()
+TCommand* TAudioPluginView::remove_plugin()
 {
 	return m_pluginchain->remove_plugin(m_plugin);
 }
 
-Plugin * PluginView::get_plugin( )
+TAudioPlugin * TAudioPluginView::get_plugin( )
 {
 	return m_plugin;
 }
 
-void PluginView::set_index(int index)
+void TAudioPluginView::set_index(int index)
 {
     m_index = index;
 }
 
-void PluginView::set_moving(bool move)
+void TAudioPluginView::set_moving(bool move)
 {
     m_moving = move;
     update();
 }
 
-void PluginView::repaint( )
+void TAudioPluginView::repaint( )
 {
 	update();
 }
 
-void PluginView::calculate_bounding_rect()
+void TAudioPluginView::calculate_bounding_rect()
 {
     int height = 24;
     int parentheight = int(m_parentViewItem->boundingRect().height());

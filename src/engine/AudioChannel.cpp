@@ -21,21 +21,13 @@
 
 #include "AudioChannel.h"
 
-#include "Mixer.h"
-
 #include "TVUMonitor.h"
 #include "ThreadSaveMessagePosting.h"
 #include "Utils.h"
-
-#ifdef USE_MLOCK
-#include <sys/mman.h>
-#endif /* USE_MLOCK */
+#include "Debugger.h"
 
 #include <QString>
 
-
-
-#include "Debugger.h"
 
 /**
  * \class AudioChannel
@@ -52,9 +44,6 @@ AudioChannel::AudioChannel(const QString& name, uint channelNumber, int type, qi
     m_number = channelNumber;
     m_type = type;
     m_monitoring = true;
-    m_bufferSize = 0;
-    m_buffer = nullptr;
-    m_mlocked = false;
     m_latency = 0;
     if (id == 0) {
         m_id = create_id();
@@ -66,16 +55,6 @@ AudioChannel::AudioChannel(const QString& name, uint channelNumber, int type, qi
 AudioChannel::~ AudioChannel( )
 {
     PENTERDES2;
-
-#ifdef USE_MLOCK
-
-    if (m_mlocked) {
-        munlock (m_buffer, m_bufferSize);
-    }
-#endif /* USE_MLOCK */
-
-    delete [] m_buffer;
-
 }
 
 void AudioChannel::set_latency( uint latency )
@@ -85,36 +64,13 @@ void AudioChannel::set_latency( uint latency )
 
 void AudioChannel::set_buffer_size( nframes_t size )
 {
-#ifdef USE_MLOCK
-    if (m_mlocked) {
-        if (munlock (m_buffer, m_bufferSize) == -1) {
-            PERROR("Couldn't unlock buffer from memory");
-        }
-        m_mlocked = false;
-    }
-#endif /* USE_MLOCK */
-
-    delete [] m_buffer;
-    m_buffer = new audio_sample_t[size];
-    m_bufferSize = size;
-    silence_buffer(size);
-
-
-#ifdef USE_MLOCK
-    if (mlock (m_buffer, size) == -1) {
-        PERROR("Couldn't lock buffer into memory");
-    } else {
-        m_mlocked = true;
-    }
-#endif /* USE_MLOCK */
+    m_audioBuffer.resize(size);
 }
 
 
 void AudioChannel::process_monitoring(TVUMonitor* monitor)
 {
-    Q_ASSERT(m_bufferSize > 0);
-    float peakValue = 0;
-    peakValue = Mixer::compute_peak( m_buffer, m_bufferSize, peakValue );
+    float peakValue = m_audioBuffer.compute_peak();
 
     if (monitor) {
         monitor->process(peakValue);
@@ -155,9 +111,7 @@ void AudioChannel::remove_monitor(TVUMonitor *monitor)
 
 void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes)
 {
-    Q_ASSERT(nframes <= m_bufferSize);
-
-    memcpy (m_buffer, buf, sizeof(audio_sample_t) * nframes);
+    memcpy (m_audioBuffer.get_buffer(nframes), buf, sizeof(audio_sample_t) * nframes);
 
     if (m_monitoring) {
         process_monitoring();

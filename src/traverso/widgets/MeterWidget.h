@@ -30,7 +30,7 @@
 class MeterView;
 class TSession;
 class Project;
-class Plugin;
+class TAudioPlugin;
 
 class MeterWidget : public ViewPort
 {
@@ -64,7 +64,7 @@ public:
 	
 protected:
 	MeterWidget* 	m_widget;
-	Plugin*		m_meter;
+	TAudioPlugin*		m_meter;
 	QTimer		timer;
 	QTimer		m_delayTimer;
 	Project*	m_project;

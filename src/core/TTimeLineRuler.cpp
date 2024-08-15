@@ -60,7 +60,7 @@ int TTimeLineRuler::set_state(const QDomNode & node)
 
 	while (!markerNode.isNull()) {
 		Marker* marker = new Marker(this, markerNode);
-		connect(marker, SIGNAL(positionChanged()), this, SLOT(marker_position_changed()));
+        connect(marker->get_location(), SIGNAL(locationChanged()), this, SLOT(marker_position_changed()));
 		m_markers.append(marker);
 		markerNode = markerNode.nextSibling();
 	}
@@ -72,7 +72,7 @@ int TTimeLineRuler::set_state(const QDomNode & node)
 
 TCommand * TTimeLineRuler::add_marker(Marker* marker, bool historable)
 {
-	connect(marker, SIGNAL(positionChanged()), this, SLOT(marker_position_changed()));
+    connect(marker->get_location(), SIGNAL(locationChanged()), this, SLOT(marker_position_changed()));
 	
 	AddRemove* cmd;
 	cmd = new AddRemove(this, marker, historable, m_sheet,
@@ -131,9 +131,9 @@ Marker * TTimeLineRuler::get_marker(qint64 id)
 
 bool TTimeLineRuler::get_end_location(TTimeRef& location)
 {
-	foreach(Marker* marker, m_markers) {
+    for(Marker* marker : m_markers) {
 		if (marker->get_type() == Marker::ENDMARKER) {
-			location = marker->get_when();
+            location = marker->get_location()->get_start();
 			return true;
 		}
 	}
@@ -143,12 +143,12 @@ bool TTimeLineRuler::get_end_location(TTimeRef& location)
 
 bool TTimeLineRuler::get_start_location(TTimeRef & location)
 {
-	if (m_markers.size() > 0) {
-		location = m_markers.first()->get_when();
-		return true;
-	}
-	
-	return false;
+    if (m_markers.isEmpty()) {
+        return false;
+    }
+
+    location = m_markers.first()->get_location()->get_start();
+    return true;
 }
 
 
@@ -189,7 +189,7 @@ void TTimeLineRuler::marker_position_changed()
 void TTimeLineRuler::index_markers()
 {
     std::sort(m_markers.begin(), m_markers.end(), [&](Marker* left, Marker* right) {
-        return left->get_when() < right->get_when();
+        return left->get_location()->get_start() < right->get_location()->get_start();
     });
 
 	// let the markers know about their position (index)
@@ -262,7 +262,7 @@ QList<Marker*> TTimeLineRuler::get_cdtrack_list(TExportSpecification *spec)
         }
 
         if (!endmarker) {
-                TTimeRef endlocation = qMax(spec->get_export_end_location(), lst.last()->get_when());
+                TTimeRef endlocation = qMax(spec->get_export_end_location(), lst.last()->get_location()->get_start());
                 lst.push_back(new Marker(this, endlocation, Marker::ENDMARKER));
         }
 
@@ -316,7 +316,7 @@ QString TTimeLineRuler::get_cdrdao_tracklist(TExportSpecification* spec, bool pr
                         //}
                 }
 
-                TTimeRef length = TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(endmarker->get_when())) - TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(startmarker->get_when()));
+                TTimeRef length = TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(endmarker->get_location()->get_start())) - TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(startmarker->get_location()->get_start()));
 
 //		QString s_start = TTimeRef::timeref_to_cd(start);
                 QString s_length = TTimeRef::timeref_to_cd(length);

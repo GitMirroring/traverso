@@ -20,14 +20,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "ResampleAudioReader.h"
+#include "TAudioBuffer.h"
 #include "TFileDecodeBuffer.h"
+#include "Debugger.h"
 #include <samplerate.h>
 
-#define OVERFLOW_SIZE 512
+const nframes_t OVERFLOW_SIZE = 512;
 
-
-
-#include "Debugger.h"
 
 class PrivateSRC {
 public:
@@ -55,7 +54,6 @@ ResampleAudioReader::ResampleAudioReader(const QString& filename)
 
     m_privateSRC = new PrivateSRC;
 	m_isResampleAvailable = false;
-    m_overflowBuffers = nullptr;
 	m_overflowUsed = 0;
 	m_resampleDecodeBufferIsMine = false;
     m_resampleDecodeBuffer = nullptr;
@@ -74,14 +72,7 @@ ResampleAudioReader::~ResampleAudioReader()
         m_privateSRC->srcStates.pop_back();
 	}
     delete m_privateSRC;
-	
-	if (m_overflowBuffers) {
-        for (uint chan = 0; chan < m_channels; chan++) {
-			delete [] m_overflowBuffers[chan];
-		}
-		delete [] m_overflowBuffers;
-	}
-	
+
 	if (m_resampleDecodeBufferIsMine) {
 		delete m_resampleDecodeBuffer;
 	}
@@ -90,14 +81,10 @@ ResampleAudioReader::~ResampleAudioReader()
 
 void ResampleAudioReader::clear_buffers()
 {
-	if (m_overflowBuffers) {
-        for (uint chan = 0; chan < m_channels; chan++) {
-			delete [] m_overflowBuffers[chan];
-		}
-		delete [] m_overflowBuffers;
-        m_overflowBuffers = nullptr;
-	}
-	
+    for (auto audioBuffer : m_overflowBuffers) {
+        audioBuffer.silence_buffer();
+    }
+
 	if (m_reader) {
 		m_reader->clear_buffers();
 	}
@@ -210,7 +197,7 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 	// pass through if not changing sampleRate.
     if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
 		return m_reader->read(buffer, frameCount);
-	} else if (!m_overflowBuffers) {
+    } else if (m_overflowBuffers.size() == 0) {
 		create_overflow_buffers();
 	}
 	
@@ -236,9 +223,8 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 	
 	if (m_overflowUsed) {
 		// Copy pre-existing overflow into the buffer
-        nframes_t nframes =ulong(m_overflowUsed) * sizeof(audio_sample_t);
         for (uint chan = 0; chan < m_channels; chan++) {
-            memcpy(m_resampleDecodeBuffer->get_destination_buffer(chan, nframes), m_overflowBuffers[chan], nframes);
+            memcpy(m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), m_overflowBuffers[chan].get_buffer(m_overflowUsed), m_overflowUsed * sizeof(audio_sample_t));
 		}
 	}
 		
@@ -302,7 +288,7 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 		// If there was overflow, save it for the next read.
         m_resampleDecodeBuffer->set_destination_buffer_read_offset(m_privateSRC->srcData.input_frames_used);
         for (uint chan = 0; chan < m_channels; chan++) {
-            memcpy(m_overflowBuffers[chan], m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
+            memcpy(m_overflowBuffers[chan].get_buffer(nframes_t(m_overflowUsed)), m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
 		}
         m_resampleDecodeBuffer->set_destination_buffer_read_offset(0);
 	}
@@ -345,10 +331,7 @@ nframes_t ResampleAudioReader::file_to_resampled_frame(nframes_t frame)
 
 void ResampleAudioReader::create_overflow_buffers()
 {
-    m_overflowBuffers = new audio_sample_t*[ulong(m_channels)];
-    for (uint chan = 0; chan < m_channels; chan++) {
-		m_overflowBuffers[chan] = new audio_sample_t[OVERFLOW_SIZE];
-	}
+    m_overflowBuffers.resize(m_channels, TAudioBuffer(OVERFLOW_SIZE, false));
 }
 
 void ResampleAudioReader::set_resample_decode_buffer(TFileDecodeBuffer * buffer)
@@ -364,5 +347,15 @@ void ResampleAudioReader::set_resample_decode_buffer(TFileDecodeBuffer * buffer)
 int ResampleAudioReader::get_default_resample_quality()
 {
     return SRC_SINC_FASTEST;
+}
+
+QString ResampleAudioReader::get_convertor_type_name(int convertorType)
+{
+    return QString(src_get_name(convertorType));
+}
+
+QString ResampleAudioReader::get_convertor_type_description(int convertorType)
+{
+    return QString(src_get_description(convertorType));
 }
 

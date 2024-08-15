@@ -5,7 +5,7 @@
 #include "CurveView.h"
 #include "FadeCurveView.h"
 #include "MarkerView.h"
-#include "PluginView.h"
+#include "TAudioPluginView.h"
 #include "PluginChainView.h"
 #include "SheetView.h"
 #include "TimeLineView.h"

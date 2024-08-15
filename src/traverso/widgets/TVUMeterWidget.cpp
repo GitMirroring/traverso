@@ -523,7 +523,7 @@ void VUMeterLevel::paintEvent( QPaintEvent*  )
 	QPainter directpainter(this);
 
 	// convert the peak value to dB and make sure it's in a valid range
-	float dBVal = coefficient_to_dB(peak);
+	float dBVal = Mixer::coefficient_to_dB(peak);
 	if (dBVal > 6.0) {
 		dBVal = 6.0;
 	}
@@ -558,7 +558,7 @@ void VUMeterLevel::paintEvent( QPaintEvent*  )
 
 	// convert dB values into widget position
 	int meterLevel = get_meter_position(dBVal);
-	int rmsLevel = get_meter_position(coefficient_to_dB(rms));
+	int rmsLevel = get_meter_position(Mixer::coefficient_to_dB(rms));
 	int peakHoldLevel = get_meter_position(peakHoldValue);
 
 	// draw levels

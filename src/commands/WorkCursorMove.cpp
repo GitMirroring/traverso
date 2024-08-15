@@ -190,7 +190,7 @@ void WorkCursorMove::browse_to_next_marker()
 
 	Marker* next = nullptr;
 	foreach(Marker* marker, markers) {
-		if (marker->get_when() > m_session->get_work_location()) {
+        if (marker->get_location()->get_start() > m_session->get_work_location()) {
 			next = marker;
 			break;
 		}
@@ -204,7 +204,7 @@ void WorkCursorMove::browse_to_next_marker()
 				break;
 			}
 		}
-		do_keyboard_move(next->get_when());
+        do_keyboard_move(next->get_location()->get_start());
 	}
 
 	cpointer().set_active_context_items_by_keyboard_input(contexts);
@@ -226,7 +226,7 @@ void WorkCursorMove::browse_to_previous_marker()
 	Marker* prev = nullptr;
 	for (int i=markers.size() - 1; i>= 0; --i) {
 		Marker* marker = markers.at(i);
-		if (marker->get_when() < m_session->get_work_location()) {
+        if (marker->get_location()->get_start() < m_session->get_work_location()) {
 			prev = marker;
 			break;
 		}
@@ -241,7 +241,7 @@ void WorkCursorMove::browse_to_previous_marker()
 			}
 		}
 
-		do_keyboard_move(prev->get_when());
+        do_keyboard_move(prev->get_location()->get_start());
 	}
 
 	cpointer().set_active_context_items_by_keyboard_input(contexts);

@@ -30,16 +30,12 @@
 
 class QString;
 
-QString coefficient_to_dbstring(float coeff, int decimals=1);
 QDateTime extract_date_time(qint64 id);
 
 qint64 create_id();
 
 QStringList find_qm_files();
 QString language_name_from_qm_file(const QString& lang);
-
-bool t_MetaobjectInheritsClass(const QMetaObject* mo, const QString & className);
-
 
 static inline unsigned int is_power_of_two (unsigned int n)
 {

@@ -27,8 +27,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Track.h"
 #include "ProjectManager.h"
 #include "Project.h"
-#include "Plugin.h"
-#include "PluginChain.h"
+#include "TAudioPlugin.h"
+#include "TAudioPluginChain.h"
 #include "Sheet.h"
 #include "TBusTrack.h"
 #include "Utils.h"
@@ -62,7 +62,7 @@ TTrackManagerDialog::TTrackManagerDialog(Track *track, QWidget *parent)
         update_pre_post_fader_plugins_widget_view();
 
         trackPanSlider->setValue(int(m_track->get_pan() * 64));
-        trackGainSlider->setValue(int(coefficient_to_dB(m_track->get_gain()) * 10.f));
+        trackGainSlider->setValue(int(Mixer::coefficient_to_dB(m_track->get_gain()) * 10.f));
 
         update_gain_indicator();
         update_pan_indicator();
@@ -383,8 +383,8 @@ void TTrackManagerDialog::update_routing_input_output_widget_view()
 void TTrackManagerDialog::update_pre_post_fader_plugins_widget_view()
 {
     postFaderPluginsListWidget->clear();
-    QList<Plugin*> postFaderPlugins = m_track->get_plugin_chain()->get_post_fader_plugins();
-    foreach(Plugin* plugin, postFaderPlugins) {
+    QList<TAudioPlugin*> postFaderPlugins = m_track->get_plugin_chain()->get_post_fader_plugins();
+    foreach(TAudioPlugin* plugin, postFaderPlugins) {
             QListWidgetItem* item = new QListWidgetItem(postFaderPluginsListWidget);
             item->setText(plugin->get_name());
             item->setData(Qt::UserRole, plugin->get_id());
@@ -392,8 +392,8 @@ void TTrackManagerDialog::update_pre_post_fader_plugins_widget_view()
 
 
     preFaderPluginsListWidget->clear();
-    QList<Plugin*> preFaderPlugins = m_track->get_plugin_chain()->get_pre_fader_plugins();
-    foreach(Plugin* plugin, preFaderPlugins) {
+    QList<TAudioPlugin*> preFaderPlugins = m_track->get_plugin_chain()->get_pre_fader_plugins();
+    foreach(TAudioPlugin* plugin, preFaderPlugins) {
             QListWidgetItem* item = new QListWidgetItem(preFaderPluginsListWidget);
             item->setText(plugin->get_name());
             item->setData(Qt::UserRole, plugin->get_id());
@@ -453,8 +453,7 @@ void TTrackManagerDialog::on_routingOutputRemoveButton_clicked()
 
 void TTrackManagerDialog::update_gain_indicator()
 {
-        gainLabel->setText(coefficient_to_dbstring(m_track->get_gain()));
-
+        gainLabel->setText(m_track->get_gain_db_string());
 }
 
 void TTrackManagerDialog::update_pan_indicator()
@@ -470,7 +469,7 @@ void TTrackManagerDialog::pre_sends_selection_changed()
                 qint64 sendId = selectedItems.first()->data(Qt::UserRole).toLongLong();
                 m_selectedPreSend = m_track->get_send(sendId);
                 if (m_selectedPreSend) {
-                        preSendsGainSlider->setValue(int(coefficient_to_dB(m_selectedPreSend->get_gain()) * 10.f));
+                        preSendsGainSlider->setValue(int(Mixer::coefficient_to_dB(m_selectedPreSend->get_gain()) * 10.f));
                         postSendsPanSlider->setValue(int(m_selectedPreSend->get_pan() * 64));
                 }
         } else {
@@ -487,7 +486,7 @@ void TTrackManagerDialog::post_sends_selection_changed()
                 qint64 sendId = selectedItems.first()->data(Qt::UserRole).toLongLong();
                 m_selectedPostSend = m_track->get_send(sendId);
                 if (m_selectedPostSend) {
-                        postSendsGainSlider->setValue(int(coefficient_to_dB(m_selectedPostSend->get_gain()) * 10));
+                        postSendsGainSlider->setValue(int(Mixer::coefficient_to_dB(m_selectedPostSend->get_gain()) * 10));
                         postSendsPanSlider->setValue(int(m_selectedPostSend->get_pan() * 64));
                 }
         } else {

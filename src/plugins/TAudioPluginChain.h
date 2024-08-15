@@ -20,59 +20,59 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef PLUGIN_CHAIN_H
-#define PLUGIN_CHAIN_H
+#ifndef T_AUDIO_PLUGIN_CHAIN_H
+#define T_AUDIO_PLUGIN_CHAIN_H
 
 #include <ContextItem.h>
 #include <QList>
 #include <QDomNode>
-#include "Plugin.h"
+#include "TAudioPlugin.h"
 #include "GainEnvelope.h"
 #include "TRealTimeLinkedList.h"
 
 class TSession;
 class AudioBus;
 
-class PluginChain : public ContextItem
+class TAudioPluginChain : public ContextItem
 {
     Q_OBJECT
 
 public:
-    PluginChain(ContextItem* parent, TSession* session=nullptr);
-    ~PluginChain();
+    TAudioPluginChain(ContextItem* parent, TSession* session=nullptr);
+    ~TAudioPluginChain();
 
     QDomNode get_state(QDomDocument doc);
     int set_state(const QDomNode & node );
 
-    TCommand* add_plugin(Plugin* plugin, bool historable=true);
-    TCommand* remove_plugin(Plugin* plugin, bool historable=true);
+    TCommand* add_plugin(TAudioPlugin* plugin, bool historable=true);
+    TCommand* remove_plugin(TAudioPlugin* plugin, bool historable=true);
     void process_pre_fader(AudioBus* bus, nframes_t nframes);
     int process_post_fader(AudioBus* bus, nframes_t nframes);
 
     void set_session(TSession* session);
 
-    QList<Plugin*>  get_plugins() const {return m_plugins;}
-    QList<Plugin*>  get_pre_fader_plugins();
-    QList<Plugin*>  get_post_fader_plugins();
+    QList<TAudioPlugin*>  get_plugins() const {return m_plugins;}
+    QList<TAudioPlugin*>  get_pre_fader_plugins();
+    QList<TAudioPlugin*>  get_post_fader_plugins();
     GainEnvelope*   get_fader() const {return m_fader;}
 
 private:
-    TRealTimeLinkedList<Plugin*>	m_rtPlugins;
-    QList<Plugin*>  m_plugins;
+    TRealTimeLinkedList<TAudioPlugin*>	m_rtPlugins;
+    QList<TAudioPlugin*>  m_plugins;
     GainEnvelope*	m_fader;
     TSession*	m_session{};
 
 private slots:
-    void private_add_plugin(Plugin* plugin);
-    void private_remove_plugin(Plugin* plugin);
-    void private_plugin_added(Plugin* plugin);
-    void private_plugin_removed(Plugin* plugin);
+    void private_add_plugin(TAudioPlugin* plugin);
+    void private_remove_plugin(TAudioPlugin* plugin);
+    void private_plugin_added(TAudioPlugin* plugin);
+    void private_plugin_removed(TAudioPlugin* plugin);
 
 signals:
-    void pluginAdded(Plugin* plugin);
-    void pluginRemoved(Plugin* plugin);
-    void privatePluginRemoved(Plugin*);
-    void privatePluginAdded(Plugin*);
+    void pluginAdded(TAudioPlugin* plugin);
+    void pluginRemoved(TAudioPlugin* plugin);
+    void privatePluginRemoved(TAudioPlugin*);
+    void privatePluginAdded(TAudioPlugin*);
 };
 
 #endif

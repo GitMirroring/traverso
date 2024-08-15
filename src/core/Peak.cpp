@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ProjectManager.h"
 #include "ReadSource.h"
 #include "ResourcesManager.h"
+#include "TAudioBuffer.h"
 #include "TFileDecodeBuffer.h"
 #include "Utils.h"
 #include "defines.h"
@@ -439,7 +440,8 @@ int Peak::finish_processing()
         // The routine below uses a different total buffer size calculation
         // which might end up with a size >= totalbufferSize !!!
         // Need to look into that, for now + 2 seems to work...
-        peak_data_t* saveBuffer = new peak_data_t[totalBufferSize + 1*sizeof(peak_data_t)];
+        totalBufferSize += 4;
+        peak_data_t* saveBuffer = new peak_data_t[totalBufferSize * sizeof(peak_data_t)];
 
         int read = data->file.read((char*)saveBuffer, sizeof(peak_data_t) * data->pd->processBufferSize) / sizeof(peak_data_t);
 
@@ -464,7 +466,11 @@ int Peak::finish_processing()
             int count = 0;
 
             do {
-                Q_ASSERT(nextLevelBufferPos <= totalBufferSize);
+                if((nextLevelBufferPos + 1) > totalBufferSize) {
+                    qFatal("nextLeveBufferPos + 1 = %d, totalBufferSize: %d, count %d, preLevelSize %d\n", nextLevelBufferPos + 1, totalBufferSize, count, prevLevelSize);
+                }
+                Q_ASSERT((nextLevelBufferPos + 1) <= totalBufferSize);
+                Q_ASSERT((prevLevelBufferPos + 3) <= totalBufferSize);
                 saveBuffer[nextLevelBufferPos] = (peak_data_t) f_max(saveBuffer[prevLevelBufferPos], saveBuffer[prevLevelBufferPos + 2]);
                 saveBuffer[nextLevelBufferPos + 1] = (peak_data_t) f_max(saveBuffer[prevLevelBufferPos + 1], saveBuffer[prevLevelBufferPos + 3]);
                 nextLevelBufferPos += 2;
@@ -672,7 +678,8 @@ audio_sample_t Peak::get_max_amplitude(const TTimeRef &startlocation, const TTim
     uint count = (endframe / NORMALIZE_CHUNK_SIZE) - startpos;
 
     uint buffersize = count < NORMALIZE_CHUNK_SIZE*2 ? NORMALIZE_CHUNK_SIZE*2 : count;
-    audio_sample_t* readbuffer =  new audio_sample_t[buffersize];
+
+    TAudioBuffer audioReadBuffer(buffersize, false);
 
     audio_sample_t maxamp = 0;
     TFileDecodeBuffer decodebuffer;
@@ -710,16 +717,14 @@ audio_sample_t Peak::get_max_amplitude(const TTimeRef &startlocation, const TTim
     foreach(ChannelData* data, m_channelData) {
         data->file.seek(data->headerdata.normValuesDataOffset + (startpos * sizeof(audio_sample_t)));
 
-        int read = data->file.read((char*)readbuffer, sizeof(audio_sample_t) * count) / sizeof(audio_sample_t);
+        int read = data->file.read((char*)audioReadBuffer.get_buffer(buffersize), sizeof(audio_sample_t) * count) / sizeof(audio_sample_t);
 
         if (read != (int)count) {
             printf("Peak::get_max_amplitude: could only read %d, %d requested\n", read, count);
         }
 
-        maxamp = Mixer::compute_peak(readbuffer, read, maxamp);
+        maxamp = audioReadBuffer.compute_peak(read, maxamp);
     }
-
-    delete [] readbuffer;
 
     return maxamp;
 }

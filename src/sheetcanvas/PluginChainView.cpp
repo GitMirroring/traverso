@@ -25,16 +25,14 @@
 
 #include "SheetView.h"
 #include "ClipsViewPort.h"
-#include "PluginView.h"
-#include "PluginChain.h"
-#include "Plugin.h"
-
-
+#include "TAudioPluginView.h"
+#include "TAudioPluginChain.h"
+#include "TAudioPlugin.h"
 
 #include "Debugger.h"
 
 
-PluginChainView::PluginChainView(SheetView* sv, ViewItem* parent, PluginChain* chain)
+PluginChainView::PluginChainView(SheetView* sv, ViewItem* parent, TAudioPluginChain* chain)
     : ViewItem(parent, parent)
     , m_pluginchain(chain)
 {
@@ -48,8 +46,8 @@ PluginChainView::PluginChainView(SheetView* sv, ViewItem* parent, PluginChain* c
         add_plugin(plugin);
     }
 
-    connect(chain, SIGNAL(pluginAdded(Plugin*)), this, SLOT(add_plugin(Plugin*)));
-    connect(chain, SIGNAL(pluginRemoved(Plugin*)), this, SLOT(remove_plugin(Plugin*)));
+    connect(chain, SIGNAL(pluginAdded(TAudioPlugin*)), this, SLOT(add_plugin(TAudioPlugin*)));
+    connect(chain, SIGNAL(pluginRemoved(TAudioPlugin*)), this, SLOT(remove_plugin(TAudioPlugin*)));
     connect(m_sv->get_clips_viewport()->horizontalScrollBar(), SIGNAL(valueChanged(int)),
             this, SLOT(scrollbar_value_changed(int)));
 }
@@ -59,12 +57,12 @@ PluginChainView::~PluginChainView( )
     PENTERDES2;
 }
 
-void PluginChainView::add_plugin( Plugin * plugin )
+void PluginChainView::add_plugin( TAudioPlugin * plugin )
 {
-    PluginView* view = new PluginView(this, m_pluginchain, plugin, m_pluginViews.size());
+    TAudioPluginView* view = new TAudioPluginView(this, m_pluginchain, plugin, m_pluginViews.size());
 
     int x = 6;
-    foreach(PluginView* view, m_pluginViews) {
+    foreach(TAudioPluginView* view, m_pluginViews) {
         x += int(view->boundingRect().width()) + 6;
     }
 
@@ -77,9 +75,9 @@ void PluginChainView::add_plugin( Plugin * plugin )
     }
 }
 
-void PluginChainView::remove_plugin( Plugin * plugin )
+void PluginChainView::remove_plugin( TAudioPlugin * plugin )
 {
-    foreach(PluginView* view, m_pluginViews) {
+    foreach(TAudioPluginView* view, m_pluginViews) {
         if (view->get_plugin() == plugin) {
             m_pluginViews.removeAll(view);
             delete view;
@@ -91,7 +89,7 @@ void PluginChainView::remove_plugin( Plugin * plugin )
     }
 
     int x = 6;
-    foreach(PluginView* view, m_pluginViews) {
+    foreach(TAudioPluginView* view, m_pluginViews) {
         view->setPos(x, m_boundingRect.height() - view->boundingRect().height());
         x += int(view->boundingRect().width()) + 6;
     }

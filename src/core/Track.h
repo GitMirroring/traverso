@@ -41,7 +41,7 @@ public:
     virtual ~Track ();
 
     enum TRACKTYPE{
-        AUDIO,
+        AUDIO = 0,
         BUS = 1,
         BOUNCE = 2
     };

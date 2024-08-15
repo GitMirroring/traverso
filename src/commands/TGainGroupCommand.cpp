@@ -76,7 +76,8 @@ void TGainGroupCommand::set_cursor_shape(int useX, int useY)
 int TGainGroupCommand::begin_hold()
 {
     m_origPos = cpointer().scene_pos();
-    cpointer().set_canvas_cursor_text(coefficient_to_dbstring(Gain::get_gain_from_object(m_contextItem)));
+
+    cpointer().set_canvas_cursor_text(get_db_string_from_object());
     return 1;
 }
 
@@ -149,7 +150,7 @@ int TGainGroupCommand::jog()
     cpointer().set_canvas_cursor_pos(m_origPos);
 
     // Update the vieport's hold cursor!
-    cpointer().set_canvas_cursor_text(coefficient_to_dbstring(Gain::get_gain_from_object(m_contextItem)));
+    cpointer().set_canvas_cursor_text(get_db_string_from_object());
 
     return 1;
 }
@@ -211,6 +212,19 @@ void TGainGroupCommand::add_command(Gain *cmd) {
     m_gainCommands.append(cmd);
 }
 
+QString TGainGroupCommand::get_db_string_from_object()
+{
+    QString dbString;
+
+    if ( ! QMetaObject::invokeMethod(m_contextItem, "get_gain_db_string",
+                                   Qt::DirectConnection,
+                                   Q_RETURN_ARG(QString, dbString)) ) {
+        PWARN("Gain::get_gain_from_object QMetaObject::invokeMethod failed");
+    }
+
+    return dbString;
+}
+
 
 void TGainGroupCommand::increase_gain(  )
 {
@@ -223,7 +237,7 @@ void TGainGroupCommand::increase_gain(  )
     }
 
     // Update the vieport's hold cursor with the _actuall_ gain value!
-    cpointer().set_canvas_cursor_text(coefficient_to_dbstring(Gain::get_gain_from_object(m_contextItem)));
+    cpointer().set_canvas_cursor_text(get_db_string_from_object());
 }
 
 void TGainGroupCommand::decrease_gain()
@@ -237,7 +251,7 @@ void TGainGroupCommand::decrease_gain()
     }
 
     // Update the vieport's hold cursor with the _actuall_ gain value!
-    cpointer().set_canvas_cursor_text(coefficient_to_dbstring(Gain::get_gain_from_object(m_contextItem)));
+    cpointer().set_canvas_cursor_text(get_db_string_from_object());
 }
 
 void TGainGroupCommand::reset_gain()
@@ -247,7 +261,7 @@ void TGainGroupCommand::reset_gain()
     }
 
     // Update the vieport's hold cursor with the _actuall_ gain value!
-    cpointer().set_canvas_cursor_text(coefficient_to_dbstring(1.0));
+    cpointer().set_canvas_cursor_text(get_db_string_from_object());
 }
 
 void TGainGroupCommand::toggle_primary_gain_only()

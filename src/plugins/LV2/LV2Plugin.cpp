@@ -50,7 +50,7 @@ enum PortType {
 
 
 LV2Plugin::LV2Plugin(TSession* session, bool slave)
-        : Plugin(session)
+        : TAudioPlugin(session)
     , m_plugin(nullptr)
 {
 	m_isSlave = slave;
@@ -58,7 +58,7 @@ LV2Plugin::LV2Plugin(TSession* session, bool slave)
 
 
 LV2Plugin::LV2Plugin(TSession* session, char* pluginUri)
-        : Plugin(session)
+        : TAudioPlugin(session)
     , m_pluginUri(pluginUri)
     , m_plugin(nullptr)
 	, m_isSlave(false)
@@ -78,7 +78,7 @@ LV2Plugin::~LV2Plugin()
 
 QDomNode LV2Plugin::get_state( QDomDocument doc )
 {
-	QDomElement node = Plugin::get_state(doc).toElement();
+	QDomElement node = TAudioPlugin::get_state(doc).toElement();
 	
 	node.setAttribute("type", "LV2Plugin");
 	node.setAttribute("uri", m_pluginUri);
@@ -89,7 +89,7 @@ QDomNode LV2Plugin::get_state( QDomDocument doc )
 
 int LV2Plugin::set_state(const QDomNode & node )
 {
-	Plugin::set_state(node);
+	TAudioPlugin::set_state(node);
 	
 	QDomElement e = node.toElement();
 	
@@ -119,7 +119,7 @@ int LV2Plugin::set_state(const QDomNode & node )
 		QDomNode portNode = audioInputPortsNode.firstChild();
 		
 		while (!portNode.isNull()) {
-			AudioInputPort* port = new AudioInputPort(this);
+			TAudioPluginInputPort* port = new TAudioPluginInputPort(this);
 			port->set_state(portNode);
 			m_audioInputPorts.append(port);
 			
@@ -133,7 +133,7 @@ int LV2Plugin::set_state(const QDomNode & node )
 		QDomNode portNode = audioOutputPortsNode.firstChild();
 		
 		while (!portNode.isNull()) {
-			AudioOutputPort* port = new AudioOutputPort(this);
+			TAudioPluginOutputPort* port = new TAudioPluginOutputPort(this);
 			port->set_state(portNode);
 			m_audioOutputPorts.append(port);
 			
@@ -252,7 +252,7 @@ void LV2Plugin::process(AudioBus* bus, nframes_t nframes)
 	}
 	
 	for (int i=0; i<m_audioInputPorts.size(); ++i) {
-		AudioInputPort* port = m_audioInputPorts.at(i);
+		TAudioPluginInputPort* port = m_audioInputPorts.at(i);
 		int index = port->get_index();
 		// If we are a slave, then we are meant to operate on the second channel of the Bus!
 		if (m_isSlave) i = 1;
@@ -260,7 +260,7 @@ void LV2Plugin::process(AudioBus* bus, nframes_t nframes)
 	}
 	
 	for (int i=0; i<m_audioOutputPorts.size(); ++i) {
-		AudioOutputPort* port = m_audioOutputPorts.at(i);
+		TAudioPluginOutputPort* port = m_audioOutputPorts.at(i);
 		int index = port->get_index();
 		// If we are a slave, then we are meant to operate on the second channel of the Bus!
 		if (m_isSlave) i = 1;
@@ -323,10 +323,10 @@ LV2ControlPort* LV2Plugin::create_port(uint32_t portIndex, float defaultValue)
 		case AUDIO:
 			switch (direction) {
 			case INPUT:
-                m_audioInputPorts.append(new AudioInputPort(this, int(portIndex)));
+                m_audioInputPorts.append(new TAudioPluginInputPort(this, int(portIndex)));
 				break;
 			case OUTPUT:
-                m_audioOutputPorts.append(new AudioOutputPort(this, int(portIndex)));
+                m_audioOutputPorts.append(new TAudioPluginOutputPort(this, int(portIndex)));
 				break;
 			}
 			break;
@@ -352,7 +352,7 @@ QString LV2Plugin::get_name( )
 
 
 LV2ControlPort::LV2ControlPort(LV2Plugin* plugin, int index, float value)
-	: PluginControlPort(plugin, index, value)
+	: TAudioPluginControlPort(plugin, index, value)
 	, m_lv2plugin(plugin)
 {
     lilv_instance_connect_port(m_lv2plugin->get_instance(), uint32_t(m_index), &m_value);
@@ -360,7 +360,7 @@ LV2ControlPort::LV2ControlPort(LV2Plugin* plugin, int index, float value)
 }
 
 LV2ControlPort::LV2ControlPort( LV2Plugin * plugin, const QDomNode node )
-	: PluginControlPort(plugin, node)
+	: TAudioPluginControlPort(plugin, node)
 	, m_lv2plugin(plugin)
 {
     lilv_instance_connect_port(m_lv2plugin->get_instance(), uint32_t(m_index), &m_value);
@@ -380,7 +380,7 @@ void LV2ControlPort::init()
 
 QDomNode LV2ControlPort::get_state( QDomDocument doc )
 {
-	return PluginControlPort::get_state(doc);
+	return TAudioPluginControlPort::get_state(doc);
 }
 
 
@@ -458,16 +458,16 @@ LV2Plugin * LV2Plugin::create_copy()
 
 TCommand * LV2Plugin::toggle_bypass()
 {
-	Plugin::toggle_bypass();
+	TAudioPlugin::toggle_bypass();
 	if (m_slave) {
 		m_slave->toggle_bypass();
 	}
     return  nullptr;
 }
 
-PluginInfo LV2Plugin::get_plugin_info(const LilvPlugin* plugin)
+TAudioPluginInfo LV2Plugin::get_plugin_info(const LilvPlugin* plugin)
 {
-	PluginInfo info;
+	TAudioPluginInfo info;
 	info.name = lilv_node_as_string(lilv_plugin_get_name(plugin));
 	info.uri = lilv_node_as_string(lilv_plugin_get_uri(plugin));
 	

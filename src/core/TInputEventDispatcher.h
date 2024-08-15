@@ -92,7 +92,7 @@ private:
 
     QList<int>		m_modifierKeys;
     QList<int>		m_activeModifierKeys;
-    QHash<int, HoldModifierKey*>  m_holdModifierKeys;
+    QHash<int, HoldModifierKey>  m_holdModifierKeys;
 
     QHash<QString, int>	m_modes;
     TCommand* 		m_holdingCommand;

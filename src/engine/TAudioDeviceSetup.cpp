@@ -77,7 +77,7 @@ int TAudioDeviceSetup::set_dither_shape(const QString &ditherShape)
 QList<uint> TAudioDeviceSetup::get_buffer_sizes_list()
 {
     if (periodBufferSizesList.isEmpty()) {
-        periodBufferSizesList << 32 << 64 << 128 << 256 << 512 << 1024 << 2048 << 4096 << 8192;
+        periodBufferSizesList << 16 << 32 << 64 << 128 << 256 << 512 << 1024 << 2048 << 4096 << 8192;
     }
 
     return periodBufferSizesList;

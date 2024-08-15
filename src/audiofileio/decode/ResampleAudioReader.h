@@ -23,8 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define RESAMPLEAUDIOREADER_H
 
 #include <AbstractAudioReader.h>
+#include <samplerate.h>
 
 class PrivateSRC;
+class TAudioBuffer;
 
 class ResampleAudioReader : public AbstractAudioReader
 {
@@ -51,7 +53,12 @@ public:
 	void set_resample_decode_buffer(TFileDecodeBuffer* buffer);
 
     static int get_default_resample_quality();
-	
+    static QString get_convertor_type_name(int convertorType);
+    static QString get_convertor_type_description(int convertorType);
+    static QList<int> get_convertor_types()  {
+        return {SRC_SINC_BEST_QUALITY, SRC_SINC_MEDIUM_QUALITY, SRC_SINC_FASTEST, SRC_ZERO_ORDER_HOLD, SRC_LINEAR};
+    }
+
 protected:
 	void reset();
 	
@@ -63,7 +70,7 @@ protected:
 	
 	AbstractAudioReader*	m_reader;
     PrivateSRC*             m_privateSRC;
-    audio_sample_t**        m_overflowBuffers;
+    QList<TAudioBuffer>     m_overflowBuffers;
     long                    m_overflowUsed;
     uint                    m_outputSampleRate;
     int                     m_convertorType;

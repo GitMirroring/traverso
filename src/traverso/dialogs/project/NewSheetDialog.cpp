@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "NewSheetDialog.h"
 
-#include "Information.h"
+#include "TInformUser.h"
 #include "Project.h"
 #include "Sheet.h"
 #include "TConfig.h"
@@ -51,7 +51,7 @@ NewSheetDialog::NewSheetDialog(QWidget * parent)
 void NewSheetDialog::accept()
 {
 	if (! m_project) {
-		info().information(tr("I can't create a new Sheet if there is no Project loaded!!"));
+		tInformUser().information(tr("I can't create a new Sheet if there is no Project loaded!!"));
 		return;
 	}
 	

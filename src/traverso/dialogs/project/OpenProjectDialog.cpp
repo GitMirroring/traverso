@@ -29,13 +29,10 @@
 #include <QFileDialog>
 #include <QHeaderView>
 
-
-#include <Information.h>
+#include "TInformUser.h"
 #include <ProjectManager.h>
 #include <Project.h>
 #include <Utils.h>
-
-
 
 #include "Debugger.h"
 
@@ -165,8 +162,8 @@ void OpenProjectDialog::on_loadProjectButton_clicked( )
 	}
 
 	if (title.isEmpty()) {
-		info().warning(tr("No Project selected!") );
-		info().information(tr("Select a project and click the 'Load' button again") );
+		tInformUser().warning(tr("No Project selected!") );
+		tInformUser().information(tr("Select a project and click the 'Load' button again") );
 		return;
 	}
 	
@@ -188,7 +185,7 @@ void OpenProjectDialog::on_loadProjectButton_clicked( )
 	// Note: this shouldn't be needed really, the projects in the view
 	// should exist, but just in case someone removed it, you never know!
 	if (!pm().project_exists(title)) {
-		info().warning(tr("Project %1 does not exist, did you rename or remove the directory what that name ?").arg(title));
+		tInformUser().warning(tr("Project %1 does not exist, did you rename or remove the directory what that name ?").arg(title));
 		return;
 	}
 	
@@ -205,13 +202,13 @@ void OpenProjectDialog::on_deleteProjectbutton_clicked( )
 	QString title = selectedProjectName->text();
 
 	if (title.isEmpty()) {
-		info().information(tr("You must supply a name for the project!") );
+		tInformUser().information(tr("You must supply a name for the project!") );
 		return;
 	}
 
         // first test if project exists
 	if (!pm().project_exists(title)) {
-		info().warning(tr("Project does not exist! (%1)").arg(title));
+		tInformUser().warning(tr("Project does not exist! (%1)").arg(title));
 		return;
 	}
 

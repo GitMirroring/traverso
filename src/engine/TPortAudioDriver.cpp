@@ -41,8 +41,6 @@ TPortAudioDriver::TPortAudioDriver( TAudioDevice * device)
     run_cycle = RunCycleCallback(this, &TPortAudioDriver::_run_cycle);
 
     m_paStream = nullptr;
-    m_paInputBuffer = nullptr;
-    m_paOutputBuffer = nullptr;
 }
 
 TPortAudioDriver::~TPortAudioDriver( )
@@ -51,9 +49,6 @@ TPortAudioDriver::~TPortAudioDriver( )
 
     Pa_CloseStream( m_paStream );
     Pa_Terminate();
-
-    delete [] m_paInputBuffer;
-    delete [] m_paOutputBuffer;
 }
 
 int TPortAudioDriver::_read(nframes_t nframes)
@@ -61,7 +56,7 @@ int TPortAudioDriver::_read(nframes_t nframes)
     Q_ASSERT(m_captureChannels.size() > 0);
     Q_ASSERT(m_paStream);
 
-    Pa_ReadStream(m_paStream, m_paInputBuffer, nframes);
+    Pa_ReadStream(m_paStream, m_paInputBuffer.get_buffer(nframes), nframes);
 
     m_device->set_transport_cycle_start_time(TTimeRef::get_nanoseconds_since_epoch());
 
@@ -90,12 +85,12 @@ int TPortAudioDriver::_write(nframes_t nframes)
     }
 
     for (int chan=0; chan<m_playbackChannels.size(); chan++) {
-        m_playbackChannels.at(chan)->silence_buffer(nframes);
+        m_playbackChannels.at(chan)->silence_buffer();
     }
 
     m_device->set_transport_cycle_end_time(TTimeRef::get_nanoseconds_since_epoch());
 
-    Pa_WriteStream(m_paStream, m_paOutputBuffer, nframes);
+    Pa_WriteStream(m_paStream, m_paOutputBuffer.get_buffer(nframes), nframes);
 
     return 1;
 }
@@ -318,8 +313,8 @@ int TPortAudioDriver::attach()
     m_device->set_buffer_size (m_framesPerCycle);
     m_device->set_sample_rate (m_frameRate);
 
-    m_paInputBuffer = new audio_sample_t[m_framesPerCycle * sizeof(audio_sample_t) * m_captureChannels.count()];
-    m_paOutputBuffer = new audio_sample_t[m_framesPerCycle * sizeof(audio_sample_t) * m_playbackChannels.count()];
+    m_paInputBuffer.resize(m_framesPerCycle * sizeof(audio_sample_t) * m_captureChannels.count());
+    m_paOutputBuffer.resize(m_framesPerCycle * sizeof(audio_sample_t) * m_playbackChannels.count());
 
     return 1;
 }
@@ -406,12 +401,12 @@ int TPortAudioDriver::_process_callback(
     Q_UNUSED(timeInfo);
     Q_UNUSED(statusFlags);
 
-    TPortAudioDriver* driver  = static_cast<TPortAudioDriver *> (arg);
+    // TPortAudioDriver* driver  = static_cast<TPortAudioDriver *> (arg);
 
-    driver->m_paInputBuffer = (audio_sample_t*)inputBuffer;
-    driver->m_paOutputBuffer = (audio_sample_t*)outputBuffer;
+    // driver->m_paInputBuffer = (audio_sample_t*)inputBuffer;
+    // driver->m_paOutputBuffer = (audio_sample_t*)outputBuffer;
 
-    driver->process_callback (framesPerBuffer);
+    // driver->process_callback (framesPerBuffer);
 
     return 0;
 }

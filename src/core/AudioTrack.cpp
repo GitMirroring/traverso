@@ -29,8 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClipManager.h"
 #include "AudioBus.h"
 #include "TAudioDevice.h"
-#include "PluginChain.h"
-#include "Information.h"
+#include "TAudioPluginChain.h"
+#include "TInformUser.h"
 #include "ProjectManager.h"
 #include "ResourcesManager.h"
 #include "TLocation.h"
@@ -100,7 +100,7 @@ QDomNode AudioTrack::get_state( QDomDocument doc, bool istemplate)
     if (! istemplate ) {
         QDomNode clips = doc.createElement("Clips");
 
-        for(AudioClip* clip: m_audioClips) {
+        for(AudioClip* clip: m_guiAudioClips) {
             if (clip->get_length() == qint64(0)) {
                 PERROR("Clip length is 0! This shouldn't happen!!!!");
                 continue;
@@ -120,8 +120,8 @@ QDomNode AudioTrack::get_state( QDomDocument doc, bool istemplate)
 TTimeRef AudioTrack::get_end_location() const
 {
     TTimeRef endLocation{};
-    if (!m_audioClips.isEmpty()) {
-        endLocation = m_audioClips.last()->get_location()->get_end();
+    if (!m_guiAudioClips.isEmpty()) {
+        endLocation = m_guiAudioClips.last()->get_location()->get_end();
     }
     return endLocation;
 }
@@ -145,7 +145,7 @@ int AudioTrack::set_state( const QDomNode & node )
 
             AudioClip* clip = resources_manager()->get_clip(id);
             if (!clip) {
-                info().critical(tr("Track: AudioClip with id %1 not "
+                tInformUser().critical(tr("Track: AudioClip with id %1 not "
                                    "found in Resources database!").arg(id));
                 break;
             }
@@ -196,8 +196,8 @@ AudioClip* AudioTrack::init_recording()
     }
 
     if (!m_inputBus) {
-        info().critical(tr("Unable to Record to AudioTrack"));
-        info().warning(tr("AudioDevice doesn't have this Capture Bus: %1 (Track %2)").
+        tInformUser().critical(tr("Unable to Record to AudioTrack"));
+        tInformUser().warning(tr("AudioDevice doesn't have this Capture Bus: %1 (Track %2)").
                        arg(m_busInName).arg(get_id()) );
         return nullptr;
     }
@@ -272,14 +272,14 @@ int AudioTrack::process(TProcessCallBackData &processData)
     // Get the 'render bus' from sheet, a bit hackish solution, but
     // it avoids to have a dedicated render bus for each Track,
     // or buffers located on the heap...
-    m_processBus->silence_buffers(nframes);
+    m_processBus->silence_buffers();
 
     int result;
     float panFactor;
 
 
     // Read in clip data into process bus.
-    for(AudioClip* clip = m_rtAudioClipsLinkedList.first(); clip != nullptr; clip = clip->next)
+    for(AudioClip* clip = m_rtAudioClips.first(); clip != nullptr; clip = clip->next)
     {
         if (m_isArmed && clip->recording_state() == AudioClip::NO_RECORDING) {
             if (m_isMuted || m_mutedBySolo) {
@@ -334,7 +334,7 @@ int AudioTrack::process(TProcessCallBackData &processData)
 
     if (m_type == BOUNCE) {
         m_inputBus->process_monitoring(m_vumonitors);
-        m_inputBus->silence_buffers(nframes);
+        m_inputBus->silence_buffers();
     }
 
     return processResult;
@@ -361,14 +361,14 @@ TCommand* AudioTrack::silence_others( )
 
 bool AudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& trackExportEndLocation )
 {
-    if(m_audioClips.isEmpty()) {
+    if(m_guiAudioClips.isEmpty()) {
         return false;
     }
 
     trackExportStartLocation = TTimeRef::max_length();
     trackExportEndLocation = TTimeRef();
 
-    for(AudioClip* clip : m_audioClips) {
+    for(AudioClip* clip : m_guiAudioClips) {
         if (! clip->is_muted() ) {
             if (clip->get_location()->get_end() > trackExportEndLocation) {
                 trackExportEndLocation = clip->get_location()->get_end();
@@ -385,7 +385,7 @@ bool AudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& 
 
 AudioClip* AudioTrack::get_clip_after(const TTimeRef& pos)
 {
-    for(AudioClip* clip : m_audioClips) {
+    for(AudioClip* clip : m_guiAudioClips) {
         if (clip->get_location()->get_start() > pos) {
             return clip;
         }
@@ -398,7 +398,7 @@ AudioClip* AudioTrack::get_clip_before(const TTimeRef& pos)
     TTimeRef shortestDistance = TTimeRef::max_length();
     AudioClip* nearest = nullptr;
 
-    for(AudioClip* clip : m_audioClips) {
+    for(AudioClip* clip : m_guiAudioClips) {
         if (clip->get_location()->get_start() < pos) {
             TTimeRef diff = pos - clip->get_location()->get_start();
             if (diff < shortestDistance) {
@@ -443,18 +443,18 @@ TCommand* AudioTrack::add_clip(AudioClip* clip, bool historable, bool ismove)
 
 void AudioTrack::private_add_clip(AudioClip* clip)
 {
-    m_rtAudioClipsLinkedList.add_and_sort(clip);
+    m_rtAudioClips.add_and_sort(clip);
 }
 
 void AudioTrack::private_remove_clip(AudioClip* clip)
 {
-    m_rtAudioClipsLinkedList.remove(clip);
+    m_rtAudioClips.remove(clip);
 }
 
 void AudioTrack::private_audioclip_added(AudioClip *clip)
 {
-    m_audioClips.append(clip);
-    std::sort(m_audioClips.begin(), m_audioClips.end(), [&](AudioClip* left, AudioClip* right) {
+    m_guiAudioClips.append(clip);
+    std::sort(m_guiAudioClips.begin(), m_guiAudioClips.end(), [&](AudioClip* left, AudioClip* right) {
         return left->get_location()->get_start() < right->get_location()->get_start();
     });
     emit audioClipAdded(clip);
@@ -462,13 +462,13 @@ void AudioTrack::private_audioclip_added(AudioClip *clip)
 
 void AudioTrack::private_audioclip_removed(AudioClip* clip)
 {
-    m_audioClips.removeAll(clip);
+    m_guiAudioClips.removeAll(clip);
     emit audioClipRemoved(clip);
 }
 
 void AudioTrack::clip_position_changed(AudioClip * clip)
 {
-    std::sort(m_audioClips.begin(), m_audioClips.end(), [&](AudioClip* left, AudioClip* right) {
+    std::sort(m_guiAudioClips.begin(), m_guiAudioClips.end(), [&](AudioClip* left, AudioClip* right) {
         return left->get_location()->get_start() < right->get_location()->get_start();
     });
 
@@ -481,7 +481,7 @@ void AudioTrack::clip_position_changed(AudioClip * clip)
 
 void AudioTrack::private_clip_position_changed(AudioClip *clip)
 {
-    m_rtAudioClipsLinkedList.sort(clip);
+    m_rtAudioClips.sort(clip);
 }
 
 TCommand* AudioTrack::toggle_show_clip_volume_automation()
@@ -495,7 +495,7 @@ TCommand* AudioTrack::toggle_show_clip_volume_automation()
 TBounceTrack::TBounceTrack(Sheet *sheet, const QString &name, int height)
     : AudioTrack(sheet, name, height)
 {
-    m_type = BOUNCE;
+    m_type = Track::TRACKTYPE::BOUNCE;
     TAudioBusConfiguration busConfig;
     busConfig.name = "Bounce Input Bus";
     busConfig.channelcount = 2;

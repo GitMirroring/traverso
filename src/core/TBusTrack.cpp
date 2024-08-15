@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBusTrack.h"
 
 #include "AudioBus.h"
-#include "PluginChain.h"
+#include "TAudioPluginChain.h"
 #include "Utils.h"
 #include "TSession.h"
 #include "TAudioDevice.h"
@@ -90,7 +90,7 @@ void TBusTrack::create_process_bus()
         if (m_processBus) {
                 return;
         }
-        m_type = BUS;
+        m_type = Track::TRACKTYPE::BUS;
         TAudioBusConfiguration busConfig;
         busConfig.name = m_name;
         busConfig.channelcount = m_channelCount;
@@ -141,7 +141,7 @@ int TBusTrack::process(TProcessCallBackData &processData)
 
     process_post_sends(nframes);
 
-    m_processBus->silence_buffers(nframes);
+    m_processBus->silence_buffers();
 
     return 1;
 }

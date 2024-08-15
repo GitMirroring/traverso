@@ -129,10 +129,10 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
         if (m_actionType == FOLD_SHEET || m_actionType == FOLD_MARKERS) {
             QList<Marker*> movingMarkers = d->sv->get_sheet()->get_timeline()->get_markers();
             foreach(Marker* marker, movingMarkers) {
-                if (marker->get_when() > currentLocation) {
+                if (marker->get_location()->get_start() > currentLocation) {
                     MarkerAndOrigin markerAndOrigin;
                     markerAndOrigin.marker = marker;
-                    markerAndOrigin.origin = marker->get_when();
+                    markerAndOrigin.origin = marker->get_location()->get_start();
                     m_markers.append(markerAndOrigin);
                 }
             }

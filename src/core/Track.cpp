@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AddRemove.h"
 #include "AudioChannel.h"
 #include "Mixer.h"
-#include "PluginChain.h"
+#include "TAudioPluginChain.h"
 #include "Sheet.h"
 #include "ProjectManager.h"
 #include "Project.h"

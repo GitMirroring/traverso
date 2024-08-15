@@ -58,6 +58,8 @@ private:
     ContextItem*    m_contextItem;
     bool            m_primaryGainOnly;
 
+    QString get_db_string_from_object();
+
 
 public slots:
     void increase_gain();

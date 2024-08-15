@@ -23,7 +23,7 @@
 
 #include "CorrelationMeterWidget.h"
 
-#include <PluginChain.h>
+#include "TAudioPluginChain.h"
 #include <CorrelationMeter.h>
 #include "TCommand.h"
 #include <Sheet.h>

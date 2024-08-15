@@ -23,8 +23,8 @@
 #include "SpectralMeterWidget.h"
 
 #include "TConfig.h"
-#include <Information.h>
-#include <PluginChain.h>
+#include "TInformUser.h"
+#include "TAudioPluginChain.h"
 #include <SpectralMeter.h>
 #include "TCommand.h"
 #include <Project.h>
@@ -498,7 +498,7 @@ TCommand* SpectralMeterView::screen_capture( )
 	}
 	
         if ( ! image.save(fn, "PNG")) {
-        	info().warning(tr("FFT: Unable to write captured image to hard disk"));
+        	tInformUser().warning(tr("FFT: Unable to write captured image to hard disk"));
         }
  
         return 0;
@@ -509,8 +509,8 @@ TCommand* SpectralMeterView::export_average_curve()
 	// check if all requirements are met
 	if ((!show_average) || (!m_project)) {
 		printf("No average data available.\n");
-                info().warning(tr("FFT: No average curve used, not data to export!"));
-                info().information(tr("FFT: Enable average curve with < M > to generate data"));
+                tInformUser().warning(tr("FFT: No average curve used, not data to export!"));
+                tInformUser().information(tr("FFT: Enable average curve with < M > to generate data"));
 		return 0;
 	}
 
@@ -518,7 +518,7 @@ TCommand* SpectralMeterView::export_average_curve()
 	int s = qMin(m_map_idx2freq.size(), m_avg_db.size());
 	if (!s) {
 		printf("No average data available.\n");
-                info().warning(tr("FFT: No average data to export!"));
+                tInformUser().warning(tr("FFT: No average data to export!"));
 		return 0;
 	}
 

@@ -61,7 +61,6 @@ TSession::TSession(TSession *parentSession)
     m_hzoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
     set_transport_rolling_state(false);
     m_isSnapOn=true;
-    m_isProjectSession = false;
 
     connect(this, SIGNAL(privateTrackAdded(Track*)), this, SLOT(private_track_added(Track*)));
     connect(this, SIGNAL(privateTrackRemoved(Track*)), this, SLOT(private_track_removed(Track*)));
@@ -94,9 +93,9 @@ void TSession::set_parent_session(TSession *parentSession)
 
 	m_parentSession = parentSession;
 
-	if (!m_isProjectSession) {
+    if (!m_isProjectSession) {
         set_history_stack(m_parentSession->get_history_stack());
-	}
+    }
 
 	emit horizontalScrollBarValueChanged();
 	emit hzoomChanged();
@@ -165,9 +164,9 @@ QDomNode TSession::get_state(QDomDocument doc)
 
 TBusTrack* TSession::get_master_out_bus_track() const
 {
-	if (is_project_session()) {
-		return m_masterOutBusTrack;
-	}
+    if (is_project_session()) {
+        return m_masterOutBusTrack;
+    }
 
 	if (m_parentSession) {
         return m_parentSession->get_master_out_bus_track();
@@ -295,9 +294,9 @@ bool TSession::is_transport_rolling() const
 
 bool TSession::is_child_session() const
 {
-	if (is_project_session()) {
-		return false;
-	}
+    if (is_project_session()) {
+        return false;
+    }
 
 	if (!m_parentSession) {
 		return false;
@@ -483,11 +482,11 @@ TCommand* TSession::add_track(Track* track, bool historable)
 TCommand* TSession::remove_track(Track* track, bool historable)
 {
 	if (m_parentSession) {
-		private_track_removed(track);
+        private_track_removed(track);
         return nullptr;
 	}
 
-	return new AddRemove(this, track, historable, this,
+    return new AddRemove(this, track, historable, this,
 		"private_remove_track(Track*)", "privateTrackRemoved(Track*)",
 		"private_add_track(Track*)", "privateTrackAdded(Track*)",
         tr("Removed %1: %2").arg(track->metaObject()->className(), track->get_name()));

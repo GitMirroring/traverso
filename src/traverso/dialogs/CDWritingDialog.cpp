@@ -28,7 +28,7 @@
 #include "TConfig.h"
 #include "Project.h"
 #include "ProjectManager.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "Utils.h"
 
 
@@ -96,7 +96,7 @@ bool CDWritingDialog::is_safe_to_export()
 {
 	PENTER;
 	if (m_project->is_recording()) {
-		info().warning(tr("CD Writing during recording is not supported!"));
+		tInformUser().warning(tr("CD Writing during recording is not supported!"));
 		return false;
 	}
 	
@@ -120,7 +120,7 @@ void CDWritingDialog::set_project(Project * project)
 	m_project = project;
 	
 	if (! m_project) {
-		info().information(tr("No project loaded, to write a project to CD, load it first!"));
+		tInformUser().information(tr("No project loaded, to write a project to CD, load it first!"));
 		setEnabled(false);
 	} else {
 		setEnabled(true);
@@ -283,7 +283,7 @@ void CDWritingDialog::cd_render()
 	PENTER;
 	
 	if ( ! (m_burnprocess->state() == QProcess::NotRunning) ) {
-		info().critical(tr("Burn process is still running, cannot start it twice!!"));
+		tInformUser().critical(tr("Burn process is still running, cannot start it twice!!"));
 		return;
 	}
 	
@@ -316,7 +316,7 @@ void CDWritingDialog::cd_render()
         m_exportSpec->set_is_cd_export(true);
 		
         if (m_exportSpec->create_cdrdao_toc(m_exportSpec) < 0) {
-			info().warning(tr("Creating CDROM table of contents failed, unable to write CD"));
+			tInformUser().warning(tr("Creating CDROM table of contents failed, unable to write CD"));
 			return;
 		}
 	
@@ -346,7 +346,7 @@ void CDWritingDialog::write_to_cd()
 	m_copyNumber++;
 
 	if ( ! (m_burnprocess->state() == QProcess::NotRunning) ) {
-		info().critical(tr("Burn process is still running, cannot start it twice!!"));
+		tInformUser().critical(tr("Burn process is still running, cannot start it twice!!"));
 		return;
 	}
 	

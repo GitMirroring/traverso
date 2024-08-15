@@ -151,7 +151,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 			if (!hadSheet) {
 				clip->set_state(clip->get_dom_node());
 			}
-			clip->set_location_start(startpos);
+            clip->set_location_start(startpos);
             startpos = clip->get_location()->get_end();
 			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
 			group->add_command(arc);

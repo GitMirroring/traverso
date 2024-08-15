@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "PCommand.h"
 #include "ContextItem.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "Utils.h"
 #include "TCommandPlugin.h"
 #include "TConfig.h"
@@ -131,7 +131,7 @@ TShortCut* TShortCutManager::getShortcutForKey(const QString &keyString)
     int keyValue;
 
     if (!keyboard_key_string_to_numerical_value(keyString, keyValue)) {
-	       info().warning(tr("Shortcut Manager: Loaded keymap has this unrecognized key: %1").arg(keyString));
+	       tInformUser().warning(tr("Shortcut Manager: Loaded keymap has this unrecognized key: %1").arg(keyString));
            return nullptr;
 	}
 

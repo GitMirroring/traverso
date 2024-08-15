@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ProjectManagerDialog.h"
 
-#include "Information.h"
+#include "TInformUser.h"
 #include "ProjectManager.h"
 
 #include <QStringList>
@@ -207,7 +207,7 @@ void ProjectManagerDialog::on_renameSheetButton_clicked( )
 	QString newtitle = selectedSheetName->text();
 	
 	if (newtitle.isEmpty()) {
-		info().information(tr("No new Sheet name was supplied!"));
+		tInformUser().information(tr("No new Sheet name was supplied!"));
 		return;
 	}
 	
@@ -282,7 +282,7 @@ void ProjectManagerDialog::on_exportTemplateButton_clicked()
 	QDir dir;
 	if (! dir.exists(fileName)) {
 		if (! dir.mkdir(fileName)) {
-			info().critical( tr("Unable to create directory %1!").arg(fileName));
+			tInformUser().critical( tr("Unable to create directory %1!").arg(fileName));
 			return;
 		}
 	}
@@ -310,9 +310,9 @@ void ProjectManagerDialog::on_exportTemplateButton_clicked()
 		QTextStream stream(&file);
 		doc.save(stream, 4);
 		file.close();
-		info().information(tr("Saved Project Template: %1").arg(text));
+		tInformUser().information(tr("Saved Project Template: %1").arg(text));
 	} else {
-		info().critical( tr("Couldn't open file %1 for writing!").arg(fileName));
+		tInformUser().critical( tr("Couldn't open file %1 for writing!").arg(fileName));
 	}
 	
 }

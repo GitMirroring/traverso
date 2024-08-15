@@ -26,7 +26,7 @@ $Id: FileHelpers.cpp,v 1.10 2007/11/05 15:49:30 r_sijrier Exp $
 #include <unistd.h>
 
 #include "TConfig.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include <QDir>
 #include <Utils.h>
 #include <QObject>
@@ -44,19 +44,19 @@ int FileHelper::remove_recursively(const QString& pName)
 	QFileInfo fileInfo(name);
 
 	if (!fileInfo.exists()) {
-        info().warning(tr("File does not exist! %1").arg(name));
+        tInformUser().warning(tr("File does not exist! %1").arg(name));
 		return -1;
 	}
 
 	if (!fileInfo.isWritable()) {
-        info().warning(tr("failed to remove %s: you don't have write access to it").arg(name));
+        tInformUser().warning(tr("failed to remove %s: you don't have write access to it").arg(name));
 		return -1;
 	}
 
 	if(fileInfo.isFile()) {
 		QFile file(name);
 		if (!file.remove()) {
-            info().warning(tr("failed to remove file %1").arg(name));
+            tInformUser().warning(tr("failed to remove file %1").arg(name));
 			return -1;
 		}
 		return 1;
@@ -70,14 +70,14 @@ int FileHelper::remove_recursively(const QString& pName)
 			if ((fi.fileName() != ".") && (fi.fileName() != "..")) {
 				QString nextFileName = pName + "/" + fi.fileName();
 				if (remove_recursively(nextFileName) < 0) {
-                    info().warning(tr("failed to remove directory %1").arg(nextFileName));
+                    tInformUser().warning(tr("failed to remove directory %1").arg(nextFileName));
 					return -1;
 				}
 			}
 		}
 
 		if (!dir.rmdir(name)) {
-            info().warning(tr("failed to remove directory %1").arg(name));
+            tInformUser().warning(tr("failed to remove directory %1").arg(name));
 			return -1;
 		}
 
@@ -101,25 +101,25 @@ int FileHelper::copy_recursively(const QString& pNameFrom, const QString& pNameT
 	QFileInfo fileToInfo(nameTo);
 
 	if (!fileFromInfo.exists()) {
-        info().warning(tr("File or directory %1 doesn't exist\n").arg(pNameFrom));
+        tInformUser().warning(tr("File or directory %1 doesn't exist\n").arg(pNameFrom));
 		return -1;
 	}
 	if (fileToInfo.exists()) {
-        info().warning(tr("File or directory %1 already exists").arg(pNameTo));
+        tInformUser().warning(tr("File or directory %1 already exists").arg(pNameTo));
 		return -1;
 	}
 
 	if(fileFromInfo.isFile()) {
 		QFile fileFrom(nameFrom);
 		if (!fileFrom.open(QIODevice::ReadOnly)) {
-            info().warning(tr("failed to open file %1 for reading\n").arg(nameFrom));
+            tInformUser().warning(tr("failed to open file %1 for reading\n").arg(nameFrom));
 			return -1;
 		}
 
 		QFile fileTo(nameTo);
 		if (!fileTo.open(QIODevice::WriteOnly)) {
 			fileFrom.close();
-            info().warning(tr("failed to open file for writting %1").arg(nameFrom));
+            tInformUser().warning(tr("failed to open file for writting %1").arg(nameFrom));
 			return -1;
 		}
 
@@ -146,7 +146,7 @@ int FileHelper::copy_recursively(const QString& pNameFrom, const QString& pNameT
 			if (nRead < 0) {
 				fileFrom.close();
 				fileTo.close();
-                info().warning(tr("Error while reading file %1").arg(nameFrom));
+                tInformUser().warning(tr("Error while reading file %1").arg(nameFrom));
 				return -1;
 			}
 			if (nRead == 0)
@@ -154,7 +154,7 @@ int FileHelper::copy_recursively(const QString& pNameFrom, const QString& pNameT
 			if (write(fileDescTo, buffer, nRead) < 0) {
 				fileFrom.close();
 				fileTo.close();
-                info().warning(tr("Error while writing file %1").arg(nameTo));
+                tInformUser().warning(tr("Error while writing file %1").arg(nameTo));
 				return -1;
 			}
 		}
@@ -169,7 +169,7 @@ int FileHelper::copy_recursively(const QString& pNameFrom, const QString& pNameT
 		QDir dirTo(nameTo);
         if (!dirTo.mkdir(nameTo)) {
 
-            info().warning(tr("failed to create directory %1").arg(nameTo));
+            tInformUser().warning(tr("failed to create directory %1").arg(nameTo));
 			return -1;
 		}
 

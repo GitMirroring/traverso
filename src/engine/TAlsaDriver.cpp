@@ -1537,7 +1537,7 @@ int TAlsaDriver::_write(nframes_t nframes)
             AudioChannel* channel = m_playbackChannels.at(i);
             buf = channel->get_buffer(nframes);
             write_to_channel (channel->get_number(), buf + nwritten, contiguous);
-            channel->silence_buffer(nframes);
+            channel->silence_buffer();
         }
 
 

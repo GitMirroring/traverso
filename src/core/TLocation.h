@@ -31,6 +31,8 @@ class SnapList;
 
 class TLocation : public QObject
 {
+    Q_OBJECT
+
 public:
     TLocation(QObject* owner = nullptr);
     ~TLocation() {}
@@ -46,6 +48,7 @@ public:
     TTimeRef get_length() const {return m_end - m_start;}
 
 
+    void set_location(QObject *owner, const TTimeRef& start, TTimeRef end = TTimeRef());
     void set_start(QObject *owner, const TTimeRef& start);
     void set_end(QObject *owner, const TTimeRef& end);
 
@@ -58,6 +61,8 @@ private:
 	bool		m_isSnappable;
 	SnapList	*snapList;
 
+signals:
+    void locationChanged();
 };
 
 

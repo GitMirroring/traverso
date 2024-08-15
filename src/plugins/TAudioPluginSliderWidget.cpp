@@ -19,11 +19,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "PluginSlider.h"
+#include "TAudioPluginSliderWidget.h"
 #include <Themer.h>
-#include "Plugin.h"
+#include "TAudioPlugin.h"
 
-PluginSlider::PluginSlider(PluginControlPort* port)
+TAudioPluginSliderWidget::TAudioPluginSliderWidget(TAudioPluginControlPort* port)
     : QWidget()
 	, m_port(port)
 {
@@ -35,14 +35,14 @@ PluginSlider::PluginSlider(PluginControlPort* port)
 	m_max = m_port->get_max_control_value();
 	m_value = m_port->get_control_value();
 	
-	if (m_port->get_hint() == PluginPort::INT_CONTROL) {
+	if (m_port->get_hint() == TAudioPluginPort::INT_CONTROL) {
 		m_stepvalue = 1;
 	} else {
         m_stepvalue = (m_max - m_min) / 100;
 	}
 }
 
-void PluginSlider::paintEvent(QPaintEvent *)
+void TAudioPluginSliderWidget::paintEvent(QPaintEvent *)
 {
 	QPainter painter(this);
 	
@@ -62,31 +62,31 @@ void PluginSlider::paintEvent(QPaintEvent *)
 	QRectF rect(0.0, 0.0, width() - 0.5, height() - 0.5);
 	painter.drawRect(rect);
 	painter.fillRect(1, 1, m_xpos - 2, height() - 2, QBrush(color));
-	if (m_port->get_hint() == PluginPort::INT_CONTROL) {
+	if (m_port->get_hint() == TAudioPluginPort::INT_CONTROL) {
 		painter.drawText(0, 0, width(), height(), Qt::AlignCenter, QString::number((int)m_value));
 	} else {
 		painter.drawText(0, 0, width(), height(), Qt::AlignCenter, QString::number(m_value, 'f', 2));
 	}
 }
 
-void PluginSlider::mousePressEvent( QMouseEvent * e )
+void TAudioPluginSliderWidget::mousePressEvent( QMouseEvent * e )
 {
 	dragging = true;
     calculate_new_value(e->position().x());
 }
 
-void PluginSlider::mouseMoveEvent( QMouseEvent * e )
+void TAudioPluginSliderWidget::mouseMoveEvent( QMouseEvent * e )
 {
     calculate_new_value(e->position().x());
 }
 
-void PluginSlider::mouseReleaseEvent( QMouseEvent * e )
+void TAudioPluginSliderWidget::mouseReleaseEvent( QMouseEvent * e )
 {
 	dragging = false;
     calculate_new_value(e->position().x());
 }
 
-void PluginSlider::calculate_new_value(float mouseX)
+void TAudioPluginSliderWidget::calculate_new_value(float mouseX)
 {	
 	if (mouseX < 0) 
 		mouseX = 0;
@@ -103,7 +103,7 @@ void PluginSlider::calculate_new_value(float mouseX)
 	m_value = (relativePos * range) + m_min;
 	
 	// in case of INT_CONTROL, round float to nearest int value.
-	if (m_port->get_hint() == PluginPort::INT_CONTROL) {
+	if (m_port->get_hint() == TAudioPluginPort::INT_CONTROL) {
 		m_value = float(int(0.5 + m_value));
 	}
 	
@@ -112,19 +112,19 @@ void PluginSlider::calculate_new_value(float mouseX)
 	update();
 }
 
-void PluginSlider::leaveEvent( QEvent * )
+void TAudioPluginSliderWidget::leaveEvent( QEvent * )
 {
 	highlight = false;
 	update();
 }
 
-void PluginSlider::enterEvent(QEnterEvent * )
+void TAudioPluginSliderWidget::enterEvent(QEnterEvent * )
 {
 	highlight = true;
 	update();
 }
 
-void PluginSlider::wheelEvent( QWheelEvent* e )
+void TAudioPluginSliderWidget::wheelEvent( QWheelEvent* e )
 {
 //	if (e->orientation() == Qt::Vertical) {
         if (e->angleDelta().y() > 0) {
@@ -144,7 +144,7 @@ void PluginSlider::wheelEvent( QWheelEvent* e )
 //	}
 }
 
-void PluginSlider::update_slider_position( )
+void TAudioPluginSliderWidget::update_slider_position( )
 {
 	float range = m_max - m_min;
 	float mouseX = ((float)width() / range) * (m_value - m_min);
@@ -152,7 +152,7 @@ void PluginSlider::update_slider_position( )
 	calculate_new_value(mouseX);
 }
 
-void PluginSlider::reset_default_value()
+void TAudioPluginSliderWidget::reset_default_value()
 {
 	m_value = m_port->get_default_value();
 	update_slider_position();

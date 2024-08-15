@@ -29,8 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioTrack.h"
 #include "Curve.h"
 #include "FadeCurve.h"
-#include "Plugin.h"
-#include "Information.h"
+#include "TAudioPlugin.h"
+#include "TInformUser.h"
 #include "Project.h"
 #include "ProjectManager.h"
 #include "Sheet.h"
@@ -54,7 +54,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
     \brief The Traverso TCommandPlugin class which 'implements' many of the default Commands
 
     With this plugin, the TInputEventDispatcher is able to dispatch key actions by directly
-    asking this Plugin for the needed Command object.
+    asking this TAudioPlugin for the needed Command object.
  */
 
 
@@ -73,8 +73,8 @@ TraversoCommands::TraversoCommands()
     tShortCutManager().add_meta_object(&CurveView::staticMetaObject);
     tShortCutManager().add_meta_object(&TTimeLineRuler::staticMetaObject);
     tShortCutManager().add_meta_object(&TimeLineView::staticMetaObject);
-    tShortCutManager().add_meta_object(&Plugin::staticMetaObject);
-    tShortCutManager().add_meta_object(&PluginView::staticMetaObject);
+    tShortCutManager().add_meta_object(&TAudioPlugin::staticMetaObject);
+    tShortCutManager().add_meta_object(&TAudioPluginView::staticMetaObject);
     tShortCutManager().add_meta_object(&FadeCurve::staticMetaObject);
     tShortCutManager().add_meta_object(&FadeCurveView::staticMetaObject);
     tShortCutManager().add_meta_object(&TMainWindow::staticMetaObject);
@@ -476,12 +476,12 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         TSession* activeSession = pm().get_project()->get_current_session();
         if (!activeSession) {
             // this is rather impossible!!
-            info().information(tr("Removing Track %1, but no active (Work) Sheet ??").arg(track->get_name()));
+            tInformUser().information(tr("Removing Track %1, but no active (Work) Sheet ??").arg(track->get_name()));
             return 0;
         }
 
         if (track == activeSession->get_master_out_bus_track()) {
-            info().information(tr("It is not possible to remove the Master Out track!"));
+            tInformUser().information(tr("It is not possible to remove the Master Out track!"));
             return 0;
         }
         return activeSession->remove_track(track);
@@ -489,7 +489,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case RemovePluginCommand:
     {
-        PluginView* view = qobject_cast<PluginView*>(obj);
+        TAudioPluginView* view = qobject_cast<TAudioPluginView*>(obj);
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not a PluginView! "
                    "RemovePluginCommand needs a PluginView as argument");
@@ -576,7 +576,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case MovePluginCommand:
     {
-        PluginView* view = qobject_cast<PluginView*>(obj);
+        TAudioPluginView* view = qobject_cast<TAudioPluginView*>(obj);
         if (view) {
             return new MovePlugin(view);
         }

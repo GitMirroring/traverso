@@ -52,11 +52,11 @@ MarkerView::MarkerView(Marker* marker, SheetView* sv, ViewItem* parentView)
     m_line->setPos(m_width / 2, m_height);
 
     MarkerView::load_theme_data();
-	
-	
-	connect(m_marker, SIGNAL(positionChanged()), this, SLOT(update_position()));
-	connect(m_marker, SIGNAL(descriptionChanged()), this, SLOT(update_drawing()));
-	connect(m_marker, SIGNAL(indexChanged()), this, SLOT(update_drawing()));
+
+
+    connect(m_marker->get_location(), SIGNAL(locationChanged()), this, SLOT(update_position()));
+    connect(m_marker, SIGNAL(descriptionChanged()), this, SLOT(update_drawing()));
+    connect(m_marker, SIGNAL(indexChanged()), this, SLOT(update_drawing()));
         connect(this, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
 }
 
@@ -99,7 +99,7 @@ void MarkerView::paint(QPainter * painter, const QStyleOptionGraphicsItem * opti
 	}
 
 	if (m_dragging) {
-        m_posIndicator->set_text(TTimeRef::timeref_to_text(m_marker->get_when(), m_sv->timeref_scalefactor));
+        m_posIndicator->set_text(TTimeRef::timeref_to_text(m_marker->get_location()->get_start(), m_sv->timeref_scalefactor));
 	}
 
 	painter->restore();
@@ -128,8 +128,8 @@ void MarkerView::calculate_bounding_rect()
 
 void MarkerView::update_position()
 {
-	// markerwidth / 2 == center of markerview !
-	setPos((m_marker->get_when() / m_sv->timeref_scalefactor) - (m_width / 2), 0);
+    // markerwidth / 2 == center of markerview !
+    setPos((m_marker->get_location()->get_start() / m_sv->timeref_scalefactor) - (m_width / 2), 0);
 }
 
 int MarkerView::position()
@@ -179,8 +179,8 @@ void MarkerView::set_active(bool b)
 
 void MarkerView::update_drawing()
 {
-	calculate_bounding_rect();
-	update();
+    calculate_bounding_rect();
+    update();
 }
 
 void MarkerView::set_dragging(bool dragging)

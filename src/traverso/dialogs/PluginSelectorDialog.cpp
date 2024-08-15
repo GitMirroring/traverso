@@ -28,9 +28,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #endif
 
 #include "TMainWindow.h"
-#include <Plugin.h>
+#include "TAudioPlugin.h"
 #include <PluginManager.h>
-#include <Information.h>
+#include "TInformUser.h"
 #include <Utils.h>
 
 
@@ -53,18 +53,18 @@ PluginSelectorDialog::PluginSelectorDialog(QWidget* parent)
         printf("Getting the list of found lv2 plugins from the PluginManager\n");
 	const LilvPlugins* pluginList = PluginManager::instance()->get_lilv_plugins();
 
-    QMultiMap<QString, PluginInfo> pluginsMap;
+    QMultiMap<QString, TAudioPluginInfo> pluginsMap;
 
 	printf("Number of found lv2 plugins: %d\n", lilv_plugins_size(pluginList));
 	
 	LILV_FOREACH(plugins, i, pluginList) {
 
 		const LilvPlugin* p = lilv_plugins_get(pluginList, i);
-		PluginInfo pinfo = LV2Plugin::get_plugin_info(p);
+		TAudioPluginInfo pinfo = LV2Plugin::get_plugin_info(p);
         pluginsMap.insert(pinfo.type, pinfo);
 	}
 	
-	foreach(PluginInfo pinfo, pluginsMap) {
+	foreach(TAudioPluginInfo pinfo, pluginsMap) {
 		
 		if ( (pinfo.audioPortInCount == 1 && pinfo.audioPortOutCount ==  1) ||
 		     (pinfo.audioPortInCount == 2 && pinfo.audioPortOutCount ==  2) ) {
@@ -94,7 +94,7 @@ void PluginSelectorDialog::on_cancelButton_clicked( )
 
 void PluginSelectorDialog::on_okButton_clicked( )
 {
-	Plugin* plugin = 0;
+	TAudioPlugin* plugin = 0;
 
 #if defined (LV2_SUPPORT)
 	QList<QTreeWidgetItem *> list = pluginTreeWidget->selectedItems();
@@ -136,9 +136,9 @@ PluginSelectorDialog* PluginSelectorDialog::instance()
 	return m_instance;
 }
 
-Plugin* PluginSelectorDialog::get_selected_plugin( )
+TAudioPlugin* PluginSelectorDialog::get_selected_plugin( )
 {
-	Plugin* plugin = m_plugin;
+	TAudioPlugin* plugin = m_plugin;
 	m_plugin = 0;
 
 	return plugin;

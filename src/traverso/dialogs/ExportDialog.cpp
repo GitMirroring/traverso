@@ -25,7 +25,7 @@
 #include <QCloseEvent>
 
 #include "TExportSpecification.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "Project.h"
 #include "ProjectManager.h"
 #include "Sheet.h"
@@ -69,7 +69,7 @@ bool ExportDialog::is_safe_to_export()
 {
 	PENTER;
 	if (m_project->is_recording()) {
-		info().warning(tr("Export during recording is not supported!"));
+		tInformUser().warning(tr("Export during recording is not supported!"));
 		return false;
 	}
 	
@@ -84,7 +84,7 @@ void ExportDialog::on_startButton_clicked( )
 	}
 	
 	if (exportDirName->text().isEmpty()) {
-        info().warning(tr("No Export Directory was given, please supply one first!"));
+        tInformUser().warning(tr("No Export Directory was given, please supply one first!"));
 		return;
 	}
 
@@ -143,7 +143,7 @@ void ExportDialog::on_closeButton_clicked()
 void ExportDialog::on_fileSelectButton_clicked( )
 {
 	if (!m_project) {
-		info().information(tr("No project loaded, to export a project, load it first!"));
+		tInformUser().information(tr("No project loaded, to export a project, load it first!"));
 		return;
 	}
 	
@@ -170,7 +170,7 @@ void ExportDialog::set_project(Project * project)
 {
     if (! project)
     {
-		info().information(tr("No project loaded, to export a project, load it first!"));
+		tInformUser().information(tr("No project loaded, to export a project, load it first!"));
 		setEnabled(false);
 
         return;

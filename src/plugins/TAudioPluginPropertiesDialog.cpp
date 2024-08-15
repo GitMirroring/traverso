@@ -20,8 +20,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#include "PluginPropertiesDialog.h"
-#include "Plugin.h"
+#include "TAudioPluginPropertiesDialog.h"
+#include "TAudioPlugin.h"
 
 #include <QSlider>
 #include <QLabel>
@@ -30,10 +30,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QWidget>
 #include <QPushButton>
 
-#include <PluginSlider.h>
+#include <TAudioPluginSliderWidget.h>
 #include "TCommand.h"
 
-PluginPropertiesDialog::PluginPropertiesDialog(QWidget* parent, Plugin* plugin)
+TAudioPluginPropertiesDialog::TAudioPluginPropertiesDialog(QWidget* parent, TAudioPlugin* plugin)
 	: QDialog(parent)
 	, m_plugin(plugin)
 {
@@ -61,7 +61,7 @@ PluginPropertiesDialog::PluginPropertiesDialog(QWidget* parent, Plugin* plugin)
 	setLayout(dialogLayout);
 
 
-	foreach(PluginControlPort* port, m_plugin->get_control_ports()) {
+	foreach(TAudioPluginControlPort* port, m_plugin->get_control_ports()) {
 
 		if (port->get_symbol() == "latency") {
 			continue;
@@ -73,7 +73,7 @@ PluginPropertiesDialog::PluginPropertiesDialog(QWidget* parent, Plugin* plugin)
 		lay->setSpacing(12);
         lay->setContentsMargins(3, 3, 3, 3);
 
-		PluginSlider* slider = new PluginSlider(port);
+		TAudioPluginSliderWidget* slider = new TAudioPluginSliderWidget(port);
 		slider->update_slider_position();
 		m_sliders.append(slider);
 
@@ -111,15 +111,15 @@ PluginPropertiesDialog::PluginPropertiesDialog(QWidget* parent, Plugin* plugin)
 	connect(m_bypassButton, SIGNAL(clicked()), this, SLOT(bypass_button_clicked()));
 }
 
-void PluginPropertiesDialog::bypass_button_clicked()
+void TAudioPluginPropertiesDialog::bypass_button_clicked()
 {
 	m_plugin->toggle_bypass();
 	m_bypassButton->setChecked(m_plugin->is_bypassed());
 }
 
-void PluginPropertiesDialog::reset_button_clicked()
+void TAudioPluginPropertiesDialog::reset_button_clicked()
 {
-	foreach(PluginSlider* slider, m_sliders) {
+	foreach(TAudioPluginSliderWidget* slider, m_sliders) {
 		slider->reset_default_value();
 	}
 }

@@ -26,28 +26,28 @@
 #include "ViewItem.h"
 
 class SheetView;
-class Plugin;
-class PluginChain;
-class PluginView;
+class TAudioPlugin;
+class TAudioPluginChain;
+class TAudioPluginView;
 
 class PluginChainView : public ViewItem
 {
     Q_OBJECT
 
 public:
-    PluginChainView(SheetView* sv, ViewItem* parent, PluginChain* chain);
+    PluginChainView(SheetView* sv, ViewItem* parent, TAudioPluginChain* chain);
     ~PluginChainView();
 
     void paint(QPainter* painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
     void calculate_bounding_rect();
 
 private:
-    PluginChain* m_pluginchain;
-    QList<PluginView* >	m_pluginViews;
+    TAudioPluginChain* m_pluginchain;
+    QList<TAudioPluginView* >	m_pluginViews;
 
 public slots:
-    void add_plugin(Plugin* plugin);
-    void remove_plugin(Plugin* plugin);
+    void add_plugin(TAudioPlugin* plugin);
+    void remove_plugin(TAudioPlugin* plugin);
     void scrollbar_value_changed(int value);
 };
 

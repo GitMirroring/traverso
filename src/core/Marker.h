@@ -58,7 +58,6 @@ public:
 	void set_index(int);
 
 	TTimeLineRuler * get_timeline() const {return m_timeline;}
-	TTimeRef get_when() const {return m_when;}
     TLocation* get_location() const {return m_location;}
 
 	QString get_description() const {return m_description;}
@@ -79,7 +78,6 @@ public slots:
 
 private:
 	TTimeLineRuler* m_timeline;
-    TTimeRef        m_when;
     TLocation*      m_location;
 	QString	m_description,
     m_performer,
@@ -94,7 +92,6 @@ private:
     int     m_index{};
 	
 signals:
-	void positionChanged();
 	void descriptionChanged();
 	void indexChanged();
 };

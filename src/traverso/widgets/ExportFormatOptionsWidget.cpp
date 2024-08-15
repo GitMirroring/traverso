@@ -24,7 +24,7 @@
 #include "TAudioDevice.h"
 #include "TConfig.h"
 #include "TExportSpecification.h"
-#include <samplerate.h>
+#include "ResampleAudioReader.h"
 
 RELAYTOOL_WAVPACK;
 
@@ -47,13 +47,16 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
     for (uint sampleRate : TAudioDeviceSetup::get_sample_rates_list()) {
         sampleRateComboBox->addItem(local.toString(sampleRate), sampleRate);
     }
-	
-    resampleQualityComboBox->addItem(tr("Best"), SRC_SINC_BEST_QUALITY);
-    resampleQualityComboBox->addItem(tr("High"), SRC_SINC_MEDIUM_QUALITY);
-    resampleQualityComboBox->addItem(tr("Fastest"), SRC_SINC_FASTEST);
-    resampleQualityComboBox->addItem(tr("Zero Order Hold"), SRC_ZERO_ORDER_HOLD);
-    resampleQualityComboBox->addItem(tr("Linear"), SRC_LINEAR);
-	
+
+    for (int convertorType : ResampleAudioReader::get_convertor_types()) {
+        resampleQualityComboBox->addItem(ResampleAudioReader::get_convertor_type_name(convertorType), convertorType);
+    }
+
+    resampleQualityComboBox->setToolTipDuration(4000);
+    connect(resampleQualityComboBox, &QComboBox::currentIndexChanged, this, [this]() {
+        resampleQualityComboBox->setToolTip(ResampleAudioReader::get_convertor_type_description(resampleQualityComboBox->currentIndex()));
+    });
+
 	audioTypeComboBox->addItem("WAV", "wav");
 	audioTypeComboBox->addItem("AIFF", "aiff");
     audioTypeComboBox->addItem("FLAC", "flac");

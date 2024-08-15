@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ResourcesManager.h"
 #include "ReadSource.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "AudioClip.h"
 #include "Project.h"
 #include "Sheet.h"
@@ -40,9 +40,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 ResourcesManager::ResourcesManager(Project* project)
 	: QObject(project)
 	, m_project(project)
+    , m_silentReadSource(nullptr)
 {
 	PENTERCONS;
-    m_silentReadSource = nullptr;
 }
 
 
@@ -233,7 +233,7 @@ ReadSource * ResourcesManager::get_readsource(qint64 id)
 	}
 	
 	if ( source->init() < 0) {
-		info().warning( tr("ResourcesManager::  Failed to initialize ReadSource %1 (Reason: %2)")
+		tInformUser().warning( tr("ResourcesManager::  Failed to initialize ReadSource %1 (Reason: %2)")
                 .arg(source->get_filename(), source->get_error_string()));
 	}
 	
@@ -424,7 +424,7 @@ void ResourcesManager::remove_source(ReadSource * source)
 	if (!data) {
 	} else {
 		if (data->clipCount > 0) {
-			info().critical(tr("ResourcesManager: Received request to remove Audio Source %1"
+			tInformUser().critical(tr("ResourcesManager: Received request to remove Audio Source %1"
 				"but it is still in use by %2 AudioClips!!. NOT removing it!").
 				arg(source->get_name()).arg(data->clipCount));
 			return;

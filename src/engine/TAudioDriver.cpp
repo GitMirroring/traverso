@@ -58,6 +58,7 @@ int TAudioDriver::_run_cycle( )
     m_device->set_transport_cycle_end_time (m_runCycleEndTime);
 
     trav_time_t runCycleTime = (m_runCycleEndTime - m_runCycleStartTime);
+    trav_time_t sleepTime = 0;
 
     if (m_device->running_real_time()) {
         trav_time_t sleepTime = (m_periodTimeInMicroSeconds * 1000) - runCycleTime;
@@ -71,11 +72,12 @@ int TAudioDriver::_run_cycle( )
         // 20 microseconds to ryn_cycles() / second == 1.000.000 / 20 = 50.000
         trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 5);
         if (runCycleTime < minimumRunCycleTimeInNanoSeconds) {
+            sleepTime = minimumRunCycleTimeInNanoSeconds;
             QThread::currentThread()->sleep(std::chrono::nanoseconds (minimumRunCycleTimeInNanoSeconds));
         }
     }
 
-    m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
+    m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch() - sleepTime;
     m_device->set_transport_cycle_start_time (m_runCycleStartTime);
 
     return m_device->run_cycle( m_framesPerCycle, 0);
@@ -175,7 +177,7 @@ int TAudioDriver::detach( )
 int TAudioDriver::start( )
 {
     for (auto channel : m_playbackChannels) {
-        channel->silence_buffer(m_framesPerCycle);
+        channel->silence_buffer();
     }
 
     return 1;
@@ -184,7 +186,7 @@ int TAudioDriver::start( )
 int TAudioDriver::stop( )
 {
     for (AudioChannel* chan : m_captureChannels) {
-        chan->silence_buffer(m_framesPerCycle);
+        chan->silence_buffer();
     }
 
 	return 1;

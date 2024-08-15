@@ -39,7 +39,7 @@ TCommandPlugin.h
 DiskIO.cpp
 FadeCurve.cpp
 FileHelpers.cpp
-Information.cpp
+TInformUser.cpp TInformUser.h
 TInputEventDispatcher.cpp
 Peak.cpp
 Project.cpp

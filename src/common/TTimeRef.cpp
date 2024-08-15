@@ -173,6 +173,32 @@ QString TTimeRef::timeref_to_text(const TTimeRef & ref, qint64 scalefactor)
     }
 }
 
+TTimeRef TTimeRef::qtime_to_timeref(const QTime & time)
+{
+    TTimeRef ref(time.hour() * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE + time.minute() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE + time.second() * TTimeRef::UNIVERSAL_SAMPLE_RATE + (time.msec() * TTimeRef::UNIVERSAL_SAMPLE_RATE) / 1000);
+    return ref;
+}
+
+QTime TTimeRef::timeref_to_qtime(const TTimeRef& ref)
+{
+    qint64 remainder;
+    int hours, mins, secs, msec;
+
+    qint64 universalframe = ref.universal_frame();
+
+    hours = universalframe / (TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    remainder = universalframe - (hours * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
+    mins = remainder / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    remainder = remainder - (mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
+    secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    msec = remainder * 1000 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
+
+    QTime time(hours, mins, secs, msec);
+    return time;
+}
+
+
 TTimeRef TTimeRef::msms_to_timeref(QString str)
 {
     TTimeRef out;

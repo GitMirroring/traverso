@@ -36,7 +36,7 @@ $Id: SpectralMeter.cpp,v 1.9 2008/02/15 15:58:57 n_doebelin Exp $
 #define BUFFER_READOUT_TOLERANCE 2 // recommended: 1-10
 
 SpectralMeter::SpectralMeter()
-	: Plugin()
+	: TAudioPlugin()
 {
 	m_frlen = 2048;
 	m_windowingFunction = 1;

@@ -21,13 +21,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "MovePlugin.h"
 
-#include "PluginView.h"
-
-
-
+#include "TAudioPluginView.h"
 #include "Debugger.h"
 
-MovePlugin::MovePlugin(PluginView* view)
+MovePlugin::MovePlugin(TAudioPluginView* view)
     : TCommand(view->get_related_context_item(), "")
     , m_pluginView(view)
 {

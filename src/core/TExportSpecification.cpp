@@ -1,6 +1,7 @@
 #include "TExportSpecification.h"
 
-#include "Information.h"
+#include "ResampleAudioReader.h"
+#include "TInformUser.h"
 #include "Utils.h"
 
 #include <samplerate.h>
@@ -71,7 +72,7 @@ int TExportSpecification::is_valid()
     // }
 
     if (get_export_start_location() > get_export_end_location()) {
-        info().warning(tr("Export start frame starts beyond export end frame!!"));
+        tInformUser().warning(tr("Export start frame starts beyond export end frame!!"));
         return -1;
     }
 
@@ -100,7 +101,7 @@ int TExportSpecification::start_export(Project* project)
     if (!m_exportDir.isEmpty() && !dir.exists()) {
         if (!dir.mkpath(m_exportDir)) {
             QString message = tr("Creating Export Directory failed: %1").arg(m_exportDir);
-            info().warning(message);
+            tInformUser().warning(message);
             emit exportMessage(message);
             return -1;
         }
@@ -247,15 +248,8 @@ void TExportSpecification::set_data_format(int format)
 }
 
 void TExportSpecification::set_sample_rate_conversion_quality(int quality)
-{
-    Q_ASSERT(quality >= SRC_SINC_BEST_QUALITY && quality <= SRC_LINEAR);
-
-    // SRC_SINC_BEST_QUALITY		= 0,
-    // SRC_SINC_MEDIUM_QUALITY		= 1,
-    // SRC_SINC_FASTEST			= 2,
-    // SRC_ZERO_ORDER_HOLD			= 3,
-    // SRC_LINEAR					= 4,
-
+{    
+    Q_ASSERT(ResampleAudioReader::get_convertor_types().contains(quality));
     m_sampleRateConversionQuality = quality;
 }
 

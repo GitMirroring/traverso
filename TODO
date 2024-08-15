@@ -7,6 +7,12 @@ Export Rework:
 * Finish export using Bounce Track
 * Update Preferences -> Playback resample -> dropdown box gives old resample values and they are wrong
 
+* Changing states (like mute, solo etc) on TAudioProcessingNode objects currently is done in the GUI thread
+  these states are then checked by the audio thread, but this can cause race conditions (obviously)
+  example: ReadSource::set_active_state() and ReadSource::dequeue_form_rt_queue()
+  Either the assert has to go or (all) these state changes need to be delegated to the audio thread
+  which makes sense to do so we can apply say small fades if the state changes from non-audible to audible
+
 
 CRASHES
 * Resample quality: Fast, change audiodevice params (buffer size / sample rate) -> certain combination -> crash in ResampleReader::read_private

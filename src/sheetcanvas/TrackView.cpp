@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Sheet.h>
 #include <Track.h>
 #include <Utils.h>
-#include "PluginChain.h"
+#include "TAudioPluginChain.h"
 #include "CurveView.h"
 
 #include <PluginSelectorDialog.h>
@@ -149,7 +149,7 @@ TCommand* TrackView::add_new_plugin( )
                         .arg(m_track->get_sort_index()+1).arg(m_track->get_name()));
 
         if (PluginSelectorDialog::instance()->exec() == QDialog::Accepted) {
-                Plugin* plugin = PluginSelectorDialog::instance()->get_selected_plugin();
+                TAudioPlugin* plugin = PluginSelectorDialog::instance()->get_selected_plugin();
                 if (plugin) {
                     return m_track->add_plugin(plugin);
                 }

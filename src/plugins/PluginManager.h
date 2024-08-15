@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QDomDocument>
 
-class Plugin;
+class TAudioPlugin;
 
 class PluginManager
 {
@@ -39,12 +39,12 @@ public:
 
 	static PluginManager* instance();
 
-	Plugin* get_plugin(const QDomNode &node);
+	TAudioPlugin* get_plugin(const QDomNode &node);
 
 #if defined (LV2_SUPPORT)
 	const LilvPlugins* get_lilv_plugins();
 	LilvWorld* get_lilv_world() {return m_lilvWorld;}
-	Plugin* create_lv2_plugin(const QString& uri);
+	TAudioPlugin* create_lv2_plugin(const QString& uri);
 #endif
 
 private:

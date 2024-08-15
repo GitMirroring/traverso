@@ -24,7 +24,7 @@ $Id: SpectralMeter.h,v 1.5 2008/02/07 12:52:57 n_doebelin Exp $
 #ifndef SPECTRAL_METER_H
 #define SPECTRAL_METER_H
 
-#include "Plugin.h"
+#include "TAudioPlugin.h"
 #include "defines.h"
 #include <fftw3.h>
 #include <RingBufferNPT.h>
@@ -38,7 +38,7 @@ struct SpectralMeterData
 	audio_sample_t*	bufferRight;
 };
 
-class SpectralMeter : public Plugin
+class SpectralMeter : public TAudioPlugin
 {
 	Q_OBJECT
 

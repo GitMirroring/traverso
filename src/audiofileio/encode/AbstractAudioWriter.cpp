@@ -30,7 +30,6 @@ RELAYTOOL_WAVPACK;
 
 
 
-#include "Debugger.h"
 
 
 AbstractAudioWriter::AbstractAudioWriter(TExportSpecification *spec)

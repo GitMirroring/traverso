@@ -26,11 +26,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 RELAYTOOL_WAVPACK;
 
-
-
-#include "Debugger.h"
-
-
 WPAudioReader::WPAudioReader(const QString& filename)
     : AbstractAudioReader(filename)
 {
@@ -80,18 +75,23 @@ bool WPAudioReader::can_decode(const QString& filename)
     return true;
 }
 
+void WPAudioReader::print_libwavpack_version()
+{
+    printf("Wavpack version %s\n", WavpackGetLibraryVersionString());
+}
 
-bool WPAudioReader::seek_private(nframes_t start)
+
+bool WPAudioReader::seek_private(nframes_t frameToSeekTo)
 {
     Q_ASSERT(m_wp);
 
 
-    if (start >= m_fileFrames) {
+    if (frameToSeekTo >= m_fileFrames) {
         return false;
     }
 
-    if (!WavpackSeekSample(m_wp, start)) {
-        //		PERROR("could not seek to frame %d within %s", start, QS_C(m_fileName));
+    if (!WavpackSeekSample(m_wp, frameToSeekTo)) {
+        printf("WPAudioRead::seek_private: Could not seek to frame %d, reason %s\n", frameToSeekTo, WavpackGetErrorMessage(m_wp));
         return false;
     }
 

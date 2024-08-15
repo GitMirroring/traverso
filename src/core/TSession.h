@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 #include <QHash>
 
+#include "TAudioBuffer.h"
 #include "TRealTimeLinkedList.h"
 #include "defines.h"
 #include "TTimeRef.h"
@@ -79,20 +80,21 @@ public:
 	void set_scrollbar_x(int x);
 	void set_scrollbar_y(int y);
 	void set_parent_session(TSession* parentSession);
-	void set_is_project_session(bool isProjectSession) {m_isProjectSession = isProjectSession;}
-	bool is_project_session() const {return m_isProjectSession;}
+    void set_is_project_session(bool isProjectSession) {m_isProjectSession = isProjectSession;}
+    bool is_project_session() const {return m_isProjectSession;}
 	bool is_child_session() const;
 	void set_name(const QString& name);
 	void set_track_height(qint64 trackId, int height) {m_trackHeights.insert(trackId, height);}
 
-	TCommand* add_track(Track* api, bool historable=true);
-	TCommand* remove_track(Track* api, bool historable=true);
+    TCommand* add_track(Track* track, bool historable=true);
+    TCommand* remove_track(Track* track, bool historable=true);
 
 	void add_child_session(TSession* child);
 	void remove_child_session(TSession* child);
 
-	audio_sample_t* 	mixdown{};
-	audio_sample_t*		gainbuffer{};
+    inline audio_sample_t* get_curve_buffer(nframes_t nframes) const {
+        return m_curveProcessBuffer.get_buffer(nframes);
+    }
 
 protected:
 	TSession*               m_parentSession;
@@ -121,6 +123,8 @@ protected:
     TTimeRef            m_transportLocation;
     TTimeRef            m_workLocation;
     TTimeRef            m_seekTransportLocation;
+
+    TAudioBuffer     	m_curveProcessBuffer{0, true};
 
     bool get_transport_rolling_state() const {
         return m_transportRolling.load();

@@ -23,34 +23,38 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef GAIN_ENVELOPE_H
 #define GAIN_ENVELOPE_H
 
-#include "Plugin.h"
+#include "TAudioPlugin.h"
 #include "TTimeRef.h"
 
 class Curve;
 class TSession;
 
-class GainEnvelope : public Plugin
+class GainEnvelope : public TAudioPlugin
 {
-	Q_OBJECT
-	
-public:
-        GainEnvelope(TSession* session);
-        ~GainEnvelope(){}
+    Q_OBJECT
 
-	QDomNode get_state(QDomDocument doc);
-	int set_state(const QDomNode & node );
+public:
+    GainEnvelope(TSession* session);
+    ~GainEnvelope(){}
+
+    QDomNode get_state(QDomDocument doc);
+    int set_state(const QDomNode & node );
     void process(AudioBus* bus, nframes_t nframes);
     void process_gain(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels);
-	
-        void set_session(TSession* session);
-	void set_gain(float gain) {m_gain = gain;}
-	
-	float get_gain() const {return m_gain;}
-        Curve* get_curve();
-	QString get_name();
-	
+
+    void set_session(TSession* session);
+    void set_gain(float gain) {m_gain = gain;}
+
+    float get_gain() const {return m_gain;}
+    Curve* get_curve();
+    QString get_name();
+
+public slots:
+    QString get_gain_db_string(int decimals=1);
+
+
 private:
-	float m_gain;
+    float m_gain;
 };
 
 #endif

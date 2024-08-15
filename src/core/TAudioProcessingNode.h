@@ -30,8 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class AudioBus;
 class AudioClip;
-class Plugin;
-class PluginChain;
+class TAudioPlugin;
+class TAudioPluginChain;
 class TSession;
 class GainEnvelope;
 
@@ -46,10 +46,10 @@ public:
     TAudioProcessingNode (TSession* session=0);
     virtual ~TAudioProcessingNode () {}
 
-    TCommand* add_plugin(Plugin* plugin);
-    TCommand* remove_plugin(Plugin* plugin);
+    TCommand* add_plugin(TAudioPlugin* plugin);
+    TCommand* remove_plugin(TAudioPlugin* plugin);
 
-    PluginChain* get_plugin_chain() const {return m_pluginChain;}
+    TAudioPluginChain* get_plugin_chain() const {return m_pluginChain;}
     TSession* get_session() const {return m_session;}
     QString get_name() const {return m_name;}
     float get_pan() const {return m_pan;}
@@ -62,11 +62,10 @@ public:
 
 
 protected:
-
-    AudioBus*       m_processBus;
     TSession*       m_session;
+    AudioBus*       m_processBus;
     GainEnvelope*   m_fader;
-    PluginChain*    m_pluginChain;
+    TAudioPluginChain*    m_pluginChain;
     QString         m_name;
     audio_sample_t  m_maxGainAmplification;
     bool            m_isMuted;
@@ -80,6 +79,7 @@ private:
 
 public slots:
     float get_gain();
+    QString get_gain_db_string(int decimals=1);
 
     void set_gain(float gain);
     void set_gain_animated(float gain);

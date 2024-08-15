@@ -36,7 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Utils.h>
 #include <defines.h>
 #include <CommandGroup.h>
-#include "Information.h"
+#include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 #include <cstdlib>
 
@@ -285,7 +285,7 @@ TCommand* TimeLineView::playhead_to_marker()
         update_softselected_marker(cpointer().on_first_input_event_scene_pos());
 
 	if (m_blinkingMarker) {
-		m_sv->get_sheet()->set_transport_location(m_blinkingMarker->get_marker()->get_when());
+        m_sv->get_sheet()->set_transport_location(m_blinkingMarker->get_marker()->get_location()->get_start());
         return nullptr;
 	}
 
@@ -297,7 +297,7 @@ TCommand* TimeLineView::remove_marker()
 	if (m_blinkingMarker) {
 		Marker* marker = m_blinkingMarker->get_marker();
 		if (marker->get_type() == Marker::ENDMARKER && m_markerViews.size() > 1) {
-			info().information(tr("You have to remove all other markers first."));
+			tInformUser().information(tr("You have to remove all other markers first."));
 			return ied().failure();
 		}
 		return m_timeline->remove_marker(marker);
@@ -413,11 +413,11 @@ MarkerView* TimeLineView::get_marker_view_after(TTimeRef location)
 {
     // FIXME: only keep this list sorted if markers are added/moved??
     std::sort(m_markerViews.begin(), m_markerViews.end(), [&](MarkerView* left, MarkerView* right) {
-        return left->get_marker()->get_when() < right->get_marker()->get_when();
+        return left->get_marker()->get_location()->get_start() < right->get_marker()->get_location()->get_start();
     });
 
     foreach(MarkerView* markerView, m_markerViews) {
-        if (markerView->get_marker()->get_when() > location) {
+        if (markerView->get_marker()->get_location()->get_start() > location) {
             return markerView;
         }
     }
@@ -428,12 +428,12 @@ MarkerView* TimeLineView::get_marker_view_before(TTimeRef location)
 {
     // FIXME: only keep this list sorted if markers are added/moved??
     std::sort(m_markerViews.begin(), m_markerViews.end(), [&](MarkerView* left, MarkerView* right) {
-        return left->get_marker()->get_when() < right->get_marker()->get_when();
+        return left->get_marker()->get_location()->get_start() < right->get_marker()->get_location()->get_start();
     });
 
     for (int i=m_markerViews.size() - 1; i>= 0; --i) {
         MarkerView* markerView = m_markerViews.at(i);
-        if (markerView->get_marker()->get_when() < location) {
+        if (markerView->get_marker()->get_location()->get_start() < location) {
             return markerView;
         }
     }

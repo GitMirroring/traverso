@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioDevice.h"
 #include "AudioBus.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "Project.h"
 #include "ProjectManager.h"
 #include "Sheet.h"
@@ -72,7 +72,7 @@ void NewTrackDialog::showEvent(QShowEvent */*event*/)
 void NewTrackDialog::create_track()
 {
 	if (! m_project) {
-        info().information(tr("New Track cannot be created if there is no Project loaded!!"));
+        tInformUser().information(tr("New Track cannot be created if there is no Project loaded!!"));
 		return;
 	}
 	

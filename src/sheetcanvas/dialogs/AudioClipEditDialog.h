@@ -44,8 +44,6 @@ private:
 	AudioClip* m_clip;
 	QDomNode m_origState;
 
-	TTimeRef qtime_to_timeref(const QTime& time);
-	QTime timeref_to_qtime(const TTimeRef& ref);
 	bool locked;
 
 private slots:
@@ -53,7 +51,7 @@ private slots:
 	void clip_state_changed();
 	void save_changes();
 	void cancel_changes();
-	void clip_position_changed();
+	void audioclip_location_changed();
 	void gain_spinbox_value_changed(double value);
 
 	void fadein_length_changed();

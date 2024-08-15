@@ -37,25 +37,42 @@ TPulseAudioDriver::TPulseAudioDriver(TAudioDevice* device )
     write = TAudioDriverReadWriteCallBack(this, &TPulseAudioDriver::_write);
     run_cycle = RunCycleCallback(this, &TPulseAudioDriver::_run_cycle);
 
-    m_paSimple = nullptr;
-    m_interleavedBuffer = nullptr;
+    m_paSimplePlayback = nullptr;
+    m_paSimpleCapture = nullptr;
 }
 
 TPulseAudioDriver::~TPulseAudioDriver( )
 {
-    pa_simple_free(m_paSimple);
-
-    delete [] m_interleavedBuffer;
+    if (m_paSimplePlayback) {
+        pa_simple_free(m_paSimplePlayback);
+    }
+    if (m_paSimpleCapture) {
+        pa_simple_free(m_paSimpleCapture);
+    }
 }
 
-int TPulseAudioDriver::_read( nframes_t nframes )
+int TPulseAudioDriver::_read( nframes_t /*nframes*/ )
 {
-    Q_ASSERT(m_paSimple);
+    // if (!m_paSimpleCapture) {
+    //     return 1;
+    // }
 
-    int error;
+    // Q_ASSERT(m_captureChannels.size());
 
-    // if (pa_simple_read(m_paSimple, m_interleavedBuffer, m_framesPerCycle * sizeof(audio_sample_t) * 2, &error) < 0) {
+    // m_device->set_transport_cycle_start_time(TTimeRef::get_nanoseconds_since_epoch());
+
+    // int error;
+
+    // if (pa_simple_read(m_paSimpleCapture, m_interleavedCaptureBuffer, m_framesPerCycle * sizeof(audio_sample_t) * 2, &error) < 0) {
     //     fprintf(stderr, __FILE__": pa_simple_read() failed: %s\n", pa_strerror(error));
+    // }
+
+    // auto leftChannelBuffer = m_captureChannels.at(0)->get_buffer(nframes);
+    // auto rightChannelBuffer = m_captureChannels.at(1)->get_buffer(nframes);
+
+    // for (uint x = 0; x < nframes; ++x) {
+    //     leftChannelBuffer[x] = m_interleavedCaptureBuffer[x*2];
+    //     rightChannelBuffer[x] = m_interleavedCaptureBuffer[1+(x*2)];
     // }
 
     return 1;
@@ -63,7 +80,10 @@ int TPulseAudioDriver::_read( nframes_t nframes )
 
 int TPulseAudioDriver::_write( nframes_t nframes )
 {
-    Q_ASSERT(m_paSimple);
+    if (!m_paSimplePlayback) {
+        return 1;
+    }
+
     Q_ASSERT(m_playbackChannels.size());
 
     int error;
@@ -72,18 +92,18 @@ int TPulseAudioDriver::_write( nframes_t nframes )
     auto rightChannelBuffer = m_playbackChannels.at(1)->get_buffer(nframes);
 
     for (uint x = 0; x < nframes; ++x) {
-        m_interleavedBuffer[x*2] = leftChannelBuffer[x];
-        m_interleavedBuffer[1+(x*2)] = rightChannelBuffer[x];
+        m_interleavedPlaybackBuffer[x*2] = leftChannelBuffer[x];
+        m_interleavedPlaybackBuffer[1+(x*2)] = rightChannelBuffer[x];
     }
 
     m_device->set_transport_cycle_end_time(TTimeRef::get_nanoseconds_since_epoch());
 
-    if (pa_simple_write(m_paSimple, m_interleavedBuffer, m_framesPerCycle * sizeof(audio_sample_t) * 2, &error) < 0) {
+    if (pa_simple_write(m_paSimplePlayback, m_interleavedPlaybackBuffer.get_buffer(nframes), m_framesPerCycle * sizeof(audio_sample_t) * 2, &error) < 0) {
         fprintf(stderr, __FILE__": pa_simple_write() failed: %s\n", pa_strerror(error));
     }
 
     for (auto channel : m_playbackChannels) {
-        channel->silence_buffer(m_framesPerCycle);
+        channel->silence_buffer();
     }
 
     m_device->set_transport_cycle_start_time(TTimeRef::get_nanoseconds_since_epoch());
@@ -91,7 +111,7 @@ int TPulseAudioDriver::_write( nframes_t nframes )
     return 1;
 }
 
-int TPulseAudioDriver::setup(bool capture, bool playback, const QString& )
+int TPulseAudioDriver::setup(bool /*capture*/, bool playback, const QString& )
 {
 	PENTER;
     int error;
@@ -103,17 +123,27 @@ int TPulseAudioDriver::setup(bool capture, bool playback, const QString& )
     m_sampleSpec.channels = 2;
     m_sampleSpec.format = PA_SAMPLE_FLOAT32;
 
-    if (m_interleavedBuffer) {
-        delete [] m_interleavedBuffer;
-    }
-    m_interleavedBuffer = new audio_sample_t[m_framesPerCycle*m_sampleSpec.channels];
+    if (playback) {
+        m_paSimplePlayback = pa_simple_new(NULL, "Traverso_Playback", PA_STREAM_PLAYBACK, NULL, "playback", &m_sampleSpec, NULL, NULL, &error);
 
-    m_paSimple = pa_simple_new(NULL, "Traverso", PA_STREAM_PLAYBACK, NULL, "playback", &m_sampleSpec, NULL, NULL, &error);
+        if (!m_paSimplePlayback) {
+            emit driverSetupMessage("PulseAudio", tr("Unable to connect to PulseAudio server for Playback stream!"), TAudioDevice::DRIVER_SETUP_FAILURE);
+            return -1;
+        }
 
-    if (!m_paSimple) {
-        emit driverSetupMessage("PulseAudio", tr("Unable to connect to PulseAudio server!"), TAudioDevice::DRIVER_SETUP_FAILURE);
-        return -1;
+        m_interleavedPlaybackBuffer.resize(m_framesPerCycle*m_sampleSpec.channels);
     }
+
+    // if (capture) {
+    //     m_paSimpleCapture = pa_simple_new(NULL, "Traverso_Capture", PA_STREAM_RECORD, NULL, "record", &m_sampleSpec, NULL, NULL, &error);
+
+    //     if (!m_paSimpleCapture) {
+    //         emit driverSetupMessage("PulseAudio", tr("Unable to connect to PulseAudio server for Record stream!"), TAudioDevice::DRIVER_SETUP_FAILURE);
+    //         return -1;
+    //     }
+
+    //     m_interleavedCaptureBuffer.resize(m_framesPerCycle*m_sampleSpec.channels);
+    // }
 
     emit driverSetupMessage("PulseAudio", tr("Succesfully connected to PulseAudio server!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
@@ -141,7 +171,8 @@ int TPulseAudioDriver::stop( )
 {
 	PENTER;
     int error;
-    pa_simple_flush(m_paSimple, &error);
+    pa_simple_flush(m_paSimplePlayback, &error);
+    // pa_simple_flush(m_paSimpleCapture, &error);
 
     // silence capture channels
     TAudioDriver::stop();

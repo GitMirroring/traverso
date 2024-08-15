@@ -19,7 +19,7 @@
  
 */
 
-#include "Information.h"
+#include "TInformUser.h"
 #include "Utils.h"
 #include "TAudioDevice.h"
 #include "ThreadSaveMessagePosting.h"
@@ -27,14 +27,14 @@
 #include "Debugger.h"
 
 
-Information& info()
+TInformUser& tInformUser()
 {
-        static Information information;
+        static TInformUser information;
         return information;
 }
 
 
-Information::Information()
+TInformUser::TInformUser()
 {
     connect(&audiodevice(), SIGNAL(message(QString,int)),
             this, SLOT(audiodevice_message(QString,int)));
@@ -43,18 +43,18 @@ Information::Information()
 }
 
 
-void Information::information( const QString & mes )
+void TInformUser::information( const QString & mes )
 {
-        InfoStruct s;
+        TInformUserData s;
         s.message = mes;
         s.type = INFO;
 	PMESG("Information::information %s", QS_C(mes));
 	emit message(s);
 }
 
-void Information::warning( const QString & mes )
+void TInformUser::warning( const QString & mes )
 {
-        InfoStruct s;
+        TInformUserData s;
         s.message = mes;
         s.type = WARNING;
         PWARN(QString("Information::warning %1").arg(mes).toLatin1().data());
@@ -62,16 +62,16 @@ void Information::warning( const QString & mes )
 }
 
 
-void Information::critical( const QString & mes )
+void TInformUser::critical( const QString & mes )
 {
-        InfoStruct s;
+        TInformUserData s;
         s.message = mes;
         s.type = CRITICAL;
 //	PERROR("Information::critical %s", QS_C(mes));
 	emit message(s);
 }
 
-void Information::audiodevice_message(const QString& message, int severity)
+void TInformUser::audiodevice_message(const QString& message, int severity)
 {
 	switch(severity) {
         case TAudioDevice::INFO: information(message);
@@ -84,7 +84,7 @@ void Information::audiodevice_message(const QString& message, int severity)
 	}
 }
 
-void Information::TSMP_message(const QString& message)
+void TInformUser::TSMP_message(const QString& message)
 {
     critical(message);
 }

@@ -36,8 +36,10 @@ public:
 	
 	static bool can_decode(const QString& filename);
 
+    static void print_libwavpack_version();
+
 protected:
-	bool seek_private(nframes_t start);
+    bool seek_private(nframes_t frameToSeekTo);
 	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount);
 	
 	WavpackContext*	m_wp;

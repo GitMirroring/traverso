@@ -24,7 +24,7 @@ $Id: CorrelationMeter.h,v 1.2 2008/02/07 11:46:09 n_doebelin Exp $
 #ifndef CORRELATION_METER_H
 #define CORRELATION_METER_H
 
-#include "Plugin.h"
+#include "TAudioPlugin.h"
 #include "defines.h"
 #include <RingBufferNPT.h>
 #include <QObject>
@@ -38,7 +38,7 @@ struct CorrelationMeterData
     qreal	levelRight;
 };
 
-class CorrelationMeter : public Plugin
+class CorrelationMeter : public TAudioPlugin
 {
     Q_OBJECT
 

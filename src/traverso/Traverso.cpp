@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include "TAudioDevice.h"
 #include "ContextPointer.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "TShortCutManager.h"
 #include "widgets/SpectralMeterWidget.h"
 #include "widgets/CorrelationMeterWidget.h"
@@ -100,8 +100,13 @@ Traverso::Traverso(int &argc, char **argv )
     QCoreApplication::setApplicationName("Traverso");
     QCoreApplication::setOrganizationDomain("traverso-daw.org");
 
-    qRegisterMetaType<InfoStruct>("InfoStruct");
+    qRegisterMetaType<TInformUserData>("InfoStruct");
     qRegisterMetaType<TTimeRef>("TTimeRef");
+
+    // This will create the event queueu and TSMP thread for us
+    // has to be running before the audio thread in order to make
+    // sure no events will get lost
+    tsmp();
 
     config().check_and_load_configuration();
 

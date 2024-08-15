@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2008 Remon Sijrier
+Copyright (C) 2005-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -22,10 +22,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cfloat>
 #include <QInputDialog>
 
+#include "CommandGroup.h"
 #include "ContextItem.h"
+#include "Fade.h"
+#include "PCommand.h"
 #include "ReadSource.h"
 #include "AudioClip.h"
 #include "AudioSource.h"
+#include "TLocation.h"
 #include "WriteSource.h"
 #include "Sheet.h"
 #include "SnapList.h"
@@ -42,20 +46,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ThreadSaveMessagePosting.h"
 #include "ProjectManager.h"
 #include "Peak.h"
-#include "ContextPointer.h"
 #include "Project.h"
 #include "Utils.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "TConfig.h"
-#include "PluginChain.h"
+#include "TAudioPluginChain.h"
 #include "GainEnvelope.h"
 #include "TInputEventDispatcher.h"
-
-
-#include <commands.h>
-
-
-
 #include "Debugger.h"
 
 /**
@@ -128,8 +125,6 @@ AudioClip::~AudioClip()
     if (m_peak) {
         m_peak->close();
     }
-
-    delete m_location;
 }
 
 void AudioClip::init()
@@ -375,11 +370,11 @@ void AudioClip::set_location_start(const TTimeRef& location)
 
     m_fader->get_curve()->set_start_offset(m_location->get_start());
 
-    // set_track_end_location will emit positionChanged(), so we
+    // set_track_end_location will emit locationChanged(), so we
     // don't emit it in this function to avoid emitting it twice
     // (although it seems more logical to emit it here, there are
     // situations where only set_track_end_location() is called, and
-    // then we also want to emit positionChanged())
+    // then we also want to emit locationChanged())
     set_track_end_location(m_location->get_start() + m_length);
 }
 
@@ -391,8 +386,6 @@ void AudioClip::set_track_end_location(const TTimeRef& location)
         m_sheet->get_snap_list()->mark_dirty();
         m_track->clip_position_changed(this);
     }
-
-    emit positionChanged();
 }
 
 void AudioClip::set_fade_in(double range)
@@ -485,7 +478,7 @@ int AudioClip::process(TProcessCallBackData &processData)
 
 
     if (readFrames == 0) {
-        bus->silence_buffers(nframes);
+        bus->silence_buffers();
         return 0;
     }
 
@@ -494,7 +487,7 @@ int AudioClip::process(TProcessCallBackData &processData)
     }
 
     for(FadeCurve* fade = m_fades.first(); fade != nullptr; fade = fade->next) {
-        fade->process(m_sheet->gainbuffer, bus, startLocation, endLocation, nframes);
+        fade->process(m_sheet->get_curve_buffer(nframes), bus, startLocation, endLocation, nframes);
     }
 
     TTimeRef faderEndLocation = fileLocation + TTimeRef(readFrames, outputRate);
@@ -549,6 +542,7 @@ int AudioClip::init_recording()
 
     if (channelcount == 0) {
         // Can't record from a Bus with no channels!
+        printf("AudioClip::init_recording(): Track input bus has zero channels, not recording\n");
         return -1;
     }
 
@@ -593,6 +587,7 @@ int AudioClip::init_recording()
 
     m_writer = new WriteSource(spec);
     if (m_writer->prepare_export() == -1) {
+        printf("AudioClip::init_recording(): WriteSource prepare_export() failed\n");
         delete m_writer;
         m_writer = nullptr;
         delete spec;
@@ -712,7 +707,7 @@ void AudioClip::set_audio_source(ReadSource* rs)
         }
     }
 
-    // This will also emit positionChanged() which is more or less what we want.
+    // This will also emit locationChanged() which is more or less what we want.
     set_track_end_location(m_location->get_start() + m_sourceLength - m_sourceStartLocation);
 }
 
@@ -864,7 +859,7 @@ TCommand * AudioClip::normalize( )
     }
 
     if (qFuzzyCompare(normfactor, get_gain())) {
-        info().information(tr("Requested normalization factor equals actual level, nothing to be done"));
+        tInformUser().information(tr("Requested normalization factor equals actual level, nothing to be done"));
         return ied().failure();
     }
 
@@ -969,10 +964,6 @@ bool AudioClip::has_sheet() const
     return m_sheet != nullptr;
 }
 
-bool AudioClip::operator<(const AudioClip &other) {
-    return this->get_location()->get_start() < other.get_location()->get_start();
-}
-
 ReadSource * AudioClip::get_readsource() const
 {
     return m_readSource;
@@ -985,10 +976,10 @@ void AudioClip::set_as_moving(bool moving)
     set_sources_active_state();
 
     // if moving is false, then the user stopped moving this audioclip
-    // this is the point where we have to emit positionChanged() to notify
+    // this is the point where we have to emit locationChanged() to notify
     // AudioTrack and GUI of the changed clip position
     if (!moving) {
-        emit positionChanged();
+        emit m_location->locationChanged();
         if (m_track) {
             m_track->clip_position_changed(this);
         }

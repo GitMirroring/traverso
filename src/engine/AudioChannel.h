@@ -23,6 +23,7 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 #ifndef AUDIOCHANNEL_H
 #define AUDIOCHANNEL_H
 
+#include "TAudioBuffer.h"
 #include "defines.h"
 #include <QString>
 #include <QObject>
@@ -44,15 +45,13 @@ public:
     };
 
     inline audio_sample_t* get_buffer(nframes_t nframes, nframes_t offset = 0) {
-        Q_ASSERT((nframes + offset) <= m_bufferSize);
-        return (m_buffer + offset);
+        return m_audioBuffer.get_buffer(nframes + offset) + offset;
     }
 
     void set_latency(unsigned int latency);
 
-    inline void silence_buffer(nframes_t nframes) {
-        Q_ASSERT(nframes <= m_bufferSize);
-        memset (m_buffer, 0, sizeof (audio_sample_t) * nframes);
+    inline void silence_buffer() {
+        m_audioBuffer.silence_buffer();
     }
 
     void set_buffer_size(nframes_t size);
@@ -64,14 +63,12 @@ public:
 
     QString get_name() const {return m_name;}
     uint get_number() const {return m_number;}
-    uint get_buffer_size() const {return m_bufferSize;}
     int get_type() const {return m_type;}
     qint64 get_id() const {return m_id;}
 
 private:
     TRealTimeLinkedList<TVUMonitor*>    m_monitors;
-    audio_sample_t* m_buffer;
-    uint 			m_bufferSize;
+    TAudioBuffer    m_audioBuffer{0, true};
     uint 			m_latency;
     uint 			m_number;
     qint64                  m_id;

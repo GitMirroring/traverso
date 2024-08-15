@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Project.h"
 #include "TInputEventDispatcher.h"
 
-#include "Debugger.h"
 #include "TTimeLineRuler.h"
 
 TTransport::TTransport()

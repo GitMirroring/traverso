@@ -22,7 +22,7 @@ FadeCurveView.cpp
 MarkerView.cpp
 LineView.cpp
 PluginChainView.cpp
-PluginView.cpp
+TAudioPluginView.cpp
 PositionIndicator.cpp
 TrackView.cpp
 TTrackLaneView.cpp

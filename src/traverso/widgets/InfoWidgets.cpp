@@ -327,8 +327,6 @@ void HDDSpaceInfo::sheet_started()
 
 void HDDSpaceInfo::sheet_stopped()
 {
-    printf("HDDSpaceInfo::sheet_stopped call time: %ld\n", TTimeRef::get_microseconds_since_epoch());
-
     updateTimer.start(60000);
     m_button->setEnabled(false);
     update_status();

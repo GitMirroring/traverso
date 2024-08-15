@@ -66,13 +66,13 @@ AudioClipEditDialog::AudioClipEditDialog(AudioClip* clip, QWidget* parent)
 	clip_state_changed();
 	
 	// used for length, track start position
-	clip_position_changed();
+    audioclip_location_changed();
 	
 	// detect and set fade params
 	fade_curve_added();
 	
 	connect(clip, SIGNAL(stateChanged()), this, SLOT(clip_state_changed()));
-	connect(clip, SIGNAL(positionChanged()), this, SLOT(clip_position_changed()));
+    connect(clip->get_location(), SIGNAL(locationChanged()), this, SLOT(audioclip_location_changed()));
 	connect(clip, SIGNAL(fadeAdded(FadeCurve*)), this, SLOT(fade_curve_added()));
 	
 	connect(clipGainSpinBox, SIGNAL(valueChanged(double)), this, SLOT(gain_spinbox_value_changed(double)));
@@ -116,7 +116,7 @@ void AudioClipEditDialog::clip_state_changed()
 		clipNameLineEdit->setText(m_clip->get_name());
 	}
 	
-    clipGainSpinBox->setValue(coefficient_to_dB(m_clip->get_gain()));
+    clipGainSpinBox->setValue(Mixer::coefficient_to_dB(m_clip->get_gain()));
     sourceLineEdit->setText(m_clip->get_readsource()->get_filename());
     sourceLineEdit->setToolTip(m_clip->get_readsource()->get_filename());
     sampleRateLable->setText(QString::number(m_clip->get_rate() / 1000.0, 'f', 1) + " KHz");
@@ -145,14 +145,14 @@ void AudioClipEditDialog::gain_spinbox_value_changed(double value)
 	m_clip->set_gain(gain);
 }
 
-void AudioClipEditDialog::clip_position_changed()
+void AudioClipEditDialog::audioclip_location_changed()
 {
 	if (locked) return;
 
-	QTime clipLengthTime = timeref_to_qtime(m_clip->get_length());
+    QTime clipLengthTime = TTimeRef::timeref_to_qtime(m_clip->get_length());
 	clipLengthEdit->setTime(clipLengthTime);
 	
-	QTime clipStartTime = timeref_to_qtime(m_clip->get_location()->get_start());
+    QTime clipStartTime = TTimeRef::timeref_to_qtime(m_clip->get_location()->get_start());
 	clipStartEdit->setTime(clipStartTime);
 
 	update_clip_end();
@@ -163,7 +163,7 @@ void AudioClipEditDialog::fadein_length_changed()
 	if (locked) return;
 	
 	TTimeRef ref(qint64(m_clip->get_fade_in()->get_range()));
-	QTime fadeTime = timeref_to_qtime(ref);
+    QTime fadeTime = TTimeRef::timeref_to_qtime(ref);
 	fadeInEdit->setTime(fadeTime);
 }
 
@@ -172,7 +172,7 @@ void AudioClipEditDialog::fadeout_length_changed()
 	if (locked) return;
 
 	TTimeRef ref(qint64(m_clip->get_fade_out()->get_range()));
-	QTime fadeTime = timeref_to_qtime(ref);
+    QTime fadeTime = TTimeRef::timeref_to_qtime(ref);
 	fadeOutEdit->setTime(fadeTime);
 }
 
@@ -185,7 +185,7 @@ void AudioClipEditDialog::fadein_edit_changed(const QTime& time)
 	if (ied().is_holding()) return;
 
 	locked = true;
-	double range = double(qtime_to_timeref(time).universal_frame());
+    double range = double(TTimeRef::qtime_to_timeref(time).universal_frame());
 	if (range == 0) {
 		m_clip->set_fade_in(1);
 	} else {
@@ -199,7 +199,7 @@ void AudioClipEditDialog::fadeout_edit_changed(const QTime& time)
 	if (ied().is_holding()) return;
 
 	locked = true;
-	double range = double(qtime_to_timeref(time).universal_frame());
+    double range = double(TTimeRef::qtime_to_timeref(time).universal_frame());
 	if (range == 0) {
 		m_clip->set_fade_out(1);
 	} else {
@@ -214,11 +214,11 @@ void AudioClipEditDialog::clip_length_edit_changed(const QTime& time)
 
 	locked = true;
 	
-	TTimeRef ref = qtime_to_timeref(time);
+    TTimeRef ref = TTimeRef::qtime_to_timeref(time);
 
 	if (ref >= m_clip->get_source_length()) {
 		ref = m_clip->get_source_length();
-		QTime clipLengthTime = timeref_to_qtime(ref);
+        QTime clipLengthTime = TTimeRef::timeref_to_qtime(ref);
 		clipLengthEdit->setTime(clipLengthTime);
 	}
 
@@ -232,7 +232,7 @@ void AudioClipEditDialog::clip_start_edit_changed(const QTime& time)
 	if (ied().is_holding()) return;
 
 	locked = true;
-	m_clip->set_location_start(qtime_to_timeref(time));
+    m_clip->set_location_start(TTimeRef::qtime_to_timeref(time));
 	update_clip_end();
 	locked = false;
 }
@@ -353,31 +353,6 @@ void AudioClipEditDialog::fadeout_default()
 	fadeOutStrengthBox->setValue(0.5);
 }
 
-TTimeRef AudioClipEditDialog::qtime_to_timeref(const QTime & time)
-{
-    TTimeRef ref(time.hour() * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE + time.minute() * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE + time.second() * TTimeRef::UNIVERSAL_SAMPLE_RATE + (time.msec() * TTimeRef::UNIVERSAL_SAMPLE_RATE) / 1000);
-	return ref;
-}
-
-QTime AudioClipEditDialog::timeref_to_qtime(const TTimeRef& ref)
-{
-	qint64 remainder;
-	int hours, mins, secs, msec;
-
-	qint64 universalframe = ref.universal_frame();
-	
-    hours = universalframe / (TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
-    remainder = universalframe - (hours * TTimeRef::ONE_HOUR_UNIVERSAL_SAMPLE_RATE);
-    mins = remainder / ( TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-    remainder = remainder - (mins * TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE );
-	secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
-	remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
-	msec = remainder * 1000 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
-
-	QTime time(hours, mins, secs, msec);
-	return time;
-}
-
 void AudioClipEditDialog::fade_curve_added()
 {
 	if (m_clip->get_fade_in()) {
@@ -405,7 +380,7 @@ void AudioClipEditDialog::fade_curve_added()
 void AudioClipEditDialog::update_clip_end()
 {
 	TTimeRef clipEndLocation = m_clip->get_location()->get_start() + m_clip->get_length();
-	QTime clipEndTime = timeref_to_qtime(clipEndLocation);
+    QTime clipEndTime = TTimeRef::timeref_to_qtime(clipEndLocation);
 	clipEndLineEdit->setText(clipEndTime.toString(TIME_FORMAT));
 }
 

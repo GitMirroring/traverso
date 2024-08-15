@@ -22,6 +22,7 @@
 #ifndef TPULSE_AUDIO_DRIVER_H
 #define TPULSE_AUDIO_DRIVER_H
 
+#include "TAudioBuffer.h"
 #include "TAudioDriver.h"
 #include "defines.h"
 #include <pulse/pulseaudio.h>
@@ -54,9 +55,11 @@ public:
 
 private:
     // Simple PulseAudio
-    pa_simple*  m_paSimple;
+    pa_simple*  m_paSimplePlayback;
+    pa_simple*  m_paSimpleCapture;
     pa_sample_spec m_sampleSpec{};
-    audio_sample_t* m_interleavedBuffer;
+    TAudioBuffer m_interleavedPlaybackBuffer{0, true};
+    TAudioBuffer m_interleavedCaptureBuffer{0, true};
 };
 
 

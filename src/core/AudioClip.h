@@ -27,10 +27,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 
 #include "TAudioProcessingNode.h"
+#include "TLocation.h"
 #include "TProcessCallBackData.h"
 #include "TRealTimeLinkedList.h"
 #include "TTimeRef.h"
-#include "defines.h"
 
 
 class Sheet;
@@ -39,7 +39,7 @@ class WriteSource;
 class AudioTrack;
 class Peak;
 class AudioBus;
-class PluginChain;
+class TAudioPluginChain;
 class TLocation;
 class FadeCurve;
 
@@ -65,7 +65,7 @@ public:
 
     // Re-implemented from LocationItem::set_location_start
     // preferably we wouldn't have to re-implement this function
-    // TODO: make every location dependent item not have to re-implement ?
+    // TODO: make every start dependent item not have to re-implement ?
     void set_location_start(const TTimeRef& location);
     void set_fade_in(double range);
     void set_fade_out(double range);
@@ -105,7 +105,9 @@ public:
     bool has_sheet() const;
     bool is_readsource_invalid() const {return !m_isReadSourceValid;}
 
-    bool operator<(const AudioClip &other);
+    bool operator<(const AudioClip &other){
+        return this->get_location()->get_start() < other.get_location()->get_start();
+    }
 
     bool is_moving() const {return m_isMoving;}
 
@@ -119,6 +121,7 @@ public:
 
 
 private:
+    TLocation*      m_location;
     TRealTimeLinkedList<FadeCurve*>	m_fades;
     Sheet*          m_sheet;
     AudioTrack* 	m_track;
@@ -128,7 +131,6 @@ private:
     FadeCurve*		m_fadeIn;
     FadeCurve*		m_fadeOut;
     QDomNode		m_domNode;
-    TLocation*      m_location;
 
     TTimeRef 		m_sourceEndLocation;
     TTimeRef 		m_sourceStartLocation;
@@ -158,7 +160,6 @@ private:
 signals:
     void muteChanged();
     void lockChanged();
-    void positionChanged();
     void fadeAdded(FadeCurve*);
     void fadeRemoved(FadeCurve*);
     void recordingFinished(AudioClip*);

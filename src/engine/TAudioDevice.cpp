@@ -164,35 +164,32 @@ TAudioDevice::TAudioDevice()
 
     m_fallBackSetup.set_driver_type("Dummy");
 
-#if defined (JACK_SUPPORT)
-    if (libjack_is_present) {
-        m_availableDrivers << "Jack";
-    }
+
+#if defined (PULSEAUDIO_SUPPORT)
+    m_availableDrivers << "PulseAudio";
 #endif
 
 #if defined (ALSA_SUPPORT)
     m_availableDrivers << "ALSA";
 #endif
 
-#if defined (PORTAUDIO_SUPPORT)
-    m_availableDrivers << "PortAudio";
-#endif
-
-#if defined (PULSEAUDIO_SUPPORT)
-    m_availableDrivers << "PulseAudio";
-#endif
-
 #if defined (COREAUDIO_SUPPORT)
     m_availableDrivers << "CoreAudio";
+#endif
+
+#if defined (JACK_SUPPORT)
+    if (libjack_is_present) {
+        m_availableDrivers << "Jack";
+    }
+#endif
+
+#if defined (PORTAUDIO_SUPPORT)
+    m_availableDrivers << "PortAudio";
 #endif
 
 
     m_availableDrivers << "Dummy";
 
-    // This will create the event queueu and TSMP thread for us
-    // has to be running before the audio thread in order to make
-    // sure no events will get lost
-    tsmp();
     tsmp().prepare_event(m_bufferUnderRunEvent, this, nullptr, "", "bufferUnderRun()");
     tsmp().prepare_event(m_xrunStormDetectedEvent, this, nullptr, "", "xrunStormDetected()");
     tsmp().prepare_event(m_finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");

@@ -37,14 +37,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ResourcesManager.h"
 #include "ProjectManager.h"
 #include "Peak.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "TLocation.h"
 #include "Themer.h"
 #include "TConfig.h"
 #include <FadeCurve.h>
 #include <Curve.h>
 #include "TMainWindow.h"
-#include "PluginChain.h"
+#include "TAudioPluginChain.h"
 #include "Mixer.h"
 
 #include <QFileDialog>
@@ -98,7 +98,7 @@ AudioClipView::AudioClipView(SheetView* sv, AudioTrackView* parent, AudioClip* c
     connect(m_clip, &AudioClip::lockChanged, this, [this](){update();});
     connect(m_clip, SIGNAL(fadeAdded(FadeCurve*)), this, SLOT(add_new_fade_curve_view(FadeCurve*)));
     connect(m_clip, SIGNAL(fadeRemoved(FadeCurve*)), this, SLOT(remove_fade_curve_view(FadeCurve*)));
-    connect(m_clip, SIGNAL(positionChanged()), this, SLOT(position_changed()));
+    connect(m_clip->get_location(), SIGNAL(locationChanged()), this, SLOT(position_changed()));
 
     if (m_clip->recording_state() == AudioClip::RECORDING) {
         start_recording();
@@ -877,7 +877,7 @@ TCommand * AudioClipView::set_audio_file()
                                                         tr("All files (*);;Audio files (*.wav *.flac)"));
 
         if (filename.isEmpty()) {
-            info().information(tr("No file selected!"));
+            tInformUser().information(tr("No file selected!"));
             return ied().failure();
         }
 
@@ -893,7 +893,7 @@ TCommand * AudioClipView::set_audio_file()
         // but it's not the proper place to do so!!
         m_clip->set_sheet(m_sheet);
 
-        info().information(tr("Succesfully set AudioClip file to %1").arg(filename));
+        tInformUser().information(tr("Succesfully set AudioClip file to %1").arg(filename));
 
         return ied().succes();
     }

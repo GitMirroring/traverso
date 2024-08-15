@@ -27,15 +27,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QPainter>
 #include <QMouseEvent>
 
-class PluginControlPort;
+class TAudioPluginControlPort;
 
-class PluginSlider : public QWidget
+class TAudioPluginSliderWidget : public QWidget
 {
 	Q_OBJECT
 	
 public:
-	PluginSlider(PluginControlPort* port);
-	~PluginSlider(){};
+    TAudioPluginSliderWidget(TAudioPluginControlPort* port);
+    ~TAudioPluginSliderWidget(){};
 	
 	void paint(QPainter *);
 	void reset_default_value();
@@ -51,7 +51,7 @@ protected:
         void wheelEvent(QWheelEvent* e );
 	
 private:
-	PluginControlPort* m_port;
+	TAudioPluginControlPort* m_port;
 	float	m_max;
 	float	m_min;
 	float	m_value;

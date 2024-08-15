@@ -23,11 +23,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Project.h"
 #include "Sheet.h"
 #include "PluginManager.h"
-#include "Plugin.h"
+#include "TAudioPlugin.h"
 #include "CorrelationMeter.h"
 #include "SpectralMeter.h"
 #include "Utils.h"
-#include "Information.h"
+#include "TInformUser.h"
 
 #if defined (LV2_SUPPORT)
 #include <LV2Plugin.h>
@@ -73,12 +73,12 @@ void PluginManager::init()
 }
 
 
-Plugin* PluginManager::get_plugin(const  QDomNode& node )
+TAudioPlugin* PluginManager::get_plugin(const  QDomNode& node )
 {
 	QDomElement e = node.toElement();
 	QString type = e.attribute( "type", "");
 
-    Plugin* plugin = 0;
+    TAudioPlugin* plugin = 0;
         TSession* session = pm().get_project()->get_current_session();
 
     if (type == "LV2Plugin") {
@@ -117,13 +117,13 @@ const LilvPlugins* PluginManager::get_lilv_plugins()
 	return m_lilvPlugins;
 }
 
-Plugin* PluginManager::create_lv2_plugin(const QString& uri)
+TAudioPlugin* PluginManager::create_lv2_plugin(const QString& uri)
 {
         TSession* session = pm().get_project()->get_current_session();
         LV2Plugin* plugin = new LV2Plugin(session, QS_C(uri));
 	
 	if (plugin->init() < 0) {
-		info().warning(QObject::tr("Plugin %1 initialization failed!").arg(uri));
+		tInformUser().warning(QObject::tr("Plugin %1 initialization failed!").arg(uri));
 		delete plugin;
         plugin = nullptr;
 	}

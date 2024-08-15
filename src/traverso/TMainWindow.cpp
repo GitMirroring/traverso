@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "AudioClip.h"
 #include "AudioClipView.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "Marker.h"
 #include "PlayHeadMove.h"
 #include "Project.h"
@@ -48,8 +48,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TShortCutManager.h"
 #include "TInputEventDispatcher.h"
 
-#include "TAudioDevice.h"
-
 #include <QDockWidget>
 #include <QUndoView>
 #include <QFile>
@@ -63,14 +61,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QTabBar>
 #include <QCompleter>
 #include <QStandardItemModel>
-#include <samplerate.h>
 
 #include "ProjectManager.h"
 #include "TrackView.h"
 #include "ViewPort.h"
 #include "FadeCurve.h"
 #include "TConfig.h"
-#include "Plugin.h"
+#include "TAudioPlugin.h"
 #include "TAudioFileImportCommand.h"
 #include "TTimeLineRuler.h"
 #include "Themer.h"
@@ -571,8 +568,8 @@ TCommand* TMainWindow::quick_start()
 {
 	PENTER;
 
-	if (m_quickStart == 0) {
-		m_quickStart = new QDialog();
+    if (!m_quickStart) {
+        m_quickStart = new QDialog(this);
 		Ui_QuickStartDialog *qsd = new Ui_QuickStartDialog();
 		qsd->setupUi(m_quickStart);
 	}
@@ -932,41 +929,19 @@ void TMainWindow::create_menus( )
 	action->setData("w64");
     connect(action, SIGNAL(triggered(bool)), this, SLOT(change_recording_format_to_wav64()));
 
-	m_resampleQualityMenu = menu->addMenu(tr("Resample &Quality"));
-    action = m_resampleQualityMenu->addAction(tr("SINC Best Quality"));
-    action->setData(SRC_SINC_BEST_QUALITY);
-    connect(action, &QAction::triggered, this, [this, action]() {
-        config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_BEST_QUALITY);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
-    });
+    m_resampleQualityMenu = menu->addMenu(tr("Resample &Quality"));
+    m_resampleQualityMenu->setToolTipsVisible(true);
 
-    action = m_resampleQualityMenu->addAction(tr("SINC Medium Quality"));
-    action->setData(SRC_SINC_MEDIUM_QUALITY);
-    connect(action, &QAction::triggered, this, [this, action]() {
-        config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_MEDIUM_QUALITY);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
-    });
-
-    action = m_resampleQualityMenu->addAction(tr("Sinc Fastest"));
-    action->setData(SRC_SINC_FASTEST);
-    connect(action, &QAction::triggered, this, [this, action]() {
-        config().set_property("Conversion", "RTResamplingConverterType", SRC_SINC_FASTEST);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
-    });
-
-    action = m_resampleQualityMenu->addAction(tr("Zero Order Hold"));
-    action->setData(SRC_ZERO_ORDER_HOLD);
-    connect(action, &QAction::triggered, this, [this, action]() {
-        config().set_property("Conversion", "RTResamplingConverterType", SRC_ZERO_ORDER_HOLD);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
-    });
-
-    action = m_resampleQualityMenu->addAction(tr("Linear"));
-    action->setData(SRC_LINEAR);
-    connect(action, &QAction::triggered, this, [this]() {
-        config().set_property("Conversion", "RTResamplingConverterType", SRC_LINEAR);
-        save_config_and_emit_message(tr("Changed resample quality to: %1").arg("Linear"));
-    });
+    for (int convertorType : ResampleAudioReader::get_convertor_types()) {
+        action = m_resampleQualityMenu->addAction("");
+        action->setData(convertorType);
+        action->setText(ResampleAudioReader::get_convertor_type_name(convertorType));
+        action->setToolTip(ResampleAudioReader::get_convertor_type_description(convertorType));
+        connect(action, &QAction::triggered, this, [this, action, convertorType]() {
+            config().set_property("Conversion", "RTResamplingConverterType", convertorType);
+            save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
+        });
+    }
 
 	// fake a config changed 'signal-slot' action, to set the encoding menu icons
 	config_changed();
@@ -1491,12 +1466,11 @@ TCommand * TMainWindow::show_insertsilence_dialog(AudioTrack *track)
 
 TCommand * TMainWindow::show_marker_dialog()
 {
-	MarkerDialog* markerDialog = new MarkerDialog(this);
+    MarkerDialog markerDialog(this);
 
-	markerDialog->exec();
-	delete markerDialog;
+    markerDialog.exec();
 
-	return 0;
+    return nullptr;
 }
 
 TCommand* TMainWindow::show_add_child_session_dialog()
@@ -1514,7 +1488,7 @@ TCommand* TMainWindow::show_add_child_session_dialog()
 	} else if (activeSheet) {
 		parentSession = activeSheet;
 	} else {
-		info().information(tr("No Sheet active to add child view to"));
+		tInformUser().information(tr("No Sheet active to add child view to"));
 		return 0;
 	}
 
@@ -1592,7 +1566,7 @@ TCommand* TMainWindow::show_shortcuts_edit_dialog()
 
 void TMainWindow::open_help_browser()
 {
-	info().information(tr("Opening User Manual in external browser!"));
+	tInformUser().information(tr("Opening User Manual in external browser!"));
 	QDesktopServices::openUrl(QUrl("http://traverso-daw.org/UserManual"));
 }
 
@@ -1670,7 +1644,7 @@ void TMainWindow::change_recording_format_to_wavpack()
 
 void TMainWindow::save_config_and_emit_message(const QString & message)
 {
-	info().information(message);
+	tInformUser().information(message);
 	config().save();
 }
 

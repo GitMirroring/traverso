@@ -37,7 +37,7 @@
 #include <QFileDialog>
 #include <QDateTime>
 #include <AddRemove.h>
-#include "Information.h"
+#include "TInformUser.h"
 #include "PCommand.h"
 
 MarkerDialog::MarkerDialog(QWidget * parent)
@@ -103,7 +103,7 @@ void MarkerDialog::update_marker_treeview()
 		
 	foreach(Marker* marker, tl->get_markers()) {
 		QString name = marker->get_description();
-		QString pos = TTimeRef::timeref_to_cd_including_hours(marker->get_when());
+        QString pos = TTimeRef::timeref_to_cd_including_hours(marker->get_location()->get_start());
 
 		QTreeWidgetItem* item = new QTreeWidgetItem(markersTreeWidget);
 		item->setText(0, pos.simplified());
@@ -145,7 +145,7 @@ void MarkerDialog::item_changed(QTreeWidgetItem * current, QTreeWidgetItem * pre
 		marker->set_copyprotect(checkBoxCopy->isChecked());
 	}
 
-	lineEditPosition->setText(TTimeRef::timeref_to_cd_including_hours(m_marker->get_when()));
+    lineEditPosition->setText(TTimeRef::timeref_to_cd_including_hours(m_marker->get_location()->get_start()));
 	lineEditTitle->setText(m_marker->get_description());
 	lineEditPerformer->setText(m_marker->get_performer());
 	lineEditComposer->setText(m_marker->get_composer());
@@ -187,7 +187,7 @@ void MarkerDialog::position_changed(const QString &s)
 // 	calling this function when the user hits enter ?
 
 // 	TTimeRef newpos = TTimeRef::cd_to_timeref(s);
-// 	TTimeRef oldpos = m_marker->get_when();
+// 	TTimeRef oldpos = m_marker->get_location()->get_start();
 // 	QVariant newv, oldv;
 // 	newv.setValue(newpos);
 // 	oldv.setValue(oldpos);
@@ -443,7 +443,7 @@ void MarkerDialog::remove_marker()
 	}
 	
 	if (m_marker->get_type() == Marker::ENDMARKER) {
-		info().information(tr("It's not possible to remove the endmarker!!"));
+		tInformUser().information(tr("It's not possible to remove the endmarker!!"));
 		return;
 	}
 
@@ -484,7 +484,7 @@ void MarkerDialog::export_toc()
         TTimeLineRuler* tl = m_session->get_timeline();
 	foreach(Marker* marker, tl->get_markers()) {
 		QString name = marker->get_description();
-		QString pos = TTimeRef::timeref_to_cd(marker->get_when());
+        QString pos = TTimeRef::timeref_to_cd(marker->get_location()->get_start());
 
 		out << "      <tr><td>" << pos << "</td>\n        <td>" << name << "</td></tr>\n";
 	}	

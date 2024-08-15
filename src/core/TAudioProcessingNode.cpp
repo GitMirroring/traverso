@@ -25,79 +25,80 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cmath>
 
 #include "AudioClip.h"
-#include "PluginChain.h"
+#include "TAudioPluginChain.h"
 #include "TSession.h"
 
 
 #include "Debugger.h"
 
 TAudioProcessingNode::TAudioProcessingNode(TSession *session)
-        : ContextItem(session)
-        , m_session(session)
+    : ContextItem(session)
+    , m_session(session)
+    , m_processBus(nullptr)
 {
-        if (m_session) {
-                m_pluginChain = new PluginChain(this, m_session);
-                set_history_stack(m_session->get_history_stack());
-        } else {
-                m_pluginChain = new PluginChain(this);
-        }
+    if (m_session) {
+        m_pluginChain = new TAudioPluginChain(this, m_session);
+        set_history_stack(m_session->get_history_stack());
+    } else {
+        m_pluginChain = new TAudioPluginChain(this);
+    }
 
-        m_processBus = nullptr;
-        m_isMuted = false;
-        m_pan = 0.0f;
-        m_maxGainAmplification = 2.0f;
-        m_fader = m_pluginChain->get_fader();
+    m_processBus = nullptr;
+    m_isMuted = false;
+    m_pan = 0.0f;
+    m_maxGainAmplification = 2.0f;
+    m_fader = m_pluginChain->get_fader();
 }
 
 
 void TAudioProcessingNode::set_name( const QString & name )
 {
-        m_name = name;
-        emit stateChanged();
+    m_name = name;
+    emit stateChanged();
 }
 
 
 void TAudioProcessingNode::set_pan(float pan)
 {
-        if ( pan < -1.0f ) {
-                m_pan=-1.0;
+    if ( pan < -1.0f ) {
+        m_pan=-1.0;
+    } else {
+        if ( pan > 1.0f ) {
+            m_pan=1.0;
         } else {
-                if ( pan > 1.0f ) {
-                        m_pan=1.0;
-                } else {
-                        m_pan=pan;
-                }
+            m_pan=pan;
         }
+    }
 
-        if (std::fabs(pan) < std::numeric_limits<float>::epsilon()) {
-                m_pan = 0.0f;
-        }
+    if (std::fabs(pan) < std::numeric_limits<float>::epsilon()) {
+        m_pan = 0.0f;
+    }
 
-        emit panChanged();
+    emit panChanged();
 }
 
 void TAudioProcessingNode::set_muted( bool muted )
 {
-        m_isMuted = muted;
-        emit muteChanged(m_isMuted);
-        emit audibleStateChanged();
+    m_isMuted = muted;
+    emit muteChanged(m_isMuted);
+    emit audibleStateChanged();
 }
 
 TCommand* TAudioProcessingNode::mute()
 {
-        PENTER;
-        set_muted(!m_isMuted);
+    PENTER;
+    set_muted(!m_isMuted);
 
-        return nullptr;
+    return nullptr;
 }
 
 void TAudioProcessingNode::set_gain(float gain)
 {
     if (gain < 0.0f) {
-            gain = 0.0;
+        gain = 0.0;
     }
     if (gain > m_maxGainAmplification) {
-            gain = m_maxGainAmplification;
+        gain = m_maxGainAmplification;
     }
 
     m_fader->set_gain(gain);
@@ -110,14 +111,19 @@ float TAudioProcessingNode::get_gain() {
     return m_fader->get_gain();
 }
 
-TCommand* TAudioProcessingNode::add_plugin( Plugin * plugin )
+QString TAudioProcessingNode::get_gain_db_string(int decimals)
 {
-        return m_pluginChain->add_plugin(plugin);
+    return m_fader->get_gain_db_string(decimals);
 }
 
-TCommand* TAudioProcessingNode::remove_plugin( Plugin * plugin )
+TCommand* TAudioProcessingNode::add_plugin( TAudioPlugin * plugin )
 {
-        return m_pluginChain->remove_plugin(plugin);
+    return m_pluginChain->add_plugin(plugin);
+}
+
+TCommand* TAudioProcessingNode::remove_plugin( TAudioPlugin * plugin )
+{
+    return m_pluginChain->remove_plugin(plugin);
 }
 
 

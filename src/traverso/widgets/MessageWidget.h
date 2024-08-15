@@ -26,7 +26,7 @@
 #include <QQueue>
 #include <QTimer>
 
-#include "Information.h"
+#include "TInformUser.h"
 
 class QPushButton;
 class QTextBrowser;
@@ -40,7 +40,7 @@ public:
 	MessageWidgetPrivate(QWidget* parent = 0);
 
 public slots:
-	void queue_message(InfoStruct );
+	void queue_message(TInformUserData );
 	void dequeue_messagequeue();
 	void show_history();
 
@@ -51,13 +51,13 @@ protected:
 
 private:
 	QTimer			m_messageTimer;
-	QQueue<InfoStruct >	m_messageQueue;
-	InfoStruct 		m_infoStruct;
+	QQueue<TInformUserData >	m_messageQueue;
+	TInformUserData 		m_infoStruct;
 	QTextBrowser*		m_log;
 	QDialog*		m_logDialog;
 	QString			m_stringLog;
 
-	void log(InfoStruct infostruct);
+	void log(TInformUserData infostruct);
 };
 
 class MessageWidget : public QWidget

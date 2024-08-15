@@ -36,7 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Utils.h"
 #include <AddRemove.h>
 #include "Mixer.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 
 
@@ -153,14 +153,16 @@ int Curve::process(
 		
 		return 1;
 	}
-	
+
+    audio_sample_t* curveBuffer = m_session->get_curve_buffer(nframes);
+
 	// Calculate the vector, an apply to the buffer including the makeup gain.
-        get_vector(startlocation.universal_frame(), endlocation.universal_frame(), m_session->mixdown, nframes);
+    get_vector(startlocation.universal_frame(), endlocation.universal_frame(), curveBuffer, nframes);
 
     for (uint chan=0; chan<channels; ++chan) {
         audio_sample_t* buffer = audioBus->get_buffer(chan, nframes);
         for (nframes_t n = 0; n < nframes; ++n) {
-            buffer[n] *= (m_session->mixdown[n] * makeupgain);
+            buffer[n] *= (curveBuffer[n] * makeupgain);
         }
     }
 
@@ -631,7 +633,7 @@ TCommand* Curve::add_node(CurveNode* node, bool historable)
 
     for(CurveNode* cn = m_nodes.first(); cn != nullptr; cn = cn->next) {
         if (qFuzzyCompare(node->get_when(), cn->get_when()) && qFuzzyCompare(node->get_value(), cn->get_value())) {
-			info().warning(tr("There is allready a node at this exact position, not adding a new node"));
+			tInformUser().warning(tr("There is allready a node at this exact position, not adding a new node"));
 			delete node;
             node = nullptr;
             return nullptr;

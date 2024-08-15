@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QVBoxLayout>
 
 
-class Plugin;
+class TAudioPlugin;
 
 class PluginSelectorDialog : public QDialog
 {
@@ -43,7 +43,7 @@ public:
 	
 	static PluginSelectorDialog* instance();
 	
-	Plugin* get_selected_plugin();
+	TAudioPlugin* get_selected_plugin();
 	void set_description(const QString& des);
 
 private:
@@ -60,7 +60,7 @@ private:
 	QPushButton *okButton{};
 	QPushButton *cancelButton{};
 	
-	Plugin* m_plugin{};
+	TAudioPlugin* m_plugin{};
 
 	void setupUi(QDialog *PluginSelectorDialog)
 	{

@@ -93,10 +93,10 @@ public:
 	 *        Zero all AudioChannels buffers for
 	 * @param nframes size of the buffer
 	 */
-    void silence_buffers(nframes_t nframes)
+    void silence_buffers()
     {
         for (int i=0; i<m_channels.size(); ++i) {
-            m_channels.at(i)->silence_buffer(nframes);
+            m_channels.at(i)->silence_buffer();
         }
     }
 

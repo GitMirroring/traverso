@@ -107,7 +107,6 @@ public:
 
     bool any_audio_track_armed();
     bool is_changed() const {return m_changed;}
-    bool is_snap_on() const	{return m_isSnapOn;}
     bool is_recording() const {return m_recording;}
 
     bool operator<(const Sheet& /*right*/) {

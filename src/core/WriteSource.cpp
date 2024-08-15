@@ -476,7 +476,7 @@ TAudioSourceBufferStatus* WriteSource::get_buffer_status()
     // Ugly hack to let DiskIO keep calling process_realtime_buffers()
     // which will then call finish_export()
     if (!m_isRecording) {
-        m_bufferstatus.set_fill_status(70);
+        m_bufferstatus.set_fill_status(0);
     }
     m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::IN_SYNC);
     return &m_bufferstatus;

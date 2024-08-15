@@ -92,7 +92,7 @@ void AudioClipManager::add_clip( AudioClip * clip )
 	
 	m_clips.append( clip );
 	
-	connect(clip, SIGNAL(positionChanged()), this, SLOT(update_last_frame()));
+    connect(clip->get_location(), SIGNAL(locationChanged()), this, SLOT(update_last_frame()));
 	
 	m_sheet->get_snap_list()->mark_dirty();
 	update_last_frame();

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2005-2007 Remon Sijrier 
+    Copyright (C) 2005-2024 Remon Sijrier
  
     This file is part of Traverso
  
@@ -19,12 +19,12 @@
  
 */
 
-#ifndef INFORMATION_H
-#define INFORMATION_H
+#ifndef T_INFORM_USER_H
+#define T_INFORM_USER_H
 
 #include <QObject>
 
-struct InfoStruct
+struct TInformUserData
 {
         QString 	message;
         int		type;
@@ -35,7 +35,7 @@ static const int WARNING = 1;
 static const int CRITICAL = 2;
 
 
-class Information : public QObject
+class TInformUser : public QObject
 {
         Q_OBJECT
 
@@ -45,24 +45,24 @@ public:
         void critical(const QString& s);
 
 private:
-        Information();
-        Information(const Information&) : QObject()
+        TInformUser();
+        TInformUser(const TInformUser&) : QObject()
         {}
 
 
         // allow this function to create one instance
-        friend Information& info();
+        friend TInformUser& tInformUser();
 
 signals:
-        void message(InfoStruct );
+        void message(TInformUserData );
 	
 private slots:
 	void audiodevice_message(const QString &message, int severity);
     void TSMP_message(const QString& message);
 };
 
-// use this function to propagate the Information
-Information& info();
+// use this function to propagate the TInformUser
+TInformUser& tInformUser();
 
 #endif
 

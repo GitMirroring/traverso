@@ -48,7 +48,7 @@ int MoveMarker::prepare_actions()
 
 int MoveMarker::begin_hold()
 {
-    m_origLocation = m_newLocation = m_marker->get_when();
+    m_origLocation = m_newLocation = m_marker->get_location()->get_start();
     m_marker->get_location()->set_snappable(false);
     mmd->view->set_dragging(true);
 	return 1;

@@ -77,8 +77,8 @@ TrackPanelView::TrackPanelView(TrackView* view)
     m_trackNameView = new TTextView(this);
     m_trackNameView->setText(m_track->get_name());
 
-    LED_WIDTH = 20;
-    LED_HEIGHT = 16;
+    LED_WIDTH = 21;
+    LED_HEIGHT = 19;
     LED_SPACING = 8;
 
     m_infoLed->set_bounding_rect(QRectF(0, 0, LED_WIDTH, LED_HEIGHT));
@@ -205,8 +205,8 @@ void TrackPanelView::layout_panel_items()
         ledViewXPos += ledView->boundingRect().width() + LED_SPACING;
     }
 
-    m_panKnob->setPos(ledViewXPos + PANEL_ITEM_SPACING - LED_SPACING, LED_Y_POS - 2);
-    m_gainKnob->setPos(m_panKnob->pos().x() + m_panKnob->boundingRect().width() + LED_SPACING, LED_Y_POS - 2);
+    m_panKnob->setPos(ledViewXPos + PANEL_ITEM_SPACING - LED_SPACING, LED_Y_POS);
+    m_gainKnob->setPos(m_panKnob->pos().x() + m_panKnob->boundingRect().width() + LED_SPACING, LED_Y_POS);
 }
 
 void TrackPanelView::theme_config_changed()
@@ -365,8 +365,8 @@ void TrackPanelGain::paint( QPainter * painter, const QStyleOptionGraphicsItem *
 
     int sliderWidth = int(m_boundingRect.width() - 75);
         float gain = m_track->get_gain();
-	QString sgain = coefficient_to_dbstring(gain);
-	float db = coefficient_to_dB(gain);
+    QString sgain = m_track->get_gain_db_string();
+    float db = Mixer::coefficient_to_dB(gain);
 
 	if (db < -60) {
 		db = -60;
@@ -462,7 +462,7 @@ void TrackPanelLed::paint(QPainter* painter, const QStyleOptionGraphicsItem * /*
 		QColor background = themer()->get_color("TrackPanel:led:inactive");
 		QColor color = themer()->get_color("TrackPanel:" + m_name + "led");
                 if (has_active_context()) {
-            color = color.lighter(110);
+            color = color.lighter(150);
 		}
 		
 		painter->setPen(color);
@@ -476,7 +476,7 @@ void TrackPanelLed::paint(QPainter* painter, const QStyleOptionGraphicsItem * /*
 	} else {
 		QColor color = themer()->get_color("TrackPanel:led:inactive");
                 if (has_active_context()) {
-            color = color.lighter(110);
+            color = color.lighter(150);
 		}
 		
 		painter->setPen(themer()->get_color("TrackPanel:led:margin:inactive"));

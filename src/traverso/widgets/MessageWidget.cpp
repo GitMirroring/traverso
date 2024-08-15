@@ -73,7 +73,7 @@ MessageWidgetPrivate::MessageWidgetPrivate( QWidget * parent )
 	
 	m_log = 0;
 	
-	connect(&info(), SIGNAL(message(InfoStruct)), this, SLOT(queue_message(InfoStruct)));
+	connect(&tInformUser(), SIGNAL(message(InfoStruct)), this, SLOT(queue_message(InfoStruct)));
 	connect(&m_messageTimer, SIGNAL(timeout()), this, SLOT(dequeue_messagequeue()));
 }
 
@@ -128,7 +128,7 @@ void MessageWidgetPrivate::resizeEvent(QResizeEvent* )
 	update();
 }
 
-void MessageWidgetPrivate::queue_message( InfoStruct infostruct)
+void MessageWidgetPrivate::queue_message( TInformUserData infostruct)
 {
 	m_messageQueue.enqueue(infostruct);
 
@@ -176,7 +176,7 @@ void MessageWidgetPrivate::dequeue_messagequeue( )
 	update();
 }
 
-void MessageWidgetPrivate::log(InfoStruct infostruct)
+void MessageWidgetPrivate::log(TInformUserData infostruct)
 {
 	QString time = "<td width=65>" + QTime::currentTime().toString().append(" :") + " </td>";
 	QString color;

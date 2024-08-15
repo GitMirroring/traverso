@@ -26,18 +26,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Utils.h"
 #include <cstdio>
 
-
-
-#include "Debugger.h"
-
-
 WPAudioWriter::WPAudioWriter(TExportSpecification* spec)
     : AbstractAudioWriter(spec)
 {
 	m_wp = 0;
-	m_firstBlock = 0;
+    m_firstBlock = 0;
 	m_firstBlockSize = 0;
-	m_tmp_buffer = 0;
+    m_tmp_buffer = 0;
 	m_tmpBufferSize = 0;
     // Set some sensible default values
     // CONFIG_HIGH_FLAG (default) ~ 1.5 times slower then FAST, ~ 20% extra compression then FAST
@@ -52,9 +47,9 @@ WPAudioWriter::~WPAudioWriter()
 	if (m_wp) {
         WPAudioWriter::close_private();
 	}
-	if (m_firstBlock) {
-		delete [] m_firstBlock;
-	}
+    if (m_firstBlock) {
+        delete [] m_firstBlock;
+    }
 }
 
 bool WPAudioWriter::set_format_attribute(const QString& key, const QString& value)
@@ -169,9 +164,9 @@ int WPAudioWriter::write_block(void *id, void *data, int32_t length)
 	uint32_t bcount;
 	
 	if (writer && writer->m_file && data && length) {
-		if (writer->m_firstBlock == 0) {
-			writer->m_firstBlock = new char[length];
-			memcpy(writer->m_firstBlock, data, length);
+        if (writer->m_firstBlock == 0) {
+            writer->m_firstBlock = new char[length];
+            memcpy(writer->m_firstBlock, data, length);
 			writer->m_firstBlockSize = length;
 		}
 		if (!writer->write_to_file(data, (uint32_t)length, (uint32_t*)&bcount) || bcount != (uint32_t)length) {
@@ -190,11 +185,11 @@ bool WPAudioWriter::rewrite_first_block()
 	if (!m_firstBlock || !m_file || !m_wp) {
 		return false;
 	}
-	WavpackUpdateNumSamples (m_wp, m_firstBlock);
+    WavpackUpdateNumSamples (m_wp, m_firstBlock);
 	if (fseek(m_file, 0, SEEK_SET) != 0) {
 		return false;
 	}
-	if (!write_block(this, m_firstBlock, m_firstBlockSize)) {
+    if (!write_block(this, m_firstBlock, m_firstBlockSize)) {
 		return false;
 	}
 	
@@ -210,8 +205,8 @@ nframes_t WPAudioWriter::write_private(void* buffer, nframes_t frameCount)
 	// 
     if (m_exportSpecification->get_data_format() > 1 && m_exportSpecification->get_data_format() < 24) { // Not float, or 32bit int, or 24bit int
 		if (frameCount > m_tmpBufferSize) {
-			if (m_tmp_buffer) {
-				delete [] m_tmp_buffer;
+            if (m_tmp_buffer) {
+                delete [] m_tmp_buffer;
 			}
             m_tmp_buffer = new int32_t[frameCount * m_exportSpecification->get_channel_count()];
 			m_tmpBufferSize = frameCount;
@@ -219,17 +214,17 @@ nframes_t WPAudioWriter::write_private(void* buffer, nframes_t frameCount)
         for (nframes_t s = 0; s < frameCount * m_exportSpecification->get_channel_count(); s++) {
             switch (m_exportSpecification->get_data_format()) {
                 case SF_FORMAT_PCM_S8:
-					m_tmp_buffer[s] = ((int8_t*)buffer)[s];
+                    m_tmp_buffer[s] = ((int8_t*)buffer)[s];
 					break;
 				case 16:
-					m_tmp_buffer[s] = ((int16_t*)buffer)[s];
+                    m_tmp_buffer[s] = ((int16_t*)buffer)[s];
 					break;
 				default:
 					// Less than 24 bit, but not 8 or 16 ?  This won't end well...
 					break;
 			}
 		}
-		if (WavpackPackSamples(m_wp, m_tmp_buffer, frameCount) == false) {
+        if (WavpackPackSamples(m_wp, m_tmp_buffer, frameCount) == false) {
 			return 0;
 		}
 		return frameCount;
@@ -259,9 +254,9 @@ bool WPAudioWriter::close_private()
 	fclose(m_file);
 	m_file = 0;
 
-	if (m_tmp_buffer) {
-		delete [] m_tmp_buffer;
-		m_tmp_buffer = 0;
+    if (m_tmp_buffer) {
+        delete [] m_tmp_buffer;
+        m_tmp_buffer = 0;
 	}
 	m_tmpBufferSize = 0;
 

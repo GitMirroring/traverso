@@ -34,6 +34,7 @@ $Id: FadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 #include "AudioBus.h"
 #include "TLocation.h"
 #include "Debugger.h"
+#include "TSession.h"
 
 
 QStringList FadeCurve::defaultShapes = QStringList() << "Fastest" << "Fast" << "Linear"  << "Slow" << "Slowest";
@@ -156,7 +157,7 @@ int FadeCurve::set_state( const QDomNode & node )
 }
 
 
-void FadeCurve::process(audio_sample_t* gainbuffer, AudioBus *bus, const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes)
+void FadeCurve::process(audio_sample_t *curveBuffer, AudioBus *bus, const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes)
 {
     Q_ASSERT(bus->get_channel_count() == 2);
     Q_ASSERT(m_parentLocation);
@@ -209,12 +210,12 @@ void FadeCurve::process(audio_sample_t* gainbuffer, AudioBus *bus, const TTimeRe
 
     upperRange = fadeLocation + TTimeRef(framesToProcess, outputRate);
 
-    get_vector(fadeLocation.universal_frame(), upperRange.universal_frame(), gainbuffer, framesToProcess);
+    get_vector(fadeLocation.universal_frame(), upperRange.universal_frame(), curveBuffer, framesToProcess);
 
     for (uint chan=0; chan<channelCount; ++chan) {
         audio_sample_t* buf = bus->get_buffer(chan, framesToProcess, offset);
         for (nframes_t frame = 0; frame < framesToProcess; ++frame) {
-            buf[frame] *= gainbuffer[frame];
+            buf[frame] *= curveBuffer[frame];
         }
     }
 }

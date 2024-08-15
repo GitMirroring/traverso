@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Sheet.h"
 #include "ContextPointer.h"
 #include "ResourcesManager.h"
-#include "Information.h"
+#include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 #include "TConfig.h"
 #include "FileHelpers.h"
@@ -146,7 +146,7 @@ Project* ProjectManager::create_new_project(int numSheets, int numTracks, const 
 	PENTER;
 
 	if (project_exists(projectName)) {
-		info().critical(tr("Project %1 already exists!").arg(projectName));
+		tInformUser().critical(tr("Project %1 already exists!").arg(projectName));
 		return 0;
 	}
 
@@ -157,7 +157,7 @@ Project* ProjectManager::create_new_project(int numSheets, int numTracks, const 
 
 	if (newProject->create(numSheets, numTracks) < 0) {
 		delete newProject;
-		info().critical(tr("Unable to create new Project %1").arg(projectName));
+		tInformUser().critical(tr("Unable to create new Project %1").arg(projectName));
 		return 0;
 	}
 
@@ -169,7 +169,7 @@ Project* ProjectManager::create_new_project(int numSheets, int numTracks, const 
 Project* ProjectManager::create_new_project(const QString& templatefile, const QString& projectName)
 {
 	if (project_exists(projectName)) {
-		info().critical(tr("Project %1 already exists!").arg(projectName));
+		tInformUser().critical(tr("Project %1 already exists!").arg(projectName));
 		return 0;
 	}
 
@@ -180,7 +180,7 @@ Project* ProjectManager::create_new_project(const QString& templatefile, const Q
 	
 	if (newProject->create(0, 0) < 0) {
 		delete newProject;
-		info().critical(tr("Unable to create new Project %1").arg(projectName));
+		tInformUser().critical(tr("Unable to create new Project %1").arg(projectName));
 		return 0;
 	}
 	
@@ -220,7 +220,7 @@ int ProjectManager::load_project(const QString& projectName)
                                 emit projectLoadFailed(m_currentProject->get_title(), m_currentProject->get_error_string());
 			}
 		}
-                info().critical(tr("Unable to load Project %1").arg(projectName));
+                tInformUser().critical(tr("Unable to load Project %1").arg(projectName));
                 set_current_project(0);
 		return -1;
         } else {
@@ -289,7 +289,7 @@ TCommand* ProjectManager::save_project()
         if (m_currentProject) {
                 m_currentProject->save();
 	} else {
-		info().information( tr("No Project to save, open or create a Project first!"));
+		tInformUser().information( tr("No Project to save, open or create a Project first!"));
 	}
 
 	return (TCommand*) 0;
@@ -365,7 +365,7 @@ int ProjectManager::rename_project_dir(const QString & olddir, const QString & n
 	m_projectDirs.append(newdir);
 	
 	if ( ! dir.rename(olddir, newdir)) {
-		info().critical(tr("Could not rename Project directory to %1").arg(newdir));
+		tInformUser().critical(tr("Could not rename Project directory to %1").arg(newdir));
 		return - 1;
 	}
 	
@@ -450,7 +450,7 @@ void ProjectManager::start_incremental_backup(Project* project)
 	
 	QFile reader(fileName);
 	if (!reader.open(QIODevice::ReadOnly)) {
-		info().warning(tr("Projectfile backup: The project file %1 could not be opened for reading (Reason: %2)").arg(fileName).arg(reader.errorString()));
+		tInformUser().warning(tr("Projectfile backup: The project file %1 could not be opened for reading (Reason: %2)").arg(fileName).arg(reader.errorString()));
 		return;
 	}
 	
@@ -460,7 +460,7 @@ void ProjectManager::start_incremental_backup(Project* project)
 	
 	if (!compressedWriter.open( QIODevice::WriteOnly ) ) {
 		compressedWriter.close();
-                info().warning(tr("Projectfile backup: The project file %1 could not be opened for writing (Reason: %2)").arg(fileName).arg(compressedWriter.errorString()));
+                tInformUser().warning(tr("Projectfile backup: The project file %1 could not be opened for writing (Reason: %2)").arg(fileName).arg(compressedWriter.errorString()));
 		return;
 	}
 	
@@ -603,7 +603,7 @@ int ProjectManager::create_projectfilebackup_dir(const QString& rootDir)
 	QString path = rootDir + "/projectfilebackup/";
 
     if (!dir.mkdir(path)) {
-		info().critical(tr("Cannot create dir %1").arg(path));
+		tInformUser().critical(tr("Cannot create dir %1").arg(path));
 		return -1;
 	}
 	

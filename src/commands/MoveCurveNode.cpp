@@ -196,7 +196,7 @@ int MoveCurveNode::check_and_apply_when_and_value_diffs()
         // NOTE: this obviously only makes sense when the Node == GainEnvelope Node
         // Use a delegate (or something similar) in the future that set's the correct value.
 	if (m_nodeDatas.size() == 1) {
-		float dbFactor = coefficient_to_dB(m_nodeDatas.first().origValue + m_valueDiff);
+		float dbFactor = Mixer::coefficient_to_dB(m_nodeDatas.first().origValue + m_valueDiff);
         cpointer().set_canvas_cursor_text(QByteArray::number(dbFactor, 'f', 1).append(" dB"));
 	}
 

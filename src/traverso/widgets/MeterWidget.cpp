@@ -24,7 +24,7 @@
 
 #include "TCommand.h"
 #include "ContextPointer.h"
-#include "PluginChain.h"
+#include "TAudioPluginChain.h"
 #include "ProjectManager.h"
 #include "Project.h"
 #include "Sheet.h"

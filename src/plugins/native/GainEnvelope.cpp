@@ -26,10 +26,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioBus.h"
 
 GainEnvelope::GainEnvelope(TSession* session)
-        : Plugin(session)
+        : TAudioPlugin(session)
 {
     m_gain = 1.0f;
-	PluginControlPort* port = new PluginControlPort(this, 0, 1.0);
+	TAudioPluginControlPort* port = new TAudioPluginControlPort(this, 0, 1.0);
 	port->set_index(0);
 	m_controlPorts.append(port);
         if (session) {
@@ -39,7 +39,7 @@ GainEnvelope::GainEnvelope(TSession* session)
 
 QDomNode GainEnvelope::get_state(QDomDocument doc)
 {
-	QDomElement node = Plugin::get_state(doc).toElement();
+	QDomElement node = TAudioPlugin::get_state(doc).toElement();
 	node.setAttribute("type", "GainEnvelope");
 	node.setAttribute("gain", m_gain);
 	
@@ -48,12 +48,12 @@ QDomNode GainEnvelope::get_state(QDomDocument doc)
 
 int GainEnvelope::set_state(const QDomNode & node)
 {
-	foreach(PluginControlPort* port, m_controlPorts) {
+	foreach(TAudioPluginControlPort* port, m_controlPorts) {
 		delete port;
 	}
 	m_controlPorts.clear();
 	
-	Plugin::set_state(node);
+	TAudioPlugin::set_state(node);
 	
 	QDomElement controlPortsNode = node.firstChildElement("ControlPorts");
 	if (!controlPortsNode.isNull()) {
@@ -61,7 +61,7 @@ int GainEnvelope::set_state(const QDomNode & node)
 		
 		while (!portNode.isNull()) {
 			
-			PluginControlPort* port = new PluginControlPort(this, portNode);
+			TAudioPluginControlPort* port = new TAudioPluginControlPort(this, portNode);
 			m_controlPorts.append(port);
 			
 			portNode = portNode.nextSibling();
@@ -108,7 +108,7 @@ Curve * GainEnvelope::get_curve()
 
 void GainEnvelope::process_gain(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels)
 {
-    PluginControlPort* port = m_controlPorts.at(0);
+    TAudioPluginControlPort* port = m_controlPorts.at(0);
 
     if (port->use_automation()) {
         port->get_curve()->process(audioBus, startlocation, endlocation, nframes, channels, m_gain);
@@ -119,3 +119,25 @@ void GainEnvelope::process_gain(AudioBus* audioBus, const TTimeRef& startlocatio
     }
 }
 
+QString GainEnvelope::get_gain_db_string(int decimals)
+{
+    float db = Mixer::coefficient_to_dB (get_gain());
+
+    QString gainIndB;
+
+    if (std::fabs(db) < (1/::pow(10, decimals))) {
+        db = 0.0f;
+    }
+
+    if ( db < -99 )
+        gainIndB = "- INF";
+    else if ( db < 0 )
+        gainIndB = "- " + QByteArray::number ( ( -1 * db ), 'f', decimals ) + " dB";
+    else if ( db > 0 )
+        gainIndB = "+ " + QByteArray::number ( db, 'f', decimals ) + " dB";
+    else {
+        gainIndB = "  " + QByteArray::number ( db, 'f', decimals ) + " dB";
+    }
+
+    return gainIndB;
+}
