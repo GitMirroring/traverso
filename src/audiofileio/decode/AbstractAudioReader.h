@@ -51,7 +51,7 @@ public:
 	virtual QString decoder_type() const = 0;
 	virtual void clear_buffers() {}
 	
-    static AbstractAudioReader* create_audio_reader(const QString& filename);
+    static std::unique_ptr<AbstractAudioReader> create_audio_reader(const QString& filename);
 	
 protected:
 	virtual bool seek_private(nframes_t start) = 0;

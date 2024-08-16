@@ -105,7 +105,7 @@ public:
 	static int zoomStep[ZOOM_LEVELS + 1];
 
 
-	Peak(AudioSource* source);
+    explicit Peak(AudioSource* source);
 	~Peak();
 
 	enum { 	NO_PEAKDATA_FOUND = -1,

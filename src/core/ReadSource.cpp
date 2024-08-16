@@ -74,11 +74,10 @@ ReadSource::ReadSource(const QString& dir, const QString& name)
 {
 	private_init();
 	
-	AbstractAudioReader* reader = AbstractAudioReader::create_audio_reader(m_fileName);
+    std::unique_ptr<AbstractAudioReader> reader = AbstractAudioReader::create_audio_reader(m_fileName);
 
 	if (reader) {
 		m_channelCount = reader->get_num_channels();
-		delete reader;
 	} else {
 		m_channelCount = 0;
 	}
@@ -416,7 +415,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
         m_fileDecodeBuffer->silence_buffers();
 
         // and read in the samples. We have to use the source start location as the start location, see explanation above
-        nframes_t read = file_read(m_fileDecodeBuffer, m_sourceStartLocation, toRead);
+        nframes_t read = file_read(m_fileDecodeBuffer.get(), m_sourceStartLocation, toRead);
         if (read != toRead) {
             printf("Could not read %d frames, only %d\n", toRead, read);
         }
@@ -486,7 +485,7 @@ void ReadSource::process_realtime_buffers()
     // since we want to fill the rt buffer even beyond the file length
     // for now make sure the decode buffers are the correct size
     m_fileDecodeBuffer->check_buffers_capacity(totalReadSize, m_channelCount);
-    nframes_t read = file_read(m_fileDecodeBuffer, slotFileLocation, totalReadSize);
+    nframes_t read = file_read(m_fileDecodeBuffer.get(), slotFileLocation, totalReadSize);
     nframes_t offset = 0;
     if (read != bufferSize) { // likely end of file
         // printf("ReadSource::fill_realtime_buffers: file_read gave only %d\n", read);
@@ -668,7 +667,7 @@ uint ReadSource::get_file_rate() const
 	return pm().get_project()->get_rate(); 
 }
 
-void ReadSource::set_decode_buffers(TFileDecodeBuffer* fileDecodeBuffer, TFileDecodeBuffer *resampleDecodeBuffer)
+void ReadSource::set_decode_buffers(std::shared_ptr<TFileDecodeBuffer> fileDecodeBuffer, std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer)
 {
     m_fileDecodeBuffer = fileDecodeBuffer;
 

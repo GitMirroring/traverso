@@ -244,7 +244,7 @@ ReadSource * ResourcesManager::get_readsource(qint64 id)
 /**
  * 	Get the AudioClip with id \a id
 
-	This function will return 0 if no AudioClip was found with id \a id.
+    This function will return nullptr if no AudioClip was found with id \a id.
 	
 	Only ONE AudioClip instance with this id can be retrieved via this function. 
 	Using this function multiple times with the same id will implicitely create 

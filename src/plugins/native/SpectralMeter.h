@@ -32,12 +32,6 @@ $Id: SpectralMeter.h,v 1.5 2008/02/07 12:52:57 n_doebelin Exp $
 
 class AudioBus;
 
-struct SpectralMeterData
-{
-	audio_sample_t*	bufferLeft;
-	audio_sample_t*	bufferRight;
-};
-
 class SpectralMeter : public TAudioPlugin
 {
 	Q_OBJECT

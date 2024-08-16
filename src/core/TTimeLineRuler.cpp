@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Marker.h"
 #include "TExportSpecification.h"
 #include "Utils.h"
-#include "AddRemove.h"
+#include "TAddRemoveCommand.h"
 
 #include <QRegularExpression>
 
@@ -74,8 +74,8 @@ TCommand * TTimeLineRuler::add_marker(Marker* marker, bool historable)
 {
     connect(marker->get_location(), SIGNAL(locationChanged()), this, SLOT(marker_position_changed()));
 	
-	AddRemove* cmd;
-	cmd = new AddRemove(this, marker, historable, m_sheet,
+	TAddRemoveCommand* cmd;
+	cmd = new TAddRemoveCommand(this, marker, historable, m_sheet,
 		"private_add_marker(Marker*)", "markerAdded(Marker*)",
 		"private_remove_marker(Marker*)", "markerRemoved(Marker*)",
   		tr("Add Marker"));
@@ -91,8 +91,8 @@ TCommand * TTimeLineRuler::add_marker(Marker* marker, bool historable)
 
 TCommand* TTimeLineRuler::remove_marker(Marker* marker, bool historable)
 {
-	AddRemove* cmd;
-	cmd = new AddRemove(this, marker, historable, m_sheet,
+	TAddRemoveCommand* cmd;
+	cmd = new TAddRemoveCommand(this, marker, historable, m_sheet,
 		"private_remove_marker(Marker*)", "markerRemoved(Marker*)",
 		"private_add_marker(Marker*)", "markerAdded(Marker*)",
   		tr("Remove Marker"));

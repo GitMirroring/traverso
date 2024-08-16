@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ResourcesManager.h"
 #include "TLocation.h"
 #include "Utils.h"
-#include "AddRemove.h"
+#include "TAddRemoveCommand.h"
 #include "PCommand.h"
 
 #include "Mixer.h"
@@ -421,7 +421,7 @@ TCommand* AudioTrack::remove_clip(AudioClip* clip, bool historable, bool ismove)
 
     clip->removed_from_track();
 
-    return new AddRemove(this, clip, historable, m_sheet,
+    return new TAddRemoveCommand(this, clip, historable, m_sheet,
                          "private_remove_clip(AudioClip*)", "privateAudioClipRemoved(AudioClip*)",
                          "private_add_clip(AudioClip*)", "privateAudioClipAdded(AudioClip*)",
                          tr("Remove Clip"));
@@ -435,7 +435,7 @@ TCommand* AudioTrack::add_clip(AudioClip* clip, bool historable, bool ismove)
     if (! ismove) {
         m_sheet->get_audioclip_manager()->add_clip(clip);
     }
-    return new AddRemove(this, clip, historable, m_sheet,
+    return new TAddRemoveCommand(this, clip, historable, m_sheet,
                          "private_add_clip(AudioClip*)", "privateAudioClipAdded(AudioClip*)",
                          "private_remove_clip(AudioClip*)", "privateAudioClipRemoved(AudioClip*)",
                          tr("Add Clip"));

@@ -36,7 +36,7 @@
 #include <QTextStream>
 #include <QFileDialog>
 #include <QDateTime>
-#include <AddRemove.h>
+#include <TAddRemoveCommand.h>
 #include "TInformUser.h"
 #include "PCommand.h"
 
@@ -449,7 +449,7 @@ void MarkerDialog::remove_marker()
 
         TTimeLineRuler* tl = m_session->get_timeline();
 		
-	AddRemove *ar = (AddRemove*) tl->remove_marker(m_marker);
+	TAddRemoveCommand *ar = (TAddRemoveCommand*) tl->remove_marker(m_marker);
 	TCommand::process_command(ar);
 	update_marker_treeview();
 }

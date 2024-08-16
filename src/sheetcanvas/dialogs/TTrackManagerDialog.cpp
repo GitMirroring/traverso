@@ -119,6 +119,11 @@ TTrackManagerDialog::TTrackManagerDialog(Track *track, QWidget *parent)
 TTrackManagerDialog::~TTrackManagerDialog()
 {
     PENTERDES;
+
+    delete m_routingInputMenu;
+    delete m_routingOutputMenu;
+    delete m_preSendsMenu;
+
 }
 
 void TTrackManagerDialog::create_routing_input_menu()

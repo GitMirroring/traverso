@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <AbstractAudioReader.h>
 #include <samplerate.h>
 
-class PrivateSRC;
+struct PrivateSRC;
 class TAudioBuffer;
 
 class ResampleAudioReader : public AbstractAudioReader
@@ -50,7 +50,7 @@ public:
 	int get_convertor_type() const {return m_convertorType;}
 	void set_output_rate(uint rate);
     void set_converter_type(int converterType);
-	void set_resample_decode_buffer(TFileDecodeBuffer* buffer);
+    void set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> buffer);
 
     static int get_default_resample_quality();
     static QString get_convertor_type_name(int convertorType);
@@ -68,8 +68,8 @@ protected:
 	nframes_t resampled_to_file_frame(nframes_t frame);
 	nframes_t file_to_resampled_frame(nframes_t frame);
 	
-	AbstractAudioReader*	m_reader;
-    PrivateSRC*             m_privateSRC;
+    std::unique_ptr<AbstractAudioReader>	m_reader;
+    std::unique_ptr<PrivateSRC>             m_privateSRC;
     std::vector<std::unique_ptr<TAudioBuffer>> m_overflowBuffers;
     long                    m_overflowUsed;
     uint                    m_outputSampleRate;
@@ -79,8 +79,7 @@ protected:
 	
 private:
 	void create_overflow_buffers();
-	TFileDecodeBuffer* m_resampleDecodeBuffer;
-	bool m_resampleDecodeBufferIsMine;
+    std::shared_ptr<TFileDecodeBuffer> m_resampleDecodeBuffer;
 };
 
 #endif

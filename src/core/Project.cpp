@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include "ContextPointer.h"
 #include "Utils.h"
-#include <AddRemove.h>
+#include <TAddRemoveCommand.h>
 #include "FileHelpers.h"
 #include "TTimeLineRuler.h"
 #include "TBusTrack.h"
@@ -1064,8 +1064,8 @@ TCommand* Project::add_sheet(Sheet* sheet, bool historable)
 {
     PENTER;
 
-    AddRemove* cmd;
-    cmd = new AddRemove(this, sheet, historable, nullptr,
+    TAddRemoveCommand* cmd;
+    cmd = new TAddRemoveCommand(this, sheet, historable, nullptr,
                         "private_add_sheet(Sheet*)", "privateSheetAdded(Sheet*)",
                         "private_remove_sheet(Sheet*)", "privateSheetRemoved(Sheet*)",
                         tr("Sheet %1 added").arg(sheet->get_name()));
@@ -1076,8 +1076,8 @@ TCommand* Project::add_sheet(Sheet* sheet, bool historable)
 
 TCommand* Project::remove_sheet(Sheet* sheet, bool historable)
 {
-    AddRemove* cmd;
-    cmd = new AddRemove(this, sheet, historable, nullptr,
+    TAddRemoveCommand* cmd;
+    cmd = new TAddRemoveCommand(this, sheet, historable, nullptr,
                         "private_remove_sheet(Sheet*)", "privateSheetRemoved(Sheet*)",
                         "private_add_sheet(Sheet*)", "privateSheetAdded(Sheet*)",
                         tr("Remove Sheet %1").arg(sheet->get_name()));

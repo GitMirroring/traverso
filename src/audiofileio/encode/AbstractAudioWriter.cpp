@@ -104,13 +104,13 @@ nframes_t AbstractAudioWriter::write(void* buffer, nframes_t count)
 
 
 // Static method used by other classes to get an AudioWriter for the correct file type
-AbstractAudioWriter* AbstractAudioWriter::create_audio_writer(TExportSpecification *spec)
+std::unique_ptr<AbstractAudioWriter> AbstractAudioWriter::create_audio_writer(TExportSpecification *spec)
 {
     if (spec->get_writer_type() == "sndfile") {
-        return new SFAudioWriter(spec);
+        return std::unique_ptr<AbstractAudioWriter>(new SFAudioWriter(spec));
 	}
     else if (libwavpack_is_present && spec->get_writer_type() == "wavpack") {
-        return new WPAudioWriter(spec);
+        return std::unique_ptr<AbstractAudioWriter>(new WPAudioWriter(spec));
 	}
 	
     return nullptr;

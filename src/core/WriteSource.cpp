@@ -57,9 +57,6 @@ WriteSource::~WriteSource()
     if (m_exportSpecification->get_recording_state() == TExportSpecification::RecordingState::RECORDING) {
         delete m_exportSpecification;
 	}
-	if (m_writer) {
-		delete m_writer;
-	}
 }
 
 nframes_t WriteSource::process (nframes_t nframes)
@@ -86,19 +83,19 @@ nframes_t WriteSource::process (nframes_t nframes)
 
             m_srcData.output_frames = m_outSamplesMax / m_channelCount;
             m_srcData.end_of_input = (m_exportSpecification->get_export_location() + TTimeRef(nframes, m_sampleRate)) >= m_exportSpecification->get_export_end_location();
-            m_srcData.data_out = m_dataBuffer;
+            m_srcData.data_out = m_dataBuffer.get_buffer(nframes);
 
             if (m_leftOverFrames > 0) {
 
                 /* input data will be in m_leftOverBuffer rather than dataF */
 
-                m_srcData.data_in = m_leftOverBuffer;
+                m_srcData.data_in = m_leftOverBuffer.get_buffer(m_leftOverFrames);
 
                 if (cnt == 0) {
 
                     /* first time, append new data from dataF into the m_leftOverBuffer */
 
-                    memcpy (m_leftOverBuffer + (m_leftOverFrames * m_channelCount), m_exportSpecification->get_render_buffer(), nframes * m_channelCount * sizeof(float));
+                    memcpy (m_leftOverBuffer.get_buffer(nframes * m_channelCount) + (m_leftOverFrames * m_channelCount), m_exportSpecification->get_render_buffer(), nframes * m_channelCount * sizeof(float));
                     m_srcData.input_frames = nframes + m_leftOverFrames;
                 } else {
 
@@ -131,11 +128,11 @@ nframes_t WriteSource::process (nframes_t nframes)
                     PWARN("warning, leftover frames overflowed, glitches might occur in output");
                     m_leftOverFrames = m_leftOverBufferSize;
                 }
-                memmove (m_leftOverBuffer, (char *) (m_srcData.data_in + (m_srcData.input_frames_used * m_channelCount)),
+                memmove (m_leftOverBuffer.get_buffer(m_leftOverFrames * m_channelCount), (char *) (m_srcData.data_in + (m_srcData.input_frames_used * m_channelCount)),
                      m_leftOverFrames * m_channelCount * sizeof(float));
             }
 
-            writeBuffer = m_dataBuffer;
+            writeBuffer = m_dataBuffer.get_buffer(toWrite);
 
         } else {
 
@@ -217,17 +214,12 @@ int WriteSource::prepare_export()
     m_sampleBytes = m_exportSpecification->get_sample_bytes();
 
     m_processPeaks = false;
-    m_dataBuffer = m_leftOverBuffer = nullptr;
     m_leftOverBufferSize = 0;
     m_leftOverFrames = 0;
     m_outSamplesMax = 0;
     m_dither = nullptr;
     m_outputData = nullptr;
     m_srcState = nullptr;
-
-	if (m_writer) {
-		delete m_writer;
-	}
 
     set_name(get_name() + m_exportSpecification->get_file_extension());
 
@@ -249,10 +241,10 @@ int WriteSource::prepare_export()
 
         m_srcData.src_ratio = m_exportSpecification->get_sample_rate() / double(m_sampleRate);
         m_outSamplesMax = nframes_t(ceil (m_exportSpecification->get_block_size() * m_srcData.src_ratio * m_channelCount));
-        m_dataBuffer = new audio_sample_t[m_outSamplesMax];
+        m_dataBuffer.resize(m_outSamplesMax);
 
         m_leftOverBufferSize = 4 * m_exportSpecification->get_block_size();
-        m_leftOverBuffer = new audio_sample_t[m_leftOverBufferSize * m_channelCount];
+        m_leftOverBuffer.resize(m_leftOverBufferSize * m_channelCount);
         m_leftOverFrames = 0;
 	} else {
         m_outSamplesMax = m_exportSpecification->get_block_size() * m_channelCount;
@@ -265,6 +257,10 @@ int WriteSource::prepare_export()
     if (m_sampleBytes) {
         m_outputData = static_cast<void*>(malloc (m_sampleBytes * m_outSamplesMax));
 	}
+
+    for (uint chan=0; chan < m_channelCount; ++chan) {
+        m_readBuffers.push_back(std::unique_ptr<TAudioBuffer>(new TAudioBuffer(m_exportSpecification->get_block_size(), false)));
+    }
 
 	return 0;
 }
@@ -280,19 +276,8 @@ int WriteSource::finish_export( )
 
 	if (m_writer) {
 		m_writer->close();
-		delete m_writer;
-        m_writer = nullptr;
 	}
 	
-    if (m_dataBuffer) {
-        delete [] m_dataBuffer;
-        m_dataBuffer = nullptr;
-    }
-    if (m_leftOverBuffer) {
-        delete [] m_leftOverBuffer;
-        m_leftOverBuffer = nullptr;
-    }
-
 	if (m_dither) {
 		gdither_free (m_dither);
         m_dither = nullptr;
@@ -308,6 +293,7 @@ int WriteSource::finish_export( )
         m_srcState = nullptr;
 	}
 
+    m_exportFinished = true;
 
     // FIXME (?)
     // Be sure to connect to this signal using Qt::queuedConnection!
@@ -371,7 +357,7 @@ TQueueBufferSlot* WriteSource::dequeue_from_free_queue(TProcessCallBackData &pro
 // TODO: make sure this function is thread save
 void WriteSource::process_realtime_buffers()
 {
-    if(!m_writer && !m_isRecording) {
+    if(m_exportFinished) {
         // FIXME: can we remove ourselves from DiskIO Thread directly after we've finished recording
         // instead of this hack ?
         // recording finished and writer has been deleted, we're waiting on removal from DiskIO Thread
@@ -424,28 +410,22 @@ int WriteSource::rb_file_write(TQueueBufferSlot* slot)
 
     nframes_t nframes = slot->get_buffer_size();
 	
-    // FIXME make it support any channel count, not just some high enough number?
-    audio_sample_t* readbuffer[6];
-    for (int index = 0; index < 6; ++index) {
-        readbuffer[index] = nullptr;
-    }
-
 	for (chan=0; chan<m_channelCount; ++chan) {
-		
-        readbuffer[chan] = new audio_sample_t[nframes * m_channelCount];
 
-        slot->read_buffer(readbuffer[chan], chan, nframes);
+        slot->read_buffer(m_readBuffers.at(chan)->get_buffer(nframes), chan, nframes);
 
-        m_peak->process(chan, readbuffer[chan], nframes);
+        m_peak->process(chan, m_readBuffers.at(chan)->get_buffer(nframes), nframes);
 	}
 
     if (m_channelCount == 1) {
-        m_exportSpecification->set_render_buffer(readbuffer[0]);
+        m_exportSpecification->set_render_buffer(m_readBuffers.at(0)->get_buffer(nframes));
     } else {
         // Interlace data into dataF buffer!
-        for (uint f=0; f<nframes; f++) {
-            for (chan = 0; chan < m_channelCount; chan++) {
-                m_exportSpecification->get_render_buffer()[f * m_channelCount + chan] = readbuffer[chan][f];
+        auto renderBuffer = m_exportSpecification->get_render_buffer();
+        for (chan = 0; chan < m_channelCount; chan++) {
+            auto readBuffer = m_readBuffers.at(chan)->get_buffer(nframes);
+            for (uint f=0; f<nframes; f++) {
+                renderBuffer[f * m_channelCount + chan] = readBuffer[f];
             }
         }
     }
@@ -457,10 +437,6 @@ int WriteSource::rb_file_write(TQueueBufferSlot* slot)
         PERROR(QString("Different read / write count: read = %1, write = %2").arg(nframes, written))
     }
 
-    for (chan=0; chan<m_channelCount; ++chan) {
-        delete [] readbuffer[chan];
-    }
-	
     return written;
 }
 

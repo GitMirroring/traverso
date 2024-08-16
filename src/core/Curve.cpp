@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "CurveNode.h"
 #include "TSession.h"
 #include "Utils.h"
-#include <AddRemove.h>
+#include <TAddRemoveCommand.h>
 #include "Mixer.h"
 #include "TInformUser.h"
 #include "TInputEventDispatcher.h"
@@ -641,8 +641,8 @@ TCommand* Curve::add_node(CurveNode* node, bool historable)
 	}
 
 
-    AddRemove* cmd;
-        cmd = new AddRemove(this, node, historable, m_session,
+    TAddRemoveCommand* cmd;
+        cmd = new TAddRemoveCommand(this, node, historable, m_session,
 			"private_add_node(CurveNode*)", "nodeAdded(CurveNode*)",
 			"private_remove_node(CurveNode*)", "nodeRemoved(CurveNode*)", 
 			tr("Add CurveNode"));
@@ -670,7 +670,7 @@ TCommand* Curve::remove_node(CurveNode* node, bool historable)
 {
     PENTER2;
 
-    return new AddRemove(this, node, historable, m_session,
+    return new TAddRemoveCommand(this, node, historable, m_session,
                          "private_remove_node(CurveNode*)", "nodeRemoved(CurveNode*)",
                          "private_add_node(CurveNode*)", "nodeAdded(CurveNode*)",
                          tr("Remove CurveNode"));

@@ -99,7 +99,7 @@ private:
     virtual void process_realtime_buffers() = 0;
     virtual void rb_seek_to_transport_location(const TTimeRef &transportLocation) = 0;
     virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
-    virtual void set_decode_buffers(TFileDecodeBuffer * fileReadBuffer, TFileDecodeBuffer *resampleDecodeBuffer) = 0;
+    virtual void set_decode_buffers(std::shared_ptr<TFileDecodeBuffer> fileReadBuffer, std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer) = 0;
     // Used in WriteSource, change to use DecodeBuffers instead
     void set_diskio_frame_buffer(audio_sample_t* frameBuffer) {
         m_diskIOFramebuffer = frameBuffer;

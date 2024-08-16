@@ -26,14 +26,8 @@ $Id: SpectralMeter.cpp,v 1.9 2008/02/15 15:58:57 n_doebelin Exp $
 #include <QVector>
 #include <math.h>
 
-#include <Debugger.h>
-
-
-
-#include "Debugger.h"
-
-#define PI 3.141592653589
-#define BUFFER_READOUT_TOLERANCE 2 // recommended: 1-10
+const double PI = 3.141592653589;
+const uint BUFFER_READOUT_TOLERANCE = 2; // recommended: 1-10
 
 SpectralMeter::SpectralMeter()
 	: TAudioPlugin()
@@ -207,8 +201,8 @@ int SpectralMeter::get_data(QVector<float> &specl, QVector<float> &specr)
 	specr.clear();
 
 	// Create an empty SpectralMeterData struct data,
-	float left = 0.0;
-	float right = 0.0;
+    float left = 0.0f;
+    float right = 0.0f;
 
 	// read samples (in chunks of buffer_size) from the ringbuffer until the FFT window is filled
 	m_databufferL->read(&left, 1);

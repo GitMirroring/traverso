@@ -25,9 +25,8 @@ $Id: CorrelationMeter.h,v 1.2 2008/02/07 11:46:09 n_doebelin Exp $
 #define CORRELATION_METER_H
 
 #include "TAudioPlugin.h"
+#include "cameron/readerwritercircularbuffer.h"
 #include "defines.h"
-#include <RingBufferNPT.h>
-#include <QObject>
 
 class AudioBus;
 
@@ -55,10 +54,10 @@ public:
     int get_data(qreal &r, qreal &direction);
 
 private:
-    RingBufferNPT<CorrelationMeterData>*	m_databuffer;
-    CorrelationMeterData			m_history{};
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<CorrelationMeterData>> m_dataBuffer;
+    CorrelationMeterData	m_history{};
     qreal					m_fract{};
-    int					m_bufferreadouts;
+    size_t					m_bufferreadouts;
 
 private slots:
     void calculate_fract();

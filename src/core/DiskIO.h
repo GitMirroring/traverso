@@ -85,8 +85,8 @@ private:
     bool                m_sampleRateChanged;
     audio_sample_t*		framebuffer;
 
-    TFileDecodeBuffer		m_fileDecodeBuffer{};
-    TFileDecodeBuffer		m_resampleDecodeBuffer{};
+    std::shared_ptr<TFileDecodeBuffer>		m_fileDecodeBuffer;
+    std::shared_ptr<TFileDecodeBuffer>		m_resampleDecodeBuffer;
     uint                m_outputSampleRate{};
 
     TTimeRef            m_transportLocation;

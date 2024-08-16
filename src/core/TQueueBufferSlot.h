@@ -13,9 +13,8 @@ public:
         m_slotNumber = slotNumber;
         m_bufferSize = bufferSize;
         m_bufferWriteOffset = 0;
-        m_channelCount = channelCount;
         for (uint chan=0; chan < channelCount; ++chan) {
-            m_buffers.push_back(std::unique_ptr<TAudioBuffer>(new TAudioBuffer(bufferSize, false)));
+            m_buffers.push_back(std::make_unique<TAudioBuffer>(bufferSize, false));
         }
     }
 
@@ -29,25 +28,16 @@ public:
     inline TTimeRef get_file_location() const {return m_fileLocation;}
     inline TTimeRef get_transport_location() const {return m_transportLocation;}
 
-    audio_sample_t* get_buffer(uint channel) {
-        Q_ASSERT(channel < m_channelCount);
-        return m_buffers.at(channel)->get_buffer(m_bufferSize);
-    }
-
     nframes_t get_buffer_write_offset() const {return m_bufferWriteOffset;}
 
     void read_buffer(audio_sample_t* dest, uint channel, nframes_t nframes, nframes_t offset = 0) {
-        Q_ASSERT(nframes <= m_bufferSize);
         Q_ASSERT(offset + nframes <= m_bufferSize);
-        Q_ASSERT(channel < m_channelCount);
         Q_ASSERT(nframes > 0);
         memcpy(dest + offset, m_buffers.at(channel)->get_buffer(nframes), nframes * sizeof(audio_sample_t));
     }
 
     void write_buffer(const TTimeRef &transportLocation, const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes, nframes_t offset = 0) {
-        Q_ASSERT(nframes <= m_bufferSize);
         Q_ASSERT(offset + nframes <= m_bufferSize);
-        Q_ASSERT(channel < m_channelCount);
         Q_ASSERT(nframes > 0);
         memcpy(m_buffers.at(channel)->get_buffer(nframes) + offset, source, nframes * sizeof(audio_sample_t));
         m_transportLocation = transportLocation;
@@ -73,7 +63,6 @@ private:
     TTimeRef            m_fileLocation;
     TTimeRef            m_transportLocation;
     int                 m_slotNumber;
-    uint                m_channelCount;
     std::vector<std::unique_ptr<TAudioBuffer>> m_buffers;
     nframes_t           m_bufferSize;
     nframes_t           m_bufferWriteOffset;

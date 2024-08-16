@@ -1,6 +1,6 @@
 
 #include "TAudioPluginControlPort.h"
-#include "AddRemove.h"
+#include "TAddRemoveCommand.h"
 #include "CurveNode.h"
 #include "TAudioPlugin.h"
 #include "TAudioPluginPort.h"
@@ -73,7 +73,7 @@ void TAudioPluginControlPort::set_use_automation(bool automation)
 		m_curve = new Curve(m_plugin);
 		// Add the first default node:
         CurveNode* node = new CurveNode(m_curve, 0.0, 1.0);
-		AddRemove* cmd = (AddRemove*)m_curve->add_node(node, false);
+		TAddRemoveCommand* cmd = (TAddRemoveCommand*)m_curve->add_node(node, false);
 		cmd->set_instantanious(true);
 		TCommand::process_command(cmd);
                 if (m_plugin->get_session()) {

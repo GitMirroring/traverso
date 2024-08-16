@@ -121,9 +121,12 @@ void DiskIO::run()
 
 DiskIO::DiskIO()
 {
-    m_audioThreadProcessedFramesQueue = std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>(new moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>(64));
-    m_audioSourcesToBeAdded = std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>>(new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512));
-    m_audioSourcesToBeRemoved = std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>>(new moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>(512));
+    m_audioThreadProcessedFramesQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>(64);
+    m_audioSourcesToBeAdded = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>>(512);
+    m_audioSourcesToBeRemoved = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<AudioSource*>>(512);
+
+    m_fileDecodeBuffer = std::make_shared<TFileDecodeBuffer>();
+    m_resampleDecodeBuffer = std::make_shared<TFileDecodeBuffer>();
 
     m_seekRequested.store(false);
     m_stopDiskIOThreadRequested = false;
@@ -148,6 +151,9 @@ DiskIO::~DiskIO()
 {
     PENTERDES;
     stop_disk_thread();
+
+    Q_ASSERT(m_fileDecodeBuffer.use_count() == 1);
+    Q_ASSERT(m_resampleDecodeBuffer.use_count() == 1);
 
     delete [] framebuffer;
 }
@@ -265,7 +271,7 @@ void DiskIO::add_audio_source(AudioSource* source)
     Q_ASSERT(source->get_channel_count() > 0);
 
     source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
-    source->set_decode_buffers(&m_fileDecodeBuffer, &m_resampleDecodeBuffer);
+    source->set_decode_buffers(m_fileDecodeBuffer, m_resampleDecodeBuffer);
 
     source->prepare_rt_buffers(audiodevice().get_buffer_size());
 

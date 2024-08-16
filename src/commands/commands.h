@@ -16,7 +16,7 @@
 #include "Fade.h"
 #include "Gain.h"
 #include "CommandGroup.h"
-#include "AddRemove.h"
+#include "TAddRemoveCommand.h"
 #include "AudioClipExternalProcessing.h"
 #include "ArmTracks.h"
 #include "RemoveClip.h"

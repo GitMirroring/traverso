@@ -26,15 +26,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cmath>
 #include <climits>
 		
-#define BUFFER_READOUT_TOLERANCE 2  // recommended: 1-10
-#define RINGBUFFER_SIZE 150
-#define METER_COLLAPSE_SPEED 0.05
+const uint BUFFER_READOUT_TOLERANCE = 2;  // recommended: 1-10
+const uint RINGBUFFER_SIZE = 150;
+const float METER_COLLAPSE_SPEED = 0.05;
 
 
 CorrelationMeter::CorrelationMeter()
 {
 	// constructs a ringbuffer that can hold 150 CorrelationMeterData structs
-	m_databuffer = new RingBufferNPT<CorrelationMeterData>(RINGBUFFER_SIZE);
+    m_dataBuffer = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<CorrelationMeterData>>(RINGBUFFER_SIZE);
 	
 	// Initialize member variables, that need to be initialized
 	calculate_fract();
@@ -51,7 +51,6 @@ CorrelationMeter::CorrelationMeter()
 
 CorrelationMeter::~CorrelationMeter()
 {
-	delete m_databuffer;
 }
 
 
@@ -147,7 +146,7 @@ void CorrelationMeter::process(AudioBus* bus, nframes_t nframes)
 	// 
 	// If we want to write more then 1 CorrelationMeterData struct, we have to 
 	// place them into an array, but well, there's only one now :-)
-	m_databuffer->write(&data, 1);
+    m_dataBuffer->try_enqueue(data);
 }
 
 
@@ -168,7 +167,7 @@ int CorrelationMeter::get_data(qreal& r, qreal& direction)
 	// RingBuffer::read_space() tells us how many data
 	// of type T (CorrelationMeterData in this case) has been written 
 	// to the buffer since last time we checked.
-    int readcount = int(m_databuffer->read_space());
+    size_t readcount = m_dataBuffer->size_approx();
 
 	// Create an empty CorrelationMeterData struct data,
     CorrelationMeterData data{};
@@ -227,9 +226,9 @@ int CorrelationMeter::get_data(qreal& r, qreal& direction)
 	} else {
 		m_bufferreadouts = 0;
 
-        for (int i=0; i<readcount; ++i) {
+        for (size_t i=0; i<readcount; ++i) {
 			// which we fill by reading from the databuffer.
-			m_databuffer->read(&data, 1);
+            m_dataBuffer->try_dequeue(data);
 		
 			// Calculate the new correlation variable, and merge the old one.
 			// Assign it to r itself, this spares a temp. variable for r ;-)

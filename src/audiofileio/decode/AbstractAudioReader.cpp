@@ -119,14 +119,14 @@ nframes_t AbstractAudioReader::read(TFileDecodeBuffer* buffer, nframes_t count)
 
 
 // Static method used by other classes to get an AudioReader for the correct file type
-AbstractAudioReader* AbstractAudioReader::create_audio_reader(const QString& filename)
+std::unique_ptr<AbstractAudioReader> AbstractAudioReader::create_audio_reader(const QString& filename)
 {
-    AbstractAudioReader* newReader = nullptr;
+    std::unique_ptr<AbstractAudioReader> newReader;
 
     if (SFAudioReader::can_decode(filename)) {
-        newReader = new SFAudioReader(filename);
+        newReader = std::unique_ptr<AbstractAudioReader>(new SFAudioReader(filename));
     } else if (WPAudioReader::can_decode(filename)) {
-        newReader = new WPAudioReader(filename);
+        newReader = std::unique_ptr<AbstractAudioReader>(new WPAudioReader(filename));
     } else {
         // Audio Format not supported by sndfile and not a wavpack
         PERROR(QString("File format not supported %1").arg(filename));
@@ -134,9 +134,8 @@ AbstractAudioReader* AbstractAudioReader::create_audio_reader(const QString& fil
 
 
     if (newReader && !newReader->is_valid()) {
-        //        PERROR("new %s reader is invalid! (channels: %d, frames: %d)", QS_C(newReader->decoder_type()), newReader->get_num_channels(), newReader->get_nframes());
-        delete newReader;
-        newReader = nullptr;
+        PERROR(QString("new %1 reader is invalid! (channels: %2, frames: %3)").
+               arg(newReader->decoder_type().arg(newReader->get_num_channels()).arg(newReader->get_nframes())));
     }
 
     return newReader;

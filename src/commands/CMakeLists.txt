@@ -13,7 +13,7 @@ ${CMAKE_SOURCE_DIR}/src/plugins/native
 SET(TRAVERSO_COMMANDS_SOURCES
 ArrowKeyBrowser.cpp
 AudioClipExternalProcessing.cpp
-AddRemove.cpp
+TAddRemoveCommand.cpp TAddRemoveCommand.h
 ClipSelection.cpp
 CommandGroup.cpp
 Crop.cpp

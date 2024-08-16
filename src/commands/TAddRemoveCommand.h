@@ -29,13 +29,13 @@
 class ContextItem;
 class TSession;
 
-class AddRemove : public TCommand
+class TAddRemoveCommand : public TCommand
 {
     Q_OBJECT
 
 public :
-	AddRemove(ContextItem* parent, ContextItem* item, const QString& des);
-	AddRemove(ContextItem* parent,
+    TAddRemoveCommand(ContextItem* parent, ContextItem* item, const QString& des);
+    TAddRemoveCommand(ContextItem* parent,
 			void*  arg,
             bool historable,
             TSession* sheet,
@@ -44,7 +44,7 @@ public :
 			const char* undoActionSlot,
 			const char* undoSignal,
 			const QString& des);
-	AddRemove(ContextItem* parent,
+    TAddRemoveCommand(ContextItem* parent,
 			ContextItem*  item,
             bool historable,
             TSession* sheet,
@@ -53,7 +53,7 @@ public :
 			const char* undoActionSlot,
 			const char* undoSignal,
 			const QString& des);
-	~AddRemove();
+    ~TAddRemoveCommand();
 
 	bool is_hold_command() const {return false;}
 	int prepare_actions();

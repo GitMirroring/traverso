@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioSource.h"
 
 #include <samplerate.h>
+#include "TAudioBuffer.h"
 #include "TProcessCallBackData.h"
 #include "gdither_types.h"
 
@@ -62,13 +63,14 @@ public :
     bool is_recording() const;
 
 private:
-	AbstractAudioWriter*	m_writer;
+    std::unique_ptr<AbstractAudioWriter>	m_writer;
 	TExportSpecification*	m_exportSpecification;
     Peak*                   m_peak;
 	
     GDither         m_dither;
     bool            m_processPeaks;
     bool            m_isRecording;
+    bool            m_exportFinished{false};
     nframes_t       m_sampleRate;
     uint32_t        m_sampleBytes;
 	
@@ -78,8 +80,10 @@ private:
     SRC_DATA        m_srcData{};
     SRC_STATE*      m_srcState;
     nframes_t       m_leftOverBufferSize; // in frames to hold interleaved data
-    float*          m_leftOverBuffer;
-    float*          m_dataBuffer;
+    TAudioBuffer    m_leftOverBuffer{0, true};
+    TAudioBuffer    m_dataBuffer{0, true};
+    std::vector<std::unique_ptr<TAudioBuffer>> m_readBuffers;
+
     void*           m_outputData;
 
     TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
@@ -92,7 +96,7 @@ private:
     void set_output_rate_and_convertor_type(int /*outputRate*/, int /*converterType*/) final {
         // WriteSource does not support rate/convert type change atm
     }
-    void set_decode_buffers(TFileDecodeBuffer * /*fileReadBuffer*/, TFileDecodeBuffer */*resampleDecodeBuffer*/) final {
+    void set_decode_buffers(std::shared_ptr<TFileDecodeBuffer> /*fileReadBuffer*/, std::shared_ptr<TFileDecodeBuffer> /*resampleDecodeBuffer*/) final {
         // Writesource does not support DecodeBuffers yet
     }
 

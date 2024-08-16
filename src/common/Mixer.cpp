@@ -29,8 +29,6 @@ Mixer::apply_gain_to_buffer_t		Mixer::apply_gain_to_buffer 	= nullptr;
 Mixer::mix_buffers_with_gain_t		Mixer::mix_buffers_with_gain 	= nullptr;
 Mixer::mix_buffers_no_gain_t		Mixer::mix_buffers_no_gain 	= nullptr;
 
-
-
 float default_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current)
 {
         for (nframes_t i = 0; i < nsamples; ++i) {

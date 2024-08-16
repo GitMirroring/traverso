@@ -107,8 +107,6 @@ Sheet::~Sheet()
 {
     PENTERDES;
 
-    // delete [] m_curveProcessBuffer;
-
     delete m_readDiskIO;
     delete m_writeDiskIO;
     delete m_masterOutBusTrack;

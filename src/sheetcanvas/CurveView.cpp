@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Sheet.h>
 #include "TInputEventDispatcher.h"
 
-#include <AddRemove.h>
+#include <TAddRemoveCommand.h>
 #include "CommandGroup.h"
 #include "MoveCurveNode.h"
 
@@ -215,7 +215,7 @@ void CurveView::add_curvenode_view(CurveNode* node)
     CurveNodeView* nodeview = new CurveNodeView(m_sv, this, node, m_guicurve);
     m_nodeViews.append(nodeview);
 
-    AddRemove* cmd = qobject_cast<AddRemove*>(m_guicurve->add_node(nodeview, false));
+    TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(nodeview, false));
     if (cmd) {
         cmd->set_instantanious(true);
         TCommand::process_command(cmd);
@@ -237,7 +237,7 @@ void CurveView::remove_curvenode_view(CurveNode* node)
                 m_blinkingNode = nullptr;
                 update_softselected_node(cpointer().scene_pos());
             }
-            AddRemove* cmd = qobject_cast<AddRemove*>(m_guicurve->remove_node(nodeview, false));
+            TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->remove_node(nodeview, false));
             if (cmd) {
                 cmd->set_instantanious(true);
                 TCommand::process_command(cmd);

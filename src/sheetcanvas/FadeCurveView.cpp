@@ -32,7 +32,7 @@ $Id: FadeCurveView.cpp,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 #include <Themer.h>
 #include <Fade.h>
 #include "TInputEventDispatcher.h"
-#include <AddRemove.h>
+#include <TAddRemoveCommand.h>
 
 #include <Sheet.h>
 #include <Utils.h>
@@ -59,7 +59,7 @@ FadeCurveView::FadeCurveView(SheetView* sv, AudioClipView* parent, FadeCurve * f
 		CurveNode* guinode = new CurveNode(m_guicurve, 
 				node->get_when() / m_sv->timeref_scalefactor,
 				node->get_value());
-        AddRemove* cmd = qobject_cast<AddRemove*>(m_guicurve->add_node(guinode, false));
+        TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(guinode, false));
 		cmd->set_instantanious(true);
 		TCommand::process_command(cmd);
 	}

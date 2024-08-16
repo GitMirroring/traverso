@@ -66,7 +66,7 @@ public:
         memset (m_buffer, 0, sizeof (audio_sample_t) * m_size);
     }
 
-    audio_sample_t* get_buffer(nframes_t nframes) const {
+    inline audio_sample_t* get_buffer(nframes_t nframes) const {
         Q_ASSERT(nframes <= m_size);
         return m_buffer;
     }

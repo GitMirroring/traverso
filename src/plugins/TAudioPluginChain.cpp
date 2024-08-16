@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "PluginManager.h"
 #include "TInputEventDispatcher.h"
 #include "TSession.h"
-#include "AddRemove.h"
+#include "TAddRemoveCommand.h"
 #include "GainEnvelope.h"
 #include "TInformUser.h"
 
@@ -101,7 +101,7 @@ TCommand* TAudioPluginChain::add_plugin(TAudioPlugin * plugin, bool historable)
 {
     plugin->set_history_stack(get_history_stack());
 
-    return new AddRemove( this, plugin, historable, m_session,
+    return new TAddRemoveCommand( this, plugin, historable, m_session,
                           "private_add_plugin(TAudioPlugin*)", "privatePluginAdded(TAudioPlugin*)",
                           "private_remove_plugin(TAudioPlugin*)", "privatePluginRemoved(TAudioPlugin*)",
                           tr("Add Plugin (%1)").arg(plugin->get_name()));
@@ -116,7 +116,7 @@ TCommand* TAudioPluginChain::remove_plugin(TAudioPlugin* plugin, bool historable
         return ied().failure();
     }
 
-    return new AddRemove( this, plugin, historable, m_session,
+    return new TAddRemoveCommand( this, plugin, historable, m_session,
                           "private_remove_plugin(TAudioPlugin*)", "privatePluginRemoved(TAudioPlugin*)",
                           "private_add_plugin(TAudioPlugin*)", "privatePluginAdded(TAudioPlugin*)",
                           tr("Remove Plugin (%1)").arg(plugin->get_name()));

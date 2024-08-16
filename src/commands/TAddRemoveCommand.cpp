@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
 */
 
-#include "AddRemove.h"
+#include "TAddRemoveCommand.h"
 #include "ContextItem.h"
 #include <Sheet.h>
 
@@ -28,13 +28,13 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
 
 #include "Debugger.h"
 
-/** 	\class AddRemove 
+/** 	\class TAddRemoveCommand
  *	\brief Historably add/remove objects into the audio processing path without using locks
 
-    AddRemove is a flexible class that let's you insert/remove objects into the audio <br />
+    TAddRemoveCommand is a flexible class that let's you insert/remove objects into the audio <br />
     processing execution path without using locks.<br />
     It can also be used with objects that aren't in the audio processing chain, and don't <br />
-    need the thread safety. Use set_instantanious() to let the created AddRemove object<br />
+    need the thread safety. Use set_instantanious() to let the created TAddRemoveCommand object<br />
     know that it can bypass the thread save logic, and call the add/remove functions directly.
 
     The example below is typical how this Command class should be used.
@@ -75,11 +75,11 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
         // first this: 	The object to which the track has to be added/removed too
         // track: 	the argument that will be used by the signal/slots as specified in the second and third line.
         // true: 	this command should be considered historable
-        // this: 	A pointer to Sheet, which in this case is this, which will be used in the AddRemove
+        // this: 	A pointer to Sheet, which in this case is this, which will be used in the TAddRemoveCommand
         // 		Command logic to detect if the private_add/remove slots can be called directly or
         //		thread save via TSMP's thread save logic.
         // tr("Add Track")	The (tranlated) description of this action as it will show up in the HistoryView
-        return new AddRemove(this, track, true, this,
+        return new TAddRemoveCommand(this, track, true, this,
             "private_add_track(Track*)", "trackAdded(Track*)",
             "private_remove_track(Track*)", "trackRemoved(Track*)",
             tr("Add Track"));
@@ -88,7 +88,7 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
     Command* Sheet::remove_track(Track* track)
     {
         // Same applies as in add_track(), however, the second and third line are switched :-)
-        return new AddRemove(this, track, true, this,
+        return new TAddRemoveCommand(this, track, true, this,
             "private_remove_track(Track*)", "trackRemoved(Track*)",
             "private_add_track(Track*)", "trackAdded(Track*)",
             tr("Remove Track"));
@@ -118,7 +118,7 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
  */
 
 
-AddRemove::AddRemove(ContextItem* parent, ContextItem* item, const QString& des)
+TAddRemoveCommand::TAddRemoveCommand(ContextItem* parent, ContextItem* item, const QString& des)
     : TCommand(parent, des),
       m_sheet(nullptr),
       m_doActionSlot(""),
@@ -155,7 +155,7 @@ AddRemove::AddRemove(ContextItem* parent, ContextItem* item, const QString& des)
             AFTER the actuall adding/removing in undo_action has happened!
  * @param des 		Short description that will show up in the history view.
  */
-AddRemove::AddRemove(
+TAddRemoveCommand::TAddRemoveCommand(
         ContextItem* parent,
         void* arg,
         bool historable,
@@ -180,7 +180,7 @@ AddRemove::AddRemove(
     }
 }
 
-AddRemove::AddRemove(
+TAddRemoveCommand::TAddRemoveCommand(
         ContextItem* parent,
         ContextItem* item,
         bool historable,
@@ -210,10 +210,10 @@ AddRemove::AddRemove(
 }
 
 
-AddRemove::~AddRemove()
+TAddRemoveCommand::~TAddRemoveCommand()
 {}
 
-int AddRemove::prepare_actions()
+int TAddRemoveCommand::prepare_actions()
 {
     Q_ASSERT(m_parentItem);
     Q_ASSERT(m_arg);
@@ -226,20 +226,20 @@ int AddRemove::prepare_actions()
     return 1;
 }
 
-int AddRemove::do_action()
+int TAddRemoveCommand::do_action()
 {
     PENTER3;
     return un_redo_action(TCommand::ActionType::DO);
 }
 
-int AddRemove::undo_action()
+int TAddRemoveCommand::undo_action()
 {
     PENTER3;
 
     return un_redo_action(TCommand::ActionType::UNDO);
 }
 
-int AddRemove::un_redo_action(ActionType actionType)
+int TAddRemoveCommand::un_redo_action(ActionType actionType)
 {
     TSMPEvent event;
     switch (actionType) {
@@ -284,11 +284,10 @@ int AddRemove::un_redo_action(ActionType actionType)
     The do/undo actions will call the slot and emit the signal (if they exist)
     directly, and thus bypassing the RT thread save nature of TSMP.
  */
-void AddRemove::set_instantanious(bool instant)
+void TAddRemoveCommand::set_instantanious(bool instant)
 {
     m_instantanious = instant;
 }
 
-#include "AddRemove.moc"
-
+#include "TAddRemoveCommand.moc"
 // eof

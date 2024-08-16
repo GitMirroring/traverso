@@ -40,7 +40,7 @@ public:
 	nframes_t write(void* buffer, nframes_t frameCount);
 	bool close();
 	
-    static AbstractAudioWriter* create_audio_writer(TExportSpecification* spec);
+    static std::unique_ptr<AbstractAudioWriter> create_audio_writer(TExportSpecification* spec);
 	
 protected:
 	virtual bool open_private() = 0;

@@ -29,12 +29,6 @@ $Id: ArmTracks.cpp,v 1.4 2008/01/21 16:22:11 r_sijrier Exp $
 
 #include <ContextPointer.h>
 
-
-
-
-#include "Debugger.h"
-
-
 ArmTracks::ArmTracks(SheetView* view)
     : TMoveCommand(view, nullptr, ("Arm Tracks"))
 {

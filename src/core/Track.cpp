@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "AudioBus.h"
 #include "TAudioDevice.h"
-#include "AddRemove.h"
+#include "TAddRemoveCommand.h"
 #include "AudioChannel.h"
 #include "Mixer.h"
 #include "TAudioPluginChain.h"
