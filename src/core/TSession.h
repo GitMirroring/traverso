@@ -92,8 +92,8 @@ public:
 	void add_child_session(TSession* child);
 	void remove_child_session(TSession* child);
 
-    inline audio_sample_t* get_curve_buffer(nframes_t nframes) const {
-        return m_curveProcessBuffer.get_buffer(nframes);
+    TAudioBuffer& get_curve_buffer() {
+        return m_curveProcessBuffer;
     }
 
 protected:

@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef CURVE_VIEW_H
 #define CURVE_VIEW_H
 
+#include "TAudioBuffer.h"
 #include "ViewItem.h"
 
 #include <QTimer>
@@ -39,7 +40,7 @@ public:
 	~CurveView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-	int get_vector(qreal xstart, qreal pixelcount, float *arg);
+    int get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer);
 	bool has_nodes() const;
 	float get_default_value();
 	void calculate_bounding_rect();

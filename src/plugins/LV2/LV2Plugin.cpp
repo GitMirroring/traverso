@@ -256,7 +256,7 @@ void LV2Plugin::process(AudioBus* bus, nframes_t nframes)
 		int index = port->get_index();
 		// If we are a slave, then we are meant to operate on the second channel of the Bus!
 		if (m_isSlave) i = 1;
-        lilv_instance_connect_port(m_instance, uint32_t(index), bus->get_buffer(i, nframes));
+        lilv_instance_connect_port(m_instance, uint32_t(index), bus->get_buffer(i).get_buffer(nframes));
 	}
 	
 	for (int i=0; i<m_audioOutputPorts.size(); ++i) {
@@ -264,7 +264,7 @@ void LV2Plugin::process(AudioBus* bus, nframes_t nframes)
 		int index = port->get_index();
 		// If we are a slave, then we are meant to operate on the second channel of the Bus!
 		if (m_isSlave) i = 1;
-        lilv_instance_connect_port(m_instance, uint32_t(index), bus->get_buffer(i, nframes));
+        lilv_instance_connect_port(m_instance, uint32_t(index), bus->get_buffer(i).get_buffer(nframes));
 	}
 	
 	/* Run plugin for this cycle */

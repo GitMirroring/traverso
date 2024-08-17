@@ -88,8 +88,8 @@ int TPulseAudioDriver::_write( nframes_t nframes )
 
     int error;
 
-    auto leftChannelBuffer = m_playbackChannels.at(0)->get_buffer(nframes);
-    auto rightChannelBuffer = m_playbackChannels.at(1)->get_buffer(nframes);
+    auto leftChannelBuffer = m_playbackChannels.at(0)->get_buffer().get_buffer(nframes);
+    auto rightChannelBuffer = m_playbackChannels.at(1)->get_buffer().get_buffer(nframes);
 
     for (uint x = 0; x < nframes; ++x) {
         m_interleavedPlaybackBuffer[x*2] = leftChannelBuffer[x];

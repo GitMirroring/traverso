@@ -73,7 +73,6 @@ bool SFAudioReader::can_decode(QString filename)
 
     /* although libsndfile says we don't need to set this,
 	valgrind and source code shows us that we do.
-	Really? Look it up !
 	*/
     memset (&infos, 0, sizeof(infos));
 

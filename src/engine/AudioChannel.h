@@ -44,8 +44,8 @@ public:
         ChannelIsOutput = 2
     };
 
-    inline audio_sample_t* get_buffer(nframes_t nframes, nframes_t offset = 0) {
-        return m_audioBuffer.get_buffer(nframes + offset) + offset;
+    TAudioBuffer& get_buffer() {
+        return m_audioBuffer;
     }
 
     void set_latency(unsigned int latency);

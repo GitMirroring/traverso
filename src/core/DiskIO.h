@@ -83,7 +83,6 @@ private:
     int                 m_resampleQuality;
     bool                m_resampleQualityChanged;
     bool                m_sampleRateChanged;
-    audio_sample_t*		framebuffer;
 
     std::shared_ptr<TFileDecodeBuffer>		m_fileDecodeBuffer;
     std::shared_ptr<TFileDecodeBuffer>		m_resampleDecodeBuffer;

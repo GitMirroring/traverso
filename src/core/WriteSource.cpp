@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AbstractAudioWriter.h"
 #include "Peak.h"
 #include "TQueueBufferSlot.h"
+#include "TFileDecodeBuffer.h"
 #include "Utils.h"
 #include "Debugger.h"
 
@@ -259,7 +260,7 @@ int WriteSource::prepare_export()
 	}
 
     for (uint chan=0; chan < m_channelCount; ++chan) {
-        m_readBuffers.push_back(std::unique_ptr<TAudioBuffer>(new TAudioBuffer(m_exportSpecification->get_block_size(), false)));
+        m_readBuffers.push_back(std::make_unique<TAudioBuffer>(m_exportSpecification->get_block_size(), false));
     }
 
 	return 0;
@@ -320,7 +321,7 @@ nframes_t WriteSource::ringbuffer_write(TProcessCallBackData &processData)
         Q_ASSERT(slot);
 
         for (uint chan=0; chan < m_channelCount; ++chan) {
-            slot->write_buffer(processData.get_start_location(), TTimeRef(), bus->get_buffer(chan, nframes), chan, nframes);
+            slot->write_buffer(processData.get_start_location(), TTimeRef(), bus->get_buffer(chan).get_buffer(nframes), chan, nframes);
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
@@ -367,7 +368,8 @@ void WriteSource::process_realtime_buffers()
 
     Q_ASSERT(m_writer);
 
-    m_exportSpecification->set_render_buffer(m_diskIOFramebuffer);
+    m_fileDecodeBuffer->check_buffers_capacity(m_exportSpecification->get_render_buffer_size(), m_channelCount);
+    m_exportSpecification->set_render_buffer(m_fileDecodeBuffer->get_read_buffer(m_exportSpecification->get_render_buffer_size()));
 
     TQueueBufferSlot* slot = nullptr;
 
@@ -409,10 +411,14 @@ int WriteSource::rb_file_write(TQueueBufferSlot* slot)
     uint chan;
 
     nframes_t nframes = slot->get_buffer_size();
+
+    if (m_channelCount == 1) {
+
+    }
 	
 	for (chan=0; chan<m_channelCount; ++chan) {
 
-        slot->read_buffer(m_readBuffers.at(chan)->get_buffer(nframes), chan, nframes);
+        slot->read_buffer(*m_readBuffers.at(chan), chan, nframes);
 
         m_peak->process(chan, m_readBuffers.at(chan)->get_buffer(nframes), nframes);
 	}

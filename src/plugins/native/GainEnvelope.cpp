@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Sheet.h"
 #include "Curve.h"
-#include "Mixer.h"
 #include "AudioBus.h"
 
 GainEnvelope::GainEnvelope(TSession* session)
@@ -92,7 +91,7 @@ void GainEnvelope::set_session(TSession * session)
 void GainEnvelope::process(AudioBus * bus, nframes_t nframes)
 {
     for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
-        Mixer::apply_gain_to_buffer(bus->get_buffer(chan, nframes), nframes, get_gain());
+        bus->get_buffer(chan).apply_gain_to_buffer(nframes, m_gain);
     }
 }
 
@@ -113,9 +112,7 @@ void GainEnvelope::process_gain(AudioBus* audioBus, const TTimeRef& startlocatio
     if (port->use_automation()) {
         port->get_curve()->process(audioBus, startlocation, endlocation, nframes, channels, m_gain);
     } else {
-        for (uint chan=0; chan<channels; ++chan) {
-            Mixer::apply_gain_to_buffer(audioBus->get_buffer(chan, nframes), nframes, m_gain);
-        }
+        audioBus->apply_gain_to_buffers(nframes, get_gain());
     }
 }
 

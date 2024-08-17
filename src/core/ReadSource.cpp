@@ -539,17 +539,17 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
             // is slow or overloaded compared to the audio thread, the latter one can get in front of the disk thread
             // It's perfectly valid and in fact mandatory to start waiting here to let the disk thread
             // fill the buffers and then continue freewheeling
-            printf("ReadSource::ringbuffer_read: FreeWheeling: Buffer status %s\n", QS_C(m_bufferstatus.get_readable_sync_status()));
+            printf("ReadSource::ringbuffer_read: FreeWheeling: Buffer status %s, waiting for buffers to get back in sync\n", QS_C(m_bufferstatus.get_readable_sync_status()));
             uint counter = 0;
-            while(m_bufferstatus.out_of_sync() && (counter < 1000000)) {
-                QThread::sleep(std::chrono::nanoseconds(1000));
+            while(m_bufferstatus.out_of_sync() && (counter < 100000)) {
+                QThread::sleep(std::chrono::nanoseconds(10000));
                 counter++;
             }
             if (m_bufferstatus.out_of_sync()) {
                 printf("ReadSource::ringbuffer_read: FreeWheeling: Buffers still out of sync after 1 second wait, giving up\n");
                 return 0;
             } else {
-                printf("ReadSource::ringbuffer_read: Buffers back in sync after %d micro second\n", counter);
+                printf("ReadSource::ringbuffer_read: Buffers back in sync after %d micro second, continuing processing now\n", counter);
             }
         }
     }
@@ -577,7 +577,7 @@ nframes_t ReadSource::ringbuffer_read(TProcessCallBackData &processData, const T
         if (slotFileLocation == fileLocation)
         {
             for (uint chan=0; chan < m_channelCount; ++chan) {
-                slot->read_buffer(bus->get_buffer(chan, nframes), chan, nframes);
+                slot->read_buffer(bus->get_buffer(chan), chan, nframes);
             }
 
             read = slot->get_read_nframes();
@@ -667,13 +667,11 @@ uint ReadSource::get_file_rate() const
 	return pm().get_project()->get_rate(); 
 }
 
-void ReadSource::set_decode_buffers(std::shared_ptr<TFileDecodeBuffer> fileDecodeBuffer, std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer)
+void ReadSource::set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer)
 {
-    m_fileDecodeBuffer = fileDecodeBuffer;
+    Q_ASSERT(m_resampleAudioReader);
 
-    if (m_resampleAudioReader) {
-        m_resampleAudioReader->set_resample_decode_buffer(resampleDecodeBuffer);
-    }
+    m_resampleAudioReader->set_resample_decode_buffer(resampleDecodeBuffer);
 }
 
 QString ReadSource::get_error_string() const

@@ -36,7 +36,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioTrack.h"
 #include "AudioBus.h"
 #include "TAudioDevice.h"
-#include "Mixer.h"
 #include "DiskIO.h"
 #include "TExportSpecification.h"
 #include "AudioClipManager.h"
@@ -487,7 +486,7 @@ int AudioClip::process(TProcessCallBackData &processData)
     }
 
     for(FadeCurve* fade = m_fades.first(); fade != nullptr; fade = fade->next) {
-        fade->process(m_sheet->get_curve_buffer(nframes), bus, startLocation, endLocation, nframes);
+        fade->process(m_sheet->get_curve_buffer(), bus, startLocation, endLocation, nframes);
     }
 
     TTimeRef faderEndLocation = fileLocation + TTimeRef(readFrames, outputRate);
@@ -500,11 +499,11 @@ int AudioClip::process(TProcessCallBackData &processData)
     // Mixing should be done on the WHOLE buffer, not just part of it
     // so use an unmodified nframes variable
     if (channelcount == 1) {
-        Mixer::mix_buffers_no_gain(processBus->get_buffer(0, nframes), bus->get_buffer(0, nframes), nframes);
-        Mixer::mix_buffers_no_gain(processBus->get_buffer(1, nframes), bus->get_buffer(0, nframes), nframes);
+        processBus->get_buffer(0).mix_buffer_no_gain(bus->get_buffer(0), nframes);
+        processBus->get_buffer(1).mix_buffer_no_gain(bus->get_buffer(0), nframes);
     } else if (channelcount == 2) {
-        Mixer::mix_buffers_no_gain(processBus->get_buffer(0, nframes), bus->get_buffer(0, nframes), nframes);
-        Mixer::mix_buffers_no_gain(processBus->get_buffer(1, nframes), bus->get_buffer(1, nframes), nframes);
+        processBus->get_buffer(0).mix_buffer_no_gain(bus->get_buffer(0), nframes);
+        processBus->get_buffer(1).mix_buffer_no_gain(bus->get_buffer(1), nframes);
     }
 
     return 1;

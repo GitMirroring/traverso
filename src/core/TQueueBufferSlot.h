@@ -30,10 +30,10 @@ public:
 
     nframes_t get_buffer_write_offset() const {return m_bufferWriteOffset;}
 
-    void read_buffer(audio_sample_t* dest, uint channel, nframes_t nframes, nframes_t offset = 0) {
-        Q_ASSERT(offset + nframes <= m_bufferSize);
+    void read_buffer(TAudioBuffer &dest, uint channel, nframes_t nframes) {
+        Q_ASSERT(nframes <= m_bufferSize);
         Q_ASSERT(nframes > 0);
-        memcpy(dest + offset, m_buffers.at(channel)->get_buffer(nframes), nframes * sizeof(audio_sample_t));
+        dest.copy_buffer(*m_buffers.at(channel), nframes);
     }
 
     void write_buffer(const TTimeRef &transportLocation, const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes, nframes_t offset = 0) {

@@ -441,9 +441,9 @@ int Peak::finish_processing()
         // which might end up with a size >= totalbufferSize !!!
         // Need to look into that, for now + 4 seems to work...
         totalBufferSize += 4;
-        std::unique_ptr<std::vector<peak_data_t>> saveBuffer = std::make_unique<std::vector<peak_data_t>>(totalBufferSize);
+        std::vector<peak_data_t> saveBuffer = std::vector<peak_data_t>(totalBufferSize);
 
-        int read = data->file.read((char*)saveBuffer.get(), sizeof(peak_data_t) * data->pd->processBufferSize) / sizeof(peak_data_t);
+        int read = data->file.read((char*)saveBuffer.data(), sizeof(peak_data_t) * data->pd->processBufferSize) / sizeof(peak_data_t);
 
         if (read != data->pd->processBufferSize) {
             //			PERROR("couldn't read in all saved data?? (%d read)", read);
@@ -472,8 +472,8 @@ int Peak::finish_processing()
                 Q_ASSERT((nextLevelBufferPos + 1) <= totalBufferSize);
                 Q_ASSERT((prevLevelBufferPos + 3) <= totalBufferSize);
 
-                saveBuffer.get()[nextLevelBufferPos] = std::max(saveBuffer.get()[prevLevelBufferPos], saveBuffer.get()[prevLevelBufferPos + 2]);
-                saveBuffer.get()[nextLevelBufferPos + 1] = std::max(saveBuffer.get()[prevLevelBufferPos + 1], saveBuffer.get()[prevLevelBufferPos + 3]);
+                saveBuffer[nextLevelBufferPos] = std::max(saveBuffer[prevLevelBufferPos], saveBuffer[prevLevelBufferPos + 2]);
+                saveBuffer[nextLevelBufferPos + 1] = std::max(saveBuffer[prevLevelBufferPos + 1], saveBuffer[prevLevelBufferPos + 3]);
                 nextLevelBufferPos += 2;
                 prevLevelBufferPos += 4;
                 count+=4;
@@ -483,7 +483,7 @@ int Peak::finish_processing()
 
         data->file.seek(data->headerdata.headerSize);
 
-        int written = data->file.write((char*)saveBuffer.get(), sizeof(peak_data_t) * totalBufferSize) / sizeof(peak_data_t);
+        int written = data->file.write((char*)saveBuffer.data(), sizeof(peak_data_t) * totalBufferSize) / sizeof(peak_data_t);
 
         if (written != totalBufferSize) {
             //			PERROR("could not write complete buffer! (only %d)", written);
@@ -492,7 +492,7 @@ int Peak::finish_processing()
 
         data->normFile.seek(0);
 
-        read = data->normFile.read((char*)saveBuffer.get(), sizeof(audio_sample_t) * data->pd->normDataCount) / sizeof(audio_sample_t);
+        read = data->normFile.read((char*)saveBuffer.data(), sizeof(audio_sample_t) * data->pd->normDataCount) / sizeof(audio_sample_t);
 
         if (read != data->pd->normDataCount) {
             //			PERROR("Could not read in all (%d) norm. data, only %d", data->pd->normDataCount, read);
@@ -506,7 +506,7 @@ int Peak::finish_processing()
             //			PERROR("Failed to remove temp. norm. data file! (%s)", data->normFileName.toLatin1().data());
         }
 
-        written = data->file.write((char*)saveBuffer.get(), sizeof(audio_sample_t) * read) / sizeof(audio_sample_t);
+        written = data->file.write((char*)saveBuffer.data(), sizeof(audio_sample_t) * read) / sizeof(audio_sample_t);
 
         write_header(data);
 
@@ -618,6 +618,8 @@ int Peak::create_from_scratch()
     }
 
     TFileDecodeBuffer decodebuffer;
+    std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer;
+    m_source->set_resample_decode_buffer(resampleDecodeBuffer);
 
     do {
         if (m_interuptPeakBuild) {

@@ -96,7 +96,7 @@ private:
     void set_output_rate_and_convertor_type(int /*outputRate*/, int /*converterType*/) final {
         // WriteSource does not support rate/convert type change atm
     }
-    void set_decode_buffers(std::shared_ptr<TFileDecodeBuffer> /*fileReadBuffer*/, std::shared_ptr<TFileDecodeBuffer> /*resampleDecodeBuffer*/) final {
+    void set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> /*resampleDecodeBuffer*/) final {
         // Writesource does not support DecodeBuffers yet
     }
 

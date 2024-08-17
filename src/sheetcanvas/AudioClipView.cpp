@@ -45,19 +45,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Curve.h>
 #include "TMainWindow.h"
 #include "TAudioPluginChain.h"
-#include "Mixer.h"
+#include "Fade.h"
+#include "TTrackLaneView.h"
+#include "dialogs/AudioClipEditDialog.h"
+#include "Debugger.h"
 
 #include <QFileDialog>
 #include <QLinearGradient>
 #include <cmath>
-#include "dialogs/AudioClipEditDialog.h"
-#include "Fade.h"
-#include "TTrackLaneView.h"
-
-
-
-
-#include "Debugger.h"
 
 
 AudioClipView::AudioClipView(SheetView* sv, AudioTrackView* parent, AudioClip* clip )
@@ -252,17 +247,17 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
         curveDefaultValue *= trackAutomationView->get_default_value();
     }
 
-    QVarLengthArray<float> curveMixdown(peakdatacount);
+    TAudioBuffer curveMixdown(peakdatacount, false);
 
     if (mixAudioClipCurveData) {
-        mixAudioClipCurveData |= m_gainCurveView->get_vector(xstart + offset, peakdatacount, curveMixdown.data());
+        mixAudioClipCurveData |= m_gainCurveView->get_vector(xstart + offset, peakdatacount, curveMixdown);
         mixCurveData |= mixAudioClipCurveData;
     }
 
     if (mixTrackAutomationData) {
         if (mixAudioClipCurveData) {
-            QVarLengthArray<float> trackmixdown(peakdatacount);
-            int trackCurveMix = trackAutomationView->get_vector(xstart + pos().x(), peakdatacount, trackmixdown.data());
+            TAudioBuffer trackmixdown(peakdatacount, false);
+            int trackCurveMix = trackAutomationView->get_vector(xstart + pos().x(), peakdatacount, trackmixdown);
             if (trackCurveMix) {
                 for (int j=0; j<peakdatacount; ++j) {
                     curveMixdown[j] *= trackmixdown[j];
@@ -270,20 +265,20 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
                 mixCurveData |= trackCurveMix;
             }
         } else {
-            mixTrackAutomationData |= trackAutomationView->get_vector(xstart + pos().x(), peakdatacount, curveMixdown.data());
+            mixTrackAutomationData |= trackAutomationView->get_vector(xstart + pos().x(), peakdatacount, curveMixdown);
             mixCurveData |= mixTrackAutomationData;
         }
     }
 
     for (int i = 0; i < m_FadeCurveViews.size(); ++i) {
         FadeCurveView* view = m_FadeCurveViews.at(i);
-        QVarLengthArray<float> fademixdown(peakdatacount);
+        TAudioBuffer fademixdown(peakdatacount, false);
         int fademix = 0;
 
         if (mixCurveData) {
-            fademix = view->get_vector(xstart, peakdatacount, fademixdown.data());
+            fademix = view->get_vector(xstart, peakdatacount, fademixdown);
         } else {
-            fademix = view->get_vector(xstart, peakdatacount, curveMixdown.data());
+            fademix = view->get_vector(xstart, peakdatacount, curveMixdown);
         }
 
         if (mixCurveData && fademix) {

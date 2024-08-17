@@ -60,11 +60,12 @@ int TPortAudioDriver::_read(nframes_t nframes)
 
     m_device->set_transport_cycle_start_time(TTimeRef::get_nanoseconds_since_epoch());
 
+    // FIXME: poor de-interlacing loop
     int index = 0;
     for(nframes_t i=0; i<nframes; i++) {
         for (int chan=0; chan<m_captureChannels.size(); chan++) {
             AudioChannel* channel = m_captureChannels.at(chan);
-            audio_sample_t* buf = channel->get_buffer(nframes);
+            audio_sample_t* buf = channel->get_buffer().get_buffer(nframes);
             buf[i] = m_paInputBuffer[index++];
         }
     }
@@ -77,12 +78,14 @@ int TPortAudioDriver::_write(nframes_t nframes)
     Q_ASSERT(m_playbackChannels.size() > 0);
     Q_ASSERT(m_paStream);
 
-    int index = 0;
-    for(nframes_t i=0; i<nframes; i++) {
-        for (int chan=0; chan<m_playbackChannels.size(); chan++) {
-            m_paOutputBuffer[index++] = m_playbackChannels.at(chan)->get_buffer(nframes)[i];
+    uint channelCount = m_playbackChannels.size();
+    for (uint chan = 0; chan < channelCount; chan++) {
+        auto buffer = m_playbackChannels.at(chan)->get_buffer();
+        for (nframes_t frame = 0; frame < nframes; frame++) {
+            m_paOutputBuffer[frame * channelCount + chan] = buffer.at(frame);
         }
     }
+
 
     for (int chan=0; chan<m_playbackChannels.size(); chan++) {
         m_playbackChannels.at(chan)->silence_buffer();

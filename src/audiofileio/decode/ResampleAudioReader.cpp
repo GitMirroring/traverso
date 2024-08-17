@@ -70,8 +70,8 @@ ResampleAudioReader::~ResampleAudioReader()
 
 void ResampleAudioReader::clear_buffers()
 {
-    for (uint chan = 0; chan < m_overflowBuffers.size(); ++chan)  {
-        m_overflowBuffers.at(chan)->silence_buffer();
+    for (const auto & buffer : m_overflowBuffers)  {
+        buffer->silence_buffer();
     }
 
 	if (m_reader) {
@@ -203,7 +203,7 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
     if (m_resampleDecodeBuffer->get_destination_buffer_size() == 0) {
 		reset();
 	}
-	
+
     bufferUsed = nframes_t(m_overflowUsed);
 	
 	if (m_overflowUsed) {
@@ -218,7 +218,7 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
             m_resampleDecodeBuffer->set_destination_buffer_read_offset(m_overflowUsed);
 		}
 
-        int toRead = fileCnt + m_readExtraFrames - nframes_t(m_overflowUsed);
+        long toRead = fileCnt + m_readExtraFrames - m_overflowUsed;
         // It happened that fileCnt + m_readExtraFrames was smaller then m_overflowUsed
         // since nframes_t was used in the m_reader->read() function it wrapped around and
         // a huge number of samples were tried to read. Strangely enough, this caused the

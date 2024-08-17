@@ -99,13 +99,13 @@ void FadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     }
     qreal vector_start = xstart;
     qreal height = m_boundingRect.height();
-    auto buffer = QVarLengthArray<float>(pixelcount);
+    TAudioBuffer buffer(pixelcount, false);
 
 	if (m_fadeCurve->get_fade_type() == FadeCurve::FadeOut && m_guicurve->get_range() > m_parentViewItem->boundingRect().width()) {
         vector_start += m_guicurve->get_range() - m_parentViewItem->boundingRect().width();
 	}
 	
-    m_guicurve->get_vector(vector_start, vector_start + pixelcount, buffer.data(), nframes_t(pixelcount));
+    m_guicurve->get_vector(vector_start, vector_start + pixelcount, buffer, nframes_t(pixelcount));
 	
 	for (int i=0; i<pixelcount; i++) {
         polygon <<  QPointF(xstart + i, height - (double(buffer[i]) * height) );
@@ -167,7 +167,7 @@ void FadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 	painter->restore();
 }
 
-int FadeCurveView::get_vector(qreal xstart, int pixelcount, float * arg)
+int FadeCurveView::get_vector(qreal xstart, int pixelcount, TAudioBuffer &buffer)
 {
 	// If boundingrect width is smaller then a pixel, don't even try
 	if (m_boundingRect.width() < 1.0) {
@@ -185,7 +185,7 @@ int FadeCurveView::get_vector(qreal xstart, int pixelcount, float * arg)
 		// map the xstart position to the FadeCurveViews x position
         qreal mappedx = mapFromParent(QPointF(xstart, 0)).x();
         qreal x = mappedx;
-		float* p = arg;
+        // float* p = buffer;
 		
 		// check if the xstart lies before 'our' first pixel
 		if (mappedx < 0) {
@@ -194,7 +194,8 @@ int FadeCurveView::get_vector(qreal xstart, int pixelcount, float * arg)
 			pixelcount += mappedx;
 			
 			// point to the mapped location of the buffer.
-            p = arg - int(mappedx);
+            // p = buffer - int(mappedx);
+            buffer.set_read_offset(-mappedx);
 			
 			// and if pixelcount is 0, there is nothing to do!
 			if (pixelcount <= 0) {
@@ -204,17 +205,19 @@ int FadeCurveView::get_vector(qreal xstart, int pixelcount, float * arg)
 			// Any pixels outside of our range shouldn't alter the waveform,
 			// so let's assign 1 to them!
 			for (int i=0; i < - mappedx; ++i) {
-				arg[i] = 1;
+                buffer[i] = 1;
 			}
 		}
 
-        m_guicurve->get_vector(x, x + pixelcount, p, nframes_t(pixelcount));
+        m_guicurve->get_vector(x, x + pixelcount, buffer, nframes_t(pixelcount));
+
+        buffer.set_read_offset(0);
 		
 		return 1;
 	}
 	
 	if (xstart < m_boundingRect.width()) {
-        m_guicurve->get_vector(xstart, xstart + pixelcount, arg, nframes_t(pixelcount));
+        m_guicurve->get_vector(xstart, xstart + pixelcount, buffer, nframes_t(pixelcount));
 		return 1;
 	}
 	

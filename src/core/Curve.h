@@ -35,6 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 #include <QDomDocument>
 
+#include "TAudioBuffer.h"
 #include "TRealTimeLinkedList.h"
 #include "TTimeRef.h"
 
@@ -61,7 +62,7 @@ public:
 
     // Get functions
     double get_range() const;
-    void get_vector (double x0, double x1, float *arg, nframes_t veclen);
+    void get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen);
     TRealTimeLinkedList<CurveNode*> get_nodes() const {return m_nodes;}
     TSession* get_sheet() const {return m_session;}
 

@@ -27,9 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSession.h"
 #include "TAudioDevice.h"
 
-#include "Mixer.h"
-
-
 TBusTrack::TBusTrack(TSession* session, const QString& name, int channelCount)
         : Track(session)
 {
@@ -125,12 +122,12 @@ int TBusTrack::process(TProcessCallBackData &processData)
 
     if ( (m_processBus->get_channel_count() >= 1) && (m_pan > 0) )  {
         panFactor = 1 - m_pan;
-        Mixer::apply_gain_to_buffer(m_processBus->get_buffer(0, nframes), nframes, panFactor);
+        m_processBus->get_buffer(0).apply_gain_to_buffer(nframes, panFactor);
     }
 
     if ( (m_processBus->get_channel_count() >= 2) && (m_pan < 0) )  {
         panFactor = 1 + m_pan;
-        Mixer::apply_gain_to_buffer(m_processBus->get_buffer(1, nframes), nframes, panFactor);
+        m_processBus->get_buffer(1).apply_gain_to_buffer(nframes, panFactor);
     }
 
     m_fader->process_gain(m_processBus, startLocation, endLocation, nframes, m_processBus->get_channel_count());

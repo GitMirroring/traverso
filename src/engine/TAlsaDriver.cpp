@@ -1485,7 +1485,7 @@ int TAlsaDriver::_read(nframes_t nframes)
         for (int i=0; i<m_captureChannels.size(); ++i) {
             AudioChannel* channel = m_captureChannels.at(i);
 
-            buf = channel->get_buffer(nframes);
+            buf = channel->get_buffer().get_buffer(nframes);
             read_from_channel (channel->get_number(), buf + nread, contiguous);
             // FIXME: should AudioChannel::read_from_hardware_port() be modified
             // so that it also does partial buffer processing as we do here ?
@@ -1535,7 +1535,7 @@ int TAlsaDriver::_write(nframes_t nframes)
 
         for (int i=0; i<m_playbackChannels.size(); ++i) {
             AudioChannel* channel = m_playbackChannels.at(i);
-            buf = channel->get_buffer(nframes);
+            buf = channel->get_buffer().get_buffer(nframes);
             write_to_channel (channel->get_number(), buf + nwritten, contiguous);
             channel->silence_buffer();
         }

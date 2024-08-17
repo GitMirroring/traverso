@@ -23,6 +23,7 @@ $Id: FadeCurveView.h,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 #ifndef FADE_VIEW_H
 #define FADE_VIEW_H
 
+#include "TAudioBuffer.h"
 #include "ViewItem.h"
 
 class Curve;
@@ -39,7 +40,7 @@ public:
 	~FadeCurveView();
 	
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-    int get_vector(qreal xstart, int pixelcount, float * arg);
+    int get_vector(qreal xstart, int pixelcount, TAudioBuffer &buffer);
 	void calculate_bounding_rect();
 	void set_holding(bool hold);
 	

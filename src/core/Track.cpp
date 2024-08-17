@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TAddRemoveCommand.h"
 #include "AudioChannel.h"
-#include "Mixer.h"
 #include "TAudioPluginChain.h"
 #include "Sheet.h"
 #include "ProjectManager.h"
@@ -477,9 +476,9 @@ void Track::process_send(TSend *send, nframes_t nframes)
             gainFactor = panFactor * send->get_gain();
 
             if (gainFactor == 1.0f) {
-                Mixer::mix_buffers_no_gain(receiver->get_buffer(nframes), sender->get_buffer(nframes), nframes);
+                receiver->get_buffer().mix_buffer_no_gain(sender->get_buffer(), nframes);
             } else {
-                Mixer::mix_buffers_with_gain(receiver->get_buffer(nframes), sender->get_buffer(nframes), nframes, gainFactor);
+                receiver->get_buffer().mix_buffer_with_gain(sender->get_buffer(), nframes, gainFactor);
             }
         }
 

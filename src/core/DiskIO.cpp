@@ -138,10 +138,6 @@ DiskIO::DiskIO()
     m_doWorktTime.store(0);
     m_lastCpuReadTime = TTimeRef::get_nanoseconds_since_epoch();
 
-    // TODO This is a LARGE buffer, any ideas how to make it smaller ??
-    // FIXME: this buffer is never resized and an ugly hack so fix it!
-    framebuffer = new audio_sample_t[audiodevice().get_sample_rate() * writebuffertime];
-
     moveToThread(this);
     start(QThread::HighPriority);
 }
@@ -154,8 +150,6 @@ DiskIO::~DiskIO()
 
     Q_ASSERT(m_fileDecodeBuffer.use_count() == 1);
     Q_ASSERT(m_resampleDecodeBuffer.use_count() == 1);
-
-    delete [] framebuffer;
 }
 
 
@@ -180,11 +174,13 @@ void DiskIO::seek()
     // A seek event happens for 2 reasons, for transport control and after an audiodevice reconfiguration
     // in the latter case we need to reset rate and buffer sizes.
     if (m_sampleRateChanged) {
+        nframes_t bufferSize = audiodevice().get_buffer_size();
         for (auto source : m_audioSources) {
             source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
-            source->prepare_rt_buffers(audiodevice().get_buffer_size());
+            source->prepare_rt_buffers(bufferSize);
         }
         m_sampleRateChanged = false;
+        m_fileDecodeBuffer->check_buffers_capacity(bufferSize, 2);
     }
 
     for(auto source : m_audioSources) {
@@ -271,12 +267,10 @@ void DiskIO::add_audio_source(AudioSource* source)
     Q_ASSERT(source->get_channel_count() > 0);
 
     source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
-    source->set_decode_buffers(m_fileDecodeBuffer, m_resampleDecodeBuffer);
+    source->set_file_decode_buffer(m_fileDecodeBuffer);
+    source->set_resample_decode_buffer(m_resampleDecodeBuffer);
 
     source->prepare_rt_buffers(audiodevice().get_buffer_size());
-
-    // only for WriteSource change to decodebuffers instead
-    source->set_diskio_frame_buffer(framebuffer);
 
     m_audioSourcesToBeAdded->wait_enqueue(source);
 }

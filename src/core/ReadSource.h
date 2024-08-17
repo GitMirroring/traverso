@@ -81,7 +81,6 @@ public :
 	
 private:
     ResampleAudioReader*        m_resampleAudioReader;
-    std::shared_ptr<TFileDecodeBuffer>          m_fileDecodeBuffer;
     TLocation*                  m_location;
 
     int                 m_refcount;
@@ -107,7 +106,10 @@ private:
     void process_realtime_buffers() final;
     void rb_seek_to_transport_location(const TTimeRef &transportLocation) final;
     void set_output_rate_and_convertor_type(int outputRate, int converterType) final;
-    void set_decode_buffers(std::shared_ptr<TFileDecodeBuffer> fileReadBuffer, std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer);
+    // FIXME: Peak processing should move to a DiskIO thread too, for now allow
+    // Peak to call this function too:
+    friend class Peak;
+    void set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer) final;
 
 signals:
 	void stateChanged();

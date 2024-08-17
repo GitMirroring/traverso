@@ -62,9 +62,9 @@ public:
 	 * @param nframes The buffer size to get
 	 * @return 
 	 */
-    audio_sample_t* get_buffer(uint channel, nframes_t nframes, nframes_t offset = 0) {
+    TAudioBuffer& get_buffer(uint channel) {
         Q_ASSERT(channel < get_channel_count());
-        return m_channels.at(channel)->get_buffer(nframes, offset);
+        return m_channels.at(channel)->get_buffer();
     }
 
     void set_monitoring(bool monitor);
@@ -95,8 +95,14 @@ public:
 	 */
     void silence_buffers()
     {
-        for (int i=0; i<m_channels.size(); ++i) {
-            m_channels.at(i)->silence_buffer();
+        for (const auto channel : m_channels) {
+            channel->silence_buffer();
+        }
+    }
+
+    void apply_gain_to_buffers(nframes_t nframes, float gain) {
+        for (const auto channel : m_channels) {
+            channel->get_buffer().apply_gain_to_buffer(nframes, gain);
         }
     }
 

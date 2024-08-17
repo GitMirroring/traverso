@@ -68,12 +68,11 @@ protected:
     moodycamel::BlockingReaderWriterCircularBuffer<TQueueBufferSlot*> *m_freeBufferSlotsQueue;
     TQueueBufferSlot*    m_lastQueuedRTBufferSlot;
 
+    std::shared_ptr<TFileDecodeBuffer>          m_fileDecodeBuffer;
+
     TTimeRef            m_bufferSlotDuration;
     uint                m_outputRate;
     size_t              m_slotcount;
-
-    // Used for WriteSource, change to DecodeBuffer
-    audio_sample_t* m_diskIOFramebuffer;
 
     uint		m_channelCount;
     qint64		m_origSheetId{};
@@ -85,7 +84,7 @@ protected:
 	QString		m_fileName;
     // FIMXE : use output rate instead ?
     uint 		m_rate{};
-	int		m_wasRecording;
+    int         m_wasRecording;
 
 private:
     // Creation and deletion of the RT buffers can only happen if we know
@@ -99,13 +98,10 @@ private:
     virtual void process_realtime_buffers() = 0;
     virtual void rb_seek_to_transport_location(const TTimeRef &transportLocation) = 0;
     virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
-    virtual void set_decode_buffers(std::shared_ptr<TFileDecodeBuffer> fileReadBuffer, std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer) = 0;
-    // Used in WriteSource, change to use DecodeBuffers instead
-    void set_diskio_frame_buffer(audio_sample_t* frameBuffer) {
-        m_diskIOFramebuffer = frameBuffer;
+    virtual void set_file_decode_buffer(std::shared_ptr<TFileDecodeBuffer> decodeBuffer) {
+        m_fileDecodeBuffer = decodeBuffer;
     }
-
-
+    virtual void set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer) = 0;
 };
 
 

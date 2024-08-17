@@ -166,12 +166,12 @@ void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opti
     painter->setRenderHint(QPainter::Antialiasing);
 
     QPolygonF polygon;
-    auto buffer = QVarLengthArray<float, 40>(pixelcount);
+    TAudioBuffer buffer(pixelcount, false);
 
     // 	printf("range: %d\n", (int)m_nodeViews.last()->pos().x());
     m_guicurve->get_vector(xstart + offset,
                            xstart + pixelcount + offset,
-                           buffer.data(),
+                           buffer,
                            nframes_t(pixelcount));
 
     for (int i=0; i<pixelcount; i+=3) {
@@ -199,13 +199,13 @@ void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opti
     painter->restore();
 }
 
-int CurveView::get_vector(qreal xstart, qreal pixelcount, float* arg)
+int CurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer)
 {
     if (m_guicurve->get_nodes().size() == 1 && m_guicurve->get_nodes().first()->get_value() == 1.0) {
         return 0;
     }
 
-    m_guicurve->get_vector(xstart, xstart + pixelcount, arg, nframes_t(pixelcount));
+    m_guicurve->get_vector(xstart, xstart + pixelcount, buffer, nframes_t(pixelcount));
 
     return 1;
 }

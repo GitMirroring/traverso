@@ -146,21 +146,19 @@ int Curve::process(
 		if (gain == 1.0f) {
 			return 0;
 		}
-		
-		for (uint chan=0; chan<channels; ++chan) {
-            Mixer::apply_gain_to_buffer(audioBus->get_buffer(chan, nframes), nframes, gain);
-		}
+
+        audioBus->apply_gain_to_buffers(nframes, gain);
 		
 		return 1;
 	}
 
-    audio_sample_t* curveBuffer = m_session->get_curve_buffer(nframes);
+    TAudioBuffer &curveBuffer = m_session->get_curve_buffer();
 
 	// Calculate the vector, an apply to the buffer including the makeup gain.
     get_vector(startlocation.universal_frame(), endlocation.universal_frame(), curveBuffer, nframes);
 
     for (uint chan=0; chan<channels; ++chan) {
-        audio_sample_t* buffer = audioBus->get_buffer(chan, nframes);
+        TAudioBuffer &buffer = audioBus->get_buffer(chan);
         for (nframes_t n = 0; n < nframes; ++n) {
             buffer[n] *= (curveBuffer[n] * makeupgain);
         }
@@ -296,9 +294,10 @@ void Curve::solve ()
 }
 
 
-void Curve::get_vector (double x0, double x1, float *vec, nframes_t veclen)
+void Curve::get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen)
 {
     double rx, dx, lx, hx, max_x, min_x;
+    float* vec = audioBuffer.get_buffer(veclen);
     nframes_t i;
     nframes_t original_veclen;
 	int32_t npoints;
