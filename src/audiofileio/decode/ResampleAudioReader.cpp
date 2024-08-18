@@ -182,7 +182,6 @@ bool ResampleAudioReader::seek_private(nframes_t start)
 nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t frameCount)
 {
 	Q_ASSERT(m_reader);
-    Q_ASSERT(m_resampleDecodeBuffer);
 	
 	// pass through if not changing sampleRate.
     if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
@@ -190,7 +189,9 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
     } else if (m_overflowBuffers.size() == 0) {
 		create_overflow_buffers();
 	}
-	
+
+    Q_ASSERT(m_resampleDecodeBuffer);
+
 	nframes_t bufferUsed;
 	nframes_t framesRead = 0;
 	
