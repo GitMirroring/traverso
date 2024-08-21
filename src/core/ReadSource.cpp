@@ -428,7 +428,7 @@ void ReadSource::rb_seek_to_transport_location(const TTimeRef& transportLocation
 
         for (uint chan=0; chan<m_channelCount; ++chan) {
             // and now write it into the buffer using the offset
-            slot->write_buffer(seekTransportLocation, fileLocation, m_fileDecodeBuffer->get_destination_buffer(chan, toRead), chan, toRead, offset);
+            slot->write_buffer(seekTransportLocation, fileLocation, m_fileDecodeBuffer->get_destination_buffer(chan).get_data(toRead), chan, toRead, offset);
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
@@ -500,7 +500,7 @@ void ReadSource::process_realtime_buffers()
         }
 
         for (uint chan=0; chan<m_channelCount; ++chan) {
-            slot->write_buffer(transportLocation, slotFileLocation, m_fileDecodeBuffer->get_destination_buffer(chan, totalReadSize) + offset, chan, bufferSize);
+            slot->write_buffer(transportLocation, slotFileLocation, m_fileDecodeBuffer->get_destination_buffer(chan).get_data(totalReadSize) + offset, chan, bufferSize);
         }
 
         offset += bufferSize;

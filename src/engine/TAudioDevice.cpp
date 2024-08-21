@@ -733,8 +733,7 @@ AudioChannel* TAudioDevice::get_playback_channel_by_name(const QString &name)
 
 AudioChannel* TAudioDevice::create_channel(const QString& name, uint channelNumber, int type)
 {
-    AudioChannel* chan = new AudioChannel(name, channelNumber, type);
-    chan->set_buffer_size(m_bufferSize);
+    AudioChannel* chan = new AudioChannel(name, channelNumber, type, m_bufferSize);
     m_audioChannels.append(chan);
     return chan;
 }

@@ -284,7 +284,7 @@ int Peak::calculate_peaks(
         // 			data->peakdataDecodeBuffer->destination[0][i] = 0;
         // 		}
         //
-        *buffer = data->peakdataDecodeBuffer->get_destination_buffer(0, produced);
+        *buffer = data->peakdataDecodeBuffer->get_destination_buffer(0).get_data(produced);
 
         return produced;
 
@@ -309,7 +309,7 @@ int Peak::calculate_peaks(
     // MicroView needs a buffer to store the calculated peakdata
     // our decodebuffer's readbuffer is large enough for this purpose
     // and it's no problem to use it at this point in the process chain.
-    float* peakdata = data->peakdataDecodeBuffer->get_read_buffer(readFrames);
+    float* peakdata = data->peakdataDecodeBuffer->get_read_buffer().get_data(readFrames);
 
     ProcessData pd;
     // the stepSize depends on the real file sample rate, Peak assumes 44100 Hz
@@ -322,7 +322,7 @@ int Peak::calculate_peaks(
 
         pd.processLocation += pd.stepSize;
 
-        sample = data->peakdataDecodeBuffer->get_destination_buffer(chan, readFrames)[i];
+        sample = data->peakdataDecodeBuffer->get_destination_buffer(chan).get_data(readFrames)[i];
 
         pd.normValue = f_max(pd.normValue, fabsf(sample));
 
@@ -635,7 +635,7 @@ int Peak::create_from_scratch()
         }
 
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
-            process(chan, decodebuffer.get_destination_buffer(chan, readFrames), readFrames);
+            process(chan, decodebuffer.get_destination_buffer(chan).get_data(readFrames), readFrames);
         }
 
         totalReadFrames += readFrames;
@@ -694,7 +694,7 @@ audio_sample_t Peak::get_max_amplitude(const TTimeRef &startlocation, const TTim
         int read = m_source->file_read(&decodebuffer, startframe, toRead);
 
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
-            maxamp = Mixer::compute_peak(decodebuffer.get_destination_buffer(chan, read), read, maxamp);
+            maxamp = decodebuffer.get_destination_buffer(chan).compute_peak(read, maxamp);
         }
     }
 
@@ -708,7 +708,7 @@ audio_sample_t Peak::get_max_amplitude(const TTimeRef &startlocation, const TTim
 
     if (read > 0) {
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
-            maxamp = Mixer::compute_peak(decodebuffer.get_destination_buffer(chan, read), read, maxamp);
+            maxamp = decodebuffer.get_destination_buffer(chan).compute_peak(read, maxamp);
         }
     }
 
@@ -719,7 +719,7 @@ audio_sample_t Peak::get_max_amplitude(const TTimeRef &startlocation, const TTim
     foreach(ChannelData* data, m_channelData) {
         data->file.seek(data->headerdata.normValuesDataOffset + (startpos * sizeof(audio_sample_t)));
 
-        int read = data->file.read((char*)audioReadBuffer.get_buffer(buffersize), sizeof(audio_sample_t) * count) / sizeof(audio_sample_t);
+        int read = data->file.read((char*)audioReadBuffer.get_data(buffersize), sizeof(audio_sample_t) * count) / sizeof(audio_sample_t);
 
         if (read != (int)count) {
             printf("Peak::get_max_amplitude: could only read %d, %d requested\n", read, count);
@@ -914,11 +914,11 @@ nframes_t PeakDataReader::read(TFileDecodeBuffer* buffer, nframes_t count)
     peak_data_t* readbuffer;
 
     qint64 length = sizeof(peak_data_t) * count;
-    framesRead = m_d->file.read(reinterpret_cast<char*>(buffer->get_read_buffer(length)), length) / qint64(sizeof(peak_data_t));
-    readbuffer = reinterpret_cast<peak_data_t*>(buffer->get_read_buffer(length));
+    framesRead = m_d->file.read(reinterpret_cast<char*>(buffer->get_read_buffer().get_data(length)), length) / qint64(sizeof(peak_data_t));
+    readbuffer = reinterpret_cast<peak_data_t*>(buffer->get_read_buffer().get_data(length));
 
     for (int f = 0; f < framesRead; f++) {
-        buffer->get_destination_buffer(0, framesRead)[f] = float(readbuffer[f]);
+        buffer->get_destination_buffer(0).get_data(framesRead)[f] = float(readbuffer[f]);
     }
 
     m_readPos += framesRead;

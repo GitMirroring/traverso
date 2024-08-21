@@ -297,7 +297,7 @@ void Curve::solve ()
 void Curve::get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen)
 {
     double rx, dx, lx, hx, max_x, min_x;
-    float* vec = audioBuffer.get_buffer(veclen);
+    float* vec = audioBuffer.get_data(veclen);
     nframes_t i;
     nframes_t original_veclen;
 	int32_t npoints;

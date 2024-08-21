@@ -475,11 +475,7 @@ void Track::process_send(TSend *send, nframes_t nframes)
 
             gainFactor = panFactor * send->get_gain();
 
-            if (gainFactor == 1.0f) {
-                receiver->get_buffer().mix_buffer_no_gain(sender->get_buffer(), nframes);
-            } else {
-                receiver->get_buffer().mix_buffer_with_gain(sender->get_buffer(), nframes, gainFactor);
-            }
+            TAudioBuffer::mix_buffers_with_gain(receiver->get_buffer(), sender->get_buffer(), nframes, gainFactor);
         }
 
     }

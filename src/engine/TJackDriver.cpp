@@ -85,7 +85,7 @@ int TJackDriver::_write( nframes_t nframes )
     for (int i=0; i<m_outputs.size(); i++) {
         PortChannelPair* pcpair = m_outputs.at(i);
 
-        memcpy (jack_port_get_buffer (pcpair->jackport, nframes), pcpair->channel->get_buffer().get_buffer(nframes), sizeof (jack_default_audio_sample_t) * nframes);
+        memcpy (jack_port_get_buffer (pcpair->jackport, nframes), pcpair->channel->get_buffer().get_data(nframes), sizeof (jack_default_audio_sample_t) * nframes);
         pcpair->channel->silence_buffer();
     }
     return 1;

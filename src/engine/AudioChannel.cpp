@@ -38,7 +38,8 @@
  */
 
 
-AudioChannel::AudioChannel(const QString& name, uint channelNumber, int type, qint64 id)
+AudioChannel::AudioChannel(const QString& name, uint channelNumber, int type, nframes_t bufferSize, qint64 id)
+    : m_audioBuffer(bufferSize, true)
 {
     m_name = name;
     m_number = channelNumber;
@@ -111,7 +112,7 @@ void AudioChannel::remove_monitor(TVUMonitor *monitor)
 
 void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes)
 {
-    memcpy (m_audioBuffer.get_buffer(nframes), buf, sizeof(audio_sample_t) * nframes);
+    memcpy (m_audioBuffer.get_data(nframes), buf, sizeof(audio_sample_t) * nframes);
 
     if (m_monitoring) {
         process_monitoring();

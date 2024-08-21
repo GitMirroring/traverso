@@ -92,8 +92,8 @@ void CorrelationMeter::process(AudioBus* bus, nframes_t nframes)
 	// The nframes is the amount of samples there are in the buffers
 	// we have to process. No need to get the buffersize, we _have_ to
 	// use the nframes variable !
-    audio_sample_t* bufferLeft = bus->get_buffer(0).get_buffer(nframes);
-    audio_sample_t* bufferRight = bus->get_buffer(1).get_buffer(nframes);
+    audio_sample_t* bufferLeft = bus->get_buffer(0).get_data(nframes);
+    audio_sample_t* bufferRight = bus->get_buffer(1).get_data(nframes);
 
 
         // Variables we need to calculate the correlation and averages/levels

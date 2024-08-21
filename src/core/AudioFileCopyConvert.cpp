@@ -132,7 +132,7 @@ void AudioFileCopyConvert::process_task(CopyTask task)
 			
 		for (uint x = 0; x < nframes; ++x) {
             for (uint y = 0; y < task.spec->get_channel_count(); ++y) {
-                task.spec->get_render_buffer()[y + x*task.spec->get_channel_count()] = decodebuffer.get_destination_buffer(y, nframes)[x];
+                task.spec->get_render_buffer()[y + x*task.spec->get_channel_count()] = decodebuffer.get_destination_buffer(y).get_data(nframes)[x];
 			}
 		}
 		
@@ -140,7 +140,7 @@ void AudioFileCopyConvert::process_task(CopyTask task)
 		// but in a function used by DiskIO, we have to hack the peak processing 
 		// in here.
         for (uint y = 0; y < task.spec->get_channel_count(); ++y) {
-            writesource->get_peak()->process(y, decodebuffer.get_destination_buffer(y, nframes), nframes);
+            writesource->get_peak()->process(y, decodebuffer.get_destination_buffer(y).get_data(nframes), nframes);
 		}
 		
 		// Process the data, and write to disk

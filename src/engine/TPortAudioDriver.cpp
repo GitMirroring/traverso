@@ -35,6 +35,8 @@
 
 TPortAudioDriver::TPortAudioDriver( TAudioDevice * device)
     : TAudioDriver(device)
+    , m_paInputBuffer(device->get_buffer_size(), true)
+    , m_paOutputBuffer(device->get_buffer_size(), true)
 {
     read = TAudioDriverReadWriteCallBack(this, &TPortAudioDriver::_read);
     write = TAudioDriverReadWriteCallBack(this, &TPortAudioDriver::_write);
@@ -56,7 +58,7 @@ int TPortAudioDriver::_read(nframes_t nframes)
     Q_ASSERT(m_captureChannels.size() > 0);
     Q_ASSERT(m_paStream);
 
-    Pa_ReadStream(m_paStream, m_paInputBuffer.get_buffer(nframes), nframes);
+    Pa_ReadStream(m_paStream, m_paInputBuffer.get_data(nframes), nframes);
 
     m_device->set_transport_cycle_start_time(TTimeRef::get_nanoseconds_since_epoch());
 
@@ -93,7 +95,7 @@ int TPortAudioDriver::_write(nframes_t nframes)
 
     m_device->set_transport_cycle_end_time(TTimeRef::get_nanoseconds_since_epoch());
 
-    Pa_WriteStream(m_paStream, m_paOutputBuffer.get_buffer(nframes), nframes);
+    Pa_WriteStream(m_paStream, m_paOutputBuffer.get_data(nframes), nframes);
 
     return 1;
 }

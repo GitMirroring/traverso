@@ -80,8 +80,8 @@ private:
     SRC_DATA        m_srcData{};
     SRC_STATE*      m_srcState;
     nframes_t       m_leftOverBufferSize; // in frames to hold interleaved data
-    TAudioBuffer    m_leftOverBuffer{0, true};
-    TAudioBuffer    m_dataBuffer{0, true};
+    TAudioBuffer    m_leftOverBuffer;
+    TAudioBuffer    m_dataBuffer;
     std::vector<std::unique_ptr<TAudioBuffer>> m_readBuffers;
 
     void*           m_outputData;

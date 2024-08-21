@@ -839,8 +839,7 @@ AudioBus* Project::create_software_audio_bus(const TAudioBusConfiguration& conf)
 
     AudioChannel* channel;
     for (int i=0; i< conf.channelNames.size(); ++i) {
-        channel = new AudioChannel(conf.channelNames.at(i), uint(i), bus->get_type());
-        channel->set_buffer_size(audiodevice().get_buffer_size());
+        channel = new AudioChannel(conf.channelNames.at(i), uint(i), bus->get_type(), audiodevice().get_buffer_size());
 
         audiodevice().add_jack_channel(channel);
         bus->add_channel(channel);

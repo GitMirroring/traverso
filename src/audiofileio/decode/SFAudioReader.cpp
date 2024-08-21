@@ -113,16 +113,16 @@ bool SFAudioReader::seek_private(nframes_t start)
     }
 
     return true;
-} 
+}
 
 
-nframes_t SFAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t nframes)
+nframes_t SFAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nframes_t nframes)
 {
     Q_ASSERT(m_sf);
 
-    audio_sample_t* readBuffer = buffer->get_read_buffer(nframes * m_channels);
+    TAudioBuffer &readBuffer = fileDecodeBuffer->get_read_buffer();
 
-    nframes_t readFrames = sf_readf_float(m_sf, readBuffer, nframes);
+    nframes_t readFrames = sf_readf_float(m_sf, readBuffer.get_data(nframes * m_channels), nframes);
 
     // De-interlace
     switch (m_channels) {
@@ -130,13 +130,13 @@ nframes_t SFAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t nfram
         return readFrames;
     case 1:
     {
-        memcpy(buffer->get_destination_buffer(0, readFrames), readBuffer, readFrames * sizeof(audio_sample_t));
+        TAudioBuffer::copy_data(fileDecodeBuffer->get_destination_buffer(0), readBuffer, readFrames);
         break;
     }
     case 2:
     {
-        audio_sample_t* left = buffer->get_destination_buffer(0, readFrames);
-        audio_sample_t* right = buffer->get_destination_buffer(1, readFrames);
+        audio_sample_t* left = fileDecodeBuffer->get_destination_buffer(0).get_data(readFrames);
+        audio_sample_t* right = fileDecodeBuffer->get_destination_buffer(1).get_data(readFrames);
         for (nframes_t frame = 0; frame < readFrames; frame++) {
             int index = frame*2;
             left[frame] = readBuffer[index];
@@ -146,9 +146,10 @@ nframes_t SFAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t nfram
     }
     default:
     {
-        for (nframes_t frame = 0; frame < readFrames; frame++) {
-            for (uint channel = 0; channel < m_channels; channel++) {
-                buffer->get_destination_buffer(channel, readFrames)[frame] = readBuffer[frame * m_channels + channel];
+        for (uint channel = 0; channel < m_channels; channel++) {
+            TAudioBuffer &destBuffer = fileDecodeBuffer->get_destination_buffer(channel);
+            for (nframes_t frame = 0; frame < readFrames; frame++) {
+                destBuffer[frame] = readBuffer[frame * m_channels + channel];
             }
         }
     }

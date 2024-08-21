@@ -39,6 +39,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 WriteSource::WriteSource( TExportSpecification* specification )
     : AudioSource(specification->get_export_dir(), specification->get_export_file_name())
     , m_exportSpecification(specification)
+    , m_leftOverBuffer(1, true)
+    , m_dataBuffer(1, true)
 {
     m_writer = nullptr;
     m_peak = nullptr;
@@ -84,19 +86,19 @@ nframes_t WriteSource::process (nframes_t nframes)
 
             m_srcData.output_frames = m_outSamplesMax / m_channelCount;
             m_srcData.end_of_input = (m_exportSpecification->get_export_location() + TTimeRef(nframes, m_sampleRate)) >= m_exportSpecification->get_export_end_location();
-            m_srcData.data_out = m_dataBuffer.get_buffer(nframes);
+            m_srcData.data_out = m_dataBuffer.get_data(nframes);
 
             if (m_leftOverFrames > 0) {
 
                 /* input data will be in m_leftOverBuffer rather than dataF */
 
-                m_srcData.data_in = m_leftOverBuffer.get_buffer(m_leftOverFrames);
+                m_srcData.data_in = m_leftOverBuffer.get_data(m_leftOverFrames);
 
                 if (cnt == 0) {
 
                     /* first time, append new data from dataF into the m_leftOverBuffer */
 
-                    memcpy (m_leftOverBuffer.get_buffer(nframes * m_channelCount) + (m_leftOverFrames * m_channelCount), m_exportSpecification->get_render_buffer(), nframes * m_channelCount * sizeof(float));
+                    memcpy (m_leftOverBuffer.get_data(nframes * m_channelCount) + (m_leftOverFrames * m_channelCount), m_exportSpecification->get_render_buffer(), nframes * m_channelCount * sizeof(float));
                     m_srcData.input_frames = nframes + m_leftOverFrames;
                 } else {
 
@@ -129,11 +131,11 @@ nframes_t WriteSource::process (nframes_t nframes)
                     PWARN("warning, leftover frames overflowed, glitches might occur in output");
                     m_leftOverFrames = m_leftOverBufferSize;
                 }
-                memmove (m_leftOverBuffer.get_buffer(m_leftOverFrames * m_channelCount), (char *) (m_srcData.data_in + (m_srcData.input_frames_used * m_channelCount)),
+                memmove (m_leftOverBuffer.get_data(m_leftOverFrames * m_channelCount), (char *) (m_srcData.data_in + (m_srcData.input_frames_used * m_channelCount)),
                      m_leftOverFrames * m_channelCount * sizeof(float));
             }
 
-            writeBuffer = m_dataBuffer.get_buffer(toWrite);
+            writeBuffer = m_dataBuffer.get_data(toWrite);
 
         } else {
 
@@ -321,7 +323,7 @@ nframes_t WriteSource::ringbuffer_write(TProcessCallBackData &processData)
         Q_ASSERT(slot);
 
         for (uint chan=0; chan < m_channelCount; ++chan) {
-            slot->write_buffer(processData.get_start_location(), TTimeRef(), bus->get_buffer(chan).get_buffer(nframes), chan, nframes);
+            slot->write_buffer(processData.get_start_location(), TTimeRef(), bus->get_buffer(chan).get_data(nframes), chan, nframes);
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
@@ -369,7 +371,7 @@ void WriteSource::process_realtime_buffers()
     Q_ASSERT(m_writer);
 
     m_fileDecodeBuffer->check_buffers_capacity(m_exportSpecification->get_render_buffer_size(), m_channelCount);
-    m_exportSpecification->set_render_buffer(m_fileDecodeBuffer->get_read_buffer(m_exportSpecification->get_render_buffer_size()));
+    m_exportSpecification->set_render_buffer(m_fileDecodeBuffer->get_read_buffer().get_data(m_exportSpecification->get_render_buffer_size()));
 
     TQueueBufferSlot* slot = nullptr;
 
@@ -420,16 +422,16 @@ int WriteSource::rb_file_write(TQueueBufferSlot* slot)
 
         slot->read_buffer(*m_readBuffers.at(chan), chan, nframes);
 
-        m_peak->process(chan, m_readBuffers.at(chan)->get_buffer(nframes), nframes);
+        m_peak->process(chan, m_readBuffers.at(chan)->get_data(nframes), nframes);
 	}
 
     if (m_channelCount == 1) {
-        m_exportSpecification->set_render_buffer(m_readBuffers.at(0)->get_buffer(nframes));
+        m_exportSpecification->set_render_buffer(m_readBuffers.at(0)->get_data(nframes));
     } else {
         // Interlace data into dataF buffer!
         auto renderBuffer = m_exportSpecification->get_render_buffer();
         for (chan = 0; chan < m_channelCount; chan++) {
-            auto readBuffer = m_readBuffers.at(chan)->get_buffer(nframes);
+            auto readBuffer = m_readBuffers.at(chan)->get_data(nframes);
             for (uint f=0; f<nframes; f++) {
                 renderBuffer[f * m_channelCount + chan] = readBuffer[f];
             }

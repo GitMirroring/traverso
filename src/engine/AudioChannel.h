@@ -36,7 +36,7 @@ class AudioChannel : public QObject
     Q_OBJECT
 
 public:
-    AudioChannel(const QString& name, uint channelNumber, int type, qint64 id=0);
+    explicit AudioChannel(const QString& name, uint channelNumber, int type, nframes_t bufferSize,  qint64 id=0);
     ~AudioChannel();
 
     enum ChannelFlags {
@@ -51,7 +51,7 @@ public:
     void set_latency(unsigned int latency);
 
     inline void silence_buffer() {
-        m_audioBuffer.silence_buffer();
+        m_audioBuffer.silence_data();
     }
 
     void set_buffer_size(nframes_t size);
@@ -68,7 +68,7 @@ public:
 
 private:
     TRealTimeLinkedList<TVUMonitor*>    m_monitors;
-    TAudioBuffer    m_audioBuffer{0, true};
+    TAudioBuffer    m_audioBuffer;
     uint 			m_latency;
     uint 			m_number;
     qint64                  m_id;

@@ -8,14 +8,13 @@
 class TFileDecodeBuffer {
 
 public:
-    TFileDecodeBuffer()
+    TFileDecodeBuffer() : m_readBuffer(1, true)
     {
         for (uint chan=0; chan < 2; ++chan) {
-            m_destinationBuffers.push_back(std::make_unique<TAudioBuffer>(0, true));
+            m_destinationBuffers.push_back(std::make_unique<TAudioBuffer>(1, true));
         }
 
-        m_destinationBufferSize = m_readBufferSize = 0;
-        m_destinationBufferReadOffset = 0;
+        m_destinationBufferSize = m_readBufferSize = 1;
     }
 
     ~TFileDecodeBuffer() {
@@ -25,29 +24,32 @@ public:
         return m_destinationBufferSize;
     }
 
-    audio_sample_t* get_destination_buffer(uint channel, nframes_t nframes) {
-        return m_destinationBuffers.at(channel)->get_buffer(nframes + m_destinationBufferReadOffset) + m_destinationBufferReadOffset;
+    TAudioBuffer& get_destination_buffer(uint channel) {
+        return *m_destinationBuffers.at(channel);
     }
 
-    audio_sample_t* get_read_buffer(nframes_t nframes) {
-        return m_readBuffer.get_buffer(nframes);
-    }
-
-    void set_destination_buffer_read_offset(nframes_t offset) {
-        Q_ASSERT(offset < m_destinationBufferSize);
-        m_destinationBufferReadOffset = offset;
+    TAudioBuffer& get_read_buffer() {
+        return m_readBuffer;
     }
 
     void silence_buffers() {
-        m_readBuffer.silence_buffer();
+        m_readBuffer.silence_data();
         for (const auto &buffer : m_destinationBuffers) {
-            buffer->silence_buffer();
+            buffer->silence_data();
+        }
+    }
+
+    void set_destination_buffer_read_offset(nframes_t nframes) {
+        for (const auto &buffer : m_destinationBuffers) {
+            buffer->set_read_offset(nframes);
         }
     }
 
     void check_buffers_capacity(uint size, uint channels)
     {
-        if (size < m_destinationBufferSize) {
+        Q_ASSERT(size > 0);
+
+        if (size <= m_destinationBufferSize) {
             return;
         }
 
@@ -55,6 +57,7 @@ public:
 
         Q_ASSERT(channels <= myChannels);
 
+        // Buffer resize will silence the buffers for us
         for (const auto &buffer : m_destinationBuffers) {
             buffer->resize(size);
         }
@@ -66,10 +69,9 @@ public:
 
 private:
     std::vector<std::unique_ptr<TAudioBuffer>>  m_destinationBuffers;
-    TAudioBuffer            m_readBuffer{0, true};
+    TAudioBuffer            m_readBuffer;
     uint                    m_destinationBufferSize;
     uint                    m_readBufferSize;
-    uint                    m_destinationBufferReadOffset;
 };
 
 #endif // TFILEDECODEBUFFER_H

@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 #include <samplerate.h>
 
-const nframes_t OVERFLOW_SIZE = 512;
+const long OVERFLOW_SIZE = 512;
 
 
 struct PrivateSRC {
@@ -71,7 +71,7 @@ ResampleAudioReader::~ResampleAudioReader()
 void ResampleAudioReader::clear_buffers()
 {
     for (const auto & buffer : m_overflowBuffers)  {
-        buffer->silence_buffer();
+        buffer->silence_data();
     }
 
 	if (m_reader) {
@@ -92,7 +92,12 @@ void ResampleAudioReader::reset()
 	// Read extra frames from the child reader on the first read after a seek.
 	// This keeps the resampler supplied with plenty of samples to produce the 
 	// requested output on each read.
-	m_readExtraFrames = OVERFLOW_SIZE;
+    m_readExtraFrames = OVERFLOW_SIZE;
+    // Linear conversion can return more samples then requested
+    // so give the overflow buffers some spare room if that happens
+    // for now, only 1 extra sample has been observed being produced by src
+    // when converting from 44.1 to 48.0 KHz
+    m_readExtraFrames -= 64;
 }
 
 void ResampleAudioReader::set_converter_type(int converterType)
@@ -192,7 +197,7 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 
     Q_ASSERT(m_resampleDecodeBuffer);
 
-	nframes_t bufferUsed;
+    long bufferUsed;
 	nframes_t framesRead = 0;
 	
 	nframes_t fileCnt = resampled_to_file_frame(frameCount);
@@ -205,12 +210,12 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 		reset();
 	}
 
-    bufferUsed = nframes_t(m_overflowUsed);
+    bufferUsed = m_overflowUsed;
 	
 	if (m_overflowUsed) {
 		// Copy pre-existing overflow into the buffer
         for (uint chan = 0; chan < m_channels; chan++) {
-            memcpy(m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), m_overflowBuffers.at(chan)->get_buffer(m_overflowUsed), m_overflowUsed * sizeof(audio_sample_t));
+            TAudioBuffer::copy_data(m_resampleDecodeBuffer->get_destination_buffer(chan), *m_overflowBuffers.at(chan), m_overflowUsed);
 		}
 	}
 		
@@ -252,9 +257,9 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 	
     for (uint chan = 0; chan < m_channels; chan++) {
 		// Set up sample rate converter struct for s.r.c. processing
-        m_privateSRC->srcData.data_in = m_resampleDecodeBuffer->get_destination_buffer(chan, bufferUsed);
+        m_privateSRC->srcData.data_in = m_resampleDecodeBuffer->get_destination_buffer(chan).get_data(bufferUsed);
         m_privateSRC->srcData.input_frames = bufferUsed;
-        m_privateSRC->srcData.data_out = buffer->get_destination_buffer(chan, framesToConvert);
+        m_privateSRC->srcData.data_out = buffer->get_destination_buffer(chan).get_data(framesToConvert);
         m_privateSRC->srcData.output_frames = framesToConvert;
         m_privateSRC->srcData.src_ratio = double(m_outputSampleRate) / m_fileSampleRate;
         src_set_ratio(m_privateSRC->srcStates[chan], m_privateSRC->srcData.src_ratio);
@@ -266,7 +271,8 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
         framesRead = nframes_t(m_privateSRC->srcData.output_frames_gen);
 	}
 	
-    m_overflowUsed = bufferUsed - nframes_t(m_privateSRC->srcData.input_frames_used);
+    m_overflowUsed = bufferUsed - m_privateSRC->srcData.input_frames_used;
+    Q_ASSERT(m_overflowUsed <= OVERFLOW_SIZE);
 	if (m_overflowUsed < 0) {
 		m_overflowUsed = 0;
     }
@@ -274,7 +280,10 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
 		// If there was overflow, save it for the next read.
         m_resampleDecodeBuffer->set_destination_buffer_read_offset(m_privateSRC->srcData.input_frames_used);
         for (uint chan = 0; chan < m_channels; chan++) {
-            memcpy(m_overflowBuffers.at(chan)->get_buffer(nframes_t(m_overflowUsed)), m_resampleDecodeBuffer->get_destination_buffer(chan, m_overflowUsed), nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
+            memcpy(m_overflowBuffers.at(chan)->get_data(m_overflowUsed),
+                        m_resampleDecodeBuffer->get_destination_buffer(chan).get_data(m_overflowUsed),
+                        nframes_t(m_overflowUsed) * sizeof(audio_sample_t));
+            // TAudioBuffer::copy_data(*m_overflowBuffers.at(chan), m_resampleDecodeBuffer->get_destination_buffer(chan), m_overflowUsed);
 		}
         m_resampleDecodeBuffer->set_destination_buffer_read_offset(0);
 	}
@@ -284,9 +293,8 @@ nframes_t ResampleAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t
         int padLength = int(get_nframes() - m_readPos);
         printf("Resampler: padding: %d\n", padLength);
         buffer->set_destination_buffer_read_offset(framesRead);
-        size_t framesToPad = padLength * sizeof(audio_sample_t);
         for (uint chan = 0; chan < m_channels; chan++) {
-            memset(buffer->get_destination_buffer(chan, framesToPad), 0, framesToPad);
+            buffer->get_destination_buffer(chan).silence_data(padLength);
 		}
         buffer->set_destination_buffer_read_offset(0);
         framesRead += nframes_t(padLength);

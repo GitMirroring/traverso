@@ -24,93 +24,83 @@ public:
 
     ~TAudioBuffer()
     {
-#ifdef USE_MLOCK
-
-        if (m_memLocked) {
-            munlock (m_buffer, m_size);
-        }
-#endif /* USE_MLOCK */
-
-        delete [] m_buffer;
+        delete_buffer_data();
     }
 
     void resize(nframes_t size) {
-        if (m_size == size) {
+        Q_ASSERT(size > 0);
+
+        if (size == m_size) {
             return;
         }
 
-#ifdef USE_MLOCK
-        if (m_memLocked) {
-            if (munlock (m_buffer, m_size) == -1) {
-                PERROR("Couldn't unlock buffer from memory");
-            }
-            m_memLocked = false;
-        }
-#endif /* USE_MLOCK */
+        delete_buffer_data();
 
-        delete [] m_buffer;
-        m_buffer = nullptr;
-        m_size = size;
+        allocate_buffer_data(size);
 
-        if (m_size == 0) {
-            return;
-        }
-
-        m_buffer = new audio_sample_t[size];
-
-        silence_buffer();
-
-#ifdef USE_MLOCK
-        if (m_wantsMemLock) {
-            if (mlock (m_buffer, size) == -1) {
-                PERROR("Couldn't lock buffer into memory");
-            } else {
-                m_memLocked = true;
-            }
-        }
-#endif /* USE_MLOCK */
+        silence_data();
     }
 
-    void silence_buffer() {
+    // Silence whole buffer with zero's, read offset is discarded
+    void silence_data() {
         memset (m_buffer, 0, sizeof (audio_sample_t) * m_size);
     }
 
-    audio_sample_t* get_buffer(nframes_t nframes) const {
+    // Silence buffer with zero's for nframes, starting at read offset (if read offset was set before this call)
+    void silence_data(nframes_t nframes) {
+        Q_ASSERT((nframes + m_readOffset) <= m_size);
+        memset (m_buffer + m_readOffset, 0, sizeof (audio_sample_t) * nframes);
+    }
+
+    // returns pointer to data buffer starting from read offset (if it was set). Range check in Debug build
+    audio_sample_t* get_data(nframes_t nframes) const {
         Q_ASSERT((nframes + m_readOffset) <= m_size);
         return m_buffer + m_readOffset;
     }
 
+    nframes_t get_size() const {
+        return m_size;
+    }
+
+    // return by reference to the item @ index. Range check in Debug build
     audio_sample_t& operator[](nframes_t index) {
         Q_ASSERT((index + m_readOffset) < m_size);
         return m_buffer[index + m_readOffset];
     }
 
+    // return by value to the item @ index.  Range check in Debug build
     audio_sample_t at(nframes_t index) const {
         Q_ASSERT((index + m_readOffset) < m_size);
         return m_buffer[index + m_readOffset];
     }
 
+    // calculate peak value for nframes starting at readOffset if it was set
     float compute_peak(nframes_t nframes, float current)
     {
-        Q_ASSERT(nframes <= m_size);
+        Q_ASSERT((nframes + m_readOffset) <= m_size);
         return Mixer::compute_peak(m_buffer + m_readOffset, nframes, current);
     }
 
+    // calculate peak value on whole buffer, discarding readOffset if it was set
     float compute_peak()
     {
         return Mixer::compute_peak(m_buffer, m_size, 0.0f);
     }
 
-    void mix_buffer_no_gain(TAudioBuffer &other, nframes_t nframes) {
-        Mixer::mix_buffers_no_gain(get_buffer(nframes), other.get_buffer(nframes), nframes);
+    static void mix_buffers_no_gain(TAudioBuffer &dest, TAudioBuffer &src, nframes_t nframes) {
+        Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
     }
 
-    void mix_buffer_with_gain(TAudioBuffer &other, nframes_t nframes, float gain) {
-        Mixer::mix_buffers_with_gain(get_buffer(nframes), other.get_buffer(nframes), nframes, gain);
+    static void mix_buffers_with_gain(TAudioBuffer &dest, TAudioBuffer &src, nframes_t nframes, float gain) {
+        if (gain == 1.0f) {
+            return Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
+        }
+
+        Mixer::mix_buffers_with_gain(dest.get_data(nframes), src.get_data(nframes), nframes, gain);
     }
 
-    void copy_buffer(TAudioBuffer &other, nframes_t nframes) {
-        memcpy(get_buffer(nframes), other.get_buffer(nframes), nframes * sizeof(audio_sample_t));
+    static void copy_data(TAudioBuffer &dest, TAudioBuffer &src, nframes_t nframes) {
+        memcpy(dest.get_data(nframes), src.get_data(nframes), nframes * sizeof(audio_sample_t));
     }
 
     void apply_gain_to_buffer(nframes_t nframes, float gain) {
@@ -129,6 +119,36 @@ private:
     nframes_t       m_readOffset;
     bool            m_memLocked;
     bool            m_wantsMemLock;
+
+    void allocate_buffer_data(nframes_t size) {
+        m_buffer = new audio_sample_t[size];
+        m_size = size;
+
+#ifdef USE_MLOCK
+        if (m_wantsMemLock) {
+            if (mlock (m_buffer, size) == -1) {
+                PERROR("Couldn't lock buffer into memory");
+            } else {
+                m_memLocked = true;
+            }
+        }
+#endif /* USE_MLOCK */
+    }
+
+    void delete_buffer_data() {
+#ifdef USE_MLOCK
+        if (m_memLocked) {
+            if (munlock (m_buffer, m_size) == -1) {
+                PERROR("Couldn't unlock buffer from memory");
+            }
+            m_memLocked = false;
+        }
+#endif /* USE_MLOCK */
+
+        delete [] m_buffer;
+        m_buffer = nullptr;
+    }
+
 };
 
 #endif // TAUDIOBUFFER_H

@@ -101,10 +101,12 @@ bool AbstractAudioReader::seek(nframes_t start)
 
 nframes_t AbstractAudioReader::read(TFileDecodeBuffer* buffer, nframes_t count)
 {
-    if (count && m_readPos < m_fileFrames) {
+    if (count > 0 && m_readPos < m_fileFrames) {
 
         // Make sure the read buffer is big enough for this read
         buffer->check_buffers_capacity(count, m_channels);
+        // and contains only zero's
+        buffer->silence_buffers();
 
         // printf("read_from:: after_seek from %d, framepos is %d\n", start, m_readPos);
         nframes_t framesRead = read_private(buffer, count);

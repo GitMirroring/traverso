@@ -8,8 +8,8 @@
 class TQueueBufferSlot {
 public:
     explicit TQueueBufferSlot(int slotNumber, uint channelCount, nframes_t bufferSize) {
-        m_fileLocation = TTimeRef::INVALID;
-        m_transportLocation = TTimeRef::INVALID;
+        m_fileLocation = TTimeRef();
+        m_transportLocation = TTimeRef();
         m_slotNumber = slotNumber;
         m_bufferSize = bufferSize;
         m_bufferWriteOffset = 0;
@@ -33,13 +33,13 @@ public:
     void read_buffer(TAudioBuffer &dest, uint channel, nframes_t nframes) {
         Q_ASSERT(nframes <= m_bufferSize);
         Q_ASSERT(nframes > 0);
-        dest.copy_buffer(*m_buffers.at(channel), nframes);
+        TAudioBuffer::copy_data(dest, *m_buffers.at(channel), nframes);
     }
 
     void write_buffer(const TTimeRef &transportLocation, const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes, nframes_t offset = 0) {
         Q_ASSERT(offset + nframes <= m_bufferSize);
         Q_ASSERT(nframes > 0);
-        memcpy(m_buffers.at(channel)->get_buffer(nframes) + offset, source, nframes * sizeof(audio_sample_t));
+        memcpy(m_buffers.at(channel)->get_data(nframes) + offset, source, nframes * sizeof(audio_sample_t));
         m_transportLocation = transportLocation;
         m_fileLocation = fileLocation;
         m_bufferWriteOffset = offset;
@@ -55,7 +55,7 @@ public:
 
     void silence_buffers() {
         for(size_t i=0; i<m_buffers.size(); ++i) {
-            m_buffers.at(i)->silence_buffer();
+            m_buffers.at(i)->silence_data();
         }
     }
 

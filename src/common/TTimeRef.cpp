@@ -30,7 +30,7 @@ TTimeRef::TTimeRef(qint64 position)
 }
 
 TTimeRef::TTimeRef(double position)
-    : m_universalFrame(std::round(position))
+    : m_universalFrame(std::floor(position))
 {
 
 }

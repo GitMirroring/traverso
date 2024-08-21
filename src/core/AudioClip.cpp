@@ -499,11 +499,11 @@ int AudioClip::process(TProcessCallBackData &processData)
     // Mixing should be done on the WHOLE buffer, not just part of it
     // so use an unmodified nframes variable
     if (channelcount == 1) {
-        processBus->get_buffer(0).mix_buffer_no_gain(bus->get_buffer(0), nframes);
-        processBus->get_buffer(1).mix_buffer_no_gain(bus->get_buffer(0), nframes);
+        TAudioBuffer::mix_buffers_no_gain(processBus->get_buffer(0), bus->get_buffer(0), nframes);
+        TAudioBuffer::mix_buffers_no_gain(processBus->get_buffer(1), bus->get_buffer(0), nframes);
     } else if (channelcount == 2) {
-        processBus->get_buffer(0).mix_buffer_no_gain(bus->get_buffer(0), nframes);
-        processBus->get_buffer(1).mix_buffer_no_gain(bus->get_buffer(1), nframes);
+        TAudioBuffer::mix_buffers_no_gain(processBus->get_buffer(0), bus->get_buffer(0), nframes);
+        TAudioBuffer::mix_buffers_no_gain(processBus->get_buffer(1), bus->get_buffer(1), nframes);
     }
 
     return 1;

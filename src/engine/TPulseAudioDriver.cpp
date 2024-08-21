@@ -32,6 +32,8 @@
 
 TPulseAudioDriver::TPulseAudioDriver(TAudioDevice* device )
     : TAudioDriver(device)
+    , m_interleavedPlaybackBuffer(device->get_buffer_size() * 2, true)
+    , m_interleavedCaptureBuffer(device->get_buffer_size() * 2, true)
 {
     read = TAudioDriverReadWriteCallBack(this, &TPulseAudioDriver::_read);
     write = TAudioDriverReadWriteCallBack(this, &TPulseAudioDriver::_write);
@@ -88,8 +90,8 @@ int TPulseAudioDriver::_write( nframes_t nframes )
 
     int error;
 
-    auto leftChannelBuffer = m_playbackChannels.at(0)->get_buffer().get_buffer(nframes);
-    auto rightChannelBuffer = m_playbackChannels.at(1)->get_buffer().get_buffer(nframes);
+    auto leftChannelBuffer = m_playbackChannels.at(0)->get_buffer().get_data(nframes);
+    auto rightChannelBuffer = m_playbackChannels.at(1)->get_buffer().get_data(nframes);
 
     for (uint x = 0; x < nframes; ++x) {
         m_interleavedPlaybackBuffer[x*2] = leftChannelBuffer[x];
@@ -98,7 +100,7 @@ int TPulseAudioDriver::_write( nframes_t nframes )
 
     m_device->set_transport_cycle_end_time(TTimeRef::get_nanoseconds_since_epoch());
 
-    if (pa_simple_write(m_paSimplePlayback, m_interleavedPlaybackBuffer.get_buffer(nframes), m_framesPerCycle * sizeof(audio_sample_t) * 2, &error) < 0) {
+    if (pa_simple_write(m_paSimplePlayback, m_interleavedPlaybackBuffer.get_data(nframes), m_framesPerCycle * sizeof(audio_sample_t) * 2, &error) < 0) {
         fprintf(stderr, __FILE__": pa_simple_write() failed: %s\n", pa_strerror(error));
     }
 
