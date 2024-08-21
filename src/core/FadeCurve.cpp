@@ -216,11 +216,11 @@ void FadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const TT
 
     for (uint chan=0; chan<channelCount; ++chan) {
         TAudioBuffer &buf = bus->get_buffer(chan); //, framesToProcess, offset);
-        buf.set_read_offset(offset);
+        buf.set_data_start_offset(offset);
         for (nframes_t frame = 0; frame < framesToProcess; ++frame) {
             buf[frame] *= curveBuffer.at(frame);
         }
-        buf.set_read_offset(0);
+        buf.set_data_start_offset(0);
     }
 }
 

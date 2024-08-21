@@ -59,8 +59,8 @@ public:
 
 private:
     PaStream* m_paStream;
-    TAudioBuffer m_paInputBuffer;
-    TAudioBuffer m_paOutputBuffer;
+    TRealTimeAudioBuffer m_paInputBuffer;
+    TRealTimeAudioBuffer m_paOutputBuffer;
 
 
     static int _xrun_callback(void *arg);

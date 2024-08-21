@@ -681,7 +681,7 @@ audio_sample_t Peak::get_max_amplitude(const TTimeRef &startlocation, const TTim
 
     uint buffersize = count < NORMALIZE_CHUNK_SIZE*2 ? NORMALIZE_CHUNK_SIZE*2 : count;
 
-    TAudioBuffer audioReadBuffer(buffersize, false);
+    TAudioBuffer audioReadBuffer(buffersize);
 
     audio_sample_t maxamp = 0;
     TFileDecodeBuffer decodebuffer;

@@ -39,8 +39,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 WriteSource::WriteSource( TExportSpecification* specification )
     : AudioSource(specification->get_export_dir(), specification->get_export_file_name())
     , m_exportSpecification(specification)
-    , m_leftOverBuffer(1, true)
-    , m_dataBuffer(1, true)
+    , m_leftOverBuffer(1)
+    , m_dataBuffer(1)
 {
     m_writer = nullptr;
     m_peak = nullptr;
@@ -262,7 +262,7 @@ int WriteSource::prepare_export()
 	}
 
     for (uint chan=0; chan < m_channelCount; ++chan) {
-        m_readBuffers.push_back(std::make_unique<TAudioBuffer>(m_exportSpecification->get_block_size(), false));
+        m_readBuffers.push_back(std::make_unique<TRealTimeAudioBuffer>(m_exportSpecification->get_block_size()));
     }
 
 	return 0;

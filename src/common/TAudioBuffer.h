@@ -12,17 +12,12 @@
 class TAudioBuffer
 {
 public:
-    explicit TAudioBuffer(nframes_t size, bool wantsMemLock)
-        : m_buffer(nullptr)
-        , m_size(0)
-        , m_readOffset(0)
-        , m_memLocked(false)
-        , m_wantsMemLock(wantsMemLock)
+    explicit TAudioBuffer(nframes_t size)
+        : TAudioBuffer (size, false)
     {
-        resize(size);
     }
 
-    ~TAudioBuffer()
+    virtual ~TAudioBuffer()
     {
         delete_buffer_data();
     }
@@ -87,11 +82,11 @@ public:
         return Mixer::compute_peak(m_buffer, m_size, 0.0f);
     }
 
-    static void mix_buffers_no_gain(TAudioBuffer &dest, TAudioBuffer &src, nframes_t nframes) {
+    static void mix_buffers_no_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) {
         Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
     }
 
-    static void mix_buffers_with_gain(TAudioBuffer &dest, TAudioBuffer &src, nframes_t nframes, float gain) {
+    static void mix_buffers_with_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes, float gain) {
         if (gain == 1.0f) {
             return Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
         }
@@ -99,7 +94,7 @@ public:
         Mixer::mix_buffers_with_gain(dest.get_data(nframes), src.get_data(nframes), nframes, gain);
     }
 
-    static void copy_data(TAudioBuffer &dest, TAudioBuffer &src, nframes_t nframes) {
+    static void copy_data(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) {
         memcpy(dest.get_data(nframes), src.get_data(nframes), nframes * sizeof(audio_sample_t));
     }
 
@@ -108,12 +103,23 @@ public:
         Mixer::apply_gain_to_buffer(m_buffer + m_readOffset, nframes, gain);
     }
 
-    void set_read_offset(nframes_t offset) {
+    void set_data_start_offset(nframes_t offset) {
         Q_ASSERT(offset < m_size);
         m_readOffset = offset;
     }
 
 private:
+    friend class TRealTimeAudioBuffer;
+    explicit TAudioBuffer(nframes_t size, bool wantsMemLock)
+        : m_buffer(nullptr)
+        , m_size(0)
+        , m_readOffset(0)
+        , m_memLocked(false)
+        , m_wantsMemLock(wantsMemLock)
+    {
+        resize(size);
+    }
+
     audio_sample_t* m_buffer;
     nframes_t       m_size;
     nframes_t       m_readOffset;
@@ -149,6 +155,13 @@ private:
         m_buffer = nullptr;
     }
 
+};
+
+class TRealTimeAudioBuffer : public TAudioBuffer
+{
+public:
+    TRealTimeAudioBuffer(nframes_t size) : TAudioBuffer(size, true) {}
+    ~TRealTimeAudioBuffer() {}
 };
 
 #endif // TAUDIOBUFFER_H

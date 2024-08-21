@@ -166,7 +166,7 @@ void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opti
     painter->setRenderHint(QPainter::Antialiasing);
 
     QPolygonF polygon;
-    TAudioBuffer buffer(pixelcount, false);
+    TAudioBuffer buffer(pixelcount);
 
     // 	printf("range: %d\n", (int)m_nodeViews.last()->pos().x());
     m_guicurve->get_vector(xstart + offset,

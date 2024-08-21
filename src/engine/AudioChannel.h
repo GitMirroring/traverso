@@ -68,7 +68,7 @@ public:
 
 private:
     TRealTimeLinkedList<TVUMonitor*>    m_monitors;
-    TAudioBuffer    m_audioBuffer;
+    TRealTimeAudioBuffer    m_audioBuffer;
     uint 			m_latency;
     uint 			m_number;
     qint64                  m_id;

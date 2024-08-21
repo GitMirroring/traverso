@@ -39,7 +39,7 @@
 
 
 AudioChannel::AudioChannel(const QString& name, uint channelNumber, int type, nframes_t bufferSize, qint64 id)
-    : m_audioBuffer(bufferSize, true)
+    : m_audioBuffer(bufferSize)
 {
     m_name = name;
     m_number = channelNumber;

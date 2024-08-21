@@ -37,7 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 TSession::TSession(TSession *parentSession)
 	: ContextItem()
-    , m_curveProcessBuffer(audiodevice().get_buffer_size(), true)
+    , m_curveProcessBuffer(audiodevice().get_buffer_size())
 {
 	m_parentSession = nullptr;
     m_masterOutBusTrack = nullptr;

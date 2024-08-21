@@ -247,7 +247,7 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
         curveDefaultValue *= trackAutomationView->get_default_value();
     }
 
-    TAudioBuffer curveMixdown(peakdatacount, false);
+    TAudioBuffer curveMixdown(peakdatacount);
 
     if (mixAudioClipCurveData) {
         mixAudioClipCurveData |= m_gainCurveView->get_vector(xstart + offset, peakdatacount, curveMixdown);
@@ -256,7 +256,7 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
 
     if (mixTrackAutomationData) {
         if (mixAudioClipCurveData) {
-            TAudioBuffer trackmixdown(peakdatacount, false);
+            TAudioBuffer trackmixdown(peakdatacount);
             int trackCurveMix = trackAutomationView->get_vector(xstart + pos().x(), peakdatacount, trackmixdown);
             if (trackCurveMix) {
                 for (int j=0; j<peakdatacount; ++j) {
@@ -272,7 +272,7 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
 
     for (int i = 0; i < m_FadeCurveViews.size(); ++i) {
         FadeCurveView* view = m_FadeCurveViews.at(i);
-        TAudioBuffer fademixdown(peakdatacount, false);
+        TAudioBuffer fademixdown(peakdatacount);
         int fademix = 0;
 
         if (mixCurveData) {

@@ -195,7 +195,7 @@ int FadeCurveView::get_vector(qreal xstart, int pixelcount, TAudioBuffer &buffer
 			
 			// point to the mapped location of the buffer.
             // p = buffer - int(mappedx);
-            buffer.set_read_offset(-mappedx);
+            buffer.set_data_start_offset(-mappedx);
 			
 			// and if pixelcount is 0, there is nothing to do!
 			if (pixelcount <= 0) {
@@ -211,7 +211,7 @@ int FadeCurveView::get_vector(qreal xstart, int pixelcount, TAudioBuffer &buffer
 
         m_guicurve->get_vector(x, x + pixelcount, buffer, nframes_t(pixelcount));
 
-        buffer.set_read_offset(0);
+        buffer.set_data_start_offset(0);
 		
 		return 1;
 	}

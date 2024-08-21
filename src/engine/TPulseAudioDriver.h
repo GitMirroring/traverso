@@ -58,8 +58,8 @@ private:
     pa_simple*  m_paSimplePlayback;
     pa_simple*  m_paSimpleCapture;
     pa_sample_spec m_sampleSpec{};
-    TAudioBuffer m_interleavedPlaybackBuffer;
-    TAudioBuffer m_interleavedCaptureBuffer;
+    TRealTimeAudioBuffer m_interleavedPlaybackBuffer;
+    TRealTimeAudioBuffer m_interleavedCaptureBuffer;
 };
 
 

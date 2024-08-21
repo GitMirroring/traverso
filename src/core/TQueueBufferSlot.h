@@ -14,7 +14,7 @@ public:
         m_bufferSize = bufferSize;
         m_bufferWriteOffset = 0;
         for (uint chan=0; chan < channelCount; ++chan) {
-            m_buffers.push_back(std::make_unique<TAudioBuffer>(bufferSize, false));
+            m_buffers.push_back(std::make_unique<TRealTimeAudioBuffer>(bufferSize));
         }
     }
 
@@ -63,7 +63,7 @@ private:
     TTimeRef            m_fileLocation;
     TTimeRef            m_transportLocation;
     int                 m_slotNumber;
-    std::vector<std::unique_ptr<TAudioBuffer>> m_buffers;
+    std::vector<std::unique_ptr<TRealTimeAudioBuffer>> m_buffers;
     nframes_t           m_bufferSize;
     nframes_t           m_bufferWriteOffset;
 };

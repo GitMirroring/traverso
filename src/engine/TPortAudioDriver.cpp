@@ -35,8 +35,8 @@
 
 TPortAudioDriver::TPortAudioDriver( TAudioDevice * device)
     : TAudioDriver(device)
-    , m_paInputBuffer(device->get_buffer_size(), true)
-    , m_paOutputBuffer(device->get_buffer_size(), true)
+    , m_paInputBuffer(device->get_buffer_size())
+    , m_paOutputBuffer(device->get_buffer_size())
 {
     read = TAudioDriverReadWriteCallBack(this, &TPortAudioDriver::_read);
     write = TAudioDriverReadWriteCallBack(this, &TPortAudioDriver::_write);

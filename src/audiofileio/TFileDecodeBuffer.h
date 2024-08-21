@@ -8,10 +8,10 @@
 class TFileDecodeBuffer {
 
 public:
-    TFileDecodeBuffer() : m_readBuffer(1, true)
+    TFileDecodeBuffer() : m_readBuffer(1)
     {
         for (uint chan=0; chan < 2; ++chan) {
-            m_destinationBuffers.push_back(std::make_unique<TAudioBuffer>(1, true));
+            m_destinationBuffers.push_back(std::make_unique<TRealTimeAudioBuffer>(1));
         }
 
         m_destinationBufferSize = m_readBufferSize = 1;
@@ -41,7 +41,7 @@ public:
 
     void set_destination_buffer_read_offset(nframes_t nframes) {
         for (const auto &buffer : m_destinationBuffers) {
-            buffer->set_read_offset(nframes);
+            buffer->set_data_start_offset(nframes);
         }
     }
 
@@ -68,8 +68,8 @@ public:
     }
 
 private:
-    std::vector<std::unique_ptr<TAudioBuffer>>  m_destinationBuffers;
-    TAudioBuffer            m_readBuffer;
+    std::vector<std::unique_ptr<TRealTimeAudioBuffer>>  m_destinationBuffers;
+    TRealTimeAudioBuffer    m_readBuffer;
     uint                    m_destinationBufferSize;
     uint                    m_readBufferSize;
 };

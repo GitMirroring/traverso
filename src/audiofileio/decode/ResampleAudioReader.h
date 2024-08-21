@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef RESAMPLEAUDIOREADER_H
 #define RESAMPLEAUDIOREADER_H
 
+#include "TAudioBuffer.h"
 #include <AbstractAudioReader.h>
 #include <samplerate.h>
 
@@ -70,7 +71,7 @@ protected:
 	
     std::unique_ptr<AbstractAudioReader>	m_reader;
     std::unique_ptr<PrivateSRC>             m_privateSRC;
-    std::vector<std::unique_ptr<TAudioBuffer>> m_overflowBuffers;
+    std::vector<std::unique_ptr<TRealTimeAudioBuffer>> m_overflowBuffers;
     long                    m_overflowUsed;
     uint                    m_outputSampleRate;
     int                     m_convertorType;

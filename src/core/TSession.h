@@ -124,7 +124,7 @@ protected:
     TTimeRef            m_workLocation;
     TTimeRef            m_seekTransportLocation;
 
-    TAudioBuffer     	m_curveProcessBuffer;
+    TRealTimeAudioBuffer     	m_curveProcessBuffer;
 
     bool get_transport_rolling_state() const {
         return m_transportRolling.load();

@@ -32,8 +32,8 @@
 
 TPulseAudioDriver::TPulseAudioDriver(TAudioDevice* device )
     : TAudioDriver(device)
-    , m_interleavedPlaybackBuffer(device->get_buffer_size() * 2, true)
-    , m_interleavedCaptureBuffer(device->get_buffer_size() * 2, true)
+    , m_interleavedPlaybackBuffer(device->get_buffer_size() * 2)
+    , m_interleavedCaptureBuffer(device->get_buffer_size() * 2)
 {
     read = TAudioDriverReadWriteCallBack(this, &TPulseAudioDriver::_read);
     write = TAudioDriverReadWriteCallBack(this, &TPulseAudioDriver::_write);
