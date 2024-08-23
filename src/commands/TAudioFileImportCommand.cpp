@@ -169,8 +169,12 @@ int TAudioFileImportCommand::do_action()
 	if (! m_clip) {
 		create_audioclip();
 	}
-	
-	TCommand::process_command(m_track->add_clip(m_clip, false));
+    AudioClipAddRemoveSpec spec;
+    spec.set_clip(m_clip);
+    spec.set_is_historable(false);
+    spec.set_is_move(false);
+
+    TCommand::process_command(m_track->add_clip(spec));
 	
 	return 1;
 }
@@ -179,7 +183,11 @@ int TAudioFileImportCommand::do_action()
 int TAudioFileImportCommand::undo_action()
 {
 	PENTER;
-	TCommand::process_command(m_track->remove_clip(m_clip, false));
+    AudioClipAddRemoveSpec spec;
+    spec.set_clip(m_clip);
+    spec.set_is_historable(false);
+    spec.set_is_move(false);
+    TCommand::process_command(m_track->remove_clip(spec));
 	return 1;
 }
 

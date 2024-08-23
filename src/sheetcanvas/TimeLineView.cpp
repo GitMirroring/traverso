@@ -409,7 +409,7 @@ void TimeLineView::load_theme_data()
     TimeLineView::calculate_bounding_rect();
 }
 
-MarkerView* TimeLineView::get_marker_view_after(TTimeRef location)
+MarkerView* TimeLineView::get_marker_view_after(const TTimeRef &location)
 {
     // FIXME: only keep this list sorted if markers are added/moved??
     std::sort(m_markerViews.begin(), m_markerViews.end(), [&](MarkerView* left, MarkerView* right) {
@@ -424,7 +424,7 @@ MarkerView* TimeLineView::get_marker_view_after(TTimeRef location)
     return nullptr;
 }
 
-MarkerView* TimeLineView::get_marker_view_before(TTimeRef location)
+MarkerView* TimeLineView::get_marker_view_before(const TTimeRef &location)
 {
     // FIXME: only keep this list sorted if markers are added/moved??
     std::sort(m_markerViews.begin(), m_markerViews.end(), [&](MarkerView* left, MarkerView* right) {

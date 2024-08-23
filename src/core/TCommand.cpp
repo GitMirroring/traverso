@@ -215,7 +215,7 @@ int TCommand::prepare_actions( )
  */
 int TCommand::do_action( )
 {
-	return -1;
+    return -1;
 }
 
 /**
@@ -229,7 +229,7 @@ int TCommand::do_action( )
  */
 int TCommand::undo_action( )
 {
-	return -1;
+    return -1;
 }
 
 /**

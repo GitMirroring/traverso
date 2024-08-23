@@ -76,8 +76,14 @@ int AudioClipExternalProcessing::do_action()
 	PENTER;
         // Remove has to be done BEFORE adding, else the TRealTimeLinkedList logic
         // gets messed up for the Tracks AudioClipList, which is an TRealTimeLinkedList :(
-	TCommand::process_command(m_track->remove_clip(m_clip, false));
-	TCommand::process_command(m_track->add_clip(m_resultingclip, false));
+    AudioClipAddRemoveSpec spec;
+    spec.set_clip(m_clip);
+    spec.set_is_historable(false);
+    spec.set_is_move(false);
+
+    TCommand::process_command(m_track->remove_clip(spec));
+    spec.set_clip(m_resultingclip);
+    TCommand::process_command(m_track->add_clip(spec));
 	
 	return 1;
 }
@@ -87,8 +93,14 @@ int AudioClipExternalProcessing::undo_action()
 	PENTER;
         // Remove has to be done BEFORE adding, else the TRealTimeLinkedList logic
         // gets messed up for the Tracks AudioClipList, which is an TRealTimeLinkedList :(
-	TCommand::process_command(m_track->remove_clip(m_resultingclip, false));
-	TCommand::process_command(m_track->add_clip(m_clip, false));
+    AudioClipAddRemoveSpec spec;
+    spec.set_clip(m_resultingclip);
+    spec.set_is_historable(false);
+    spec.set_is_move(false);
+    TCommand::process_command(m_track->remove_clip(spec));
+
+    spec.set_clip(m_clip);
+    TCommand::process_command(m_track->add_clip(spec));
 	return 1;
 }
 

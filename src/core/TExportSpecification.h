@@ -35,8 +35,8 @@ public:
     void set_channel_count(uint channelCount);
     void set_block_size(uint blockSize);
     void set_render_buffer(audio_sample_t* renderBuffer);
-    void set_export_start_location(TTimeRef startLocation);
-    void set_export_end_location(TTimeRef endLocation);
+    void set_export_start_location(const TTimeRef &startLocation);
+    void set_export_end_location(const TTimeRef &endLocation);
 
     void add_exported_range(const TTimeRef& time);
     void add_sheet_to_export(Sheet* sheet);
@@ -70,7 +70,7 @@ public:
     uint get_channel_count() const {return m_channelCount;}
     uint get_block_size() const {return m_blockSize;}
     uint get_render_buffer_size() const {return m_renderBufferSize;}
-    audio_sample_t* get_render_buffer();
+    audio_sample_t* get_render_buffer() const;
     int get_data_format() const {return m_dataFormat;}
     int get_bit_depth() const;
     int get_sample_rate_conversion_quality() const {return m_sampleRateConversionQuality;}
@@ -92,7 +92,7 @@ public:
     QString get_export_file_name() const {return m_exportFileName;}
     int get_file_format() const {return m_fileFormat;}
 
-    const char* get_file_extension() const;
+    QString get_file_extension() const;
 
     QMap<QString, QString>	extraFormat;
 

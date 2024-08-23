@@ -56,19 +56,23 @@ void AudioClipGroup::set_clips(QList< AudioClip * > clips)
     update_state();
 }
 
-void AudioClipGroup::move_to(int trackIndex, TTimeRef location)
+void AudioClipGroup::move_to(int trackIndex, const TTimeRef &location)
 {
     PENTER;
     int trackIndexDelta = trackIndex - m_topTrackIndex;
 
-    foreach(AudioClip* clip, m_clips) {
+    for(AudioClip* clip : m_clips) {
         if (trackIndexDelta != 0) {
-                        AudioTrack* track = clip->get_sheet()->get_audio_track_for_index(clip->get_track()->get_sort_index() + trackIndexDelta);
+            AudioTrack* track = clip->get_sheet()->get_audio_track_for_index(clip->get_track()->get_sort_index() + trackIndexDelta);
             if (track) {
-                                // Remove has to be done BEFORE adding, else the TRealTimeLinkedList logic
-                                // gets messed up for the Tracks AudioClipList, which is an TRealTimeLinkedList :(
-                TCommand::process_command(clip->get_track()->remove_clip(clip, false, true));
-                TCommand::process_command(track->add_clip(clip, false, true));
+                // Remove has to be done BEFORE adding, else the TRealTimeLinkedList logic
+                // gets messed up for the Tracks AudioClipList, which is an TRealTimeLinkedList :(
+                AudioClipAddRemoveSpec spec;
+                spec.set_clip(clip);
+                spec.set_is_historable(false);
+                spec.set_is_move(true);
+                TCommand::process_command(clip->get_track()->remove_clip(spec));
+                TCommand::process_command(track->add_clip(spec));
             }
         }
 
@@ -139,21 +143,30 @@ QList<AudioClip*> AudioClipGroup::copy_clips()
 
 void AudioClipGroup::add_all_clips_to_tracks()
 {
-    foreach(AudioClip* clip, m_clips) {
-        TCommand::process_command(clip->get_track()->add_clip(clip, false));
+
+    for(AudioClip* clip : m_clips) {
+        AudioClipAddRemoveSpec spec;
+        spec.set_clip(clip);
+        spec.set_is_historable(false);
+        spec.set_is_move(false);
+        TCommand::process_command(clip->get_track()->add_clip(spec));
     }
 }
 
 void AudioClipGroup::remove_all_clips_from_tracks()
 {
-    foreach(AudioClip* clip, m_clips) {
-        TCommand::process_command(clip->get_track()->remove_clip(clip, false));
+    for(AudioClip* clip : m_clips) {
+        AudioClipAddRemoveSpec spec;
+        spec.set_clip(clip);
+        spec.set_is_historable(false);
+        spec.set_is_move(false);
+        TCommand::process_command(clip->get_track()->remove_clip(spec));
     }
 }
 
 int AudioClipGroup::check_valid_track_index_delta(int delta)
 {
-        if (m_clips.isEmpty()) {
+    if (m_clips.isEmpty()) {
         return 0;
     }
 

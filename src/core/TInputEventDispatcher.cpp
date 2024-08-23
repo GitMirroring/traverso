@@ -483,10 +483,8 @@ void TInputEventDispatcher::jog()
         m_jogBypassPos = cpointer().mouse_viewport_pos();
     }
 
-    if (m_holdingCommand->jog() == 1 && m_holdingCommand->canvas_cursor_follows_mouse_cursor()) {
-        if (m_moveCommand) {
-            m_moveCommand->TMoveCommand::jog();
-        }
+    if (m_holdingCommand->jog() == 1 && m_holdingCommand->canvas_cursor_follows_mouse_cursor() && m_moveCommand) {
+        m_moveCommand->TMoveCommand::jog();
         cpointer().set_canvas_cursor_pos(cpointer().scene_pos());
     }
 }

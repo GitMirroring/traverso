@@ -93,11 +93,16 @@ int SplitClip::prepare_actions()
 int SplitClip::do_action()
 {
 	PENTER;
+    AudioClipAddRemoveSpec spec;
+    spec.set_clip(leftClip);
+    spec.set_is_historable(false);
+    spec.set_is_move(false);
 
-	TCommand::process_command(m_track->add_clip(leftClip, false));
-	TCommand::process_command(m_track->add_clip(rightClip, false));
-	
-	TCommand::process_command(m_track->remove_clip(m_clip, false));
+    TCommand::process_command(m_track->add_clip(spec));
+    spec.set_clip(rightClip);
+    TCommand::process_command(m_track->add_clip(spec));
+    spec.set_clip(m_clip);
+    TCommand::process_command(m_track->remove_clip(spec));
 	
 	return 1;
 }
@@ -106,10 +111,16 @@ int SplitClip::undo_action()
 {
 	PENTER;
 
-	TCommand::process_command(m_track->add_clip(m_clip, false));
-	
-	TCommand::process_command(m_track->remove_clip(leftClip, false));
-	TCommand::process_command(m_track->remove_clip(rightClip, false));
+    AudioClipAddRemoveSpec spec;
+    spec.set_clip(m_clip);
+    spec.set_is_historable(false);
+    spec.set_is_move(false);
+
+    TCommand::process_command(m_track->add_clip(spec));
+    spec.set_clip(leftClip);
+    TCommand::process_command(m_track->remove_clip(spec));
+    spec.set_clip(rightClip);
+    TCommand::process_command(m_track->remove_clip(spec));
 	
 	return 1;
 }
@@ -209,7 +220,7 @@ void SplitClip::prev_snap_pos()
         do_keyboard_move(m_session->get_snap_list()->prev_snap_pos(m_splitPoint));
 }
 
-void SplitClip::do_keyboard_move(TTimeRef location)
+void SplitClip::do_keyboard_move(const TTimeRef &location)
 {
         m_splitPoint = location;
 

@@ -42,13 +42,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define PEAKFILE_MAJOR_VERSION	1
 #define PEAKFILE_MINOR_VERSION	4
 
-int Peak::zoomStep[] = {
-    // non-cached zoomlevels.
-    1, 2, 4, 8, 12, 16, 24, 32,
-    // Cached zoomlevels
-    64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576
-};
-
 QHash<int, int> Peak::chacheIndexLut;
 
 typedef short peak_data_t;
@@ -211,12 +204,11 @@ void Peak::start_peak_loading()
 }
 
 
-int Peak::calculate_peaks(
-        int chan,
-        float ** buffer,
-        const TTimeRef &startlocation,
-        int peakDataCount,
-        qreal framesPerPeak)
+int Peak::calculate_peaks(int chan,
+                          float *&buffer,
+                          const TTimeRef &startlocation,
+                          int peakDataCount,
+                          qreal framesPerPeak)
 {
     PENTER3;
 
@@ -284,7 +276,7 @@ int Peak::calculate_peaks(
         // 			data->peakdataDecodeBuffer->destination[0][i] = 0;
         // 		}
         //
-        *buffer = data->peakdataDecodeBuffer->get_destination_buffer(0).get_data(produced);
+        buffer = data->peakdataDecodeBuffer->get_destination_buffer(0).get_data(produced);
 
         return produced;
 
@@ -355,7 +347,7 @@ int Peak::calculate_peaks(
     // 		PROFILE_END("Peak calculate_peaks");
 
     // Assign the supplied buffer to the 'real' peakdata buffer.
-    *buffer = peakdata;
+    buffer = peakdata;
 
     return count;
 }
@@ -947,7 +939,7 @@ void Peak::calculate_lut_data()
 
 int Peak::max_zoom_value()
 {
-    return 1048576;
+    return 131072;
 }
 
 Peak::ChannelData::~ ChannelData()

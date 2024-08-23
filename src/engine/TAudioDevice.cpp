@@ -1020,9 +1020,9 @@ TJackDriver* TAudioDevice::slaved_jack_driver()
 }
 #endif
 
-TTimeRef TAudioDevice::get_buffer_latency()
+TTimeRef TAudioDevice::get_buffer_latency() const
 {
-    return {m_bufferSize, m_rate};
+    return TTimeRef{m_bufferSize, m_rate};
 }
 
 void TAudioDevice::set_driver_properties(QHash< QString, QVariant > & properties)

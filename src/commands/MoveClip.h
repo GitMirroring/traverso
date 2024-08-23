@@ -91,7 +91,7 @@ private :
 	
     MoveClipData* m_d;
 
-	void do_prev_next_snap(TTimeRef trackStartLocation, TTimeRef trackEndLocation);
+    void do_prev_next_snap(const TTimeRef &trackStartLocation, const TTimeRef &trackEndLocation);
 	void do_move();
 	
 public slots:

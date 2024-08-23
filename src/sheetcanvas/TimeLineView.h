@@ -44,8 +44,8 @@ public:
         void mouse_hover_move_event();
         QList<MarkerView*> get_marker_views() const { return m_markerViews;}
 
-        MarkerView* get_marker_view_after(TTimeRef location);
-        MarkerView* get_marker_view_before(TTimeRef location);
+        MarkerView* get_marker_view_after(const TTimeRef &location);
+        MarkerView* get_marker_view_before(const TTimeRef &location);
 
 private:
 	QList<MarkerView* > m_markerViews;

@@ -296,7 +296,7 @@ void AudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
 
         int availpeaks = peak->calculate_peaks(
                     chan,
-                    &pixeldata[chan],
+                    pixeldata[chan],
             TTimeRef(xstart * m_sv->timeref_scalefactor) + clipstartoffset,
                     peakdatacount,
                     m_sheet->get_hzoom());

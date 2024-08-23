@@ -148,7 +148,7 @@ void TExportSpecification::set_render_buffer(audio_sample_t *renderBuffer)
     m_setRenderBuffer = renderBuffer;
 }
 
-void TExportSpecification::set_export_start_location(TTimeRef startLocation)
+void TExportSpecification::set_export_start_location(const TTimeRef &startLocation)
 {
     m_exportStartLocation = startLocation;
     m_exportLocation = startLocation;
@@ -156,7 +156,7 @@ void TExportSpecification::set_export_start_location(TTimeRef startLocation)
     PMESG("Setting Start Location to (minutes:seconds) %s", QS_C(TTimeRef::timeref_to_ms_3(m_exportStartLocation)));
 }
 
-void TExportSpecification::set_export_end_location(TTimeRef endLocation)
+void TExportSpecification::set_export_end_location(const TTimeRef &endLocation)
 {
     m_exportEndLocation = endLocation;
     PMESG("Setting End Location to (minutes:seconds) %s", QS_C(TTimeRef::timeref_to_ms_3(m_exportEndLocation)));
@@ -197,10 +197,10 @@ void TExportSpecification::set_file_format(int fileFormat)
              || fileFormat == SF_FORMAT_OGG
              || fileFormat == SF_FORMAT_MPEG);
     m_fileFormat = fileFormat;
-    PMESG("Setting file format to %s", get_file_extension());
+    PMESG("Setting file format to %s", QS_C(get_file_extension()));
 }
 
-const char* TExportSpecification::get_file_extension() const
+QString TExportSpecification::get_file_extension() const
 {
     switch(m_fileFormat)
     {
@@ -283,7 +283,7 @@ void TExportSpecification::print_export_data() const
     PMESG("Starting export, samplerate %d, bitdepth %d, file extension %s",
           get_sample_rate(),
           get_bit_depth(),
-          get_file_extension() );
+          QS_C(get_file_extension()) );
     PMESG("Export State:");
     PMESG("Start Location %s", QS_C(TTimeRef::timeref_to_hms(m_exportStartLocation)));
     PMESG("End Location (minutes:seconds) %s", QS_C(TTimeRef::timeref_to_ms(m_exportEndLocation)));
@@ -300,7 +300,7 @@ void TExportSpecification::print_export_data() const
 
 }
 
-audio_sample_t *TExportSpecification::get_render_buffer()
+audio_sample_t *TExportSpecification::get_render_buffer() const
 {
     if (m_setRenderBuffer) {
         return m_setRenderBuffer;

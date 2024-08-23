@@ -36,6 +36,48 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class Sheet;
 
+class AudioClipAddRemoveSpec {
+
+public:
+    explicit AudioClipAddRemoveSpec()
+    {
+    }
+
+    void set_clip(AudioClip* clip) {
+        m_clip = clip;
+        Q_ASSERT(m_clip);
+    }
+    constexpr  AudioClip* get_clip() const {
+        Q_ASSERT(m_clip);
+        return m_clip;
+    }
+
+    void set_is_move(bool isMove) {
+        m_isMove = isMove;
+        m_moveWasSet = true;
+    }
+
+    void set_is_historable(bool historable) {
+        m_isHistorable = historable;
+        m_historableWasSet = true;
+    }
+
+    constexpr  bool is_move() const {
+        Q_ASSERT(m_moveWasSet);
+        return m_isMove;
+    }
+    constexpr bool is_historabel() const {
+        Q_ASSERT(m_historableWasSet);
+        return m_isHistorable;
+    }
+
+private:
+    bool m_isMove = false;
+    bool m_moveWasSet = false;
+    bool m_isHistorable = false;
+    bool m_historableWasSet = false;
+    AudioClip*  m_clip = nullptr;
+};
 
 class AudioTrack : public Track
 {
@@ -47,8 +89,8 @@ public :
     ~AudioTrack();
 
     AudioClip* init_recording();
-    TCommand* add_clip(AudioClip* clip, bool historable=true, bool ismove=false);
-    TCommand* remove_clip(AudioClip* clip, bool historable=true, bool ismove=false);
+    TCommand* add_clip(const AudioClipAddRemoveSpec &spec);
+    TCommand* remove_clip(const AudioClipAddRemoveSpec &spec);
     AudioClip* get_clip_after(const TTimeRef& pos);
     AudioClip* get_clip_before(const TTimeRef& pos);
     Sheet* get_sheet() const {return m_sheet;}

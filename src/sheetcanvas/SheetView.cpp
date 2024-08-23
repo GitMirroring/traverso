@@ -1219,7 +1219,7 @@ void SheetView::center_in_view(ViewItem *item, enum Qt::AlignmentFlag flag)
 	}
 }
 
-void SheetView::keyboard_move_canvas_cursor_to_location(TTimeRef location, qreal sceneY)
+void SheetView::keyboard_move_canvas_cursor_to_location(const TTimeRef &location, qreal sceneY)
 {
     m_session->set_work_at(location);
 

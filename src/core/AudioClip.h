@@ -167,8 +167,8 @@ signals:
 public slots:
     void finish_recording();
     void finish_write_source();
-    void set_left_edge(TTimeRef newLeftLocation);
-    void set_right_edge(TTimeRef newRightLocation);
+    void set_left_edge(const TTimeRef &location);
+    void set_right_edge(const TTimeRef &location);
     void track_audible_state_changed();
     void toggle_mute();
     void toggle_lock();

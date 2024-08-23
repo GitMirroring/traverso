@@ -88,7 +88,7 @@ public:
     int set_state( const QDomNode & node );
 
     void set_artists(const QString& pArtistis);
-    void set_work_at(TTimeRef location, bool isFolder=false);
+    void set_work_at(const TTimeRef &location, const bool isFolder=false);
     void set_work_at_for_sheet_as_track_folder(const TTimeRef& location);
     void set_snapping(bool snap);
     void set_recording(bool recording, bool realtime);

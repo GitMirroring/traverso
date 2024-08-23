@@ -395,20 +395,22 @@ void Sheet::set_gain(float gain)
     emit stateChanged();
 }
 
-void Sheet::set_work_at(TTimeRef location, bool isFolder)
-{
+void Sheet::set_work_at(const TTimeRef &location, const bool isFolder)
+{    
     if ((! isFolder) && m_project->sheets_are_track_folder()) {
         // FIXME
         // m_project->set_work_at calls Sheet::set_work_at effectively crasing the program
         return m_project->set_work_at(location, isFolder);
     }
 
+    TTimeRef workLocation = location;
+
     // catch location < 0
-    if (location < TTimeRef()) {
-        location = TTimeRef();
+    if (workLocation < TTimeRef()) {
+        workLocation = TTimeRef();
     }
 
-    m_workLocation = location;
+    m_workLocation = workLocation;
 
     if (m_workSnap->is_snappable()) {
         m_snaplist->mark_dirty();

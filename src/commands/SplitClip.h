@@ -60,7 +60,7 @@ private :
 	TTimeRef m_splitPoint;
 	LineView* m_splitcursor{};
 
-        void do_keyboard_move(TTimeRef location);
+        void do_keyboard_move(const TTimeRef &location);
 
 public slots:
         void move_left();

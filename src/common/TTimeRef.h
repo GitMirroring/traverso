@@ -20,8 +20,8 @@ public:
     TTimeRef();
     explicit TTimeRef(qint64 position);
     explicit TTimeRef(double position);
-    TTimeRef(nframes_t frame, uint rate);
-    TTimeRef(qreal frame, uint rate);
+    explicit TTimeRef(nframes_t frame, uint rate);
+    explicit TTimeRef(qreal frame, uint rate);
 
     static TTimeRef max_length();
 

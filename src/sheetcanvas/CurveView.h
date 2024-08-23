@@ -48,7 +48,7 @@ public:
         void mouse_hover_move_event();
 	QString get_name() const;
 
-        void set_start_offset(TTimeRef offset);
+        void set_start_offset(const TTimeRef &offset);
         TTimeRef get_start_offset() const {return m_startoffset;}
         CurveNodeView* get_node_view_after(TTimeRef location) const;
         CurveNodeView* get_node_view_before(TTimeRef location) const;

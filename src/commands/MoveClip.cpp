@@ -366,12 +366,11 @@ void MoveClip::prev_snap_pos()
                       m_session->get_snap_list()->prev_snap_pos(m_group.get_location()->get_end()));
 }
 
-void MoveClip::do_prev_next_snap(TTimeRef trackStartLocation, TTimeRef trackEndLocation)
+void MoveClip::do_prev_next_snap(const TTimeRef &trackStartLocation, const TTimeRef &trackEndLocation)
 {
     if (m_d->verticalOnly) return;
     ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
-    trackStartLocation -= m_session->get_snap_list()->calculate_snap_diff(trackStartLocation, trackEndLocation);
-    m_posDiff = trackStartLocation - m_trackStartLocation;
+    m_posDiff = trackStartLocation - m_trackStartLocation - m_session->get_snap_list()->calculate_snap_diff(trackStartLocation, trackEndLocation);
     do_move();
 }
 

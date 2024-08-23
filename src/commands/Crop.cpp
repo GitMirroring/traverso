@@ -127,11 +127,16 @@ int CropClip::finish_hold()
 int CropClip::do_action()
 {
 	PENTER;
+    AudioClipAddRemoveSpec spec;
+    spec.set_clip(leftClip);
+    spec.set_is_historable(false);
+    spec.set_is_move(false);
 
-	TCommand::process_command(m_track->add_clip(leftClip, false));
-	TCommand::process_command(m_track->add_clip(rightClip, false));
-
-	TCommand::process_command(m_track->remove_clip(m_clip, false));
+    TCommand::process_command(m_track->add_clip(spec));
+    spec.set_clip(rightClip);
+    TCommand::process_command(m_track->add_clip(spec));
+    spec.set_clip(m_clip);
+    TCommand::process_command(m_track->remove_clip(spec));
 
 	return 1;
 }
@@ -139,11 +144,17 @@ int CropClip::do_action()
 int CropClip::undo_action()
 {
 	PENTER;
+    AudioClipAddRemoveSpec spec;
+    spec.set_clip(m_clip);
+    spec.set_is_historable(false);
+    spec.set_is_move(false);
 
-	TCommand::process_command(m_track->add_clip(m_clip, false));
+    TCommand::process_command(m_track->add_clip(spec));
 
-	TCommand::process_command(m_track->remove_clip(leftClip, false));
-	TCommand::process_command(m_track->remove_clip(rightClip, false));
+    spec.set_clip(leftClip);
+    TCommand::process_command(m_track->remove_clip(spec));
+    spec.set_clip(rightClip);
+    TCommand::process_command(m_track->remove_clip(spec));
 
 	return 1;
 }

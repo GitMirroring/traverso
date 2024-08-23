@@ -537,7 +537,7 @@ void CurveView::load_theme_data()
     CurveView::calculate_bounding_rect();
 }
 
-void CurveView::set_start_offset(TTimeRef offset)
+void CurveView::set_start_offset(const TTimeRef &offset)
 {
     m_startoffset = offset;
 }

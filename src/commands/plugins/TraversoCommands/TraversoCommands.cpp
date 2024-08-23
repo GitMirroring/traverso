@@ -352,43 +352,44 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     switch (m_dict.value(commandName)) {
     case GainCommand:
     {
-        ContextItem* item = qobject_cast<ContextItem*>(obj);
+        ContextItem* contextItem = qobject_cast<ContextItem*>(obj);
+        Q_ASSERT(contextItem);
 
-        if (item->metaObject()->className() == QString("TrackPanelGain")) {
-            item = item->get_related_context_item();
-        } else if (AudioClipView* view = qobject_cast<AudioClipView*>(item)) {
-            item = view->get_related_context_item();
-        } else if (TrackView* view = qobject_cast<TrackView*>(item)) {
-            item = view->get_related_context_item();
+        if (contextItem->metaObject()->className() == QString("TrackPanelGain")) {
+            contextItem = contextItem->get_related_context_item();
+        } else if (AudioClipView* view = qobject_cast<AudioClipView*>(contextItem)) {
+            contextItem = view->get_related_context_item();
+        } else if (TrackView* view = qobject_cast<TrackView*>(contextItem)) {
+            contextItem = view->get_related_context_item();
         }
 
 
-        if (!item) {
+        if (!contextItem) {
             PERROR("TraversoCommands: Supplied QObject was not a ContextItem, "
                    "GainCommand only works with ContextItem objects!!");
             return nullptr;
         }
 
-        auto group = new TGainGroupCommand(item, arguments);
+        auto group = new TGainGroupCommand(contextItem, arguments);
 
-        AudioClip* clip = qobject_cast<AudioClip*>(item);
+        AudioClip* clip = qobject_cast<AudioClip*>(contextItem);
         if (clip && clip->is_selected()) {
 
             QList<AudioClip* > selection;
             clip->get_sheet()->get_audioclip_manager()->get_selected_clips(selection);
 
             // always the contextitem first so it will be the primary gain object
-            group->add_command(new Gain(item, arguments));
+            group->add_command(new Gain(contextItem, arguments));
 
             for(auto audioProcessingNode : selection) {
                 // only add the context item once
-                if (audioProcessingNode == item) {
+                if (audioProcessingNode == contextItem) {
                     continue;
                 }
                 group->add_command(new Gain(audioProcessingNode, arguments));
             }
         } else {
-            group->add_command(new Gain(item, arguments));
+            group->add_command(new Gain(contextItem, arguments));
         }
 
 
@@ -406,7 +407,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             if (!track) {
                 PERROR("TraversoCommands: Supplied QObject was not a Track! "
                        "TrackPanCommand needs a Track as argument");
-                return 0;
+                return nullptr;
             }
         }
         return new TrackPan(track, arguments);
@@ -418,7 +419,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (! track) {
             PERROR("TraversoCommands: Supplied QObject was not a Track! "
                    "ImportAudioCommand needs a Track as argument");
-            return 0;
+            return nullptr;
         }
 
         auto audioFileImportCommand = new TAudioFileImportCommand(track);
@@ -432,7 +433,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (! track) {
             PERROR("TraversoCommands: Supplied QObject was not a Track! "
                    "ImportAudioCommand needs a Track as argument");
-            return 0;
+            return nullptr;
         }
         TTimeRef length(10*TTimeRef::UNIVERSAL_SAMPLE_RATE);
         auto audioFileImportCommand = new TAudioFileImportCommand(track);
@@ -448,7 +449,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!sheet) {
             PERROR("TraversoCommands: Supplied QObject was not a Sheet! "
                    "AddNewAudioTrackCommand needs a Sheet as argument");
-            return 0;
+            return nullptr;
         }
         return sheet->add_track(new AudioTrack(sheet, "Unnamed", AudioTrack::INITIAL_HEIGHT));
     }
@@ -459,7 +460,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!clip) {
             PERROR("TraversoCommands: Supplied QObject was not a Clip! "
                    "RemoveClipCommand needs a Clip as argument");
-            return 0;
+            return nullptr;
         }
         return new AddRemoveClip(clip, AddRemoveClip::REMOVE);
     }
@@ -470,19 +471,19 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!track) {
             PERROR("TraversoCommands: Supplied QObject was not a Track! "
                    "RemoveTrackCommand needs a Track as argument");
-            return 0;
+            return nullptr;
         }
 
         TSession* activeSession = pm().get_project()->get_current_session();
         if (!activeSession) {
             // this is rather impossible!!
             tInformUser().information(tr("Removing Track %1, but no active (Work) Sheet ??").arg(track->get_name()));
-            return 0;
+            return nullptr;
         }
 
         if (track == activeSession->get_master_out_bus_track()) {
             tInformUser().information(tr("It is not possible to remove the Master Out track!"));
-            return 0;
+            return nullptr;
         }
         return activeSession->remove_track(track);
     }
@@ -493,7 +494,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not a PluginView! "
                    "RemovePluginCommand needs a PluginView as argument");
-            return 0;
+            return nullptr;
         }
 
         return view->remove_plugin();
@@ -506,7 +507,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         {
             PERROR("TraversoCommands: Supplied QObject was not a CurveView! "
                    "RemoveClipNodeCommmand needs a CurveView as argument");
-            return 0;
+            return nullptr;
         }
         return curveView->remove_node();
 
@@ -517,7 +518,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!clip) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClip! "
                    "AudioClipExternalProcessingCommand needs an AudioClip as argument");
-            return 0;
+            return nullptr;
         }
         return new AudioClipExternalProcessing(clip);
     }
@@ -538,7 +539,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!clip) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClip! "
                    "ClipSelectionCommand needs an AudioClip as argument");
-            return 0;
+            return nullptr;
         }
 
         // audio clip selection doesn't support/need number collection, but
@@ -568,7 +569,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an TrackView! "
                    "MoveTrackCommand needs an TrackView as argument");
-            return 0;
+            return nullptr;
         }
 
         return new MoveTrack(view);
@@ -590,7 +591,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
                    "MoveEdgeCommand needs an AudioClipView as argument");
-            return 0;
+            return nullptr;
         }
 
         int x = (int) (cpointer().on_first_input_event_scene_x() - view->scenePos().x());
@@ -611,7 +612,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
                    "MoveClipOrEdgeCommand needs an AudioClipView as argument");
-            return 0;
+            return nullptr;
         }
 
         int x = (int) (cpointer().on_first_input_event_scene_x() - view->scenePos().x());
@@ -636,7 +637,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
                    "SplitClipCommand needs an AudioClipView as argument");
-            return 0;
+            return nullptr;
         }
         return new SplitClip(view);
     }
@@ -647,7 +648,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
                    "CropClipCommand needs an AudioClipView as argument");
-            return 0;
+            return nullptr;
         }
         return new CropClip(view);
     }
@@ -658,7 +659,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                    "ArmTracksCommand needs an SheetView as argument");
-            return 0;
+            return nullptr;
         }
         return new ArmTracks(view);
     }
@@ -669,7 +670,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                    "ZoomCommand needs an SheetView as argument");
-            return 0;
+            return nullptr;
 
         }
         return new Zoom(view, arguments);
@@ -681,7 +682,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                    "WorkCursorMove Command needs an SheetView as argument");
-            return 0;
+            return nullptr;
         }
         return new WorkCursorMove(view);
     }
@@ -690,7 +691,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     {
         CurveView* curveView = qobject_cast<CurveView*>(obj);
         if (!curveView) {
-            return 0;
+            return nullptr;
         }
 
         return curveView->drag_node();
@@ -702,7 +703,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                    "ArrowKeyBrowserCommand needs an SheetView as argument");
-            return 0;
+            return nullptr;
         }
         return new ArrowKeyBrowser(view, arguments);
     }
@@ -722,7 +723,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         if (!clip) {
             PERROR("TraversoCommands: Supplied QObject was not a Clip! "
                    "RemoveClipCommand needs a Clip as argument");
-            return 0;
+            return nullptr;
         }
 
         if (clip->is_selected()) {
@@ -733,7 +734,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
                                                tr("Set Normalization level:"), 0.0, -120, 0, 1, &ok);
 
             if (!ok) {
-                return 0;
+                return nullptr;
             }
             QList<AudioClip* > selection;
             clip->get_sheet()->get_audioclip_manager()->get_selected_clips(selection);
@@ -768,7 +769,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
         PERROR("TraversoCommands: Supplied QObject was not a TimeLineView or MarkerView! "
                "MoveMarkerCommand needs a TimeLineView or MarkerView as argument");
-        return 0;
+        return nullptr;
     }
     case FadeRangeCommand:
     {
@@ -781,7 +782,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     }
 
-    return 0;
+    return nullptr;
 }
 
 // eof

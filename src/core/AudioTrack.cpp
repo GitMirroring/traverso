@@ -407,30 +407,30 @@ AudioClip* AudioTrack::get_clip_before(const TTimeRef& pos)
 }
 
 
-TCommand* AudioTrack::remove_clip(AudioClip* clip, bool historable, bool ismove)
+TCommand* AudioTrack::remove_clip(const AudioClipAddRemoveSpec &spec)
 {
     PENTER;
-    if (! ismove) {
-        m_sheet->get_audioclip_manager()->remove_clip(clip);
+    if (! spec.is_move()) {
+        m_sheet->get_audioclip_manager()->remove_clip(spec.get_clip());
     }
 
-    clip->removed_from_track();
+    spec.get_clip()->removed_from_track();
 
-    return new TAddRemoveCommand(this, clip, historable, m_sheet,
+    return new TAddRemoveCommand(this, spec.get_clip(), spec.is_historabel(), m_sheet,
                          "private_remove_clip(AudioClip*)", "privateAudioClipRemoved(AudioClip*)",
                          "private_add_clip(AudioClip*)", "privateAudioClipAdded(AudioClip*)",
                          tr("Remove Clip"));
 }
 
 
-TCommand* AudioTrack::add_clip(AudioClip* clip, bool historable, bool ismove)
+TCommand* AudioTrack::add_clip(const AudioClipAddRemoveSpec &spec)
 {
     PENTER;
-    clip->set_track(this);
-    if (! ismove) {
-        m_sheet->get_audioclip_manager()->add_clip(clip);
+    spec.get_clip()->set_track(this);
+    if (! spec.is_move()) {
+        m_sheet->get_audioclip_manager()->add_clip(spec.get_clip());
     }
-    return new TAddRemoveCommand(this, clip, historable, m_sheet,
+    return new TAddRemoveCommand(this, spec.get_clip(), spec.is_historabel(), m_sheet,
                          "private_add_clip(AudioClip*)", "privateAudioClipAdded(AudioClip*)",
                          "private_remove_clip(AudioClip*)", "privateAudioClipRemoved(AudioClip*)",
                          tr("Add Clip"));

@@ -47,7 +47,7 @@ ClipSelection::ClipSelection(AudioClip* clip, QVariantList args)
 }
 
 ClipSelection::ClipSelection( QList< AudioClip * > clips, AudioClipManager * manager, const char * slot, const QString& des )
-	: TCommand("")
+    : TCommand(des)
 {
 	m_clips = clips;
 	m_slot = slot;

@@ -39,7 +39,7 @@ public:
 	
 	void add_clip(AudioClip* clip);
 	void set_clips(QList<AudioClip*> clips);
-	void move_to(int trackIndex, TTimeRef location);
+    void move_to(int trackIndex, const TTimeRef &location);
 	
 	void set_snappable(bool snap);
 	void set_as_moving(bool move);

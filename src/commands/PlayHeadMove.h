@@ -55,7 +55,7 @@ private :
         int             m_holdCursorSceneY{};
         TTimeRef         m_newTransportLocation;
 
-        void do_keyboard_move(TTimeRef newLocation, bool centerInView = false);
+        void do_keyboard_move(const TTimeRef &newLocation, bool centerInView = false);
 
 public slots:
         void move_left();

@@ -278,8 +278,10 @@ void AudioClip::removed_from_track()
     m_readSource->set_active(false);
 }
 
-void AudioClip::set_left_edge(TTimeRef newLeftLocation)
+void AudioClip::set_left_edge(const TTimeRef &location)
 {
+    TTimeRef newLeftLocation = location;
+
     if (newLeftLocation < TTimeRef()) {
         newLeftLocation = TTimeRef();
     }
@@ -311,8 +313,9 @@ void AudioClip::set_left_edge(TTimeRef newLeftLocation)
     }
 }
 
-void AudioClip::set_right_edge(TTimeRef newRightLocation)
+void AudioClip::set_right_edge(const TTimeRef &location)
 {
+    TTimeRef newRightLocation = location;
 
     if (newRightLocation < TTimeRef()) {
         newRightLocation = TTimeRef();

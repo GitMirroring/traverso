@@ -99,7 +99,7 @@ void FadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     }
     qreal vector_start = xstart;
     qreal height = m_boundingRect.height();
-    TAudioBuffer buffer(pixelcount, false);
+    TAudioBuffer buffer(pixelcount);
 
 	if (m_fadeCurve->get_fade_type() == FadeCurve::FadeOut && m_guicurve->get_range() > m_parentViewItem->boundingRect().width()) {
         vector_start += m_guicurve->get_range() - m_parentViewItem->boundingRect().width();

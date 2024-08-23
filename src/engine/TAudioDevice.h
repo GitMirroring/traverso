@@ -129,7 +129,7 @@ public:
 
     uint get_sample_rate() const;
     uint get_bit_depth() const;
-    TTimeRef get_buffer_latency();
+    TTimeRef get_buffer_latency() const;
 
     /**
 	 * 
