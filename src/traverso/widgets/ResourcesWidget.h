@@ -27,10 +27,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSession.h"
 #include "ui_ResourcesWidget.h"
 
-class Project;
-class Sheet;
-class AudioClip;
-class ReadSource;
+class TProject;
+class TSheet;
+class TAudioClip;
+class TReadAudioSource;
 class SourceTreeItem;
 class QShowEvent;
 class QListView;
@@ -63,16 +63,16 @@ class ClipTreeItem : public QObject, public QTreeWidgetItem
 	Q_OBJECT
 	
 public:
-	ClipTreeItem(SourceTreeItem* parent, AudioClip* clip);
+	ClipTreeItem(SourceTreeItem* parent, TAudioClip* clip);
 	
-	void apply_filter(Sheet* sheet);
+	void apply_filter(TSheet* sheet);
 
 
 public slots:
 	void clip_state_changed();	
 
 private:
-	AudioClip* m_clip;
+	TAudioClip* m_clip;
 };
 
 class SourceTreeItem : public QObject, public QTreeWidgetItem
@@ -80,12 +80,12 @@ class SourceTreeItem : public QObject, public QTreeWidgetItem
 	Q_OBJECT
 	
 public:
-	SourceTreeItem(QTreeWidget* parent, ReadSource* source);
+	SourceTreeItem(QTreeWidget* parent, TReadAudioSource* source);
 
-	void apply_filter(Sheet* sheet);
+	void apply_filter(TSheet* sheet);
 
 private:
-	ReadSource* m_source;
+	TReadAudioSource* m_source;
 	
 public slots:
 	void source_state_changed();
@@ -104,31 +104,31 @@ protected:
 	void resizeEvent( QResizeEvent * e );
 
 private:
-	Project* m_project;
-	Sheet* m_currentSheet;
+	TProject* m_project;
+	TSheet* m_currentSheet;
 	FileWidget* m_filewidget;
 	QHash<qint64, ClipTreeItem*> m_clipindices;
 	QHash<qint64, SourceTreeItem*> m_sourceindices;
 	
-	void update_clip_state(AudioClip* clip);
+	void update_clip_state(TAudioClip* clip);
 	void update_source_state(qint64 id);
 	
 	void filter_on_current_sheet();
 	
 private slots:
-	void set_project(Project* project);
+	void set_project(TProject* project);
 	void project_load_finished();
 	
 	void sheet_combo_box_index_changed(int index);
 	
-	void sheet_added(Sheet* sheet);
-	void sheet_removed(Sheet* sheet);
+	void sheet_added(TSheet* sheet);
+	void sheet_removed(TSheet* sheet);
     void set_current_session(TSession *sheet);
 	
-	void add_clip(AudioClip* clip);
-	void remove_clip(AudioClip* clip);
-	void add_source(ReadSource* source);
-	void remove_source(ReadSource* source);
+	void add_clip(TAudioClip* clip);
+	void remove_clip(TAudioClip* clip);
+	void add_source(TReadAudioSource* source);
+	void remove_source(TReadAudioSource* source);
 };
 
 

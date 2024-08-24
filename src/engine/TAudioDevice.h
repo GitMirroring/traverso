@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 #include "TTransportControl.h"
 #include "TProcessCallBackData.h"
-#include "ThreadSaveMessagePosting.h"
+#include "TAudioThreadMessageQueue.h"
 #include "defines.h"
 
 #include "FastDelegate.h"
@@ -174,9 +174,9 @@ private:
     TAudioDriver* 		m_driver;
     TAudioDeviceThread* 	m_audioThread;
 
-    TSMPEvent           m_bufferUnderRunEvent;
-    TSMPEvent           m_xrunStormDetectedEvent;
-    TSMPEvent           m_finishedOneProcessCycleEvent;
+    TAudioThreadMessageQueueEvent           m_bufferUnderRunEvent;
+    TAudioThreadMessageQueueEvent           m_xrunStormDetectedEvent;
+    TAudioThreadMessageQueueEvent           m_finishedOneProcessCycleEvent;
 
     QList<AudioChannel* >               m_audioChannels;
     QList<TAudioBusConfiguration>       m_busConfigs;

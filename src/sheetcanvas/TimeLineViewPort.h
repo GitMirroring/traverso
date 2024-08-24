@@ -26,7 +26,7 @@
 #include "ViewPort.h"
 
 class SheetWidget;
-class SheetView;
+class TSheetView;
 class TimeLineView;
 
 #define TIMELINE_HEIGHT 46
@@ -37,7 +37,7 @@ public:
 	TimeLineViewPort(QGraphicsScene* scene, SheetWidget* sw);
 	~TimeLineViewPort();
 	
-	void set_sheetview(SheetView* view);
+	void set_sheetview(TSheetView* view);
 	void scale_factor_changed();
 	TimeLineView* get_timeline_view() const {return m_timeLineView;}
 	

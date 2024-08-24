@@ -29,7 +29,7 @@
 
 class MeterView;
 class TSession;
-class Project;
+class TProject;
 class TAudioPlugin;
 
 class MeterWidget : public ViewPort
@@ -67,11 +67,11 @@ protected:
 	TAudioPlugin*		m_meter;
 	QTimer		timer;
 	QTimer		m_delayTimer;
-	Project*	m_project;
+	TProject*	m_project;
         TSession*	m_session;
 
 private slots:
-	void		set_project( Project* );
+	void		set_project( TProject* );
         virtual void	update_data() {}
 	void		transport_started();
 	void		transport_stopped();

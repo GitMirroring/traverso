@@ -26,10 +26,10 @@
 
 #include "AudioChannel.h"
 #include "TVUMonitor.h"
-#include "Themer.h"
+#include "TThemer.h"
 #include "Mixer.h"
-#include "Track.h"
-#include "AudioTrack.h"
+#include "TTrack.h"
+#include "TAudioTrack.h"
 
 
 
@@ -55,11 +55,11 @@
 // initialize static variables
 QVector<float> VUMeterView::lut;
 
-VUMeterView::VUMeterView(ViewItem* parent, Track* track)
+VUMeterView::VUMeterView(ViewItem* parent, TTrack* track)
     : ViewItem(parent)
 {
     VUMeterView::load_theme_data();
-    m_audioTrack = qobject_cast<AudioTrack*>(track);
+    m_audioTrack = qobject_cast<TAudioTrack*>(track);
 
     for (int i = 0; i < 2; ++i) {
         VUMeterLevelView* level = new VUMeterLevelView(this, track->get_vumonitors().at(i));

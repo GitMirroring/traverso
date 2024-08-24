@@ -32,7 +32,7 @@
 #include <QLabel>
 
 #include "TVUMonitor.h"
-#include "Themer.h"
+#include "TThemer.h"
 #include "Mixer.h"
 #include "TAudioDevice.h"
 #include <AudioChannel.h>

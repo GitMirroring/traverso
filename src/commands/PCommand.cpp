@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "PCommand.h"
-#include "ContextItem.h"
+#include "TContextItem.h"
 #include "TTimeRef.h"
 
 
@@ -49,14 +49,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  */
 
 
-PCommand::PCommand(ContextItem* item, const char* slot, const QString& des)
+PCommand::PCommand(TContextItem* item, const char* slot, const QString& des)
 	: TCommand(item, des)
 	, m_contextitem(item)
 	, m_slot(slot)
 {
 }
 
-PCommand::PCommand(ContextItem * item, const char * slot, const QVariant& doValue, const QVariant& undoValue, const QString & des)
+PCommand::PCommand(TContextItem * item, const char * slot, const QVariant& doValue, const QVariant& undoValue, const QString & des)
 	: TCommand(item, des)
 	, m_contextitem(item)
 	, m_slot(slot)

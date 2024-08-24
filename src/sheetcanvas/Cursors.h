@@ -28,7 +28,7 @@
 #include <QBrush>
 
 class TSession;
-class SheetView;
+class TSheetView;
 class ClipsViewPort;
 		
 class PlayHead : public ViewItem
@@ -36,7 +36,7 @@ class PlayHead : public ViewItem
         Q_OBJECT
 
 public:
-        PlayHead(SheetView* sv, TSession* session, ClipsViewPort* vp);
+        PlayHead(TSheetView* sv, TSession* session, ClipsViewPort* vp);
         ~PlayHead();
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -92,7 +92,7 @@ class WorkCursor : public ViewItem
         Q_OBJECT
 
 public:
-        WorkCursor(SheetView* sv, TSession* session);
+        WorkCursor(TSheetView* sv, TSession* session);
         ~WorkCursor();
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -100,7 +100,7 @@ public:
 
 private:
         TSession*	m_session;
-	SheetView*	m_sv;
+	TSheetView*	m_sv;
 	QPixmap		m_pix;
 	
 	void update_background();

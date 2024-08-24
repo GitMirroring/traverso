@@ -38,19 +38,19 @@ ImportClipsDialog::ImportClipsDialog( QWidget * parent )
 ImportClipsDialog::~ ImportClipsDialog( )
 {}
 
-void ImportClipsDialog::set_tracks(const QList<AudioTrack*>& tracks)
+void ImportClipsDialog::set_tracks(const QList<TAudioTrack*>& tracks)
 {
 	m_tracks = tracks;
 	for (int i = 0; i < m_tracks.size(); ++i) {
-                AudioTrack* t = m_tracks.at(i);
+                TAudioTrack* t = m_tracks.at(i);
 		comboBoxTrack->addItem(QString("%1: %2").arg(t->get_sort_index()).arg(t->get_name()));
 	}
 }
 
-AudioTrack* ImportClipsDialog::get_selected_track()
+TAudioTrack* ImportClipsDialog::get_selected_track()
 {
 	if (m_tracks.isEmpty()) {
-                return (AudioTrack*)0;
+                return (TAudioTrack*)0;
 	}
 
 	return m_tracks.at(comboBoxTrack->currentIndex());

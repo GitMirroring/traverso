@@ -21,12 +21,12 @@
 
 #include "Zoom.h"
 
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "TrackView.h"
-#include "Sheet.h"
-#include "Track.h"
+#include "TSheet.h"
+#include "TTrack.h"
 #include "ClipsViewPort.h"
-#include "ContextPointer.h"
+#include "TContextPointer.h"
 #include "TInputEventDispatcher.h"
 #include <QPoint>
 
@@ -34,7 +34,7 @@
 
 #include "Debugger.h"
 
-Zoom::Zoom(SheetView* sv, const QVariantList& args)
+Zoom::Zoom(TSheetView* sv, const QVariantList& args)
 	: TCommand("Zoom")
 {
 	m_tv = sv->get_trackview_at_scene_pos(cpointer().scene_pos());
@@ -247,7 +247,7 @@ void Zoom::process_collected_number(const QString &collected)
 int Zoom::collected_number_to_track_height(const QString& collected) const
 {
         int number = 0;
-        int trackHeight = Track::INITIAL_HEIGHT;
+        int trackHeight = TTrack::INITIAL_HEIGHT;
         bool ok = false;
         QString cleared = collected;
         cleared = cleared.remove(".").remove("-").remove(",");

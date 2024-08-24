@@ -21,8 +21,8 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
 */
 
 #include "TAddRemoveCommand.h"
-#include "ContextItem.h"
-#include <Sheet.h>
+#include "TContextItem.h"
+#include <TSheet.h>
 
 
 
@@ -118,7 +118,7 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
  */
 
 
-TAddRemoveCommand::TAddRemoveCommand(ContextItem* parent, ContextItem* item, const QString& des)
+TAddRemoveCommand::TAddRemoveCommand(TContextItem* parent, TContextItem* item, const QString& des)
     : TCommand(parent, des),
       m_sheet(nullptr),
       m_doActionSlot(""),
@@ -156,7 +156,7 @@ TAddRemoveCommand::TAddRemoveCommand(ContextItem* parent, ContextItem* item, con
  * @param des 		Short description that will show up in the history view.
  */
 TAddRemoveCommand::TAddRemoveCommand(
-        ContextItem* parent,
+        TContextItem* parent,
         void* arg,
         bool historable,
         TSession* sheet,
@@ -181,8 +181,8 @@ TAddRemoveCommand::TAddRemoveCommand(
 }
 
 TAddRemoveCommand::TAddRemoveCommand(
-        ContextItem* parent,
-        ContextItem* item,
+        TContextItem* parent,
+        TContextItem* item,
         bool historable,
         TSession* sheet,
         const char * doActionSlot,
@@ -241,7 +241,7 @@ int TAddRemoveCommand::undo_action()
 
 int TAddRemoveCommand::un_redo_action(ActionType actionType)
 {
-    TSMPEvent event;
+    TAudioThreadMessageQueueEvent event;
     switch (actionType) {
 
     case TCommand::UNDO:

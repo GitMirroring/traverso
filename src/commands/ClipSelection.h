@@ -27,16 +27,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QRect>
 #include <QVariantList>
 
-class AudioClip;
-class AudioClipManager;
+class TAudioClip;
+class TAudioClipManager;
 
 class ClipSelection : public TCommand
 {
         Q_OBJECT
 
 public :
-	ClipSelection(AudioClip* clip, QVariantList args);
-	ClipSelection(QList<AudioClip*> clips, AudioClipManager* manager, const char* slot, const QString& des);
+	ClipSelection(TAudioClip* clip, QVariantList args);
+	ClipSelection(QList<TAudioClip*> clips, TAudioClipManager* manager, const char* slot, const QString& des);
 	~ClipSelection();
 
     int prepare_actions() {return 1;}
@@ -45,9 +45,9 @@ public :
 
 
 private :
-	QList<AudioClip* >	m_clips;
+	QList<TAudioClip* >	m_clips;
 	const char*		m_slot;
-	AudioClipManager* 	m_acmanager;
+	TAudioClipManager* 	m_acmanager;
 };
 
 #endif

@@ -1,0 +1,138 @@
+/*
+Copyright (C) 2005-2019 Remon Sijrier
+
+This file is part of Traverso
+
+Traverso is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
+
+*/
+
+
+#ifndef TAUDIO_TRACK_H
+#define TAUDIO_TRACK_H
+
+#include <QString>
+#include <QDomDocument>
+#include <QList>
+
+#include "TAudioClipAddRemoveSpec.h"
+#include "TContextItem.h"
+#include "TProcessCallBackData.h"
+#include "TRealTimeLinkedList.h"
+#include "TTimeRef.h"
+#include "TTrack.h"
+
+
+class TSheet;
+
+
+
+class TAudioTrack : public TTrack
+{
+    Q_OBJECT
+
+public :
+    TAudioTrack(TSheet* sheet, const QString& name, int height);
+    TAudioTrack(TSheet* sheet, const QDomNode node);
+    ~TAudioTrack();
+
+    TAudioClip* init_recording();
+    TCommand* add_clip(const TAudioClipAddRemoveSpec &spec);
+    TCommand* remove_clip(const TAudioClipAddRemoveSpec &spec);
+    TAudioClip* get_clip_after(const TTimeRef& pos);
+    TAudioClip* get_clip_before(const TTimeRef& pos);
+    TSheet* get_sheet() const {return m_sheet;}
+    QDomNode get_state(QDomDocument doc, bool istemplate=false);
+    QList<TAudioClip*> get_audioclips() const {return  m_guiAudioClips;}
+
+    // Return the rightmost AudioClip track end location
+    TTimeRef get_end_location() const;
+
+    bool get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& trackExportEndLocation);
+    bool show_clip_volume_automation() const {return m_showClipVolumeAutomation;}
+
+    int set_state( const QDomNode& node );
+
+    int arm();
+    bool armed();
+    int disarm();
+    int process(TProcessCallBackData &processData);
+
+    bool operator<(const TAudioTrack &other) {
+        printf("bool operator<(const AudioTrack &other)\n");
+        return this->get_sort_index() < other.get_sort_index();
+    }
+
+
+    TAudioTrack* next = nullptr;
+
+protected:
+    void add_input_bus(AudioBus* bus);
+
+private :
+    TSheet*          m_sheet;
+
+    // only to be accessed/modified by AudioThread
+    TRealTimeLinkedList<TAudioClip*> m_rtAudioClips;
+
+    // only to be accessed from GUI thread
+    QList<TAudioClip*>   m_guiAudioClips;
+
+    int             m_numtakes{};
+    bool            m_isArmed{};
+    bool		m_showClipVolumeAutomation{};
+
+    void set_armed(bool armed);
+    void init();
+
+public slots:
+    void clip_position_changed(TAudioClip* clip);
+
+    TCommand* toggle_arm();
+    TCommand* silence_others();
+    TCommand* toggle_show_clip_volume_automation();
+
+private slots:
+    void private_add_clip(TAudioClip* clip);
+    void private_remove_clip(TAudioClip* clip);
+    void private_audioclip_added(TAudioClip* clip);
+    void private_audioclip_removed(TAudioClip* clip);
+
+    void private_clip_position_changed(TAudioClip* clip);
+
+
+signals:
+    void audioClipAdded(TAudioClip* clip);
+    void audioClipRemoved(TAudioClip* clip);
+
+    void privateAudioClipAdded(TAudioClip* clip);
+    void privateAudioClipRemoved(TAudioClip* clip);
+
+    void armedChanged(bool isArmed);
+};
+
+class TBounceTrack : public TAudioTrack
+{
+    Q_OBJECT
+
+public:
+    TBounceTrack(TSheet* sheet, const QString& name, int height);
+    ~TBounceTrack();
+
+
+};
+
+#endif
+

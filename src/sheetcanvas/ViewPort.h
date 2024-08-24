@@ -25,17 +25,17 @@
 #include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QTimer>
-#include "AbstractViewPort.h"
+#include "TViewPortInterface.h"
 
 class ViewItem;
-class SheetView;
-class ContextItem;
+class TSheetView;
+class TContextItem;
 class TAudioFileImportCommand;
-class AudioTrack;
+class TAudioTrack;
 class HoldCursor;
 class QGraphicsTextItem;
 
-class ViewPort : public QGraphicsView, public AbstractViewPort
+class ViewPort : public QGraphicsView, public TViewPortInterface
 {
     Q_OBJECT
 
@@ -47,7 +47,7 @@ public :
     void set_canvas_cursor_text(const QString& text, int mseconds=-1);
     void set_canvas_cursor_pos(QPointF pos, CursorMoveReason reason);
     void set_canvas_cursor_shape(const QString& shape, int alignment=Qt::AlignCenter);
-    virtual void set_sheetview(SheetView* view) {m_sv = view;}
+    virtual void set_sheetview(TSheetView* view) {m_sv = view;}
 
     inline QPointF map_to_scene(const QPoint& pos) const {
         return mapToScene(pos);
@@ -82,7 +82,7 @@ protected:
 
     void tabletEvent ( QTabletEvent * event );
 
-    SheetView* m_sv;
+    TSheetView* m_sv;
 
 private:
     QPoint      m_previousMousePos;

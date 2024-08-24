@@ -25,7 +25,7 @@
 #include "TMoveCommand.h"
 #include "TTimeRef.h"
 
-class Marker;
+class TTimeLineMarker;
 class MarkerView;
 
 class MoveMarker : public TMoveCommand
@@ -44,7 +44,7 @@ public:
         int jog();
 
 private :
-        Marker*		m_marker;
+        TTimeLineMarker*		m_marker;
         TTimeRef		m_origLocation;
         TTimeRef		m_newLocation;
         struct MoveMarkerData {

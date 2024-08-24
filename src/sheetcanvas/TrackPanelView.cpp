@@ -30,21 +30,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include "TrackPanelView.h"
 #include "TTrackLaneView.h"
-#include "AudioTrackView.h"
+#include "TAudioTrackView.h"
 #include "TBusTrackView.h"
-#include "SheetView.h"
-#include <Themer.h>
+#include "TSheetView.h"
+#include <TThemer.h>
 #include "TrackPanelViewPort.h"
-#include <AudioTrack.h>
+#include <TAudioTrack.h>
 #include "TrackPanelView.h"
 #include <Utils.h>
 #include <Mixer.h>
 #include <Gain.h>
 #include <TrackPan.h>
-#include "Project.h"
-#include "ProjectManager.h"
-#include "Sheet.h"
-#include "Track.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TSheet.h"
+#include "TTrack.h"
 #include "TMainWindow.h"
 #include "VUMeterView.h"
 #include "TKnobView.h"
@@ -218,7 +218,7 @@ void TrackPanelView::theme_config_changed()
 }
 
 
-AudioTrackPanelView::AudioTrackPanelView(AudioTrackView* trackView)
+AudioTrackPanelView::AudioTrackPanelView(TAudioTrackView* trackView)
         : TrackPanelView(trackView)
 {
 	PENTERCONS;
@@ -346,7 +346,7 @@ void TTrackLanePanelView::calculate_bounding_rect()
 }
 
 
-TrackPanelGain::TrackPanelGain(TrackPanelView *parent, Track *track)
+TrackPanelGain::TrackPanelGain(TrackPanelView *parent, TTrack *track)
         : ViewItem(parent, nullptr)
         , m_track(track)
 {

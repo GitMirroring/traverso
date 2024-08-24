@@ -26,9 +26,9 @@
 #include "TAudioPluginChain.h"
 #include <CorrelationMeter.h>
 #include "TCommand.h"
-#include <Sheet.h>
+#include <TSheet.h>
 #include <TBusTrack.h>
-#include <Themer.h>
+#include <TThemer.h>
 #include "TConfig.h"
 #include <cmath> // used for fabs
 

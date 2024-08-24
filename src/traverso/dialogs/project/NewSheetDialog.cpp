@@ -23,10 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "NewSheetDialog.h"
 
 #include "TInformUser.h"
-#include "Project.h"
-#include "Sheet.h"
+#include "TProject.h"
+#include "TSheet.h"
 #include "TConfig.h"
-#include "ProjectManager.h"
+#include "TProjectManager.h"
 
 #include <CommandGroup.h>
 #include <QPushButton>
@@ -44,7 +44,7 @@ NewSheetDialog::NewSheetDialog(QWidget * parent)
 	
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 	
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
 	connect(useTemplateCheckBox, SIGNAL(stateChanged (int)), this, SLOT(use_template_checkbox_state_changed(int)));
 }
 
@@ -68,7 +68,7 @@ void NewSheetDialog::accept()
 	QDomNode node;
 	if (useTemplateCheckBox->isChecked() && index >= 0) {
 		usetemplate = true;
-		Sheet* templatesheet = m_project->get_sheet(templateComboBox->itemData(index).toLongLong());
+		TSheet* templatesheet = m_project->get_sheet(templateComboBox->itemData(index).toLongLong());
 		Q_ASSERT(templatesheet);
 		QDomDocument doc("Sheet");
 		node = templatesheet->get_state(doc, usetemplate);
@@ -76,15 +76,15 @@ void NewSheetDialog::accept()
 	
 	CommandGroup* group = new CommandGroup(m_project, "");
 	
-	Sheet* firstNewSheet = nullptr;
+	TSheet* firstNewSheet = nullptr;
 	
 	for (int i=0; i<count; ++i) {
-		Sheet* sheet;
+		TSheet* sheet;
 		if (usetemplate) {
-			sheet = new Sheet(m_project);
+			sheet = new TSheet(m_project);
 			sheet->set_state(node);
 		} else {
-			sheet = new Sheet(m_project, trackcount);
+			sheet = new TSheet(m_project, trackcount);
 		}
                 sheet->set_name(title);
 		group->add_command(m_project->add_sheet(sheet));
@@ -103,7 +103,7 @@ void NewSheetDialog::accept()
 	hide();
 }
 
-void NewSheetDialog::set_project(Project * project)
+void NewSheetDialog::set_project(TProject * project)
 {
 	m_project = project;
 	
@@ -127,7 +127,7 @@ void NewSheetDialog::update_template_combo()
 {
 	templateComboBox->clear();
 	
-	foreach(Sheet* sheet, m_project->get_sheets()) {
+	foreach(TSheet* sheet, m_project->get_sheets()) {
 		QString text = "Sheet " + QString::number(m_project->get_sheet_index(sheet->get_id())) +
                                 " " + sheet->get_name();
 		

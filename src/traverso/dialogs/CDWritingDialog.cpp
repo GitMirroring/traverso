@@ -26,8 +26,8 @@
 
 #include "TExportSpecification.h"
 #include "TConfig.h"
-#include "Project.h"
-#include "ProjectManager.h"
+#include "TProject.h"
+#include "TProjectManager.h"
 #include "TInformUser.h"
 #include "Utils.h"
 
@@ -53,7 +53,7 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	set_project(pm().get_project());
 	
 	connect(closeButton, SIGNAL(clicked()), this, SLOT(hide()));
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
 
 	m_burnprocess = new QProcess(this);
 	m_burnprocess->setProcessChannelMode(QProcess::MergedChannels);
@@ -115,7 +115,7 @@ void CDWritingDialog::set_export_message(QString message)
 }
 
 
-void CDWritingDialog::set_project(Project * project)
+void CDWritingDialog::set_project(TProject * project)
 {
 	m_project = project;
 	

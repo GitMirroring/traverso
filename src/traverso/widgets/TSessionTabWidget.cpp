@@ -27,8 +27,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QToolBar>
 #include <QApplication>
 
-#include "ProjectManager.h"
-#include "Project.h"
+#include "TProjectManager.h"
+#include "TProject.h"
 #include "TSession.h"
 #include "TMainWindow.h"
 #include "Utils.h"

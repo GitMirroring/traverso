@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cmath>
 
-#include "AudioClip.h"
+#include "TAudioClip.h"
 #include "TAudioPluginChain.h"
 #include "TSession.h"
 
@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 TAudioProcessingNode::TAudioProcessingNode(TSession *session)
-    : ContextItem(session)
+    : TContextItem(session)
     , m_session(session)
     , m_processBus(nullptr)
 {

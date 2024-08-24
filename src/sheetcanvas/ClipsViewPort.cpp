@@ -21,16 +21,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ClipsViewPort.h"
 
-#include "AudioClip.h"
-#include "AudioTrack.h"
-#include "Project.h"
-#include "ProjectManager.h"
-#include "ReadSource.h"
-#include "ResourcesManager.h"
+#include "TAudioClip.h"
+#include "TAudioTrack.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TReadAudioSource.h"
+#include "TResourcesManager.h"
 #include "SheetWidget.h"
-#include "SheetView.h"
-#include "Sheet.h"
-#include "AudioTrackView.h"
+#include "TSheetView.h"
+#include "TSheet.h"
+#include "TAudioTrackView.h"
 #include "TLocation.h"
 #include "ViewItem.h"
 #include "TAudioFileImportCommand.h"
@@ -143,7 +143,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 	TTimeRef startpos = TTimeRef(mapFromGlobal(QCursor::pos()).x() * m_sw->get_sheetview()->timeref_scalefactor);
 	
 	foreach(qint64 id, m_resourcesImport) {
-		AudioClip* clip = resources_manager()->get_clip(id);
+		TAudioClip* clip = resources_manager()->get_clip(id);
 		if (clip) {
 			bool hadSheet = clip->has_sheet();
             clip->set_sheet(m_sw->get_sheet());
@@ -157,7 +157,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 			group->add_command(arc);
 			continue;
 		}
-		ReadSource* source = resources_manager()->get_readsource(id);
+		TReadAudioSource* source = resources_manager()->get_readsource(id);
 		if (source) {
 			clip = resources_manager()->new_audio_clip(source->get_short_name());
 			resources_manager()->set_source_for_clip(clip, source);
@@ -186,13 +186,13 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 
 void ClipsViewPort::dragMoveEvent( QDragMoveEvent * event )
 {
-	Project* project = pm().get_project();
+	TProject* project = pm().get_project();
 	if (!project) {
         event->ignore();
 		return;
 	}
 	
-    Sheet* sheet = qobject_cast<Sheet*>(project->get_current_session());
+    TSheet* sheet = qobject_cast<TSheet*>(project->get_current_session());
 
 	if (!sheet) {
         event->ignore();
@@ -207,7 +207,7 @@ void ClipsViewPort::dragMoveEvent( QDragMoveEvent * event )
 	// So we need to calculate the scene pos ourselves.
     QList<QGraphicsItem *> itemlist = items(mapFromGlobal(QCursor::pos()));
 	foreach(QGraphicsItem* obj, itemlist) {
-		AudioTrackView* tv = dynamic_cast<AudioTrackView*>(obj);
+		TAudioTrackView* tv = dynamic_cast<TAudioTrackView*>(obj);
 		if (tv) {
 			m_importTrack = tv->get_track();
             event->accept();

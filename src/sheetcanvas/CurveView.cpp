@@ -20,14 +20,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "CurveView.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "CurveNodeView.h"
-#include <Themer.h>
+#include <TThemer.h>
 
-#include <Curve.h>
-#include <CurveNode.h>
-#include <ContextPointer.h>
-#include <Sheet.h>
+#include <TCurve.h>
+#include <TCurveNode.h>
+#include <TContextPointer.h>
+#include <TSheet.h>
 #include "TInputEventDispatcher.h"
 
 #include <TAddRemoveCommand.h>
@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cfloat>
 
-CurveView::CurveView(SheetView* sv, ViewItem* parentViewItem, Curve* curve)
+CurveView::CurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve)
     : ViewItem(parentViewItem, curve)
     , m_curve(curve)
 {
@@ -55,16 +55,16 @@ CurveView::CurveView(SheetView* sv, ViewItem* parentViewItem, Curve* curve)
     m_blinkColorDirection = 1;
     m_blinkingNode = nullptr;
     m_startoffset = TTimeRef();
-    m_guicurve = new Curve(nullptr);
+    m_guicurve = new TCurve(nullptr);
     m_guicurve->set_sheet(sv->get_sheet());
 
-    for(CurveNode* node = m_curve->get_nodes().first(); node != nullptr; node = node->next) {
+    for(TCurveNode* node = m_curve->get_nodes().first(); node != nullptr; node = node->next) {
         add_curvenode_view(node);
     }
 
     connect(&m_blinkTimer, SIGNAL(timeout()), this, SLOT(update_blink_color()));
-    connect(m_curve, SIGNAL(nodeAdded(CurveNode*)), this, SLOT(add_curvenode_view(CurveNode*)));
-    connect(m_curve, SIGNAL(nodeRemoved(CurveNode*)), this, SLOT(remove_curvenode_view(CurveNode*)));
+    connect(m_curve, &TCurve::nodeAdded, this, &CurveView::add_curvenode_view);
+    connect(m_curve, &TCurve::nodeRemoved, this, &CurveView::remove_curvenode_view);
     connect(m_curve, SIGNAL(nodePositionChanged()), this, SLOT(node_moved()));
     connect(m_curve, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
 
@@ -210,7 +210,7 @@ int CurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &bu
     return 1;
 }
 
-void CurveView::add_curvenode_view(CurveNode* node)
+void CurveView::add_curvenode_view(TCurveNode* node)
 {
     CurveNodeView* nodeview = new CurveNodeView(m_sv, this, node, m_guicurve);
     m_nodeViews.append(nodeview);
@@ -228,7 +228,7 @@ void CurveView::add_curvenode_view(CurveNode* node)
     }
 }
 
-void CurveView::remove_curvenode_view(CurveNode* node)
+void CurveView::remove_curvenode_view(TCurveNode* node)
 {
     for(CurveNodeView* nodeview : m_nodeViews) {
         if (nodeview->get_curve_node() == node) {
@@ -377,7 +377,7 @@ TCommand* CurveView::add_node()
     double when = point.x() * double(m_sv->timeref_scalefactor) + m_startoffset.universal_frame();
     double value = (m_boundingRect.height() - point.y()) / m_boundingRect.height();
 
-    CurveNode* node = new CurveNode(m_curve, when, value);
+    TCurveNode* node = new TCurveNode(m_curve, when, value);
 
     return m_curve->add_node(node);
 }
@@ -416,7 +416,7 @@ TCommand* CurveView::drag_node()
     update_softselected_node(cpointer().on_first_input_event_scene_pos());
 
     QList<CurveNodeView*> selectedNodeViews = get_selected_nodes();
-    QList<CurveNode*> selectedNodes;
+    QList<TCurveNode*> selectedNodes;
     foreach(CurveNodeView* nodeView, selectedNodeViews) {
         selectedNodes.append(nodeView->get_curve_node());
     }
@@ -427,7 +427,7 @@ TCommand* CurveView::drag_node()
 
     TTimeRef min = TTimeRef();
     TTimeRef max = TTimeRef::max_length();
-    TRealTimeLinkedList<CurveNode*> nodeList = m_curve->get_nodes();
+    TRealTimeLinkedList<TCurveNode*> nodeList = m_curve->get_nodes();
 
     int indexFirstNode = nodeList.indexOf(selectedNodes.first());
     int indexLastNode = nodeList.indexOf(selectedNodes.last());
@@ -456,7 +456,7 @@ TCommand* CurveView::drag_node()
 
     double maxValue = DBL_MIN;
     double minValue = DBL_MAX;
-    foreach(CurveNode* node, selectedNodes) {
+    foreach(TCurveNode* node, selectedNodes) {
         double value = node->get_value();
         if (value > maxValue) {
             maxValue = value;
@@ -560,7 +560,7 @@ TCommand * CurveView::remove_all_nodes()
 {
     CommandGroup* group = new CommandGroup(m_curve, tr("Clear Nodes"));
 
-    for(CurveNode* node = m_curve->get_nodes().first(); node != nullptr; node = node->next) {
+    for(TCurveNode* node = m_curve->get_nodes().first(); node != nullptr; node = node->next) {
         group->add_command(m_curve->remove_node(node));
     }
 

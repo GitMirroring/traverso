@@ -21,18 +21,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "MoveClip.h"
 
-#include "AudioClip.h"
-#include "AudioClipManager.h"
-#include "ContextPointer.h"
+#include "TAudioClip.h"
+#include "TAudioClipManager.h"
+#include "TContextPointer.h"
 #include "TInputEventDispatcher.h"
-#include "SnapList.h"
-#include "Sheet.h"
-#include "AudioTrack.h"
+#include "TSnapList.h"
+#include "TSheet.h"
+#include "TAudioTrack.h"
 #include "TTimeLineRuler.h"
 
-#include "SheetView.h"
-#include "AudioTrackView.h"
-#include "AudioClipView.h"
+#include "TSheetView.h"
+#include "TAudioTrackView.h"
+#include "TAudioClipView.h"
 
 #include "Zoom.h"
 
@@ -99,20 +99,20 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
 
     if (m_actionType == FOLD_SHEET || m_actionType == FOLD_TRACK || m_actionType == FOLD_MARKERS) {
 
-        QList<AudioClip*> movingClips;
-        QList<AudioTrack*> tracks;
+        QList<TAudioClip*> movingClips;
+        QList<TAudioTrack*> tracks;
 
         if (m_actionType == FOLD_TRACK) {
-            AudioTrackView* tv = qobject_cast<AudioTrackView*>(view);
+            TAudioTrackView* tv = qobject_cast<TAudioTrackView*>(view);
             Q_ASSERT(tv);
             d->sv= tv->get_sheetview();
             tracks.append(tv->get_track());
         } else if (m_actionType == FOLD_SHEET) {
-            d->sv = qobject_cast<SheetView*>(view);
+            d->sv = qobject_cast<TSheetView*>(view);
             Q_ASSERT(d->sv);
-            tracks = ((Sheet*)d->sv->get_sheet())->get_audio_tracks();
+            tracks = ((TSheet*)d->sv->get_sheet())->get_audio_tracks();
         } else {
-            d->sv = qobject_cast<SheetView*>(view->get_sheetview());
+            d->sv = qobject_cast<TSheetView*>(view->get_sheetview());
             Q_ASSERT(d->sv);
         }
 
@@ -127,8 +127,8 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
         }
 
         if (m_actionType == FOLD_SHEET || m_actionType == FOLD_MARKERS) {
-            QList<Marker*> movingMarkers = d->sv->get_sheet()->get_timeline()->get_markers();
-            foreach(Marker* marker, movingMarkers) {
+            QList<TTimeLineMarker*> movingMarkers = d->sv->get_sheet()->get_timeline()->get_markers();
+            foreach(TTimeLineMarker* marker, movingMarkers) {
                 if (marker->get_location()->get_start() > currentLocation) {
                     MarkerAndOrigin markerAndOrigin;
                     markerAndOrigin.marker = marker;
@@ -139,9 +139,9 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
         }
 
         if (m_actionType == FOLD_SHEET || m_actionType == FOLD_TRACK) {
-            foreach(AudioTrack* track, tracks) {
-                QList<AudioClip*> clips = track->get_audioclips();
-                foreach(AudioClip* clip, clips) {
+            foreach(TAudioTrack* track, tracks) {
+                QList<TAudioClip*> clips = track->get_audioclips();
+                foreach(TAudioClip* clip, clips) {
                     if (clip->get_location()->get_end() > currentLocation) {
                         movingClips.append(clip);
                     }
@@ -152,12 +152,12 @@ MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
         m_group.set_clips(movingClips);
 
     } else {
-        AudioClipView* cv = qobject_cast<AudioClipView*>(view);
+        TAudioClipView* cv = qobject_cast<TAudioClipView*>(view);
         Q_ASSERT(cv);
         d->sv = cv->get_sheetview();
-        AudioClip* clip  = cv->get_clip();
+        TAudioClip* clip  = cv->get_clip();
         if (clip->is_selected()) {
-            QList<AudioClip*> selected;
+            QList<TAudioClip*> selected;
             clip->get_sheet()->get_audioclip_manager()->get_selected_clips(selected);
             m_group.set_clips(selected);
         } else {
@@ -194,7 +194,7 @@ int MoveClip::begin_hold()
 
     if (m_actionType == COPY) {
         // FIXME Memory leak here!
-        QList<AudioClip*> newclips = m_group.copy_clips();
+        QList<TAudioClip*> newclips = m_group.copy_clips();
         m_group.set_clips(newclips);
         m_group.add_all_clips_to_tracks();
         m_group.move_to(m_origTrackIndex, m_trackStartLocation + TTimeRef(d->sv->timeref_scalefactor * 3));
@@ -304,7 +304,7 @@ int MoveClip::jog()
         return 0;
     }
 
-    AudioTrackView* trackView = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos());
+    TAudioTrackView* trackView = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos());
     int deltaTrackIndex = 0;
     if (trackView/* && !(m_actionType == FOLD_SHEET)*/) {
         deltaTrackIndex = trackView->get_track()->get_sort_index() - m_d->pointedTrackIndex;

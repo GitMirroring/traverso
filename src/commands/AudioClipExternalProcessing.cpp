@@ -23,8 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ExternalProcessingDialog.h"
 
-#include "AudioClip.h"
-#include "AudioTrack.h"
+#include "TAudioClip.h"
+#include "TAudioTrack.h"
 #include "TMainWindow.h"
 
 
@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 
-AudioClipExternalProcessing::AudioClipExternalProcessing(AudioClip* clip)
+AudioClipExternalProcessing::AudioClipExternalProcessing(TAudioClip* clip)
 	: TCommand(clip, tr("Clip: External Processing"))
 {
 	m_clip = clip;
@@ -76,7 +76,7 @@ int AudioClipExternalProcessing::do_action()
 	PENTER;
         // Remove has to be done BEFORE adding, else the TRealTimeLinkedList logic
         // gets messed up for the Tracks AudioClipList, which is an TRealTimeLinkedList :(
-    AudioClipAddRemoveSpec spec;
+    TAudioClipAddRemoveSpec spec;
     spec.set_clip(m_clip);
     spec.set_is_historable(false);
     spec.set_is_move(false);
@@ -93,7 +93,7 @@ int AudioClipExternalProcessing::undo_action()
 	PENTER;
         // Remove has to be done BEFORE adding, else the TRealTimeLinkedList logic
         // gets messed up for the Tracks AudioClipList, which is an TRealTimeLinkedList :(
-    AudioClipAddRemoveSpec spec;
+    TAudioClipAddRemoveSpec spec;
     spec.set_clip(m_resultingclip);
     spec.set_is_historable(false);
     spec.set_is_move(false);

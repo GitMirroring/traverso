@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ViewItem.h"
 
-class Track;
+class TTrack;
 
 class TKnobView : public ViewItem
 {
@@ -69,12 +69,12 @@ class TPanKnobView : public TKnobView
 	Q_OBJECT
 
 public:
-	TPanKnobView(ViewItem* parent, Track* track);
+	TPanKnobView(ViewItem* parent, TTrack* track);
 
-	Track* get_track() const {return m_track;}
+	TTrack* get_track() const {return m_track;}
 
 private:
-	Track*		m_track;
+	TTrack*		m_track;
 
 public slots:
 	TCommand* pan_left();
@@ -90,12 +90,12 @@ class TGainKnobView : public TKnobView
     Q_OBJECT
 
 public:
-    TGainKnobView(ViewItem* parent, Track* track);
+    TGainKnobView(ViewItem* parent, TTrack* track);
 
-    Track* get_track() const {return m_track;}
+    TTrack* get_track() const {return m_track;}
 
 private:
-    Track*		m_track;
+    TTrack*		m_track;
 
 public slots:
 

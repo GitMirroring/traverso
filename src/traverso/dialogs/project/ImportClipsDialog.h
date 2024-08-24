@@ -23,7 +23,7 @@
 #define IMPORT_CLIPS_DIALOG_H
 
 #include "ui_ImportClipsDialog.h"
-#include "AudioTrack.h"
+#include "TAudioTrack.h"
 
 #include <QDialog>
 #include <QList>
@@ -36,14 +36,14 @@ public:
 	ImportClipsDialog(QWidget* parent = 0);
 	~ImportClipsDialog();
 
-        void set_tracks(const QList<AudioTrack *> &);
+        void set_tracks(const QList<TAudioTrack *> &);
 
-        AudioTrack* get_selected_track();
+        TAudioTrack* get_selected_track();
 	bool get_add_markers();
 	int has_tracks();
 
 private:
-        QList<AudioTrack*> m_tracks;
+        QList<TAudioTrack*> m_tracks;
 
 };
 

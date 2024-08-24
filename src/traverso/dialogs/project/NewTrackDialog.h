@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QCompleter>
 #include <QTimer>
 
-class Project;
+class TProject;
 class QAbstractButton;
 class QCompleter;
 
@@ -45,7 +45,7 @@ protected:
 
 
 private:
-	Project* m_project{};
+	TProject* m_project{};
         QTimer      m_timer;
         QCompleter  m_completer;
         void update_driver_info();
@@ -53,7 +53,7 @@ private:
 
 private slots:
         void close_clicked ();
-        void set_project(Project* project);
+        void set_project(TProject* project);
         void update_buses_comboboxes();
         void reset_information_label();
         void create_track();

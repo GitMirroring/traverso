@@ -23,10 +23,10 @@
 #include "TransportConsoleWidget.h"
 
 #include "TAudioDevice.h"
-#include "Sheet.h"
+#include "TSheet.h"
 #include "Utils.h"
-#include "ProjectManager.h"
-#include "Project.h"
+#include "TProjectManager.h"
+#include "TProject.h"
 #include "TConfig.h"
 #include "TInformUser.h"
 #include "TTransport.h"
@@ -76,7 +76,7 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
 
     m_lastSnapPosition = TTimeRef();
 
-    connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
     connect(&audiodevice(), SIGNAL(finishedOneProcessCycle()), this, SLOT(update_label()));
     connect(&audiodevice(), &TAudioDevice::freeWheelingChanged, this, [this](){
         m_freeWheelingAction->setChecked(!audiodevice().running_real_time());
@@ -94,7 +94,7 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
 }
 
 
-void TransportConsoleWidget::set_project(Project* project)
+void TransportConsoleWidget::set_project(TProject* project)
 {
     if (m_project) {
         disconnect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
@@ -111,7 +111,7 @@ void TransportConsoleWidget::set_project(Project* project)
 
 void TransportConsoleWidget::set_session(TSession* session)
 {
-    Project* project = qobject_cast<Project*>(session);
+    TProject* project = qobject_cast<TProject*>(session);
     // if the view was changed to Project's session (mixer)
     // then keep the current active sheet!
     if (project) {
@@ -125,9 +125,9 @@ void TransportConsoleWidget::set_session(TSession* session)
 
     }
 
-    m_sheet = qobject_cast<Sheet*>(session);
+    m_sheet = qobject_cast<TSheet*>(session);
     if (!m_sheet && session) {
-        m_sheet = qobject_cast<Sheet*>(session->get_parent_session());
+        m_sheet = qobject_cast<TSheet*>(session->get_parent_session());
     }
 
     if (!m_sheet) {

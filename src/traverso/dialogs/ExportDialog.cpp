@@ -26,9 +26,9 @@
 
 #include "TExportSpecification.h"
 #include "TInformUser.h"
-#include "Project.h"
-#include "ProjectManager.h"
-#include "Sheet.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TSheet.h"
 
 #include "widgets/ExportFormatOptionsWidget.h"
 
@@ -166,7 +166,7 @@ void ExportDialog::render_finished( )
 	progressBar->setValue(0);
 }
 
-void ExportDialog::set_project(Project * project)
+void ExportDialog::set_project(TProject * project)
 {
     if (! project)
     {

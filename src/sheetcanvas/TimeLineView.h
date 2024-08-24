@@ -24,10 +24,10 @@
 
 #include "ViewItem.h"
 
-class SheetView;
+class TSheetView;
 class TTimeLineRuler;
 class MarkerView;
-class Marker;
+class TTimeLineMarker;
 
 
 class TimeLineView : public ViewItem
@@ -35,7 +35,7 @@ class TimeLineView : public ViewItem
         Q_OBJECT
 
 public:
-        TimeLineView(SheetView* view);
+        TimeLineView(TSheetView* view);
         ~TimeLineView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -72,8 +72,8 @@ public slots:
 	TCommand* playhead_to_marker();
 
 private slots:
-	void add_new_marker_view(Marker* marker);
-	void remove_marker_view(Marker* marker);
+	void add_new_marker_view(TTimeLineMarker* marker);
+	void remove_marker_view(TTimeLineMarker* marker);
         void active_context_changed();
 
 };

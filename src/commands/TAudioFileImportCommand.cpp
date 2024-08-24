@@ -21,11 +21,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QFileDialog>
 #include "TAudioFileImportCommand.h"
-#include "AudioClip.h"
-#include "AudioTrack.h"
-#include "Project.h"
-#include "ProjectManager.h"
-#include "ResourcesManager.h"
+#include "TAudioClip.h"
+#include "TAudioTrack.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TResourcesManager.h"
 #include "Utils.h"
 #include "TMainWindow.h"
 
@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Debugger.h"
 
-TAudioFileImportCommand::TAudioFileImportCommand(ContextItem *context)
+TAudioFileImportCommand::TAudioFileImportCommand(TContextItem *context)
     : TCommand(context, tr("Import Audio File"))
 {
     m_track = nullptr;
@@ -56,7 +56,7 @@ void TAudioFileImportCommand::set_file_name(const QString &fileName)
     m_fileName = fileName;
 }
 
-void TAudioFileImportCommand::set_track(AudioTrack * track)
+void TAudioFileImportCommand::set_track(TAudioTrack * track)
 {
     m_track = track;
 }
@@ -169,7 +169,7 @@ int TAudioFileImportCommand::do_action()
 	if (! m_clip) {
 		create_audioclip();
 	}
-    AudioClipAddRemoveSpec spec;
+    TAudioClipAddRemoveSpec spec;
     spec.set_clip(m_clip);
     spec.set_is_historable(false);
     spec.set_is_move(false);
@@ -183,7 +183,7 @@ int TAudioFileImportCommand::do_action()
 int TAudioFileImportCommand::undo_action()
 {
 	PENTER;
-    AudioClipAddRemoveSpec spec;
+    TAudioClipAddRemoveSpec spec;
     spec.set_clip(m_clip);
     spec.set_is_historable(false);
     spec.set_is_move(false);

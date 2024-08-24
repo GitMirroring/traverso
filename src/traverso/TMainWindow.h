@@ -31,15 +31,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <qcompleter.h>
 #include <qstandarditemmodel.h>
 
-class Sheet;
+class TSheet;
 class TSession;
-class AudioTrack;
-class Track;
-class Project;
+class TAudioTrack;
+class TTrack;
+class TProject;
 class TAudioBusVUMonitorWidget;
 class InfoBox;
 class ViewPort;
-class ContextItem;
+class TContextItem;
 class TCommand;
 
 class QLabel;
@@ -104,7 +104,7 @@ public :
 	
 	void select_fade_in_shape();
 	void select_fade_out_shape();
-	void set_insertsilence_track(AudioTrack* track);
+	void set_insertsilence_track(TAudioTrack* track);
 	
         void register_vumeter_level(AbstractVUMeterLevel* level);
         void unregister_vumeter_level(AbstractVUMeterLevel* level);
@@ -158,7 +158,7 @@ private:
         WelcomeWidget*          m_welcomeWidget;
 	QDialog*		m_quickStart;
 	RestoreProjectBackupDialog* m_restoreProjectBackupDialog;
-	Project*		m_project;
+	TProject*		m_project;
 	bool			m_isFollowing{};
         QByteArray              m_windowState;
 
@@ -198,7 +198,7 @@ private:
 
 
 public slots :
-	void set_project(Project* project);
+	void set_project(TProject* project);
         void show_session(TSession* sheet);
 	void show_settings_dialog();
 	void show_settings_dialog_sound_system_page();
@@ -223,7 +223,7 @@ public slots :
         TCommand* show_open_project_dialog();
         TCommand* show_project_manager_dialog();
         TCommand* show_restore_project_backup_dialog(QString projectdir);
-        TCommand* show_insertsilence_dialog(AudioTrack *track=nullptr);
+        TCommand* show_insertsilence_dialog(TAudioTrack *track=nullptr);
         TCommand* show_marker_dialog();
         TCommand* show_newsheet_dialog();
         TCommand* show_newtrack_dialog();
@@ -240,8 +240,8 @@ public slots :
 
 	
 private slots:
-        void add_sheetwidget(Sheet* session);
-        void remove_sheetwidget(Sheet*);
+        void add_sheetwidget(TSheet* session);
+        void remove_sheetwidget(TSheet*);
         void add_session(TSession* session);
         void remove_session(TSession*);
         void project_dir_change_detected();

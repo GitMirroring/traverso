@@ -22,13 +22,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TCanvasCursor.h"
 
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "ViewPort.h"
 #include "PositionIndicator.h"
 
 #include "Debugger.h"
 
-TCanvasCursor::TCanvasCursor(SheetView* )
+TCanvasCursor::TCanvasCursor(TSheetView* )
     : ViewItem(nullptr)
 {
     m_positionIndicator = new PositionIndicator(this);

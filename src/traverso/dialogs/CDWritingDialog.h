@@ -28,8 +28,8 @@
 #include <QCloseEvent>
 #include <QProcess>
 
-class Project;
-class Sheet;
+class TProject;
+class TSheet;
 class TExportSpecification;
 class QProcess;
 
@@ -47,7 +47,7 @@ protected:
 	void closeEvent(QCloseEvent* event);
 
 private:
-        Project* m_project{};
+        TProject* m_project{};
 	QProcess* m_burnprocess;
 	TExportSpecification* 	m_exportSpec;
 	
@@ -81,7 +81,7 @@ private:
 	QString get_device(int index);
 
 private slots:
-	void set_project(Project* project);
+	void set_project(TProject* project);
 	void on_stopButton_clicked();
 	void export_only_changed(int state);
 	void start_burn_process();

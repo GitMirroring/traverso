@@ -21,11 +21,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TTransport.h"
 
-#include "SnapList.h"
+#include "TSnapList.h"
 #include "TCommand.h"
 #include "TSession.h"
-#include "Sheet.h"
-#include "Project.h"
+#include "TSheet.h"
+#include "TProject.h"
 #include "TInputEventDispatcher.h"
 
 #include "TTimeLineRuler.h"
@@ -54,7 +54,7 @@ TCommand* TTransport::start_transport()
 TCommand * TTransport::set_recordable_and_start_transport()
 {
 	if (m_project) {
-		Sheet* sheet = m_project->get_active_sheet();
+		TSheet* sheet = m_project->get_active_sheet();
 		if (sheet) {
 			return sheet->set_recordable_and_start_transport();
 		}

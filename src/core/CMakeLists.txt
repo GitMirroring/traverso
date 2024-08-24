@@ -11,57 +11,67 @@ ${CMAKE_SOURCE_DIR}/src/plugins/native
 
 SET(TRAVERSO_CORE_SOURCES
 ${CMAKE_SOURCE_DIR}/src/common/Utils.cpp
-${CMAKE_SOURCE_DIR}/src/common/ThreadSaveMessagePosting.cpp
+${CMAKE_SOURCE_DIR}/src/common/Utils.h
+${CMAKE_SOURCE_DIR}/src/common/TAudioThreadMessageQueue.cpp
+${CMAKE_SOURCE_DIR}/src/common/TAudioThreadMessageQueue.h
 ${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
+${CMAKE_SOURCE_DIR}/src/common/Debugger.h
 ${CMAKE_SOURCE_DIR}/src/common/Mixer.cpp
+${CMAKE_SOURCE_DIR}/src/common/Mixer.h
 ${CMAKE_SOURCE_DIR}/src/common/Resampler.cpp
+${CMAKE_SOURCE_DIR}/src/common/Resampler.h
 ${CMAKE_SOURCE_DIR}/src/common/TTimeRef.cpp
+${CMAKE_SOURCE_DIR}/src/common/TTimeRef.h
 ${CMAKE_SOURCE_DIR}/src/common/TTransportControl.cpp
+${CMAKE_SOURCE_DIR}/src/common/TTransportControl.h
 
-AudioClip.cpp
-AudioClipGroup.cpp
-AudioClipManager.cpp
-AudioFileCopyConvert.cpp
-AudioFileMerger.cpp
-AudioTrack.cpp
-AudioSource.cpp
-TAudioSourceBufferStatus.h
+TAudioClip.cpp TAudioClip.h
+TAudioClipGroup.cpp TAudioClipGroup.h
+TAudioClipManager.cpp TAudioClipManager.h
+TAudioFileCopyConvert.cpp TAudioFileCopyConvert.h
+TAudioFileMerger.cpp TAudioFileMerger.h
+TAudioTrack.cpp TAudioTrack.h
+TAudioSource.cpp TAudioSource.h
+TAudioSourceBufferStatus.h TAudioSourceBufferStatus.h
 TQueueBufferSlot.h
-AbstractViewPort.cpp
-TCommand.cpp
-TConfig.cpp
-TShortCutManager.cpp
-ContextPointer.cpp
-ContextItem.cpp
-Curve.cpp
-CurveNode.cpp
+TViewPortInterface.h
+TCommand.cpp TCommand.h
+TConfig.cpp TConfig.h
+TShortCutManager.cpp TShortCutManager.h
+TContextPointer.cpp TContextPointer.h
+TContextItem.cpp TContextItem.h
+TCurve.cpp TCurve.h
+TCurveNode.cpp TCurveNode.h
 TCommandPlugin.h
-DiskIO.cpp
-FadeCurve.cpp
-FileHelpers.cpp
+TDiskIOThread.cpp TDiskIOThread.h
+TFadeCurve.cpp TFadeCurve.h
+FileHelpers.cpp FileHelpers.h
 TInformUser.cpp TInformUser.h
-TInputEventDispatcher.cpp
-Peak.cpp
-Project.cpp
-ProjectManager.cpp
-TAudioProcessingNode.cpp
-ReadSource.cpp
-ResourcesManager.cpp
-TBusTrack.cpp
-TSend.cpp
-TSession.cpp
-Sheet.cpp
-Track.cpp
-WriteSource.cpp
-gdither.cpp
-SnapList.cpp
-TLocation.cpp
-TTimeLineRuler.cpp
-Marker.cpp
-Themer.cpp
-ProjectConverter.cpp
-TGlobalContext.cpp
+TInputEventDispatcher.cpp TInputEventDispatcher.h
+TPeak.cpp TPeak.h
+TProject.cpp TProject.h
+TProjectManager.cpp TProjectManager.h
+TAudioProcessingNode.cpp TAudioProcessingNode.h
+TReadAudioSource.cpp TReadAudioSource.h
+TResourcesManager.cpp TResourcesManager.h
+TBusTrack.cpp TBusTrack.h
+TSend.cpp TSend.h
+TSession.cpp TSession.h
+TSheet.cpp TSheet.h
+TTrack.cpp TTrack.h
+TWriteAudioSource.cpp TWriteAudioSource.h
+gdither.cpp gdither.h
+TSnapList.cpp TSnapList.h
+TLocation.cpp TLocation.h
+TTimeLineRuler.cpp TTimeLineRuler.h
+TTimeLineMarker.cpp TTimeLineMarker.h
+TThemer.cpp TThemer.h
+TProjectConverter.cpp TProjectConverter.h
+TGlobalContext.cpp TGlobalContext.h
 TTransport.cpp TTransport.h
+TShortCutFunction.h TShortCutFunction.cpp
+TShortCut.h TShortCut.cpp
+TExportSpecification.h TExportSpecification.cpp
 )
 
 IF(UNIX)
@@ -85,9 +95,7 @@ ENDIF(UNIX)
 SET(TRAVERSO_CORE_LIBRARY "traversocore")
 
 ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE}
-	TShortCutFunction.h TShortCutFunction.cpp
-	TShortCut.h TShortCut.cpp
-	TExportSpecification.h TExportSpecification.cpp)
+	TAudioClipAddRemoveSpec.h)
 
 IF(USE_PCH)
     ADD_DEPENDENCIES(traversocore precompiled_headers)

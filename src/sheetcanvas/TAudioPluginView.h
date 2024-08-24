@@ -28,7 +28,7 @@
 
 class TAudioPluginPropertiesDialog;
 
-class AudioTrackView;
+class TAudioTrackView;
 class PluginChainView;
 class TAudioPlugin;
 class TAudioPluginChain;

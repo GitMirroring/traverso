@@ -57,8 +57,7 @@ signals:
         void message(TInformUserData );
 	
 private slots:
-	void audiodevice_message(const QString &message, int severity);
-    void TSMP_message(const QString& message);
+    void audiodevice_message();
 };
 
 // use this function to propagate the TInformUser

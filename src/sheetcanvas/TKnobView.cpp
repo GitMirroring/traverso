@@ -21,8 +21,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TKnobView.h"
 
-#include "Themer.h"
-#include "Track.h"
+#include "TThemer.h"
+#include "TTrack.h"
 #include <cmath>
 
 #include <Utils.h>
@@ -143,7 +143,7 @@ void TKnobView::set_title(const QString &title)
     m_parentViewItem->update();
 }
 
-TPanKnobView::TPanKnobView(ViewItem* parent, Track* track)
+TPanKnobView::TPanKnobView(ViewItem* parent, TTrack* track)
 	: TKnobView(parent)
 	, m_track(track)
 {
@@ -170,7 +170,7 @@ TCommand* TPanKnobView::pan_right()
 }
 
 
-TGainKnobView::TGainKnobView(ViewItem* parent, Track* track)
+TGainKnobView::TGainKnobView(ViewItem* parent, TTrack* track)
     : TKnobView(parent)
     , m_track(track)
 {

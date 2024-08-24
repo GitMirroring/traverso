@@ -26,33 +26,33 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QComboBox>
 
 #include "TConfig.h"
-#include "ContextPointer.h"
-#include "ContextItem.h"
+#include "TContextPointer.h"
+#include "TContextItem.h"
 #include "TInputEventDispatcher.h"
 #include "TCommand.h"
 #include "PCommand.h"
 #include "TMainWindow.h"
 #include "TShortCutManager.h"
-#include "Themer.h"
+#include "TThemer.h"
 
 #include "Debugger.h"
 
 TContextHelpWidget::TContextHelpWidget(QWidget* parent)
-        : QWidget(parent)
+    : QWidget(parent)
 {
     setObjectName("ShortcutsHelpWidget");
 
-        m_comboBox = new QComboBox(parent);
-        m_textEdit = new QTextEdit(parent);
-        m_textEdit->setTextInteractionFlags(Qt::NoTextInteraction);
+    m_comboBox = new QComboBox(parent);
+    m_textEdit = new QTextEdit(parent);
+    m_textEdit->setTextInteractionFlags(Qt::NoTextInteraction);
 
-        QHBoxLayout* comboLayout = new QHBoxLayout;
-        QVBoxLayout* mainLayout = new QVBoxLayout;
-        comboLayout->addWidget(m_comboBox);
+    QHBoxLayout* comboLayout = new QHBoxLayout;
+    QVBoxLayout* mainLayout = new QVBoxLayout;
+    comboLayout->addWidget(m_comboBox);
 
-        mainLayout->addLayout(comboLayout);
-        mainLayout->addWidget(m_textEdit);
-        setLayout(mainLayout);
+    mainLayout->addLayout(comboLayout);
+    mainLayout->addWidget(m_textEdit);
+    setLayout(mainLayout);
 
     m_comboBox->addItem(tr("Shortcuts Explained"));
     m_comboBox->addItem(tr("Current Context"));
@@ -87,9 +87,11 @@ TContextHelpWidget::TContextHelpWidget(QWidget* parent)
         "<p>"
         "You can of course configure the shortcuts to your liking in the shortcut configuration dialog"
         "</body></html>"
-    );
+        );
 
-    m_helpIntroduction = m_helpIntroduction.arg(tr("Current Context")).arg(tShortCutManager().get_translation_for("AudioTrack")).arg(tShortCutManager().get_translation_for("AudioClip"));
+    m_helpIntroduction = m_helpIntroduction.arg(tr("Current Context"))
+                             .arg(tShortCutManager().get_translation_for("TAudioTrack"))
+                             .arg(tShortCutManager().get_translation_for("TAudioClip"));
 
 
     QMap<QString, QString> classNamesMap;
@@ -116,12 +118,12 @@ TContextHelpWidget::TContextHelpWidget(QWidget* parent)
     }
 
     int index = config().get_property("ShortcutsHelp", "DropDownIndex", 0).toInt();
-        m_comboBox->setCurrentIndex(index);
+    m_comboBox->setCurrentIndex(index);
     combobox_activated(0);
 
-        connect(&cpointer(), SIGNAL(contextChanged()), this, SLOT(context_changed()));
-        connect(&ied(), SIGNAL(holdStarted()), this, SLOT(hold_started()));
-        connect(m_comboBox, SIGNAL(activated(int)), this, SLOT(combobox_activated(int)));
+    connect(&cpointer(), SIGNAL(contextChanged()), this, SLOT(context_changed()));
+    connect(&ied(), SIGNAL(holdStarted()), this, SLOT(hold_started()));
+    connect(m_comboBox, SIGNAL(activated(int)), this, SLOT(combobox_activated(int)));
     connect(&tShortCutManager(), SIGNAL(functionKeysChanged()), this, SLOT(function_keys_changed()));
 }
 
@@ -132,17 +134,17 @@ TContextHelpWidget::~TContextHelpWidget()
 
 void TContextHelpWidget::context_changed()
 {
-        if (parentWidget()->isHidden()) {
-                return;
-        }
+    if (parentWidget()->isHidden()) {
+        return;
+    }
 
-        if (m_comboBox->currentIndex() != 1) {
-                return;
-        }
+    if (m_comboBox->currentIndex() != 1) {
+        return;
+    }
 
-        QList<ContextItem*> items = cpointer().get_active_context_items();
+    QList<TContextItem*> items = cpointer().get_active_context_items();
 
-        if (items.size()) {
+    if (items.size()) {
         QString newClassName = items.first()->metaObject()->className();
         if (m_currentClassName == newClassName)
         {
@@ -150,50 +152,50 @@ void TContextHelpWidget::context_changed()
         }
         m_textEdit->setHtml(get_html_for_object(items.first()));
         m_currentClassName = newClassName;
-        }
+    }
 }
 
 void TContextHelpWidget::hold_started()
 {
-        if (m_comboBox->currentIndex() != 1) {
-                return;
-        }
+    if (m_comboBox->currentIndex() != 1) {
+        return;
+    }
 
-        TCommand* hold = ied().get_holding_command();
-        if (hold) {
-                m_textEdit->setHtml(get_html_for_object(hold));
+    TCommand* hold = ied().get_holding_command();
+    if (hold) {
+        m_textEdit->setHtml(get_html_for_object(hold));
         m_currentClassName = hold->metaObject()->className();
-        }
+    }
 }
 
 QString TContextHelpWidget::get_html_for_object(QObject *obj)
 {
-        const QMetaObject* mo = obj->metaObject();
+    const QMetaObject* mo = obj->metaObject();
 
-        if (m_help.contains(mo->className())) {
-                return m_help.value(mo->className());
-        }
+    if (m_help.contains(mo->className())) {
+        return m_help.value(mo->className());
+    }
 
     QString html = tShortCutManager().createHtmlForClass(mo->className(), obj);
 
-        m_help.insert(mo->className(), html);
+    m_help.insert(mo->className(), html);
 
-        return html;
+    return html;
 }
 
 void TContextHelpWidget::combobox_activated(int index)
 {
-        if (index == 0) {
-                m_textEdit->setHtml(m_helpIntroduction);
-                return;
-        }
+    if (index == 0) {
+        m_textEdit->setHtml(m_helpIntroduction);
+        return;
+    }
 
-        QString className = m_comboBox->itemData(index).toString();
+    QString className = m_comboBox->itemData(index).toString();
 
-        if (m_help.contains(className)) {
-                m_textEdit->setHtml(m_help.value(className));
-                return;
-        }
+    if (m_help.contains(className)) {
+        m_textEdit->setHtml(m_help.value(className));
+        return;
+    }
     else
     {
         QString html = tShortCutManager().createHtmlForClass(className);

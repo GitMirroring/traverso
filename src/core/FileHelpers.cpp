@@ -32,11 +32,10 @@ $Id: FileHelpers.cpp,v 1.10 2007/11/05 15:49:30 r_sijrier Exp $
 #include <QObject>
 #include <QFile>
 
-#include "Debugger.h"
 
 // delete file/dir pName if it is a directory, calls itself recursively
 // on any file/dir in the directory before removing the directory
-int FileHelper::remove_recursively(const QString& pName)
+int TFileHelper::remove_recursively(const QString& pName)
 {
 	QString name = config().get_property("Project", "directory", "/directory/unknown").toString();
 	name += "/" + pName;
@@ -88,7 +87,7 @@ int FileHelper::remove_recursively(const QString& pName)
 }
 
 
-int FileHelper::copy_recursively(const QString& pNameFrom, const QString& pNameTo)
+int TFileHelper::copy_recursively(const QString& pNameFrom, const QString& pNameTo)
 {
 #if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
 	QString nameFrom = config().get_property("Project", "directory", "/directory/unknown").toString();
@@ -190,7 +189,7 @@ int FileHelper::copy_recursively(const QString& pNameFrom, const QString& pNameT
 	return -1;
 }
 
-QString FileHelper::fileerror_to_string(int error)
+QString TFileHelper::fileerror_to_string(int error)
 {
 	switch(error) {
         case QFile::NoError: return QObject::tr("No error occurred");

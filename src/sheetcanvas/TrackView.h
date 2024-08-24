@@ -22,15 +22,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef TRACK_VIEW_H
 #define TRACK_VIEW_H
 
-#include "Track.h"
+#include "TTrack.h"
 #include "ViewItem.h"
 #include <QPropertyAnimation>
 
-class AudioClip;
-class AudioTrack;
+class TAudioClip;
+class TAudioTrack;
 class PluginChainView;
 class CurveView;
-class Track;
+class TTrack;
 class TrackPanelView;
 class TTrackLaneView;
 
@@ -41,12 +41,12 @@ class TrackView : public ViewItem
     Q_PROPERTY(qreal yPosition READ getYPosition WRITE setYPosition)
 
 public:
-	TrackView(SheetView* sv, Track* track);
+	TrackView(TSheetView* sv, TTrack* track);
 	~TrackView();
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
-    Track* get_track() const {return m_track;}
+    TTrack* get_track() const {return m_track;}
     TrackPanelView* get_panel_view() const {return m_panel;}
     TTrackLaneView* get_primary_lane_view() const {return m_primaryLaneView;}
 
@@ -67,7 +67,7 @@ protected:
 	TTrackLaneView*		m_volumeAutomationLaneView;
 	PluginChainView*	m_pluginChainView;
 	CurveView*              m_curveView;
-	Track*                  m_track;
+	TTrack*                  m_track;
 	TrackPanelView*		m_panel{};
 	int			m_height{};
 	int			m_paintBackground{};

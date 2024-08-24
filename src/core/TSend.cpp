@@ -22,13 +22,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSend.h"
 
 #include "AudioBus.h"
-#include "Project.h"
-#include "ProjectManager.h"
+#include "TProject.h"
+#include "TProjectManager.h"
 #include "Utils.h"
-#include "Track.h"
+#include "TTrack.h"
 
 
-TSend::TSend(Track* track)
+TSend::TSend(TTrack* track)
     : QObject(track)
     , m_track(track)
 {
@@ -37,7 +37,7 @@ TSend::TSend(Track* track)
         init();
 }
 
-TSend::TSend(Track* track, AudioBus* bus)
+TSend::TSend(TTrack* track, AudioBus* bus)
     : QObject(track)
     , m_track(track)
 {
@@ -78,7 +78,7 @@ QDomNode TSend::get_state( QDomDocument doc)
 
 int TSend::set_state( const QDomNode & node )
 {
-        Project* project = pm().get_project();
+        TProject* project = pm().get_project();
         if (!project) {
                 printf("TSend::set_state: Oh boy, no project?? Can't restore state without a project running!!\n");
                 return -1;

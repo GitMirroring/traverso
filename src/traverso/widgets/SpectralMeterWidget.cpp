@@ -27,11 +27,11 @@
 #include "TAudioPluginChain.h"
 #include <SpectralMeter.h>
 #include "TCommand.h"
-#include <Project.h>
+#include <TProject.h>
 #include "TAudioDevice.h"
-#include <Sheet.h>
+#include <TSheet.h>
 #include <TBusTrack.h>
-#include <Themer.h>
+#include <TThemer.h>
 
 #include <QFileDialog>
 #include <QInputDialog>

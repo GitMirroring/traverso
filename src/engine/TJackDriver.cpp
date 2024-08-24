@@ -29,7 +29,7 @@
 
 #include "TAudioDevice.h"
 #include "AudioChannel.h"
-#include "ThreadSaveMessagePosting.h"
+#include "TAudioThreadMessageQueue.h"
 #include "TTimeRef.h"
 
 

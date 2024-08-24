@@ -24,9 +24,9 @@
 
 #include "TCommand.h"
 
-class AudioClipView;
-class AudioTrack;
-class AudioClip;
+class TAudioClipView;
+class TAudioTrack;
+class TAudioClip;
 class QGraphicsRectItem;
 
 class CropClip : public TCommand
@@ -34,7 +34,7 @@ class CropClip : public TCommand
         Q_OBJECT
 
 public :
-        CropClip(AudioClipView* cv);
+        CropClip(TAudioClipView* cv);
         ~CropClip();
 
         int begin_hold();
@@ -47,11 +47,11 @@ public :
         int jog();
 
 private:
-        AudioClipView* m_cv;
-        AudioTrack* m_track;
-        AudioClip* m_clip;
-        AudioClip* leftClip{};
-        AudioClip* rightClip{};
+        TAudioClipView* m_cv;
+        TAudioTrack* m_track;
+        TAudioClip* m_clip;
+        TAudioClip* leftClip{};
+        TAudioClip* rightClip{};
         QGraphicsRectItem* m_selection;
         qint64 x1;
         qint64 x2;

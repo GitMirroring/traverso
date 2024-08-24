@@ -28,16 +28,16 @@
 #include "TTimeRef.h"
 
 class QString;
-class AudioClip;
-class AudioTrack;
-class ReadSource;
+class TAudioClip;
+class TAudioTrack;
+class TReadAudioSource;
 
 class TAudioFileImportCommand : public TCommand
 {
     Q_OBJECT
 
 public :
-    TAudioFileImportCommand(ContextItem* context);
+    TAudioFileImportCommand(TContextItem* context);
     ~TAudioFileImportCommand();
 
     int prepare_actions();
@@ -48,16 +48,16 @@ public :
     int create_readsource();
     void create_audioclip();
     void set_file_name(const QString& fileName);
-    void set_track(AudioTrack* track);
+    void set_track(TAudioTrack* track);
     void set_import_location(const TTimeRef& location);
     void set_length(const TTimeRef& length);
     void set_silent(bool silent);
-    ReadSource* readsource() {return m_readSource;}
+    TReadAudioSource* readsource() {return m_readSource;}
 
 private :
-    AudioTrack*     m_track;
-    AudioClip*      m_clip;
-    ReadSource* 	m_readSource;
+    TAudioTrack*     m_track;
+    TAudioClip*      m_clip;
+    TReadAudioSource* 	m_readSource;
     QString         m_fileName;
     QString         m_name;
     TTimeRef		m_initialLength;
@@ -65,7 +65,7 @@ private :
     bool            m_silent;
     bool            m_hasPosition;
 
-    void init(AudioTrack* track, const QString& filename);
+    void init(TAudioTrack* track, const QString& filename);
 };
 
 #endif

@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef T_AUDIO_PLUGIN_CHAIN_H
 #define T_AUDIO_PLUGIN_CHAIN_H
 
-#include <ContextItem.h>
+#include <TContextItem.h>
 #include <QList>
 #include <QDomNode>
 #include "TAudioPlugin.h"
@@ -33,12 +33,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 class TSession;
 class AudioBus;
 
-class TAudioPluginChain : public ContextItem
+class TAudioPluginChain : public TContextItem
 {
     Q_OBJECT
 
 public:
-    TAudioPluginChain(ContextItem* parent, TSession* session=nullptr);
+    TAudioPluginChain(TContextItem* parent, TSession* session=nullptr);
     ~TAudioPluginChain();
 
     QDomNode get_state(QDomDocument doc);

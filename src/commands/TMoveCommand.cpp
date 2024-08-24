@@ -23,16 +23,16 @@
 
 #include "ClipsViewPort.h"
 #include "TInputEventDispatcher.h"
-#include "Project.h"
-#include "ProjectManager.h"
-#include "Sheet.h"
-#include "SheetView.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TSheet.h"
+#include "TSheetView.h"
 
 #include <QScrollBar>
 
 #include "Debugger.h"
 
-TMoveCommand::TMoveCommand(SheetView *sv, ContextItem* item, const QString &description)
+TMoveCommand::TMoveCommand(TSheetView *sv, TContextItem* item, const QString &description)
     : TCommand(item, description)
     , d(new Data())
 {
@@ -232,7 +232,7 @@ void TMoveCommand::process_collected_number(const QString &collected)
 
 void TMoveCommand::toggle_snap_on_off()
 {
-	Sheet* sheet = pm().get_project()->get_active_sheet();
+	TSheet* sheet = pm().get_project()->get_active_sheet();
 	sheet->toggle_snap();
     d->doSnap = sheet->is_snap_on();
 

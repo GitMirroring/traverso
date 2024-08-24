@@ -20,8 +20,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef COMMAND_PLUGIN_H
-#define COMMAND_PLUGIN_H
+#ifndef TCOMMAND_PLUGIN_H
+#define TCOMMAND_PLUGIN_H
 
 #include <QtPlugin>
 #include "TCommand.h"

@@ -25,8 +25,8 @@
 #include "ui_ProjectConverterDialog.h"
 #include <QDialog>
 
-class Project;
-class ProjectConverter;
+class TProject;
+class TProjectConverter;
 
 class ProjectConverterDialog : public QDialog, protected Ui::ProjectConverterDialog
 {
@@ -39,7 +39,7 @@ public:
 	void set_project(const QString& rootdir, const QString& name);
 	
 private:
-	ProjectConverter* m_converter;
+	TProjectConverter* m_converter;
 	QString m_projectname;
 	
 	void accept();

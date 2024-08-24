@@ -22,7 +22,7 @@
 #include "TTrackSelector.h"
 
 #include "TSession.h"
-#include "Track.h"
+#include "TTrack.h"
 
 TTrackSelector::TTrackSelector(QWidget* parent, TSession* parentSession, TSession* childSession)
         : QDialog(parent)
@@ -31,8 +31,8 @@ TTrackSelector::TTrackSelector(QWidget* parent, TSession* parentSession, TSessio
 {
         setupUi(this);
 
-        QList<Track*> tracks = parentSession->get_tracks();
-        foreach(Track* track, tracks) {
+        QList<TTrack*> tracks = parentSession->get_tracks();
+        foreach(TTrack* track, tracks) {
                 QListWidgetItem* item = new QListWidgetItem(tracksListWidget);
                 item->setText(track->get_name());
                 item->setData(Qt::UserRole, track->get_id());
@@ -55,7 +55,7 @@ void TTrackSelector::accept()
 {
         QList<QListWidgetItem*> selected = tracksListWidget->selectedItems();
         foreach(QListWidgetItem* item, selected) {
-                Track* track = m_parentSession->get_track(item->data(Qt::UserRole).toLongLong());
+                TTrack* track = m_parentSession->get_track(item->data(Qt::UserRole).toLongLong());
                 Q_ASSERT(track);
                 m_childSession->add_track(track);
         }

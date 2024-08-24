@@ -26,13 +26,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "PluginChainView.h"
 #include "TrackPanelView.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "TTrackLaneView.h"
-#include "Themer.h"
+#include "TThemer.h"
 
 #include <Debugger.h>
 
-TBusTrackView::TBusTrackView(SheetView* sv, TBusTrack* group)
+TBusTrackView::TBusTrackView(TSheetView* sv, TBusTrack* group)
         : TrackView(sv, group)
 {
     PENTERCONS;

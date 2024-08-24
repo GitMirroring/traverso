@@ -22,10 +22,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "AudioClipEditDialog.h"
 
-#include "AudioClip.h"
-#include "FadeCurve.h"
-#include "ProjectManager.h"
-#include "ReadSource.h"
+#include "TAudioClip.h"
+#include "TFadeCurve.h"
+#include "TProjectManager.h"
+#include "TReadAudioSource.h"
 #include "TLocation.h"
 #include "Utils.h"
 #include "Mixer.h"
@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #define TIME_FORMAT "hh:mm:ss.zzz"
 
-AudioClipEditDialog::AudioClipEditDialog(AudioClip* clip, QWidget* parent) 
+AudioClipEditDialog::AudioClipEditDialog(TAudioClip* clip, QWidget* parent) 
 	: QDialog(parent), m_clip(clip)
 {
 	setupUi(this);

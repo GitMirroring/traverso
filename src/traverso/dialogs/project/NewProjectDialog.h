@@ -25,7 +25,7 @@
 #include "ui_NewProjectDialog.h"
 #include <QDialog>
 
-class AudioFileCopyConvert;
+class TAudioFileCopyConvert;
 class ExportFormatOptionsWidget;
 class QButtonGroup;
 class TExportSpecification;
@@ -39,10 +39,10 @@ public:
 	NewProjectDialog(QWidget* parent = 0);
 	~NewProjectDialog();
 
-	AudioFileCopyConvert* get_converter();
+	TAudioFileCopyConvert* get_converter();
 
 private:
-	AudioFileCopyConvert* m_converter;
+	TAudioFileCopyConvert* m_converter;
 	TExportSpecification* m_exportSpec;
 	ExportFormatOptionsWidget* m_formatOptionsWidget{};
 	QButtonGroup* m_buttonGroup;

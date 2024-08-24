@@ -25,8 +25,8 @@
 
 #include "ViewPort.h"
 
-#include "ContextPointer.h"
-#include "Track.h"
+#include "TContextPointer.h"
+#include "TTrack.h"
 #include "Mixer.h"
 #include "TInputEventDispatcher.h"
 
@@ -42,7 +42,7 @@
  */
 
 
-TrackPan::TrackPan(Track* track, QVariantList args)
+TrackPan::TrackPan(TTrack* track, QVariantList args)
 	: TCommand(track, "")
 {
         m_track = track;

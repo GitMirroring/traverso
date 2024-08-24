@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ProjectManagerDialog.h"
 
 #include "TInformUser.h"
-#include "ProjectManager.h"
+#include "TProjectManager.h"
 
 #include <QStringList>
 #include <QInputDialog>
@@ -34,8 +34,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QMessageBox>
 #include <QUndoStack>
 #include <dialogs/project/NewSheetDialog.h>
-#include "Project.h"
-#include "Sheet.h"
+#include "TProject.h"
+#include "TSheet.h"
 #include "TCommand.h"
 #include "TMainWindow.h"
 
@@ -69,13 +69,13 @@ ProjectManagerDialog::ProjectManagerDialog( QWidget * parent )
 
 	connect(treeSheetWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(sheetitem_clicked(QTreeWidgetItem*,int)));
         connect(sheetsAreTrackFolderCheckBox, SIGNAL(stateChanged(int)), this, SLOT(sheets_are_track_folder_check_box_state_changed(int)));
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
 }
 
 ProjectManagerDialog::~ProjectManagerDialog()
 {}
 
-void ProjectManagerDialog::set_project(Project* project)
+void ProjectManagerDialog::set_project(TProject* project)
 {
 	m_project = project;
 	
@@ -149,7 +149,7 @@ void ProjectManagerDialog::update_sheet_list( )
 	}
 	
 	treeSheetWidget->clear();
-	foreach(Sheet* sheet, m_project->get_sheets()) {
+	foreach(TSheet* sheet, m_project->get_sheets()) {
 
 		QString sheetNr = QString::number(m_project->get_sheet_index(sheet->get_id()));
                 QString sheetName = "Sheet " + sheetNr + " - " + sheet->get_name();
@@ -175,7 +175,7 @@ void ProjectManagerDialog::sheetitem_clicked( QTreeWidgetItem* item, int)
 		return;
 	}
 
-	Sheet* sheet;
+	TSheet* sheet;
 
 	qint64 id = item->data(0, Qt::UserRole).toLongLong();
 	sheet = m_project->get_sheet(id);
@@ -200,7 +200,7 @@ void ProjectManagerDialog::on_renameSheetButton_clicked( )
 	}
 	
 	qint64 id = item->data(0, Qt::UserRole).toLongLong();
-	Sheet* sheet = m_project->get_sheet(id);
+	TSheet* sheet = m_project->get_sheet(id);
 	
 	Q_ASSERT(sheet);
 	
@@ -340,7 +340,7 @@ void ProjectManagerDialog::on_sheetAudioSourcesPushButton_clicked()
 
         qint64 id = item->data(0, Qt::UserRole).toLongLong();
 
-        Sheet* sheet = m_project->get_sheet(id);
+        TSheet* sheet = m_project->get_sheet(id);
 
         if (!sheet) {
                 return;

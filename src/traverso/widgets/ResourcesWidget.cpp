@@ -21,15 +21,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ResourcesWidget.h"
 
-#include <ProjectManager.h>
-#include <Project.h>
-#include <Sheet.h>
-#include <ResourcesManager.h>
-#include <AudioSource.h>
-#include <ReadSource.h>
-#include <AudioClip.h>
+#include <TProjectManager.h>
+#include <TProject.h>
+#include <TSheet.h>
+#include <TResourcesManager.h>
+#include <TAudioSource.h>
+#include <TReadAudioSource.h>
+#include <TAudioClip.h>
 #include <Utils.h>
-#include <Themer.h>
+#include <TThemer.h>
 
 #include <QHeaderView>
 #include <QFileSystemModel>
@@ -179,7 +179,7 @@ ResourcesWidget::ResourcesWidget(QWidget * parent)
     connect(sheetComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(sheet_combo_box_index_changed(int)));
     connect(sheetComboBox, SIGNAL(activated(int)), this, SLOT(sheet_combo_box_index_changed(int)));
 
-    connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
 }
 
 ResourcesWidget::~ ResourcesWidget()
@@ -191,7 +191,7 @@ void ResourcesWidget::showEvent( QShowEvent * event )
 	Q_UNUSED(event);
 }
 
-void ResourcesWidget::set_project(Project * project)
+void ResourcesWidget::set_project(TProject * project)
 {
     m_project = project;
 
@@ -215,26 +215,26 @@ void ResourcesWidget::project_load_finished()
 		return;
 	}
 	
-	ResourcesManager* rsmanager = m_project->get_audiosource_manager();
+	TResourcesManager* rsmanager = m_project->get_audiosource_manager();
 	
-	connect(m_project, SIGNAL(sheetAdded(Sheet*)), this, SLOT(sheet_added(Sheet*)));
-	connect(m_project, SIGNAL(sheetRemoved(Sheet*)), this, SLOT(sheet_removed(Sheet*)));
-        connect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_current_session(TSession*)));
+    connect(m_project, &TProject::sheetAdded, this, &ResourcesWidget::sheet_added);
+    connect(m_project, &TProject::sheetRemoved, this, &ResourcesWidget::sheet_removed);
+    connect(m_project, &TProject::currentSessionChanged, this, &ResourcesWidget::set_current_session);
 	
-	connect(rsmanager, SIGNAL(clipAdded(AudioClip*)), this, SLOT(add_clip(AudioClip*)));
-	connect(rsmanager, SIGNAL(clipRemoved(AudioClip*)), this, SLOT(remove_clip(AudioClip*)));
-	connect(rsmanager, SIGNAL(sourceAdded(ReadSource*)), this, SLOT(add_source(ReadSource*)));
-	connect(rsmanager, SIGNAL(sourceRemoved(ReadSource*)), this, SLOT(remove_source(ReadSource*)));
+    connect(rsmanager, &TResourcesManager::clipAdded, this, &ResourcesWidget::add_clip);
+    connect(rsmanager, &TResourcesManager::clipRemoved, this, &ResourcesWidget::remove_clip);
+    connect(rsmanager, &TResourcesManager::sourceAdded, this, &ResourcesWidget::add_source);
+    connect(rsmanager, &TResourcesManager::sourceRemoved, this, &ResourcesWidget::remove_source);
 	
-	foreach(ReadSource* rs, resources_manager()->get_all_audio_sources()) {
+	foreach(TReadAudioSource* rs, resources_manager()->get_all_audio_sources()) {
 		add_source(rs);
 	}
 	
-	foreach(AudioClip* clip, resources_manager()->get_all_clips()) {
+	foreach(TAudioClip* clip, resources_manager()->get_all_clips()) {
 		add_clip(clip);
 	}
 	
-	foreach(Sheet* sheet, m_project->get_sheets()) {
+	foreach(TSheet* sheet, m_project->get_sheets()) {
 		sheet_added(sheet);
 	}
 	
@@ -251,16 +251,16 @@ void ResourcesWidget::sheet_combo_box_index_changed(int index)
                 return;
         }
 	qint64 id = sheetComboBox->itemData(index).toLongLong();
-	Sheet* sheet = m_project->get_sheet(id);
+	TSheet* sheet = m_project->get_sheet(id);
     set_current_session(sheet);
 }
 
-void ResourcesWidget::sheet_added(Sheet * sheet)
+void ResourcesWidget::sheet_added(TSheet * sheet)
 {
 	sheetComboBox->addItem("Sheet " + QString::number(m_project->get_sheet_index(sheet->get_id())), sheet->get_id());
 }
 
-void ResourcesWidget::sheet_removed(Sheet * sheet)
+void ResourcesWidget::sheet_removed(TSheet * sheet)
 {
 	int index = sheetComboBox->findData(sheet->get_id());
 	sheetComboBox->removeItem(index);
@@ -268,7 +268,7 @@ void ResourcesWidget::sheet_removed(Sheet * sheet)
 
 void ResourcesWidget::set_current_session(TSession * session)
 {
-    Sheet* sheet = qobject_cast<Sheet*>(session);
+    TSheet* sheet = qobject_cast<TSheet*>(session);
     if (! sheet)  {
         return;
 
@@ -307,7 +307,7 @@ void ResourcesWidget::filter_on_current_sheet()
 }
 
 
-void ResourcesWidget::add_clip(AudioClip * clip)
+void ResourcesWidget::add_clip(TAudioClip * clip)
 {
 	ClipTreeItem* item = m_clipindices.value(clip->get_id());
 	
@@ -329,7 +329,7 @@ void ResourcesWidget::add_clip(AudioClip * clip)
 	update_clip_state(clip);
 }
 
-void ResourcesWidget::remove_clip(AudioClip * clip)
+void ResourcesWidget::remove_clip(TAudioClip * clip)
 {
 	ClipTreeItem* item = m_clipindices.value(clip->get_id());
 	
@@ -340,7 +340,7 @@ void ResourcesWidget::remove_clip(AudioClip * clip)
 	update_clip_state(clip);
 }
 
-void ResourcesWidget::add_source(ReadSource * source)
+void ResourcesWidget::add_source(TReadAudioSource * source)
 {
 	SourceTreeItem* item = m_sourceindices.value(source->get_id());
 	
@@ -355,7 +355,7 @@ void ResourcesWidget::add_source(ReadSource * source)
 	item->source_state_changed();
 }
 
-void ResourcesWidget::remove_source(ReadSource * source)
+void ResourcesWidget::remove_source(TReadAudioSource * source)
 {
 	SourceTreeItem* item = m_sourceindices.value(source->get_id());
 
@@ -368,7 +368,7 @@ void ResourcesWidget::remove_source(ReadSource * source)
 	delete item;
 }
 
-void ResourcesWidget::update_clip_state(AudioClip* clip)
+void ResourcesWidget::update_clip_state(TAudioClip* clip)
 {
 	ClipTreeItem* item = m_clipindices.value(clip->get_id());
 	Q_ASSERT(item);
@@ -385,12 +385,12 @@ void ResourcesWidget::update_source_state(qint64 id)
 	item->source_state_changed();
 }
 
-ClipTreeItem::ClipTreeItem(SourceTreeItem * parent, AudioClip * clip)
+ClipTreeItem::ClipTreeItem(SourceTreeItem * parent, TAudioClip * clip)
 	: QTreeWidgetItem(parent)
 	, m_clip(clip)
 {
 	setData(0, Qt::UserRole, clip->get_id());
-	connect(clip, SIGNAL(recordingFinished(AudioClip*)), this, SLOT(clip_state_changed()));
+    connect(clip, &TAudioClip::recordingFinished, this, &ClipTreeItem::clip_state_changed);
 	connect(clip, SIGNAL(stateChanged()), this, SLOT(clip_state_changed()));
 }
 
@@ -416,7 +416,7 @@ void ClipTreeItem::clip_state_changed()
 	setToolTip(0, m_clip->get_name() + "   " + start + " - " + end);
 }
 
-void ClipTreeItem::apply_filter(Sheet * sheet)
+void ClipTreeItem::apply_filter(TSheet * sheet)
 {
 	if (m_clip->get_sheet_id() == sheet->get_id()) {
 		if (isHidden()) {
@@ -431,14 +431,14 @@ void ClipTreeItem::apply_filter(Sheet * sheet)
 
 
 
-SourceTreeItem::SourceTreeItem(QTreeWidget* parent, ReadSource * source)
+SourceTreeItem::SourceTreeItem(QTreeWidget* parent, TReadAudioSource * source)
 	: QTreeWidgetItem(parent)
 	, m_source(source)
 {
 	connect(m_source, SIGNAL(stateChanged()), this, SLOT(source_state_changed()));
 }
 
-void SourceTreeItem::apply_filter(Sheet * sheet)
+void SourceTreeItem::apply_filter(TSheet * sheet)
 {
 	if (m_source->get_orig_sheet_id() == sheet->get_id()) {
 		setHidden(false);

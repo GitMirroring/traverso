@@ -24,16 +24,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QInputDialog>
 #include <QStringList>
 
-#include "AudioClipManager.h"
-#include "AudioClip.h"
-#include "AudioTrack.h"
-#include "Curve.h"
-#include "FadeCurve.h"
+#include "TAudioClipManager.h"
+#include "TAudioClip.h"
+#include "TAudioTrack.h"
+#include "TCurve.h"
+#include "TFadeCurve.h"
 #include "TAudioPlugin.h"
 #include "TInformUser.h"
-#include "Project.h"
-#include "ProjectManager.h"
-#include "Sheet.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TSheet.h"
 #include "TBusTrack.h"
 #include "TInputEventDispatcher.h"
 #include "TShortCutFunction.h"
@@ -61,24 +61,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 TraversoCommands::TraversoCommands()
 {
 
-    tShortCutManager().add_meta_object(&Sheet::staticMetaObject);
-    tShortCutManager().add_meta_object(&SheetView::staticMetaObject);
-    tShortCutManager().add_meta_object(&AudioTrack::staticMetaObject);
-    tShortCutManager().add_meta_object(&AudioTrackView::staticMetaObject);
+    tShortCutManager().add_meta_object(&TSheet::staticMetaObject);
+    tShortCutManager().add_meta_object(&TSheetView::staticMetaObject);
+    tShortCutManager().add_meta_object(&TAudioTrack::staticMetaObject);
+    tShortCutManager().add_meta_object(&TAudioTrackView::staticMetaObject);
     tShortCutManager().add_meta_object(&TBusTrack::staticMetaObject);
     tShortCutManager().add_meta_object(&TBusTrackView::staticMetaObject);
-    tShortCutManager().add_meta_object(&AudioClip::staticMetaObject);
-    tShortCutManager().add_meta_object(&AudioClipView::staticMetaObject);
-    tShortCutManager().add_meta_object(&Curve::staticMetaObject);
+    tShortCutManager().add_meta_object(&TAudioClip::staticMetaObject);
+    tShortCutManager().add_meta_object(&TAudioClipView::staticMetaObject);
+    tShortCutManager().add_meta_object(&TCurve::staticMetaObject);
     tShortCutManager().add_meta_object(&CurveView::staticMetaObject);
     tShortCutManager().add_meta_object(&TTimeLineRuler::staticMetaObject);
     tShortCutManager().add_meta_object(&TimeLineView::staticMetaObject);
     tShortCutManager().add_meta_object(&TAudioPlugin::staticMetaObject);
     tShortCutManager().add_meta_object(&TAudioPluginView::staticMetaObject);
-    tShortCutManager().add_meta_object(&FadeCurve::staticMetaObject);
-    tShortCutManager().add_meta_object(&FadeCurveView::staticMetaObject);
+    tShortCutManager().add_meta_object(&TFadeCurve::staticMetaObject);
+    tShortCutManager().add_meta_object(&TFadeCurveView::staticMetaObject);
     tShortCutManager().add_meta_object(&TMainWindow::staticMetaObject);
-    tShortCutManager().add_meta_object(&ProjectManager::staticMetaObject);
+    tShortCutManager().add_meta_object(&TProjectManager::staticMetaObject);
     tShortCutManager().add_meta_object(&TGainGroupCommand::staticMetaObject);
     tShortCutManager().add_meta_object(&MoveTrack::staticMetaObject);
     tShortCutManager().add_meta_object(&MoveClip::staticMetaObject);
@@ -120,21 +120,21 @@ TraversoCommands::TraversoCommands()
     tShortCutManager().add_translation("WorkCursorMove", tr("Move Work Cursor"));
     tShortCutManager().add_translation("Zoom", tr("Zoom"));
 
-    tShortCutManager().add_translation("AudioClip",tr("Audio Clip"));
-    tShortCutManager().add_translation("AudioTrack", tr("Audio Track"));
-    tShortCutManager().add_translation("Curve",tr("Curve"));
-    tShortCutManager().add_translation("CurveNode",tr("Curve Node"));
-    tShortCutManager().add_translation("FadeCurve",tr("Fade Curve"));
+    tShortCutManager().add_translation("TAudioClip",tr("Audio Clip"));
+    tShortCutManager().add_translation("TAudioTrack", tr("Audio Track"));
+    tShortCutManager().add_translation("TCurve",tr("Curve"));
+    tShortCutManager().add_translation("TCurveNode",tr("Curve Node"));
+    tShortCutManager().add_translation("TFadeCurve",tr("Fade Curve"));
     tShortCutManager().add_translation("FadeRange", tr("Fade Length"));
     tShortCutManager().add_translation("FadeBend", tr("Bend Factor"));
     tShortCutManager().add_translation("FadeStrength", tr("Strength Factor"));
-    tShortCutManager().add_translation("Marker",tr("Marker"));
-    tShortCutManager().add_translation("Sheet",tr("Sheet"));
+    tShortCutManager().add_translation("TTimeLineMarker",tr("Marker"));
+    tShortCutManager().add_translation("TSheet",tr("Sheet"));
     tShortCutManager().add_translation("TBusTrack",tr("Bus Track"));
     tShortCutManager().add_translation("TTimeLineRuler",tr("Time Line"));
     tShortCutManager().add_translation("TBusTrackPanel", tr("Bus Track"));
     tShortCutManager().add_translation("TMainWindow", tr("Global"));
-    tShortCutManager().add_translation("ProjectManager", tr("Project Manager"));
+    tShortCutManager().add_translation("TProjectManager", tr("Project Manager"));
     tShortCutManager().add_translation("TrackPanelGain", tr("Gain"));
     tShortCutManager().add_translation("TrackPanelPan", tr("Panorama"));
     tShortCutManager().add_translation("TrackPanelLed", tr("Track Panel Button"));
@@ -142,14 +142,14 @@ TraversoCommands::TraversoCommands()
     tShortCutManager().add_translation("VUMeterLevel", tr("VU Level"));
     tShortCutManager().add_translation("VUMeter", tr("VU Level"));
     tShortCutManager().add_translation("AudioTrackPanel",tr("Audio Track"));
-    tShortCutManager().add_translation("Plugin",tr("Plugin"));
+    tShortCutManager().add_translation("TAudioPlugin",tr("Plugin"));
     tShortCutManager().add_translation("PlayHead", tr("Play Head"));
     tShortCutManager().add_translation("PositionIndicator", tr("Position Indicator"));
     tShortCutManager().add_translation("WorkCursor", tr("Work Cursor"));
     tShortCutManager().add_translation("Playhead", tr("Play Cursor"));
     tShortCutManager().add_translation("CorrelationMeter", tr("Correlation Meter"));
     tShortCutManager().add_translation("SpectralMeter", tr("Spectral Analyzer"));
-    tShortCutManager().add_translation("Track", tr("Track"));
+    tShortCutManager().add_translation("TTrack", tr("Track"));
     tShortCutManager().add_translation("TMoveCommand", tr("Shuttle"));
     tShortCutManager().add_translation("EditProperties", tr("Edit Properties"));
     tShortCutManager().add_translation("TAudioProcessingNode", tr("Audio Processing Node"));
@@ -188,13 +188,13 @@ TraversoCommands::TraversoCommands()
     add_function(function, ArrowKeyBrowserCommand);
 
     function = new TShortCutFunction();
-    function->object = "AudioTrack";
+    function->object = "TAudioTrack";
     function->setDescription(tr("Import Audio"));
     function->commandName = "ImportAudio";
     add_function(function, ImportAudioCommand);
 
     function = new TShortCutFunction();
-    function->object = "AudioTrackView";
+    function->object = "TAudioTrackView";
     function->setDescription(tr("Fold Track"));
     function->commandName = "FoldTrack";
     function->useX = true;
@@ -226,7 +226,7 @@ TraversoCommands::TraversoCommands()
     add_function(function, MoveCurveNodesCommand);
 
     function = new TShortCutFunction();
-    function->object = "AudioTrack";
+    function->object = "TAudioTrack";
     function->setDescription(tr("Gain"));
     function->commandName = "AudioTrackGain";
     function->setInheritedBase("GainBase");
@@ -240,7 +240,7 @@ TraversoCommands::TraversoCommands()
     add_function(function, GainCommand);
 
     function = new TShortCutFunction();
-    function->object = "SheetView";
+    function->object = "TSheetView";
     function->setDescription(tr("Zoom"));
     function->commandName = "Zoom";
     function->useX = true;
@@ -264,20 +264,20 @@ TraversoCommands::TraversoCommands()
     add_function(function, MoveMarkerCommand);
 
     function = new TShortCutFunction();
-    function->object = "Track";
+    function->object = "TTrack";
     function->setDescription(tr("Track Pan"));
     function->commandName = "TrackPan";
     add_function(function, TrackPanCommand);
 
 
     function = new TShortCutFunction();
-    function->object = "Track";
+    function->object = "TTrack";
     function->commandName = "RemoveTrack";
     function->setInheritedBase("DeleteBase");
     add_function(function, RemoveTrackCommand);
 
     function = new TShortCutFunction();
-    function->object = "PluginView";
+    function->object = "TAudioPluginView";
     function->commandName = "RemovePlugin";
     function->setInheritedBase("DeleteBase");
     add_function(function, RemovePluginCommand);
@@ -296,25 +296,25 @@ TraversoCommands::TraversoCommands()
     function->commandName = "PanKnobPanorama";
     add_function(function, TrackPanCommand);
 
-    create_and_add_function("AudioClipView", tr("Copy"), "CopyClip", MoveClipCommand, QStringList() << "copy", "", true, true);
-    create_and_add_function("AudioClipView", tr("Split"), "SplitClip", SplitClipCommand, QStringList(), "", true);
-    create_and_add_function("AudioClipView", tr("Magnetic Cut"), "CropClip", CropClipCommand);
-    create_and_add_function("AudioClipView", tr("Move"), "MoveClip", MoveClipCommand, QStringList() << "move", "MoveBase", true, true);
-    create_and_add_function("AudioClipView", tr("Move Edge"), "MoveClipEdge", MoveEdgeCommand, QStringList() << "false", "", true);
+    create_and_add_function("TAudioClipView", tr("Copy"), "CopyClip", MoveClipCommand, QStringList() << "copy", "", true, true);
+    create_and_add_function("TAudioClipView", tr("Split"), "SplitClip", SplitClipCommand, QStringList(), "", true);
+    create_and_add_function("TAudioClipView", tr("Magnetic Cut"), "CropClip", CropClipCommand);
+    create_and_add_function("TAudioClipView", tr("Move"), "MoveClip", MoveClipCommand, QStringList() << "move", "MoveBase", true, true);
+    create_and_add_function("TAudioClipView", tr("Move Edge"), "MoveClipEdge", MoveEdgeCommand, QStringList() << "false", "", true);
 
-    create_and_add_function("AudioClip", tr("External Processing"), "AudioClipExternalProcessing", AudioClipExternalProcessingCommand);
-    create_and_add_function("AudioClip", tr("Gain"), "AudioClipGain", GainCommand, QStringList(), "GainBase");
-    create_and_add_function("AudioClip", tr("Normalize Clip"), "NormalizeClip", NormalizeClipCommand);
-    create_and_add_function("AudioClip", tr("Remove AudioClip"), "RemoveClip", RemoveClipCommand, QStringList(), "DeleteBase");
-    create_and_add_function("AudioClip", tr("(De)Select"), "ClipSelectionSelect", ClipSelectionCommand, QStringList() << "toggle_selected");
+    create_and_add_function("TAudioClip", tr("External Processing"), "AudioClipExternalProcessing", AudioClipExternalProcessingCommand);
+    create_and_add_function("TAudioClip", tr("Gain"), "AudioClipGain", GainCommand, QStringList(), "GainBase");
+    create_and_add_function("TAudioClip", tr("Normalize Clip"), "NormalizeClip", NormalizeClipCommand);
+    create_and_add_function("TAudioClip", tr("Remove AudioClip"), "RemoveClip", RemoveClipCommand, QStringList(), "DeleteBase");
+    create_and_add_function("TAudioClip", tr("(De)Select"), "ClipSelectionSelect", ClipSelectionCommand, QStringList() << "toggle_selected");
 
-    create_and_add_function("FadeCurveView", tr("Length"), "FadeLength", FadeRangeCommand);
+    create_and_add_function("TFadeCurveView", tr("Length"), "FadeLength", FadeRangeCommand);
 
-    create_and_add_function("PluginView", tr("Move"), "MovePlugin", MovePluginCommand, QStringList(), "MoveBase", true);
+    create_and_add_function("TAudioPluginView", tr("Move"), "MovePlugin", MovePluginCommand, QStringList(), "MoveBase", true);
 
-    create_and_add_function("SheetView", tr("Fold Sheet"), "FoldSheet", MoveClipCommand, QStringList() << "fold_sheet", "", true, true);
-    create_and_add_function("SheetView", tr("Move Work Cursor"), "WorkCursorMove", WorkCursorMoveCommand);
-    create_and_add_function("SheetView", tr("Shuttle"), "Shuttle", ShuttleCommand, QStringList(), "", true, true);
+    create_and_add_function("TSheetView", tr("Fold Sheet"), "FoldSheet", MoveClipCommand, QStringList() << "fold_sheet", "", true, true);
+    create_and_add_function("TSheetView", tr("Move Work Cursor"), "WorkCursorMove", WorkCursorMoveCommand);
+    create_and_add_function("TSheetView", tr("Shuttle"), "Shuttle", ShuttleCommand, QStringList(), "", true, true);
 }
 
 void TraversoCommands::add_function(TShortCutFunction *function, TraversoCommand command)
@@ -352,12 +352,12 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     switch (m_dict.value(commandName)) {
     case GainCommand:
     {
-        ContextItem* contextItem = qobject_cast<ContextItem*>(obj);
+        TContextItem* contextItem = qobject_cast<TContextItem*>(obj);
         Q_ASSERT(contextItem);
 
         if (contextItem->metaObject()->className() == QString("TrackPanelGain")) {
             contextItem = contextItem->get_related_context_item();
-        } else if (AudioClipView* view = qobject_cast<AudioClipView*>(contextItem)) {
+        } else if (TAudioClipView* view = qobject_cast<TAudioClipView*>(contextItem)) {
             contextItem = view->get_related_context_item();
         } else if (TrackView* view = qobject_cast<TrackView*>(contextItem)) {
             contextItem = view->get_related_context_item();
@@ -372,10 +372,10 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
         auto group = new TGainGroupCommand(contextItem, arguments);
 
-        AudioClip* clip = qobject_cast<AudioClip*>(contextItem);
+        TAudioClip* clip = qobject_cast<TAudioClip*>(contextItem);
         if (clip && clip->is_selected()) {
 
-            QList<AudioClip* > selection;
+            QList<TAudioClip* > selection;
             clip->get_sheet()->get_audioclip_manager()->get_selected_clips(selection);
 
             // always the contextitem first so it will be the primary gain object
@@ -398,7 +398,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case TrackPanCommand:
     {
-        Track* track = qobject_cast<Track*>(obj);
+        TTrack* track = qobject_cast<TTrack*>(obj);
         if (! track) {
             TPanKnobView* knob = qobject_cast<TPanKnobView*>(obj);
             if(knob) {
@@ -415,7 +415,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case ImportAudioCommand:
     {
-        AudioTrack* track = qobject_cast<AudioTrack*>(obj);
+        TAudioTrack* track = qobject_cast<TAudioTrack*>(obj);
         if (! track) {
             PERROR("TraversoCommands: Supplied QObject was not a Track! "
                    "ImportAudioCommand needs a Track as argument");
@@ -429,7 +429,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case InsertSilenceCommand:
     {
-        AudioTrack* track = qobject_cast<AudioTrack*>(obj);
+        TAudioTrack* track = qobject_cast<TAudioTrack*>(obj);
         if (! track) {
             PERROR("TraversoCommands: Supplied QObject was not a Track! "
                    "ImportAudioCommand needs a Track as argument");
@@ -445,18 +445,18 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case AddNewAudioTrackCommand:
     {
-        Sheet* sheet = qobject_cast<Sheet*>(obj);
+        TSheet* sheet = qobject_cast<TSheet*>(obj);
         if (!sheet) {
             PERROR("TraversoCommands: Supplied QObject was not a Sheet! "
                    "AddNewAudioTrackCommand needs a Sheet as argument");
             return nullptr;
         }
-        return sheet->add_track(new AudioTrack(sheet, "Unnamed", AudioTrack::INITIAL_HEIGHT));
+        return sheet->add_track(new TAudioTrack(sheet, "Unnamed", TAudioTrack::INITIAL_HEIGHT));
     }
 
     case RemoveClipCommand:
     {
-        AudioClip* clip = qobject_cast<AudioClip*>(obj);
+        TAudioClip* clip = qobject_cast<TAudioClip*>(obj);
         if (!clip) {
             PERROR("TraversoCommands: Supplied QObject was not a Clip! "
                    "RemoveClipCommand needs a Clip as argument");
@@ -467,7 +467,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case RemoveTrackCommand:
     {
-        Track* track = qobject_cast<Track*>(obj);
+        TTrack* track = qobject_cast<TTrack*>(obj);
         if (!track) {
             PERROR("TraversoCommands: Supplied QObject was not a Track! "
                    "RemoveTrackCommand needs a Track as argument");
@@ -514,7 +514,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     }
     case AudioClipExternalProcessingCommand:
     {
-        AudioClip* clip = qobject_cast<AudioClip*>(obj);
+        TAudioClip* clip = qobject_cast<TAudioClip*>(obj);
         if (!clip) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClip! "
                    "AudioClipExternalProcessingCommand needs an AudioClip as argument");
@@ -525,7 +525,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case ClipSelectionCommand:
     {
-        Sheet* sheet = qobject_cast<Sheet*>(obj);
+        TSheet* sheet = qobject_cast<TSheet*>(obj);
         if (sheet) {
             QString action;
             if (!arguments.empty()) {
@@ -535,7 +535,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
                 }
             }
         }
-        AudioClip* clip = qobject_cast<AudioClip*>(obj);
+        TAudioClip* clip = qobject_cast<TAudioClip*>(obj);
         if (!clip) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClip! "
                    "ClipSelectionCommand needs an AudioClip as argument");
@@ -587,7 +587,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case MoveEdgeCommand:
     {
-        AudioClipView* view = qobject_cast<AudioClipView*>(obj);
+        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
                    "MoveEdgeCommand needs an AudioClipView as argument");
@@ -607,7 +607,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         // then trying to mimic 'if near to edge, drag edge' features.
     case MoveClipOrEdgeCommand:
     {
-        AudioClipView* view = qobject_cast<AudioClipView*>(obj);
+        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
 
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
@@ -633,7 +633,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case SplitClipCommand:
     {
-        AudioClipView* view = qobject_cast<AudioClipView*>(obj);
+        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
                    "SplitClipCommand needs an AudioClipView as argument");
@@ -644,7 +644,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case CropClipCommand:
     {
-        AudioClipView* view = qobject_cast<AudioClipView*>(obj);
+        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
                    "CropClipCommand needs an AudioClipView as argument");
@@ -655,7 +655,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case ArmTracksCommand:
     {
-        SheetView* view = qobject_cast<SheetView*>(obj);
+        TSheetView* view = qobject_cast<TSheetView*>(obj);
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                    "ArmTracksCommand needs an SheetView as argument");
@@ -666,7 +666,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case ZoomCommand:
     {
-        SheetView* view = qobject_cast<SheetView*>(obj);
+        TSheetView* view = qobject_cast<TSheetView*>(obj);
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                    "ZoomCommand needs an SheetView as argument");
@@ -678,7 +678,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case WorkCursorMoveCommand:
     {
-        SheetView* view = qobject_cast<SheetView*>(obj);
+        TSheetView* view = qobject_cast<TSheetView*>(obj);
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                    "WorkCursorMove Command needs an SheetView as argument");
@@ -699,7 +699,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case ArrowKeyBrowserCommand:
     {
-        SheetView* view = qobject_cast<SheetView*>(obj);
+        TSheetView* view = qobject_cast<TSheetView*>(obj);
         if (!view) {
             PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                    "ArrowKeyBrowserCommand needs an SheetView as argument");
@@ -710,7 +710,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case ShuttleCommand:
     {
-        SheetView* view = qobject_cast<SheetView*>(obj);
+        TSheetView* view = qobject_cast<TSheetView*>(obj);
         if (view) {
             return new TMoveCommand(view, nullptr, "");
         }
@@ -719,7 +719,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case NormalizeClipCommand:
     {
-        AudioClip* clip = qobject_cast<AudioClip*>(obj);
+        TAudioClip* clip = qobject_cast<TAudioClip*>(obj);
         if (!clip) {
             PERROR("TraversoCommands: Supplied QObject was not a Clip! "
                    "RemoveClipCommand needs a Clip as argument");
@@ -736,15 +736,15 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             if (!ok) {
                 return nullptr;
             }
-            QList<AudioClip* > selection;
+            QList<TAudioClip* > selection;
             clip->get_sheet()->get_audioclip_manager()->get_selected_clips(selection);
-            foreach(AudioClip* selected, selection) {
+            foreach(TAudioClip* selected, selection) {
                 normfactor = std::min(selected->calculate_normalization_factor(d), normfactor);
             }
 
             CommandGroup* group = new CommandGroup(clip, tr("Normalize Selected Clips"));
 
-            foreach(AudioClip* selected, selection) {
+            foreach(TAudioClip* selected, selection) {
                 group->add_command(new PCommand(selected, "set_gain", normfactor, selected->get_gain(), tr("AudioClip: Normalize")));
             }
 
@@ -773,7 +773,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     }
     case FadeRangeCommand:
     {
-        FadeCurveView* view = qobject_cast<FadeCurveView*>(obj);
+        TFadeCurveView* view = qobject_cast<TFadeCurveView*>(obj);
         if (view) {
             return new FadeRange(view->get_audio_clip(), view->get_fade(), view->get_sheetview()->timeref_scalefactor);
         }

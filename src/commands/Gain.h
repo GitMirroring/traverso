@@ -24,7 +24,7 @@
 
 #include "TCommand.h"
 
-class ContextItem;
+class TContextItem;
 
 
 class Gain : public TCommand
@@ -32,7 +32,7 @@ class Gain : public TCommand
     Q_OBJECT
 
 public :
-    Gain(ContextItem* context, const QVariantList& args);
+    Gain(TContextItem* context, const QVariantList& args);
     ~Gain();
 
     int prepare_actions();
@@ -49,7 +49,7 @@ public :
     static float get_gain_from_object(QObject* object);
 
 private :
-    ContextItem*        m_gainObject;
+    TContextItem*        m_gainObject;
     float 		m_origGain;
     float 		m_newGain;
 

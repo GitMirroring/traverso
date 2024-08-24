@@ -23,9 +23,9 @@
 #include "TrackPanelViewPort.h"
 		
 #include "SheetWidget.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "TrackPanelView.h"
-#include <ContextPointer.h>
+#include <TContextPointer.h>
 
 #include <Debugger.h>
 

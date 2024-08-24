@@ -30,8 +30,8 @@
 #include <QHeaderView>
 
 #include "TInformUser.h"
-#include <ProjectManager.h>
-#include <Project.h>
+#include <TProjectManager.h>
+#include <TProject.h>
 #include <Utils.h>
 
 #include "Debugger.h"
@@ -167,7 +167,7 @@ void OpenProjectDialog::on_loadProjectButton_clicked( )
 		return;
 	}
 	
-	Project* project = pm().get_project();
+	TProject* project = pm().get_project();
 
 	
 	if (project && (project->get_title() == title)) {

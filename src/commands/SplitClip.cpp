@@ -21,26 +21,26 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "SplitClip.h"
 
-#include "AudioClip.h"
-#include "AudioTrack.h"
-#include "ProjectManager.h"
-#include "ResourcesManager.h"
-#include "Sheet.h"
-#include "SheetView.h"
-#include "AudioClipView.h"
+#include "TAudioClip.h"
+#include "TAudioTrack.h"
+#include "TProjectManager.h"
+#include "TResourcesManager.h"
+#include "TSheet.h"
+#include "TSheetView.h"
+#include "TAudioClipView.h"
 #include "LineView.h"
-#include "SnapList.h"
+#include "TSnapList.h"
 #include "TLocation.h"
 #include "ViewItem.h"
 #include "Fade.h"
-#include "Themer.h"
+#include "TThemer.h"
 
 
 
 #include "Debugger.h"
 
 
-SplitClip::SplitClip(AudioClipView* view)
+SplitClip::SplitClip(TAudioClipView* view)
         : TMoveCommand(view->get_sheetview(), view->get_clip(), tr("Split Clip"))
 {
     m_canvasCursorFollowsMouseCursor = true;
@@ -93,7 +93,7 @@ int SplitClip::prepare_actions()
 int SplitClip::do_action()
 {
 	PENTER;
-    AudioClipAddRemoveSpec spec;
+    TAudioClipAddRemoveSpec spec;
     spec.set_clip(leftClip);
     spec.set_is_historable(false);
     spec.set_is_move(false);
@@ -111,7 +111,7 @@ int SplitClip::undo_action()
 {
 	PENTER;
 
-    AudioClipAddRemoveSpec spec;
+    TAudioClipAddRemoveSpec spec;
     spec.set_clip(m_clip);
     spec.set_is_historable(false);
     spec.set_is_move(false);
@@ -168,7 +168,7 @@ int SplitClip::jog()
     m_splitPoint = x * d->sv->timeref_scalefactor;
 
 	if (m_clip->get_sheet()->is_snap_on()) {
-		SnapList* slist = m_clip->get_sheet()->get_snap_list();
+		TSnapList* slist = m_clip->get_sheet()->get_snap_list();
 		m_splitPoint = slist->get_snap_value(m_splitPoint);
 	}
 	

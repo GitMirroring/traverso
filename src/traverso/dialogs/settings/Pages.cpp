@@ -39,8 +39,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TConfig.h"
 #include <Utils.h>
-#include <Themer.h>
-#include "ContextPointer.h"
+#include <TThemer.h>
+#include "TContextPointer.h"
 #include "TMainWindow.h"
 #include "TShortCutManager.h"
 #include <QDomDocument>

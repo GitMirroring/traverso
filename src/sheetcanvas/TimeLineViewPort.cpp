@@ -20,12 +20,12 @@
 */
 
 #include "TimeLineViewPort.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "SheetWidget.h"
 #include "TimeLineView.h"
 #include <QScrollBar>
 #include <QWheelEvent>
-#include <ContextPointer.h>
+#include <TContextPointer.h>
 		
 #include <Debugger.h>
 
@@ -54,7 +54,7 @@ void TimeLineViewPort::wheelEvent ( QWheelEvent * e )
 	}
 }
 
-void TimeLineViewPort::set_sheetview( SheetView * view )
+void TimeLineViewPort::set_sheetview( TSheetView * view )
 {
 	m_timeLineView = new TimeLineView(view);
 	scene()->addItem(m_timeLineView);

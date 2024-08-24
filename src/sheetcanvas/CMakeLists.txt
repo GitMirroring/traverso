@@ -12,13 +12,13 @@ ${CMAKE_SOURCE_DIR}/src/traverso/dialogs
 )
 
 SET(TRAVERSO_SONGCANVAS_SOURCES
-AudioClipView.cpp
-AudioTrackView.cpp
+TAudioClipView.cpp TAudioClipView.h
+TAudioTrackView.cpp TAudioTrackView.h
 ClipsViewPort.cpp
 Cursors.cpp
 CurveNodeView.cpp
 CurveView.cpp
-FadeCurveView.cpp
+TFadeCurveView.cpp TFadeCurveView.h
 MarkerView.cpp
 LineView.cpp
 PluginChainView.cpp
@@ -26,7 +26,7 @@ TAudioPluginView.cpp
 PositionIndicator.cpp
 TrackView.cpp
 TTrackLaneView.cpp
-SheetView.cpp
+TSheetView.cpp TSheetView.h
 SheetWidget.cpp
 TBusTrackView.cpp
 TimeLineView.cpp

@@ -20,8 +20,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: Config.h,v 1.9 2007/10/20 17:38:17 r_sijrier Exp $
 */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef TCONFIG_H
+#define TCONFIG_H
 
 #include <QObject>
 #include <QHash>

@@ -25,7 +25,7 @@
 #include "ui_InsertSilenceDialog.h"
 #include <QDialog>
 
-class AudioTrack;
+class TAudioTrack;
 
 class InsertSilenceDialog : public QDialog, protected Ui::InsertSilenceDialog
 {
@@ -35,14 +35,14 @@ public:
 	InsertSilenceDialog(QWidget* parent = 0);
 	~InsertSilenceDialog() {};
 
-	void setTrack(AudioTrack* track);
+	void setTrack(TAudioTrack* track);
 	void focusInput();
 
 private:
 	void accept();
 	void reject();
 
-	AudioTrack* m_track;
+	TAudioTrack* m_track;
 
 };
 

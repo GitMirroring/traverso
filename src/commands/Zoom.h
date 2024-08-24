@@ -28,7 +28,7 @@
 #include <QVariantList>
 #include <QPointF>
 
-class SheetView;
+class TSheetView;
 class TrackView;
 class QPoint;
 
@@ -37,7 +37,7 @@ class Zoom : public TCommand
 	Q_OBJECT
 
 public :
-        Zoom(SheetView* sv, const QVariantList &args);
+        Zoom(TSheetView* sv, const QVariantList &args);
         ~Zoom() {}
 
         int begin_hold();
@@ -65,7 +65,7 @@ private :
 
         int collected_number_to_track_height(const QString& collected) const;
 	
-        SheetView* m_sv;
+        TSheetView* m_sv;
         TrackView* m_tv;
 	
 public slots:

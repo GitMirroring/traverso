@@ -33,10 +33,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Utils.h>
 #include "TInputEventDispatcher.h"
 
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "ViewPort.h"
 #include "ViewItem.h"
-#include "ContextPointer.h"
+#include "TContextPointer.h"
 
 #include "TInformUser.h"
 
@@ -191,7 +191,7 @@ void ViewPort::detect_items_below_cursor()
     QList<ViewItem*> mouseTrackingItems;
 
     QList<QGraphicsItem *> itemsUnderCursor = scene()->items(cpointer().scene_pos());
-    QList<ContextItem*> activeContextItems;
+    QList<TContextItem*> activeContextItems;
 
     // since sheetview has no bounding rect, and should always have 'active context'
     // add it if it's available

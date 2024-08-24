@@ -25,18 +25,18 @@
 #include "TMoveCommand.h"
 #include "TTimeRef.h"
 
-class AudioClip;
-class AudioTrack;
-class SheetView;
+class TAudioClip;
+class TAudioTrack;
+class TSheetView;
 class TSession;
-class AudioClipView;
+class TAudioClipView;
 class LineView;
 
 class SplitClip : public TMoveCommand
 {
         Q_OBJECT
 public :
-	SplitClip(AudioClipView* view);
+	SplitClip(TAudioClipView* view);
         ~SplitClip() {}
 
         int prepare_actions();
@@ -52,11 +52,11 @@ public :
 	
 private :
         TSession*  m_session;
-	AudioClipView* m_cv;
-        AudioTrack* m_track;
-        AudioClip* m_clip;
-        AudioClip* leftClip;
-        AudioClip* rightClip;
+	TAudioClipView* m_cv;
+        TAudioTrack* m_track;
+        TAudioClip* m_clip;
+        TAudioClip* leftClip;
+        TAudioClip* rightClip;
 	TTimeRef m_splitPoint;
 	LineView* m_splitcursor{};
 

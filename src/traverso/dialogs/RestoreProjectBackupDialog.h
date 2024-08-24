@@ -25,7 +25,7 @@
 #include "ui_RestoreProjectBackupDialog.h"
 #include <QDialog>
 
-class Project;
+class TProject;
 
 class RestoreProjectBackupDialog : public QDialog, protected Ui::RestoreProjectBackupDialog
 {

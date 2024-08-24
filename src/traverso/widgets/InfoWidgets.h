@@ -27,7 +27,7 @@
 #include <QFrame>
 #include <QProgressBar>
 
-class Project;
+class TProject;
 class TSession;
 class MessageWidget;
 class SystemValueBar;
@@ -44,7 +44,7 @@ public:
 
 protected:
         TSession*	m_session;
-	Project*	m_project;
+	TProject*	m_project;
 	
 	virtual QSize sizeHint() const {return QSize(size());}
 
@@ -53,7 +53,7 @@ private:
 
 protected slots:
         virtual void set_session(TSession* );
-	virtual void set_project(Project* );
+	virtual void set_project(TProject* );
 };
 
 

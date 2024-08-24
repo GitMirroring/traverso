@@ -25,8 +25,8 @@
 
 #include "TCommand.h"
 
-class SheetView;
-class Track;
+class TSheetView;
+class TTrack;
 class TrackView;
 
 class MoveTrack : public TCommand
@@ -51,7 +51,7 @@ public :
         void move_to_sheet();
 
 private:
-        SheetView*      m_sv;
+        TSheetView*      m_sv;
         TrackView*      m_trackView;
 
 public slots:

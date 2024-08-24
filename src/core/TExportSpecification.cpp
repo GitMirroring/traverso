@@ -94,7 +94,7 @@ int TExportSpecification::is_valid()
     return 1;
 }
 
-int TExportSpecification::start_export(Project* project)
+int TExportSpecification::start_export(TProject* project)
 {
 
     QDir dir(m_exportDir);
@@ -173,7 +173,7 @@ void TExportSpecification::add_exported_range(const TTimeRef& time)
     }
 }
 
-void TExportSpecification::add_sheet_to_export(Sheet *sheet)
+void TExportSpecification::add_sheet_to_export(TSheet *sheet)
 {
     if (m_sheetsToExport.contains(sheet)) {
         return;

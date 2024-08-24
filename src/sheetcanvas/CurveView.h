@@ -27,8 +27,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QTimer>
 
-class Curve;
-class CurveNode;
+class TCurve;
+class TCurveNode;
 class CurveNodeView;
 
 class CurveView : public ViewItem
@@ -36,7 +36,7 @@ class CurveView : public ViewItem
 	Q_OBJECT
 
 public:
-	CurveView(SheetView* sv, ViewItem* parentViewItem, Curve* curve);
+	CurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve);
 	~CurveView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -52,15 +52,15 @@ public:
         TTimeRef get_start_offset() const {return m_startoffset;}
         CurveNodeView* get_node_view_after(TTimeRef location) const;
         CurveNodeView* get_node_view_before(TTimeRef location) const;
-        Curve* get_curve() const {return m_curve;}
+        TCurve* get_curve() const {return m_curve;}
 	
         void update_softselected_node(QPointF pos);
 
 	static const int BORDER_MARGIN = 8;
 
 private:
-	Curve*		m_curve;
-	Curve*		m_guicurve;
+	TCurve*		m_curve;
+	TCurve*		m_guicurve;
 	QTimer		m_blinkTimer;
 	CurveNodeView*	m_blinkingNode;
 	int		m_blinkDarkness{};
@@ -79,8 +79,8 @@ public slots:
 	TCommand* toggle_select_all_nodes();
 	
 private slots:
-	void add_curvenode_view(CurveNode* node);
-	void remove_curvenode_view(CurveNode* node);
+	void add_curvenode_view(TCurveNode* node);
+	void remove_curvenode_view(TCurveNode* node);
 	void node_moved();
 	void update_blink_color();
         void active_context_changed();

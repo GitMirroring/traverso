@@ -25,15 +25,15 @@
 
 #include <QList>
 
-class SheetView;
-class AudioTrack;
+class TSheetView;
+class TAudioTrack;
 
 class ArmTracks : public TMoveCommand
 {
         Q_OBJECT
 
 public :
-	ArmTracks(SheetView* view);
+	ArmTracks(TSheetView* view);
 	~ArmTracks();
 
 	int begin_hold();
@@ -45,7 +45,7 @@ public :
 	int jog();
 	
 private:
-	QList<AudioTrack* > m_tracks;
+	QList<TAudioTrack* > m_tracks;
 };
 
 #endif

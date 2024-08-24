@@ -26,7 +26,7 @@
 #include "TTimeRef.h"
 
 class TSession;
-class SheetView;
+class TSheetView;
 class PlayHead;
 class WorkCursor;
 
@@ -35,7 +35,7 @@ class WorkCursorMove : public TMoveCommand
 	Q_OBJECT
 
 public :
-	WorkCursorMove (SheetView* sv);
+	WorkCursorMove (TSheetView* sv);
 	~WorkCursorMove (){}
 
 	int finish_hold();

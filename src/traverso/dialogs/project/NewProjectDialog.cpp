@@ -44,17 +44,17 @@
 #include "TConfig.h"
 #include "TExportSpecification.h"
 #include "TInformUser.h"
-#include "ProjectManager.h"
-#include "ResourcesManager.h"
-#include <Project.h>
-#include "ProjectManager.h"
-#include <Sheet.h>
-#include <AudioTrack.h>
+#include "TProjectManager.h"
+#include "TResourcesManager.h"
+#include <TProject.h>
+#include "TProjectManager.h"
+#include <TSheet.h>
+#include <TAudioTrack.h>
 #include <Utils.h>
 #include <CommandGroup.h>
 #include "TAudioFileImportCommand.h"
-#include "AudioFileCopyConvert.h"
-#include "ReadSource.h"
+#include "TAudioFileCopyConvert.h"
+#include "TReadAudioSource.h"
 
 #include "widgets/ExportFormatOptionsWidget.h"
 
@@ -83,7 +83,7 @@ NewProjectDialog::NewProjectDialog( QWidget * parent )
 
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 
-	m_converter = new AudioFileCopyConvert();
+	m_converter = new TAudioFileCopyConvert();
 	m_exportSpec = new TExportSpecification;
 	m_buttonGroup = new QButtonGroup(this);
 	m_buttonGroup->addButton(radioButtonImport, 0);
@@ -134,7 +134,7 @@ void NewProjectDialog::accept( )
 		}
 	}
 
-	Project* project;
+	TProject* project;
 	
 	int numSheets = sheetCountSpinBox->value();
 	int numTracks = trackCountSpinBox->value();
@@ -303,7 +303,7 @@ void NewProjectDialog::copy_files()
 		// TODO: offer file format conversion while copying: format options widget not there yet.
 //		m_formatOptionsWidget->get_format_options(m_exportSpec);
 
-		ReadSource* readsource = resources_manager()->import_source(list.at(n).absolutePath() + "/", list.at(n).fileName());
+		TReadAudioSource* readsource = resources_manager()->import_source(list.at(n).absolutePath() + "/", list.at(n).fileName());
 
 		if (readsource) {
 			m_converter->enqueue_task(readsource, m_exportSpec, destination, list.at(n).fileName(), n, trackNameList.at(n));
@@ -330,19 +330,19 @@ void NewProjectDialog::load_all_files()
 
 void NewProjectDialog::load_file(const QString &fileName, int i, QString trackname)
 {
-        Sheet* sheet = qobject_cast<Sheet*>(pm().get_project()->get_current_session());
+        TSheet* sheet = qobject_cast<TSheet*>(pm().get_project()->get_current_session());
 
 	if (!sheet) {
 		return;
 	}
 
-        QList<AudioTrack*> tracks = sheet->get_audio_tracks();
+        QList<TAudioTrack*> tracks = sheet->get_audio_tracks();
 
         if (i >= tracks.size()) {
                 return;
         }
 
-        AudioTrack* track = tracks.at(i);
+        TAudioTrack* track = tracks.at(i);
 
         if (!track) {
                 return;
@@ -423,7 +423,7 @@ void NewProjectDialog::move_down()
 	}
 }
 
-AudioFileCopyConvert* NewProjectDialog::get_converter()
+TAudioFileCopyConvert* NewProjectDialog::get_converter()
 {
 	return m_converter;
 }

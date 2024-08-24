@@ -26,14 +26,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TrackView.h"
 #include "TTrackLaneView.h"
 #include "PluginChainView.h"
-#include "Themer.h"
+#include "TThemer.h"
 #include "TrackPanelViewPort.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "TrackPanelView.h"
 #include "TMainWindow.h"
 
-#include <Sheet.h>
-#include <Track.h>
+#include <TSheet.h>
+#include <TTrack.h>
 #include <Utils.h>
 #include "TAudioPluginChain.h"
 #include "CurveView.h"
@@ -43,7 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <Debugger.h>
 
-TrackView::TrackView(SheetView* sv, Track * track)
+TrackView::TrackView(TSheetView* sv, TTrack * track)
 	: ViewItem(nullptr, track)
 {
         PENTERCONS;

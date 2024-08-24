@@ -23,14 +23,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QPainter>
 
-#include "AudioTrackView.h"
+#include "TAudioTrackView.h"
 #include "PluginChainView.h"
 #include "TMainWindow.h"
 
-#include <Themer.h>
+#include <TThemer.h>
 #include "TAudioPlugin.h"
 #include "TAudioPluginChain.h"
-#include <Track.h>
+#include <TTrack.h>
 #include <Utils.h>
 
 #include <TAudioPluginPropertiesDialog.h>

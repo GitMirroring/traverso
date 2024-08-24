@@ -20,12 +20,12 @@
 */
 
 #include "Cursors.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "ClipsViewPort.h"
 #include "TAudioDevice.h"
-#include <Sheet.h>
+#include <TSheet.h>
 #include "TConfig.h"
-#include <Themer.h>
+#include <TThemer.h>
 
 #include <QPen>
 #include <QScrollBar>
@@ -39,7 +39,7 @@
 #define AUTO_SCROLL_MARGIN	0.05  // autoscroll when within 5% of the clip view port
 
 
-PlayHead::PlayHead(SheetView* sv, TSession* session, ClipsViewPort* vp)
+PlayHead::PlayHead(TSheetView* sv, TSession* session, ClipsViewPort* vp)
         : ViewItem(nullptr, session)
         , m_session(session)
         , m_vp(vp)
@@ -298,7 +298,7 @@ void PlayHead::load_theme_data()
 /**************************************************************/
 
 
-WorkCursor::WorkCursor(SheetView* sv, TSession* session)
+WorkCursor::WorkCursor(TSheetView* sv, TSession* session)
         : ViewItem(nullptr, session)
         , m_session(session)
 	, m_sv(sv)

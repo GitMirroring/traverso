@@ -27,8 +27,8 @@
 #include <QRectF>
 
 class CurveView;
-class CurveNode;
-class Curve;
+class TCurveNode;
+class TCurve;
 class QPoint;
 class QRectF;
 
@@ -37,8 +37,8 @@ class MoveCurveNode : public TMoveCommand
     Q_OBJECT
 
 public:
-    MoveCurveNode(Curve* curve,
-                  QList<CurveNode*> nodes,
+    MoveCurveNode(TCurve* curve,
+                  QList<TCurveNode*> nodes,
                   float height,
                   qint64 scalefactor,
                   TTimeRef minWhenDiff,
@@ -79,7 +79,7 @@ private :
     MoveCurveNode::MoveCurveNodeData* mcnd;
 
     struct CurveNodeData {
-        CurveNode* node;
+        TCurveNode* node;
         double	origWhen;
         double	origValue;
     };

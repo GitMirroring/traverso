@@ -20,14 +20,14 @@
     $Id: Command.h,v 1.13 2008/02/12 20:39:08 r_sijrier Exp $
 */
 
-#ifndef COMMAND_H
-#define COMMAND_H
+#ifndef TCOMMAND_H
+#define TCOMMAND_H
 
 #include <QObject>
 #include <QUndoCommand>
 #include <QUndoStack>
 
-class ContextItem;
+class TContextItem;
 class QUndoStack;
 
 class TCommand : public QObject, public QUndoCommand
@@ -35,7 +35,7 @@ class TCommand : public QObject, public QUndoCommand
     Q_OBJECT
 
 public :
-    TCommand(ContextItem* item, const QString& des = "No description set!");
+    TCommand(TContextItem* item, const QString& des = "No description set!");
     TCommand(const QString& des = "No description set!");
     virtual ~TCommand();
 

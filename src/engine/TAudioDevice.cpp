@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioDevice.h"
 #include "TAudioDeviceThread.h"
-#include "ThreadSaveMessagePosting.h"
+#include "TAudioThreadMessageQueue.h"
 #include "Utils.h"
 
 #if defined (ALSA_SUPPORT)
@@ -49,7 +49,7 @@ RELAYTOOL_JACK
 #include "TAudioDriver.h"
 #include "TAudioDeviceClient.h"
 #include "AudioChannel.h"
-#include "ThreadSaveMessagePosting.h"
+#include "TAudioThreadMessageQueue.h"
 
 //#include <sys/mman.h>
 #include <QDebug>

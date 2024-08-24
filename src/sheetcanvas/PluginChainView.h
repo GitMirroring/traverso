@@ -25,7 +25,7 @@
 
 #include "ViewItem.h"
 
-class SheetView;
+class TSheetView;
 class TAudioPlugin;
 class TAudioPluginChain;
 class TAudioPluginView;
@@ -35,7 +35,7 @@ class PluginChainView : public ViewItem
     Q_OBJECT
 
 public:
-    PluginChainView(SheetView* sv, ViewItem* parent, TAudioPluginChain* chain);
+    PluginChainView(TSheetView* sv, ViewItem* parent, TAudioPluginChain* chain);
     ~PluginChainView();
 
     void paint(QPainter* painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

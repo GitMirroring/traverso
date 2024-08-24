@@ -30,7 +30,7 @@
 class CommandGroup : public TCommand
 {
 public :
-    CommandGroup(ContextItem* parent, const QString& des)
+    CommandGroup(TContextItem* parent, const QString& des)
 		: TCommand(parent, des)
 	{
 	}

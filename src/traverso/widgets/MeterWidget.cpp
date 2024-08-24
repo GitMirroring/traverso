@@ -23,11 +23,11 @@
 #include "MeterWidget.h"
 
 #include "TCommand.h"
-#include "ContextPointer.h"
+#include "TContextPointer.h"
 #include "TAudioPluginChain.h"
-#include "ProjectManager.h"
-#include "Project.h"
-#include "Sheet.h"
+#include "TProjectManager.h"
+#include "TProject.h"
+#include "TSheet.h"
 #include "TBusTrack.h"
 
 
@@ -109,7 +109,7 @@ MeterView::MeterView(MeterWidget* widget)
 	m_boundingRect = QRectF();
 
 	// Connections to core:
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
         connect(&timer, SIGNAL(timeout()), this, SLOT(update_data()));
 	m_delayTimer.setSingleShot(true);
 	connect(&m_delayTimer, SIGNAL(timeout()), this, SLOT(delay_timeout()));
@@ -132,7 +132,7 @@ void MeterView::resize()
 	m_boundingRect = QRectF(0, 0, m_widget->width(), m_widget->height());
 }
 
-void MeterView::set_project(Project *project)
+void MeterView::set_project(TProject *project)
 {
 	if (project) {
                 m_project = project;

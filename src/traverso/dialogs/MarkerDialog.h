@@ -25,8 +25,8 @@
 #include "ui_MarkerDialog.h"
 #include <QDialog>
 
-class Project;
-class Marker;
+class TProject;
+class TTimeLineMarker;
 class TSession;
 
 class MarkerDialog : public QDialog, protected Ui::MarkerDialog
@@ -38,11 +38,11 @@ public:
         ~MarkerDialog() {}
 	
 private:
-	Project* m_project;
-	Marker* m_marker{};
+	TProject* m_project;
+	TTimeLineMarker* m_marker{};
         TSession* m_session;
 
-	Marker* get_marker(qint64);
+	TTimeLineMarker* get_marker(qint64);
 	void next_item(QLineEdit *);
 
 private slots:

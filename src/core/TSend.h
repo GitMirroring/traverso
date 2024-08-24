@@ -26,15 +26,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QObject>
 
 class AudioBus;
-class Track;
+class TTrack;
 
 class TSend : public QObject
 {
     Q_OBJECT
 
 public:
-    TSend(Track* track);
-    TSend(Track* track, AudioBus* bus);
+    TSend(TTrack* track);
+    TSend(TTrack* track, AudioBus* bus);
 
     QDomNode get_state( QDomDocument doc);
     int set_state( const QDomNode& node );
@@ -67,7 +67,7 @@ public:
 
 private:
     AudioBus*       m_bus;
-    Track*          m_track;
+    TTrack*          m_track;
     qint64          m_id{};
     int             m_type{};
     float           m_gain{};

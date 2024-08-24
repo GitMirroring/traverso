@@ -21,15 +21,15 @@
 
 #include "ProjectConverterDialog.h"
 
-#include "ProjectConverter.h"
-#include "ProjectManager.h"
+#include "TProjectConverter.h"
+#include "TProjectManager.h"
 #include <QScrollBar>
 
 ProjectConverterDialog::ProjectConverterDialog(QWidget * parent)
 	: QDialog(parent)
 {
 	setupUi(this);
-	m_converter = new ProjectConverter;
+	m_converter = new TProjectConverter;
 	
 	stopConversionButton->hide();
 	loadProjectButton->hide();

@@ -22,14 +22,14 @@ $Id: ArmTracks.cpp,v 1.4 2008/01/21 16:22:11 r_sijrier Exp $
 
 #include "ArmTracks.h"
 
-#include <AudioTrack.h>
-#include <Sheet.h>
-#include <SheetView.h>
-#include <AudioTrackView.h>
+#include <TAudioTrack.h>
+#include <TSheet.h>
+#include <TSheetView.h>
+#include <TAudioTrackView.h>
 
-#include <ContextPointer.h>
+#include <TContextPointer.h>
 
-ArmTracks::ArmTracks(SheetView* view)
+ArmTracks::ArmTracks(TSheetView* view)
     : TMoveCommand(view, nullptr, ("Arm Tracks"))
 {
 }
@@ -65,13 +65,13 @@ int ArmTracks::undo_action()
 
 int ArmTracks::jog()
 {
-    AudioTrackView* view = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos());
+    TAudioTrackView* view = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos());
 	
 	if ( ! view ) {
 		return 0;
 	}
 	
-	AudioTrack* track = view->get_track();
+	TAudioTrack* track = view->get_track();
 	
 	if (! m_tracks.contains(track) ) {
 		m_tracks.append(track);

@@ -19,9 +19,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#include "ProjectManager.h"
-#include "Project.h"
-#include "Sheet.h"
+#include "TProjectManager.h"
+#include "TProject.h"
+#include "TSheet.h"
 #include "PluginManager.h"
 #include "TAudioPlugin.h"
 #include "CorrelationMeter.h"

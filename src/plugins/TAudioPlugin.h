@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef T_AUDIO_PLUGIN_H
 #define T_AUDIO_PLUGIN_H
 
-#include "ContextItem.h"
+#include "TContextItem.h"
 #include <QString>
 #include <QDomNode>
 
@@ -47,7 +47,7 @@ struct TAudioPluginInfo {
     QString uri;
 };
 
-class TAudioPlugin : public ContextItem
+class TAudioPlugin : public TContextItem
 {
     Q_OBJECT
 

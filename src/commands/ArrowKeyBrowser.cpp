@@ -21,11 +21,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ArrowKeyBrowser.h"
 
-#include "SheetView.h"
+#include "TSheetView.h"
 
 #include "Debugger.h"
 
-ArrowKeyBrowser::ArrowKeyBrowser(SheetView *sv, const QVariantList&  /*args*/)
+ArrowKeyBrowser::ArrowKeyBrowser(TSheetView *sv, const QVariantList&  /*args*/)
 {
         m_sv = sv;
 }

@@ -28,9 +28,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 
 TBusTrack::TBusTrack(TSession* session, const QString& name, int channelCount)
-        : Track(session)
+        : TTrack(session)
 {
-        QObject::tr("Bus Track");
+        QObject::tr("TBusTrack");
 
         m_name = name;
         m_channelCount = channelCount;
@@ -44,7 +44,7 @@ TBusTrack::TBusTrack(TSession* session, const QString& name, int channelCount)
 }
 
 TBusTrack::TBusTrack(TSession *session, QDomNode /*node*/)
-        : Track(session)
+        : TTrack(session)
 {
 }
 
@@ -56,7 +56,7 @@ TBusTrack::~TBusTrack()
 QDomNode TBusTrack::get_state( QDomDocument doc, bool istemplate)
 {
         QDomElement node = doc.createElement("BusTrack");
-        Track::get_state(doc, node, istemplate);
+        TTrack::get_state(doc, node, istemplate);
 
         node.setAttribute("channelcount", m_channelCount);
 
@@ -67,7 +67,7 @@ int TBusTrack::set_state( const QDomNode & node )
 {
         QDomElement e = node.toElement();
 
-        Track::set_state(node);
+        TTrack::set_state(node);
 
         bool ok;
         m_channelCount = e.attribute("channelcount", "2").toInt(&ok);
@@ -87,7 +87,7 @@ void TBusTrack::create_process_bus()
         if (m_processBus) {
                 return;
         }
-        m_type = Track::TRACKTYPE::BUS;
+        m_type = TTrack::TRACKTYPE::BUS;
         TAudioBusConfiguration busConfig;
         busConfig.name = m_name;
         busConfig.channelcount = m_channelCount;
@@ -100,7 +100,7 @@ void TBusTrack::create_process_bus()
 void TBusTrack::set_name( const QString & name )
 {
         m_processBus->set_name(name);
-        Track::set_name(name);
+        TTrack::set_name(name);
 }
 
 int TBusTrack::process(TProcessCallBackData &processData)

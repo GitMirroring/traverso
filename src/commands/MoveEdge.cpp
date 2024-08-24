@@ -21,13 +21,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "MoveEdge.h"
 
-#include "AudioClip.h"
-#include "ContextPointer.h"
+#include "TAudioClip.h"
+#include "TContextPointer.h"
 #include "TInputEventDispatcher.h"
-#include "Sheet.h"
-#include "SnapList.h"
-#include <SheetView.h>
-#include <AudioClipView.h>
+#include "TSheet.h"
+#include "TSnapList.h"
+#include "TSheetView.h"
+#include "TAudioClipView.h"
 
 
 
@@ -36,7 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 // FIXME: MoveEdge::jog() continuously calls Snaplist::mark_dirty()
 
-MoveEdge::MoveEdge(AudioClipView* cv, SheetView* sv, const QByteArray& whichEdge)
+MoveEdge::MoveEdge(TAudioClipView* cv, TSheetView* sv, const QByteArray& whichEdge)
     : TMoveCommand(sv, cv->get_clip(), tr("Move Clip Edge"))
 {
 	m_clip = cv->get_clip();
@@ -128,7 +128,7 @@ int MoveEdge::jog()
     m_newPos = TTimeRef(cpointer().scene_x() * d->sv->timeref_scalefactor);
 
     if (d->sv->get_sheet()->is_snap_on()) {
-        SnapList* slist = d->sv->get_sheet()->get_snap_list();
+        TSnapList* slist = d->sv->get_sheet()->get_snap_list();
 		m_newPos = slist->get_snap_value(m_newPos);
 	}
 
@@ -179,7 +179,7 @@ void MoveEdge::move_right()
 void MoveEdge::next_snap_pos()
 {
 	
-    SnapList* slist = d->sv->get_sheet()->get_snap_list();
+    TSnapList* slist = d->sv->get_sheet()->get_snap_list();
 	m_newPos = slist->next_snap_pos(m_newPos);
 	do_keyboard_move();
 }
@@ -187,7 +187,7 @@ void MoveEdge::next_snap_pos()
 void MoveEdge::prev_snap_pos()
 {
 	
-    SnapList* slist = d->sv->get_sheet()->get_snap_list();
+    TSnapList* slist = d->sv->get_sheet()->get_snap_list();
 	m_newPos = slist->prev_snap_pos(m_newPos);
 	do_keyboard_move();
 }

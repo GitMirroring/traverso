@@ -21,11 +21,11 @@ $Id: Command.cpp,v 1.21 2008/02/12 20:39:08 r_sijrier Exp $
 */
 
 #include "TCommand.h"
-#include "ContextPointer.h"
-#include <AbstractViewPort.h>
+#include "TContextPointer.h"
+#include <TViewPortInterface.h>
 #include <Utils.h>
-#include <Themer.h>
-#include "ContextItem.h"
+#include <TThemer.h>
+#include "TContextItem.h"
 
 
 
@@ -98,7 +98,7 @@ TCommand::TCommand( const QString& des )
  * @param item The ContextItem this Command operates on
  * @param des  The description as will show up in the HistoryView
  */
-TCommand::TCommand(ContextItem* item, const QString& des)
+TCommand::TCommand(TContextItem* item, const QString& des)
     : QUndoCommand(des)
 {
     m_isValid = false;

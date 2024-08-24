@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QObject>
 
-class Project;
+class TProject;
 class TSession;
 
 class TGlobalContext : public QObject
@@ -36,14 +36,14 @@ public:
 
 protected:
 	TSession*	m_session;
-	Project*	m_project;
+	TProject*	m_project;
 
 signals:
 
 public slots:
 
 private slots:
-	void set_project(Project* project);
+	void set_project(TProject* project);
 	void set_session(TSession* session);
 
 };

@@ -30,18 +30,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDialog>
 
 
-class AudioClip;
+class TAudioClip;
 
 class AudioClipEditDialog : public QDialog, protected Ui::AudioClipEditDialog
 {
 	Q_OBJECT
 
 public:
-	AudioClipEditDialog(AudioClip* clip, QWidget* parent);
+	AudioClipEditDialog(TAudioClip* clip, QWidget* parent);
     ~AudioClipEditDialog();
 
 private:
-	AudioClip* m_clip;
+	TAudioClip* m_clip;
 	QDomNode m_origState;
 
 	bool locked;

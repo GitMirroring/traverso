@@ -27,15 +27,15 @@
 #include "TTimeRef.h"
 #include <QByteArray>
 
-class AudioClip;
-class SheetView;
-class AudioClipView;
+class TAudioClip;
+class TSheetView;
+class TAudioClipView;
 
 class MoveEdge : public TMoveCommand
 {
     Q_OBJECT
 public :
-    MoveEdge(AudioClipView* cv, SheetView* sv, const QByteArray &whichEdge);
+    MoveEdge(TAudioClipView* cv, TSheetView* sv, const QByteArray &whichEdge);
     ~MoveEdge();
 
     int begin_hold();
@@ -48,7 +48,7 @@ public :
     int jog();
 
 private :
-    AudioClip* 	m_clip;
+    TAudioClip* 	m_clip;
     QByteArray	m_edge;
     TTimeRef		m_originalPos;
     TTimeRef		m_newPos;

@@ -37,11 +37,11 @@ class TimeLineViewPort;
 class ClipsViewPort;
 class SheetPanelViewPort;
 
-class Project;
+class TProject;
 class TSession;
 class TCommand;
-class SheetView;
-class Sheet;
+class TSheetView;
+class TSheet;
 class SheetWidget;
 
 
@@ -65,10 +65,10 @@ public:
         SheetPanelViewPort(QGraphicsScene* scene, SheetWidget* sw);
         ~SheetPanelViewPort() {}
 
-        void set_sheet_view(SheetView* view) { m_sv = view;}
+        void set_sheet_view(TSheetView* view) { m_sv = view;}
 
 private:
-        Sheet*          m_sheet{};
+        TSheet*          m_sheet{};
         SheetPanelView* m_spv;
 
 private slots:
@@ -93,16 +93,16 @@ public:
         SheetWidget(TSession* sheet, QWidget* parent=0);
 	~SheetWidget();
 	
-        Sheet* get_sheet() const;
+        TSheet* get_sheet() const;
         TSession* get_session() const;
-	SheetView* get_sheetview() const;
+	TSheetView* get_sheetview() const;
 	
 protected:
 	QSize minimumSizeHint () const;
 	QSize sizeHint () const;
 
 private:
-	SheetView* 		m_sv;
+	TSheetView* 		m_sv;
         TSession*		m_session;
 	QGridLayout*		m_mainLayout;
 	TrackPanelViewPort*	m_trackPanel;
@@ -114,7 +114,7 @@ private:
 	QScrollBar*		m_hScrollBar;
         QSlider*                m_zoomSlider;
 	
-	friend class SheetView;
+	friend class TSheetView;
 
 private slots:
 	void load_theme_data();

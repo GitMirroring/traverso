@@ -24,9 +24,9 @@
 
 #include "ViewItem.h"
 
-class Marker;
+class TTimeLineMarker;
 class TCommand;
-class SheetView;
+class TSheetView;
 class LineView;
 class QColor;
 class PositionIndicator;
@@ -36,7 +36,7 @@ class MarkerView : public ViewItem
 	Q_OBJECT
 	
 public:
-	MarkerView(Marker* marker, SheetView* sv, ViewItem* parent);
+	MarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parent);
 	~MarkerView() {}
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -47,10 +47,10 @@ public:
 	void set_position(int);
 	void set_dragging(bool dragging);
 	
-	Marker* get_marker() const {return m_marker;}
+	TTimeLineMarker* get_marker() const {return m_marker;}
 	
 private:
-	Marker* m_marker;
+	TTimeLineMarker* m_marker;
 	LineView* m_line;
 	QColor	m_fillColor;
 	bool	m_active{};

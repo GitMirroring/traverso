@@ -1,10 +1,10 @@
 
 #include "TAudioPluginControlPort.h"
 #include "TAddRemoveCommand.h"
-#include "CurveNode.h"
+#include "TCurveNode.h"
 #include "TAudioPlugin.h"
 #include "TAudioPluginPort.h"
-#include "Curve.h"
+#include "TCurve.h"
 
 TAudioPluginControlPort::TAudioPluginControlPort(TAudioPlugin* parent, int index, float value)
 	: TAudioPluginPort(parent, index)
@@ -44,7 +44,7 @@ int TAudioPluginControlPort::set_state(const QDomNode & node)
 	
 	QDomElement curveNode = node.firstChildElement("PortAutomation");
 	if (!curveNode.isNull()) {
-		m_curve = new Curve(m_plugin, curveNode);
+		m_curve = new TCurve(m_plugin, curveNode);
                 m_curve->set_sheet(m_plugin->get_session());
 	}
 		
@@ -70,9 +70,9 @@ void TAudioPluginControlPort::set_use_automation(bool automation)
 {
 	m_automation = automation;
 	if (!m_curve) {
-		m_curve = new Curve(m_plugin);
+		m_curve = new TCurve(m_plugin);
 		// Add the first default node:
-        CurveNode* node = new CurveNode(m_curve, 0.0, 1.0);
+        TCurveNode* node = new TCurveNode(m_curve, 0.0, 1.0);
 		TAddRemoveCommand* cmd = (TAddRemoveCommand*)m_curve->add_node(node, false);
 		cmd->set_instantanious(true);
 		TCommand::process_command(cmd);

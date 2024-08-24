@@ -27,15 +27,15 @@
 #include <QVariantList>
 #include <QPoint>
 
-class Sheet;
-class Track;
+class TSheet;
+class TTrack;
 
 class TrackPan : public TCommand
 {
 	Q_OBJECT
 
 public :
-        TrackPan(Track* track, QVariantList args);
+        TrackPan(TTrack* track, QVariantList args);
 
         int begin_hold();
         int finish_hold();
@@ -52,7 +52,7 @@ public :
 private :	
 	float	m_origPan;
 	float	m_newPan;
-	Track*	m_track;
+	TTrack*	m_track;
 	int	m_origX{};
 
 	void set_value_by_keyboard_input(float newPan);

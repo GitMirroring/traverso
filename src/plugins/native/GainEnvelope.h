@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioPlugin.h"
 #include "TTimeRef.h"
 
-class Curve;
+class TCurve;
 class TSession;
 
 class GainEnvelope : public TAudioPlugin
@@ -46,7 +46,7 @@ public:
     void set_gain(float gain) {m_gain = gain;}
 
     float get_gain() const {return m_gain;}
-    Curve* get_curve();
+    TCurve* get_curve();
     QString get_name();
 
 public slots:

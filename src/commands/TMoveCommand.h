@@ -27,14 +27,14 @@
 #include <QEasingCurve>
 #include <QTimer>
 
-class SheetView;
+class TSheetView;
 
 class TMoveCommand : public TCommand
 {
     Q_OBJECT
 
 public :
-    TMoveCommand (SheetView* sv, ContextItem* item, const QString& description);
+    TMoveCommand (TSheetView* sv, TContextItem* item, const QString& description);
     virtual ~TMoveCommand (){}
 
     int begin_hold();
@@ -54,7 +54,7 @@ protected:
     void set_shuttle_factor_values(int x, int y);
 
     struct Data {
-        SheetView*      sv;
+        TSheetView*      sv;
         QTimer			shuttleTimer;
         QEasingCurve    shuttleCurve;
         bool			dragShuttle{};

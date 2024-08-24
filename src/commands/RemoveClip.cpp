@@ -21,20 +21,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "RemoveClip.h"
 
-#include "AudioClip.h"
-#include "AudioClipManager.h"
-#include "Sheet.h"
+#include "TAudioClip.h"
+#include "TAudioClipManager.h"
+#include "TSheet.h"
 
 
 
 #include "Debugger.h"
  
 
-AddRemoveClip::AddRemoveClip(AudioClip* clip, int type)
+AddRemoveClip::AddRemoveClip(TAudioClip* clip, int type)
 	: TCommand(clip, tr("Remove Clip"))
 {
 	if (clip->is_selected()) {
-		QList<AudioClip*> selectedClips;
+		QList<TAudioClip*> selectedClips;
 		clip->get_sheet()->get_audioclip_manager()->get_selected_clips(selectedClips);
 		m_group.set_clips(selectedClips);
 		setText(tr("Remove Selected Clips"));

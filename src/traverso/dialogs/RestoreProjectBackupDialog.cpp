@@ -20,7 +20,7 @@
 */
 
 #include "RestoreProjectBackupDialog.h"
-#include "ProjectManager.h"
+#include "TProjectManager.h"
 #include <QTreeWidgetItem>
 #include <QDateTime>
 

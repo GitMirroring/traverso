@@ -4,7 +4,7 @@
 #include "TAudioPluginPort.h"
 
 class TAudioPlugin;
-class Curve;
+class TCurve;
 
 class TAudioPluginControlPort : public TAudioPluginPort
 {
@@ -26,7 +26,7 @@ public:
     void set_use_automation(bool automation);
 
     bool use_automation();
-    Curve* get_curve() const {return m_curve;}
+    TCurve* get_curve() const {return m_curve;}
 
     virtual QDomNode get_state(QDomDocument doc);
 
@@ -34,7 +34,7 @@ public:
     virtual QString get_symbol();
 
 protected:
-    Curve*	m_curve;
+    TCurve*	m_curve;
     TAudioPlugin*	m_plugin;
     float	m_value{};
     float 	m_default{};

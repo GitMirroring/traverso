@@ -27,11 +27,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "AudioBus.h"
 #include "TInformUser.h"
-#include "Project.h"
-#include "ProjectManager.h"
-#include "Sheet.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TSheet.h"
 #include "TBusTrack.h"
-#include "AudioTrack.h"
+#include "TAudioTrack.h"
 
 #include <CommandGroup.h>
 
@@ -49,7 +49,7 @@ NewTrackDialog::NewTrackDialog(QWidget * parent)
     m_completer.setFilterMode(Qt::MatchContains);
     m_completer.setCaseSensitivity(Qt::CaseInsensitive);
 
-    connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
     connect(closeButton, SIGNAL(clicked()), this, SLOT(close_clicked()));
     connect(addTrackBusButton, SIGNAL(clicked()), this, SLOT(create_track()));
     connect(isBusTrack, SIGNAL(toggled(bool)), this, SLOT(update_buses_comboboxes()));
@@ -88,14 +88,14 @@ void NewTrackDialog::create_track()
 	}
 	
         QString driver = audiodevice().get_driver_type();
-        Sheet* sheet = qobject_cast<Sheet*>(session);
-        Track* track;
+        TSheet* sheet = qobject_cast<TSheet*>(session);
+        TTrack* track;
 
         if (isBusTrack->isChecked()) {
                 track = new TBusTrack(session, title, 2);
 
         } else {
-                track = new AudioTrack(sheet, title, AudioTrack::INITIAL_HEIGHT);
+                track = new TAudioTrack(sheet, title, TAudioTrack::INITIAL_HEIGHT);
         }
 
         int channelCount = 1;
@@ -112,7 +112,7 @@ void NewTrackDialog::create_track()
         if (driver == "Jack") {
                 track->connect_to_jack(true, true);
         } else {
-            AudioTrack* audioTrack = qobject_cast<AudioTrack*>(track);
+            TAudioTrack* audioTrack = qobject_cast<TAudioTrack*>(track);
             TBusTrack* busTrack = qobject_cast<TBusTrack*>(track);
 
             QList<QListWidgetItem*> selectedItems = routingInputListWidget->selectedItems();
@@ -127,7 +127,7 @@ void NewTrackDialog::create_track()
                 // If AudioTrack already had any post sends then we remove it by default here
                 if (busTrack) {
                     qint64 audioTrackId = item->data(Qt::UserRole).toLongLong();
-                    AudioTrack* inputAudioTrack = qobject_cast<AudioTrack*>(pm().get_project()->get_track(audioTrackId));
+                    TAudioTrack* inputAudioTrack = qobject_cast<TAudioTrack*>(pm().get_project()->get_track(audioTrackId));
                     if (inputAudioTrack) {
                         inputAudioTrack->remove_all_post_sends();
                         inputAudioTrack->add_post_send(busTrack->get_process_bus());
@@ -177,7 +177,7 @@ void NewTrackDialog::update_completer(const QString &text)
     }
 }
 
-void NewTrackDialog::set_project(Project * project)
+void NewTrackDialog::set_project(TProject * project)
 {
 	m_project = project;
 }
@@ -235,9 +235,9 @@ void NewTrackDialog::update_buses_comboboxes()
             }
         }
 
-        Sheet* sheet = qobject_cast<Sheet*>(session);
+        TSheet* sheet = qobject_cast<TSheet*>(session);
         if (isBusTrack->isChecked() && sheet) {
-            foreach(AudioTrack* at, sheet->get_audio_tracks()) {
+            foreach(TAudioTrack* at, sheet->get_audio_tracks()) {
                 QListWidgetItem* item = new QListWidgetItem(routingInputListWidget);
                 item->setText(at->get_name());
                 item->setData(Qt::UserRole, at->get_id());

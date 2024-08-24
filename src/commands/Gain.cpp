@@ -21,8 +21,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Gain.h"
 
-#include "ContextItem.h"
-#include "Sheet.h"
+#include "TContextItem.h"
+#include "TSheet.h"
 #include "TBusTrack.h"
 #include "Mixer.h"
 
@@ -39,13 +39,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  */
 
 
-Gain::Gain(ContextItem* context, const QVariantList& /*args*/)
+Gain::Gain(TContextItem* context, const QVariantList& /*args*/)
     : TCommand(context, "")
 {
     m_gainObject = context;
     m_newGain = m_origGain = get_gain_from_object(m_gainObject);
 
-    Sheet* sheet = qobject_cast<Sheet*>(context);
+    TSheet* sheet = qobject_cast<TSheet*>(context);
     if (sheet) {
         // if context == sheet, then use sheets master out
         // as the gain object as sheet itself doesn't apply any gain.

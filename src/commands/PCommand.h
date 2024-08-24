@@ -26,15 +26,15 @@
 
 #include <QVariant>
 
-class ContextItem;
+class TContextItem;
 
 class PCommand : public TCommand
 {
         Q_OBJECT
 
 public :
-        PCommand(ContextItem* item, const char* slot, const QString& des);
-	PCommand(ContextItem* item, const char* slot, const QVariant &doValue, const QVariant &undoValue, const QString& des);
+        PCommand(TContextItem* item, const char* slot, const QString& des);
+	PCommand(TContextItem* item, const char* slot, const QVariant &doValue, const QVariant &undoValue, const QString& des);
         ~PCommand();
 
         int prepare_actions();
@@ -43,7 +43,7 @@ public :
         bool is_hold_command() const {return false;}
 
 private :
-        ContextItem*	m_contextitem;
+        TContextItem*	m_contextitem;
         const char*	m_slot;
 	QVariant	m_doValue;
 	QVariant	m_undoValue;

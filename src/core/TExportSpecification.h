@@ -1,3 +1,24 @@
+/*
+Copyright (C) 2024 Remon Sijrier
+
+This file is part of Traverso
+
+Traverso is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
+
+*/
+
 #ifndef TEXPORTSPECIFICATION_H
 #define TEXPORTSPECIFICATION_H
 
@@ -9,9 +30,9 @@
 #include <sndfile.h>
 #include "gdither_types.h"
 
-class Marker;
-class Project;
-class Sheet;
+class TTimeLineMarker;
+class TProject;
+class TSheet;
 
 class TExportSpecification : public QObject
 {
@@ -28,7 +49,7 @@ public:
 
     int is_valid();
 
-    int start_export(Project *project);
+    int start_export(TProject *project);
 
     void set_recording_state(int recordingState);
     void set_sample_rate(uint sampleRate);
@@ -39,7 +60,7 @@ public:
     void set_export_end_location(const TTimeRef &endLocation);
 
     void add_exported_range(const TTimeRef& time);
-    void add_sheet_to_export(Sheet* sheet);
+    void add_sheet_to_export(TSheet* sheet);
 
     void set_writer_type(const QString& writerType);
     void set_file_format(int fileFormat);
@@ -81,7 +102,7 @@ public:
     GDitherSize get_dither_size() const;
     GDitherType get_dither_type() const {return m_ditherType;}
     uint get_sample_bytes() const {return m_sampleBytes;}
-    QList<Sheet*> get_sheets_to_export() const {return m_sheetsToExport;}
+    QList<TSheet*> get_sheets_to_export() const {return m_sheetsToExport;}
 
     bool is_cd_export() const {return m_isCdExport;}
 
@@ -104,7 +125,7 @@ public:
     TTimeRef	resumeTransportLocation;
 
 private:
-    QList<Sheet* >  m_sheetsToExport;
+    QList<TSheet* >  m_sheetsToExport;
     int             m_fileFormat;
     uint            m_sampleRate;
     uint            m_channelCount;

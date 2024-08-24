@@ -25,9 +25,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TProcessCallBackData.h"
 #include "TTimeRef.h"
-#include "Track.h"
+#include "TTrack.h"
 
-class TBusTrack : public Track
+class TBusTrack : public TTrack
 {
     Q_OBJECT
 

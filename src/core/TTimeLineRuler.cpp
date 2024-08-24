@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeLineRuler.h"
 
 #include "TSession.h"
-#include "Marker.h"
+#include "TTimeLineMarker.h"
 #include "TExportSpecification.h"
 #include "Utils.h"
 #include "TAddRemoveCommand.h"
@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 TTimeLineRuler::TTimeLineRuler(TSession * sheet)
-	: ContextItem(sheet)
+	: TContextItem(sheet)
 	, m_sheet(sheet)
 {
     QObject::tr("TTimeLineRuler");
@@ -44,7 +44,7 @@ QDomNode TTimeLineRuler::get_state(QDomDocument doc)
 	QDomNode markersNode = doc.createElement("Markers");
 	domNode.appendChild(markersNode);
 
-	foreach (Marker *marker, m_markers) {
+	foreach (TTimeLineMarker *marker, m_markers) {
 		markersNode.appendChild(marker->get_state(doc));
 	}
 
@@ -59,7 +59,7 @@ int TTimeLineRuler::set_state(const QDomNode & node)
 	QDomNode markerNode = markersNode.firstChild();
 
 	while (!markerNode.isNull()) {
-		Marker* marker = new Marker(this, markerNode);
+		TTimeLineMarker* marker = new TTimeLineMarker(this, markerNode);
         connect(marker->get_location(), SIGNAL(locationChanged()), this, SLOT(marker_position_changed()));
 		m_markers.append(marker);
 		markerNode = markerNode.nextSibling();
@@ -70,14 +70,14 @@ int TTimeLineRuler::set_state(const QDomNode & node)
 	return 1;
 }
 
-TCommand * TTimeLineRuler::add_marker(Marker* marker, bool historable)
+TCommand * TTimeLineRuler::add_marker(TTimeLineMarker* marker, bool historable)
 {
     connect(marker->get_location(), SIGNAL(locationChanged()), this, SLOT(marker_position_changed()));
 	
 	TAddRemoveCommand* cmd;
 	cmd = new TAddRemoveCommand(this, marker, historable, m_sheet,
-		"private_add_marker(Marker*)", "markerAdded(Marker*)",
-		"private_remove_marker(Marker*)", "markerRemoved(Marker*)",
+        "private_add_marker(TTimeLineMarker*)", "markerAdded(TTimeLineMarker*)",
+        "private_remove_marker(TTimeLineMarker*)", "markerRemoved(TTimeLineMarker*)",
   		tr("Add Marker"));
 	
 	// Bypass the real time thread save logic in TSMP, since a Marker doesn't have YET
@@ -89,12 +89,12 @@ TCommand * TTimeLineRuler::add_marker(Marker* marker, bool historable)
 	return cmd;
 }
 
-TCommand* TTimeLineRuler::remove_marker(Marker* marker, bool historable)
+TCommand* TTimeLineRuler::remove_marker(TTimeLineMarker* marker, bool historable)
 {
-	TAddRemoveCommand* cmd;
+    TAddRemoveCommand* cmd;
 	cmd = new TAddRemoveCommand(this, marker, historable, m_sheet,
-		"private_remove_marker(Marker*)", "markerRemoved(Marker*)",
-		"private_add_marker(Marker*)", "markerAdded(Marker*)",
+        "private_remove_marker(TTimeLineMarker*)", "markerRemoved(TTimeLineMarker*)",
+        "private_add_marker(TTimeLineMarker*)", "markerAdded(TTimeLineMarker*)",
   		tr("Remove Marker"));
 	
 	// Bypass the real time thread save logic in TSMP, since a Marker doesn't have YET
@@ -106,21 +106,21 @@ TCommand* TTimeLineRuler::remove_marker(Marker* marker, bool historable)
 	return cmd;
 }
 
-void TTimeLineRuler::private_add_marker(Marker * marker)
+void TTimeLineRuler::private_add_marker(TTimeLineMarker * marker)
 {
 	m_markers.append(marker);
 	index_markers();
 }
 
-void TTimeLineRuler::private_remove_marker(Marker * marker)
+void TTimeLineRuler::private_remove_marker(TTimeLineMarker * marker)
 {
 	m_markers.removeAll(marker);
 	index_markers();
 }
 
-Marker * TTimeLineRuler::get_marker(qint64 id)
+TTimeLineMarker * TTimeLineRuler::get_marker(qint64 id)
 {
-	foreach(Marker* marker, m_markers) {
+	foreach(TTimeLineMarker* marker, m_markers) {
 		if (marker->get_id() == id) {
 			return marker;
 		}
@@ -131,8 +131,8 @@ Marker * TTimeLineRuler::get_marker(qint64 id)
 
 bool TTimeLineRuler::get_end_location(TTimeRef& location)
 {
-    for(Marker* marker : m_markers) {
-		if (marker->get_type() == Marker::ENDMARKER) {
+    for(TTimeLineMarker* marker : m_markers) {
+		if (marker->get_type() == TTimeLineMarker::ENDMARKER) {
             location = marker->get_location()->get_start();
 			return true;
 		}
@@ -154,8 +154,8 @@ bool TTimeLineRuler::get_start_location(TTimeRef & location)
 
 bool TTimeLineRuler::has_end_marker()
 {
-	foreach(Marker* marker, m_markers) {
-		if (marker->get_type() == Marker::ENDMARKER) {
+	foreach(TTimeLineMarker* marker, m_markers) {
+		if (marker->get_type() == TTimeLineMarker::ENDMARKER) {
 			return true;
 		}
 	}
@@ -164,10 +164,10 @@ bool TTimeLineRuler::has_end_marker()
 }
 
 
-Marker* TTimeLineRuler::get_end_marker()
+TTimeLineMarker* TTimeLineRuler::get_end_marker()
 {
-	foreach(Marker* marker, m_markers) {
-		if (marker->get_type() == Marker::ENDMARKER) {
+	foreach(TTimeLineMarker* marker, m_markers) {
+		if (marker->get_type() == TTimeLineMarker::ENDMARKER) {
 			return marker;
 		}
 	}
@@ -188,7 +188,7 @@ void TTimeLineRuler::marker_position_changed()
 
 void TTimeLineRuler::index_markers()
 {
-    std::sort(m_markers.begin(), m_markers.end(), [&](Marker* left, Marker* right) {
+    std::sort(m_markers.begin(), m_markers.end(), [&](TTimeLineMarker* left, TTimeLineMarker* right) {
         return left->get_location()->get_start() < right->get_location()->get_start();
     });
 
@@ -200,17 +200,17 @@ void TTimeLineRuler::index_markers()
 
 // returns all markers of type CDTRACK
 // sets 'endmarker' to true if an endmarker is present, else to false.
-QList<Marker*> TTimeLineRuler::get_cd_layout(bool & endmarker)
+QList<TTimeLineMarker*> TTimeLineRuler::get_cd_layout(bool & endmarker)
 {
-        QList<Marker*> list;
+        QList<TTimeLineMarker*> list;
         endmarker = false;
 
-        foreach(Marker* marker, m_markers) {
-                if (marker->get_type() == Marker::CDTRACK) {
+        foreach(TTimeLineMarker* marker, m_markers) {
+                if (marker->get_type() == TTimeLineMarker::CDTRACK) {
                         list.append(marker);
                 }
 
-                if (marker->get_type() == Marker::ENDMARKER) {
+                if (marker->get_type() == TTimeLineMarker::ENDMARKER) {
                         list.append(marker);
                         endmarker = true;
                 }
@@ -223,7 +223,7 @@ QList<Marker*> TTimeLineRuler::get_cd_layout(bool & endmarker)
 // formatting the track names in a separate function to guarantee that
 // the file names of exported tracks and the entry in the TOC file always
 // match
-QString TTimeLineRuler::format_cdtrack_name(Marker *marker, int i)
+QString TTimeLineRuler::format_cdtrack_name(TTimeLineMarker *marker, int i)
 {
 	PENTER;
         QString name;
@@ -246,11 +246,11 @@ QString TTimeLineRuler::format_cdtrack_name(Marker *marker, int i)
 
 // creates a valid list of markers for CD export. Takes care of special cases
 // such as if no markers are present, or if an end marker is missing.
-QList<Marker*> TTimeLineRuler::get_cdtrack_list(TExportSpecification *spec)
+QList<TTimeLineMarker*> TTimeLineRuler::get_cdtrack_list(TExportSpecification *spec)
 {
 	PENTER;
         bool endmarker;
-        QList<Marker*> lst = get_cd_layout(endmarker);
+        QList<TTimeLineMarker*> lst = get_cd_layout(endmarker);
 
 	// FIXME: this function is called from the export thread, creating
 	// new marker objects gives this warning:
@@ -258,12 +258,12 @@ QList<Marker*> TTimeLineRuler::get_cdtrack_list(TExportSpecification *spec)
 
 	// make sure there are at least a start- and end-marker in the list
         if (lst.size() == 0) {
-                lst.push_back(new Marker(this, spec->get_export_start_location(), Marker::CDTRACK));
+                lst.push_back(new TTimeLineMarker(this, spec->get_export_start_location(), TTimeLineMarker::CDTRACK));
         }
 
         if (!endmarker) {
                 TTimeRef endlocation = qMax(spec->get_export_end_location(), lst.last()->get_location()->get_start());
-                lst.push_back(new Marker(this, endlocation, Marker::ENDMARKER));
+                lst.push_back(new TTimeLineMarker(this, endlocation, TTimeLineMarker::ENDMARKER));
         }
 
         return lst;
@@ -274,14 +274,14 @@ QString TTimeLineRuler::get_cdrdao_tracklist(TExportSpecification* spec, bool pr
 {
         QString output;
 
-        QList<Marker*> mlist = get_cdtrack_list(spec);
+        QList<TTimeLineMarker*> mlist = get_cdtrack_list(spec);
 
 //	TTimeRef start;
 
         for(int i = 0; i < mlist.size()-1; ++i) {
 
-                Marker* startmarker = mlist.at(i);
-                Marker* endmarker = mlist.at(i+1);
+                TTimeLineMarker* startmarker = mlist.at(i);
+                TTimeLineMarker* endmarker = mlist.at(i+1);
 
                 output += "TRACK AUDIO\n";
 
@@ -326,7 +326,7 @@ QString TTimeLineRuler::get_cdrdao_tracklist(TExportSpecification* spec, bool pr
 //		start += length;
 
                 // check if the second marker is of type "Endmarker"
-                if (endmarker->get_type() == Marker::ENDMARKER) {
+                if (endmarker->get_type() == TTimeLineMarker::ENDMARKER) {
                         break;
                 }
         }

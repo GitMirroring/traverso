@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QTextStream>
 
 #include "PCommand.h"
-#include "ContextItem.h"
+#include "TContextItem.h"
 #include "TInformUser.h"
 #include "Utils.h"
 #include "TCommandPlugin.h"
@@ -275,21 +275,21 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "AudioTrack";
+    function->object = "TAudioTrack";
 	function->slotsignature = "toggle_arm";
 	function->m_description = tr("Record: On/Off");
 	function->commandName = "AudioTrackToggleRecord";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "AudioTrack";
+    function->object = "TAudioTrack";
 	function->slotsignature = "silence_others";
 	function->m_description = tr("Silence other tracks");
 	function->commandName = "AudioTrackSilenceOthers";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "FadeCurve";
+    function->object = "TFadeCurve";
 	function->slotsignature = "set_mode";
 	function->m_description = tr("Cycle Shape");
 	function->commandName = "FadeCurveCycleShape";
@@ -436,14 +436,14 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "scroll_up";
 	function->m_description =tr("Up");
 	function->commandName = "ViewScrollUp";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "scroll_down";
 	function->m_description = tr("Down");
 	function->commandName = "ViewScrollDown";
@@ -464,21 +464,21 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "to_upper_context_level";
 	function->m_description = tr("One Layer Up");
 	function->commandName = "NavigateToUpperContext";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "to_lower_context_level";
 	function->m_description = tr("One Layer Down");
 	function->commandName = "NavigateToLowerContext";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "AudioClipView";
+    function->object = "TAudioClipView";
 	function->slotsignature = "fade_range";
 	function->m_description = tr("Adjust Length");
 	function->commandName = "AudioClipFadeLength";
@@ -527,13 +527,13 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->setInheritedBase("EditPropertiesBase");
 	function->commandName = "EditSongProperties";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "PluginView";
+    function->object = "TAudioPluginView";
 	function->setInheritedBase("EditPropertiesBase");
 	function->commandName = "EditPluginProperties";
     registerFunction(function);
@@ -545,7 +545,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "AudioClipView";
+    function->object = "TAudioClipView";
 	function->setInheritedBase("EditPropertiesBase");
 	function->commandName = "EditAudioClipProperties";
     registerFunction(function);
@@ -598,7 +598,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "FadeCurveView";
+    function->object = "TFadeCurveView";
 	function->slotsignature = "select_fade_shape";
 	function->m_description = tr("Select Preset");
 	function->commandName = "FadeSelectPreset";
@@ -612,7 +612,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "browse_to_time_line";
 	function->m_description = tr("To Timeline");
 	function->commandName = "NavigateToTimeLine";
@@ -647,7 +647,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "touch";
 	function->m_description = tr("Set");
 	function->commandName = "WorkCursorTouch";
@@ -661,14 +661,14 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "AudioClipView";
+    function->object = "TAudioClipView";
 	function->slotsignature = "set_audio_file";
 	function->m_description = tr("Reset Audio File");
 	function->commandName = "AudioClipSetAudioFile";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "FadeCurve";
+    function->object = "TFadeCurve";
 	function->slotsignature = "toggle_raster";
 	function->m_description = tr("Toggle Raster");
     function->commandName = "FadeCurveToggleRaster";
@@ -682,7 +682,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "AudioClip";
+    function->object = "TAudioClip";
 	function->slotsignature = "lock";
 	function->m_description = tr("Lock");
 	function->commandName = "AudioClipLock";
@@ -710,14 +710,14 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "add_marker";
 	function->m_description = tr("Add Marker");
 	function->commandName = "SheetAddMarker";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "add_marker_at_playhead";
 	function->m_description = tr("Add Marker at Playhead");
 	function->commandName = "SheetAddMarkerAtPlayhead";
@@ -731,7 +731,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "add_marker_at_work_cursor";
 	function->m_description = tr("Add Marker at Work Cursor");
 	function->commandName = "SheetAddMarkerAtWorkCursor";
@@ -745,19 +745,19 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "FadeCurve";
+    function->object = "TFadeCurve";
     function->setInheritedBase("ToggleBypassBase");
 	function->commandName = "FadeCurveToggleBypass";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "Plugin";
+    function->object = "TAudioPlugin";
     function->setInheritedBase("ToggleBypassBase");
 	function->commandName = "PluginToggleBypass";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "FadeCurveView";
+    function->object = "TFadeCurveView";
 	function->slotsignature = "bend";
 	function->setDescription(tr("Adjust Bend"));
 	function->useY = true;
@@ -800,7 +800,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "Track";
+    function->object = "TTrack";
 	function->slotsignature = "solo";
 	function->setDescription(tr("Solo"));
 	function->commandName = "Solo";
@@ -814,7 +814,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "ProjectManager";
+    function->object = "TProjectManager";
 	function->slotsignature = "save_project";
 	function->setDescription(tr("Save Project"));
 	function->commandName = "ProjectSave";
@@ -828,7 +828,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "FadeCurveView";
+    function->object = "TFadeCurveView";
 	function->slotsignature = "strength";
 	function->setDescription(tr("Adjust Strength"));
 	function->commandName = "FadeCurveStrenght";
@@ -836,7 +836,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "goto_end";
 	function->setDescription(tr("To end"));
 	function->commandName = "WorkCursorToEnd";
@@ -850,7 +850,7 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "goto_begin";
 	function->setDescription(tr("To start"));
 	function->commandName = "WorkCursorToStart";
@@ -878,14 +878,14 @@ void TShortCutManager::loadFunctions()
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "touch_play_cursor";
 	function->setDescription(tr("Set"));
 	function->commandName = "SheetSetPlayPosition";
     registerFunction(function);
 
     function = new TShortCutFunction();
-	function->object = "SheetView";
+    function->object = "TSheetView";
 	function->slotsignature = "center_playhead";
 	function->setDescription(tr("Center"));
 	function->commandName = "SheetCenterPlayhead";
@@ -942,7 +942,7 @@ void TShortCutManager::loadFunctions()
 
     createAndAddFunction("TAudioProcessingNode", tr("Gain Envelope"), "toggle_show_gain_automation_curve", "GainShowAutomation");
 
-    createAndAddFunction("AudioTrackView", tr("Insert Silence"), "insert_silence", "AudioTrackInsertSilence");
+    createAndAddFunction("TAudioTrackView", tr("Insert Silence"), "insert_silence", "AudioTrackInsertSilence");
     createAndAddFunction("TrackPan", tr("Reset"), "reset_pan", "TrackPanReset", "ResetBase");
 
     createAndAddFunction("FadeRange", tr("Reset"), "reset_length", "FadeResetLength", "ResetBase");

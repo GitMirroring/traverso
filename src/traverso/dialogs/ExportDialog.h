@@ -27,8 +27,8 @@
 #include <QDialog>
 
 class ExportFormatOptionsWidget;
-class Project;
-class Sheet;
+class TProject;
+class TSheet;
 
 class ExportDialog : public QDialog, protected Ui::ExportDialog
 {
@@ -44,7 +44,7 @@ protected:
 	void closeEvent(QCloseEvent* event);
 
 private:
-	Project* m_project{};
+	TProject* m_project{};
 	ExportFormatOptionsWidget* m_formatOptionsWidget;
 
 	bool is_safe_to_export();
@@ -54,7 +54,7 @@ private:
 	int m_copyNumber{};
 
 private slots:
-	void set_project(Project* project);
+	void set_project(TProject* project);
 	void render_finished();
 
 	void on_fileSelectButton_clicked();

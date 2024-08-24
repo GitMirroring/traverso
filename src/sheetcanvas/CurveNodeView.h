@@ -24,16 +24,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ViewItem.h"
 
-#include <CurveNode.h>
+#include <TCurveNode.h>
 
 class CurveView;
 
-class CurveNodeView : public ViewItem, public CurveNode
+class CurveNodeView : public ViewItem, public TCurveNode
 {
 	Q_OBJECT
 
 public:
-	CurveNodeView(SheetView* sv, CurveView* curveview, CurveNode* node, Curve* guicurve);
+	CurveNodeView(TSheetView* sv, CurveView* curveview, TCurveNode* node, TCurve* guicurve);
 	~CurveNodeView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -44,14 +44,14 @@ public:
     void set_color(const QColor& color);
 	void load_theme_data();
 
-	CurveNode* get_curve_node() const {return m_node;}
+	TCurveNode* get_curve_node() const {return m_node;}
     CurveView* get_curve_view() const {return m_curveview;}
 
 	bool is_hard_selected() const {return m_isHardSelected;}
 	
 private:
 	CurveView*	m_curveview;
-	CurveNode*	m_node;
+	TCurveNode*	m_node;
 	QColor		m_color;
 	bool		m_isSoftSelected;
 	bool		m_isHardSelected;

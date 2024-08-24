@@ -23,15 +23,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioDevice.h"
 #include "TConfig.h"
-#include "DiskIO.h"
+#include "TDiskIOThread.h"
 #include "TMainWindow.h"
 #include "TInputEventDispatcher.h"
 #include "MessageWidget.h" 
-#include "Project.h"
-#include "ProjectManager.h"
-#include "Sheet.h"
-#include "Themer.h"
-#include "AudioTrack.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TSheet.h"
+#include "TThemer.h"
+#include "TAudioTrack.h"
 #include "Utils.h"
 
 #include <QPainter>
@@ -369,8 +369,8 @@ void HDDSpaceInfo::update_status( )
 #endif
 #endif
 
-	QList<Sheet*> recordingSheets;
-	foreach(Sheet* sheet, m_project->get_sheets()) {
+	QList<TSheet*> recordingSheets;
+	foreach(TSheet* sheet, m_project->get_sheets()) {
 		if (sheet->is_recording() && sheet->any_audio_track_armed()) {
 			recordingSheets.append(sheet);
 		}
@@ -380,8 +380,8 @@ void HDDSpaceInfo::update_status( )
 	
 	if (recordingSheets.size()) {
 		int recChannelCount = 0;
-        foreach(Sheet* sheet, recordingSheets) {
-            foreach(AudioTrack* track, sheet->get_armed_tracks()) {
+        foreach(TSheet* sheet, recordingSheets) {
+            foreach(TAudioTrack* track, sheet->get_armed_tracks()) {
                 recChannelCount += track->get_channel_count();
             }
         }
@@ -438,13 +438,13 @@ InfoWidget::InfoWidget(QWidget* parent)
 	, m_project(0)
 {
 	setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
 	
 	setFocusPolicy(Qt::NoFocus);
 }
 
 
-void InfoWidget::set_project(Project* project )
+void InfoWidget::set_project(TProject* project )
 {
 	m_project = project;
 	if (m_project) {

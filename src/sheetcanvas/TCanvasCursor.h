@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QTimer>
 
-class SheetView;
+class TSheetView;
 class PositionIndicator;
 
 class TCanvasCursor : public ViewItem
@@ -35,7 +35,7 @@ class TCanvasCursor : public ViewItem
     Q_PROPERTY(QPointF position READ get_pos WRITE set_pos)
 
 public:
-    TCanvasCursor(SheetView* );
+    TCanvasCursor(TSheetView* );
     ~TCanvasCursor();
 
     enum {

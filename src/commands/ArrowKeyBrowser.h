@@ -26,13 +26,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QTimer>
 #include <QVariantList>
 
-class SheetView;
+class TSheetView;
 
 class ArrowKeyBrowser : public TCommand
 {
         Q_OBJECT
 public:
-        ArrowKeyBrowser(SheetView* sv, const QVariantList& args);
+        ArrowKeyBrowser(TSheetView* sv, const QVariantList& args);
 
         int begin_hold();
         int finish_hold();
@@ -41,7 +41,7 @@ public:
 	bool supportsEnterFinishesHold() const {return false;}
 
 private:
-        SheetView*      m_sv;
+        TSheetView*      m_sv;
 
 public slots:
 	void up();

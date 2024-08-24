@@ -24,13 +24,13 @@
 #include "TrackPanelViewPort.h"
 #include "ClipsViewPort.h"
 #include "TimeLineViewPort.h"
-#include "SheetView.h"
-#include "Themer.h"
-#include "Peak.h"
+#include "TSheetView.h"
+#include "TThemer.h"
+#include "TPeak.h"
 
-#include <Sheet.h>
+#include <TSheet.h>
 #include "Utils.h"
-#include "ContextPointer.h"
+#include "TContextPointer.h"
 
 #include <QGridLayout>
 #include <QScrollBar>
@@ -124,7 +124,7 @@ SheetWidget::SheetWidget(TSession* sheet, QWidget* parent)
         QLabel* zoomLabel = new QLabel(this);
         zoomLabel->setText("Zoom");
         m_zoomSlider = new QSlider(this);
-        m_zoomSlider->setMaximum(Peak::ZOOM_LEVELS);
+        m_zoomSlider->setMaximum(TPeak::ZOOM_LEVELS);
         m_zoomSlider->setMinimum(0);
         m_zoomSlider->setPageStep(4);
         m_zoomSlider->setSingleStep(1);
@@ -151,7 +151,7 @@ SheetWidget::SheetWidget(TSession* sheet, QWidget* parent)
 
 	setLayout(m_mainLayout);
 
-	m_sv = new SheetView(this, m_clipsViewPort, m_trackPanel, m_timeLine, sheet);
+	m_sv = new TSheetView(this, m_clipsViewPort, m_trackPanel, m_timeLine, sheet);
         m_clipsViewPort->set_sheetview(m_sv);
         m_trackPanel->set_sheetview(m_sv);
 	m_timeLine->set_sheetview(m_sv);
@@ -220,9 +220,9 @@ void SheetWidget::load_theme_data()
 	
 }
 
-Sheet* SheetWidget::get_sheet() const
+TSheet* SheetWidget::get_sheet() const
 {
-    return qobject_cast<Sheet*>(m_session);
+    return qobject_cast<TSheet*>(m_session);
 }
 
 TSession *SheetWidget::get_session() const
@@ -230,21 +230,21 @@ TSession *SheetWidget::get_session() const
     return m_session;
 }
 
-SheetView * SheetWidget::get_sheetview() const
+TSheetView * SheetWidget::get_sheetview() const
 {
 	return m_sv;
 }
 
 void SheetWidget::zoom_slider_value_changed(int value)
 {
-        m_session->set_hzoom(Peak::zoomStep[value]);
+        m_session->set_hzoom(TPeak::zoomStep[value]);
 }
 
 void SheetWidget::sheet_zoom_level_changed()
 {
         int level = m_session->get_hzoom();
-        for (int i=0; i<Peak::ZOOM_LEVELS; ++i) {
-                if (level == Peak::zoomStep[i]) {
+        for (int i=0; i<TPeak::ZOOM_LEVELS; ++i) {
+                if (level == TPeak::zoomStep[i]) {
                         m_zoomSlider->setValue(i);
                         return;
                 }

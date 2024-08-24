@@ -21,16 +21,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Crop.h"
 
-#include "AudioClipView.h"
-#include "ContextPointer.h"
+#include "TAudioClipView.h"
+#include "TContextPointer.h"
 #include "TCommand.h"
 #include "Fade.h"
-#include "SheetView.h"
-#include "AudioClip.h"
-#include "ResourcesManager.h"
-#include "ProjectManager.h"
-#include "Sheet.h"
-#include "AudioTrack.h"
+#include "TSheetView.h"
+#include "TAudioClip.h"
+#include "TResourcesManager.h"
+#include "TProjectManager.h"
+#include "TSheet.h"
+#include "TAudioTrack.h"
 #include "TInputEventDispatcher.h"
 #include "TLocation.h"
 #include <limits.h>
@@ -65,7 +65,7 @@ void CropItemView::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QW
 
 
 
-CropClip::CropClip(AudioClipView* view)
+CropClip::CropClip(TAudioClipView* view)
 	: TCommand(view->get_related_context_item(), tr("AudioClip: Magnetic Cut"))
 	, m_cv(view)
 {
@@ -127,7 +127,7 @@ int CropClip::finish_hold()
 int CropClip::do_action()
 {
 	PENTER;
-    AudioClipAddRemoveSpec spec;
+    TAudioClipAddRemoveSpec spec;
     spec.set_clip(leftClip);
     spec.set_is_historable(false);
     spec.set_is_move(false);
@@ -144,7 +144,7 @@ int CropClip::do_action()
 int CropClip::undo_action()
 {
 	PENTER;
-    AudioClipAddRemoveSpec spec;
+    TAudioClipAddRemoveSpec spec;
     spec.set_clip(m_clip);
     spec.set_is_historable(false);
     spec.set_is_move(false);

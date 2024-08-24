@@ -22,14 +22,14 @@
 
 #include "MoveCurveNode.h"
 
-#include "Curve.h"
+#include "TCurve.h"
 #include "CurveView.h"
-#include "CurveNode.h"
-#include "SheetView.h"
+#include "TCurveNode.h"
+#include "TSheetView.h"
 #include "Mixer.h"
 
-MoveCurveNode::MoveCurveNode(Curve* curve,
-	QList<CurveNode*> nodes,
+MoveCurveNode::MoveCurveNode(TCurve* curve,
+	QList<TCurveNode*> nodes,
 	float height,
 	qint64 scalefactor,
 	TTimeRef minWhenDiff,
@@ -40,7 +40,7 @@ MoveCurveNode::MoveCurveNode(Curve* curve,
     : TMoveCommand(nullptr, curve, des)
     , mcnd(new MoveCurveNode::MoveCurveNodeData)
 {
-	foreach(CurveNode* node, nodes) {
+	foreach(TCurveNode* node, nodes) {
 		CurveNodeData curveData{};
 		curveData.node = node;
 		curveData.origValue = node->get_value();

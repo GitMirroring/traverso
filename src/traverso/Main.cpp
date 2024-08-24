@@ -29,8 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TConfig.h"
 #include "Traverso.h"
-#include "Project.h"
-#include "ProjectManager.h"
+#include "TProject.h"
+#include "TProjectManager.h"
 #include "TMainWindow.h"
 #include "Debugger.h"
 
@@ -127,7 +127,7 @@ int main( int argc, char **argv )
                         if (strcmp(argv[i],"--fft-meter")==0) {
                                 printf("Using Traverso in FFT Meter only mode\n");
                                 if (!pm().project_exists("fft-meter")) {
-                                        Project* project = pm().create_new_project(1, 1, "fft-meter");
+                                        TProject* project = pm().create_new_project(1, 1, "fft-meter");
                                         project->save();
                                         delete project;
 

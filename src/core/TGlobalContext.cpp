@@ -21,9 +21,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TGlobalContext.h"
 
-#include "ProjectManager.h"
-#include "Project.h"
-#include "Sheet.h"
+#include "TProjectManager.h"
+#include "TProject.h"
+#include "TSheet.h"
 
 TGlobalContext::TGlobalContext(QObject *parent) :
     QObject(parent)
@@ -31,10 +31,10 @@ TGlobalContext::TGlobalContext(QObject *parent) :
 	m_session = 0;
 	m_project = 0;
 
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
 }
 
-void TGlobalContext::set_project(Project *project)
+void TGlobalContext::set_project(TProject *project)
 {
 	m_project = project;
 	if (m_project) {

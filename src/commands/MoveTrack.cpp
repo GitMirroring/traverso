@@ -22,13 +22,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "MoveTrack.h"
 
 #include "ClipsViewPort.h"
-#include "ContextPointer.h"
-#include "Sheet.h"
-#include "SheetView.h"
-#include "Track.h"
+#include "TContextPointer.h"
+#include "TSheet.h"
+#include "TSheetView.h"
+#include "TTrack.h"
 #include "TrackView.h"
-#include "Project.h"
-#include "ProjectManager.h"
+#include "TProject.h"
+#include "TProjectManager.h"
 
 #include <QMenu>
 
@@ -144,17 +144,17 @@ void MoveTrack::to_top()
 // horribly broken :D
 void MoveTrack::move_to_sheet()
 {
-    Project* project = pm().get_project();
+    TProject* project = pm().get_project();
 
     if (!project) {
         return;
     }
 
-    QList<Sheet*> sheets = project->get_sheets();
+    QList<TSheet*> sheets = project->get_sheets();
 
     QMenu menu;
 
-    foreach(Sheet* sheet, sheets) {
+    foreach(TSheet* sheet, sheets) {
         QAction* action = menu.addAction(sheet->get_name());
         action->setData(sheet->get_id());
     }
@@ -168,9 +168,9 @@ void MoveTrack::move_to_sheet()
     qlonglong id = action->data().toLongLong();
 
 
-    Track* track = m_trackView->get_track();
-    Sheet* destination = project->get_sheet(id);
-    Sheet* orig = qobject_cast<Sheet*>(track->get_session());
+    TTrack* track = m_trackView->get_track();
+    TSheet* destination = project->get_sheet(id);
+    TSheet* orig = qobject_cast<TSheet*>(track->get_session());
 
     if (!destination || !orig) {
         return;

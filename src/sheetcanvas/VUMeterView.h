@@ -24,8 +24,8 @@
 #include "ViewItem.h"
 #include "TMainWindow.h"
 
-class Track;
-class AudioTrack;
+class TTrack;
+class TAudioTrack;
 class VUMeterLevelView;
 class TVUMonitor;
 class QLabel;
@@ -60,7 +60,7 @@ class VUMeterView : public ViewItem
         Q_OBJECT
 
 public:
-        VUMeterView(ViewItem* parent, Track* track);
+        VUMeterView(ViewItem* parent, TTrack* track);
         ~VUMeterView();
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -79,7 +79,7 @@ private:
         int			m_vulevelspacing{};
         QBrush			m_widgetBgBrush;
         Qt::Orientation         m_orientation;
-        AudioTrack*      m_audioTrack;
+        TAudioTrack*      m_audioTrack;
 
         static void calculate_lut_data();
 

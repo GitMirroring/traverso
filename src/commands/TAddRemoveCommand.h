@@ -24,9 +24,9 @@
 #define ADD_ITEM_COMMAND_H
 
 #include "TCommand.h"
-#include "ThreadSaveMessagePosting.h"
+#include "TAudioThreadMessageQueue.h"
 
-class ContextItem;
+class TContextItem;
 class TSession;
 
 class TAddRemoveCommand : public TCommand
@@ -34,8 +34,8 @@ class TAddRemoveCommand : public TCommand
     Q_OBJECT
 
 public :
-    TAddRemoveCommand(ContextItem* parent, ContextItem* item, const QString& des);
-    TAddRemoveCommand(ContextItem* parent,
+    TAddRemoveCommand(TContextItem* parent, TContextItem* item, const QString& des);
+    TAddRemoveCommand(TContextItem* parent,
 			void*  arg,
             bool historable,
             TSession* sheet,
@@ -44,8 +44,8 @@ public :
 			const char* undoActionSlot,
 			const char* undoSignal,
 			const QString& des);
-    TAddRemoveCommand(ContextItem* parent,
-			ContextItem*  item,
+    TAddRemoveCommand(TContextItem* parent,
+			TContextItem*  item,
             bool historable,
             TSession* sheet,
 			const char* doActionSlot,
@@ -64,10 +64,10 @@ public :
 
 
 private :
-	ContextItem*	m_parentItem;
+	TContextItem*	m_parentItem;
 	void* 		m_arg;
-    TSMPEvent	m_doActionEvent;
-    TSMPEvent	m_undoActionEvent;
+    TAudioThreadMessageQueueEvent	m_doActionEvent;
+    TAudioThreadMessageQueueEvent	m_undoActionEvent;
 	TSession*	m_sheet;
 
 	const char*	m_doActionSlot;

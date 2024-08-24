@@ -21,7 +21,7 @@ $Id: TLocation.cpp,v 1.2 2008/02/21 20:00:48 r_sijrier Exp $
 */
 
 #include "TLocation.h"
-#include "SnapList.h"
+#include "TSnapList.h"
 
 #include <Debugger.h>
 
@@ -43,7 +43,7 @@ void TLocation::set_snappable(bool snap)
 
 }
 
-void TLocation::set_snap_list(SnapList *sList)
+void TLocation::set_snap_list(TSnapList *sList)
 {
 	snapList = sList;
 }

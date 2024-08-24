@@ -21,17 +21,17 @@
 
 #include "PlayHeadMove.h"
 
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "ClipsViewPort.h"
 #include "Cursors.h"
-#include "SnapList.h"
+#include "TSnapList.h"
 #include "TSession.h"
 #include "TConfig.h"
 #include "TInputEventDispatcher.h"
 
 #include <Debugger.h>
 
-PlayHeadMove::PlayHeadMove(SheetView* sv)
+PlayHeadMove::PlayHeadMove(TSheetView* sv)
     : TMoveCommand(sv, nullptr, "Play Cursor Move")
     , m_session(sv->get_sheet())
 {
@@ -189,7 +189,7 @@ void PlayHeadMove::do_keyboard_move(const TTimeRef &newLocation, bool centerInVi
 
 
     cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newTransportLocation, d->sv->timeref_scalefactor));
-    d->sv->set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), m_holdCursorSceneY), AbstractViewPort::CursorMoveReason::KEYBOARD_NAVIGATION);
+    d->sv->set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), m_holdCursorSceneY), TViewPortInterface::CursorMoveReason::KEYBOARD_NAVIGATION);
 }
 
 void PlayHeadMove::move_to_work_cursor()

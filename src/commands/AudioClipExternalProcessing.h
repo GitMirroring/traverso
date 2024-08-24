@@ -24,15 +24,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TCommand.h"
 
-class AudioClip;
-class AudioTrack;
+class TAudioClip;
+class TAudioTrack;
 
 class AudioClipExternalProcessing : public TCommand
 {
         Q_OBJECT
 
 public :
-	AudioClipExternalProcessing(AudioClip* object);
+	AudioClipExternalProcessing(TAudioClip* object);
 	~AudioClipExternalProcessing();
 
 	int prepare_actions();
@@ -45,9 +45,9 @@ public :
 	bool is_hold_command() const {return false;}
 
 // private :
-	AudioTrack* m_track;
-	AudioClip* m_clip;
-	AudioClip* m_resultingclip;
+	TAudioTrack* m_track;
+	TAudioClip* m_clip;
+	TAudioClip* m_resultingclip;
 
 // 	friend class ExternalProcessingDialog;
 

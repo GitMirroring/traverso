@@ -22,7 +22,7 @@
 #include "AudioChannel.h"
 
 #include "TVUMonitor.h"
-#include "ThreadSaveMessagePosting.h"
+#include "TAudioThreadMessageQueue.h"
 #include "Utils.h"
 #include "Debugger.h"
 

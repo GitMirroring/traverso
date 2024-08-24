@@ -27,18 +27,18 @@
 #include <QPoint>
 #include <QVariantList>
 #include <defines.h>
-#include "AudioClipGroup.h"
-#include "Marker.h"
+#include "TAudioClipGroup.h"
+#include "TTimeLineMarker.h"
 
-class AudioClip;
+class TAudioClip;
 class TSession;
-class AudioTrack;
-class SheetView;
+class TAudioTrack;
+class TSheetView;
 class ViewItem;
 class Zoom;
 
 typedef struct {
-	Marker*	marker;
+	TTimeLineMarker*	marker;
 	TTimeRef origin;
 } MarkerAndOrigin;
 
@@ -73,7 +73,7 @@ private :
 	};
 	
         TSession*	m_session;
-	AudioClipGroup  m_group;
+	TAudioClipGroup  m_group;
 	QList<MarkerAndOrigin>	m_markers;
         TTimeRef 	m_trackStartLocation;
         TTimeRef 	m_posDiff;

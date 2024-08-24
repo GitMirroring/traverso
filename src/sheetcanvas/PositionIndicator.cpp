@@ -23,7 +23,7 @@
 
 #include <QColor>
 #include "Utils.h"
-#include "Themer.h"
+#include "TThemer.h"
 
 PositionIndicator::PositionIndicator(ViewItem* parentView)
     : ViewItem(parentView, nullptr)

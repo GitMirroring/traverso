@@ -26,8 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ui_ExternalProcessingDialog.h"
 #include <QDialog>
 
-class AudioClip;
-class AudioTrack;
+class TAudioClip;
+class TAudioTrack;
 class AudioClipExternalProcessing;
 class QCompleter;
 

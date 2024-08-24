@@ -20,9 +20,9 @@
 */
 
 #include "MarkerView.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "LineView.h"
-#include "Themer.h"
+#include "TThemer.h"
 #include "ClipsViewPort.h"
 #include "PositionIndicator.h"
 #include "MoveMarker.h"
@@ -30,14 +30,14 @@
 #include <QFont>
 #include <QFontMetrics>
 #include <QColor>
-#include <Sheet.h>
-#include <Marker.h>
+#include <TSheet.h>
+#include <TTimeLineMarker.h>
 #include <Utils.h>
 #include <QDebug>
 
 #include "Debugger.h"
 
-MarkerView::MarkerView(Marker* marker, SheetView* sv, ViewItem* parentView)
+MarkerView::MarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parentView)
 	: ViewItem(parentView, marker)
 	, m_dragging(false)
 {
@@ -88,7 +88,7 @@ void MarkerView::paint(QPainter * painter, const QStyleOptionGraphicsItem * opti
 
 	painter->setPen(themer()->get_color("Timeline:text"));
 
-	if (m_marker->get_type() == Marker::ENDMARKER) {
+	if (m_marker->get_type() == TTimeLineMarker::ENDMARKER) {
         painter->drawText(m_width + 1, m_height-2, m_marker->get_description());
 	} else {
 		if (m_marker->get_description().length() > 0) {
@@ -111,7 +111,7 @@ void MarkerView::calculate_bounding_rect()
 	update_position();
 
 	QString desc;
-	if (m_marker->get_type() == Marker::ENDMARKER) {
+	if (m_marker->get_type() == TTimeLineMarker::ENDMARKER) {
 		desc = m_marker->get_description();
 	} else {
 		desc = QString("%1: %2").arg(m_marker->get_index()).arg(m_marker->get_description());
@@ -144,7 +144,7 @@ void MarkerView::set_position(int i)
 
 void MarkerView::load_theme_data()
 {
-	if (m_marker->get_type() == Marker::ENDMARKER) {
+	if (m_marker->get_type() == TTimeLineMarker::ENDMARKER) {
 		m_fillColor = themer()->get_color("Marker:end");
 	} else {
 		m_fillColor = themer()->get_color("Marker:default");
@@ -157,14 +157,14 @@ void MarkerView::set_active(bool b)
 	m_active = b;
 
 	if (b) {
-		if (m_marker->get_type() == Marker::ENDMARKER) {
+		if (m_marker->get_type() == TTimeLineMarker::ENDMARKER) {
 			m_fillColor = themer()->get_color("Marker:blinkend");
 		} else {
 			m_fillColor = themer()->get_color("Marker:blink");
 		}
 		m_line->set_color(themer()->get_color("Marker:line:active"));
 	} else {
-		if (m_marker->get_type() == Marker::ENDMARKER) {
+		if (m_marker->get_type() == TTimeLineMarker::ENDMARKER) {
 			m_fillColor = themer()->get_color("Marker:end");
 		} else {
 			m_fillColor = themer()->get_color("Marker:default");

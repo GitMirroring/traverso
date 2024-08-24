@@ -21,11 +21,11 @@
 
 #include "MoveMarker.h"
 
-#include "Marker.h"
+#include "TTimeLineMarker.h"
 #include "MarkerView.h"
-#include "SnapList.h"
-#include "Sheet.h"
-#include "SheetView.h"
+#include "TSnapList.h"
+#include "TSheet.h"
+#include "TSheetView.h"
 #include "TTimeLineRuler.h"
 #include "TInputEventDispatcher.h"
 
@@ -116,7 +116,7 @@ void MoveMarker::next_snap_pos()
 {
 	
 	ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
-	SnapList* slist = m_marker->get_timeline()->get_sheet()->get_snap_list();
+	TSnapList* slist = m_marker->get_timeline()->get_sheet()->get_snap_list();
     m_newLocation = slist->next_snap_pos(m_newLocation);
     m_marker->set_when(m_newLocation);
 }
@@ -125,7 +125,7 @@ void MoveMarker::prev_snap_pos()
 {
 	
 	ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
-	SnapList* slist = m_marker->get_timeline()->get_sheet()->get_snap_list();
+	TSnapList* slist = m_marker->get_timeline()->get_sheet()->get_snap_list();
     m_newLocation = slist->prev_snap_pos(m_newLocation);
     m_marker->set_when(m_newLocation);
 }
@@ -138,7 +138,7 @@ int MoveMarker::jog()
     bool didSnap = false;
 
     if (d->doSnap) {
-		SnapList* slist = m_marker->get_timeline()->get_sheet()->get_snap_list();
+		TSnapList* slist = m_marker->get_timeline()->get_sheet()->get_snap_list();
         newpos = slist->get_snap_value(newpos, didSnap);
 	}
 

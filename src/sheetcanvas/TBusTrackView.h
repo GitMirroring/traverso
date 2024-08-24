@@ -31,7 +31,7 @@ class TBusTrackView : public TrackView
         Q_OBJECT
 
 public:
-        TBusTrackView(SheetView* sv, TBusTrack* group);
+        TBusTrackView(TSheetView* sv, TBusTrack* group);
         ~TBusTrackView() {}
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

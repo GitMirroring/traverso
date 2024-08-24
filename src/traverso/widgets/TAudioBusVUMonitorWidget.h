@@ -27,8 +27,8 @@ $Id: BusMonitor.h,v 1.1 2008/05/24 17:41:02 r_sijrier Exp $
 #include <QList>
 
 class TVUMeterWidget;
-class Project;
-class Sheet;
+class TProject;
+class TSheet;
 class TSession;
 class QMenu;
 class QHBoxLayout;
@@ -49,7 +49,7 @@ protected:
 	QSize minimumSizeHint () const;
 	
 private:
-        Sheet*                  m_sheet;
+        TSheet*                  m_sheet;
         TVUMeterWidget*                m_masterOutMeter;
         TVUMeterWidget*                m_projectMaster;
 	QList<TVUMeterWidget* >	inMeters;
@@ -61,7 +61,7 @@ private:
 
 private slots:
 	void create_vu_meters();
-	void set_project(Project* project);
+	void set_project(TProject* project);
         void set_session(TSession* session);
 	void reset_vu_meters();
 };

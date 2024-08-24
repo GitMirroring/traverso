@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QDialog>
 
-class Track;
+class TTrack;
 class TSend;
 class QMenu;
 
@@ -35,11 +35,11 @@ class TTrackManagerDialog : public QDialog, protected Ui::TTrackManagerDialog
         Q_OBJECT
 
 public:
-        TTrackManagerDialog(Track* track, QWidget* parent);
+        TTrackManagerDialog(TTrack* track, QWidget* parent);
         ~TTrackManagerDialog();
 
 private:
-        Track*  m_track;
+        TTrack*  m_track;
         QMenu*  m_routingInputMenu;
         QMenu*  m_routingOutputMenu;
         QMenu*  m_preSendsMenu;

@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 
-TGainGroupCommand::TGainGroupCommand(ContextItem *context, const QVariantList &args)
+TGainGroupCommand::TGainGroupCommand(TContextItem *context, const QVariantList &args)
     : TCommand (context)
     , m_primaryGain(nullptr)
     , m_contextItem(context)

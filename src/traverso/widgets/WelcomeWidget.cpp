@@ -23,8 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "WelcomeWidget.h"
 
 #include "TConfig.h"
-#include "ProjectManager.h"
-#include "Project.h"
+#include "TProjectManager.h"
+#include "TProject.h"
 #include "TMainWindow.h"
 
 #include <QMessageBox>
@@ -49,7 +49,7 @@ WelcomeWidget::WelcomeWidget(QWidget *parent)
         connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_combo_box()));
         connect(&pm(), SIGNAL(projectDirChangeDetected()), this, SLOT(update_projects_combo_box()));
         connect(&pm(), SIGNAL(projectsListChanged()), this, SLOT(update_projects_combo_box()));
-        connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+        connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
         connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_directory_line_edit()));
 }
 
@@ -59,7 +59,7 @@ WelcomeWidget::~WelcomeWidget()
 
 }
 
-void WelcomeWidget::set_project(Project* project)
+void WelcomeWidget::set_project(TProject* project)
 {
         if (project) {
                 previousProjectLabel->setText(tr("Resume loaded"));
@@ -75,7 +75,7 @@ void WelcomeWidget::set_project(Project* project)
 
 void WelcomeWidget::load_existing_project_button_clicked()
 {
-        Project* project = pm().get_project();
+        TProject* project = pm().get_project();
         QString projectToLoad = projectsComboBox->currentText();
 
 
@@ -97,7 +97,7 @@ void WelcomeWidget::load_existing_project_button_clicked()
 
 void WelcomeWidget::load_previous_project_button_clicked()
 {
-        Project* project = pm().get_project();
+        TProject* project = pm().get_project();
         if (project) {
                 TMainWindow::instance()->show_current_sheet();
 

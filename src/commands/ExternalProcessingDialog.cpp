@@ -23,13 +23,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "AudioClipExternalProcessing.h"
 
-#include <AudioClip.h>
-#include <AudioClipView.h>
-#include <AudioTrack.h>
-#include <ReadSource.h>
-#include <ProjectManager.h>
-#include <Project.h>
-#include <ResourcesManager.h>
+#include <TAudioClip.h>
+#include <TAudioClipView.h>
+#include <TAudioTrack.h>
+#include <TReadAudioSource.h>
+#include <TProjectManager.h>
+#include <TProject.h>
+#include <TResourcesManager.h>
 #include <Utils.h>
 #include "TLocation.h"
 #include "TMainWindow.h"
@@ -82,7 +82,7 @@ void ExternalProcessingDialog::prepare_for_external_processing()
 		return;
 	}
 	
-	ReadSource* rs = resources_manager()->get_readsource(m_acep->m_clip->get_readsource_id());
+	TReadAudioSource* rs = resources_manager()->get_readsource(m_acep->m_clip->get_readsource_id());
 	
 	//This should NOT be possible, but just in case....
 	if (! rs) {
@@ -208,7 +208,7 @@ void ExternalProcessingDialog::process_finished(int exitcode, QProcess::ExitStat
 	// print anything on command line we didn't catch
 	printf("output: \n %s", QS_C(result));
 		
-	ReadSource* source = resources_manager()->import_source(dir, m_filename);
+	TReadAudioSource* source = resources_manager()->import_source(dir, m_filename);
 	if (!source) {
 		printf("ResourcesManager didn't return a ReadSource, most likely sox didn't understand your command\n");
 		return rejected();

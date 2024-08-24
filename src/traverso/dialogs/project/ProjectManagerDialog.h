@@ -25,8 +25,8 @@
 #include "ui_ProjectManagerDialog.h"
 #include <QDialog>
 
-class Project;
-class Sheet;
+class TProject;
+class TSheet;
 
 class ProjectManagerDialog : public QDialog, protected Ui::ProjectManagerDialog
 {
@@ -37,11 +37,11 @@ public:
         ~ProjectManagerDialog();
 
 private:
-	Project* m_project{};
+	TProject* m_project{};
 
 private slots:
 	void update_sheet_list();
-	void set_project(Project* project);
+	void set_project(TProject* project);
 	void sheetitem_clicked( QTreeWidgetItem* item, int);
 	void on_renameSheetButton_clicked();
         void on_deleteSheetButton_clicked();

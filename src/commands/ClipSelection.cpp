@@ -21,14 +21,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 #include "ClipSelection.h"
-#include "AudioClipManager.h"
-#include <AudioClip.h>
-#include <Sheet.h>
+#include "TAudioClipManager.h"
+#include <TAudioClip.h>
+#include <TSheet.h>
 #include <Utils.h>
 
 #include "Debugger.h"
 
-ClipSelection::ClipSelection(AudioClip* clip, QVariantList args)
+ClipSelection::ClipSelection(TAudioClip* clip, QVariantList args)
 	: TCommand("")
 {
 	QString slot = args.at(0).toString();
@@ -46,7 +46,7 @@ ClipSelection::ClipSelection(AudioClip* clip, QVariantList args)
 	m_acmanager = clip->get_sheet()->get_audioclip_manager();
 }
 
-ClipSelection::ClipSelection( QList< AudioClip * > clips, AudioClipManager * manager, const char * slot, const QString& des )
+ClipSelection::ClipSelection( QList< TAudioClip * > clips, TAudioClipManager * manager, const char * slot, const QString& des )
     : TCommand(des)
 {
 	m_clips = clips;
@@ -59,8 +59,8 @@ ClipSelection::~ClipSelection()
 
 int ClipSelection::do_action()
 {
-    foreach(AudioClip* clip, m_clips) {
-        if ( ! QMetaObject::invokeMethod(m_acmanager, m_slot, Q_ARG(AudioClip*, clip))) {
+    foreach(TAudioClip* clip, m_clips) {
+        if ( ! QMetaObject::invokeMethod(m_acmanager, m_slot, Q_ARG(TAudioClip*, clip))) {
             PERROR(QString("AudioClip::%1 failed for %2").arg(m_slot, clip->get_name()));
         }
     }

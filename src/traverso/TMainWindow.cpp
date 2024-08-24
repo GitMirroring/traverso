@@ -24,26 +24,26 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 
 
-#include "AudioClip.h"
-#include "AudioClipView.h"
+#include "TAudioClip.h"
+#include "TAudioClipView.h"
 #include "TInformUser.h"
-#include "Marker.h"
+#include "TTimeLineMarker.h"
 #include "PlayHeadMove.h"
-#include "Project.h"
-#include "ReadSource.h"
+#include "TProject.h"
+#include "TReadAudioSource.h"
 #include "ResampleAudioReader.h"
-#include "Sheet.h"
-#include "SheetView.h"
-#include "Track.h"
+#include "TSheet.h"
+#include "TSheetView.h"
+#include "TTrack.h"
 #include "TVUMonitor.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "TShortCutFunction.h"
-#include "Track.h"
+#include "TTrack.h"
 #include "TBusTrack.h"
 #include "TVUMonitor.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "TShortCutFunction.h"
-#include "Track.h"
+#include "TTrack.h"
 #include "TVUMonitor.h"
 #include "TShortCutManager.h"
 #include "TInputEventDispatcher.h"
@@ -62,16 +62,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QCompleter>
 #include <QStandardItemModel>
 
-#include "ProjectManager.h"
+#include "TProjectManager.h"
 #include "TrackView.h"
 #include "ViewPort.h"
-#include "FadeCurve.h"
+#include "TFadeCurve.h"
 #include "TConfig.h"
 #include "TAudioPlugin.h"
 #include "TAudioFileImportCommand.h"
 #include "TTimeLineRuler.h"
-#include "Themer.h"
-#include "AudioFileCopyConvert.h"
+#include "TThemer.h"
+#include "TAudioFileCopyConvert.h"
 
 #include "../sheetcanvas/SheetWidget.h"
 
@@ -358,7 +358,7 @@ TMainWindow::TMainWindow()
 	}
 
 	// Connections to core:
-	connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
 	connect(&pm(), SIGNAL(unsupportedProjectDirChangeDetected()), this, SLOT(project_dir_change_detected()));
 	connect(&pm(), SIGNAL(projectLoadFailed(QString,QString)), this, SLOT(project_load_failed(QString,QString)));
 	connect(&pm(), SIGNAL(projectFileVersionMismatch(QString,QString)), this, SLOT(project_file_mismatch(QString,QString)), Qt::QueuedConnection);
@@ -390,7 +390,7 @@ TMainWindow::~TMainWindow()
 }
 
 
-void TMainWindow::set_project(Project* project)
+void TMainWindow::set_project(TProject* project)
 {
 	PENTER;
 
@@ -433,16 +433,16 @@ void TMainWindow::project_load_finished()
 		return;
 	}
 
-	connect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(show_session(TSession*)));
-	connect(m_project, SIGNAL(sheetAdded(Sheet*)), this, SLOT(add_sheetwidget(Sheet*)));
-	connect(m_project, SIGNAL(sheetRemoved(Sheet*)), this, SLOT(remove_sheetwidget(Sheet*)));
+    connect(m_project, &TProject::currentSessionChanged, this, &TMainWindow::show_session);
+    connect(m_project, &TProject::sheetAdded, this, &TMainWindow::add_sheetwidget);
+    connect(m_project, &TProject::sheetRemoved, this, &TMainWindow::remove_sheetwidget);
 
 	add_session(m_project);
 	foreach(TSession* session, m_project->get_child_sessions()) {
 		add_session(session);
 	}
 
-	foreach(Sheet* sheet, m_project->get_sheets()) {
+	foreach(TSheet* sheet, m_project->get_sheets()) {
 		add_session(sheet);
 		foreach(TSession* session, sheet->get_child_sessions()) {
 			add_session(session);
@@ -452,12 +452,12 @@ void TMainWindow::project_load_finished()
 	show_session(m_project->get_current_session());
 }
 
-void TMainWindow::remove_sheetwidget(Sheet* sheet)
+void TMainWindow::remove_sheetwidget(TSheet* sheet)
 {
 	remove_session(sheet);
 }
 
-void TMainWindow::add_sheetwidget(Sheet* sheet)
+void TMainWindow::add_sheetwidget(TSheet* sheet)
 {
 	add_session(sheet);
 }
@@ -477,7 +477,7 @@ void TMainWindow::add_session(TSession *session)
 	connect(session, SIGNAL(transportStopped()), this, SLOT(update_follow_state()));
 	connect(session, SIGNAL(tempFollowChanged(bool)), this, SLOT(update_temp_follow_state(bool)));
 
-	Sheet* sheet = qobject_cast<Sheet*>(session);
+	TSheet* sheet = qobject_cast<TSheet*>(session);
 	if (sheet) {
 		connect(session, SIGNAL(snapChanged()), this, SLOT(update_snap_state()));
 		connect(session, SIGNAL(sessionAdded(TSession*)), this, SLOT(add_session(TSession*)));
@@ -542,7 +542,7 @@ void TMainWindow::show_session(TSession* session)
 	m_centerAreaWidget->setCurrentWidget(m_currentSheetWidget);
 
 	if (session) {
-        ContextItem::get_undogroup()->setActiveStack(session->get_history_stack());
+        TContextItem::get_undogroup()->setActiveStack(session->get_history_stack());
         // Update scrollbars in order to reset the snapList's range
         m_currentSheetWidget->get_sheetview()->update_scrollbars();
 //                setWindowTitle(m_project->get_title() + ": Sheet " + session->get_name() + " - Traverso");
@@ -1181,7 +1181,7 @@ void TMainWindow::add_function_to_menu(TShortCutFunction *function, QMenu *menu)
 }
 
 
-void TMainWindow::set_insertsilence_track(AudioTrack* track)
+void TMainWindow::set_insertsilence_track(TAudioTrack* track)
 {
 	if (m_insertSilenceDialog) {
 		m_insertSilenceDialog->setTrack(track);
@@ -1217,7 +1217,7 @@ void TMainWindow::set_fade_in_shape( QAction * action )
 {
 	QList<QObject* > items = cpointer().get_context_items();
 	foreach(QObject* obj, items) {
-		AudioClipView* acv = qobject_cast<AudioClipView*>(obj);
+		TAudioClipView* acv = qobject_cast<TAudioClipView*>(obj);
 		if (acv) {
 			if (! acv->get_clip()->get_fade_in() ) {
 				acv->get_clip()->set_fade_in(1);
@@ -1232,7 +1232,7 @@ void TMainWindow::set_fade_out_shape( QAction * action )
 {
 	QList<QObject* > items = cpointer().get_context_items();
 	foreach(QObject* obj, items) {
-		AudioClipView* acv = qobject_cast<AudioClipView*>(obj);
+		TAudioClipView* acv = qobject_cast<TAudioClipView*>(obj);
 		if (acv) {
 			if (! acv->get_clip()->get_fade_out() ) {
 				acv->get_clip()->set_fade_out(1);
@@ -1248,7 +1248,7 @@ QMenu* TMainWindow::create_fade_selector_menu(const QString& fadeTypeName)
 {
 	QMenu* menu = new QMenu(this);
 
-	foreach(QString name, FadeCurve::defaultShapes) {
+	foreach(QString name, TFadeCurve::defaultShapes) {
 		QAction* action = menu->addAction(name);
 		action->setData(name);
 	}
@@ -1323,12 +1323,12 @@ void TMainWindow::config_changed()
 
 void TMainWindow::import_audio()
 {
-	Project* project = pm().get_project();
+	TProject* project = pm().get_project();
 	if (!project) {
 		return;
 	}
 
-    Sheet* sheet = m_currentSheetWidget->get_sheet();
+    TSheet* sheet = m_currentSheetWidget->get_sheet();
 	if (!sheet || !sheet->get_audio_track_count()) {
 		return;
 	}
@@ -1341,8 +1341,8 @@ void TMainWindow::import_audio()
 		return;
 	}
 
-	QList<AudioTrack*> tracks = sheet->get_audio_tracks();
-	AudioTrack*	track = tracks.first();
+	QList<TAudioTrack*> tracks = sheet->get_audio_tracks();
+	TAudioTrack*	track = tracks.first();
 
 	ImportClipsDialog *importClips = new ImportClipsDialog(this);
 
@@ -1374,7 +1374,7 @@ void TMainWindow::import_audio()
         import->set_import_location(importLocation);
 
         QFileInfo fi(fileName);
-        Marker* m = new Marker(timeLineRuler, importLocation);
+        TTimeLineMarker* m = new TTimeLineMarker(timeLineRuler, importLocation);
 		m->set_description(QString(tr("%1: %2")).arg(n).arg(fi.baseName()));
 
 		if (import->create_readsource() != -1) {
@@ -1386,10 +1386,10 @@ void TMainWindow::import_audio()
 	}
 
     if (timeLineRuler->has_end_marker()) {
-        Marker* m = timeLineRuler->get_end_marker();
+        TTimeLineMarker* m = timeLineRuler->get_end_marker();
         m->set_when(importLocation);
 	} else {
-        Marker* m = new Marker(timeLineRuler, importLocation, Marker::ENDMARKER);
+        TTimeLineMarker* m = new TTimeLineMarker(timeLineRuler, importLocation, TTimeLineMarker::ENDMARKER);
         TCommand::process_command(timeLineRuler->add_marker(m, true));
 	}
 
@@ -1441,7 +1441,7 @@ TCommand * TMainWindow::show_newproject_dialog()
 {
 	if (! m_newProjectDialog ) {
 		m_newProjectDialog = new NewProjectDialog(this);
-		AudioFileCopyConvert* converter = m_newProjectDialog->get_converter();
+		TAudioFileCopyConvert* converter = m_newProjectDialog->get_converter();
 		connect(converter, SIGNAL(taskStarted(QString)), m_progressBar, SLOT(set_label(QString)));
 		connect(converter, SIGNAL(progress(int)), m_progressBar, SLOT(set_progress(int)));
 		connect(m_newProjectDialog, SIGNAL(numberOfFiles(int)), m_progressBar, SLOT(set_num_files(int)));
@@ -1450,7 +1450,7 @@ TCommand * TMainWindow::show_newproject_dialog()
 	return 0;
 }
 
-TCommand * TMainWindow::show_insertsilence_dialog(AudioTrack *track)
+TCommand * TMainWindow::show_insertsilence_dialog(TAudioTrack *track)
 {
 	if (! m_insertSilenceDialog) {
 		m_insertSilenceDialog = new InsertSilenceDialog(this);
@@ -1479,7 +1479,7 @@ TCommand* TMainWindow::show_add_child_session_dialog()
 		return 0;
 	}
 
-	Sheet* activeSheet = m_project->get_active_sheet();
+	TSheet* activeSheet = m_project->get_active_sheet();
 	TSession* activeSession = m_project->get_current_session();
 	TSession* parentSession = 0;
 
@@ -1529,8 +1529,8 @@ TCommand* TMainWindow::show_newtrack_dialog()
 	}
 
 	TSession* activeSession = m_project->get_current_session();
-	Sheet* sheet = qobject_cast<Sheet*>(activeSession);
-	Project* project = qobject_cast<Project*>(activeSession);
+	TSheet* sheet = qobject_cast<TSheet*>(activeSession);
+	TProject* project = qobject_cast<TProject*>(activeSession);
 
 	if (sheet || project) {
 		if (! m_newTrackDialog) {
@@ -1594,7 +1594,7 @@ TCommand * TMainWindow::show_restore_project_backup_dialog(QString projectname)
 
 void TMainWindow::show_restore_project_backup_dialog()
 {
-	Project* project = pm().get_project();
+	TProject* project = pm().get_project();
 
 	if (! project ) {
 		return;
@@ -1652,8 +1652,8 @@ void TMainWindow::save_config_and_emit_message(const QString & message)
 void TMainWindow::snap_state_changed(bool state)
 {
 	if (m_project) {
-		QList<Sheet* > sheetlist = m_project->get_sheets();
-		foreach( Sheet* sheet, sheetlist) {
+		QList<TSheet* > sheetlist = m_project->get_sheets();
+		foreach( TSheet* sheet, sheetlist) {
 			sheet->set_snapping(state);
 		}
 	}
@@ -1683,7 +1683,7 @@ void TMainWindow::update_temp_follow_state(bool state)
 
 void TMainWindow::follow_state_changed(bool state)
 {
-	Sheet* sheet = qobject_cast<Sheet*>(m_project->get_current_session());
+	TSheet* sheet = qobject_cast<TSheet*>(m_project->get_current_session());
 
 	if (!sheet) {
 		return;
@@ -1732,13 +1732,13 @@ TCommand* TMainWindow::show_track_finder()
 
     m_trackFinderModel.clear();
 
-	QList<Sheet*> sheets = m_project->get_sheets();
+	QList<TSheet*> sheets = m_project->get_sheets();
 
-	foreach(Sheet* sheet, sheets) {
-		QList<Track*> tracks = sheet->get_tracks();
+	foreach(TSheet* sheet, sheets) {
+		QList<TTrack*> tracks = sheet->get_tracks();
         tracks.append(sheet->get_master_out_bus_track());
 		tracks.append(m_project->get_master_out_bus_track());
-		foreach(Track* track, tracks) {
+		foreach(TTrack* track, tracks) {
 			QStandardItem* sItem = new QStandardItem(track->get_name());
 			sItem->setData(track->get_id(), Qt::UserRole);
 			QList<QStandardItem*> items;
@@ -1765,7 +1765,7 @@ void TMainWindow::track_finder_model_index_changed(const QModelIndex& index)
 	foreach(SheetWidget* sw, m_sheetWidgets) {
         TSession* session = sw->get_session();
         if (!session) return;
-        Track* track = session->get_track(id);
+        TTrack* track = session->get_track(id);
 		if (track) {
             show_session(session);
 			sw->setFocus();
@@ -1801,7 +1801,7 @@ void TMainWindow::track_finder_show_initial_text()
 TCommand* TMainWindow::browse_to_first_track_in_active_sheet()
 {
 	if (m_currentSheetWidget) {
-		SheetView* sv = m_currentSheetWidget->get_sheetview();
+		TSheetView* sv = m_currentSheetWidget->get_sheetview();
 		QList<TrackView*> tracks = sv->get_track_views();
 		if (tracks.size()) {
 			sv->browse_to_track(tracks.first()->get_track());
@@ -1814,7 +1814,7 @@ TCommand* TMainWindow::browse_to_first_track_in_active_sheet()
 TCommand* TMainWindow::browse_to_last_track_in_active_sheet()
 {
 	if (m_currentSheetWidget) {
-		SheetView* sv = m_currentSheetWidget->get_sheetview();
+		TSheetView* sv = m_currentSheetWidget->get_sheetview();
 		QList<TrackView*> tracks = sv->get_track_views();
 		if (tracks.size()) {
 			sv->browse_to_track(tracks.last()->get_track());
@@ -1845,7 +1845,7 @@ void TMainWindow::update_vu_levels_peak()
 		m_vuLevels.at(i)->update_peak();
 	}
 
-	QList<Track*> tracks = m_project->get_sheet_tracks();
+	QList<TTrack*> tracks = m_project->get_sheet_tracks();
 	tracks.append(m_project->get_tracks());
 	tracks.append(m_project->get_master_out_bus_track());
 	for(int i = 0; i< tracks.size(); i++) {
@@ -1866,24 +1866,24 @@ void TMainWindow::reset_vu_levels_peak_hold_value()
 
 TCommand* TMainWindow::undo()
 {
-    ContextItem::get_undogroup()->undo();
+    TContextItem::get_undogroup()->undo();
     return 0;
 }
 
 TCommand* TMainWindow::redo()
 {
-    ContextItem::get_undogroup()->redo();
+    TContextItem::get_undogroup()->redo();
     return 0;
 }
 
 TCommand* TMainWindow::set_transport_location()
 {
-    Project* project = pm().get_project();
+    TProject* project = pm().get_project();
     if (!project) {
         return nullptr;
     }
 
-    Sheet* sheet = project->get_active_sheet();
+    TSheet* sheet = project->get_active_sheet();
     if (!sheet) {
         return nullptr;
     }

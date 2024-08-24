@@ -20,20 +20,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "CurveNodeView.h"
-#include "SheetView.h"
+#include "TSheetView.h"
 
 #include <QPainter>
 #include <QPen>
-#include <CurveNode.h>
-#include <Themer.h>
-#include <Curve.h>
+#include <TCurveNode.h>
+#include <TThemer.h>
+#include <TCurve.h>
 #include "CurveView.h"
 
 #include <Debugger.h>
 
-CurveNodeView::CurveNodeView( SheetView * sv, CurveView* curveview, CurveNode * node, Curve* guicurve)
+CurveNodeView::CurveNodeView( TSheetView * sv, CurveView* curveview, TCurveNode * node, TCurve* guicurve)
     : ViewItem(curveview, nullptr)
-	, CurveNode(guicurve, node->get_when(), node->get_value())
+	, TCurveNode(guicurve, node->get_when(), node->get_value())
 	, m_node(node)
 {
 	PENTERCONS;

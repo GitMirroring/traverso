@@ -24,12 +24,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ViewItem.h"
 
-class Track;
-class AudioTrack;
+class TTrack;
+class TAudioTrack;
 class TrackView;
 class TTrackLaneView;
 class TrackPanelView;
-class AudioTrackView;
+class TAudioTrackView;
 class TrackPanelViewPort;
 class PanelLed;
 class AudioTrackPanelView;
@@ -44,7 +44,7 @@ class TrackPanelGain : public ViewItem
 	Q_OBJECT
 
 public:
-        TrackPanelGain(TrackPanelView* parent, Track* track);
+        TrackPanelGain(TrackPanelView* parent, TTrack* track);
 	TrackPanelGain(){}
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -56,7 +56,7 @@ public slots:
 	TCommand* gain_decrement();
 	
 private:
-        Track* m_track;
+        TTrack* m_track;
         QLinearGradient	m_gradient2D;
 };
 
@@ -96,7 +96,7 @@ public:
         TrackView* get_track_view() const {return m_trackView;}
 
 protected:
-        Track*                  m_track;
+        TTrack*                  m_track;
         TrackView*              m_trackView;
 	TrackPanelViewPort*	m_viewPort;
 	
@@ -138,7 +138,7 @@ class AudioTrackPanelView : public TrackPanelView
         Q_OBJECT
 
 public:
-        AudioTrackPanelView(AudioTrackView* trackView);
+        AudioTrackPanelView(TAudioTrackView* trackView);
         ~AudioTrackPanelView();
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -148,7 +148,7 @@ protected:
 
 
 private:
-        AudioTrackView*	m_tv;
+        TAudioTrackView*	m_tv;
         TrackPanelLed*  m_recLed;
 };
 

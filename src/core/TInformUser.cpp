@@ -22,7 +22,6 @@
 #include "TInformUser.h"
 #include "Utils.h"
 #include "TAudioDevice.h"
-#include "ThreadSaveMessagePosting.h"
 
 #include "Debugger.h"
 
@@ -36,10 +35,7 @@ TInformUser& tInformUser()
 
 TInformUser::TInformUser()
 {
-    connect(&audiodevice(), SIGNAL(message(QString,int)),
-            this, SLOT(audiodevice_message(QString,int)));
-    connect(&tsmp(), SIGNAL(audioThreadEventBufferFull(QString)),
-            this, SLOT(TSMP_message(QString)));
+    connect(&audiodevice(), &TAudioDevice::newDriverSetupMessage, this, &TInformUser::audiodevice_message);
 }
 
 
@@ -71,20 +67,18 @@ void TInformUser::critical( const QString & mes )
 	emit message(s);
 }
 
-void TInformUser::audiodevice_message(const QString& message, int severity)
+void TInformUser::audiodevice_message()
 {
-	switch(severity) {
-        case TAudioDevice::INFO: information(message);
-		break;
-        case TAudioDevice::WARNING: warning(message);
-		break;
-        case TAudioDevice::CRITICAL: critical(message);
-		break;
-        default: ;// do nothing;
-	}
-}
-
-void TInformUser::TSMP_message(const QString& message)
-{
-    critical(message);
+    auto messages = audiodevice().get_audio_driver_setup_messages();
+    for (const auto &message : messages) {
+        switch(message.severity) {
+            case TAudioDevice::INFO: information(message.message);
+            break;
+            case TAudioDevice::WARNING: warning(message.message);
+            break;
+            case TAudioDevice::CRITICAL: critical(message.message);
+            break;
+            default: ;// do nothing;
+        }
+    }
 }

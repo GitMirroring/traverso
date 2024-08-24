@@ -26,7 +26,7 @@
 #include "TTimeRef.h"
 
 class TSession;
-class SheetView;
+class TSheetView;
 class PlayHead;
 
 class PlayHeadMove : public TMoveCommand
@@ -34,7 +34,7 @@ class PlayHeadMove : public TMoveCommand
 	Q_OBJECT
 
 public :
-        PlayHeadMove(SheetView* sv);
+        PlayHeadMove(TSheetView* sv);
         ~PlayHeadMove(){}
 
 	int finish_hold();

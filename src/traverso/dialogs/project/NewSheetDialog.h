@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QDialog>
 
-class Project;
+class TProject;
 
 class NewSheetDialog : public QDialog, protected Ui::NewSheetDialog
 {
@@ -38,13 +38,13 @@ public:
 	
 	
 private:
-	Project* m_project{};
+	TProject* m_project{};
 	
 
 private slots:
 	void accept();
 	void reject();
-	void set_project(Project* project);
+	void set_project(TProject* project);
 	void update_template_combo();
 	void use_template_checkbox_state_changed(int state);
 

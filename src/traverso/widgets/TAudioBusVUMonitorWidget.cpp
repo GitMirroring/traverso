@@ -24,10 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBusTrack.h"
 #include "TVUMeterWidget.h"
 
-#include <ProjectManager.h>
-#include <Project.h>
-#include <Sheet.h>
-#include <Themer.h>
+#include <TProjectManager.h>
+#include <TProject.h>
+#include <TSheet.h>
+#include <TThemer.h>
 #include "TAudioDevice.h"
 #include <AudioBus.h>
 #include <QHBoxLayout>
@@ -56,7 +56,7 @@ TAudioBusVUMonitorWidget::TAudioBusVUMonitorWidget(QWidget* parent)
     m_menu = nullptr;
 
     connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(create_vu_meters()));
-    connect(&pm(), SIGNAL(projectLoaded(Project*)), this, SLOT(set_project(Project*)));
+    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
 }
 
 
@@ -156,7 +156,7 @@ void TAudioBusVUMonitorWidget::create_vu_meters( )
 
 }
 
-void TAudioBusVUMonitorWidget::set_project(Project * project)
+void TAudioBusVUMonitorWidget::set_project(TProject * project)
 {
     Q_UNUSED(project);
 
@@ -168,15 +168,15 @@ void TAudioBusVUMonitorWidget::set_project(Project * project)
 
 void TAudioBusVUMonitorWidget::set_session(TSession* session)
 {
-    Project* project = qobject_cast<Project*>(session);
+    TProject* project = qobject_cast<TProject*>(session);
     if (project) {
         return;
     }
 
     if (session) {
-        m_sheet = qobject_cast<Sheet*>(session);
+        m_sheet = qobject_cast<TSheet*>(session);
         if (!m_sheet) {
-            m_sheet = qobject_cast<Sheet*>(session->get_parent_session());
+            m_sheet = qobject_cast<TSheet*>(session->get_parent_session());
         }
     }
 

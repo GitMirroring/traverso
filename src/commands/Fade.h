@@ -28,20 +28,20 @@ $Id: Fade.h,v 1.13 2008/01/21 16:22:11 r_sijrier Exp $
 
 #include <QPoint>
 
-class Curve;
-class AudioClip;
-class FadeCurve;
-class FadeCurveView;
-class SheetView;
-class Sheet;
+class TCurve;
+class TAudioClip;
+class TFadeCurve;
+class TFadeCurveView;
+class TSheetView;
+class TSheet;
 
 class FadeRange : public TMoveCommand
 {
     Q_OBJECT
 
 public :
-    FadeRange(AudioClip* clip, FadeCurve* curve, qint64 scalefactor);
-    FadeRange(AudioClip* clip, FadeCurve* curve, double newVal);
+    FadeRange(TAudioClip* clip, TFadeCurve* curve, qint64 scalefactor);
+    FadeRange(TAudioClip* clip, TFadeCurve* curve, double newVal);
     ~FadeRange();
 
     int begin_hold();
@@ -57,12 +57,12 @@ public :
     bool restoreCursorPosition() const {return true;}
 
 private :
-    FadeCurve*	m_curve;
+    TFadeCurve*	m_curve;
     double 		m_origRange;
     double 		m_newRange;
     struct FadeRangePrivate {
-        Sheet* sheet;
-        AudioClip* clip;
+        TSheet* sheet;
+        TAudioClip* clip;
         int origX;
         int direction;
         qint64 scalefactor;
@@ -86,8 +86,8 @@ class FadeStrength : public TCommand
     Q_OBJECT
 
 public :
-    FadeStrength(FadeCurveView* FadeCurveView);
-    FadeStrength(FadeCurve* fade, double val);
+    FadeStrength(TFadeCurveView* fadeCurveView);
+    FadeStrength(TFadeCurve* fade, double val);
     ~FadeStrength(){}
 
     int begin_hold();
@@ -107,8 +107,8 @@ private :
     int	origY{};
     double	origStrength{};
     double	newStrength{};
-    FadeCurve*	m_fade;
-    FadeCurveView*	m_fv;
+    TFadeCurve*	m_fade;
+    TFadeCurveView*	m_fv;
 };
 
 
@@ -117,8 +117,8 @@ class FadeBend : public TCommand
     Q_OBJECT
 
 public :
-    FadeBend(FadeCurveView* FadeCurveView);
-    FadeBend(FadeCurve* fade, double val);
+    FadeBend(TFadeCurveView* fadeCurveView);
+    FadeBend(TFadeCurve* fade, double val);
     ~FadeBend(){}
 
     int begin_hold();
@@ -138,8 +138,8 @@ private :
     int	origY{};
     double	origBend{};
     double	newBend{};
-    FadeCurve*	m_fade;
-    FadeCurveView*	m_fv;
+    TFadeCurve*	m_fade;
+    TFadeCurveView*	m_fv;
 };
 
 
@@ -148,7 +148,7 @@ class FadeMode : public TCommand
     Q_OBJECT
 
 public :
-    FadeMode(FadeCurve* fade, int oldMode, int newMode);
+    FadeMode(TFadeCurve* fade, int oldMode, int newMode);
     ~FadeMode(){}
 
     int prepare_actions();
@@ -159,7 +159,7 @@ public :
 private :
     int		m_oldMode;
     int		m_newMode;
-    FadeCurve*	m_fade;
+    TFadeCurve*	m_fade;
 };
 
 

@@ -23,7 +23,7 @@
 
 #include <QScrollBar>
 
-#include "SheetView.h"
+#include "TSheetView.h"
 #include "ClipsViewPort.h"
 #include "TAudioPluginView.h"
 #include "TAudioPluginChain.h"
@@ -32,7 +32,7 @@
 #include "Debugger.h"
 
 
-PluginChainView::PluginChainView(SheetView* sv, ViewItem* parent, TAudioPluginChain* chain)
+PluginChainView::PluginChainView(TSheetView* sv, ViewItem* parent, TAudioPluginChain* chain)
     : ViewItem(parent, parent)
     , m_pluginchain(chain)
 {

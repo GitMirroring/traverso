@@ -33,8 +33,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Debugger.h"
 
-TAudioPluginChain::TAudioPluginChain(ContextItem* parent, TSession* session)
-	: ContextItem(parent)
+TAudioPluginChain::TAudioPluginChain(TContextItem* parent, TSession* session)
+	: TContextItem(parent)
 {
     m_fader = new GainEnvelope(session);
     private_add_plugin(m_fader);

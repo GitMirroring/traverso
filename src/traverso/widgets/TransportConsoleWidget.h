@@ -29,8 +29,8 @@
 
 #include "TTimeRef.h"
 
-class Project;
-class Sheet;
+class TProject;
+class TSheet;
 class TSession;
 class QPushButton;
 
@@ -43,8 +43,8 @@ public:
 
 private:
 	QPushButton*	m_timeLabel;
-    Project*	m_project;
-    Sheet*		m_sheet;
+    TProject*	m_project;
+    TSheet*		m_sheet;
 	QAction*	m_toStartAction;
 	QAction*	m_toLeftAction;
 	QAction*	m_recAction;
@@ -57,7 +57,7 @@ private:
     trav_time_t m_lastTransportLocationUpdatetime;
 
 public slots:
-	void set_project(Project*);
+	void set_project(TProject*);
     void set_session(TSession*);
 
 private slots:

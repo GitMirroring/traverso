@@ -20,8 +20,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "GainEnvelope.h"
 
-#include "Sheet.h"
-#include "Curve.h"
+#include "TSheet.h"
+#include "TCurve.h"
 #include "AudioBus.h"
 
 GainEnvelope::GainEnvelope(TSession* session)
@@ -95,7 +95,7 @@ void GainEnvelope::process(AudioBus * bus, nframes_t nframes)
     }
 }
 
-Curve * GainEnvelope::get_curve()
+TCurve * GainEnvelope::get_curve()
 {
     if (m_controlPorts.size() && !m_controlPorts.at(0)->get_curve()) {
         // no automation was setup it seems, do it now!

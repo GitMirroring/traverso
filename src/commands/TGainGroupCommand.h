@@ -31,7 +31,7 @@ class TGainGroupCommand : public TCommand
     Q_OBJECT
 
 public :
-    TGainGroupCommand(ContextItem* context, const QVariantList& args);
+    TGainGroupCommand(TContextItem* context, const QVariantList& args);
     ~TGainGroupCommand();
 
     int begin_hold();
@@ -55,7 +55,7 @@ private:
     QList<Gain* >	m_gainCommands;
     Gain*           m_primaryGain;
     QPointF         m_origPos;
-    ContextItem*    m_contextItem;
+    TContextItem*    m_contextItem;
     bool            m_primaryGainOnly;
 
     QString get_db_string_from_object();

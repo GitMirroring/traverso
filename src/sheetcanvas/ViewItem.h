@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef VIEW_ITEM_H
 #define VIEW_ITEM_H
 
-#include <ContextItem.h>
+#include <TContextItem.h>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsItem>
@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QStyleOptionGraphicsItem>
 #include <Utils.h>
 
-class SheetView;
+class TSheetView;
 
 // Canvas width should be 2^31, but it doesn't work ok
 // 2^30 works ok, so let's use that, still gives a lot 
@@ -44,7 +44,7 @@ class SheetView;
 #endif
 
 
-class ViewItem : public ContextItem, public QGraphicsItem
+class ViewItem : public TContextItem, public QGraphicsItem
 {
     Q_OBJECT
 #if QT_VERSION >= 0x040600
@@ -53,8 +53,8 @@ class ViewItem : public ContextItem, public QGraphicsItem
 
 public:
 
-    ViewItem(ViewItem* parentViewItem=nullptr, ContextItem* parentContext=nullptr) :
-        ContextItem(parentViewItem)
+    ViewItem(ViewItem* parentViewItem=nullptr, TContextItem* parentContext=nullptr) :
+        TContextItem(parentViewItem)
       , QGraphicsItem(parentViewItem)
     {
         set_core_context_item(parentContext);
@@ -93,7 +93,7 @@ public:
     virtual void load_theme_data() {}
     virtual void mouse_hover_move_event() {}
 
-    SheetView* get_sheetview() const {return m_sv;}
+    TSheetView* get_sheetview() const {return m_sv;}
 
     static bool is_viewitem(QGraphicsItem* item) {
         return item->type() == Type;
@@ -104,7 +104,7 @@ public:
 
 protected:
 
-    SheetView* 	m_sv;
+    TSheetView* 	m_sv;
     ViewItem*	m_parentViewItem;
     QRectF		m_boundingRect;
     bool            m_hasMouseTracking;

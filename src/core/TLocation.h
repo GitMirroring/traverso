@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Ben Levitt
+Copyright (C) 2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
-$Id: Snappable.h,v 1.1 2007/03/29 22:18:38 benjie Exp $
 */
 
 #ifndef T_LOCATION_H
@@ -26,7 +25,7 @@ $Id: Snappable.h,v 1.1 2007/03/29 22:18:38 benjie Exp $
 #include "TTimeRef.h"
 #include "qobject.h"
 
-class SnapList;
+class TSnapList;
 
 
 class TLocation : public QObject
@@ -41,7 +40,7 @@ public:
 
 	bool is_snappable() const;
 
-	void set_snap_list(SnapList *sList);
+	void set_snap_list(TSnapList *sList);
 
     inline TTimeRef get_start() const {return m_start;}
     inline TTimeRef get_end() const {return m_end;}
@@ -59,7 +58,7 @@ protected:
 private:
     QObject*    m_owner;
 	bool		m_isSnappable;
-	SnapList	*snapList;
+	TSnapList	*snapList;
 
 signals:
     void locationChanged();

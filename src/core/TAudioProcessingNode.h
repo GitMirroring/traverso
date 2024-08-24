@@ -19,24 +19,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef PROCESSING_DATA_H
-#define PROCESSING_DATA_H
+#ifndef T_AUDIO_PROCESSING_NODE_H
+#define T_AUDIO_PROCESSING_NODE_H
 
-#include "ContextItem.h"
+#include "TContextItem.h"
 #include "defines.h"
 
 #include <QPointer>
 #include <QPropertyAnimation>
 
 class AudioBus;
-class AudioClip;
+class TAudioClip;
 class TAudioPlugin;
 class TAudioPluginChain;
 class TSession;
 class GainEnvelope;
 
 
-class TAudioProcessingNode : public ContextItem
+class TAudioProcessingNode : public TContextItem
 {
     Q_OBJECT
     Q_PROPERTY(float gain READ get_gain WRITE set_gain NOTIFY gainChanged)

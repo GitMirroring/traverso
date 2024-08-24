@@ -21,14 +21,14 @@
 
 #include "WorkCursorMove.h"
 
-#include "ContextPointer.h"
-#include "ContextItem.h"
+#include "TContextPointer.h"
+#include "TContextItem.h"
 #include "TInputEventDispatcher.h"
 #include "ClipsViewPort.h"
-#include "Marker.h"
-#include "Sheet.h"
-#include "SnapList.h"
-#include "SheetView.h"
+#include "TTimeLineMarker.h"
+#include "TSheet.h"
+#include "TSnapList.h"
+#include "TSheetView.h"
 #include "TimeLineViewPort.h"
 #include "TimeLineView.h"
 #include "MarkerView.h"
@@ -37,7 +37,7 @@
 
 #include <Debugger.h>
 
-WorkCursorMove::WorkCursorMove(SheetView* sv)
+WorkCursorMove::WorkCursorMove(TSheetView* sv)
     : TMoveCommand(sv, nullptr, "Work Cursor Move")
 	, m_session(sv->get_sheet())
 	, m_browseMarkers(false)
@@ -98,7 +98,7 @@ int WorkCursorMove::jog()
 	}
 
     if (m_session->is_snap_on() || d->doSnap) {
-		SnapList* slist = m_session->get_snap_list();
+		TSnapList* slist = m_session->get_snap_list();
 		newLocation = slist->get_snap_value(newLocation);
 	}
 
@@ -177,10 +177,10 @@ void WorkCursorMove::toggle_snap_on_off()
 
 void WorkCursorMove::browse_to_next_marker()
 {
-	QList<Marker*> markers = m_session->get_timeline()->get_markers();
-	QList<ContextItem*> contexts = cpointer().get_active_context_items();
+	QList<TTimeLineMarker*> markers = m_session->get_timeline()->get_markers();
+	QList<TContextItem*> contexts = cpointer().get_active_context_items();
 	MarkerView* view;
-	foreach(ContextItem* item, contexts) {
+	foreach(TContextItem* item, contexts) {
 		view = qobject_cast<MarkerView*>(item);
 		if (view) {
 			cpointer().remove_from_active_context_list(item);
@@ -188,8 +188,8 @@ void WorkCursorMove::browse_to_next_marker()
 		}
 	}
 
-	Marker* next = nullptr;
-	foreach(Marker* marker, markers) {
+	TTimeLineMarker* next = nullptr;
+	foreach(TTimeLineMarker* marker, markers) {
         if (marker->get_location()->get_start() > m_session->get_work_location()) {
 			next = marker;
 			break;
@@ -212,10 +212,10 @@ void WorkCursorMove::browse_to_next_marker()
 
 void WorkCursorMove::browse_to_previous_marker()
 {
-	QList<Marker*> markers = m_session->get_timeline()->get_markers();
-	QList<ContextItem*> contexts = cpointer().get_active_context_items();
+	QList<TTimeLineMarker*> markers = m_session->get_timeline()->get_markers();
+	QList<TContextItem*> contexts = cpointer().get_active_context_items();
 	MarkerView* view;
-	foreach(ContextItem* item, contexts) {
+	foreach(TContextItem* item, contexts) {
 		view = qobject_cast<MarkerView*>(item);
 		if (view) {
 			cpointer().remove_from_active_context_list(item);
@@ -223,9 +223,9 @@ void WorkCursorMove::browse_to_previous_marker()
 		}
 	}
 
-	Marker* prev = nullptr;
+	TTimeLineMarker* prev = nullptr;
 	for (int i=markers.size() - 1; i>= 0; --i) {
-		Marker* marker = markers.at(i);
+		TTimeLineMarker* marker = markers.at(i);
         if (marker->get_location()->get_start() < m_session->get_work_location()) {
 			prev = marker;
 			break;
@@ -249,8 +249,8 @@ void WorkCursorMove::browse_to_previous_marker()
 
 void WorkCursorMove::remove_markers_from_active_context()
 {
-	QList<ContextItem*> contexts = cpointer().get_active_context_items();
-	foreach(ContextItem* item, contexts) {
+	QList<TContextItem*> contexts = cpointer().get_active_context_items();
+	foreach(TContextItem* item, contexts) {
 		if (item->inherits("MarkerView")) {
 			cpointer().remove_from_active_context_list(item);
 		}

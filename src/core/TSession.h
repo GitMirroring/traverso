@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef TSESSION_H
 #define TSESSION_H
 
-#include "ContextItem.h"
+#include "TContextItem.h"
 
 #include <QDomNode>
 #include <QHash>
@@ -32,15 +32,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "defines.h"
 #include "TTimeRef.h"
 
-class AudioTrack;
+class TAudioTrack;
 class TBounceTrack;
-class SnapList;
+class TSnapList;
 class TLocation;
 class TBusTrack;
-class Track;
+class TTrack;
 class TTimeLineRuler;
 
-class TSession : public ContextItem
+class TSession : public TContextItem
 {
 	Q_OBJECT
 
@@ -59,15 +59,15 @@ public:
 	virtual TTimeRef get_last_location() const;
     TTimeRef get_seek_transport_location() const {return m_seekTransportLocation;}
 	virtual TTimeRef get_transport_location() const;
-	virtual SnapList* get_snap_list() const;
-	Track* get_track(qint64 id) const;
+	virtual TSnapList* get_snap_list() const;
+	TTrack* get_track(qint64 id) const;
 	TTimeLineRuler* get_timeline() const;
 	TSession* get_parent_session() const {return m_parentSession;}
 	QString get_name() const {return m_name;}
 	int get_track_height(qint64 trackId) const {return m_trackHeights.value(trackId, 150);}
 
 	TBusTrack* get_master_out_bus_track() const;
-	virtual QList<Track*> get_tracks() const;
+	virtual QList<TTrack*> get_tracks() const;
 	QList<TBusTrack*> get_bus_tracks() const;
 	QList<TSession*> get_child_sessions() const {return m_childSessions;}
 	TLocation* get_work_snap() const;
@@ -75,7 +75,7 @@ public:
 
 
 	void set_hzoom(qreal hzoom);
-    virtual void set_work_at(TTimeRef location, bool isFolder=false);
+    virtual void set_work_at(const TTimeRef &location, bool isFolder=false);
 	void set_scrollbar_xy(int x, int y);
 	void set_scrollbar_x(int x);
 	void set_scrollbar_y(int y);
@@ -86,8 +86,8 @@ public:
 	void set_name(const QString& name);
 	void set_track_height(qint64 trackId, int height) {m_trackHeights.insert(trackId, height);}
 
-    TCommand* add_track(Track* track, bool historable=true);
-    TCommand* remove_track(Track* track, bool historable=true);
+    TCommand* add_track(TTrack* track, bool historable=true);
+    TCommand* remove_track(TTrack* track, bool historable=true);
 
 	void add_child_session(TSession* child);
 	void remove_child_session(TSession* child);
@@ -99,16 +99,16 @@ public:
 protected:
 	TSession*               m_parentSession;
 	QList<TSession*>        m_childSessions;
-    TRealTimeLinkedList<AudioTrack*>           m_rtAudioTracks;
+    TRealTimeLinkedList<TAudioTrack*>           m_rtAudioTracks;
     TRealTimeLinkedList<TBusTrack*>           m_rtBusTracks;
-	QList<AudioTrack*>      m_audioTracks;
+	QList<TAudioTrack*>      m_audioTracks;
 	QList<TBusTrack*>       m_busTracks;
-	QHash<qint64, Track* >	m_tracks;
+	QHash<qint64, TTrack* >	m_tracks;
     TBusTrack*              m_masterOutBusTrack;
     TBounceTrack*           m_bounceTrack;
     QHash<qint64, int>      m_trackHeights;
 
-    SnapList*           m_snaplist;
+    TSnapList*           m_snaplist;
     TLocation*          m_workSnap;
     TTimeLineRuler*     m_timeline;
     QString             m_name;
@@ -148,17 +148,17 @@ public slots:
 	virtual TCommand* start_transport();
 
 protected slots:
-	void private_add_track(Track* track);
-	void private_remove_track(Track* track);
-	void private_track_added(Track* track);
-	void private_track_removed(Track* track);
+	void private_add_track(TTrack* track);
+	void private_remove_track(TTrack* track);
+	void private_track_added(TTrack* track);
+	void private_track_removed(TTrack* track);
 
 
 signals:
-	void privateTrackRemoved(Track*);
-	void privateTrackAdded(Track*);
-	void trackRemoved(Track* );
-	void trackAdded(Track* );
+	void privateTrackRemoved(TTrack*);
+	void privateTrackAdded(TTrack*);
+	void trackRemoved(TTrack* );
+	void trackAdded(TTrack* );
 	void sessionAdded(TSession*);
 	void sessionRemoved(TSession*);
 	void hzoomChanged();

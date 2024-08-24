@@ -23,17 +23,17 @@
 #define REMOVE_CLIP_H
 
 #include "TCommand.h"
-#include "AudioClipGroup.h"
+#include "TAudioClipGroup.h"
 
-class AudioClip;
-class AudioTrack;
+class TAudioClip;
+class TAudioTrack;
 
 class AddRemoveClip : public TCommand
 {
 	Q_OBJECT
 
 public :
-	AddRemoveClip(AudioClip* clip, int type);
+	AddRemoveClip(TAudioClip* clip, int type);
 	~AddRemoveClip() {}
 
 	enum {
@@ -47,7 +47,7 @@ public :
 	bool is_hold_command() const {return false;}
 
 private :
-	AudioClipGroup  m_group;
+	TAudioClipGroup  m_group;
 	int m_type;
 };
 

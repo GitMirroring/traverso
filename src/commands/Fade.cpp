@@ -22,16 +22,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Fade.h"
 
-#include "AudioClip.h"
-#include "ContextPointer.h"
+#include "TAudioClip.h"
+#include "TContextPointer.h"
 #include <ViewPort.h>
-#include <FadeCurve.h>
-#include <FadeCurveView.h>
-#include <Peak.h>
-#include <Sheet.h>
-#include "SnapList.h"
-#include "Project.h"
-#include "ProjectManager.h"
+#include <TFadeCurve.h>
+#include <TFadeCurveView.h>
+#include <TPeak.h>
+#include <TSheet.h>
+#include "TSnapList.h"
+#include "TProject.h"
+#include "TProjectManager.h"
 #include "TInputEventDispatcher.h"
 		
 
@@ -43,13 +43,13 @@ static const float CURSOR_SPEED		= 75.0;
 static const float RASTER_SIZE		= 0.05;
 
 
-FadeRange::FadeRange(AudioClip* clip, FadeCurve* curve, qint64 scalefactor)
+FadeRange::FadeRange(TAudioClip* clip, TFadeCurve* curve, qint64 scalefactor)
         : TMoveCommand(nullptr, clip, "")
     , frp(new FadeRangePrivate())
 {
     m_canvasCursorFollowsMouseCursor = false;
 	m_curve = curve;
-    frp->direction = (m_curve->get_fade_type() == FadeCurve::FadeIn) ? 1 : -1;
+    frp->direction = (m_curve->get_fade_type() == TFadeCurve::FadeIn) ? 1 : -1;
     frp->scalefactor = scalefactor;
     frp->clip = clip;
     frp->sheet = clip->get_sheet();
@@ -57,7 +57,7 @@ FadeRange::FadeRange(AudioClip* clip, FadeCurve* curve, qint64 scalefactor)
 }
 
 
-FadeRange::FadeRange(AudioClip* clip, FadeCurve* curve, double newRange)
+FadeRange::FadeRange(TAudioClip* clip, TFadeCurve* curve, double newRange)
     : FadeRange(clip, curve, qint64(newRange))
 {
     m_origRange = m_curve->get_range();
@@ -200,21 +200,21 @@ static float round_float( float f)
 /********** FadeBend **********/
 /******************************/
 
-FadeBend::FadeBend(FadeCurveView * FadeCurveView)
-	: TCommand(FadeCurveView->get_fade())
-	, m_fade(FadeCurveView->get_fade())
-	, m_fv(FadeCurveView) 
+FadeBend::FadeBend(TFadeCurveView * fadeCurveView)
+    : TCommand(fadeCurveView->get_fade())
+    , m_fade(fadeCurveView->get_fade())
+    , m_fv(fadeCurveView)
 {
     m_canvasCursorFollowsMouseCursor = false;
-    setText( (m_fade->get_fade_type() == FadeCurve::FadeIn) ? tr("Fade In: bend") : tr("Fade Out: bend"));
+    setText( (m_fade->get_fade_type() == TFadeCurve::FadeIn) ? tr("Fade In: bend") : tr("Fade Out: bend"));
 }
 
-FadeBend::FadeBend(FadeCurve *fade, double val)
+FadeBend::FadeBend(TFadeCurve *fade, double val)
 	: TCommand(fade)
 	, m_fade(fade)
 	, m_fv(nullptr)
 {
-	setText( (m_fade->get_fade_type() == FadeCurve::FadeIn) ? tr("Fade In: bend") : tr("Fade Out: bend"));
+	setText( (m_fade->get_fade_type() == TFadeCurve::FadeIn) ? tr("Fade In: bend") : tr("Fade Out: bend"));
 	origBend = m_fade->get_bend_factor();
 	newBend = val;
 }
@@ -268,7 +268,7 @@ void FadeBend::set_cursor_shape(int useX, int useY)
 
 int FadeBend::jog()
 {
-	int direction = (m_fade->get_fade_type() == FadeCurve::FadeIn) ? 1 : -1;
+	int direction = (m_fade->get_fade_type() == TFadeCurve::FadeIn) ? 1 : -1;
 	
 	float dx = (float(origY - cpointer().mouse_viewport_y()) / CURSOR_SPEED);
 
@@ -291,21 +291,21 @@ int FadeBend::jog()
 /********** FadeStrength **********/
 /******************************/
 
-FadeStrength::FadeStrength(FadeCurveView* FadeCurveView)
-	: TCommand(FadeCurveView->get_fade())
-	, m_fade(FadeCurveView->get_fade())
-	, m_fv(FadeCurveView)
+FadeStrength::FadeStrength(TFadeCurveView* fadeCurveView)
+    : TCommand(fadeCurveView->get_fade())
+    , m_fade(fadeCurveView->get_fade())
+    , m_fv(fadeCurveView)
 {
     m_canvasCursorFollowsMouseCursor = false;
-    setText( (m_fade->get_fade_type() == FadeCurve::FadeIn) ? tr("Fade In: strength") : tr("Fade Out: strength"));
+    setText( (m_fade->get_fade_type() == TFadeCurve::FadeIn) ? tr("Fade In: strength") : tr("Fade Out: strength"));
 }
 
-FadeStrength::FadeStrength(FadeCurve *fade, double val)
+FadeStrength::FadeStrength(TFadeCurve *fade, double val)
 	: TCommand(fade)
 	, m_fade(fade)
 	, m_fv(nullptr)
 {
-	setText( (m_fade->get_fade_type() == FadeCurve::FadeIn) ? tr("Fade In: strength") : tr("Fade Out: strength"));
+	setText( (m_fade->get_fade_type() == TFadeCurve::FadeIn) ? tr("Fade In: strength") : tr("Fade Out: strength"));
 	origStrength = m_fade->get_strength_factor();
 	newStrength = val;
 }
@@ -385,11 +385,11 @@ int FadeStrength::jog()
 /********** FadeMode **********/
 /******************************/
 
-FadeMode::FadeMode(FadeCurve* fade, int oldMode, int newMode)
+FadeMode::FadeMode(TFadeCurve* fade, int oldMode, int newMode)
 	: TCommand(fade)
 	, m_fade(fade)
 {
-	setText( (m_fade->get_fade_type() == FadeCurve::FadeIn) ? tr("Fade In: shape") : tr("Fade Out: shape"));
+	setText( (m_fade->get_fade_type() == TFadeCurve::FadeIn) ? tr("Fade In: shape") : tr("Fade Out: shape"));
 
 	m_newMode = newMode;
 	m_oldMode = oldMode;
