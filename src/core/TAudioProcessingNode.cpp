@@ -46,7 +46,7 @@ TAudioProcessingNode::TAudioProcessingNode(TSession *session)
     m_processBus = nullptr;
     m_isMuted = false;
     m_pan = 0.0f;
-    m_maxGainAmplification = 2.0f;
+    m_maxGainAmplification = dB_to_scale_factor(6);
     m_fader = m_pluginChain->get_fader();
 }
 

@@ -468,7 +468,7 @@ void TAudioTrack::clip_position_changed(TAudioClip * clip)
     });
 
     if (m_sheet && m_sheet->is_transport_rolling()) {
-        tsmp().add_gui_event(this, clip, "private_clip_position_changed(AudioClip*)", "");
+        tsmp().add_gui_event(this, clip, "private_clip_position_changed(TAudioClip*)", "");
     } else {
         private_clip_position_changed(clip);
     }
@@ -476,6 +476,7 @@ void TAudioTrack::clip_position_changed(TAudioClip * clip)
 
 void TAudioTrack::private_clip_position_changed(TAudioClip *clip)
 {
+    // FIXME: called twice for the same event
     m_rtAudioClips.sort(clip);
 }
 

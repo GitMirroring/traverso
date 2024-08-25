@@ -1373,4 +1373,5 @@ void TSheetView::calculate_cursor_dict()
     m_cursorsDict.insert("TSheetView", "S");
     m_cursorsDict.insert("MarkerView", "M");
     m_cursorsDict.insert("TrackPanelView", "T");
+    m_cursorsDict.insert("TimeLineView", "R");
 }

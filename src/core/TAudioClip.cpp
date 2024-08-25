@@ -230,9 +230,9 @@ QDomNode TAudioClip::get_state( QDomDocument doc )
 void TAudioClip::toggle_mute()
 {
     PENTER;
-    m_isMuted=!m_isMuted;
+
+    TAudioProcessingNode::set_muted(!m_isMuted);
     set_sources_active_state();
-    emit muteChanged();
 }
 
 void TAudioClip::toggle_lock()
@@ -608,12 +608,6 @@ int TAudioClip::init_recording()
     return 1;
 }
 
-TCommand* TAudioClip::mute()
-{
-    toggle_mute();
-    return nullptr;
-}
-
 TCommand* TAudioClip::lock()
 {
     toggle_lock();
@@ -953,7 +947,7 @@ void TAudioClip::create_fade(int fadeType)
     fadeCurve->set_history_stack(get_history_stack());
     fadeCurve->set_parent_location(m_location);
 
-    tsmp().add_gui_event(this, fadeCurve, "private_add_fade(FadeCurve*)", "fadeAdded(FadeCurve*)");
+    tsmp().add_gui_event(this, fadeCurve, "private_add_fade(TFadeCurve*)", "fadeAdded(TFadeCurve*)");
 }
 
 QDomNode TAudioClip::get_dom_node() const

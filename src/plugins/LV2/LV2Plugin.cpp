@@ -156,7 +156,7 @@ int LV2Plugin::set_state(const QDomNode & node )
 
 int LV2Plugin::init()
 {
-	m_num_ports = 0;
+    m_num_ports = 0;
     m_ports = nullptr;
 	
 	LilvWorld* world = PluginManager::instance()->get_lilv_world();
@@ -175,7 +175,7 @@ int LV2Plugin::init()
 
 
 	/* Create ports */
-	m_num_ports  = lilv_plugin_get_num_ports(m_plugin);
+    m_num_ports  = lilv_plugin_get_num_ports(m_plugin);
 // 	float* default_values  = new float(slv2_plugin_get_num_ports(m_plugin) * sizeof(float));
     float* default_values  = static_cast<float*>(calloc(lilv_plugin_get_num_ports(m_plugin),
                     sizeof(float)));
@@ -183,7 +183,7 @@ int LV2Plugin::init()
 
 
     for (uint32_t i=0; i < m_num_ports; ++i) {
-		LV2ControlPort* port = create_port(i, default_values[i]);
+        LV2ControlPort* port = create_port(i, default_values[i]);
 		if (port) {
 			m_controlPorts.append(port);
 		} else {
@@ -191,7 +191,7 @@ int LV2Plugin::init()
 		}
 	}
 	
-	free(default_values);
+    free(default_values);
 
 	/* Activate the plugin instance */
 	lilv_instance_activate(m_instance);
@@ -340,7 +340,11 @@ LV2ControlPort* LV2Plugin::create_port(uint32_t portIndex, float defaultValue)
 
 QString LV2Plugin::get_name( )
 {
-	return QString(lilv_node_as_string(lilv_plugin_get_name(m_plugin)));
+    auto lilvName = lilv_plugin_get_name(m_plugin);
+    auto name = QString(lilv_node_as_string(lilvName));
+    lilv_node_free(lilvName);
+
+    return name;
 }
 
 

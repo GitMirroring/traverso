@@ -217,6 +217,34 @@ QString TExportSpecification::get_file_extension() const
     return ".raw";
 }
 
+QString TExportSpecification::format_to_string(int format)
+{
+    switch (format) {
+    case SF_BITRATE_MODE_CONSTANT: return "cbr";
+    case SF_BITRATE_MODE_AVERAGE: return "abr";
+    case SF_BITRATE_MODE_VARIABLE: return "vbr";
+    default: return "Unknown Format";
+    }
+
+    return "Unknown Format";
+}
+
+// returns the libsndfile format flag or -1 for unknown
+int TExportSpecification::string_to_format(const QString &option)
+{
+    if (option == "cbr") {
+        return SF_BITRATE_MODE_CONSTANT;
+    }
+    if (option == "abr") {
+        return SF_BITRATE_MODE_AVERAGE;
+    }
+    if (option == "vbr") {
+        return SF_BITRATE_MODE_VARIABLE;
+    }
+
+    return -1;
+}
+
 void TExportSpecification::set_data_format(int format)
 {
     Q_ASSERT(format == SF_FORMAT_FLOAT

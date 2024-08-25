@@ -115,8 +115,7 @@ void PluginChainView::scrollbar_value_changed(int value)
 
 void PluginChainView::calculate_bounding_rect()
 {
-    int y = int(m_parentViewItem->boundingRect().height());
-    m_boundingRect = QRectF(0, 0, 0, y);
+    m_boundingRect = m_parentViewItem->boundingRect();
     setPos(pos().x(), - 1);
     ViewItem::calculate_bounding_rect();
 }

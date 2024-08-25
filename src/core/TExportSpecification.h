@@ -117,6 +117,9 @@ public:
 
     QMap<QString, QString>	extraFormat;
 
+    static QString format_to_string(int format) ;
+    static int string_to_format(const QString &option);
+
 
     QString		tocFileName;
     QString		cdrdaoToc;

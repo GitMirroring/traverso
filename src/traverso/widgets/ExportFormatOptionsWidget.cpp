@@ -1,5 +1,5 @@
 /**
-    Copyright (C) 2008 Remon Sijrier 
+    Copyright (C) 2008 - 2024 Remon Sijrier
  
     This file is part of Traverso
  
@@ -80,7 +80,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	// Mp3 Options Setup
 	mp3MethodComboBox->addItem("Constant Bitrate", "cbr");
 	mp3MethodComboBox->addItem("Average Bitrate", "abr");
-	mp3MethodComboBox->addItem("Variable Bitrate", "vbr-new");
+    mp3MethodComboBox->addItem("Variable Bitrate", "vbr");
 	
 	mp3MinBitrateComboBox->addItem("32 Kbps - recommended", "32");
 	mp3MinBitrateComboBox->addItem("64 Kbps", "64");
@@ -101,11 +101,11 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	mp3MaxBitrateComboBox->addItem("320 Kbps", "320");
 	
 	// First set to VBR, so that if we default to something else, it will trigger mp3_method_changed()
-	index = mp3MethodComboBox->findData("vbr-new");
+    index = mp3MethodComboBox->findData("vbr");
 	mp3MethodComboBox->setCurrentIndex(index >=0 ? index : 0);
 	connect(mp3MethodComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(mp3_method_changed(int)));
 	
-	option = config().get_property("ExportFormatOptionsWidget", "mp3MethodComboBox", "vbr-new").toString();
+    option = config().get_property("ExportFormatOptionsWidget", "mp3MethodComboBox", "vbr").toString();
 	index = mp3MethodComboBox->findData(option);
 	mp3MethodComboBox->setCurrentIndex(index >=0 ? index : 0);
 	option = config().get_property("ExportFormatOptionsWidget", "mp3MinBitrateComboBox", "32").toString();
@@ -119,7 +119,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	
 	
 	// Ogg Options Setup
-	oggMethodComboBox->addItem("Constant Bitrate", "manual");
+    oggMethodComboBox->addItem("Constant Bitrate", "cbr");
 	oggMethodComboBox->addItem("Variable Bitrate", "vbr");
 	
 	oggBitrateComboBox->addItem("45 Kbps", "45");
@@ -139,11 +139,11 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	oggMethodComboBox->setCurrentIndex(index >=0 ? index : 0);
 	connect(oggMethodComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(ogg_method_changed(int)));
 	
-	option = config().get_property("ExportFormatOptionsWidget", "oggMethodComboBox", "vbr").toString();
+    option = config().get_property("ExportFormatOptionsWidget", "oggMethodComboBox", "vbr").toString();
 	index = oggMethodComboBox->findData(option);
 	oggMethodComboBox->setCurrentIndex(index >=0 ? index : 0);
 	ogg_method_changed(index >=0 ? index : 0);
-	option = config().get_property("ExportFormatOptionsWidget", "oggBitrateComboBox", "160").toString();
+    option = config().get_property("ExportFormatOptionsWidget", "oggBitrateComboBox", "160").toString();
 	index = oggBitrateComboBox->findData(option);
 	oggBitrateComboBox->setCurrentIndex(index >= 0 ? index : 0);
 	
@@ -156,21 +156,21 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	wavpackCompressionComboBox->addItem("High", "high");
 	wavpackCompressionComboBox->addItem("Fast", "fast");
 	
-	option = config().get_property("ExportFormatOptionsWidget", "wavpackCompressionComboBox", "very_high").toString();
+    option = config().get_property("ExportFormatOptionsWidget", "wavpackCompressionComboBox", "very_high").toString();
 	index = wavpackCompressionComboBox->findData(option);
 	wavpackCompressionComboBox->setCurrentIndex(index >= 0 ? index : 0);
-	checked = config().get_property("ExportFormatOptionsWidget", "skipWVXCheckBox", "false").toBool();
+    checked = config().get_property("ExportFormatOptionsWidget", "skipWVXCheckBox", "false").toBool();
 	skipWVXCheckBox->setChecked(checked);
 
 	
-	option = config().get_property("ExportFormatOptionsWidget", "audioTypeComboBox", "wav").toString();
+    option = config().get_property("ExportFormatOptionsWidget", "audioTypeComboBox", "wav").toString();
 	index = audioTypeComboBox->findData(option);
 	audioTypeComboBox->setCurrentIndex(index >= 0 ? index : 0);
 	
-	checked = config().get_property("ExportFormatOptionsWidget", "normalizeCheckBox", "false").toBool();
+    checked = config().get_property("ExportFormatOptionsWidget", "normalizeCheckBox", "false").toBool();
 	normalizeCheckBox->setChecked(checked);
 	
-	index = config().get_property("ExportFormatOptionsWidget", "resampleQualityComboBox", "1").toInt();
+    index = config().get_property("ExportFormatOptionsWidget", "resampleQualityComboBox", "1").toInt();
 	index = resampleQualityComboBox->findData(index);
 	resampleQualityComboBox->setCurrentIndex(index >= 0 ? index : 1);
 
@@ -187,17 +187,17 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 
 ExportFormatOptionsWidget::~ ExportFormatOptionsWidget( )
 {
-	config().set_property("ExportDialog", "mp3MethodComboBox", mp3MethodComboBox->itemData(mp3MethodComboBox->currentIndex()).toString());
-	config().set_property("ExportDialog", "mp3MinBitrateComboBox", mp3MinBitrateComboBox->itemData(mp3MinBitrateComboBox->currentIndex()).toString());
-	config().set_property("ExportDialog", "mp3MaxBitrateComboBox", mp3MaxBitrateComboBox->itemData(mp3MaxBitrateComboBox->currentIndex()).toString());
-	config().set_property("ExportDialog", "oggMethodComboBox", oggMethodComboBox->itemData(oggMethodComboBox->currentIndex()).toString());
-	config().set_property("ExportDialog", "oggBitrateComboBox", oggBitrateComboBox->itemData(oggBitrateComboBox->currentIndex()).toString());
-	config().set_property("ExportDialog", "wavpackCompressionComboBox", wavpackCompressionComboBox->itemData(wavpackCompressionComboBox->currentIndex()).toString());
-	config().set_property("ExportDialog", "audioTypeComboBox", audioTypeComboBox->itemData(audioTypeComboBox->currentIndex()).toString());
-	config().set_property("ExportDialog", "normalizeCheckBox", normalizeCheckBox->isChecked());
-	config().set_property("ExportDialog", "skipWVXCheckBox", skipWVXCheckBox->isChecked());
-	config().set_property("ExportDialog", "resampleQualityComboBox", resampleQualityComboBox->itemData(resampleQualityComboBox->currentIndex()).toString());
-    config().set_property("ExportDialog", "fileFormatComboBox", dataFormatComboBox->itemData(dataFormatComboBox->currentIndex()).toInt());
+    config().set_property("ExportFormatOptionsWidget", "mp3MethodComboBox", mp3MethodComboBox->itemData(mp3MethodComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "mp3MinBitrateComboBox", mp3MinBitrateComboBox->itemData(mp3MinBitrateComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "mp3MaxBitrateComboBox", mp3MaxBitrateComboBox->itemData(mp3MaxBitrateComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "oggMethodComboBox", oggMethodComboBox->itemData(oggMethodComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "oggBitrateComboBox", oggBitrateComboBox->itemData(oggBitrateComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "wavpackCompressionComboBox", wavpackCompressionComboBox->itemData(wavpackCompressionComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "audioTypeComboBox", audioTypeComboBox->itemData(audioTypeComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "normalizeCheckBox", normalizeCheckBox->isChecked());
+    config().set_property("ExportFormatOptionsWidget", "skipWVXCheckBox", skipWVXCheckBox->isChecked());
+    config().set_property("ExportFormatOptionsWidget", "resampleQualityComboBox", resampleQualityComboBox->itemData(resampleQualityComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "fileFormatComboBox", dataFormatComboBox->itemData(dataFormatComboBox->currentIndex()).toInt());
 }
 
 
@@ -263,7 +263,7 @@ void ExportFormatOptionsWidget::ogg_method_changed(int index)
 {
 	QString method = oggMethodComboBox->itemData(index).toString();
 	
-	if (method == "manual") {
+    if (method == "cbr") {
 		oggQualitySlider->hide();
 		oggQualityLabel->hide();
 		oggBitrateComboBox->show();
@@ -305,7 +305,7 @@ void ExportFormatOptionsWidget::get_format_options(TExportSpecification * spec)
 	else if (audioType == "ogg") {
         spec->set_file_format(SF_FORMAT_OGG);
         spec->extraFormat["mode"] = oggMethodComboBox->itemData(oggMethodComboBox->currentIndex()).toString();
-		if (spec->extraFormat["mode"] == "manual") {
+        if (spec->extraFormat["mode"] == "cbr") {
 			spec->extraFormat["bitrateNominal"] = oggBitrateComboBox->itemData(oggBitrateComboBox->currentIndex()).toString();
 			spec->extraFormat["bitrateUpper"] = oggBitrateComboBox->itemData(oggBitrateComboBox->currentIndex()).toString();
 		}

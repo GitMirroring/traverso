@@ -158,7 +158,6 @@ private:
     friend class TResourcesManager;
 
 signals:
-    void muteChanged();
     void lockChanged();
     void fadeAdded(TFadeCurve*);
     void fadeRemoved(TFadeCurve*);
@@ -173,7 +172,6 @@ public slots:
     void toggle_mute();
     void toggle_lock();
 
-    TCommand* mute();
     TCommand* reset_fade_in();
     TCommand* reset_fade_out();
     TCommand* reset_fade_both();

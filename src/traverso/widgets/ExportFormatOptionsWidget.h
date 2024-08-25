@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2008 Remon Sijrier 
+    Copyright (C) 2008 - 2024 Remon Sijrier
  
     This file is part of Traverso
  
@@ -19,8 +19,8 @@
  
 */
 
-#ifndef EXPORT_FORMAT_OPTIONS_WIDGET_H
-#define EXPORT_FORMAT_OPTIONS_WIDGET_H
+#ifndef T_EXPORT_FORMAT_OPTIONS_WIDGET_H
+#define T_EXPORT_FORMAT_OPTIONS_WIDGET_H
 
 #include "ui_ExportFormatOptionsWidget.h"
 
