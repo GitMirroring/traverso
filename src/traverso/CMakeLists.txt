@@ -50,6 +50,10 @@ widgets/MessageWidget.cpp
 widgets/MeterWidget.cpp
 widgets/ResourcesWidget.cpp
 widgets/SpectralMeterWidget.cpp
+widgets/SpectralMeterConfigWidget.cpp
+widgets/SpectralMeterView.cpp
+widgets/CorrelationMeterView.cpp
+widgets/MeterView.cpp
 widgets/TransportConsoleWidget.cpp
 widgets/TVUMeterWidget.cpp
 widgets/WelcomeWidget.cpp

@@ -86,8 +86,8 @@ TShortcutEditorDialog::TShortcutEditorDialog(QWidget *parent)
     QMap<QString, QString> baseClassNamesMap;
     QMap<QString, QString> commandClassNamesMap;
 
-	foreach(QString className, tShortCutManager().getClassNames()) {
-        if (tShortCutManager().isCommandClass(className)) {
+    foreach(QString className, tShortCutManager().get_class_names()) {
+        if (tShortCutManager().is_command_class(className)) {
             commandClassNamesMap.insert(tShortCutManager().get_translation_for(className), className);
 		}
         else if (className.contains("Base")) {
@@ -144,7 +144,7 @@ void TShortcutEditorDialog::objects_combo_box_activated(int index)
 
 	QString className = ui->objectsComboBox->itemData(index).toString();
 
-	if (tShortCutManager().isCommandClass(className))
+    if (tShortCutManager().is_command_class(className))
 	{
 		ui->shortCutGroupBox->setTitle(tr("Modifier &Key"));
 		ui->shortcutsTreeWidget->setHeaderLabels(QStringList() << tr("Function") << tr("Modifier Key"));
@@ -154,12 +154,12 @@ void TShortcutEditorDialog::objects_combo_box_activated(int index)
         ui->shortcutsTreeWidget->setHeaderLabels(QStringList() << tr("Function") << tr("Key / Button"));
 	}
 
-	QList<TShortCutFunction* > functionsList = tShortCutManager().getFunctionsFor(className);
+    QList<TShortCutFunction* > functionsList = tShortCutManager().get_shortcut_function_for_class(className);
 
 	foreach(TShortCutFunction* function, functionsList)
 	{
 		QTreeWidgetItem* item;
-		item = new QTreeWidgetItem(QStringList() << function->getLongDescription() << function->getKeySequence());
+		item = new QTreeWidgetItem(QStringList() << function->get_long_description() << function->get_key_sequence());
         QVariant v = QVariant::fromValue((void*) function);
 		item->setData(0, Qt::UserRole, v);
 		ui->shortcutsTreeWidget->addTopLevelItem(item);
@@ -207,13 +207,13 @@ void TShortcutEditorDialog::key_combo_box_activated(int)
 		keys << key2;
 	}
 
-	if (function->usesAutoRepeat())
+	if (function->uses_autorepeat())
 	{
-		function->setAutoRepeatInterval(ui->repeatIntervalSpinBox->value());
-		function->setAutoRepeatStartDelay(ui->startDelaySpinBox->value());
+		function->set_autorepeat_interval(ui->repeatIntervalSpinBox->value());
+		function->set_autorepeat_start_delay(ui->startDelaySpinBox->value());
 	}
 
-	tShortCutManager().modifyFunctionKeys(function, keys, modifiers);
+    tShortCutManager().set_shortcut_function_keys(function, keys, modifiers);
 }
 
 void TShortcutEditorDialog::key1_combo_box_activated(int /*index*/)
@@ -226,18 +226,18 @@ void TShortcutEditorDialog::key1_combo_box_activated(int /*index*/)
 	ui->shortcutsTreeWidget->clear();
 
 	QString keyString = ui->keyComboBox1->itemData(ui->keyComboBox1->currentIndex()).toString();
-	TShortCut* shortCut = tShortCutManager().getShortcutForKey(keyString);
+    TShortCut* shortCut = tShortCutManager().get_shortcut_for_key(keyString);
 
 	if (!shortCut)
 	{
 		return;
 	}
 
-	foreach(TShortCutFunction* function, shortCut->getFunctions())
+    for(TShortCutFunction* function : shortCut->getFunctions())
 	{
-		QString translatedObjectName = tShortCutManager().get_translation_for(function->getObject());
+        QString translatedObjectName = tShortCutManager().get_translation_for(function->get_metaobject()->className());
 		QStringList stringlist;
-		stringlist << translatedObjectName << function->getLongDescription() << function->getKeySequence();
+		stringlist << translatedObjectName << function->get_long_description() << function->get_key_sequence();
 		QTreeWidgetItem* item = new QTreeWidgetItem(stringlist);
         QVariant v = QVariant::fromValue((void*) function);
 		item->setData(0, Qt::UserRole, v);
@@ -268,13 +268,13 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 		TShortCutFunction* function = getSelectedFunction();
 		if (function)
 		{
-			int index = ui->objectsComboBox->findData(tShortCutManager().getClassForObject(function->getObject()));
+            int index = ui->objectsComboBox->findData(tShortCutManager().get_class_for_object(function->get_metaobject()));
 			if (index >= 0)
 			{
 				ui->objectsComboBox->setCurrentIndex(index);
 				ui->showfunctionsCheckBox->setChecked(false);
 				show_functions_checkbox_clicked();
-				QList<QTreeWidgetItem*> items = ui->shortcutsTreeWidget->findItems(function->getLongDescription(), Qt::MatchCaseSensitive);
+				QList<QTreeWidgetItem*> items = ui->shortcutsTreeWidget->findItems(function->get_long_description(), Qt::MatchCaseSensitive);
 				if (items.size())
 				{
 					ui->shortcutsTreeWidget->setCurrentItem(items.first());
@@ -307,32 +307,32 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 	if (index >=0)
 	{
 		QString objectClassName = ui->objectsComboBox->itemData(index).toString();
-		isHoldFunction = tShortCutManager().classInherits(objectClassName, "TCommand");
+		isHoldFunction = tShortCutManager().class_inherits(objectClassName, "TCommand");
 	}
 
-	QStringList keys = function->getKeys(false);
+	QStringList keys = function->get_keys(false);
 	if (keys.size() > 0)
 	{
 		QString keySequence = keys.at(0);
-        TShortCutFunction::makeShortcutKeyHumanReadable(keySequence);
+        TShortCutFunction::make_shortcut_key_human_readable(keySequence);
 		int index = ui->keyComboBox1->findText(keySequence, Qt::MatchFixedString);
 		ui->keyComboBox1->setCurrentIndex(index);
 	}
 	if (keys.size() > 1)
 	{
 		QString keySequence = keys.at(1);
-        TShortCutFunction::makeShortcutKeyHumanReadable(keySequence);
+        TShortCutFunction::make_shortcut_key_human_readable(keySequence);
 		int index = ui->keyComboBox2->findText(keySequence, Qt::MatchFixedString);
 		ui->keyComboBox2->setCurrentIndex(index);
 	}
 
-	TShortCutFunction* inheritedFunction = function->getInheritedFunction();
-	bool usesInheritedBase = function->usesInheritedBase();
+	TShortCutFunction* inheritedFunction = function->get_inherited_shortcut_function();
+	bool usesInheritedBase = function->uses_inherited_base();
 	if (inheritedFunction)
 	{
-        ui->baseFunctionShortCutKey->setText(inheritedFunction->getKeySequence());
-        ui->baseFunctionShortCutLable->setText(inheritedFunction->getDescription());
-		ui->configureInheritedShortcutPushButton->setText(tr("Configure %1").arg(inheritedFunction->getDescription()));
+        ui->baseFunctionShortCutKey->setText(inheritedFunction->get_key_sequence());
+        ui->baseFunctionShortCutLable->setText(inheritedFunction->get_description());
+		ui->configureInheritedShortcutPushButton->setText(tr("Configure %1").arg(inheritedFunction->get_description()));
         ui->baseFunctionGroupBox->show();
 
 		if (usesInheritedBase)
@@ -357,7 +357,7 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 	{
 		ui->autorepeatGroupBox->hide();
 
-		QList<int> modifierKeys = function->getModifierKeys(false);
+		QList<int> modifierKeys = function->get_modifier_keys(false);
 		if (modifierKeys.contains(Qt::Key_Shift)) {
 			ui->shiftCheckBox->setChecked(true);
 		}
@@ -388,11 +388,11 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 		ui->modifiersGroupBox->setEnabled(true);
 	}
 
-	if (function->usesAutoRepeat())
+	if (function->uses_autorepeat())
 	{
 		ui->autorepeatGroupBox->show();
-		ui->startDelaySpinBox->setValue(function->getAutoRepeatStartDelay());
-		ui->repeatIntervalSpinBox->setValue(function->getAutoRepeatInterval());
+		ui->startDelaySpinBox->setValue(function->get_autorepeat_start_delay());
+		ui->repeatIntervalSpinBox->setValue(function->get_autorepeat_interval());
 	}
 	else
 	{
@@ -411,11 +411,11 @@ void TShortcutEditorDialog::base_function_checkbox_clicked()
 
 	if (ui->baseFunctionGroupBox->isChecked())
 	{
-		tShortCutManager().modifyFunctionInheritedBase(function, true);
+        tShortCutManager().set_shortcut_function_inherited_base(function, true);
 	}
 	else
 	{
-		tShortCutManager().modifyFunctionInheritedBase(function, false);
+        tShortCutManager().set_shortcut_function_inherited_base(function, false);
 	}
 }
 
@@ -463,7 +463,7 @@ void TShortcutEditorDialog::function_keys_changed()
 
 	// item is now deleted!
 
-	QList<QTreeWidgetItem*> items = ui->shortcutsTreeWidget->findItems(function->getLongDescription(), Qt::MatchCaseSensitive);
+	QList<QTreeWidgetItem*> items = ui->shortcutsTreeWidget->findItems(function->get_long_description(), Qt::MatchCaseSensitive);
 	if (items.size())
 	{
 		ui->shortcutsTreeWidget->setCurrentItem(items.first());
@@ -479,13 +479,13 @@ void TShortcutEditorDialog::configure_inherited_shortcut_pushbutton_clicked()
 	{
 		return;
 	}
-	function = function->getInheritedFunction();
+	function = function->get_inherited_shortcut_function();
 	if (!function)
 	{
 		return;
 	}
 
-	int index = ui->objectsComboBox->findData(function->getObject());
+    int index = ui->objectsComboBox->findData(function->get_metaobject()->className());
 	if (index >= 0)
 	{
 		ui->objectsComboBox->setCurrentIndex(index);
@@ -501,14 +501,14 @@ void TShortcutEditorDialog::on_restoreDefaultPushButton_clicked()
 		return;
 	}
 
-	tShortCutManager().restoreDefaultFor(function);
+    tShortCutManager().restore_defaults_for_shortcut_function(function);
 }
 
 void TShortcutEditorDialog::button_box_button_clicked(QAbstractButton* button)
 {
 	if (button == ui->buttonBox->button(QDialogButtonBox::RestoreDefaults))
 	{
-		tShortCutManager().restoreDefaults();
+        tShortCutManager().restore_defaults();
 
 	}
 }
@@ -548,7 +548,7 @@ void TShortcutEditorDialog::moveItemUpDown(int direction)
 		function->sortorder = i;
 	}
 
-	tShortCutManager().exportFunctions();
+    tShortCutManager().export_functions();
 }
 
 void TShortcutEditorDialog::changeEvent(QEvent *e)

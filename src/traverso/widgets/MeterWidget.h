@@ -22,6 +22,8 @@
 #ifndef METER_WIDGET_H
 #define METER_WIDGET_H
 
+#include "MeterView.h"
+
 #include <QTimer>
 
 #include <ViewPort.h>
@@ -48,35 +50,7 @@ protected:
 	MeterView* m_item;
 };
 
-class MeterView : public ViewItem
-{
-	Q_OBJECT
 
-public:
-	MeterView(MeterWidget* widget);
-	~MeterView();
-
-        virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {}
-	virtual void resize();
-	void hide_event();
-	void show_event();
-
-	
-protected:
-	MeterWidget* 	m_widget;
-	TAudioPlugin*		m_meter;
-	QTimer		timer;
-	QTimer		m_delayTimer;
-	TProject*	m_project;
-        TSession*	m_session;
-
-private slots:
-	void		set_project( TProject* );
-        virtual void	update_data() {}
-	void		transport_started();
-	void		transport_stopped();
-	void		delay_timeout();
-};
 
 #endif
 

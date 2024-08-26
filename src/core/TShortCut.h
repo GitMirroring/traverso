@@ -12,20 +12,19 @@ public:
     TShortCut(int keyValue);
     ~ TShortCut();
 
-    int getKeyValue() const {return m_keyValue;}
+    int get_key_value() const {return m_keyValue;}
 
-    QList<TShortCutFunction*> getFunctionsForObject(const QString& objectName);
     QList<TShortCutFunction*> getFunctions();
+    QList<TShortCutFunction*> get_functions_for_metaobject(const QMetaObject *metaObject);
+
+    void add_shortcut_function(TShortCutFunction* shortCutFunction);
 
     int		autorepeatInterval;
     int		autorepeatStartDelay;
 
 private:
-    QMultiHash<QString, TShortCutFunction*> objects;
+    QMultiHash<const QMetaObject*, TShortCutFunction*> m_dict;
     int		m_keyValue;
-
-
-    friend class TShortCutManager;
 };
 
 #endif // TSHORTCUT_H

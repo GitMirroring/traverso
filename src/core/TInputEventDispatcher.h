@@ -41,6 +41,11 @@ class QMouseEvent;
 
 class TShortCut;
 
+class HoldCommand : public QObject
+{
+    Q_OBJECT
+};
+
 
 class TInputEventDispatcher : public QObject
 {
@@ -78,6 +83,7 @@ private:
     ~TInputEventDispatcher();
 
     enum BroadcastResult {
+        RESULT_NOT_SET = 0,
         SUCCESS=1,
         FAILURE=2,
         DIDNOTIMPLEMENT=3

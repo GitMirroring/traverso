@@ -55,7 +55,7 @@ public:
 
     qint64 get_id();
 
-    void set_core_context_item(TContextItem* item) {m_relatedContextItem = item;}
+    void set_related_context_item(TContextItem* item) {m_relatedContextItem = item;}
     void set_has_active_context(bool context);
     void set_ignore_context(bool ignoreContext);
     void set_id(qint64 id);
@@ -71,8 +71,7 @@ protected:
 private:
     QUndoStack*             m_historyStack;
     qint64                  m_id;
-    QPointer<TContextItem>   m_parentContextItem;
-    QPointer<TContextItem>   m_relatedContextItem;
+    TContextItem*          m_relatedContextItem;
     bool                    m_hasActiveContext;
     bool                    m_ignoreContext;
 

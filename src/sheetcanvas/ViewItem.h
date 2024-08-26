@@ -57,7 +57,7 @@ public:
         TContextItem(parentViewItem)
       , QGraphicsItem(parentViewItem)
     {
-        set_core_context_item(parentContext);
+        set_related_context_item(parentContext);
         m_parentViewItem = parentViewItem;
         m_hasMouseTracking = false;
     }

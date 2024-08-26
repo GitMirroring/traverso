@@ -33,6 +33,8 @@ class TraversoCommands : public TCommandPlugin
 
 public:
 	TraversoCommands();
+
+    void load();
     TCommand* create(QObject* obj, const QString& commandName, QVariantList arguments);
 
 private:
@@ -64,14 +66,41 @@ private:
 		MoveCurveNodesCommand,
         MoveMarkerCommand,
         MovePluginCommand,
-        FadeRangeCommand
+        FadeRangeCommand,
+        GainShowAutomationCommand
 	};
 
 private:
     void add_function(TShortCutFunction* function, TraversoCommand command);
-    void create_and_add_function(const QString& object, const QString& description, const QString& commandName, TraversoCommand command);
-    void create_and_add_function(const QString& object, const QString& description, const QString& commandName,
-                                 TraversoCommand command, QStringList arguments, const QString& inheritedBase="", bool useX=false, bool useY=false);
+};
+
+class ResetBase : public QObject
+{
+    Q_OBJECT
+};
+class ToggleBypassBase : QObject
+{
+    Q_OBJECT
+};
+class DeleteBase : QObject
+{
+    Q_OBJECT
+};
+class MoveBase : QObject
+{
+    Q_OBJECT
+};
+class GainBase : QObject
+{
+    Q_OBJECT
+};
+class ToggleVerticalBase : QObject
+{
+    Q_OBJECT
+};
+class EditPropertiesBase : QObject
+{
+    Q_OBJECT
 };
 
 #endif

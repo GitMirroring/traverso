@@ -68,6 +68,8 @@ public :
     int arm();
     bool armed();
     int disarm();
+    void toggle_show_clip_volume_automation();
+
     int process(TProcessCallBackData &processData);
 
     bool operator<(const TAudioTrack &other) {
@@ -102,7 +104,6 @@ public slots:
 
     TCommand* toggle_arm();
     TCommand* silence_others();
-    TCommand* toggle_show_clip_volume_automation();
 
 private slots:
     void private_add_clip(TAudioClip* clip);

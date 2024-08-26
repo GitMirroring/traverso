@@ -54,6 +54,7 @@ public:
 
     void set_muted_by_solo(bool muted);
     void set_solo(bool solo);
+    void toggle_show_gain_automation_curve();
     void set_sort_index(int index);
     int set_state( const QDomNode& node );
     virtual void set_name(const QString& name);
@@ -120,7 +121,6 @@ private:
 public slots:
     TCommand* solo();
     TCommand* toggle_presend();
-    TCommand* toggle_show_gain_automation_curve();
 
 private slots:
     void private_add_post_send(TSend*);

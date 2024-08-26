@@ -480,12 +480,10 @@ void TAudioTrack::private_clip_position_changed(TAudioClip *clip)
     m_rtAudioClips.sort(clip);
 }
 
-TCommand* TAudioTrack::toggle_show_clip_volume_automation()
+void TAudioTrack::toggle_show_clip_volume_automation()
 {
     m_showClipVolumeAutomation = !m_showClipVolumeAutomation;
     emit automationVisibilityChanged();
-
-    return nullptr;
 }
 
 TBounceTrack::TBounceTrack(TSheet *sheet, const QString &name, int height)

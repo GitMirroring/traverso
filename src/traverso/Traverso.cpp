@@ -36,9 +36,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TContextPointer.h"
 #include "TInformUser.h"
-#include "TShortCutManager.h"
-#include "widgets/SpectralMeterWidget.h"
-#include "widgets/CorrelationMeterWidget.h"
 
 #include "fpu.h"
 #ifdef __SSE__
@@ -109,9 +106,6 @@ Traverso::Traverso(int &argc, char **argv )
     tsmp();
 
     config().check_and_load_configuration();
-
-    tShortCutManager().add_meta_object(&SpectralMeterView::staticMetaObject);
-    tShortCutManager().add_meta_object(&CorrelationMeterView::staticMetaObject);
 
     // Initialize random number generator
     srand ( time(nullptr) );

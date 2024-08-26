@@ -135,12 +135,6 @@ void TAudioClip::update_global_configuration()
     m_syncDuringDrag = config().get_property("AudioClip", "SyncDuringDrag", false).toBool();
 }
 
-TCommand* TAudioClip::toggle_show_gain_automation_curve()
-{
-    m_track->toggle_show_clip_volume_automation();
-    return ied().succes();
-}
-
 int TAudioClip::set_state(const QDomNode& node)
 {
     PENTER;

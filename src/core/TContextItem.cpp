@@ -8,7 +8,6 @@
 
 TContextItem::TContextItem(TContextItem *parent)
     : QObject(parent)
-    , m_parentContextItem(parent)
     , m_relatedContextItem(nullptr)
     , m_hasActiveContext(false)
     , m_ignoreContext(false)

@@ -4,6 +4,7 @@
 
 #include <QTranslator>
 #include "Debugger.h"
+#include "Utils.h"
 
 TShortCutFunction::TShortCutFunction() {
     m_inheritedFunction = nullptr;
@@ -20,11 +21,16 @@ TShortCutFunction::TShortCutFunction() {
     m_usesInheritedBase = false;
 }
 
-QString TShortCutFunction::getModifierSequence(bool fromInheritedBase)
+TShortCutFunction::~TShortCutFunction()
+{
+    printf("Deleting shortcut function %s\n", QS_C(commandName));
+}
+
+QString TShortCutFunction::get_modifier_sequence(bool fromInheritedBase)
 {
     QString modifiersString;
 
-    foreach(int modifier, getModifierKeys(fromInheritedBase)) {
+    foreach(int modifier, get_modifier_keys(fromInheritedBase)) {
         switch(modifier) {
         case Qt::Key_Alt:
             modifiersString += "Alt+";
@@ -45,18 +51,18 @@ QString TShortCutFunction::getModifierSequence(bool fromInheritedBase)
     return modifiersString;
 }
 
-QString TShortCutFunction::getKeySequence(bool formatHtml)
+QString TShortCutFunction::get_key_sequence(bool formatHtml)
 {
     QString sequence;
     QStringList sequenceList;
-    QString modifiersString = getModifierSequence();
+    QString modifiersString = get_modifier_sequence();
 
-    if (getModifierKeys().size())
+    if (get_modifier_keys().size())
     {
         modifiersString += " ";
     }
 
-    foreach(QString keyString, getKeys())
+    foreach(QString keyString, get_keys())
     {
 
         sequenceList << (modifiersString + keyString);
@@ -64,35 +70,35 @@ QString TShortCutFunction::getKeySequence(bool formatHtml)
 
     sequence = sequenceList.join(" , ");
 
-    TShortCutFunction::makeShortcutKeyHumanReadable(sequence, formatHtml);
+    TShortCutFunction::make_shortcut_key_human_readable(sequence, formatHtml);
 
     return sequence;
 }
 
-QList<int> TShortCutFunction::getModifierKeys(bool fromInheritedBase)
+QList<int> TShortCutFunction::get_modifier_keys(bool fromInheritedBase)
 {
     if (m_inheritedFunction && m_usesInheritedBase && fromInheritedBase)
     {
-        return m_inheritedFunction->getModifierKeys();
+        return m_inheritedFunction->get_modifier_keys();
     }
 
     return m_modifierkeys;
 }
 
-QString TShortCutFunction::getSlotSignature() const
+QString TShortCutFunction::get_slot_signature() const
 {
     // a slotsignature is only set for hold commands, not for modifier keys
     // if the shortcut is from a modifier key then the slotsignature will be
     // empty in which case we do return the slotsignature set for the TFunction
-    if (m_inheritedFunction && !m_inheritedFunction->getSlotSignature().isEmpty())
+    if (m_inheritedFunction && !m_inheritedFunction->get_slot_signature().isEmpty())
     {
-        return m_inheritedFunction->getSlotSignature();
+        return m_inheritedFunction->get_slot_signature();
     }
 
     return slotsignature;
 }
 
-QString TShortCutFunction::getDescription() const
+QString TShortCutFunction::get_description() const
 {
     if (!m_description.isEmpty())
     {
@@ -101,15 +107,15 @@ QString TShortCutFunction::getDescription() const
 
     if (m_inheritedFunction)
     {
-        return m_inheritedFunction->getDescription();
+        return m_inheritedFunction->get_description();
     }
 
     return m_description;
 }
 
-QString TShortCutFunction::getLongDescription() const
+QString TShortCutFunction::get_long_description() const
 {
-    QString description = getDescription();
+    QString description = get_description();
     if (!submenu.isEmpty())
     {
         description = submenu + " : " + description;
@@ -117,62 +123,57 @@ QString TShortCutFunction::getLongDescription() const
     return description;
 }
 
-void TShortCutFunction::setDescription(const QString& description)
+void TShortCutFunction::set_description(const QString& description)
 {
     m_description = description;
 }
 
-void TShortCutFunction::setInheritedBase(const QString &base)
+void TShortCutFunction::set_inherited_base(const QString &base)
 {
     m_inheritedBase = base;
 }
 
-QStringList TShortCutFunction::getKeys(bool fromInheritedBase) const
+QStringList TShortCutFunction::get_keys(bool fromInheritedBase) const
 {
     if (m_inheritedFunction && m_usesInheritedBase && fromInheritedBase)
     {
-        return m_inheritedFunction->getKeys();
+        return m_inheritedFunction->get_keys();
     }
 
     return m_keys;
 }
 
-QStringList TShortCutFunction::getObjects() const
-{
-    return object.split("::", Qt::SkipEmptyParts);
-}
-
-QString TShortCutFunction::getObject() const
-{
-    return getObjects().first();
-}
-
-void TShortCutFunction::setInheritedFunction(TShortCutFunction *inherited)
+void TShortCutFunction::set_inherited_shortcut_function(TShortCutFunction *inherited)
 {
     m_inheritedFunction = inherited;
 }
 
-int TShortCutFunction::getAutoRepeatInterval() const
+int TShortCutFunction::get_autorepeat_interval() const
 {
     if (m_inheritedFunction && m_usesInheritedBase)
     {
-        return m_inheritedFunction->getAutoRepeatInterval();
+        return m_inheritedFunction->get_autorepeat_interval();
     }
 
     return m_autorepeatInterval;
 }
 
-int TShortCutFunction::getAutoRepeatStartDelay() const
+int TShortCutFunction::get_autorepeat_start_delay() const
 {
     if (m_inheritedFunction && m_usesInheritedBase)
     {
-        return m_inheritedFunction->getAutoRepeatStartDelay();
+        return m_inheritedFunction->get_autorepeat_start_delay();
     }
 
     return m_autorepeatStartDelay;
 }
 
-void TShortCutFunction::makeShortcutKeyHumanReadable(QString& keyfact, bool formatHtml)
+void TShortCutFunction::set_metaobject(const QMetaObject *metaObject)
+{
+    m_metaObject = metaObject;
+}
+
+void TShortCutFunction::make_shortcut_key_human_readable(QString& keyfact, bool formatHtml)
 {
     keyfact.replace(QString("MOUSESCROLLVERTICALUP"), QObject::tr("Scroll Up"));
     keyfact.replace(QString("MOUSESCROLLVERTICALDOWN"), QObject::tr("Scroll Down"));

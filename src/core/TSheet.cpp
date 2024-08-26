@@ -144,7 +144,7 @@ void TSheet::init()
     m_writeDiskIO = new TDiskIOThread();
 
     m_audioClipManager = new TAudioClipManager(this);
-    set_core_context_item( m_audioClipManager );
+    set_related_context_item( m_audioClipManager );
     create_history_stack();
     m_timeline->set_history_stack(get_history_stack());
 

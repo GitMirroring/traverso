@@ -191,12 +191,10 @@ TCommand* TTrack::toggle_presend()
     return  nullptr;
 }
 
-TCommand* TTrack::toggle_show_gain_automation_curve()
+void TTrack::toggle_show_gain_automation_curve()
 {
     m_showTrackVolumeAutomation = !m_showTrackVolumeAutomation;
     emit automationVisibilityChanged();
-
-    return nullptr;
 }
 
 bool TTrack::is_solo()

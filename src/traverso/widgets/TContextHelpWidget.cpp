@@ -97,8 +97,8 @@ TContextHelpWidget::TContextHelpWidget(QWidget* parent)
     QMap<QString, QString> classNamesMap;
     QMap<QString, QString> commandClassNamesMap;
 
-    foreach(QString className, tShortCutManager().getClassNames()) {
-        if (tShortCutManager().isCommandClass(className))
+    foreach(QString className, tShortCutManager().get_class_names()) {
+        if (tShortCutManager().is_command_class(className))
         {
             commandClassNamesMap.insert(tShortCutManager().get_translation_for(className), className);
         }
@@ -176,7 +176,7 @@ QString TContextHelpWidget::get_html_for_object(QObject *obj)
         return m_help.value(mo->className());
     }
 
-    QString html = tShortCutManager().createHtmlForClass(mo->className(), obj);
+    QString html = tShortCutManager().create_html_for_class(mo->className(), obj);
 
     m_help.insert(mo->className(), html);
 
@@ -198,7 +198,7 @@ void TContextHelpWidget::combobox_activated(int index)
     }
     else
     {
-        QString html = tShortCutManager().createHtmlForClass(className);
+        QString html = tShortCutManager().create_html_for_class(className);
         m_help.insert(className, html);
         m_textEdit->setHtml(html);
     }
@@ -214,7 +214,7 @@ void TContextHelpWidget::function_keys_changed()
         m_textEdit->setHtml("");
         return;
     }
-    QString html = tShortCutManager().createHtmlForClass(m_currentClassName.remove("View"));
+    QString html = tShortCutManager().create_html_for_class(m_currentClassName.remove("View"));
     m_help.insert(m_currentClassName, html);
     m_textEdit->setHtml(html);
 }

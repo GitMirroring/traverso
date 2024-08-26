@@ -57,6 +57,10 @@ bool SFAudioWriter::open_private()
 	m_sfinfo.frames = 48000*100;
     m_sfinfo.samplerate = m_exportSpecification->get_sample_rate();
     m_sfinfo.channels = m_exportSpecification->get_channel_count();
+
+    double quality = 5;
+    sf_command(m_sf, SFC_SET_VBR_ENCODING_QUALITY, &quality, sizeof(double));
+
     // This commented out line of code has been there since the first upload ofr SFAudioWriter
     // not clear to me what libsndfile does with this frames number?
 	//m_sfinfo.frames = m_spec->endLocation - m_spec->startLocation + 1;

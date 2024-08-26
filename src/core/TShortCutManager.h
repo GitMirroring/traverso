@@ -44,35 +44,36 @@ public:
     static const int MouseScrollVerticalDown = -4;
 
 
-    void createAndAddFunction(const QString &object, const QString &description, const QString &slotSignature, const QString &commandName, const QString& inheritedBase = "");
-    void registerFunction(TShortCutFunction* function);
-    TShortCutFunction* getFunction(const QString& function) const;
+    void register_shortcut_function(TShortCutFunction* function);
+    TShortCutFunction* get_shortcut_function(const QString& function) const;
 
-    QList<TShortCutFunction* > getFunctionsFor(QString className);
-    TShortCut* getShortcutForKey(const QString& key);
-    TShortCut* getShortcutForKey(int key);
-    TCommandPlugin* getCommandPlugin(const QString& pluginName);
-    void modifyFunctionKeys(TShortCutFunction* function, const QStringList& keys, QStringList modifiers);
-    void modifyFunctionInheritedBase(TShortCutFunction* function, bool usesInheritedBase);
+    QList<TShortCutFunction* > get_shortcut_function_for_class(QString className);
+    TShortCut* get_shortcut_for_key(const QString& key);
+    TShortCut* get_shortcut_for_key(int key);
+    TCommandPlugin* get_command_plugin(const QString& pluginName);
+
+    void set_shortcut_function_keys(TShortCutFunction* function, const QStringList& keys, QStringList modifiers);
+    void set_shortcut_function_inherited_base(TShortCutFunction* function, bool usesInheritedBase);
 	void add_translation(const QString& signature, const QString& translation);
 	void add_meta_object(const QMetaObject* mo);
-	void registerItemClass(const QString& item, const QString& className);
+    void register_item_class(const QString& item, const QString& className);
     void register_command_plugin(TCommandPlugin* plugin, const QString& pluginName);
-	QString get_translation_for(const QString& entry);
-    QString createHtmlForClass(const QString& className, QObject* obj=nullptr);
-	QList<QString> getClassNames() const;
-	QString getClassForObject(const QString& object) const;
-	bool classInherits(const QString& className, const QString &inherited);
 
-	void loadFunctions();
-    void saveFunction(TShortCutFunction* function);
-    void saveFunctions(QList<TShortCutFunction*> functions);
-	void exportFunctions();
-	void loadShortcuts();
-    void restoreDefaultFor(TShortCutFunction* function);
-	void restoreDefaults();
+    QString get_translation_for(const QString& entry);
+    QString create_html_for_class(const QString& className, QObject* obj=nullptr);
+    QList<QString> get_class_names() const;
+    QString get_class_for_object(const QMetaObject *metaObject) const;
 
-	bool isCommandClass(const QString& className);
+    bool class_inherits(const QString& className, const QString &inherited);
+
+    void save_shortcut_function(TShortCutFunction* function);
+    void save_shortcut_fuctions(QList<TShortCutFunction*> functions);
+    void export_functions();
+    void load_shortcuts();
+    void restore_defaults_for_shortcut_function(TShortCutFunction* function);
+    void restore_defaults();
+
+    bool is_command_class(const QString& className);
 
 private:
     QHash<QString, TCommandPlugin*>	m_commandPlugins;
@@ -82,12 +83,11 @@ private:
 	QHash<QString, QString>		m_translations;
 	QHash<QString, QList<const QMetaObject*> > m_metaObjects;
 
-    // be sure to only insert into m_classes using registerItemClass()
+    // be sure to only insert into m_classes using register_item_class()
     // to avoid overwriting existing entries
     QMap<QString, QStringList>	m_classes;
 
     TShortCutManager();
-    void extracted();
     ~TShortCutManager();
     TShortCutManager(const TShortCutManager&) : QObject() {}
 

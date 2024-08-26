@@ -177,7 +177,6 @@ public slots:
     TCommand* reset_fade_both();
     TCommand* normalize();
     TCommand* lock();
-    TCommand* toggle_show_gain_automation_curve();
 
 private slots:
     void private_add_fade(TFadeCurve* fade);

@@ -58,8 +58,7 @@ void TConfig::load_configuration()
 
     m_commands = new TraversoCommands();
     tShortCutManager().register_command_plugin(m_commands, "TraversoCommands");
-	tShortCutManager().loadFunctions();
-	tShortCutManager().loadShortcuts();
+    tShortCutManager().load_shortcuts();
 }
 
 void TConfig::reset_settings( )

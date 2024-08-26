@@ -33,7 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TReadAudioSource.h"
 #include "ResampleAudioReader.h"
 #include "TSheet.h"
-#include "TSheetView.h"
 #include "TTrack.h"
 #include "TVUMonitor.h"
 #include "TSheetView.h"
@@ -41,7 +40,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTrack.h"
 #include "TBusTrack.h"
 #include "TVUMonitor.h"
-#include "TSheetView.h"
 #include "TShortCutFunction.h"
 #include "TTrack.h"
 #include "TVUMonitor.h"
@@ -1094,7 +1092,7 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
 {
 	QList<TShortCutFunction* > list;
 	if (item) {
-		list = tShortCutManager().getFunctionsFor(item->metaObject()->className());
+		list = tShortCutManager().get_shortcut_function_for_class(item->metaObject()->className());
 	} else {
 		list = *menulist;
 	}
@@ -1170,8 +1168,8 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
 
 void TMainWindow::add_function_to_menu(TShortCutFunction *function, QMenu *menu)
 {
-    QAction* action = menu->addAction(function->getDescription());
-    QKeySequence sequence(function->getKeySequence().remove(" "));
+    QAction* action = menu->addAction(function->get_description());
+    QKeySequence sequence(function->get_key_sequence().remove(" "));
     action->setShortcut(sequence);
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
     action->setShortcutVisibleInContextMenu(true);

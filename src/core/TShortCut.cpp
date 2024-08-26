@@ -1,4 +1,5 @@
 #include "TShortCut.h"
+#include "TShortCutFunction.h"
 
 TShortCut::TShortCut(int keyValue)
 {
@@ -7,16 +8,19 @@ TShortCut::TShortCut(int keyValue)
 
 TShortCut::~TShortCut()
 {
-
-
-}
-
-QList<TShortCutFunction*> TShortCut::getFunctionsForObject(const QString &objectName)
-{
-    return objects.values(objectName);
 }
 
 QList<TShortCutFunction*> TShortCut::getFunctions()
 {
-    return objects.values();
+    return m_dict.values();
+}
+
+QList<TShortCutFunction *> TShortCut::get_functions_for_metaobject(const QMetaObject *metaObject)
+{
+    return m_dict.values(metaObject);
+}
+
+void TShortCut::add_shortcut_function(TShortCutFunction *shortCutFunction)
+{
+    m_dict.insert(shortCutFunction->get_metaobject(), shortCutFunction);
 }
