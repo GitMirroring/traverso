@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2005-2019 Remon Sijrier
+    Copyright (C) 2005-2024 Remon Sijrier
 
     This file is part of Traverso
 
@@ -34,12 +34,13 @@
 class TCommand;
 class TMoveCommand;
 class TCommandPlugin;
+class TShortCut;
 class TShortCutFunction;
+class TShortCutManager;
+
 class QKeyEvent;
 class QWheelEvent;
 class QMouseEvent;
-
-class TShortCut;
 
 class HoldCommand : public QObject
 {
@@ -59,12 +60,15 @@ public:
     void catch_scroll(QWheelEvent * e );
 
     bool has_collected_number();
-    QString get_collected_number() const {return m_sCollectedNumber;}
-    void set_numerical_input(const QString& number);
-
     bool is_holding();
 
     TCommand* get_holding_command() const;
+    QString get_collected_number() const {return m_sCollectedNumber;}
+
+    void set_numerical_input(const QString& number);
+    void set_shortcut_manager(TShortCutManager* manager) {
+        m_shortCutManager = manager;
+    }
 
     int dispatch_shortcut_from_contextmenu(TShortCutFunction* function);
 
@@ -96,16 +100,17 @@ private:
         TShortCut*      shortcut;
     };
 
-    QList<int>		m_modifierKeys;
-    QList<int>		m_activeModifierKeys;
+    QList<int>          m_modifierKeys;
+    QList<int>          m_activeModifierKeys;
     QHash<int, HoldModifierKey>  m_holdModifierKeys;
 
     QHash<QString, int>	m_modes;
-    TCommand* 		m_holdingCommand;
-    TMoveCommand*    m_moveCommand;
-    QString			m_sCollectedNumber;
-    QPoint			m_jogBypassPos;
-    QTimer          m_holdKeyRepeatTimer;
+    TShortCutManager*   m_shortCutManager = nullptr;;
+    TCommand*           m_holdingCommand;
+    TMoveCommand*       m_moveCommand;
+    QString             m_sCollectedNumber;
+    QPoint              m_jogBypassPos;
+    QTimer              m_holdKeyRepeatTimer;
 
 
     bool 			m_isHolding{};

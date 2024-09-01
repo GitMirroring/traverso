@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2011 Remon Sijrier
+Copyright (C) 2011  -2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -43,19 +43,20 @@ public:
     static const int MouseScrollVerticalUp = -3;
     static const int MouseScrollVerticalDown = -4;
 
-
-    void register_shortcut_function(TShortCutFunction* function);
-    TShortCutFunction* get_shortcut_function(const QString& function) const;
+    TShortCutFunction* add_base_function(const QMetaObject *metaObject, const QString &description, const char *commandName);
+    TShortCutFunction* add_function(const QMetaObject *metaObject, const QString &description, const char *commandName, const char *slotSignature);
+    TShortCutFunction* add_function(const QMetaObject *metaObject, const QMetaObject *baseMetaObject, const char *commandName, const char *slotSignature);
+    TShortCutFunction* get_shortcut_function_for_base_metaobject(const QMetaObject *metaObject) const;
 
     QList<TShortCutFunction* > get_shortcut_function_for_class(QString className);
     TShortCut* get_shortcut_for_key(const QString& key);
     TShortCut* get_shortcut_for_key(int key);
     TCommandPlugin* get_command_plugin(const QString& pluginName);
 
-    void set_shortcut_function_keys(TShortCutFunction* function, const QStringList& keys, QStringList modifiers);
-    void set_shortcut_function_inherited_base(TShortCutFunction* function, bool usesInheritedBase);
+    void set_shortcut_function_keys(TShortCutFunction* function, const QStringList& keys, const QStringList &modifiers);
+    void set_shortcut_function_uses_base_function(TShortCutFunction* function, bool usesBase);
 	void add_translation(const QString& signature, const QString& translation);
-	void add_meta_object(const QMetaObject* mo);
+    void add_meta_object(const QMetaObject* mo, const QString &translation);
     void register_item_class(const QString& item, const QString& className);
     void register_command_plugin(TCommandPlugin* plugin, const QString& pluginName);
 
@@ -78,10 +79,11 @@ public:
 private:
     QHash<QString, TCommandPlugin*>	m_commandPlugins;
 
-    QHash<QString, TShortCutFunction*>	m_functions;
+    QHash<QString, TShortCutFunction*>	m_shortCutFunctions;
+    QHash<const QMetaObject*, TShortCutFunction*>  m_baseShortCutFunctions;
     QHash<int, TShortCut*>		m_shortcuts;
 	QHash<QString, QString>		m_translations;
-	QHash<QString, QList<const QMetaObject*> > m_metaObjects;
+    QMultiHash<QString, const QMetaObject*> m_metaObjects;
 
     // be sure to only insert into m_classes using register_item_class()
     // to avoid overwriting existing entries

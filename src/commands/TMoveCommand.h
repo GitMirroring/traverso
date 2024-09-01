@@ -85,10 +85,10 @@ public slots:
     // as a default. Reimplement those function if different
     // behavior is needed (Qt slots behave like virtual functions
     // and can be reimplemented in derived classes)
-    void move_up();
-    void move_down();
-    void move_left();
-    void move_right();
+    virtual void move_up();
+    virtual void move_down();
+    virtual void move_left();
+    virtual void move_right();
 
 private slots:
     void update_shuttle();

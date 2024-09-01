@@ -19,7 +19,7 @@ Cursors.cpp
 CurveNodeView.cpp
 CurveView.cpp
 TFadeCurveView.cpp TFadeCurveView.h
-MarkerView.cpp
+TTimeLineMarkerView.cpp TTimeLineMarkerView.h
 LineView.cpp
 PluginChainView.cpp
 TAudioPluginView.cpp

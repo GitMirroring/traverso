@@ -19,8 +19,8 @@
  
 */
 
-#ifndef MARKER_VIEW_H
-#define MARKER_VIEW_H
+#ifndef T_TIMELINE_MARKER_VIEW_H
+#define T_TIMELINE_MARKER_VIEW_H
 
 #include "ViewItem.h"
 
@@ -31,13 +31,13 @@ class LineView;
 class QColor;
 class PositionIndicator;
 
-class MarkerView : public ViewItem
+class TTimeLineMarkerView : public ViewItem
 {
 	Q_OBJECT
 	
 public:
-	MarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parent);
-	~MarkerView() {}
+    TTimeLineMarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parent);
+    ~TTimeLineMarkerView() {}
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 	void calculate_bounding_rect();

@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TShortcutEditorDialog.h"
 #include "TShortCut.h"
 #include "TShortCutFunction.h"
+#include "traverso_autogen/include/ui_TShortcutEditorDialog.h"
 #include "ui_TShortcutEditorDialog.h"
 
 #include "TShortCutManager.h"
@@ -233,7 +234,7 @@ void TShortcutEditorDialog::key1_combo_box_activated(int /*index*/)
 		return;
 	}
 
-    for(TShortCutFunction* function : shortCut->getFunctions())
+    for(TShortCutFunction* function : shortCut->get_shortcut_functions())
 	{
         QString translatedObjectName = tShortCutManager().get_translation_for(function->get_metaobject()->className());
 		QStringList stringlist;
@@ -326,7 +327,7 @@ void TShortcutEditorDialog::shortcut_tree_widget_item_activated()
 		ui->keyComboBox2->setCurrentIndex(index);
 	}
 
-	TShortCutFunction* inheritedFunction = function->get_inherited_shortcut_function();
+	TShortCutFunction* inheritedFunction = function->get_base_shortcut_function();
 	bool usesInheritedBase = function->uses_inherited_base();
 	if (inheritedFunction)
 	{
@@ -411,11 +412,11 @@ void TShortcutEditorDialog::base_function_checkbox_clicked()
 
 	if (ui->baseFunctionGroupBox->isChecked())
 	{
-        tShortCutManager().set_shortcut_function_inherited_base(function, true);
+        tShortCutManager().set_shortcut_function_uses_base_function(function, true);
 	}
 	else
 	{
-        tShortCutManager().set_shortcut_function_inherited_base(function, false);
+        tShortCutManager().set_shortcut_function_uses_base_function(function, false);
 	}
 }
 
@@ -479,7 +480,7 @@ void TShortcutEditorDialog::configure_inherited_shortcut_pushbutton_clicked()
 	{
 		return;
 	}
-	function = function->get_inherited_shortcut_function();
+	function = function->get_base_shortcut_function();
 	if (!function)
 	{
 		return;
@@ -545,7 +546,7 @@ void TShortcutEditorDialog::moveItemUpDown(int direction)
 	{
 		item = ui->shortcutsTreeWidget->topLevelItem(i);
 		TShortCutFunction* function = (TShortCutFunction*) item->data(0, Qt::UserRole).value<void*>();
-		function->sortorder = i;
+        function->set_sort_order(i);
 	}
 
     tShortCutManager().export_functions();

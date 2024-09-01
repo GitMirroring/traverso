@@ -50,7 +50,7 @@ void TConfig::load_configuration()
 	
 	QStringList keys = settings.allKeys();
 	
-	foreach(const QString &key, keys) {
+    for(const QString &key : keys) {
 		m_configs.insert(key, settings.value(key));
 	}
 	
@@ -78,7 +78,7 @@ void TConfig::reset_settings( )
 
 void TConfig::check_and_load_configuration( )
 {
-        load_configuration();
+    load_configuration();
 
 	// Detect if the config file versions match, if not, there has been most likely 
 	// a change, overwrite with the newest version...

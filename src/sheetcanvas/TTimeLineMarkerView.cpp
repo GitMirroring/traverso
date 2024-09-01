@@ -19,7 +19,7 @@
  
 */
 
-#include "MarkerView.h"
+#include "TTimeLineMarkerView.h"
 #include "TSheetView.h"
 #include "LineView.h"
 #include "TThemer.h"
@@ -37,7 +37,7 @@
 
 #include "Debugger.h"
 
-MarkerView::MarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parentView)
+TTimeLineMarkerView::TTimeLineMarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parentView)
 	: ViewItem(parentView, marker)
 	, m_dragging(false)
 {
@@ -51,7 +51,7 @@ MarkerView::MarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parent
     m_height = m_width;
     m_line->setPos(m_width / 2, m_height);
 
-    MarkerView::load_theme_data();
+    TTimeLineMarkerView::load_theme_data();
 
 
     connect(m_marker->get_location(), SIGNAL(locationChanged()), this, SLOT(update_position()));
@@ -60,7 +60,7 @@ MarkerView::MarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parent
         connect(this, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
 }
 
-void MarkerView::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
+void TTimeLineMarkerView::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
 {
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
@@ -105,7 +105,7 @@ void MarkerView::paint(QPainter * painter, const QStyleOptionGraphicsItem * opti
 	painter->restore();
 }
 
-void MarkerView::calculate_bounding_rect()
+void TTimeLineMarkerView::calculate_bounding_rect()
 {
 	prepareGeometryChange();
 	update_position();
@@ -126,33 +126,33 @@ void MarkerView::calculate_bounding_rect()
     m_boundingRect = QRectF(-1, 0, m_width + descriptionwidth, m_height);
 }
 
-void MarkerView::update_position()
+void TTimeLineMarkerView::update_position()
 {
     // markerwidth / 2 == center of markerview !
     setPos((m_marker->get_location()->get_start() / m_sv->timeref_scalefactor) - (m_width / 2), 0);
 }
 
-int MarkerView::position()
+int TTimeLineMarkerView::position()
 {
     return int(pos().x() + m_width / 2);
 }
 
-void MarkerView::set_position(int i)
+void TTimeLineMarkerView::set_position(int i)
 {
 	setPos(i - m_width / 2, 0);
 }
 
-void MarkerView::load_theme_data()
+void TTimeLineMarkerView::load_theme_data()
 {
 	if (m_marker->get_type() == TTimeLineMarker::ENDMARKER) {
 		m_fillColor = themer()->get_color("Marker:end");
 	} else {
 		m_fillColor = themer()->get_color("Marker:default");
 	}
-    MarkerView::calculate_bounding_rect();
+    TTimeLineMarkerView::calculate_bounding_rect();
 }
 
-void MarkerView::set_active(bool b)
+void TTimeLineMarkerView::set_active(bool b)
 {
 	m_active = b;
 
@@ -177,13 +177,13 @@ void MarkerView::set_active(bool b)
 	update();
 }
 
-void MarkerView::update_drawing()
+void TTimeLineMarkerView::update_drawing()
 {
     calculate_bounding_rect();
     update();
 }
 
-void MarkerView::set_dragging(bool dragging)
+void TTimeLineMarkerView::set_dragging(bool dragging)
 {
         if (! m_posIndicator) {
                 m_posIndicator = new PositionIndicator(this);
@@ -199,7 +199,7 @@ void MarkerView::set_dragging(bool dragging)
 	m_dragging = dragging;
 }
 
-void MarkerView::active_context_changed()
+void TTimeLineMarkerView::active_context_changed()
 {
         if(has_active_context()) {
                 set_active(true);
@@ -208,7 +208,7 @@ void MarkerView::active_context_changed()
         }
 }
 
-TCommand* MarkerView::drag_marker()
+TCommand* TTimeLineMarkerView::drag_marker()
 {
 	return new MoveMarker(this, m_sv->timeref_scalefactor, tr("Move Marker"));
 }

@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2011 Remon Sijrier
+Copyright (C) 2011-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -62,31 +62,58 @@ TShortCutManager::~TShortCutManager()
     {
         delete shortCut;
     }
-    for(TShortCutFunction* function : std::as_const(m_functions)) {
+    for(TShortCutFunction* function : std::as_const(m_shortCutFunctions)) {
         delete function;
     }
 }
 
-void TShortCutManager::register_shortcut_function(TShortCutFunction *function)
+TShortCutFunction *TShortCutManager::add_base_function(const QMetaObject *metaObject, const QString &description, const char *commandName)
 {
-    Q_ASSERT(function->get_metaobject());
-    Q_ASSERT(!function->commandName.isEmpty());
+    if (m_baseShortCutFunctions.contains(metaObject)) {
+        printf("TShortCutManager::add_base_function: base metaObject %s already in database (commandName %s)\n", metaObject->className(), commandName);
+        return nullptr;
+    }
 
-	if (m_functions.contains(function->commandName))
-	{
-		printf("There is already a function registered with command name %s\n", QS_C(function->commandName));
-		return;
-	}
+    add_meta_object(metaObject, description);
 
-	m_functions.insert(function->commandName, function);
+    auto function = new TShortCutFunction(metaObject, description, commandName);
+    m_baseShortCutFunctions.insert(metaObject, function);
+    m_shortCutFunctions.insert(commandName, function);
+
+    return function;
 }
 
-TShortCutFunction* TShortCutManager::get_shortcut_function(const QString &functionName) const
+TShortCutFunction* TShortCutManager::add_function(const QMetaObject *metaObject, const QString &description, const char *commandName, const char *slotSignature)
 {
-    TShortCutFunction* function = m_functions.value(functionName, nullptr);
+    if (m_shortCutFunctions.contains(commandName)) {
+        printf("There is already a function registered with command name %s\n", commandName);
+        return nullptr;
+	}
+
+    auto function = new TShortCutFunction(metaObject, description, commandName, slotSignature);
+
+    m_shortCutFunctions.insert(commandName, function);
+
+    return function;
+}
+
+TShortCutFunction *TShortCutManager::add_function(const QMetaObject *metaObject, const QMetaObject *baseMetaObject, const char *commandName, const char *slotSignature)
+{
+    Q_ASSERT(std::strlen(slotSignature) > 0);
+
+    auto function = add_function(metaObject, "", commandName, slotSignature);
+    if (function) {
+        function->set_base_metaobject(baseMetaObject);
+    }
+    return function;
+}
+
+TShortCutFunction* TShortCutManager::get_shortcut_function_for_base_metaobject(const QMetaObject* metaObject) const
+{
+    auto function = m_baseShortCutFunctions.value(metaObject);
 	if (!function)
 	{
-        printf("TShortCutManager::getFunction: Function %s not in database!!\n", functionName.toLatin1().data());
+        printf("TShortCutManager::get_shortcut_function_for_base_metaobject: base QMetaObject %s not in database!!\n", metaObject->className());
 	}
 
 	return function;
@@ -98,20 +125,20 @@ QList< TShortCutFunction* > TShortCutManager::get_shortcut_function_for_class(QS
     QStringList classes = m_classes.value(className.remove("View"));
     for(const QString &objectName : classes)
 	{
-        for(TShortCutFunction* function : m_functions)
+        for(TShortCutFunction* function : std::as_const(m_shortCutFunctions))
 		{
 			// filter out objects that inherit from MoveCommand
 			// but do not support move up/down
 			bool hasRequiredSlot = true;
-			if (!function->slotsignature.isEmpty())
+            if (!function->get_slot_signature().isEmpty())
 			{
-				QList<const QMetaObject*> metaList = m_metaObjects.value(className);
-				if (metaList.size())
+                QList<const QMetaObject*> metaObjects = m_metaObjects.values(className);
+                if (metaObjects.size())
 				{
-					if (function->slotsignature == "move_up" && metaList.first()->indexOfMethod("move_up(bool)") == -1) {
+                    if (function->get_slot_signature() == "move_up" && metaObjects.first()->indexOfMethod("move_up(bool)") == -1) {
 						hasRequiredSlot = false;
 					}
-					if (function->slotsignature == "move_down" && metaList.first()->indexOfMethod("move_down(bool)") == -1) {
+                    if (function->get_slot_signature() == "move_down" && metaObjects.first()->indexOfMethod("move_down(bool)") == -1) {
 						hasRequiredSlot = false;
 					}
 				}
@@ -125,7 +152,7 @@ QList< TShortCutFunction* > TShortCutManager::get_shortcut_function_for_class(QS
 	}
 
     std::sort(functionsList.begin(), functionsList.end(), [&](TShortCutFunction* left, TShortCutFunction* right) {
-        return left->sortorder < right->sortorder;
+        return left->get_sort_order() < right->get_sort_order();
     });
 
     return functionsList;
@@ -164,14 +191,14 @@ TCommandPlugin* TShortCutManager::get_command_plugin(const QString &pluginName)
 
 void TShortCutManager::register_command_plugin(TCommandPlugin *plugin, const QString &pluginName)
 {
-    plugin->load();
+    plugin->load(&tShortCutManager());
 
     m_commandPlugins.insert(pluginName, plugin);
 }
 
 bool TShortCutManager::is_command_class(const QString &className)
 {
-	QList<const QMetaObject*> list = m_metaObjects.value(className);
+    QList<const QMetaObject*> list = m_metaObjects.values(className);
 
 	// A Command class only has one metaobject, compared to a
 	// core + its view item which equals 2 metaobjects for just one 'object'
@@ -219,14 +246,14 @@ void TShortCutManager::save_shortcut_fuctions(QList<TShortCutFunction *> functio
     {
         QStringList modifiers = function->get_modifier_sequence(false).split("+", Qt::SkipEmptyParts);
 
-        settings.beginGroup(function->commandName);
+        settings.beginGroup(function->get_command_name());
         settings.setValue("keys", function->get_keys(false).join(";"));
         settings.setValue("modifiers", modifiers.join(";"));
-        settings.setValue("sortorder", function->sortorder);
+        settings.setValue("sortorder", function->get_sort_order());
 
-        if (!function->submenu.isEmpty())
+        if (!function->get_submenu_name().isEmpty())
         {
-            settings.setValue("submenu", function->submenu);
+            settings.setValue("submenu", function->get_submenu_name());
         }
         if (function->get_autorepeat_interval() >= 0)
         {
@@ -236,7 +263,7 @@ void TShortCutManager::save_shortcut_fuctions(QList<TShortCutFunction *> functio
         {
             settings.setValue("autorepeatstartdelay", function->get_autorepeat_start_delay());
         }
-        if (function->get_inherited_shortcut_function())
+        if (function->get_base_shortcut_function())
         {
             if (function->uses_inherited_base())
             {
@@ -254,16 +281,18 @@ void TShortCutManager::save_shortcut_fuctions(QList<TShortCutFunction *> functio
 void TShortCutManager::export_functions()
 {
     PENTER;
-    save_shortcut_fuctions(m_functions.values());
+    save_shortcut_fuctions(m_shortCutFunctions.values());
 }
 
 void TShortCutManager::load_shortcuts()
 {
     PENTER;
+    PMESG("Registered ShortCut Functions: %lld", m_shortCutFunctions.count() - m_baseShortCutFunctions.count());
+
     for(TShortCut* shortCut : std::as_const(m_shortcuts))
-	{
-		delete shortCut;
-	}
+    {
+        delete shortCut;
+    }
 
 	m_shortcuts.clear();
 
@@ -275,92 +304,78 @@ void TShortCutManager::load_shortcuts()
 	QStringList userGroups = userSettings.childGroups();
     QList<TShortCutFunction*> functionsThatInherit;
 
-    for(TShortCutFunction* function : std::as_const(m_functions))
+    for(TShortCutFunction* function : std::as_const(m_shortCutFunctions))
 	{
-		function->m_keys.clear();
-		function->m_modifierkeys.clear();
+        function->clear_keys();
+        function->clear_modifier_keys();
 
-		if (userGroups.contains(function->commandName))
-		{ // prefer user settings over default settings
+        if (userGroups.contains(function->get_command_name())) { // prefer user settings over default settings
 			settings = &userSettings;
 		}
-		else if (defaultGroups.contains(function->commandName))
-		{ // no user setting available, fallback to default
+        else if (defaultGroups.contains(function->get_command_name())) { // no user setting available, fallback to default
 			settings = &defaultSettings;
-		}
-		else
-		{ // huh ?
-			printf("No shortcut definition for function %s\n", QS_C(function->commandName));
+        }else { // huh ?
+            PWARN(QS_C(QString("No shortcut definition for function %1").arg(function->get_command_name())));
 			continue;
 		}
 
-		settings->beginGroup(function->commandName);
-		QString keyString = settings->value("keys").toString();
+        settings->beginGroup(function->get_command_name());
+
+        QString keyString = settings->value("keys").toString();
         QStringList keys = keyString.toUpper().split(";", Qt::SkipEmptyParts);
         QStringList modifiers = settings->value("modifiers").toString().toUpper().split(";", Qt::SkipEmptyParts);
 		QString autorepeatinterval = settings->value("autorepeatinterval").toString();
 		QString autorepeatstartdelay = settings->value("autorepeatstartdelay").toString();
 		QString submenu = settings->value("submenu").toString();
 		QString sortorder = settings->value("sortorder").toString();
+
 		if (settings->contains("usesinheritedbase"))
 		{
 			bool usesInheritedBase = settings->value("usesinheritedbase").toBool();
-			if (usesInheritedBase)
-			{
-                function->set_uses_inherited_base(true);
-			}
-			else
-			{
-                function->set_uses_inherited_base(false);
+            if (usesInheritedBase) {
+                function->set_uses_base_function(true);
+            } else {
+                function->set_uses_base_function(false);
 			}
 		}
 		settings->endGroup();
 
-		function->submenu = submenu;
+        function->set_submenu_name(submenu);
 
 
-		foreach(QString string, modifiers)
-		{
+        for(const QString &string : modifiers) {
 			int modifier;
-            if (keyboard_key_string_to_numerical_value(string, modifier))
-			{
-				function->m_modifierkeys << modifier;
+            if (keyboard_key_string_to_numerical_value(string, modifier)) {
+                function->add_modifier_key(modifier);
 			}
 		}
 
 		bool ok;
 		int interval = autorepeatinterval.toInt(&ok);
-		if (ok)
-		{
+        if (ok) {
             function->set_autorepeat_interval(interval);
 		}
 
 		int startdelay = autorepeatstartdelay.toInt(&ok);
-		if (ok)
-		{
+        if (ok) {
             function->set_autorepeat_start_delay(startdelay);
 		}
 
 		int order = sortorder.toInt(&ok);
-		if (ok)
-		{
-			function->sortorder = order;
+        if (ok) {
+            function->set_sort_order(order);
 		}
 
-		function->m_keys << keys;
+        function->add_keys(keys);
 
-        if (!function->get_inherited_base().isEmpty())
-		{
+        if (function->get_base_metaobject()) {
 			functionsThatInherit.append(function);
 		}
 
-        if (!function->uses_inherited_base())
-		{
-            for(const QString &key : function->get_keys())
-			{
+        if (!function->uses_inherited_base()) {
+            for(const QString &key : function->get_keys()) {
                 TShortCut* shortcut = get_shortcut_for_key(key);
-				if (shortcut)
-				{
+                if (shortcut) {
                     shortcut->add_shortcut_function(function);
 				}
 			}
@@ -369,41 +384,43 @@ void TShortCutManager::load_shortcuts()
 
     for(TShortCutFunction* function : functionsThatInherit)
 	{
-        TShortCutFunction* inheritedFunction = get_shortcut_function(function->get_inherited_base());
-		if (inheritedFunction)
-		{
-			function->set_inherited_shortcut_function(inheritedFunction);
-            if (function->uses_inherited_base())
-			{
-                for(const QString &key : function->get_keys())
-				{
-                    TShortCut* shortcut = get_shortcut_for_key(key);
-					if (shortcut)
-					{
-                        shortcut->add_shortcut_function(function);
-					}
-				}
-			}
-		}
+        TShortCutFunction* inheritedFunction = get_shortcut_function_for_base_metaobject(function->get_base_metaobject());
+
+        if (!inheritedFunction) {
+            continue;
+        }
+
+        function->set_base_shortcut_function(inheritedFunction);
+
+        if (!function->uses_inherited_base()) {
+            continue;
+        }
+
+        for(const QString &key : function->get_keys()) {
+
+            TShortCut* shortcut = get_shortcut_for_key(key);
+
+            if (shortcut) {
+                shortcut->add_shortcut_function(function);
+            }
+        }
 	}
 
     emit functionKeysChanged();
 }
 
-void TShortCutManager::set_shortcut_function_keys(TShortCutFunction *function, const QStringList& keys, QStringList modifiers)
+void TShortCutManager::set_shortcut_function_keys(TShortCutFunction *function, const QStringList& keys, const QStringList &modifiers)
 {
     PENTER;
-	function->m_keys.clear();
-	function->m_modifierkeys.clear();
+    function->clear_keys();
+    function->clear_modifier_keys();
 
-	function->m_keys << keys;
+    function->add_keys(keys);
 
-	foreach(QString string, modifiers)
-	{
-		int modifier;
-        if (keyboard_key_string_to_numerical_value(string, modifier))
-		{
-			function->m_modifierkeys << modifier;
+    for(const QString &modifierKeyString : modifiers) {
+        int modifierKey;
+        if (keyboard_key_string_to_numerical_value(modifierKeyString, modifierKey)) {
+            function->add_modifier_key(modifierKey);
 		}
 	}
 
@@ -412,10 +429,10 @@ void TShortCutManager::set_shortcut_function_keys(TShortCutFunction *function, c
     load_shortcuts();
 }
 
-void TShortCutManager::set_shortcut_function_inherited_base(TShortCutFunction *function, bool usesInheritedBase)
+void TShortCutManager::set_shortcut_function_uses_base_function(TShortCutFunction *function, bool usesBase)
 {
     PENTER;
-    function->set_uses_inherited_base(usesInheritedBase);
+    function->set_uses_base_function(usesBase);
     save_shortcut_function(function);
     load_shortcuts();
 }
@@ -424,9 +441,8 @@ void TShortCutManager::restore_defaults_for_shortcut_function(TShortCutFunction 
 {
 	QSettings userSettings(QSettings::IniFormat, QSettings::UserScope, "Traverso", "Shortcuts");
 
-	userSettings.beginGroup(function->commandName);
-	foreach(QString key, userSettings.childKeys())
-	{
+    userSettings.beginGroup(function->get_command_name());
+    for (const QString &key : userSettings.childKeys()) {
 		userSettings.remove(key);
 	}
     load_shortcuts();
@@ -439,21 +455,19 @@ void TShortCutManager::restore_defaults()
     load_shortcuts();
 }
 
-void TShortCutManager::add_meta_object(const QMetaObject* mo)
+void TShortCutManager::add_meta_object(const QMetaObject* mo, const QString& translation)
 {
-	QString shortcutItem = QString(mo->className()).remove("View");
-	QList<const QMetaObject*> list = m_metaObjects.value(shortcutItem);
-	list.append(mo);
-	m_metaObjects.insert(shortcutItem, list);
+    add_translation(mo->className(), translation);
 
-	while(mo)
-	{
+    QString coreClassName = QString(mo->className()).remove("View");
+    m_metaObjects.insert(coreClassName, mo);
+
+    while(mo) {
 		QString objectName = mo->className();
-		if (objectName == "ContextItem" || objectName == "QObject")
-		{
+        if (objectName == "ContextItem" || objectName == "QObject") {
 			return;
 		}
-        register_item_class(shortcutItem, objectName);
+        register_item_class(coreClassName, objectName);
 		mo = mo->superClass();
 	}
 }
@@ -519,19 +533,19 @@ QString TShortCutManager::create_html_for_class(const QString& className, QObjec
 
 	QStringList result;
 	int j=0;
-    QList<TShortCutFunction* > list = get_shortcut_function_for_class(className);
+    QList<TShortCutFunction* > shortCutFunctionsForClass = get_shortcut_function_for_class(className);
     QMap<QString, QList<TShortCutFunction*> > functionsMap;
 
-    foreach(TShortCutFunction* function, list)
+    for(TShortCutFunction* function : shortCutFunctionsForClass)
     {
-        QList<TShortCutFunction*> listForKey = functionsMap.value(function->submenu);
+        QList<TShortCutFunction*> listForKey = functionsMap.value(function->get_submenu_name());
 		listForKey.append(function);
-		functionsMap.insert(function->submenu, listForKey);
+        functionsMap.insert(function->get_submenu_name(), listForKey);
 	}
 
 	QStringList subMenus = functionsMap.keys();
 
-	foreach(QString submenu, subMenus)
+    for(const QString &submenu : subMenus)
 	{
 		if (!submenu.isEmpty()) {
 			result += "<tr class=\"object\">\n<td colspan=\"2\" align=\"center\">"
@@ -540,7 +554,7 @@ QString TShortCutManager::create_html_for_class(const QString& className, QObjec
 
         QList<TShortCutFunction*> subMenuFunctionList = functionsMap.value(submenu);
 
-        foreach(TShortCutFunction* function, subMenuFunctionList)
+        for(TShortCutFunction* function : subMenuFunctionList)
 		{
             QString keySequence = function->get_key_sequence(true);
 			keySequence.replace(QString(" , "), QString("<br />"));
@@ -594,8 +608,8 @@ TCommand * TShortCutManager::get_keymap(QString &str)
 	      "</style>\n"
 	      "</head>\n<body>\n<h1>Traverso keymap: " + config().get_property("InputEventDispatcher", "keymap", "default").toString() + "</h1>\n";
 
-    foreach(QString className, tShortCutManager().get_class_names()) {
-        str += tShortCutManager().create_html_for_class(className);
+    for(const QString &className : get_class_names()) {
+        str += create_html_for_class(className);
 		str += "<p></p><p></p>\n";
 	}
 
@@ -606,9 +620,9 @@ TCommand * TShortCutManager::get_keymap(QString &str)
 
 bool TShortCutManager::class_inherits(const QString& className, const QString &inherited)
 {
-	QList<const QMetaObject*> metas = m_metaObjects.value(className);
+    QList<const QMetaObject*> metaObjects = m_metaObjects.values(className);
 
-	foreach(const QMetaObject* mo, metas) {
+    for(const QMetaObject* mo : metaObjects) {
 		while (mo) {
 			if (mo->className() == inherited)
 			{
@@ -625,8 +639,7 @@ bool TShortCutManager::keyboard_key_string_to_numerical_value(const QString &tex
 {
     value = Qt::Key_unknown;
 
-    if (text == "NUMERICAL")
-    {
+    if (text == "NUMERICAL") {
         return true;
     }
 
@@ -712,9 +725,6 @@ bool TShortCutManager::keyboard_key_string_to_numerical_value(const QString &tex
                 }
             }
         }
-
-
-
     }
 
     // Code found, return true

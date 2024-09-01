@@ -26,8 +26,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "MoveMarker.h"
 #include "TThemer.h"
 #include "TSheetView.h"
-#include "MarkerView.h"
+#include "TTimeLineMarkerView.h"
 #include "TimeLineViewPort.h"
+#include "TMainWindow.h"
 
 #include <TSheet.h>
 #include <TTimeLineRuler.h>
@@ -108,6 +109,11 @@ TimeLineView::~TimeLineView()
 void TimeLineView::hzoom_changed( )
 {
     update();
+}
+
+TCommand* TimeLineView::show_marker_dialog()
+{
+    return TMainWindow::instance()->show_marker_dialog();
 }
 
 void TimeLineView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
@@ -209,7 +215,7 @@ void TimeLineView::calculate_bounding_rect()
 
 void TimeLineView::add_new_marker_view(TTimeLineMarker * marker)
 {
-    MarkerView* view = new MarkerView(marker, m_sv, this);
+    TTimeLineMarkerView* view = new TTimeLineMarkerView(marker, m_sv, this);
     view->set_active(false);
     m_markerViews.append(view);
     view->update();
@@ -217,7 +223,7 @@ void TimeLineView::add_new_marker_view(TTimeLineMarker * marker)
 
 void TimeLineView::remove_marker_view(TTimeLineMarker * marker)
 {
-    foreach(MarkerView* view, m_markerViews) {
+    foreach(TTimeLineMarkerView* view, m_markerViews) {
         if (view->get_marker() == marker) {
             m_markerViews.removeAll(view);
             scene()->removeItem(view);
@@ -312,7 +318,7 @@ void TimeLineView::update_softselected_marker(QPointF pos)
     // to parent, not to scene, but since TimeLineView spans the scene
     // they happen to be the same now. Could change in the future?
 
-    MarkerView* prevMarker = m_blinkingMarker;
+    TTimeLineMarkerView* prevMarker = m_blinkingMarker;
     if (m_markerViews.size()) {
         m_blinkingMarker = m_markerViews.first();
     }
@@ -324,7 +330,7 @@ void TimeLineView::update_softselected_marker(QPointF pos)
     int x = int(pos.x());
     int blinkMarkerDist = abs(x - m_blinkingMarker->position());
 
-    foreach(MarkerView* markerView, m_markerViews) {
+    foreach(TTimeLineMarkerView* markerView, m_markerViews) {
         int markerDist = abs(x - markerView->position());
 
         fflush(stdout);
@@ -389,7 +395,7 @@ TCommand * TimeLineView::drag_marker()
         return new MoveMarker(m_blinkingMarker, m_sv->timeref_scalefactor, tr("Move Marker"));
     }
 
-    return ied().did_not_implement();
+    return ied().failure();
 }
 
 TCommand * TimeLineView::clear_markers()
@@ -409,14 +415,14 @@ void TimeLineView::load_theme_data()
     TimeLineView::calculate_bounding_rect();
 }
 
-MarkerView* TimeLineView::get_marker_view_after(const TTimeRef &location)
+TTimeLineMarkerView* TimeLineView::get_marker_view_after(const TTimeRef &location)
 {
     // FIXME: only keep this list sorted if markers are added/moved??
-    std::sort(m_markerViews.begin(), m_markerViews.end(), [&](MarkerView* left, MarkerView* right) {
+    std::sort(m_markerViews.begin(), m_markerViews.end(), [&](TTimeLineMarkerView* left, TTimeLineMarkerView* right) {
         return left->get_marker()->get_location()->get_start() < right->get_marker()->get_location()->get_start();
     });
 
-    foreach(MarkerView* markerView, m_markerViews) {
+    foreach(TTimeLineMarkerView* markerView, m_markerViews) {
         if (markerView->get_marker()->get_location()->get_start() > location) {
             return markerView;
         }
@@ -424,15 +430,15 @@ MarkerView* TimeLineView::get_marker_view_after(const TTimeRef &location)
     return nullptr;
 }
 
-MarkerView* TimeLineView::get_marker_view_before(const TTimeRef &location)
+TTimeLineMarkerView* TimeLineView::get_marker_view_before(const TTimeRef &location)
 {
     // FIXME: only keep this list sorted if markers are added/moved??
-    std::sort(m_markerViews.begin(), m_markerViews.end(), [&](MarkerView* left, MarkerView* right) {
+    std::sort(m_markerViews.begin(), m_markerViews.end(), [&](TTimeLineMarkerView* left, TTimeLineMarkerView* right) {
         return left->get_marker()->get_location()->get_start() < right->get_marker()->get_location()->get_start();
     });
 
     for (int i=m_markerViews.size() - 1; i>= 0; --i) {
-        MarkerView* markerView = m_markerViews.at(i);
+        TTimeLineMarkerView* markerView = m_markerViews.at(i);
         if (markerView->get_marker()->get_location()->get_start() < location) {
             return markerView;
         }

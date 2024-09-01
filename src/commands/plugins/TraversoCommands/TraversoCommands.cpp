@@ -24,10 +24,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QInputDialog>
 #include <QStringList>
 
+#include "PositionIndicator.h"
+#include "SheetWidget.h"
 #include "TAudioClipManager.h"
 #include "TAudioClip.h"
 #include "TAudioTrack.h"
 #include "TCurve.h"
+#include "TCurveNode.h"
 #include "TFadeCurve.h"
 #include "TAudioPlugin.h"
 #include "TInformUser.h"
@@ -37,13 +40,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBusTrack.h"
 #include "TInputEventDispatcher.h"
 #include "TShortCutFunction.h"
+#include "TShortCutManager.h"
 #include "TTimeLineRuler.h"
+#include "VUMeterView.h"
 #include "libtraversosheetcanvas.h"
 #include "commands.h"
 #include <cfloat>
 #include "TMainWindow.h"
 #include "TTransport.h"
-#include "TShortCutManager.h"
 #include "widgets/SpectralMeterView.h"
 #include "widgets/CorrelationMeterView.h"
 
@@ -54,7 +58,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
     \brief The Traverso TCommandPlugin class which 'implements' many of the default Commands
 
     With this plugin, the TInputEventDispatcher is able to dispatch key actions by directly
-    asking this TAudioPlugin for the needed Command object.
+    asking this TAudioPlugin for the needed TCommand object.
  */
 
 
@@ -62,1175 +66,330 @@ TraversoCommands::TraversoCommands()
 {
 }
 
-void TraversoCommands::load()
+void TraversoCommands::load(TShortCutManager* m)
 {
-    tShortCutManager().add_meta_object(&TSheet::staticMetaObject);
-    tShortCutManager().add_meta_object(&TSheetView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TAudioTrack::staticMetaObject);
-    tShortCutManager().add_meta_object(&TAudioTrackView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TBusTrack::staticMetaObject);
-    tShortCutManager().add_meta_object(&TBusTrackView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TAudioClip::staticMetaObject);
-    tShortCutManager().add_meta_object(&TAudioClipView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TCurve::staticMetaObject);
-    tShortCutManager().add_meta_object(&CurveView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TTimeLineRuler::staticMetaObject);
-    tShortCutManager().add_meta_object(&TimeLineView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TAudioPlugin::staticMetaObject);
-    tShortCutManager().add_meta_object(&TAudioPluginView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TFadeCurve::staticMetaObject);
-    tShortCutManager().add_meta_object(&TFadeCurveView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TMainWindow::staticMetaObject);
-    tShortCutManager().add_meta_object(&TProjectManager::staticMetaObject);
-    tShortCutManager().add_meta_object(&TGainGroupCommand::staticMetaObject);
-    tShortCutManager().add_meta_object(&MoveTrack::staticMetaObject);
-    tShortCutManager().add_meta_object(&MoveClip::staticMetaObject);
-    tShortCutManager().add_meta_object(&MovePlugin::staticMetaObject);
-    tShortCutManager().add_meta_object(&MoveCurveNode::staticMetaObject);
-    tShortCutManager().add_meta_object(&Zoom::staticMetaObject);
-    tShortCutManager().add_meta_object(&TrackPan::staticMetaObject);
-    tShortCutManager().add_meta_object(&MoveMarker::staticMetaObject);
-    tShortCutManager().add_meta_object(&WorkCursorMove::staticMetaObject);
-    tShortCutManager().add_meta_object(&PlayHeadMove::staticMetaObject);
-    tShortCutManager().add_meta_object(&MoveEdge::staticMetaObject);
-    tShortCutManager().add_meta_object(&CropClip::staticMetaObject);
-    tShortCutManager().add_meta_object(&FadeRange::staticMetaObject);
-    tShortCutManager().add_meta_object(&SplitClip::staticMetaObject);
-    tShortCutManager().add_meta_object(&TPanKnobView::staticMetaObject);
-    tShortCutManager().add_meta_object(&TMoveCommand::staticMetaObject);
-    tShortCutManager().add_meta_object(&TTransport::staticMetaObject);
-    tShortCutManager().add_meta_object(&SpectralMeterView::staticMetaObject);
-    tShortCutManager().add_meta_object(&CorrelationMeterView::staticMetaObject);
-
-
-    tShortCutManager().add_translation("TTransport", tr("Transport"));
-
-    tShortCutManager().add_translation("ArrowKeyBrowser", tr("Arrow Key Browser"));
-    tShortCutManager().add_translation("ArmTracks", tr("Arm Tracks"));
-    tShortCutManager().add_translation("CropClip", tr("Cut Clip (Magnetic)"));
-    tShortCutManager().add_translation("Fade", tr("Fade In/Out"));
-    tShortCutManager().add_translation("TGainGroupCommand", tr("Gain"));
-    tShortCutManager().add_translation("MoveClip", tr("Move Clip"));
-    tShortCutManager().add_translation("MoveCurveNode", tr("Move Node"));
-    tShortCutManager().add_translation("MoveEdge", tr("Move Clip Edge"));
-    tShortCutManager().add_translation("MoveMarker", tr("Move Marker"));
-    tShortCutManager().add_translation("MoveTrack", tr("Move Track"));
-    tShortCutManager().add_translation("MovePlugin", tr("Move Plugin"));
-    tShortCutManager().add_translation("PlayHeadMove", tr("Move Play Head"));
-    tShortCutManager().add_translation("Shuttle", tr("Shuttle"));
-    tShortCutManager().add_translation("SplitClip", tr("Split Clip"));
-    tShortCutManager().add_translation("TrackPan", tr("Track Pan"));
-    tShortCutManager().add_translation("TPanKnob", tr("Pan Knob"));
-    tShortCutManager().add_translation("TPanKnobView", tr("Pan Knob"));
-
-    tShortCutManager().add_translation("WorkCursorMove", tr("Move Work Cursor"));
-    tShortCutManager().add_translation("Zoom", tr("Zoom"));
-
-    tShortCutManager().add_translation("TAudioClip",tr("Audio Clip"));
-    tShortCutManager().add_translation("TAudioTrack", tr("Audio Track"));
-    tShortCutManager().add_translation("TCurve",tr("Curve"));
-    tShortCutManager().add_translation("TCurveNode",tr("Curve Node"));
-    tShortCutManager().add_translation("TFadeCurve",tr("Fade Curve"));
-    tShortCutManager().add_translation("FadeRange", tr("Fade Length"));
-    tShortCutManager().add_translation("FadeBend", tr("Bend Factor"));
-    tShortCutManager().add_translation("FadeStrength", tr("Strength Factor"));
-    tShortCutManager().add_translation("TTimeLineMarker",tr("Marker"));
-    tShortCutManager().add_translation("TSheet",tr("Sheet"));
-    tShortCutManager().add_translation("TBusTrack",tr("Bus Track"));
-    tShortCutManager().add_translation("TTimeLineRuler",tr("Time Line"));
-    tShortCutManager().add_translation("TBusTrackPanel", tr("Bus Track"));
-    tShortCutManager().add_translation("TMainWindow", tr("Global"));
-    tShortCutManager().add_translation("TProjectManager", tr("Project Manager"));
-    tShortCutManager().add_translation("TrackPanelGain", tr("Gain"));
-    tShortCutManager().add_translation("TrackPanelPan", tr("Panorama"));
-    tShortCutManager().add_translation("TrackPanelLed", tr("Track Panel Button"));
-    tShortCutManager().add_translation("TrackPanelBus", tr("Routing Indicator"));
-    tShortCutManager().add_translation("VUMeterLevel", tr("VU Level"));
-    tShortCutManager().add_translation("VUMeter", tr("VU Level"));
-    tShortCutManager().add_translation("AudioTrackPanel",tr("Audio Track"));
-    tShortCutManager().add_translation("TAudioPlugin",tr("Plugin"));
-    tShortCutManager().add_translation("PlayHead", tr("Play Head"));
-    tShortCutManager().add_translation("PositionIndicator", tr("Position Indicator"));
-    tShortCutManager().add_translation("WorkCursor", tr("Work Cursor"));
-    tShortCutManager().add_translation("Playhead", tr("Play Cursor"));
-    tShortCutManager().add_translation("CorrelationMeter", tr("Correlation Meter"));
-    tShortCutManager().add_translation("SpectralMeter", tr("Spectral Analyzer"));
-    tShortCutManager().add_translation("TTrack", tr("Track"));
-    tShortCutManager().add_translation("TMoveCommand", tr("Shuttle"));
-    tShortCutManager().add_translation("EditProperties", tr("Edit Properties"));
-    tShortCutManager().add_translation("TAudioProcessingNode", tr("Audio Processing Node"));
-    tShortCutManager().add_translation("ToggleBypass", tr("Toggle Bypass"));
-    tShortCutManager().add_translation("HoldCommand", tr("Hold Command"));
-    tShortCutManager().add_translation("Navigate", tr("Navigate"));
-
-    TShortCutFunction* function;
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&ArrowKeyBrowser::staticMetaObject);
-    function->set_slot_signature("up");
-    function->set_description(tr("Up"));
-    function->commandName = "ArrowKeyBrowserUp";
-    add_function(function, ArrowKeyBrowserCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&ArrowKeyBrowser::staticMetaObject);
-    function->set_slot_signature("down");
-    function->set_description(tr("Down"));
-    function->commandName = "ArrowKeyBrowserDown";
-    add_function(function, ArrowKeyBrowserCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&ArrowKeyBrowser::staticMetaObject);
-    function->set_slot_signature("left");
-    function->set_description(tr("Left"));
-    function->commandName = "ArrowKeyBrowserLeft";
-    add_function(function, ArrowKeyBrowserCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&ArrowKeyBrowser::staticMetaObject);
-    function->set_slot_signature("right");
-    function->set_description(tr("Right"));
-    function->commandName = "ArrowKeyBrowserRight";
-    add_function(function, ArrowKeyBrowserCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioTrack::staticMetaObject);
-    function->set_description(tr("Import Audio"));
-    function->commandName = "ImportAudio";
-    add_function(function, ImportAudioCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioTrackView::staticMetaObject);
-    function->set_description(tr("Fold Track"));
-    function->commandName = "FoldTrack";
-    function->useX = true;
-    function->arguments << "fold_track";
-    add_function(function, MoveClipCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TimeLineView::staticMetaObject);
-    function->set_description(tr("Fold Markers"));
-    function->commandName = "FoldMarkers";
-    function->useX = true;
-    function->arguments << "fold_markers";
-    add_function(function, MoveClipCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackView::staticMetaObject);
-    function->set_description(tr("Move Up/Down"));
-    function->commandName = "MoveTrack";
-    function->useY = true;
-    function->set_inherited_base("MoveBase");
-    add_function(function, MoveTrackCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&CurveView::staticMetaObject);
-    function->set_description(tr("Move Curve Node(s)"));
-    function->commandName = "MoveCurveNodes";
-    function->useX = function->useY = true;
-    function->set_inherited_base("MoveBase");
-    add_function(function, MoveCurveNodesCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioTrack::staticMetaObject);
-    function->set_description(tr("Gain"));
-    function->commandName = "AudioTrackGain";
-    function->set_inherited_base("GainBase");
-    add_function(function, GainCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TBusTrack::staticMetaObject);
-    function->set_description(tr("Gain"));
-    function->commandName = "BusTrackGain";
-    function->set_inherited_base("GainBase");
-    add_function(function, GainCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->set_description(tr("Zoom"));
-    function->commandName = "Zoom";
-    function->useX = true;
-    function->arguments << "HJogZoom" << "1.2" << "0.2";
-    add_function(function, ZoomCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TimeLineView::staticMetaObject);
-    function->set_description(tr("Move Marker"));
-    function->commandName = "TimeLineMoveMarker";
-    function->useX = true;
-    function->set_inherited_base("MoveBase");
-    add_function(function, MoveMarkerCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&MarkerView::staticMetaObject);
-    function->set_description(tr("Move Marker"));
-    function->commandName = "MoveMarker";
-    function->useX = true;
-    function->set_inherited_base("MoveBase");
-    add_function(function, MoveMarkerCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TTrack::staticMetaObject);
-    function->set_description(tr("Track Pan"));
-    function->commandName = "TrackPan";
-    add_function(function, TrackPanCommand);
-
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TTrack::staticMetaObject);
-    function->commandName = "RemoveTrack";
-    function->set_inherited_base("DeleteBase");
-    add_function(function, RemoveTrackCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioPluginView::staticMetaObject);
-    function->commandName = "RemovePlugin";
-    function->set_inherited_base("DeleteBase");
-    add_function(function, RemovePluginCommand);
-
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&CurveView::staticMetaObject);
-    function->commandName = "RemoveCurveNode";
-    function->set_description("Remove Node(s)");
-    function->set_inherited_base("DeleteBase");
-    add_function(function, RemoveCurveNodeCommmand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TPanKnobView::staticMetaObject);
-    function->set_description(tr("Panorama"));
-    function->commandName = "PanKnobPanorama";
-    add_function(function, TrackPanCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClipView::staticMetaObject);
-    function->set_description(tr("Copy"));
-    function->commandName = "CopyClip";
-    function->arguments << "copy";
-    function->useX = true;
-    function->useY = true;
-    add_function(function, MoveClipCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClipView::staticMetaObject);
-    function->set_description(tr("Split"));
-    function->commandName = "SplitClip";
-    function->useX = true;
-    add_function(function, SplitClipCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClipView::staticMetaObject);
-    function->set_description(tr("Magnetic Cut"));
-    function->commandName = "CropClip";
-    function->useX = true;
-    function->useY = true;
-    add_function(function, CropClipCommand);
-
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClipView::staticMetaObject);
-    function->set_description(tr("Move"));
-    function->commandName = "MoveClip";
-    function->arguments << "move";
-    function->useX = true;
-    function->useY = true;
-    function->set_inherited_base("MoveBase");
-    add_function(function, MoveClipCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClipView::staticMetaObject);
-    function->set_description(tr("Move Edge"));
-    function->commandName = "MoveClipEdge";
-    function->arguments << "false";
-    function->useX = true;
-    add_function(function, MoveEdgeCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClip::staticMetaObject);
-    function->set_description(tr("External Processing"));
-    function->commandName = "AudioClipExternalProcessing";
-    add_function(function, AudioClipExternalProcessingCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClip::staticMetaObject);
-    function->set_description(tr("Gain"));
-    function->commandName = "AudioClipGain";
-    function->set_inherited_base("GainBase");
-    add_function(function, GainCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClip::staticMetaObject);
-    function->set_description(tr("Normalize Clip"));
-    function->commandName = "NormalizeClip";
-    add_function(function, NormalizeClipCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClip::staticMetaObject);
-    function->set_description(tr("Remove AudioClip"));
-    function->commandName = "RemoveClip";
-    function->set_inherited_base("DeleteBase");
-    add_function(function, RemoveClipCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClip::staticMetaObject);
-    function->set_description(tr("(De)Select"));
-    function->commandName = "ClipSelectionSelect";
-    function->arguments << "toggle_selected";
-    add_function(function, ClipSelectionCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TFadeCurveView::staticMetaObject);
-    function->set_description(tr("Length"));
-    function->commandName = "FadeLength";
-    add_function(function, FadeRangeCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioPluginView::staticMetaObject);
-    function->set_description(tr("Move"));
-    function->commandName = "MovePlugin";
-    function->arguments << "false";
-    function->useX = true;
-    function->set_inherited_base("MoveBase");
-    add_function(function, MovePluginCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->set_description(tr("Fold Sheet"));
-    function->commandName = "FoldSheet";
-    function->arguments << "fold_sheet";
-    function->useX = true;
-    function->useY = true;
-    add_function(function, MoveClipCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->set_description(tr("Move Work Cursor"));
-    function->commandName = "WorkCursorMove";
-    add_function(function, WorkCursorMoveCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->set_description(tr("Shuttle"));
-    function->commandName = "Shuttle";
-    function->useX = true;
-    function->useY = true;
-    add_function(function, ShuttleCommand);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioProcessingNode::staticMetaObject);
-    function->set_description(tr("Gain Envelope"));
-    function->commandName = "GainShowAutomation";
-    add_function(function, GainShowAutomationCommand);
-
-
-    // Moved from TShortCutManager.cpp to here:
-
-    tShortCutManager().add_translation("ToggleBypassBase", tr("Toggle Bypass"));
-    tShortCutManager().register_item_class("ToggleBypassBase", "ToggleBypassBase");
-
-    tShortCutManager().add_translation("ToggleVerticalBase", tr("Toggle Vertical"));
-    tShortCutManager().register_item_class("ToggleVerticalBase", "ToggleVerticalBase");
-
-    tShortCutManager().add_translation("GainBase", tr("Gain"));
-    tShortCutManager().register_item_class("GainBase", "GainBase");
-
-    tShortCutManager().add_translation("DeleteBase", tr("Remove"));
-    tShortCutManager().register_item_class("DeleteBase", "DeleteBase");
-
-    tShortCutManager().add_translation("ResetBase", tr("Reset"));
-    tShortCutManager().register_item_class("ResetBase", "ResetBase");
-
-    tShortCutManager().add_translation("MoveBase", tr("Move"));
-    tShortCutManager().register_item_class("MoveBase", "MoveBase");
-
-    tShortCutManager().add_translation("EditPropertiesBase", tr("Edit Properties"));
-    tShortCutManager().register_item_class("EditPropertiesBase", "EditPropertiesBase");
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&ToggleVerticalBase::staticMetaObject);
-    function->set_description(tr("Toggle Vertical"));
-    function->commandName = "ToggleVerticalBase";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&GainBase::staticMetaObject);
-    function->set_description(tr("Gain"));
-    function->commandName = "GainBase";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&MoveBase::staticMetaObject);
-    function->m_description = tr("Move");
-    function->commandName = "MoveBase";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&DeleteBase::staticMetaObject);
-    function->m_description = tr("Remove");
-    function->commandName = "DeleteBase";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&ToggleBypassBase::staticMetaObject);
-    function->slotsignature = "toggle_bypass";
-    function->set_description(tr("Toggle Bypass"));
-    function->commandName = "ToggleBypassBase";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&HoldCommand::staticMetaObject);
-    function->slotsignature = "TMainWindow::show_context_menu";
-    function->set_description(tr("Context Menu"));
-    function->commandName = "HoldCommandShowContextMenu";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&ResetBase::staticMetaObject);
-    function->slotsignature = "";
-    function->set_description(tr("Reset"));
-    function->commandName = "ResetBase";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMoveCommand::staticMetaObject);
-    function->slotsignature = "toggle_snap_on_off";
-    function->set_description(tr("Toggle Snap on/off"));
-    function->commandName = "MoveCommandToggleSnap";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&EditPropertiesBase::staticMetaObject);
-    function->slotsignature = "edit_properties";
-    function->set_description(tr("Edit Properties"));
-    function->commandName = "EditPropertiesBase";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioTrack::staticMetaObject);
-    function->slotsignature = "toggle_arm";
-    function->m_description = tr("Record: On/Off");
-    function->commandName = "AudioTrackToggleRecord";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioTrack::staticMetaObject);
-    function->slotsignature = "silence_others";
-    function->m_description = tr("Silence other tracks");
-    function->commandName = "AudioTrackSilenceOthers";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TFadeCurve::staticMetaObject);
-    function->slotsignature = "set_mode";
-    function->m_description = tr("Cycle Shape");
-    function->commandName = "FadeCurveCycleShape";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMoveCommand::staticMetaObject);
-    function->slotsignature = "move_right";
-    function->m_description = tr("Move Right");
-    function->commandName = "MoveCommandRight";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMoveCommand::staticMetaObject);
-    function->slotsignature = "move_left";
-    function->m_description = tr("Move Left");
-    function->commandName = "MoveCommandLeft";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMoveCommand::staticMetaObject);
-    function->slotsignature = "move_up";
-    function->m_description = tr("Move Up");
-    function->commandName = "MoveCommandUp";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMoveCommand::staticMetaObject);
-    function->slotsignature = "move_down";
-    function->m_description = tr("Move Down");
-    function->commandName = "MoveCommandDown";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMoveCommand::staticMetaObject);
-    function->slotsignature = "move_faster";
-    function->m_description = tr("Move Faster");
-    function->commandName = "MoveCommandFaster";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMoveCommand::staticMetaObject);
-    function->slotsignature = "move_slower";
-    function->m_description = tr("Move Slower");
-    function->commandName = "MoveCommandSlower";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TShortCutManager::staticMetaObject);
-    function->slotsignature = "export_keymap";
-    function->m_description = tr("Export keymap");
-    function->commandName = "ExportShortcutMap";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackView::staticMetaObject);
-    function->slotsignature = "add_new_plugin";
-    function->m_description = tr("Add new Plugin");
-    function->commandName = "TrackAddPlugin";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TPanKnobView::staticMetaObject);
-    function->slotsignature = "pan_left";
-    function->m_description = tr("Pan to Left");
-    function->commandName = "PanKnobPanLeft";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TPanKnobView::staticMetaObject);
-    function->slotsignature = "pan_right";
-    function->m_description = tr("Pan to Right");
-    function->commandName = "PanKnobPanRight";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&Zoom::staticMetaObject);
-    function->slotsignature = "hzoom_out";
-    function->set_description(tr("Out"));
-    function->commandName = "ZoomOut";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&Zoom::staticMetaObject);
-    function->slotsignature = "hzoom_in";
-    function->set_description(tr("In"));
-    function->commandName = "ZoomIn";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackPan::staticMetaObject);
-    function->slotsignature = "pan_left";
-    function->m_description = tr("Pan to Left");
-    function->commandName = "TrackPanLeft";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackPan::staticMetaObject);
-    function->slotsignature = "pan_right";
-    function->m_description = tr("Pan to Right");
-    function->commandName = "TrackPanRight";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TGainGroupCommand::staticMetaObject);
-    function->slotsignature = "increase_gain";
-    function->m_description = tr("Increase");
-    function->commandName = "GainIncrease";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TGainGroupCommand::staticMetaObject);
-    function->slotsignature = "decrease_gain";
-    function->m_description = tr("Decrease");
-    function->commandName = "GainDecrease";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&MoveTrack::staticMetaObject);
-    function->slotsignature = "move_up";
-    function->m_description = tr("Move Up");
-    function->commandName = "MoveTrackUp";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&MoveTrack::staticMetaObject);
-    function->slotsignature = "move_down";
-    function->m_description = tr("Move Down");
-    function->commandName = "MoveTrackDown";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "scroll_up";
-    function->m_description =tr("Up");
-    function->commandName = "ViewScrollUp";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "scroll_down";
-    function->m_description = tr("Down");
-    function->commandName = "ViewScrollDown";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&Zoom::staticMetaObject);
-    function->slotsignature = "track_vzoom_out";
-    function->m_description = tr("Track Vertical Zoom Out");
-    function->commandName = "ZoomTrackVerticalOut";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&Zoom::staticMetaObject);
-    function->slotsignature = "track_vzoom_in";
-    function->m_description = tr("Track Vertical Zoom In");
-    function->commandName = "ZoomTrackVerticalIn";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "to_upper_context_level";
-    function->m_description = tr("One Layer Up");
-    function->commandName = "NavigateToUpperContext";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "to_lower_context_level";
-    function->m_description = tr("One Layer Down");
-    function->commandName = "NavigateToLowerContext";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClipView::staticMetaObject);
-    function->slotsignature = "fade_range";
-    function->m_description = tr("Adjust Length");
-    function->commandName = "AudioClipFadeLength";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TTransport::staticMetaObject);
-    function->slotsignature = "start_transport";
-    function->m_description = tr("Play (Start/Stop)");
-    function->commandName = "TransportPlayStartStop";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TTransport::staticMetaObject);
-    function->slotsignature = "set_recordable_and_start_transport";
-    function->m_description = tr("Start Recording");
-    function->commandName = "TransportSetRecordingPlayStart";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TTransport::staticMetaObject);
-    function->slotsignature = "to_start";
-    function->set_description(tr("To start"));
-    function->commandName = "TransportToStart";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TTransport::staticMetaObject);
-    function->slotsignature = "to_end";
-    function->set_description(tr("To end"));
-    function->commandName = "TransportToEnd";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackView::staticMetaObject);
-    function->set_inherited_base("EditPropertiesBase");
-    function->commandName = "EditTrackProperties";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->set_inherited_base("EditPropertiesBase");
-    function->commandName = "EditSongProperties";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioPluginView::staticMetaObject);
-    function->set_inherited_base("EditPropertiesBase");
-    function->commandName = "EditPluginProperties";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&SpectralMeterView::staticMetaObject);
-    function->set_inherited_base("EditPropertiesBase");
-    function->commandName = "EditSpectralMeterProperties";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClipView::staticMetaObject);
-    function->set_inherited_base("EditPropertiesBase");
-    function->commandName = "EditAudioClipProperties";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&Zoom::staticMetaObject);
-    function->slotsignature = "toggle_expand_all_tracks";
-    function->m_description = tr("Expand/Collapse Tracks");
-    function->commandName = "ZoomToggleExpandAllTracks";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackPanelLed::staticMetaObject);
-    function->slotsignature = "toggle";
-    function->m_description = tr("Toggle On/Off");
-    function->commandName = "PanelLedToggle";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&CurveView::staticMetaObject);
-    function->slotsignature = "add_node";
-    function->m_description = tr("New Node");
-    function->commandName = "AddCurveNode";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMoveCommand::staticMetaObject);
-    function->slotsignature = "numerical_input";
-    function->m_description = tr("Moving Speed");
-    function->commandName = "MoveCommandSpeed";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TCommand::staticMetaObject);
-    function->m_description = tr("Reject");
-    function->commandName = "RejectHoldCommand";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TCommand::staticMetaObject);
-    function->m_description = tr("Accept");
-    function->commandName = "AcceptHoldCommand";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&Zoom::staticMetaObject);
-    function->slotsignature = "numerical_input";
-    function->m_description = tr("Track Height");
-    function->commandName = "ZoomNumericalInput";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TFadeCurveView::staticMetaObject);
-    function->slotsignature = "select_fade_shape";
-    function->m_description = tr("Select Preset");
-    function->commandName = "FadeSelectPreset";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "browse_to_time_line";
-    function->m_description = tr("To Timeline");
-    function->commandName = "NavigateToTimeLine";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackPanelGain::staticMetaObject);
-    function->slotsignature = "gain_decrement";
-    function->m_description = tr("Decrease");
-    function->commandName = "TrackPanelGainDecrement";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackPanelGain::staticMetaObject);
-    function->slotsignature = "gain_increment";
-    function->m_description = tr("Increase");
-    function->commandName = "TrackPanelGainIncrement";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&CropClip::staticMetaObject);
-    function->slotsignature = "adjust_left";
-    function->m_description = tr("Adjust Left");
-    function->commandName = "CropClipAdjustLeft";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&CropClip::staticMetaObject);
-    function->slotsignature = "adjust_right";
-    function->m_description = tr("Adjust Right");
-    function->commandName = "CropClipAdjustRight";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "touch";
-    function->m_description = tr("Set");
-    function->commandName = "WorkCursorTouch";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TimeLineView::staticMetaObject);
-    function->slotsignature = "playhead_to_marker";
-    function->m_description = tr("Playhead to Marker");
-    function->commandName = "TimeLinePlayheadToMarker";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClipView::staticMetaObject);
-    function->slotsignature = "set_audio_file";
-    function->m_description = tr("Reset Audio File");
-    function->commandName = "AudioClipSetAudioFile";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TFadeCurve::staticMetaObject);
-    function->slotsignature = "toggle_raster";
-    function->m_description = tr("Toggle Raster");
-    function->commandName = "FadeCurveToggleRaster";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&SpectralMeterView::staticMetaObject);
-    function->slotsignature = "reset";
-    function->m_description = tr("Reset average curve");
-    function->commandName = "SpectralMeterResetAverageCurve";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioClip::staticMetaObject);
-    function->slotsignature = "lock";
-    function->m_description = tr("Lock");
-    function->commandName = "AudioClipLock";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&CorrelationMeterView::staticMetaObject);
-    function->slotsignature = "set_mode";
-    function->m_description = tr("Toggle display range");
-    function->commandName = "CorrelationMeterToggleDisplayRange";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&SpectralMeterView::staticMetaObject);
-    function->slotsignature = "set_mode";
-    function->m_description = tr("Toggle average curve");
-    function->commandName = "SpectralMeterToggleDisplayRange";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TimeLineView::staticMetaObject);
-    function->slotsignature = "add_marker";
-    function->m_description = tr("Add Marker");
-    function->commandName = "TimeLineAddMarker";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "add_marker";
-    function->m_description = tr("Add Marker");
-    function->commandName = "SheetAddMarker";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "add_marker_at_playhead";
-    function->m_description = tr("Add Marker at Playhead");
-    function->commandName = "SheetAddMarkerAtPlayhead";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TimeLineView::staticMetaObject);
-    function->slotsignature = "add_marker_at_playhead";
-    function->m_description = tr("Add Marker at Playhead");
-    function->commandName = "TimeLineAddMarkerAtPlayhead";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "add_marker_at_work_cursor";
-    function->m_description = tr("Add Marker at Work Cursor");
-    function->commandName = "SheetAddMarkerAtWorkCursor";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TimeLineView::staticMetaObject);
-    function->slotsignature = "add_marker_at_work_cursor";
-    function->m_description = tr("Add Marker at Work Cursor");
-    function->commandName = "TimeLineAddMarkerAtWorkCursor";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TFadeCurve::staticMetaObject);
-    function->set_inherited_base("ToggleBypassBase");
-    function->commandName = "FadeCurveToggleBypass";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioPlugin::staticMetaObject);
-    function->set_inherited_base("ToggleBypassBase");
-    function->commandName = "PluginToggleBypass";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TFadeCurveView::staticMetaObject);
-    function->slotsignature = "bend";
-    function->set_description(tr("Adjust Bend"));
-    function->useY = true;
-    function->commandName = "FadeCurveBend";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TimeLineView::staticMetaObject);
-    function->slotsignature = "TMainWindow::show_marker_dialog";
-    function->set_description(tr("Edit Markers"));
-    function->commandName = "TimeLineShowMarkerDialog";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioProcessingNode::staticMetaObject);
-    function->slotsignature = "mute";
-    function->set_description(tr("Mute"));
-    function->commandName = "Mute";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TTrack::staticMetaObject);
-    function->slotsignature = "solo";
-    function->set_description(tr("Solo"));
-    function->commandName = "Solo";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&CurveView::staticMetaObject);
-    function->slotsignature = "toggle_select_all_nodes";
-    function->set_description(tr("Select All Nodes"));
-    function->commandName = "CurveSelectAllNodes";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TProjectManager::staticMetaObject);
-    function->slotsignature = "save_project";
-    function->set_description(tr("Save Project"));
-    function->commandName = "ProjectSave";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&CurveView::staticMetaObject);
-    function->slotsignature = "select_lazy_selected_node";
-    function->set_description(tr("Select Node"));
-    function->commandName = "CurveSelectNode";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TFadeCurveView::staticMetaObject);
-    function->slotsignature = "strength";
-    function->set_description(tr("Adjust Strength"));
-    function->commandName = "FadeCurveStrenght";
-    function->useX = true;
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "goto_end";
-    function->set_description(tr("To end"));
-    function->commandName = "WorkCursorToEnd";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&MoveTrack::staticMetaObject);
-    function->slotsignature = "to_bottom";
-    function->set_description(tr("To Bottom"));
-    function->commandName = "MoveTrackToBottom";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "goto_begin";
-    function->set_description(tr("To start"));
-    function->commandName = "WorkCursorToStart";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&MoveTrack::staticMetaObject);
-    function->slotsignature = "to_top";
-    function->set_description(tr("To Top"));
-    function->commandName = "MoveTrackToTop";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&PlayHeadMove::staticMetaObject);
-    function->slotsignature = "move_to_work_cursor";
-    function->set_description(tr("To Work Cursor"));
-    function->commandName = "PlayHeadMoveToWorkCursor";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&PlayHeadMove::staticMetaObject);
-    function->slotsignature = "move_to_start";
-    function->set_description(tr("To Start"));
-    function->commandName = "PlayHeadMoveToStart";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "touch_play_cursor";
-    function->set_description(tr("Set"));
-    function->commandName = "SheetSetPlayPosition";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TSheetView::staticMetaObject);
-    function->slotsignature = "center_playhead";
-    function->set_description(tr("Center"));
-    function->commandName = "SheetCenterPlayhead";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&Zoom::staticMetaObject);
-    function->slotsignature = "toggle_vertical_horizontal_jog_zoom";
-    function->set_description(tr("Toggle Vertical / Horizontal"));
-    function->commandName = "ZoomToggleVerticalHorizontal";
-    function->set_inherited_base("ToggleVerticalBase");
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&MoveClip::staticMetaObject);
-    function->slotsignature = "toggle_vertical_only";
-    function->set_description(tr("Toggle Vertical Only"));
-    function->commandName = "MoveClipToggleVerticalOnly";
-    function->set_inherited_base("ToggleVerticalBase");
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&MoveCurveNode::staticMetaObject);
-    function->slotsignature = "toggle_vertical_only";
-    function->set_description(tr("Toggle Vertical Only"));
-    function->commandName = "MoveCurveNodeToggleVerticalOnly";
-    function->set_inherited_base("ToggleVerticalBase");
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&WorkCursorMove::staticMetaObject);
-    function->slotsignature = "move_to_play_cursor";
-    function->set_description(tr("To Playhead"));
-    function->commandName = "WorkCursorMoveToPlayhead";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TAudioTrackView::staticMetaObject);
-    function->slotsignature = "insert_silence";
-    function->set_description(tr("Insert Silence"));
-    function->commandName = "AudioTrackInsertSilence";
-    tShortCutManager().register_shortcut_function(function);
-
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TrackPan::staticMetaObject);
-    function->slotsignature = "reset_pan";
-    function->set_description(tr("Reset"));
-    function->commandName = "TrackPanReset";
-    function->set_inherited_base("ResetBase");
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&FadeRange::staticMetaObject);
-    function->slotsignature = "reset_length";
-    function->set_description(tr("Reset"));
-    function->commandName = "FadeResetLength";
-    function->set_inherited_base("ResetBase");
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TGainGroupCommand::staticMetaObject);
-    function->slotsignature = "numerical_input";
-    function->set_description(tr("Input dB value"));
-    function->commandName = "GainNumericalInput";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TGainGroupCommand::staticMetaObject);
-    function->slotsignature = "toggle_primary_gain_only";
-    function->set_description(tr("Toggle Selection"));
-    function->commandName = "GainToggleSelection";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TGainGroupCommand::staticMetaObject);
-    function->slotsignature = "reset_gain";
-    function->set_description(tr("Reset"));
-    function->commandName = "GainReset";
-    function->set_inherited_base("ResetBase");
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->slotsignature = "browse_to_first_track_in_active_sheet";
-    function->set_description(tr("Browse to first Track in current View"));
-    function->commandName = "MainWindowNavigateToFirstTrack";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->slotsignature = "browse_to_last_track_in_active_sheet";
-    function->set_description(tr("Browse to last Track in current View"));
-    function->commandName = "MainWindowNavigateToLastTrack";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&WorkCursorMove::staticMetaObject);
-    function->slotsignature = "move_to_start";
-    function->set_description(tr("To Start"));
-    function->commandName = "WorkCursorMoveToStart";
-    tShortCutManager().register_shortcut_function(function);
-
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->slotsignature = "show_track_finder";
-    function->set_description(tr("Activate Track Finder"));
-    function->commandName = "MainWindowActivateTrackFinder";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->set_slot_signature("set_transport_location");
-    function->set_description(tr("Set Play Position"));
-    function->commandName = "TransportSetPosition";
-    function->useX = true;
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->slotsignature = "quick_start";
-    function->m_description = tr("Show Help");
-    function->commandName = "ShowHelp";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->slotsignature = "full_screen";
-    function->m_description = tr("Full Screen");
-    function->commandName = "MainWindowShowFullScreen";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->slotsignature = "show_project_manager_dialog";
-    function->set_description(tr("Show Project Management Dialog"));
-    function->commandName = "MainWindowShowProjectManagementDialog";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->slotsignature = "show_context_menu";
-    function->set_description(tr("Context Menu"));
-    function->commandName = "ShowContextMenu";
-    tShortCutManager().register_shortcut_function(function);
-
-    function = new TShortCutFunction();
-    function->set_metaobject(&TMainWindow::staticMetaObject);
-    function->slotsignature = "show_newtrack_dialog";
-    function->m_description = tr("New Track Dialog");
-    function->commandName = "ShowNewTrackDialog";
-    tShortCutManager().register_shortcut_function(function);
+    // known submenu titles
+    m->add_translation("Utilities", tr("Utilities"));
+    m->add_translation("Fade", tr("Fade In/Out"));
+
+    // register meta objects
+    m->add_meta_object(&TSheet::staticMetaObject,               tr("Sheet"));
+    m->add_meta_object(&TSheetView::staticMetaObject,           tr("Sheet"));
+    m->add_meta_object(&TTrack::staticMetaObject,               tr("Track"));
+    m->add_meta_object(&TAudioTrack::staticMetaObject,          tr("Audio Track"));
+    m->add_meta_object(&TAudioTrackView::staticMetaObject,      tr("Audio Track"));
+    m->add_meta_object(&TBusTrack::staticMetaObject,            tr("Bus Track"));
+    m->add_meta_object(&TBusTrackView::staticMetaObject,        tr("Bus Track"));
+    m->add_meta_object(&TAudioClip::staticMetaObject,           tr("Audio Clip"));
+    m->add_meta_object(&TAudioClipView::staticMetaObject,       tr("Audio Clip"));
+    m->add_meta_object(&TCurve::staticMetaObject,               tr("Curve"));
+    m->add_meta_object(&CurveView::staticMetaObject,            tr("Curve"));
+    m->add_meta_object(&TCurveNode::staticMetaObject,           tr("Curve Node"));
+    m->add_meta_object(&TTimeLineRuler::staticMetaObject,       tr("Time Line"));
+    m->add_meta_object(&TimeLineView::staticMetaObject,         tr("Time Line"));
+    m->add_meta_object(&TAudioPlugin::staticMetaObject,         tr("Plugin"));
+    m->add_meta_object(&TAudioPluginView::staticMetaObject,     tr("Plugin"));
+    m->add_meta_object(&TFadeCurve::staticMetaObject,           tr("Fade Curve"));
+    m->add_meta_object(&TFadeCurveView::staticMetaObject,       tr("Fade In/Out"));
+    m->add_meta_object(&TMainWindow::staticMetaObject,          tr("Global"));
+    m->add_meta_object(&TProjectManager::staticMetaObject,      tr("Project Manager"));
+    m->add_meta_object(&TGainGroupCommand::staticMetaObject,    tr("Gain"));
+    m->add_meta_object(&MoveTrack::staticMetaObject,            tr("Move Track"));
+    m->add_meta_object(&MoveClip::staticMetaObject,             tr("Move Clip"));
+    m->add_meta_object(&MovePlugin::staticMetaObject,           tr("Move Plugin"));
+    m->add_meta_object(&MoveCurveNode::staticMetaObject,        tr("Move Node"));
+    m->add_meta_object(&Zoom::staticMetaObject,                 tr("Zoom"));
+    m->add_meta_object(&TrackPan::staticMetaObject,             tr("Track Pan"));
+    m->add_meta_object(&MoveMarker::staticMetaObject,           tr("Move Marker"));
+    m->add_meta_object(&WorkCursorMove::staticMetaObject,       tr("Move Work Cursor"));
+    m->add_meta_object(&PlayHeadMove::staticMetaObject,         tr("Move Play Head"));
+    m->add_meta_object(&MoveEdge::staticMetaObject,             tr("Move Clip Edge"));
+    m->add_meta_object(&CropClip::staticMetaObject,             tr("Cut Clip (Magnetic)"));
+    m->add_meta_object(&FadeRange::staticMetaObject,            tr("Fade Length"));
+    m->add_meta_object(&FadeBend::staticMetaObject,             tr("Bend Factor"));
+    m->add_meta_object(&FadeStrength::staticMetaObject,         tr("Strength Factor"));
+    m->add_meta_object(&SplitClip::staticMetaObject,            tr("Split Clip"));
+    m->add_meta_object(&TPanKnobView::staticMetaObject,         tr("Pan Knob"));
+    m->add_meta_object(&TTransport::staticMetaObject,           tr("Transport"));
+    m->add_meta_object(&SpectralMeterView::staticMetaObject,    tr("Spectral Analyzer"));
+    m->add_meta_object(&CorrelationMeterView::staticMetaObject, tr("Correlation Meter"));
+    m->add_meta_object(&ArrowKeyBrowser::staticMetaObject,      tr("Arrow Key Browser"));
+    m->add_meta_object(&ArmTracks::staticMetaObject,            tr("Arm Tracks"));
+    m->add_meta_object(&TMoveCommand::staticMetaObject,         tr("Shuttle"));
+    m->add_meta_object(&TTimeLineMarker::staticMetaObject,      tr("Marker"));
+    m->add_meta_object(&TBusTrackPanelView::staticMetaObject,   tr("Bus Track"));
+    m->add_meta_object(&TrackPanelGain::staticMetaObject,       tr("Gain"));
+    m->add_meta_object(&TrackPanelLed::staticMetaObject,        tr("Track Panel Button"));
+    m->add_meta_object(&VUMeterLevelView::staticMetaObject,     tr("VU Level"));
+    m->add_meta_object(&VUMeterView::staticMetaObject,          tr("VU Level"));
+    m->add_meta_object(&AudioTrackPanelView::staticMetaObject,  tr("Audio Track"));
+    m->add_meta_object(&PlayHead::staticMetaObject,             tr("Play Cursor"));
+    m->add_meta_object(&WorkCursor::staticMetaObject,           tr("Work Cursor"));
+    m->add_meta_object(&PositionIndicator::staticMetaObject,    tr("Position Indicator"));
+    m->add_meta_object(&TAudioProcessingNode::staticMetaObject, tr("Audio Processing Node"));
+
+    m->add_meta_object(&HoldCommand::staticMetaObject,          tr("Hold Command"));
+
+    // Does this do anything or is it bypassed hard coded in TInputEventDispatcher ?
+    m->add_function(&TCommand::staticMetaObject, tr("Reject"), "RejectHoldCommand", "");
+    m->add_function(&TCommand::staticMetaObject, tr("Accept"), "AcceptHoldCommand", "");
+
+    tr("Routing Indicator");
+    tr("Navigate");
+
+    add_function(&ArrowKeyBrowser::staticMetaObject, tr("Up"), "ArrowKeyBrowserUp",         ArrowKeyBrowserCommand, "up()");
+    add_function(&ArrowKeyBrowser::staticMetaObject, tr("Down"), "ArrowKeyBrowserDown",     ArrowKeyBrowserCommand, "down()");
+    add_function(&ArrowKeyBrowser::staticMetaObject, tr("Left"), "ArrowKeyBrowserLeft",     ArrowKeyBrowserCommand, "left()");
+    add_function(&ArrowKeyBrowser::staticMetaObject, tr("Right"), "ArrowKeyBrowserRight",   ArrowKeyBrowserCommand, "right()");
+
+    m->add_base_function(&TDeleteBase::staticMetaObject,            tr("Delete"),               "DeleteBase");
+
+    add_function(&TAudioClip::staticMetaObject,         &TDeleteBase::staticMetaObject, tr("Remove AudioClip"),  "RemoveClip",           RemoveClipCommand);
+    add_function(&TAudioPluginView::staticMetaObject,   &TDeleteBase::staticMetaObject, "",                      "RemovePlugin",         RemovePluginCommand);
+    add_function(&CurveView::staticMetaObject,          &TDeleteBase::staticMetaObject, tr("Remove Node(s)"),    "RemoveCurveNode",      RemoveCurveNodeCommmand);
+    add_function(&TTrack::staticMetaObject,             &TDeleteBase::staticMetaObject, "",                      "RemoveTrack",          RemoveTrackCommand);
+
+    m->add_base_function(&TEditPropertiesBase::staticMetaObject,    tr("Edit Properties"),      "EditPropertiesBase");
+
+    m->add_function(&TrackView::staticMetaObject,       &TEditPropertiesBase::staticMetaObject, "EditTrackProperties", "edit_properties()");
+
+    m->add_base_function(&TGainBase::staticMetaObject,              tr("Gain"),                 "GainBase");
+
+    add_function(&TAudioClip::staticMetaObject,         &TGainBase::staticMetaObject, "", "AudioClipGain",   GainCommand);
+    add_function(&TAudioTrack::staticMetaObject,        &TGainBase::staticMetaObject, "", "AudioTrackGain",  GainCommand);
+    add_function(&TBusTrack::staticMetaObject,          &TGainBase::staticMetaObject, "", "BusTrackGain",    GainCommand);
+
+    m->add_base_function(&TMoveBase::staticMetaObject,              tr("Move"),                 "MoveBase");
+
+    add_function(&TAudioClipView::staticMetaObject,     &TMoveBase::staticMetaObject, "",                        "MoveClip",             MoveClipCommand, "", USE_X, USE_Y, QVariantList() << "move");
+    add_function(&TAudioPluginView::staticMetaObject,   &TMoveBase::staticMetaObject, "",                        "MovePlugin",           MovePluginCommand, "", USE_X, NO_Y, QVariantList() << "false");
+    add_function(&CurveView::staticMetaObject,          &TMoveBase::staticMetaObject, tr("Move Curve Node(s)"),  "MoveCurveNodes",       MoveCurveNodesCommand, "", USE_X, USE_Y);
+    add_function(&TrackView::staticMetaObject,          &TMoveBase::staticMetaObject, tr("Move Up/Down"),        "MoveTrack",            MoveTrackCommand, "", NO_X, USE_Y);
+    add_function(&TimeLineView::staticMetaObject,       &TMoveBase::staticMetaObject, tr("Move Marker"),         "TimeLineMoveMarker",   MoveMarkerCommand, "", USE_X, NO_Y);
+    add_function(&TTimeLineMarkerView::staticMetaObject,         &TMoveBase::staticMetaObject, tr("Move Marker"),         "MoveMarker",           MoveMarkerCommand, "", USE_X, NO_Y);
+
+    add_function(&TAudioClip::staticMetaObject,     tr("External Processing"),  "AudioClipExternalProcessing", AudioClipExternalProcessingCommand);
 
+    add_function(&TAudioClip::staticMetaObject,     tr("(De)Select"),       "ClipSelectionSelect", ClipSelectionCommand, "", NO_X, NO_Y, QVariantList()<< "toggle_selected");
+    add_function(&TAudioClipView::staticMetaObject, tr("Magnetic Cut"),     "CropClip",         CropClipCommand, "", USE_X, USE_Y);
+
+    add_function(&TFadeCurveView::staticMetaObject, tr("Adjust Bend"),      "FadeCurveBend",    FadeCurveBendCommand, "", NO_X, USE_Y);
+    add_function(&TFadeCurveView::staticMetaObject, tr("Adjust Strength"),  "FadeCurveStrenght",FadeCurveStrengthCommand, "", USE_X, NO_Y);
+
+    add_function(&TAudioProcessingNode::staticMetaObject, tr("Gain Envelope"), "GainShowAutomation", GainShowAutomationCommand, "");
+
+    add_function(&TAudioTrack::staticMetaObject,    tr("Import Audio"),     "ImportAudio",      ImportAudioCommand);
+
+    add_function(&TAudioClip::staticMetaObject,     tr("Normalize Clip"),   "NormalizeClip",    NormalizeClipCommand);
+
+    add_function(&TAudioClipView::staticMetaObject, tr("Copy"),             "CopyClip",         MoveClipCommand,    "", USE_X, USE_Y,   QVariantList() << "copy");
+    add_function(&TAudioTrackView::staticMetaObject,tr("Fold Track"),       "FoldTrack",        MoveClipCommand,    "", USE_X, NO_Y,    QVariantList() << "fold_track");
+    add_function(&TSheetView::staticMetaObject,     tr("Fold Sheet"),       "FoldSheet",        MoveClipCommand,    "", USE_X, USE_Y,   QVariantList() << "fold_sheet");
+    add_function(&TimeLineView::staticMetaObject,   tr("Fold Markers"),     "FoldMarkers",      MoveClipCommand,    "", USE_X, NO_Y,    QVariantList() << "fold_markers");
+
+    add_function(&TAudioClipView::staticMetaObject, tr("Move Edge"),        "MoveClipEdge",     MoveEdgeCommand,    "", USE_X, NO_Y,    QVariantList() << "false");
+
+    m->add_base_function(&TResetBase::staticMetaObject,  tr("Reset"),       "ResetBase");
+
+    add_function(&TSheetView::staticMetaObject,     tr("Shuttle"),          "Shuttle",          ShuttleCommand,     "", USE_X, USE_Y);
+
+    add_function(&TAudioClipView::staticMetaObject, tr("Split"),            "SplitClip",        SplitClipCommand,   "", USE_X, NO_Y);
+
+    add_function(&TTrack::staticMetaObject,         tr("Track Pan"),        "TrackPan",         TrackPanCommand);
+    add_function(&TPanKnobView::staticMetaObject,   tr("Pan"),              "PanKnobPanorama",  TrackPanCommand);
+
+    add_function(&TMainWindow::staticMetaObject,    tr("Set Play Position"),"TransportSetPosition", TransportSetPositionCommand, "", USE_X, NO_Y);
+
+    m->add_base_function(&TToggleBypassBase::staticMetaObject,              tr("Toggle Bypass"),            "ToggleBypassBase");
+    m->add_base_function(&TToggleVerticalBase::staticMetaObject,            tr("Toggle Vertical"),          "ToggleVerticalBase");
+
+    add_function(&TSheetView::staticMetaObject,     tr("Move Work Cursor"), "WorkCursorMove",   WorkCursorMoveCommand);
+
+    add_function(&TSheetView::staticMetaObject,     tr("Zoom"),             "Zoom",             ZoomCommand,        "", USE_X, NO_Y,    QVariantList() << "HJogZoom" << "1.2" << "0.2");
+
+// ----------------------------------------------------------------------------------------------------------------------- //
+
+    m->add_function(&TAudioClip::staticMetaObject,      tr("Lock"),             "AudioClipLock",                "lock()");
+    m->add_function(&TAudioClipView::staticMetaObject,  tr("Adjust Length"), "AudioClipFadeLength",          "fade_range()");
+    m->add_function(&TAudioClipView::staticMetaObject,      &TEditPropertiesBase::staticMetaObject,         "EditAudioClipProperties", "edit_properties()");
+    m->add_function(&TAudioClipView::staticMetaObject,  tr("Reset Audio File"), "AudioClipSetAudioFile",     "set_audio_file()");
+
+    m->add_function(&TAudioPlugin::staticMetaObject,        &TToggleBypassBase::staticMetaObject,           "PluginToggleBypass", "toggle_bypass()");
+    m->add_function(&TAudioPluginView::staticMetaObject,    &TEditPropertiesBase::staticMetaObject,         "EditPluginProperties", "edit_properties()");
+
+    m->add_function(&TAudioProcessingNode::staticMetaObject, tr("Mute"),    "Mute",                         "mute()");
+
+    m->add_function(&TAudioTrack::staticMetaObject, tr("Record: On/Off"),   "AudioTrackToggleRecord",       "toggle_arm()");
+    m->add_function(&TAudioTrack::staticMetaObject, tr("Silence other tracks"), "AudioTrackSilenceOthers",  "silence_others()");
+
+    m->add_function(&TAudioTrackView::staticMetaObject, tr("Insert Silence"), "AudioTrackInsertSilence",    "insert_silence()");
+
+    m->add_function(&CropClip::staticMetaObject,    tr("Adjust Left"),      "CropClipAdjustLeft",           "adjust_left()");
+    m->add_function(&CropClip::staticMetaObject,    tr("Adjust Right"),     "CropClipAdjustRight",          "adjust_right()");
+
+    m->add_function(&CorrelationMeterView::staticMetaObject, tr("Toggle display range"), "CorrelationMeterToggleDisplayRange", "set_mode()");
+
+    m->add_function(&CurveView::staticMetaObject,   tr("New Node"),         "AddCurveNode",                 "add_node()");
+    m->add_function(&CurveView::staticMetaObject,   tr("Select All Nodes"), "CurveSelectAllNodes",          "toggle_select_all_nodes()");
+    m->add_function(&CurveView::staticMetaObject,   tr("Select Node"),      "CurveSelectNode",              "select_lazy_selected_node()");
+
+    m->add_function(&TFadeCurve::staticMetaObject,  tr("Cycle Shape"),      "FadeCurveCycleShape",          "set_mode()");
+    m->add_function(&TFadeCurve::staticMetaObject,  &TToggleBypassBase::staticMetaObject,                   "FadeCurveToggleBypass", "toggle_bypass()");
+    m->add_function(&TFadeCurve::staticMetaObject,  tr("Toggle Raster"),    "FadeCurveToggleRaster",        "toggle_raster()");
+    m->add_function(&TFadeCurveView::staticMetaObject, tr("Select Preset"), "FadeSelectPreset",             "select_fade_shape()");
+
+    m->add_function(&FadeRange::staticMetaObject, &TResetBase::staticMetaObject, "FadeResetLength",         "reset_length()");
+
+    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Increase"),   "GainIncrease",                 "increase_gain()");
+    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Decrease"),   "GainDecrease",                 "decrease_gain()");
+    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Input dB value"), "GainNumericalInput",       ""); // numerical input, no slot needed
+    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Toggle Selection"), "GainToggleSelection",    "toggle_primary_gain_only()");
+    m->add_function(&TGainGroupCommand::staticMetaObject, &TResetBase::staticMetaObject, "GainReset",       "reset_gain()");
+
+    m->add_function(&TMainWindow::staticMetaObject, tr("Context Menu"),         "ShowContextMenu",          "show_context_menu()");
+    m->add_function(&TMainWindow::staticMetaObject, tr("New Track Dialog"),     "ShowNewTrackDialog",       "show_newtrack_dialog()");
+    m->add_function(&TMainWindow::staticMetaObject, tr("Activate Track Finder"), "MainWindowActivateTrackFinder", "show_track_finder()");
+    m->add_function(&TMainWindow::staticMetaObject, tr("Browse to first Track in current View"), "MainWindowNavigateToFirstTrack", "browse_to_first_track_in_active_sheet()");
+    m->add_function(&TMainWindow::staticMetaObject, tr("Browse to last Track in current View"), "MainWindowNavigateToLastTrack", "browse_to_last_track_in_active_sheet()");
+    m->add_function(&TMainWindow::staticMetaObject, tr("Full Screen"),          "MainWindowShowFullScreen",     "full_screen()");
+    m->add_function(&TMainWindow::staticMetaObject, tr("Show Project Management Dialog"), "MainWindowShowProjectManagementDialog", "show_project_manager_dialog()");
+    m->add_function(&TMainWindow::staticMetaObject, tr("Show Help"), "ShowHelp", "quick_start()");
+
+    m->add_function(&MoveClip::staticMetaObject, &TToggleVerticalBase::staticMetaObject, "MoveClipToggleVerticalOnly", "toggle_vertical_only()");
+
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Move Left"),       "MoveCommandLeft",              "move_left()");
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Move Right"),      "MoveCommandRight",             "move_right()");
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Move Up"),         "MoveCommandUp",                "move_up()");
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Move Down"),       "MoveCommandDown",              "move_down()");
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Move Faster"),     "MoveCommandFaster",            "move_faster()");
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Move Slower"),     "MoveCommandSlower",            "move_slower()");
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Moving Speed"),    "MoveCommandSpeed",             ""); // numerical input, no slot needed
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Snap On/Off"),     "MoveCommandToggleSnap",        "toggle_snap_on_off()");
+
+    m->add_function(&MoveCurveNode::staticMetaObject, &TToggleVerticalBase::staticMetaObject, "MoveCurveNodeToggleVerticalOnly", "toggle_vertical_only()");
+
+    m->add_function(&MoveTrack::staticMetaObject,   tr("Move Down"),        "MoveTrackDown",                "move_down()");
+    m->add_function(&MoveTrack::staticMetaObject,   tr("To Top"),           "MoveTrackToTop",               "to_top()");
+    m->add_function(&MoveTrack::staticMetaObject,   tr("To Bottom"),        "MoveTrackToBottom",            "to_bottom()");
+
+    m->add_function(&PlayHeadMove::staticMetaObject, tr("To Start"),        "PlayHeadMoveToStart",          "move_to_start()");
+    m->add_function(&PlayHeadMove::staticMetaObject, tr("To Work Cursor"),  "PlayHeadMoveToWorkCursor",     "move_to_work_cursor()");
+
+    m->add_function(&TProjectManager::staticMetaObject, tr("Save Project"), "ProjectSave",                  "save_project()");
+
+    m->add_function(&TSheetView::staticMetaObject,  &TEditPropertiesBase::staticMetaObject, "EditSongProperties",           "edit_properties()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("Add Marker at Playhead"),           "SheetAddMarkerAtPlayhead",     "add_marker_at_playhead()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("Add Marker at Work Cursor"),        "SheetAddMarkerAtWorkCursor",   "add_marker_at_work_cursor()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("Add Marker"),       "SheetAddMarker",               "add_marker()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("Up"),               "ViewScrollUp",                 "scroll_up()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("Down"),             "ViewScrollDown",               "scroll_down()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("Set"),              "WorkCursorTouch",              "touch()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("To start"),         "WorkCursorToStart",            "goto_begin()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("To end"),           "WorkCursorToEnd",              "goto_end()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("Set"),              "SheetSetPlayPosition",         "touch_play_cursor()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("Center"),           "SheetCenterPlayhead",          "center_playhead()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("One Layer Up"),     "NavigateToUpperContext",       "to_upper_context_level()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("One Layer Down"),   "NavigateToLowerContext",       "to_lower_context_level()");
+    m->add_function(&TSheetView::staticMetaObject,  tr("To Timeline"),      "NavigateToTimeLine",           "browse_to_time_line()");
+
+    m->add_function(&TShortCutManager::staticMetaObject, tr("Export keymap"), "ExportShortcutMap",          "export_keymap()");
+
+    m->add_function(&SpectralMeterView::staticMetaObject, &TEditPropertiesBase::staticMetaObject,   "EditSpectralMeterProperties",      "edit_properties()");
+    m->add_function(&SpectralMeterView::staticMetaObject, tr("Reset average curve"),                "SpectralMeterResetAverageCurve",   "reset()");
+    m->add_function(&SpectralMeterView::staticMetaObject, tr("Toggle average curve"),               "SpectralMeterToggleDisplayRange",  "set_mode()");
+
+    m->add_function(&TimeLineView::staticMetaObject, tr("Add Marker"),                      "TimeLineAddMarker",                "add_marker()");
+    m->add_function(&TimeLineView::staticMetaObject, tr("Add Marker at Playhead"),          "TimeLineAddMarkerAtPlayhead",      "add_marker_at_playhead()");
+    m->add_function(&TimeLineView::staticMetaObject, tr("Add Marker at Work Cursor"),       "TimeLineAddMarkerAtWorkCursor",    "add_marker_at_work_cursor()");
+    m->add_function(&TimeLineView::staticMetaObject, tr("Playhead to Marker"),              "TimeLinePlayheadToMarker",         "playhead_to_marker()");
+    m->add_function(&TimeLineView::staticMetaObject, tr("Edit Markers"),                    "TimeLineShowMarkerDialog",         "show_marker_dialog()");
+
+    m->add_function(&TTrack::staticMetaObject,      tr("Solo"),             "Solo",                         "solo()");
+    m->add_function(&TrackView::staticMetaObject,   tr("Add new Plugin"),   "TrackAddPlugin",               "add_new_plugin()");
+
+    m->add_function(&TPanKnobView::staticMetaObject, tr("Pan to Left"),     "PanKnobPanLeft",               "pan_left()");
+    m->add_function(&TPanKnobView::staticMetaObject, tr("Pan to Right"),    "PanKnobPanRight",              "pan_right()");
+    m->add_function(&TrackPan::staticMetaObject,     tr("Pan to Left"),     "TrackPanLeft",                 "pan_left()");
+    m->add_function(&TrackPan::staticMetaObject,     tr("Pan to Right"),    "TrackPanRight",                "pan_right()");
+    m->add_function(&TrackPan::staticMetaObject, &TResetBase::staticMetaObject, "TrackPanReset",            "reset_pan()");
+
+    m->add_function(&TrackPanelGain::staticMetaObject, tr("Increase"),      "TrackPanelGainIncrement",      "gain_increment()");
+    m->add_function(&TrackPanelGain::staticMetaObject, tr("Decrease"),      "TrackPanelGainDecrement",      "gain_decrement()");
+
+    m->add_function(&TrackPanelLed::staticMetaObject,   tr("Toggle On/Off"), "PanelLedToggle",              "toggle()");
+
+    m->add_function(&TTransport::staticMetaObject,  tr("Play (Start/Stop)"),"TransportPlayStartStop",       "start_transport()");
+    m->add_function(&TTransport::staticMetaObject,  tr("Start Recording"),  "TransportSetRecordingPlayStart","set_recordable_and_start_transport()");
+    m->add_function(&TTransport::staticMetaObject,  tr("To start"),         "TransportToStart",             "to_start()");
+    m->add_function(&TTransport::staticMetaObject,  tr("To end"),           "TransportToEnd",               "to_end()");
+
+    m->add_function(&WorkCursorMove::staticMetaObject, tr("To Playhead"),   "WorkCursorMoveToPlayhead",     "move_to_play_cursor()");
+    m->add_function(&WorkCursorMove::staticMetaObject, tr("To Start"),      "WorkCursorMoveToStart",        "move_to_start()");
+
+    m->add_function(&Zoom::staticMetaObject,        tr("In"),               "ZoomIn",                       "hzoom_in()");
+    m->add_function(&Zoom::staticMetaObject,        tr("Out"),              "ZoomOut",                      "hzoom_out()");
+    m->add_function(&Zoom::staticMetaObject,        tr("Track Vertical Zoom In"),   "ZoomTrackVerticalIn",  "track_vzoom_in()");
+    m->add_function(&Zoom::staticMetaObject,        tr("Track Vertical Zoom Out"),  "ZoomTrackVerticalOut", "track_vzoom_out()");
+    m->add_function(&Zoom::staticMetaObject,        tr("Track Height"),             "ZoomNumericalInput",   ""); // numerical input, no slot needed
+    m->add_function(&Zoom::staticMetaObject,        tr("Expand/Collapse Tracks"),   "ZoomToggleExpandAllTracks", "toggle_expand_all_tracks()");
+    m->add_function(&Zoom::staticMetaObject, &TToggleVerticalBase::staticMetaObject, "ZoomToggleVerticalHorizontal", "toggle_vertical_horizontal_jog_zoom()");
 }
 
-void TraversoCommands::add_function(TShortCutFunction *function, TraversoCommand command)
+
+void TraversoCommands::add_function(const QMetaObject *metaObject,
+                                    const QMetaObject *inheritedMetaObject,
+                                    const QString &description,
+                                    const char *commandName,
+                                    TraversoCommand command,
+                                    const char *slotSignature,
+                                    bool useX,
+                                    bool useY,
+                                    const QVariantList &args)
 {
-    function->pluginname = "TraversoCommands";
-    m_dict.insert(function->commandName, command);
-    tShortCutManager().register_shortcut_function(function);
+    auto function = tShortCutManager().add_function(metaObject, description, commandName, slotSignature);
+
+    if (!function) {
+        PERROR(QString("TraversoCommands::add_function: Could not register function for %1").arg(commandName));
+        return;
+    }
+
+    function->set_plugin_name("TraversoCommands");
+
+    if (inheritedMetaObject) {
+        function->set_base_metaobject(inheritedMetaObject);
+    }
+    function->set_use_x(useX);
+    function->set_use_y(useY);
+    function->set_arguments(args);
+
+    m_dict.insert(function->get_command_name(), command);
+
 }
 
 TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVariantList arguments)
 {
     switch (m_dict.value(commandName)) {
+    case TransportSetPositionCommand:
+    {
+        TProject* project = pm().get_project();
+        if (!project) {
+            return ied().failure();
+        }
+
+        TSheet* sheet = project->get_active_sheet();
+        if (!sheet) {
+            return ied().failure();
+        }
+
+        SheetWidget* widget = TMainWindow::instance()->getCurrentSheetWidget();
+        if (widget)
+        {
+            return new PlayHeadMove(widget->get_sheetview());
+
+        }
+        return ied().failure();
+
+    }
     case GainCommand:
     {
         TContextItem* contextItem = qobject_cast<TContextItem*>(obj);
@@ -1326,24 +485,18 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case AddNewAudioTrackCommand:
     {
-        TSheet* sheet = qobject_cast<TSheet*>(obj);
-        if (!sheet) {
-            PERROR("TraversoCommands: Supplied QObject was not a Sheet! "
-                   "AddNewAudioTrackCommand needs a Sheet as argument");
-            return nullptr;
+        if (auto sheet = qobject_cast<TSheet*>(obj)) {
+            return sheet->add_track(new TAudioTrack(sheet, "Unnamed", TAudioTrack::INITIAL_HEIGHT));
         }
-        return sheet->add_track(new TAudioTrack(sheet, "Unnamed", TAudioTrack::INITIAL_HEIGHT));
+        return ied().failure();
     }
 
     case RemoveClipCommand:
     {
-        TAudioClip* clip = qobject_cast<TAudioClip*>(obj);
-        if (!clip) {
-            PERROR("TraversoCommands: Supplied QObject was not a Clip! "
-                   "RemoveClipCommand needs a Clip as argument");
-            return nullptr;
+        if (auto clip = qobject_cast<TAudioClip*>(obj)) {
+            return new AddRemoveClip(clip, AddRemoveClip::REMOVE);
         }
-        return new AddRemoveClip(clip, AddRemoveClip::REMOVE);
+        return ied().failure();
     }
 
     case RemoveTrackCommand:
@@ -1371,37 +524,26 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case RemovePluginCommand:
     {
-        TAudioPluginView* view = qobject_cast<TAudioPluginView*>(obj);
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not a PluginView! "
-                   "RemovePluginCommand needs a PluginView as argument");
-            return nullptr;
+        if (auto view = qobject_cast<TAudioPluginView*>(obj)) {
+            return view->remove_plugin();
         }
-
-        return view->remove_plugin();
+        return ied().failure();
     }
 
     case RemoveCurveNodeCommmand:
     {
-        CurveView* curveView = qobject_cast<CurveView*>(obj);
-        if (!curveView)
+        if (auto curveView = qobject_cast<CurveView*>(obj))
         {
-            PERROR("TraversoCommands: Supplied QObject was not a CurveView! "
-                   "RemoveClipNodeCommmand needs a CurveView as argument");
-            return nullptr;
+            return curveView->remove_node();
         }
-        return curveView->remove_node();
-
+        return ied().failure();
     }
     case AudioClipExternalProcessingCommand:
     {
-        TAudioClip* clip = qobject_cast<TAudioClip*>(obj);
-        if (!clip) {
-            PERROR("TraversoCommands: Supplied QObject was not an AudioClip! "
-                   "AudioClipExternalProcessingCommand needs an AudioClip as argument");
-            return nullptr;
+        if (auto clip = qobject_cast<TAudioClip*>(obj)) {
+            return new AudioClipExternalProcessing(clip);
         }
-        return new AudioClipExternalProcessing(clip);
+        return ied().failure();
     }
 
     case ClipSelectionCommand:
@@ -1435,34 +577,26 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     case MoveClipCommand:
     {
         // cast to super class ViewItem since we use MoveClip also to fold Track or Sheet
-        ViewItem* view = qobject_cast<ViewItem*>(obj);
-        if (view) {
+        if (auto view = qobject_cast<ViewItem*>(obj)) {
             return new MoveClip(view, arguments);
         }
-        PERROR("TraversoCommands: Supplied QObject was not a ViewItem, MoveClipCommand needs a ViewItem as argument");
-        return nullptr;
+        return ied().failure();
     }
 
     case MoveTrackCommand:
     {
-        TrackView* view = qobject_cast<TrackView*>(obj);
-
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an TrackView! "
-                   "MoveTrackCommand needs an TrackView as argument");
-            return nullptr;
+        if (auto view = qobject_cast<TrackView*>(obj)) {
+            return new MoveTrack(view);
         }
-
-        return new MoveTrack(view);
+        return ied().failure();
     }
 
     case MovePluginCommand:
     {
-        TAudioPluginView* view = qobject_cast<TAudioPluginView*>(obj);
-        if (view) {
+        if (auto view = qobject_cast<TAudioPluginView*>(obj)) {
             return new MovePlugin(view);
         }
-        return nullptr;
+        return ied().failure();
     }
 
 
@@ -1514,88 +648,68 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case SplitClipCommand:
     {
-        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
-                   "SplitClipCommand needs an AudioClipView as argument");
-            return nullptr;
+        if (auto view = qobject_cast<TAudioClipView*>(obj)) {
+            return new SplitClip(view);
         }
-        return new SplitClip(view);
+        return ied().failure();
     }
 
     case CropClipCommand:
     {
-        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
-                   "CropClipCommand needs an AudioClipView as argument");
-            return nullptr;
+        if (auto view = qobject_cast<TAudioClipView*>(obj)) {
+            return new CropClip(view);
         }
-        return new CropClip(view);
+        return ied().failure();
     }
 
     case ArmTracksCommand:
     {
-        TSheetView* view = qobject_cast<TSheetView*>(obj);
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
-                   "ArmTracksCommand needs an SheetView as argument");
-            return nullptr;
+        if (auto view = qobject_cast<TSheetView*>(obj)) {
+            return new ArmTracks(view);
         }
-        return new ArmTracks(view);
+        return ied().failure();
     }
 
     case ZoomCommand:
     {
-        TSheetView* view = qobject_cast<TSheetView*>(obj);
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
-                   "ZoomCommand needs an SheetView as argument");
-            return nullptr;
-
+        if (auto view = qobject_cast<TSheetView*>(obj)) {
+            return new Zoom(view, arguments);
         }
-        return new Zoom(view, arguments);
+        return ied().failure();
     }
 
     case WorkCursorMoveCommand:
     {
-        TSheetView* view = qobject_cast<TSheetView*>(obj);
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
-                   "WorkCursorMove Command needs an SheetView as argument");
-            return nullptr;
+        if (auto view = qobject_cast<TSheetView*>(obj)) {
+            return new WorkCursorMove(view);
         }
-        return new WorkCursorMove(view);
+        return ied().failure();
     }
 
     case MoveCurveNodesCommand:
     {
-        CurveView* curveView = qobject_cast<CurveView*>(obj);
-        if (!curveView) {
-            return nullptr;
+        if (auto curveView = qobject_cast<CurveView*>(obj)) {
+            return curveView->drag_node();
         }
-
-        return curveView->drag_node();
+        return ied().failure();
     }
 
     case ArrowKeyBrowserCommand:
     {
-        TSheetView* view = qobject_cast<TSheetView*>(obj);
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
-                   "ArrowKeyBrowserCommand needs an SheetView as argument");
-            return nullptr;
+        if (auto view = qobject_cast<TSheetView*>(obj)) {
+            return new ArrowKeyBrowser(view, arguments);
         }
-        return new ArrowKeyBrowser(view, arguments);
+        PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
+               "ArrowKeyBrowserCommand needs an SheetView as argument");
+        return ied().failure();
     }
 
     case ShuttleCommand:
     {
-        TSheetView* view = qobject_cast<TSheetView*>(obj);
-        if (view) {
+        if (auto view = qobject_cast<TSheetView*>(obj)) {
             return new TMoveCommand(view, nullptr, "");
         }
-        return nullptr;
+        return ied().failure();
     }
 
     case NormalizeClipCommand:
@@ -1625,7 +739,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
             CommandGroup* group = new CommandGroup(clip, tr("Normalize Selected Clips"));
 
-            foreach(TAudioClip* selected, selection) {
+            for(TAudioClip* selected : selection) {
                 group->add_command(new PCommand(selected, "set_gain", normfactor, selected->get_gain(), tr("AudioClip: Normalize")));
             }
 
@@ -1636,29 +750,36 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     }
     case MoveMarkerCommand:
     {
-        TimeLineView* view = qobject_cast<TimeLineView*>(obj);
-        if (view)
-        {
+        if (auto view = qobject_cast<TimeLineView*>(obj)) {
             return view->drag_marker();
         }
 
-        MarkerView* markerView = qobject_cast<MarkerView*>(obj);
-        if (markerView)
-        {
+        if (auto markerView = qobject_cast<TTimeLineMarkerView*>(obj)) {
             return markerView->drag_marker();
         }
 
-        PERROR("TraversoCommands: Supplied QObject was not a TimeLineView or MarkerView! "
-               "MoveMarkerCommand needs a TimeLineView or MarkerView as argument");
-        return nullptr;
+        return ied().failure();
     }
     case FadeRangeCommand:
     {
-        TFadeCurveView* view = qobject_cast<TFadeCurveView*>(obj);
-        if (view) {
+        if (auto view = qobject_cast<TFadeCurveView*>(obj)) {
             return new FadeRange(view->get_audio_clip(), view->get_fade(), view->get_sheetview()->timeref_scalefactor);
         }
-        return nullptr;
+        return ied().failure();
+    }
+    case FadeCurveBendCommand:
+    {
+        if (auto view = qobject_cast<TFadeCurveView*>(obj)) {
+            return new FadeBend(view);
+        }
+        return ied().failure();
+    }
+    case FadeCurveStrengthCommand:
+    {
+        if (auto view = qobject_cast<TFadeCurveView*>(obj)) {
+            return new FadeStrength(view);
+        }
+        return ied().failure();
     }
     case GainShowAutomationCommand:
     {

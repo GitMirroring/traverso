@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2019 Remon Sijrier
+Copyright (C) 2005-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -31,17 +31,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Utils.h"
 #include "TShortCutManager.h"
 #include "TConfig.h"
+#include "TTimeRef.h"
+#include "Debugger.h"
 
 #include <QMetaMethod>
 #include <QKeyEvent>
 #include <QWheelEvent>
 
-
-
-
-#include "Debugger.h"
-
-#define NO_HOLD_EVENT -100
+static const int NO_HOLD_EVENT = -100;
 
 /**
  * \class InputEventDispatcher
@@ -105,34 +102,33 @@ TInputEventDispatcher::TInputEventDispatcher()
 }
 
 TInputEventDispatcher::~ TInputEventDispatcher( )
-= default;
+    = default;
 
 int TInputEventDispatcher::dispatch_shortcut_from_contextmenu(TShortCutFunction* function)
 {
     PENTER2;
+    Q_ASSERT(m_shortCutManager);
+
     QStringList keys = function->get_keys();
-    if (!keys.size())
-    {
+    if (!keys.size()) {
         return -1;
     }
-    TShortCut* shortCut = tShortCutManager().get_shortcut_for_key(keys.first());
+
+    TShortCut* shortCut = m_shortCutManager->get_shortcut_for_key(keys.first());
 
     if (! shortCut) {
         //		PERROR("ContextMenu keySequence doesn't apply to any InputEngine knows off!! (%s)", QS_C(keys.first()));
         return -1;
     }
 
-    foreach(int modifier, function->get_modifier_keys())
-    {
-        m_activeModifierKeys.append(modifier);
-    }
+    m_activeModifierKeys.append(function->get_modifier_keys());
 
-    if (function->commandName == "RejectHoldCommand") {
+    if (function->get_command_name() == QString("RejectHoldCommand")) {
         process_press_event(Qt::Key_Escape);
         return 1;
     }
 
-    if (function->commandName == "AcceptHoldCommand") {
+    if (function->get_command_name() == QString("AcceptHoldCommand")) {
         process_press_event(Qt::Key_Enter);
         return 1;
     }
@@ -148,22 +144,21 @@ int TInputEventDispatcher::dispatch_shortcut_from_contextmenu(TShortCutFunction*
 int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromContextMenu)
 {
     PENTER2;
+    Q_ASSERT(m_shortCutManager);
+
     PMESG("Dispatching key %d", shortCut->get_key_value());
 
     TCommand* command = nullptr;
     QString slotsignature = "";
     QList<QObject* > contextItemsList = fromContextMenu ? cpointer().get_contextmenu_items() : cpointer().get_context_items();
-    QObject* contextItem = nullptr;
 
     if (m_holdingCommand) {
         contextItemsList.prepend(m_holdingCommand);
     }
 
-    for (int i=0; i < contextItemsList.size(); ++i) {
+    for (QObject * contextItem : contextItemsList) {
         command = nullptr;
         m_dispatchResult = BroadcastResult::RESULT_NOT_SET;
-
-        contextItem = contextItemsList.at(i);
 
         if (!contextItem) {
             PERROR("no item in cpointer()'s context item list ??");
@@ -177,15 +172,11 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
         // this supports inheritance on QObjects.
         while (metaObject)
         {
-            QList<TShortCutFunction*> functions = shortCut->get_functions_for_metaobject(metaObject);
+            QList<TShortCutFunction*> functions = shortCut->get_shortcut_functions_for_metaobject(metaObject);
 
-            foreach(TShortCutFunction* function, functions) {
-                if (!function) {
-                    continue;
-                }
+            for(TShortCutFunction* function : functions) {
 
-                if (m_activeModifierKeys.size())
-                {
+                if (m_activeModifierKeys.size()) {
                     if (modifierKeysMatch(m_activeModifierKeys, function->get_modifier_keys())) {
                         shortCutFunction = function;
                         PMESG("found match in objectUsingModierKeys");
@@ -193,11 +184,8 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
                     } else {
                         PMESG("m_activeModifierKeys doesn't contain code %d", shortCut->get_key_value());
                     }
-                }
-                else
-                {
-                    if (function->get_modifier_keys().isEmpty())
-                    {
+                } else {
+                    if (function->get_modifier_keys().isEmpty()) {
                         shortCutFunction = function;
                         PMESG("found match in obects NOT using modifier keys");
                         break;
@@ -205,8 +193,7 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
                 }
             }
 
-            if (shortCutFunction)
-            {
+            if (shortCutFunction) {
                 break;
             }
 
@@ -219,136 +206,54 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
             continue;
         }
 
-        PMESG("Function found for %s!", metaObject->className());
+        PMESG("Function found for metaobject %s", metaObject->className());
         PMESG("setting slotsignature to %s", QS_C(shortCutFunction->get_slot_signature()));
-        PMESG("setting pluginname to %s", QS_C(shortCutFunction->pluginname));
-        PMESG("setting plugincommand to %s", QS_C(shortCutFunction->commandName));
+        PMESG("setting pluginname to %s", QS_C(shortCutFunction->get_plugin_name()));
+        PMESG("setting commandname to %s", shortCutFunction->get_command_name());
 
         slotsignature = shortCutFunction->get_slot_signature();
-        QString pluginname = shortCutFunction->pluginname;
-        QString commandname = shortCutFunction->commandName;
+        QString pluginname = shortCutFunction->get_plugin_name();
+        QString commandname = shortCutFunction->get_command_name();
 
-        if (contextItem == m_holdingCommand) {
+        if (is_holding() && contextItem == m_holdingCommand) {
             PMESG("Dispatching to holdcommand %s", m_holdingCommand->metaObject()->className());
-            if (QMetaObject::invokeMethod(contextItem, QS_C(slotsignature), Qt::DirectConnection)) {
-                PMESG("HIT, invoking %s::%s", m_holdingCommand->metaObject()->className(), QS_C(slotsignature));
+            if (shortCutFunction->dispatch(contextItem)) {
                 // only now we know which object this hold modifier key was dispatched on.
                 // the process_hold_modifier_keys() only knows about the corresonding ieaction
                 // next time it'll be called, autorepeat interval of the object + keysequence will
                 // be used!
-                shortCut->autorepeatInterval = shortCutFunction->get_autorepeat_interval();
-                shortCut->autorepeatStartDelay = shortCutFunction->get_autorepeat_start_delay();
-                if (shortCutFunction->uses_autorepeat() && !m_holdKeyRepeatTimer.isActive()) {
+                shortCut->set_autorepeat_interval(shortCutFunction->get_autorepeat_interval());
+                shortCut->set_autorepeat_start_delay(shortCutFunction->get_autorepeat_start_delay());
+
+                if (shortCutFunction->uses_autorepeat()) {
                     m_holdKeyRepeatTimer.start(10);
                 }
 
                 break;
-            } else {
-                PMESG("InvokeMethod failed: %s::%s", m_holdingCommand->metaObject()->className(), QS_C(slotsignature));
             }
         }
 
-
         // We first try to find if there is a match in the loaded plugins.
-        if ( ! m_holdingCommand ) {
+        if ( ! is_holding() ) {
 
             if ( ! pluginname.isEmpty() ) {
-                TCommandPlugin* plug = tShortCutManager().get_command_plugin(pluginname);
-                if (!plug)
-                {
+                TCommandPlugin* plug = m_shortCutManager->get_command_plugin(pluginname);
+                if (!plug) {
                     tInformUser().critical(tr("Command Plugin %1 not found!").arg(pluginname));
                     continue;
                 }
 
-                if ( ! plug->implements(commandname) )
-                {
+                if (plug->implements(commandname)) {
+                    PMESG("InputEventDispatcher:: Using plugin %s for command %s", QS_C(pluginname), shortCutFunction->get_command_name());
+                    command = plug->create(contextItem, commandname, shortCutFunction->get_arguments());
+                } else {
                     tInformUser().critical(tr("Plugin %1 doesn't implement Command %2").arg(pluginname, commandname));
-                } else
-                {
-                    PMESG("InputEventDispatcher:: Using plugin %s for command %s", QS_C(pluginname), QS_C(shortCutFunction->commandName));
-                    command = plug->create(contextItem, commandname, shortCutFunction->arguments);
                 }
+            } else  {
+                command = shortCutFunction->dispatch_with_command_return(contextItem);
             }
+
         }
-
-        // Either the plugins didn't have a match, indicated failure or we are holding.
-        if ( !command && (m_dispatchResult != BroadcastResult::SUCCESS))
-        {
-            const QMetaObject* delegatedobject = nullptr;
-            QList<TShortCutFunction*> objectFunctions;
-
-            if (m_holdingCommand) {
-                objectFunctions = shortCut->get_functions_for_metaobject(&HoldCommand::staticMetaObject);
-                delegatedobject = &HoldCommand::staticMetaObject;
-            } else {
-                delegatedobject = metaObject;
-                if (!m_activeModifierKeys.empty()) {
-                    //FIXME: objects has values inserted with insertMulti()
-                    // do we have to use values(delegatedobject) instead of value(delegatedobject)
-                    // here too?
-                    objectFunctions = shortCut->get_functions_for_metaobject(delegatedobject);
-                } else {
-                    objectFunctions = shortCut->get_functions_for_metaobject(delegatedobject);
-                }
-            }
-            PMESG("delegatedobject is %s", delegatedobject->className());
-
-            if (!objectFunctions.empty()) {
-                shortCutFunction = objectFunctions.first();
-            } else {
-                shortCutFunction = nullptr;
-            }
-
-            if ( ! shortCutFunction) {
-                PMESG("No delegating data ? WEIRD");
-                continue;
-            }
-
-            QStringList strlist = shortCutFunction->get_slot_signature().split("::");
-
-            if (strlist.size() == 2) {
-                PMESG("Detected delegate action, checking if it is valid!");
-                const QString& classname = strlist.at(0);
-                const QString& slot = strlist.at(1);
-                QObject* obj = nullptr;
-                bool validobject = false;
-
-                for (int j=0; j < contextItemsList.size(); ++j) {
-                    obj = contextItemsList.at(j);
-                    const QMetaObject* mo = obj->metaObject();
-                    while (mo) {
-                        if (mo->className() == classname) {
-                            PMESG("Found an item in the objects list that equals delegated object");
-                            validobject = true;
-                            break;
-                        }
-                        mo = mo->superClass();
-                    }
-                    if (validobject) {
-                        break;
-                    }
-
-                }
-
-                if (validobject) {
-                    if (QMetaObject::invokeMethod(obj, QS_C(slot),  Qt::DirectConnection, Q_RETURN_ARG(TCommand*, command))) {
-                        PMESG("HIT, invoking (delegated) %s::%s", QS_C(classname), QS_C(slot));
-                    } else {
-                        PMESG("Delegated object slot call didn't work out, sorry!");
-                        PMESG("%s::%s() --> %s::%s()", contextItem->metaObject()->className(), QS_C(slot), QS_C(classname), QS_C(slot));
-                    }
-                } else {
-                    PMESG("Delegated object %s was not found in the context items list!", QS_C(classname));
-                }
-            } else {
-                if (QMetaObject::invokeMethod(contextItem, QS_C(slotsignature), Qt::DirectConnection, Q_RETURN_ARG(TCommand*, command))) {
-                    PMESG("HIT, invoking %s::%s", contextItem->metaObject()->className(), QS_C(slotsignature));
-                } else {
-                    PMESG("nope %s wasn't the right one, next ...", contextItem->metaObject()->className());
-                }
-            }
-        }
-
 
         // Let's see if the invoked object used either succes(), failure() or did_not_implement()
         // return functions, so we can detect to either return happily, the action was succesfull
@@ -357,16 +262,19 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
         // to give a lower level object precedence over the current one.
         if (m_dispatchResult) {
             if (m_dispatchResult == SUCCESS) {
+                Q_ASSERT(!command);
                 PMESG("Broadcast Result indicates succes, but no returned Command object");
                 reset();
                 return 1;
             }
             if (m_dispatchResult == FAILURE) {
+                Q_ASSERT(!command);
                 PMESG("Broadcast Result indicates failure, and doesn't want lower level items to be processed");
                 reset();
                 return 0;
             }
             if (m_dispatchResult == DIDNOTIMPLEMENT) {
+                Q_ASSERT(!command);
                 PMESG("Broadcast Result indicates succes, but didn't want to perform it's action,"
                       "so we continue traversing the objects list");
                 continue;
@@ -374,65 +282,78 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
         }
 
 
-        if (command) {
-            if (command->is_hold_command())
-            {
-                if (command->begin_hold() != -1) {
-                    command->set_valid(true);
-                    command->set_cursor_shape(shortCutFunction->useX, shortCutFunction->useY);
-                    if (has_collected_number()) {
-                        command->process_collected_number(get_collected_number());
-                        set_numerical_input("");
-                    }
-                    m_holdingCommand = command;
-                    m_moveCommand = qobject_cast<TMoveCommand*>(m_holdingCommand);
-                    if (m_moveCommand) {
-                        m_moveCommand->TMoveCommand::begin_hold();
-                    }
-                    m_holdEventCode = shortCut->get_key_value();
-                    set_holding(true);
-                    m_enterFinishesHold = config().get_property("InputEventDispatcher", "EnterFinishesHold", false).toBool();
-                    if (fromContextMenu && command->supportsEnterFinishesHold())
-                    {
-                        m_enterFinishesHold = true;
-                    }
-                    if (shortCutFunction->uses_autorepeat())
-                    {
-                        PMESG("Function uses autorepeat");
-                        process_press_event(shortCut->get_key_value());
-                    }
-                    if (!command->supportsEnterFinishesHold())
-                    {
-                        m_enterFinishesHold = false;
-                    }
-
-                    bool showCursorShortCutHelp = config().get_property("ShortCuts", "ShowCursorHelp", false).toBool();
-                    if (showCursorShortCutHelp && (fromContextMenu || m_enterFinishesHold)) {
-                        int key = shortCut->get_key_value();
-                        QString keyString;
-                        if (key == Qt::LeftButton) {
-                            keyString = tr("Mouse Button Left");
-                        } else {
-                            keyString = QKeySequence(shortCut->get_key_value()).toString();
-                        }
-                        cpointer().set_canvas_cursor_text(tr("%1 or Enter to accept, Esc to cancel").arg(keyString));
-                    }
-                } else {
-                    PWARN("hold action begin_hold() returned -1");
-                    // OOPSSS, something went wrong when making the Command
-                    // set following stuff to zero to make finish_hold do nothing
-                    delete command;
-                    command = nullptr;
-                    set_holding( false );
-                }
-            }
-            else
-            {
-                TCommand::process_command(command);
-            }
+        if (!command) {
+            PMESG("No returned command object");
+            break;
         }
 
-        break;
+        if (command->is_hold_command()) {
+            if (command->begin_hold() != -1) {
+
+                command->set_valid(true);
+                command->set_cursor_shape(shortCutFunction->uses_x(), shortCutFunction->uses_y());
+
+                if (has_collected_number()) {
+                    command->process_collected_number(get_collected_number());
+                    set_numerical_input("");
+                }
+
+                m_holdingCommand = command;
+                m_moveCommand = qobject_cast<TMoveCommand*>(m_holdingCommand);
+
+                if (m_moveCommand) {
+                    m_moveCommand->TMoveCommand::begin_hold();
+                }
+
+                m_holdEventCode = shortCut->get_key_value();
+
+                set_holding(true);
+
+                m_enterFinishesHold = config().get_property("InputEventDispatcher", "EnterFinishesHold", false).toBool();
+
+                if (fromContextMenu && command->supportsEnterFinishesHold()) {
+                    m_enterFinishesHold = true;
+                }
+
+                if (shortCutFunction->uses_autorepeat()) {
+                    PMESG("Function uses autorepeat");
+                    process_press_event(shortCut->get_key_value());
+                }
+
+                if (!command->supportsEnterFinishesHold()) {
+                    m_enterFinishesHold = false;
+                }
+
+                bool showCursorShortCutHelp = config().get_property("ShortCuts", "ShowCursorHelp", false).toBool();
+                if (showCursorShortCutHelp && (fromContextMenu || m_enterFinishesHold)) {
+                    int key = shortCut->get_key_value();
+                    QString keyString;
+                    if (key == Qt::LeftButton) {
+                        keyString = tr("Mouse Button Left");
+                    } else {
+                        keyString = QKeySequence(shortCut->get_key_value()).toString();
+                    }
+                    cpointer().set_canvas_cursor_text(tr("%1 or Enter to accept, Esc to cancel").arg(keyString));
+                }
+
+                return 1;
+            } else {
+                PWARN("hold action begin_hold() returned -1");
+                // OOPSSS, something went wrong when making the Command
+                // set following stuff to zero to make finish_hold do nothing
+                delete command;
+                command = nullptr;
+                set_holding( false );
+                return 0;
+            }
+        }
+        else {
+            TCommand::process_command(command);
+            return 1;
+        }
+
+        // never reached
+        PERROR("ShortCut processing fallthrough detected, shortcut dispatching programming error");
     }
 
     return 1;
@@ -466,7 +387,7 @@ void TInputEventDispatcher::jog()
     }
 
     if (!m_holdingCommand) {
-        PERROR("jog() called but no holdingCommand but m_isHolding was set to true, internal state error, fix the program!");
+        PERROR("jog() called but no holdingCommand but m_isHolding was set to true, internal state error, this is a bug!");
         return;
     }
 
@@ -586,6 +507,8 @@ void TInputEventDispatcher::catch_scroll(QWheelEvent* e)
 void TInputEventDispatcher::process_press_event(int keyValue)
 {
     PENTER;
+    Q_ASSERT(m_shortCutManager);
+
     if (keyValue == Qt::Key_Escape && is_holding())
     {
         m_cancelHold = true;
@@ -622,7 +545,7 @@ void TInputEventDispatcher::process_press_event(int keyValue)
         return;
     }
 
-    TShortCut* shortCut = tShortCutManager().get_shortcut_for_key(keyValue);
+    TShortCut* shortCut = m_shortCutManager->get_shortcut_for_key(keyValue);
 
     if (m_isHolding && shortCut)
     {
@@ -680,7 +603,7 @@ void TInputEventDispatcher::process_release_event(int eventcode)
 
 void TInputEventDispatcher::process_hold_modifier_keys()
 {
-    PENTER;
+    PENTER3;
     if (m_holdModifierKeys.empty()) {
         m_holdKeyRepeatTimer.stop();
         return;
@@ -690,14 +613,14 @@ void TInputEventDispatcher::process_hold_modifier_keys()
         if (!hmk.wasExecuted) {
             hmk.wasExecuted = true;
             dispatch_shortcut(hmk.shortcut);
-            hmk.lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch() + hmk.shortcut->autorepeatStartDelay;
+            hmk.lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch() + hmk.shortcut->get_autorepeat_start_delay();
             continue;
         }
 
         trav_time_t timeDiff = (TTimeRef::get_milliseconds_since_epoch() - hmk.lastTimeExecuted);
         // if timeDiff is very close (-2 ms) to it's interval value, execute it still
         // else the next interval might be too long between the previous one.
-        if ((timeDiff + 2) >= hmk.shortcut->autorepeatInterval) {
+        if ((timeDiff + 2) >= hmk.shortcut->get_autorepeat_interval()) {
             hmk.lastTimeExecuted = TTimeRef::get_milliseconds_since_epoch();
             dispatch_shortcut(hmk.shortcut);
         }
@@ -783,7 +706,7 @@ bool TInputEventDispatcher::check_number_collection(int eventcode)
     }
 
     if (((eventcode >= Qt::Key_0) && (eventcode <= Qt::Key_9)) ||
-            (eventcode == Qt::Key_Comma) || (eventcode == Qt::Key_Period)) {
+        (eventcode == Qt::Key_Comma) || (eventcode == Qt::Key_Period)) {
         set_numerical_input(m_sCollectedNumber + QChar(eventcode));
         PMESG("Collected %s so far...", QS_C(m_sCollectedNumber) ) ;
         return true;

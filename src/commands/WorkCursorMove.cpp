@@ -31,7 +31,7 @@
 #include "TSheetView.h"
 #include "TimeLineViewPort.h"
 #include "TimeLineView.h"
-#include "MarkerView.h"
+#include "TTimeLineMarkerView.h"
 #include "TTimeLineRuler.h"
 #include "Cursors.h"
 
@@ -179,9 +179,9 @@ void WorkCursorMove::browse_to_next_marker()
 {
 	QList<TTimeLineMarker*> markers = m_session->get_timeline()->get_markers();
 	QList<TContextItem*> contexts = cpointer().get_active_context_items();
-	MarkerView* view;
+	TTimeLineMarkerView* view;
 	foreach(TContextItem* item, contexts) {
-		view = qobject_cast<MarkerView*>(item);
+		view = qobject_cast<TTimeLineMarkerView*>(item);
 		if (view) {
 			cpointer().remove_from_active_context_list(item);
 			contexts.removeAll(item);
@@ -197,8 +197,8 @@ void WorkCursorMove::browse_to_next_marker()
 	}
 
 	if (next) {
-        QList<MarkerView*> markerViews = d->sv->get_timeline_viewport()->get_timeline_view()->get_marker_views();
-		foreach(MarkerView* view, markerViews) {
+        QList<TTimeLineMarkerView*> markerViews = d->sv->get_timeline_viewport()->get_timeline_view()->get_marker_views();
+		foreach(TTimeLineMarkerView* view, markerViews) {
 			if (view->get_marker() == next) {
 				contexts.prepend(view);
 				break;
@@ -214,9 +214,9 @@ void WorkCursorMove::browse_to_previous_marker()
 {
 	QList<TTimeLineMarker*> markers = m_session->get_timeline()->get_markers();
 	QList<TContextItem*> contexts = cpointer().get_active_context_items();
-	MarkerView* view;
+	TTimeLineMarkerView* view;
 	foreach(TContextItem* item, contexts) {
-		view = qobject_cast<MarkerView*>(item);
+		view = qobject_cast<TTimeLineMarkerView*>(item);
 		if (view) {
 			cpointer().remove_from_active_context_list(item);
 			contexts.removeAll(item);
@@ -233,8 +233,8 @@ void WorkCursorMove::browse_to_previous_marker()
 	}
 
 	if (prev) {
-        QList<MarkerView*> markerViews = d->sv->get_timeline_viewport()->get_timeline_view()->get_marker_views();
-		foreach(MarkerView* view, markerViews) {
+        QList<TTimeLineMarkerView*> markerViews = d->sv->get_timeline_viewport()->get_timeline_view()->get_marker_views();
+		foreach(TTimeLineMarkerView* view, markerViews) {
 			if (view->get_marker() == prev) {
 				contexts.prepend(view);
 				break;

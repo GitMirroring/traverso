@@ -26,6 +26,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TCommandPlugin.h>
 
 class TShortCutFunction;
+class TShortCutManager;
+
+const bool USE_X = true;
+const bool USE_Y = true;
+const bool NO_X = false;
+const bool NO_Y = false;
 
 class TraversoCommands : public TCommandPlugin
 {
@@ -34,11 +40,12 @@ class TraversoCommands : public TCommandPlugin
 public:
 	TraversoCommands();
 
-    void load();
+    void load(TShortCutManager* m);
     TCommand* create(QObject* obj, const QString& commandName, QVariantList arguments);
 
 private:
     enum TraversoCommand {
+        NoCommand,
 		GainCommand,
 		TrackPanCommand,
 		ImportAudioCommand,
@@ -67,38 +74,62 @@ private:
         MoveMarkerCommand,
         MovePluginCommand,
         FadeRangeCommand,
-        GainShowAutomationCommand
+        FadeCurveBendCommand,
+        FadeCurveStrengthCommand,
+        GainShowAutomationCommand,
+        TransportSetPositionCommand
 	};
 
 private:
-    void add_function(TShortCutFunction* function, TraversoCommand command);
+    void add_function(const QMetaObject *metaObject,
+                      const QString &description,
+                      const char *commandName,
+                      TraversoCommand command=NoCommand,
+                      const char *slotSignature = "",
+                      bool useX = false,
+                      bool useY = false,
+                      const QVariantList &args = QVariantList())
+    {
+        add_function(metaObject, nullptr, description, commandName, command, slotSignature, useX, useY, args);
+    }
+
+    void add_function(const QMetaObject *metaObject,
+                      const QMetaObject *inheritedMetaObject,
+                      const QString &description,
+                      const char *commandName,
+                      TraversoCommand command=NoCommand,
+                      const char *slotSignature = "",
+                      bool useX = false,
+                      bool useY = false,
+                      const QVariantList &args = QVariantList());
+
 };
 
-class ResetBase : public QObject
+class TResetBase : public QObject
 {
     Q_OBJECT
 };
-class ToggleBypassBase : QObject
+class TToggleBypassBase : QObject
 {
     Q_OBJECT
 };
-class DeleteBase : QObject
+class TDeleteBase : QObject
 {
     Q_OBJECT
 };
-class MoveBase : QObject
+class TMoveBase : QObject
 {
     Q_OBJECT
 };
-class GainBase : QObject
+class TGainBase : QObject
 {
     Q_OBJECT
 };
-class ToggleVerticalBase : QObject
+class TToggleVerticalBase : QObject
 {
     Q_OBJECT
 };
-class EditPropertiesBase : QObject
+class TEditPropertiesBase : QObject
 {
     Q_OBJECT
 };

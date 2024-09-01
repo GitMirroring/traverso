@@ -24,57 +24,60 @@
 
 #include "ViewItem.h"
 
+#include "TTimeRef.h"
+
 class TSheetView;
 class TTimeLineRuler;
-class MarkerView;
+class TTimeLineMarkerView;
 class TTimeLineMarker;
 
 
 class TimeLineView : public ViewItem
 {
-        Q_OBJECT
+    Q_OBJECT
 
 public:
-        TimeLineView(TSheetView* view);
-        ~TimeLineView();
-	
-	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-	void calculate_bounding_rect();
-	void load_theme_data();
-        void mouse_hover_move_event();
-        QList<MarkerView*> get_marker_views() const { return m_markerViews;}
+    TimeLineView(TSheetView* view);
+    ~TimeLineView();
 
-        MarkerView* get_marker_view_after(const TTimeRef &location);
-        MarkerView* get_marker_view_before(const TTimeRef &location);
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+    void calculate_bounding_rect();
+    void load_theme_data();
+    void mouse_hover_move_event();
+    QList<TTimeLineMarkerView*> get_marker_views() const { return m_markerViews;}
+
+    TTimeLineMarkerView* get_marker_view_after(const TTimeRef &location);
+    TTimeLineMarkerView* get_marker_view_before(const TTimeRef &location);
 
 private:
-	QList<MarkerView* > m_markerViews;
-	TTimeLineRuler* 	m_timeline;
-	MarkerView* 	m_blinkingMarker;
-	QColor		m_blinkColor;
+    QList<TTimeLineMarkerView* > m_markerViews;
+    TTimeLineRuler* 	m_timeline;
+    TTimeLineMarkerView* 	m_blinkingMarker;
+    QColor		m_blinkColor;
 
     QHash<qint64, QString>	m_zooms;
 
-	TCommand* add_marker_at(const TTimeRef when);
-        void update_softselected_marker(QPointF pos);
-	
-	
+    TCommand* add_marker_at(const TTimeRef when);
+    void update_softselected_marker(QPointF pos);
+
+
 public slots:
-        void hzoom_changed();
-	
+    void hzoom_changed();
+
 public slots:
-	TCommand* add_marker();
-        TCommand* add_marker_at_playhead();
-        TCommand* add_marker_at_work_cursor();
-        TCommand* remove_marker();
-	TCommand* drag_marker();
-	TCommand* clear_markers();
-	TCommand* playhead_to_marker();
+    TCommand* add_marker();
+    TCommand* add_marker_at_playhead();
+    TCommand* add_marker_at_work_cursor();
+    TCommand* remove_marker();
+    TCommand* drag_marker();
+    TCommand* clear_markers();
+    TCommand* playhead_to_marker();
+    TCommand *show_marker_dialog();
 
 private slots:
-	void add_new_marker_view(TTimeLineMarker* marker);
-	void remove_marker_view(TTimeLineMarker* marker);
-        void active_context_changed();
+    void add_new_marker_view(TTimeLineMarker* marker);
+    void remove_marker_view(TTimeLineMarker* marker);
+    void active_context_changed();
 
 };
 

@@ -26,14 +26,14 @@
 #include "TTimeRef.h"
 
 class TTimeLineMarker;
-class MarkerView;
+class TTimeLineMarkerView;
 
 class MoveMarker : public TMoveCommand
 {
         Q_OBJECT
 
 public:
-        MoveMarker(MarkerView* mview, qint64 scalefactor, const QString& des);
+        MoveMarker(TTimeLineMarkerView* mview, qint64 scalefactor, const QString& des);
 
         int prepare_actions();
         int do_action();
@@ -48,7 +48,7 @@ private :
         TTimeRef		m_origLocation;
         TTimeRef		m_newLocation;
         struct MoveMarkerData {
-                MarkerView*	view;
+                TTimeLineMarkerView*	view;
                 qint64 		scalefactor;
         };
         MoveMarkerData* mmd;

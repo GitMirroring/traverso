@@ -80,7 +80,7 @@ void TFadeCurve::init()
     for (int i = 0; i <= nodecount; ++i) {
         QPointF p = get_curve_point(f);
 
-        TCurveNode* node = new TCurveNode(this, p.x(), p.y());
+        TCurveNode* node = new TCurveNode(p.x(), p.y());
         TAddRemoveCommand* cmd = (TAddRemoveCommand*) add_node(node, false);
         cmd->set_instantanious(true);
         TCommand::process_command(cmd);
@@ -306,7 +306,7 @@ void TFadeCurve::solve_node_positions( )
         while (node) {
             f += 1.0 / (listsize - 1);
             QPointF p = get_curve_point(f);
-            node->set_relative_when_and_value(p.x(), p.y());
+            node->set_relative_when_and_value(p.x(), p.y(), get_range());
             node = node->next;
         }
     }

@@ -4,7 +4,7 @@
 #include "CurveNodeView.h"
 #include "CurveView.h"
 #include "TFadeCurveView.h"
-#include "MarkerView.h"
+#include "TTimeLineMarkerView.h"
 #include "TAudioPluginView.h"
 #include "PluginChainView.h"
 #include "TSheetView.h"

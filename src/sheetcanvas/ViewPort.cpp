@@ -153,7 +153,7 @@ void ViewPort::release_mouse()
 
 void ViewPort::mouseMoveEvent(QMouseEvent* event)
 {
-    PENTER;
+    PENTER3;
 
     cpointer().update_mouse_positions(event->pos(), event->globalPosition());
 

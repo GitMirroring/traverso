@@ -31,22 +31,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <Debugger.h>
 
-CurveNodeView::CurveNodeView( TSheetView * sv, CurveView* curveview, TCurveNode * node, TCurve* guicurve)
+CurveNodeView::CurveNodeView( TSheetView * sv, CurveView* curveview, TCurveNode * node)
     : ViewItem(curveview, nullptr)
-	, TCurveNode(guicurve, node->get_when(), node->get_value())
 	, m_node(node)
 {
 	PENTERCONS;
 	m_sv = sv;
 	m_curveview = curveview;
 	m_isSoftSelected = m_isHardSelected = false;
+    m_guiNode = new TCurveNode(node->get_when(), node->get_value());
 
 	setFlags(QGraphicsItem::ItemIgnoresTransformations);
 
     CurveNodeView::load_theme_data();
     CurveNodeView::calculate_bounding_rect();
 
-	connect(m_node->m_curve, SIGNAL(nodePositionChanged()), this, SLOT(update_pos()));
+    connect(m_node, SIGNAL(nodePositionChanged()), this, SLOT(update_pos()));
 }
 
 CurveNodeView::~ CurveNodeView( )
@@ -121,7 +121,7 @@ void CurveNodeView::update_pos( )
 	qreal value = parentheight - (m_node->get_value() * parentheight + halfwidth);
 	setPos(when, value);
 		
-	set_when_and_value((m_node->get_when() / m_sv->timeref_scalefactor), m_node->get_value());
+    m_guiNode->set_when_and_value((m_node->get_when() / m_sv->timeref_scalefactor), m_node->get_value());
 }
 
 void CurveNodeView::set_soft_selected(bool selected)

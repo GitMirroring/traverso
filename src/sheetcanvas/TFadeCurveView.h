@@ -58,8 +58,6 @@ private:
 public slots:
 	void state_changed();
 	
-	TCommand* bend();
-	TCommand* strength();
 	TCommand* select_fade_shape();
 // 	Command* edit_properties();
 

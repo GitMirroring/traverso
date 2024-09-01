@@ -22,7 +22,7 @@
 #include "MoveMarker.h"
 
 #include "TTimeLineMarker.h"
-#include "MarkerView.h"
+#include "TTimeLineMarkerView.h"
 #include "TSnapList.h"
 #include "TSheet.h"
 #include "TSheetView.h"
@@ -32,7 +32,7 @@
 
 #include "Debugger.h"
 
-MoveMarker::MoveMarker(MarkerView* mview, qint64 scalefactor, const QString& des)
+MoveMarker::MoveMarker(TTimeLineMarkerView* mview, qint64 scalefactor, const QString& des)
     : TMoveCommand(mview->get_sheetview(), mview->get_marker(), des)
 {
     mmd = new MoveMarkerData;

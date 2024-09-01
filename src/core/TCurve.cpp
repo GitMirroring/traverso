@@ -77,8 +77,6 @@ void TCurve::init( )
 	m_lookup_cache.left = -1;
     m_defaultValue = 1.0;
     m_session = nullptr;
-	
-	connect(this, SIGNAL(nodePositionChanged()), this, SLOT(set_changed()));
 }
 
 
@@ -118,7 +116,7 @@ int TCurve::set_state( const QDomNode & node )
 		QStringList whenValueList = nodesList.at(i).split(",");
 		double when = whenValueList.at(0).toDouble();
 		double value = whenValueList.at(1).toDouble();
-		TCurveNode* node = new TCurveNode(this, when, value);
+        TCurveNode* node = new TCurveNode(when, value);
 		private_add_node(node);
 	}
 	
@@ -281,10 +279,10 @@ void TCurve::solve ()
 
 			/* store */
 
-            node->coeff[0] = y[i-1] - (b * x[i-1]) - (c * xim12) - (d * xim13);
-            node->coeff[1] = b;
-            node->coeff[2] = c;
-            node->coeff[3] = d;
+            node->set_coeff(0, y[i-1] - (b * x[i-1]) - (c * xim12) - (d * xim13));
+            node->set_coeff(1,  b);
+            node->set_coeff(2, c);
+            node->set_coeff(3, d);
 
             fplast = fpi;
 		}
@@ -434,7 +432,7 @@ double TCurve::multipoint_eval(double x)
 	if ((m_lookup_cache.left < 0) ||
         ((m_lookup_cache.left > x) || (m_lookup_cache.range.second->get_when() < x))) {
 		
-		TCurveNode cn (this, x, 0.0);
+        TCurveNode cn (x, 0.0);
 
         TCurveNode* first = m_nodes.first();
         TCurveNode* last = m_nodes.last();
@@ -553,7 +551,7 @@ double TCurve::multipoint_eval(double x)
 		double x2 = x * x;
 		TCurveNode* cn = m_lookup_cache.range.second;
 		
-		return cn->coeff[0] + (cn->coeff[1] * x) + (cn->coeff[2] * x2) + (cn->coeff[3] * x2 * x);
+        return cn->get_coeff(0) + (cn->get_coeff(1) * x) + (cn->get_coeff(2) * x2) + (cn->get_coeff(3) * x2 * x);
 	} 
 
 	/* x is a control point in the data */
@@ -639,6 +637,7 @@ TCommand* TCurve::add_node(TCurveNode* node, bool historable)
 		}
 	}
 
+    connect(node, SIGNAL(nodePositionChanged()), this, SLOT(set_changed()));
 
     TAddRemoveCommand* cmd;
         cmd = new TAddRemoveCommand(this, node, historable, m_session,
@@ -668,6 +667,8 @@ TCommand* TCurve::add_node(TCurveNode* node, bool historable)
 TCommand* TCurve::remove_node(TCurveNode* node, bool historable)
 {
     PENTER2;
+
+    disconnect(node, SIGNAL(nodePositionChanged()), this, SLOT(set_changed()));
 
     return new TAddRemoveCommand(this, node, historable, m_session,
                          "private_remove_node(TCurveNode*)", "nodeRemoved(TCurveNode*)",

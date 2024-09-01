@@ -65,7 +65,6 @@ CurveView::CurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve)
     connect(&m_blinkTimer, SIGNAL(timeout()), this, SLOT(update_blink_color()));
     connect(m_curve, &TCurve::nodeAdded, this, &CurveView::add_curvenode_view);
     connect(m_curve, &TCurve::nodeRemoved, this, &CurveView::remove_curvenode_view);
-    connect(m_curve, SIGNAL(nodePositionChanged()), this, SLOT(node_moved()));
     connect(m_curve, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
 
     m_hasMouseTracking = true;
@@ -212,10 +211,13 @@ int CurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &bu
 
 void CurveView::add_curvenode_view(TCurveNode* node)
 {
-    CurveNodeView* nodeview = new CurveNodeView(m_sv, this, node, m_guicurve);
+    CurveNodeView* nodeview = new CurveNodeView(m_sv, this, node);
     m_nodeViews.append(nodeview);
 
-    TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(nodeview, false));
+    connect(node, SIGNAL(nodePositionChanged()), this, SLOT(node_moved()));
+
+
+    TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(nodeview->get_gui_curve_node(), false));
     if (cmd) {
         cmd->set_instantanious(true);
         TCommand::process_command(cmd);
@@ -237,10 +239,12 @@ void CurveView::remove_curvenode_view(TCurveNode* node)
                 m_blinkingNode = nullptr;
                 update_softselected_node(cpointer().scene_pos());
             }
-            TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->remove_node(nodeview, false));
+            TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->remove_node(nodeview->get_gui_curve_node(), false));
             if (cmd) {
                 cmd->set_instantanious(true);
                 TCommand::process_command(cmd);
+
+                disconnect(node, SIGNAL(nodePositionChanged()), this, SLOT(node_moved()));
 
                 scene()->removeItem(nodeview);
                 delete nodeview;
@@ -377,7 +381,7 @@ TCommand* CurveView::add_node()
     double when = point.x() * double(m_sv->timeref_scalefactor) + m_startoffset.universal_frame();
     double value = (m_boundingRect.height() - point.y()) / m_boundingRect.height();
 
-    TCurveNode* node = new TCurveNode(m_curve, when, value);
+    TCurveNode* node = new TCurveNode(when, value);
 
     return m_curve->add_node(node);
 }

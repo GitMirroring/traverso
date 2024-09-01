@@ -37,7 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "TAudioClipView.h"
 #include "CurveView.h"
 #include "CurveNodeView.h"
-#include "MarkerView.h"
+#include "TTimeLineMarkerView.h"
 #include "TSheetView.h"
 #include "SheetWidget.h"
 #include "TAudioTrackView.h"
@@ -123,7 +123,7 @@ TSheetView::TSheetView(SheetWidget* sheetwidget,
 	connect(m_session, SIGNAL(hzoomChanged()), this, SLOT(scale_factor_changed()));
 	connect(m_session, SIGNAL(tempFollowChanged(bool)), this, SLOT(set_follow_state(bool)));
     connect(m_session, &TSession::trackAdded, this, &TSheetView::add_new_track_view);
-    connect(m_session, &TSession::trackRemoved, this, &TSheetView::add_new_track_view);
+    connect(m_session, &TSession::trackRemoved, this, &TSheetView::remove_track_view);
 	connect(m_session, SIGNAL(lastFramePositionChanged()), this, SLOT(update_scrollbars()));
 	connect(m_hScrollBar, SIGNAL(sliderMoved(int)), this, SLOT(stop_follow_play_head()));
 	connect(m_hScrollBar, SIGNAL(actionTriggered(int)), this, SLOT(hscrollbar_action(int)));
@@ -436,7 +436,7 @@ void TSheetView::hscrollbar_value_changed(int value)
     // this here. for now disable calling ied().jog(), so far no behavioral change
     // noticed.
 	if (ied().is_holding()) {
-        TMoveCommand* s = dynamic_cast<TMoveCommand*>(ied().get_holding_command());
+        TMoveCommand* s = qobject_cast<TMoveCommand*>(ied().get_holding_command());
 		if (!s) {
 //			ied().jog();
 		}
@@ -870,16 +870,16 @@ void TSheetView::browse_to_curve_view(CurveView *curveView)
 	cpointer().set_active_context_items_by_keyboard_input(activeList);
 }
 
-void TSheetView::browse_to_marker_view(MarkerView *markerView)
+void TSheetView::browse_to_marker_view(TTimeLineMarkerView *markerView)
 {
 	if (!markerView) {
 		return;
 	}
 
 	QList<TContextItem*> contexts = cpointer().get_active_context_items();
-	MarkerView* view;
+	TTimeLineMarkerView* view;
 	foreach(TContextItem* item, contexts) {
-		view = qobject_cast<MarkerView*>(item);
+		view = qobject_cast<TTimeLineMarkerView*>(item);
 		if (view) {
 			cpointer().remove_from_active_context_list(item);
 			contexts.removeAll(item);
@@ -934,7 +934,7 @@ void TSheetView::collect_item_browser_data(ItemBrowserData &data)
 			data.timeLineView = qobject_cast<TimeLineView*>(obj);
 		}
 		if (!data.markerView) {
-			data.markerView = qobject_cast<MarkerView*>(obj);
+			data.markerView = qobject_cast<TTimeLineMarkerView*>(obj);
 		}
 		if (!data.tv) {
 			data.tv = qobject_cast<TrackView*>(obj);
@@ -1104,7 +1104,7 @@ TCommand* TSheetView::browse_to_next_context_item()
 	collect_item_browser_data(data);
 
 	if (data.currentContext == "TimeLineView" || data.currentContext == "MarkerView") {
-		MarkerView* markerView = m_tlvp->get_timeline_view()->get_marker_view_after(m_session->get_work_location());
+		TTimeLineMarkerView* markerView = m_tlvp->get_timeline_view()->get_marker_view_after(m_session->get_work_location());
 		if (!markerView) {
 			return nullptr;
 		}
@@ -1163,7 +1163,7 @@ TCommand* TSheetView::browse_to_previous_context_item()
 
 	if (data.currentContext == "TimeLineView" || data.currentContext == "MarkerView") {
         Q_ASSERT(m_tlvp);
-		MarkerView* markerView = m_tlvp->get_timeline_view()->get_marker_view_before(m_session->get_work_location());
+		TTimeLineMarkerView* markerView = m_tlvp->get_timeline_view()->get_marker_view_before(m_session->get_work_location());
 		if (!markerView) {
 			return nullptr;
 		}

@@ -22,7 +22,6 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "TTimeRef.h"
 #include <QPixmap>
 #include <QDateTime>
 

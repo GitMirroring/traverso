@@ -362,9 +362,18 @@ TMainWindow::TMainWindow()
 	connect(&pm(), SIGNAL(projectFileVersionMismatch(QString,QString)), this, SLOT(project_file_mismatch(QString,QString)), Qt::QueuedConnection);
 
 	cpointer().add_contextitem(this);
+    ied().set_shortcut_manager(&tShortCutManager());
 
 	connect(&config(), SIGNAL(configChanged()), this, SLOT(config_changed()));
 	connect(&config(), SIGNAL(configChanged()), this, SLOT(update_follow_state()));
+
+    connect(&tShortCutManager(), &TShortCutManager::functionKeysChanged, this, [this]() {
+        for (auto menu : std::as_const(m_contextMenus)) {
+            delete menu;
+        }
+        m_contextMenus.clear();
+    });
+
 	update_follow_state();
 
 //	setUnifiedTitleAndToolBarOnMac(true);
@@ -436,13 +445,13 @@ void TMainWindow::project_load_finished()
     connect(m_project, &TProject::sheetRemoved, this, &TMainWindow::remove_sheetwidget);
 
 	add_session(m_project);
-	foreach(TSession* session, m_project->get_child_sessions()) {
+    for(TSession* session : m_project->get_child_sessions()) {
 		add_session(session);
 	}
 
-	foreach(TSheet* sheet, m_project->get_sheets()) {
+    for(TSheet* sheet : m_project->get_sheets()) {
 		add_session(sheet);
-		foreach(TSession* session, sheet->get_child_sessions()) {
+        for(TSession* session : sheet->get_child_sessions()) {
 			add_session(session);
 		}
 	}
@@ -1126,14 +1135,14 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
 		// If this MenuData item is a submenu, add to the
 		// list of submenus, which will be processed lateron
 		// Else, add the MenuData item as action in the Menu
-        if (function->submenu.isEmpty()) {
+        if (function->get_submenu_name().isEmpty()) {
             add_function_to_menu(function, menu);
 		} else {
             QList<TShortCutFunction*>* list;
-            if ( ! submenus.contains(function->submenu)) {
-                submenus.insert(function->submenu, new QList<TShortCutFunction*>());
+            if ( ! submenus.contains(function->get_submenu_name())) {
+                submenus.insert(function->get_submenu_name(), new QList<TShortCutFunction*>());
             }
-            list = submenus.value(function->submenu);
+            list = submenus.value(function->get_submenu_name());
             list->append(function);
         }
 	}
@@ -1146,7 +1155,7 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
         QList<TShortCutFunction*> list = *submenus.value(key);
 
         std::sort(list.begin(), list.end(), [&](TShortCutFunction* left, TShortCutFunction* right) {
-            return left->sortorder < right->sortorder;
+            return left->get_sort_order() < right->get_sort_order();
         });
 
 		QMenu* subMenu = new QMenu(this);
@@ -1872,28 +1881,6 @@ TCommand* TMainWindow::redo()
 {
     TContextItem::get_undogroup()->redo();
     return 0;
-}
-
-TCommand* TMainWindow::set_transport_location()
-{
-    TProject* project = pm().get_project();
-    if (!project) {
-        return nullptr;
-    }
-
-    TSheet* sheet = project->get_active_sheet();
-    if (!sheet) {
-        return nullptr;
-    }
-
-    SheetWidget* widget = getCurrentSheetWidget();
-    if (widget)
-    {
-        return new PlayHeadMove(widget->get_sheetview());
-
-    }
-
-    return nullptr;
 }
 
 

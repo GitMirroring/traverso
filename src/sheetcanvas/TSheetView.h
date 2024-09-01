@@ -25,6 +25,7 @@
 #include "ViewItem.h"
 #include "TViewPortInterface.h"
 #include <QPropertyAnimation>
+#include "TTimeRef.h"
 
 class TAudioClip;
 class TSheet;
@@ -33,7 +34,7 @@ class TAudioTrackView;
 class ClipsViewPort;
 class CurveView;
 class CurveNodeView;
-class MarkerView;
+class TTimeLineMarkerView;
 class TrackPanelViewPort;
 class TimeLineViewPort;
 class TimeLineView;
@@ -58,7 +59,7 @@ struct ItemBrowserData {
 	}
 
 	TimeLineView* timeLineView;
-	MarkerView* markerView;
+	TTimeLineMarkerView* markerView;
 	TrackView* tv;
 	TAudioTrackView* atv;
 	TAudioClipView* acv;
@@ -123,7 +124,7 @@ public :
 	void browse_to_audio_clip_view(TAudioClipView* acv);
 	void browse_to_curve_view(CurveView* curveView);
 	void browse_to_curve_node_view(CurveNodeView* nodeView);
-	void browse_to_marker_view(MarkerView* markerView);
+	void browse_to_marker_view(TTimeLineMarkerView* markerView);
 	void center_in_view(ViewItem* item, enum Qt::AlignmentFlag = Qt::AlignHCenter);
     void keyboard_move_canvas_cursor_to_location(const TTimeRef &location, qreal sceneY);
 

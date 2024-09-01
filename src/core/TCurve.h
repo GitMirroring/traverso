@@ -96,8 +96,6 @@ private :
     void solve ();
     void init();
 
-    friend class TCurveNode;
-
 protected slots:
     void set_changed();
 
@@ -111,7 +109,6 @@ signals :
     void stateChanged();
     void nodeAdded(TCurveNode*);
     void nodeRemoved(TCurveNode*);
-    void nodePositionChanged();
 };
 
 

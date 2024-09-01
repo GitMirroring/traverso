@@ -21,19 +21,14 @@ $Id: TCurveNode.cpp,v 1.8 2007/11/23 14:56:36 r_sijrier Exp $
 */
 
 #include "TCurveNode.h"
-#include "TCurve.h"
 
 #include "qassert.h"
 #include <cmath>
 
 
-
-#include "Debugger.h"
-
-TCurveNode::TCurveNode(TCurve *curve, double when, double value)
-    : m_curve(curve)
+TCurveNode::TCurveNode(double when, double value)
 {
-    coeff[0] = coeff[1] = coeff[2] = coeff[3] = 0.0;
+    m_coeff[0] = m_coeff[1] = m_coeff[2] = m_coeff[3] = 0.0;
 
     set_when_and_value(when, value);
 
@@ -49,15 +44,19 @@ void TCurveNode::set_when(double when) {
     Q_ASSERT( ! std::isnan(when));
 
     m_when = when;
+
+    emit nodePositionChanged();
 }
 
-void TCurveNode::set_relative_when_and_value( double relwhen, double value )
+void TCurveNode::set_relative_when_and_value( double relwhen, double value, double range)
 {
     Q_ASSERT( ! std::isnan(relwhen));
     Q_ASSERT( ! std::isnan(value));
 
-    m_when = relwhen * m_curve->get_range();
+    m_when = relwhen * range;
     m_value = value;
+
+    emit nodePositionChanged();
 }
 
 void TCurveNode::set_when_and_value(double when, double value)
@@ -71,7 +70,7 @@ void TCurveNode::set_when_and_value(double when, double value)
     m_when = when;
     m_value = value;
 
-	emit m_curve->nodePositionChanged();
+    emit nodePositionChanged();
 }
 //eof
 

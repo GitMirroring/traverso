@@ -34,6 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  * \brief An abstract class to create new Command's which can be loaded dynamically
  *
  */
+class TShortCutManager;
 
 class TCommandPlugin : public QObject
 {
@@ -50,7 +51,7 @@ public:
 	 * @return On success a Command object, the caller takes authorship, or 0 on failure.
  */
 	virtual TCommand* create(QObject* obj, const QString& command, QVariantList arguments) = 0;
-    virtual void load() = 0;
+    virtual void load(TShortCutManager* manager) = 0;
 
 	virtual QStringList commands() const {
 		return QStringList(m_dict.keys());

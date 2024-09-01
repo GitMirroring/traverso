@@ -40,7 +40,7 @@ $Id: FadeCurveView.cpp,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 #include <Debugger.h>
 
 static const int DOT_SIZE		= 6;
-static const QString DOT_COLOR		= "#78817B";
+const char* DOT_COLOR{"#78817B"};
 
 TFadeCurveView::TFadeCurveView(TSheetView* sv, TAudioClipView* parent, TFadeCurve * fadeCurve )
     : ViewItem(parent, fadeCurve)
@@ -56,9 +56,7 @@ TFadeCurveView::TFadeCurveView(TSheetView* sv, TAudioClipView* parent, TFadeCurv
     Q_ASSERT(m_fadeCurve);
 
     for(TCurveNode* node = m_fadeCurve->get_nodes().first(); node != nullptr; node = node->next) {
-		TCurveNode* guinode = new TCurveNode(m_guicurve, 
-				node->get_when() / m_sv->timeref_scalefactor,
-				node->get_value());
+        TCurveNode* guinode = new TCurveNode(node->get_when() / m_sv->timeref_scalefactor, node->get_value());
         TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(guinode, false));
 		cmd->set_instantanious(true);
 		TCommand::process_command(cmd);
@@ -264,17 +262,6 @@ void TFadeCurveView::state_changed( )
 	update();
 	
 	emit fadeModified();
-}
-
-
-TCommand* TFadeCurveView::bend()
-{
-	return new FadeBend(this);
-}
-
-TCommand* TFadeCurveView::strength()
-{
-	return new FadeStrength(this);
 }
 
 TCommand* TFadeCurveView::select_fade_shape()

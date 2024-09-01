@@ -860,40 +860,40 @@ void TAudioClipView::update_recording()
 
 TCommand * TAudioClipView::set_audio_file()
 {
-    if (m_clip->is_readsource_invalid()) {
-        TReadAudioSource* rs = m_clip->get_readsource();
-        if ( ! rs ) {
-            return ied().failure();
-        }
-
-        QString filename = QFileDialog::getOpenFileName(TMainWindow::instance(),
-                                                        tr("Reset Audio File for Clip: %1").arg(m_clip->get_name()),
-                                                        rs->get_filename(),
-                                                        tr("All files (*);;Audio files (*.wav *.flac)"));
-
-        if (filename.isEmpty()) {
-            tInformUser().information(tr("No file selected!"));
-            return ied().failure();
-        }
-
-        if (rs->set_file(filename) < 0) {
-            return ied().failure();
-        }
-
-        resources_manager()->set_source_for_clip(m_clip, rs);
-
-
-        // FIXME This is a hack. When a ReadSource didn't have a valid file it wasn't added
-        // to DiskIO in AudioClip::set_sheet(). So when resetting the audiofile this solves it,
-        // but it's not the proper place to do so!!
-        m_clip->set_sheet(m_sheet);
-
-        tInformUser().information(tr("Succesfully set AudioClip file to %1").arg(filename));
-
-        return ied().succes();
+    if (!m_clip->is_readsource_invalid()) {
+        return ied().failure();
     }
 
-    return ied().did_not_implement();
+    TReadAudioSource* rs = m_clip->get_readsource();
+    if ( ! rs ) {
+        return ied().failure();
+    }
+
+    QString filename = QFileDialog::getOpenFileName(TMainWindow::instance(),
+                                                    tr("Reset Audio File for Clip: %1").arg(m_clip->get_name()),
+                                                    rs->get_filename(),
+                                                    tr("All files (*);;Audio files (*.wav *.flac)"));
+
+    if (filename.isEmpty()) {
+        tInformUser().information(tr("No file selected!"));
+        return ied().failure();
+    }
+
+    if (rs->set_file(filename) < 0) {
+        return ied().failure();
+    }
+
+    resources_manager()->set_source_for_clip(m_clip, rs);
+
+
+    // FIXME This is a hack. When a ReadSource didn't have a valid file it wasn't added
+    // to DiskIO in AudioClip::set_sheet(). So when resetting the audiofile this solves it,
+    // but it's not the proper place to do so!!
+    m_clip->set_sheet(m_sheet);
+
+    tInformUser().information(tr("Succesfully set AudioClip file to %1").arg(filename));
+
+    return ied().succes();
 }
 
 TCommand * TAudioClipView::edit_properties()
