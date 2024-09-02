@@ -347,13 +347,6 @@ TCommand* TAudioTrack::toggle_arm()
 }
 
 
-TCommand* TAudioTrack::silence_others( )
-{
-    PCommand* command = new PCommand(this, "solo", tr("Silence Other Tracks"));
-    command->set_do_not_push_to_historystack();
-    return command;
-}
-
 bool TAudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& trackExportEndLocation )
 {
     if(m_guiAudioClips.isEmpty()) {

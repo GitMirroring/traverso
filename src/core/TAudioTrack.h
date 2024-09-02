@@ -103,7 +103,6 @@ public slots:
     void clip_position_changed(TAudioClip* clip);
 
     TCommand* toggle_arm();
-    TCommand* silence_others();
 
 private slots:
     void private_add_clip(TAudioClip* clip);
