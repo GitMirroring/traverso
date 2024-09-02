@@ -62,6 +62,7 @@ public:
     bool uses_inherited_base() const {return m_usesBaseFunction;}
     bool uses_x() const {return m_useX;}
     bool uses_y() const {return m_useY;}
+    bool always_safe_to_dispatch() const {return m_alwaysSafeToDispatch;}
 
     void set_base_metaobject(const QMetaObject* base)
     {
@@ -73,6 +74,8 @@ public:
         Q_ASSERT(baseShortCutFunction);
         m_baseShortCutFunction = baseShortCutFunction;
     }
+
+    void set_always_safe_to_dispatch(bool alwaysSafe) {m_alwaysSafeToDispatch = alwaysSafe;}
 
     void add_keys(const QStringList & keys) {m_keys << keys;}
     void add_modifier_key(int modifier) { m_modifierkeys.append(modifier);}
@@ -104,17 +107,17 @@ public:
         PENTER;
         Q_ASSERT(m_metaMethod.isValid());
         Q_ASSERT(m_metaObject);
-        bool result = m_metaMethod.invoke(object, Qt::DirectConnection);;
+        bool result = m_metaMethod.invoke(object, Qt::DirectConnection);
         PMESG((result ? "TShortCutFunction::dispatch: SUCCESS invoking %s::%s" : "TShortCutFunction::dispatch: FAILED invoking %s::%s"), m_metaObject->className(), m_metaMethod.methodSignature().constData());
         return result;
     }
 
 
 private:
-    const QMetaObject*  m_metaObject = nullptr;
+    const QMetaObject*  m_metaObject{nullptr};
     const char*         m_commandName;
-    const QMetaObject*	m_baseMetaObject = nullptr;
-    TShortCutFunction*  m_baseShortCutFunction = nullptr;
+    const QMetaObject*	m_baseMetaObject{nullptr};
+    TShortCutFunction*  m_baseShortCutFunction{nullptr};
     QMetaMethod         m_metaMethod;
 
     QVariantList        m_arguments;
@@ -125,14 +128,15 @@ private:
     QString             m_pluginname;
     QString             m_submenu;
 
-    bool                m_useX = false;
-    bool                m_useY = false;
-    bool                m_usesAutoRepeat = false;
-    bool                m_usesBaseFunction = false;
+    bool                m_useX{false};
+    bool                m_useY{false};
+    bool                m_usesAutoRepeat{false};
+    bool                m_usesBaseFunction{false};
+    bool                m_alwaysSafeToDispatch{false};
 
-    int                 m_sortorder = 0;
-    int                 m_autorepeatInterval = -1;
-    int                 m_autorepeatStartDelay = -1;
+    int                 m_sortorder{0};
+    int                 m_autorepeatInterval{-1};
+    int                 m_autorepeatStartDelay{-1};
 };
 
 #endif // TSHORTCUTFUNCTION_H

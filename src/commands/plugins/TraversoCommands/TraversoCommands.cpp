@@ -217,10 +217,9 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&TAudioPlugin::staticMetaObject,        &TToggleBypassBase::staticMetaObject,           "PluginToggleBypass", "toggle_bypass()");
     m->add_function(&TAudioPluginView::staticMetaObject,    &TEditPropertiesBase::staticMetaObject,         "EditPluginProperties", "edit_properties()");
 
-    m->add_function(&TAudioProcessingNode::staticMetaObject, tr("Mute"),    "Mute",                         "mute()");
+    m->add_function(&TAudioProcessingNode::staticMetaObject, tr("Mute"),    "Mute",                         "mute()", ALWAYS_SAFE_TO_DISPATCH);
 
-    m->add_function(&TAudioTrack::staticMetaObject, tr("Record: On/Off"),   "AudioTrackToggleRecord",       "toggle_arm()");
-    m->add_function(&TAudioTrack::staticMetaObject, tr("Silence other tracks"), "AudioTrackSilenceOthers",  "silence_others()");
+    m->add_function(&TAudioTrack::staticMetaObject, tr("Record: On/Off"),   "AudioTrackToggleRecord",       "toggle_arm()", ALWAYS_SAFE_TO_DISPATCH);
 
     m->add_function(&TAudioTrackView::staticMetaObject, tr("Insert Silence"), "AudioTrackInsertSilence",    "insert_silence()");
 
@@ -233,9 +232,9 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&CurveView::staticMetaObject,   tr("Select All Nodes"), "CurveSelectAllNodes",          "toggle_select_all_nodes()");
     m->add_function(&CurveView::staticMetaObject,   tr("Select Node"),      "CurveSelectNode",              "select_lazy_selected_node()");
 
-    m->add_function(&TFadeCurve::staticMetaObject,  tr("Cycle Shape"),      "FadeCurveCycleShape",          "set_mode()");
-    m->add_function(&TFadeCurve::staticMetaObject,  &TToggleBypassBase::staticMetaObject,                   "FadeCurveToggleBypass", "toggle_bypass()");
-    m->add_function(&TFadeCurve::staticMetaObject,  tr("Toggle Raster"),    "FadeCurveToggleRaster",        "toggle_raster()");
+    m->add_function(&TFadeCurve::staticMetaObject,  tr("Cycle Shape"),      "FadeCurveCycleShape",          "set_mode()", ALWAYS_SAFE_TO_DISPATCH);
+    m->add_function(&TFadeCurve::staticMetaObject,  &TToggleBypassBase::staticMetaObject,                   "FadeCurveToggleBypass", "toggle_bypass()", ALWAYS_SAFE_TO_DISPATCH);
+    m->add_function(&TFadeCurve::staticMetaObject,  tr("Toggle Raster"),    "FadeCurveToggleRaster",        "toggle_raster()", ALWAYS_SAFE_TO_DISPATCH);
     m->add_function(&TFadeCurveView::staticMetaObject, tr("Select Preset"), "FadeSelectPreset",             "select_fade_shape()");
 
     m->add_function(&FadeRange::staticMetaObject, &TResetBase::staticMetaObject, "FadeResetLength",         "reset_length()");
@@ -275,7 +274,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&PlayHeadMove::staticMetaObject, tr("To Start"),        "PlayHeadMoveToStart",          "move_to_start()");
     m->add_function(&PlayHeadMove::staticMetaObject, tr("To Work Cursor"),  "PlayHeadMoveToWorkCursor",     "move_to_work_cursor()");
 
-    m->add_function(&TProjectManager::staticMetaObject, tr("Save Project"), "ProjectSave",                  "save_project()");
+    m->add_function(&TProjectManager::staticMetaObject, tr("Save Project"), "ProjectSave",                  "save_project()", ALWAYS_SAFE_TO_DISPATCH);
 
     m->add_function(&TSheetView::staticMetaObject,  &TEditPropertiesBase::staticMetaObject, "EditSongProperties",           "edit_properties()");
     m->add_function(&TSheetView::staticMetaObject,  tr("Add Marker at Playhead"),           "SheetAddMarkerAtPlayhead",     "add_marker_at_playhead()");
@@ -304,7 +303,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&TimeLineView::staticMetaObject, tr("Playhead to Marker"),              "TimeLinePlayheadToMarker",         "playhead_to_marker()");
     m->add_function(&TimeLineView::staticMetaObject, tr("Edit Markers"),                    "TimeLineShowMarkerDialog",         "show_marker_dialog()");
 
-    m->add_function(&TTrack::staticMetaObject,      tr("Solo"),             "Solo",                         "solo()");
+    m->add_function(&TTrack::staticMetaObject,      tr("Solo"),             "Solo",                         "solo()", ALWAYS_SAFE_TO_DISPATCH);
     m->add_function(&TrackView::staticMetaObject,   tr("Add new Plugin"),   "TrackAddPlugin",               "add_new_plugin()");
 
     m->add_function(&TPanKnobView::staticMetaObject, tr("Pan to Left"),     "PanKnobPanLeft",               "pan_left()");
@@ -318,10 +317,10 @@ void TraversoCommands::load(TShortCutManager* m)
 
     m->add_function(&TrackPanelLed::staticMetaObject,   tr("Toggle On/Off"), "PanelLedToggle",              "toggle()");
 
-    m->add_function(&TTransport::staticMetaObject,  tr("Play (Start/Stop)"),"TransportPlayStartStop",       "start_transport()");
-    m->add_function(&TTransport::staticMetaObject,  tr("Start Recording"),  "TransportSetRecordingPlayStart","set_recordable_and_start_transport()");
-    m->add_function(&TTransport::staticMetaObject,  tr("To start"),         "TransportToStart",             "to_start()");
-    m->add_function(&TTransport::staticMetaObject,  tr("To end"),           "TransportToEnd",               "to_end()");
+    m->add_function(&TTransport::staticMetaObject,  tr("Play (Start/Stop)"),"TransportPlayStartStop",       "start_transport()", ALWAYS_SAFE_TO_DISPATCH);
+    m->add_function(&TTransport::staticMetaObject,  tr("Start Recording"),  "TransportSetRecordingPlayStart","set_recordable_and_start_transport()", ALWAYS_SAFE_TO_DISPATCH);
+    m->add_function(&TTransport::staticMetaObject,  tr("To start"),         "TransportToStart",             "to_start()", ALWAYS_SAFE_TO_DISPATCH);
+    m->add_function(&TTransport::staticMetaObject,  tr("To end"),           "TransportToEnd",               "to_end()", ALWAYS_SAFE_TO_DISPATCH);
 
     m->add_function(&WorkCursorMove::staticMetaObject, tr("To Playhead"),   "WorkCursorMoveToPlayhead",     "move_to_play_cursor()");
     m->add_function(&WorkCursorMove::staticMetaObject, tr("To Start"),      "WorkCursorMoveToStart",        "move_to_start()");

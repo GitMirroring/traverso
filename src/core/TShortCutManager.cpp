@@ -83,7 +83,11 @@ TShortCutFunction *TShortCutManager::add_base_function(const QMetaObject *metaOb
     return function;
 }
 
-TShortCutFunction* TShortCutManager::add_function(const QMetaObject *metaObject, const QString &description, const char *commandName, const char *slotSignature)
+TShortCutFunction* TShortCutManager::add_function(const QMetaObject *metaObject,
+                                                  const QString &description,
+                                                  const char *commandName,
+                                                  const char *slotSignature,
+                                                  bool alwaysSafeToDispatch)
 {
     if (m_shortCutFunctions.contains(commandName)) {
         printf("There is already a function registered with command name %s\n", commandName);
@@ -91,19 +95,25 @@ TShortCutFunction* TShortCutManager::add_function(const QMetaObject *metaObject,
 	}
 
     auto function = new TShortCutFunction(metaObject, description, commandName, slotSignature);
+    function->set_always_safe_to_dispatch(alwaysSafeToDispatch);
 
     m_shortCutFunctions.insert(commandName, function);
 
     return function;
 }
 
-TShortCutFunction *TShortCutManager::add_function(const QMetaObject *metaObject, const QMetaObject *baseMetaObject, const char *commandName, const char *slotSignature)
+TShortCutFunction *TShortCutManager::add_function(const QMetaObject *metaObject,
+                                                  const QMetaObject *baseMetaObject,
+                                                  const char *commandName,
+                                                  const char *slotSignature,
+                                                  bool alwaysSafeToDispatch)
 {
     Q_ASSERT(std::strlen(slotSignature) > 0);
 
     auto function = add_function(metaObject, "", commandName, slotSignature);
     if (function) {
         function->set_base_metaobject(baseMetaObject);
+        function->set_always_safe_to_dispatch(alwaysSafeToDispatch);
     }
     return function;
 }

@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TShortCutManager.h"
 #include "TConfig.h"
 #include "TTimeRef.h"
+#include "TGlobalContext.h"
 #include "Debugger.h"
 
 #include <QMetaMethod>
@@ -215,22 +216,31 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
         QString pluginname = shortCutFunction->get_plugin_name();
         QString commandname = shortCutFunction->get_command_name();
 
-        if (is_holding() && contextItem == m_holdingCommand) {
-            PMESG("Dispatching to holdcommand %s", m_holdingCommand->metaObject()->className());
-            if (shortCutFunction->dispatch(contextItem)) {
-                // only now we know which object this hold modifier key was dispatched on.
-                // the process_hold_modifier_keys() only knows about the corresonding ieaction
-                // next time it'll be called, autorepeat interval of the object + keysequence will
-                // be used!
-                shortCut->set_autorepeat_interval(shortCutFunction->get_autorepeat_interval());
-                shortCut->set_autorepeat_start_delay(shortCutFunction->get_autorepeat_start_delay());
+        if (is_holding()) {
+            // If we're holding we either only dispatch to the hold command object
+            if (contextItem == m_holdingCommand) {
+                PMESG("Dispatching to holdcommand %s", m_holdingCommand->metaObject()->className());
+                if (shortCutFunction->dispatch(contextItem)) {
+                    // only now we know which object this hold modifier key was dispatched on.
+                    // the process_hold_modifier_keys() only knows about the corresonding ieaction
+                    // next time it'll be called, autorepeat interval of the object + keysequence will
+                    // be used!
+                    shortCut->set_autorepeat_interval(shortCutFunction->get_autorepeat_interval());
+                    shortCut->set_autorepeat_start_delay(shortCutFunction->get_autorepeat_start_delay());
 
-                if (shortCutFunction->uses_autorepeat()) {
-                    m_holdKeyRepeatTimer.start(10);
+                    if (shortCutFunction->uses_autorepeat()) {
+                        m_holdKeyRepeatTimer.start(10);
+                    }
+
+                    return 1;
                 }
-
-                break;
+                // or if that didn't apply to a shortcut function that has registered itself
+                // to be always safe to be dispached to
+            } else if (shortCutFunction->always_safe_to_dispatch()) {
+                shortCutFunction->dispatch(contextItem);
             }
+
+            return 1;
         }
 
         // We first try to find if there is a match in the loaded plugins.

@@ -44,8 +44,8 @@ public:
     static const int MouseScrollVerticalDown = -4;
 
     TShortCutFunction* add_base_function(const QMetaObject *metaObject, const QString &description, const char *commandName);
-    TShortCutFunction* add_function(const QMetaObject *metaObject, const QString &description, const char *commandName, const char *slotSignature);
-    TShortCutFunction* add_function(const QMetaObject *metaObject, const QMetaObject *baseMetaObject, const char *commandName, const char *slotSignature);
+    TShortCutFunction* add_function(const QMetaObject *metaObject, const QString &description, const char *commandName, const char *slotSignature, bool alwaysSafeToDispatch=false);
+    TShortCutFunction* add_function(const QMetaObject *metaObject, const QMetaObject *baseMetaObject, const char *commandName, const char *slotSignature, bool alwaysSafeToDispatch=false);
     TShortCutFunction* get_shortcut_function_for_base_metaobject(const QMetaObject *metaObject) const;
 
     QList<TShortCutFunction* > get_shortcut_function_for_class(QString className);
