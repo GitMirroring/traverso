@@ -34,49 +34,50 @@ class QPoint;
 
 class Zoom : public TCommand
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public :
-        Zoom(TSheetView* sv, const QVariantList &args);
-        ~Zoom() {}
+    Zoom(TSheetView* sv, const QVariantList &args);
+    ~Zoom() {}
 
-        int begin_hold();
-        int finish_hold();
-        int prepare_actions();
-	int do_action();
-	int undo_action();
+    int begin_hold();
+    int finish_hold();
+    int prepare_actions();
+    int do_action();
+    int undo_action();
 
-        int jog();
+    int jog();
 
-        void set_cursor_shape(int useX, int useY);
-        void process_collected_number(const QString & collected);
-	bool supportsEnterFinishesHold() const {return false;}
+    void set_cursor_shape(int useX, int useY);
+    void process_collected_number(const QString & collected);
+    bool supportsEnterFinishesHold() const {return false;}
 
 private :
-        int m_horizontalJogZoomLastX{};
-        int m_verticalJogZoomLastY{};
-        int m_trackHeight;
-	bool m_jogVertical;
-	bool m_jogHorizontal;
-	qreal m_xScalefactor;
-	qreal m_yScalefactor;
-        QPoint	m_mousePos;
-        QPointF	m_origPos;
+    int m_horizontalJogZoomLastX{};
+    int m_verticalJogZoomLastY{};
+    int m_trackHeight;
+    bool m_jogVertical;
+    bool m_jogHorizontal;
+    qreal m_xScalefactor;
+    qreal m_yScalefactor;
+    QPoint	m_mousePos;
+    QPointF	m_origPos;
 
-        int collected_number_to_track_height(const QString& collected) const;
-	
-        TSheetView* m_sv;
-        TrackView* m_tv;
-	
+    int collected_number_to_track_height(const QString& collected) const;
+
+    TSheetView* m_sv;
+    TrackView* m_tv;
+
 public slots:
-	void vzoom_in();
-	void vzoom_out();
-        void hzoom_in();
-        void hzoom_out();
-        void track_vzoom_in();
-        void track_vzoom_out();
-	void toggle_vertical_horizontal_jog_zoom();
-        void toggle_expand_all_tracks();
+    void vzoom_in();
+    void vzoom_out();
+    void hzoom_in();
+    void hzoom_out();
+    void track_vzoom_in();
+    void track_vzoom_out();
+    void toggle_vertical_horizontal_jog_zoom();
+    void toggle_expand_all_tracks();
+    void numerical_input();
 };
 
 #endif

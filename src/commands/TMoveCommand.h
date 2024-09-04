@@ -80,6 +80,7 @@ public slots:
     void move_faster();
     void move_slower();
     void toggle_snap_on_off();
+    void numerical_input();
 
     // Move up/down/left/right moves scrollbars by pagestep
     // as a default. Reimplement those function if different

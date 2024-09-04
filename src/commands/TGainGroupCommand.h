@@ -66,6 +66,7 @@ public slots:
     void decrease_gain();
     void reset_gain();
     void toggle_primary_gain_only();
+    void numerical_input();
 };
 
 #endif

@@ -246,6 +246,11 @@ void TMoveCommand::toggle_snap_on_off()
 	}
 }
 
+void TMoveCommand::numerical_input()
+{
+    cpointer().set_canvas_cursor_text(tr("Use numerical keys to set speed..."), 2000);
+}
+
 void TMoveCommand::start_shuttle(bool drag)
 {
     if (!d->sv) {

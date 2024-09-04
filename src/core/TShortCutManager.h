@@ -48,7 +48,7 @@ public:
     TShortCutFunction* add_function(const QMetaObject *metaObject, const QMetaObject *baseMetaObject, const char *commandName, const char *slotSignature);
     TShortCutFunction* get_shortcut_function_for_base_metaobject(const QMetaObject *metaObject) const;
 
-    QList<TShortCutFunction* > get_shortcut_function_for_class(QString className);
+    QList<TShortCutFunction* > get_shortcut_functions_for_class(QString className);
     TShortCut* get_shortcut_for_key(const QString& key);
     TShortCut* get_shortcut_for_key(int key);
     TCommandPlugin* get_command_plugin(const QString& pluginName);

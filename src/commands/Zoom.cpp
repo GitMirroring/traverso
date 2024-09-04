@@ -296,3 +296,8 @@ void Zoom::toggle_expand_all_tracks()
 	m_sv->toggle_expand_all_tracks(-1);
 }
 
+void Zoom::numerical_input()
+{
+    cpointer().set_canvas_cursor_text(tr("Use numerical input to set track height.."), 2000);
+}
+

@@ -255,5 +255,10 @@ void TGainGroupCommand::toggle_primary_gain_only()
     cpointer().set_canvas_cursor_text(m_primaryGainOnly ? tr("To Selection: Off") : tr("To Selection: On"));
 }
 
+void TGainGroupCommand::numerical_input()
+{
+    cpointer().set_canvas_cursor_text(tr("Use numerical keys to set gain dB value..."), 2000);
+}
+
 // eof
 

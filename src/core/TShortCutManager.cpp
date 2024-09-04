@@ -125,7 +125,7 @@ TShortCutFunction* TShortCutManager::get_shortcut_function_for_base_metaobject(c
 	return function;
 }
 
-QList< TShortCutFunction* > TShortCutManager::get_shortcut_function_for_class(QString className)
+QList< TShortCutFunction* > TShortCutManager::get_shortcut_functions_for_class(QString className)
 {
     QList<TShortCutFunction* > functionsList;
     QStringList classes = m_classes.value(className.remove("View"));
@@ -539,7 +539,7 @@ QString TShortCutManager::create_html_for_class(const QString& className, QObjec
 
 	QStringList result;
 	int j=0;
-    QList<TShortCutFunction* > shortCutFunctionsForClass = get_shortcut_function_for_class(className);
+    QList<TShortCutFunction* > shortCutFunctionsForClass = get_shortcut_functions_for_class(className);
     QMap<QString, QList<TShortCutFunction*> > functionsMap;
 
     for(TShortCutFunction* function : shortCutFunctionsForClass)

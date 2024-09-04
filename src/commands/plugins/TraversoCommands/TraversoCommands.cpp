@@ -241,7 +241,7 @@ void TraversoCommands::load(TShortCutManager* m)
 
     m->add_function(&TGainGroupCommand::staticMetaObject, tr("Increase"),   "GainIncrease",                 "increase_gain()");
     m->add_function(&TGainGroupCommand::staticMetaObject, tr("Decrease"),   "GainDecrease",                 "decrease_gain()");
-    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Input dB value"), "GainNumericalInput",       ""); // numerical input, no slot needed
+    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Input dB value"), "GainNumericalInput",       "numerical_input()");
     m->add_function(&TGainGroupCommand::staticMetaObject, tr("To Selection: On/Off"), "GainToggleSelection",    "toggle_primary_gain_only()");
     m->add_function(&TGainGroupCommand::staticMetaObject, &TResetBase::staticMetaObject, "GainReset",       "reset_gain()");
 
@@ -262,7 +262,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&TMoveCommand::staticMetaObject, tr("Move Down"),       "MoveCommandDown",              "move_down()");
     m->add_function(&TMoveCommand::staticMetaObject, tr("Move Faster"),     "MoveCommandFaster",            "move_faster()");
     m->add_function(&TMoveCommand::staticMetaObject, tr("Move Slower"),     "MoveCommandSlower",            "move_slower()");
-    m->add_function(&TMoveCommand::staticMetaObject, tr("Moving Speed"),    "MoveCommandSpeed",             ""); // numerical input, no slot needed
+    m->add_function(&TMoveCommand::staticMetaObject, tr("Moving Speed"),    "MoveCommandSpeed",             "numerical_input()");
     m->add_function(&TMoveCommand::staticMetaObject, tr("Snap On/Off"),     "MoveCommandToggleSnap",        "toggle_snap_on_off()");
 
     m->add_function(&MoveCurveNode::staticMetaObject, &TToggleVerticalBase::staticMetaObject, "MoveCurveNodeToggleVerticalOnly", "toggle_vertical_only()");
@@ -329,7 +329,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&Zoom::staticMetaObject,        tr("Out"),              "ZoomOut",                      "hzoom_out()");
     m->add_function(&Zoom::staticMetaObject,        tr("Track Vertical Zoom In"),   "ZoomTrackVerticalIn",  "track_vzoom_in()");
     m->add_function(&Zoom::staticMetaObject,        tr("Track Vertical Zoom Out"),  "ZoomTrackVerticalOut", "track_vzoom_out()");
-    m->add_function(&Zoom::staticMetaObject,        tr("Track Height"),             "ZoomNumericalInput",   ""); // numerical input, no slot needed
+    m->add_function(&Zoom::staticMetaObject,        tr("Track Height"),             "ZoomNumericalInput",   "numerical_input()");
     m->add_function(&Zoom::staticMetaObject,        tr("Expand/Collapse Tracks"),   "ZoomToggleExpandAllTracks", "toggle_expand_all_tracks()");
     m->add_function(&Zoom::staticMetaObject, &TToggleVerticalBase::staticMetaObject, "ZoomToggleVerticalHorizontal", "toggle_vertical_horizontal_jog_zoom()");
 }

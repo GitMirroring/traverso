@@ -155,7 +155,7 @@ void TShortcutEditorDialog::objects_combo_box_activated(int index)
         ui->shortcutsTreeWidget->setHeaderLabels(QStringList() << tr("Function") << tr("Key / Button"));
 	}
 
-    QList<TShortCutFunction* > functionsList = tShortCutManager().get_shortcut_function_for_class(className);
+    QList<TShortCutFunction* > functionsList = tShortCutManager().get_shortcut_functions_for_class(className);
 
 	foreach(TShortCutFunction* function, functionsList)
 	{

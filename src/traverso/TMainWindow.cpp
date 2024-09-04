@@ -1101,7 +1101,7 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
 {
 	QList<TShortCutFunction* > list;
 	if (item) {
-		list = tShortCutManager().get_shortcut_function_for_class(item->metaObject()->className());
+        list = tShortCutManager().get_shortcut_functions_for_class(item->metaObject()->className());
 	} else {
 		list = *menulist;
 	}
