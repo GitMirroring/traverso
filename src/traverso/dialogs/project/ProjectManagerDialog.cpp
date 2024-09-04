@@ -80,8 +80,8 @@ void ProjectManagerDialog::set_project(TProject* project)
 	m_project = project;
 	
 	if (m_project) {
-		connect(m_project, SIGNAL(sheetAdded(Sheet*)), this, SLOT(update_sheet_list()));
-		connect(m_project, SIGNAL(sheetRemoved(Sheet*)), this, SLOT(update_sheet_list()));
+        connect(m_project, &TProject::sheetAdded, this, &ProjectManagerDialog::update_sheet_list);
+        connect(m_project, &TProject::sheetRemoved, this, &ProjectManagerDialog::update_sheet_list);
         connect(m_project->get_history_stack(), SIGNAL(redoTextChanged(QString)),
             this, SLOT(redo_text_changed(QString)));
         connect(m_project->get_history_stack(), SIGNAL(undoTextChanged(QString)),

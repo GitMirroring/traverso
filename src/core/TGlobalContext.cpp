@@ -28,23 +28,31 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 TGlobalContext::TGlobalContext(QObject *parent) :
     QObject(parent)
 {
-	m_session = 0;
-	m_project = 0;
+    m_session = nullptr;
+    m_project = nullptr;
 
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
+    connect(&pm(), &TProjectManager::projectLoaded, this, &TGlobalContext::set_project);
 }
 
 void TGlobalContext::set_project(TProject *project)
 {
+    PENTER;
+
+    if (m_project) {
+        disconnect(m_project, &TProject::currentSessionChanged, this, &TGlobalContext::set_session);
+    }
+
 	m_project = project;
-	if (m_project) {
-		connect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
+
+    if (m_project) {
+        connect(m_project, &TProject::currentSessionChanged, this, &TGlobalContext::set_session);
 	} else {
-		set_session(0);
+        set_session(nullptr);
 	}
 }
 
 void TGlobalContext::set_session(TSession *session)
 {
+    PENTER;
 	m_session = session;
 }

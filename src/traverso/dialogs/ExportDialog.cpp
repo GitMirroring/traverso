@@ -158,7 +158,7 @@ void ExportDialog::on_fileSelectButton_clicked( )
 void ExportDialog::render_finished( )
 {
 	disconnect(m_project, SIGNAL(exportFinished()), this, SLOT(render_finished()));
-	disconnect(m_project, SIGNAL(exportStartedForSheet(Sheet*)), this, SLOT (set_exporting_sheet(Sheet*)));
+    disconnect(m_project, SIGNAL(exportStartedForSheet(TSheet*)), this, SLOT (set_exporting_sheet(TSheet*)));
 	
 	startButton->show();
 	closeButton->show();

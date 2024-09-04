@@ -44,11 +44,12 @@ TTransport& transport()
 
 TCommand* TTransport::start_transport()
 {
-    if (!m_session)	{
-        return nullptr;
+    if (m_session)	{
+        return m_session->start_transport();
     }
 
-    return m_session->start_transport();
+    PMESG("No session set, not starting transport");
+    return nullptr;
 }
 
 TCommand * TTransport::set_recordable_and_start_transport()

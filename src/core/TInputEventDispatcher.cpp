@@ -343,7 +343,7 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
                     } else {
                         keyString = QKeySequence(shortCut->get_key_value()).toString();
                     }
-                    cpointer().set_canvas_cursor_text(tr("%1 or Enter to accept, Esc to cancel").arg(keyString));
+                    cpointer().set_canvas_cursor_text(tr("Press %1 or Enter to accept, Esc to cancel, Q for more").arg(keyString));
                 }
 
                 return 1;

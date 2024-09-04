@@ -97,7 +97,7 @@ TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioCl
 
     if (m_clip->recording_state() == TAudioClip::RECORDING) {
         start_recording();
-        connect(m_clip, SIGNAL(recordingFinished(AudioClip*)), this, SLOT(finish_recording()));
+        connect(m_clip, &TAudioClip::recordingFinished, this, &TAudioClipView::finish_recording);
     }
 }
 

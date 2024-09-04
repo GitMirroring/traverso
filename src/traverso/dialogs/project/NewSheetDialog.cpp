@@ -112,8 +112,8 @@ void NewSheetDialog::set_project(TProject * project)
 		return;
 	}
 	
-	connect(m_project, SIGNAL(sheetAdded(Sheet*)), this, SLOT(update_template_combo()));
-	connect(m_project, SIGNAL(sheetRemoved(Sheet*)), this, SLOT(update_template_combo()));
+    connect(m_project, &TProject::sheetAdded, this, &NewSheetDialog::update_template_combo);
+    connect(m_project, &TProject::sheetRemoved, this, &NewSheetDialog::update_template_combo);
 	
 	update_template_combo();
 }

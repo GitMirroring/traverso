@@ -697,6 +697,7 @@ TCommand * TSheet::set_recordable()
 // Function is only to be called from GUI thread.
 TCommand* TSheet::set_recordable_and_start_transport()
 {
+    PENTER;
     Q_ASSERT(this->thread() == QThread::currentThread());
 
     if (!is_recording()) {
@@ -711,6 +712,7 @@ TCommand* TSheet::set_recordable_and_start_transport()
 // Function is only to be called from GUI thread.
 TCommand* TSheet::start_transport()
 {
+    PENTER;
     // FIXME: is this really true, currently not so for the export thread
     // Q_ASSERT(QThread::currentThread() == m_threadPointer);
 
@@ -925,8 +927,7 @@ void TSheet::prepare_recording()
             // clip to our recording clip list.
             // At the time the cliplist is empty, we're sure the recording
             // session is finished, at which time an autosave makes sense.
-            connect(clip, SIGNAL(recordingFinished(AudioClip*)),
-                    this, SLOT(clip_finished_recording(AudioClip*)));
+            connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
             m_recordingClips.append(clip);
 
             group->add_command(new AddRemoveClip(clip, AddRemoveClip::ADD));

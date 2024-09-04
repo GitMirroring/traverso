@@ -113,11 +113,11 @@ TProject::TProject(const QString& title)
 
     cpointer().add_contextitem(this);
 
-    connect(this, SIGNAL(privateSheetRemoved(Sheet*)), this, SLOT(sheet_removed(Sheet*)));
-    connect(this, SIGNAL(privateSheetAdded(Sheet*)), this, SLOT(sheet_added(Sheet*)));
+    connect(this, &TProject::privateSheetRemoved, this, &TProject::sheet_removed);
+    connect(this, &TProject::privateSheetAdded, this, &TProject::sheet_added);
     connect(this, SIGNAL(exportFinished()), this, SLOT(export_finished()), Qt::QueuedConnection);
-    connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(audiodevice_params_changed()), Qt::DirectConnection);
-    connect(&audiodevice(),SIGNAL(audioDeviceClientRemoved(TAudioDeviceClient*)), this, SLOT(audio_device_removed_client(TAudioDeviceClient*)));
+    connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &TProject::audiodevice_params_changed, Qt::DirectConnection);
+    connect(&audiodevice(), &TAudioDevice::audioDeviceClientRemoved, this, &TProject::audio_device_removed_client);
 }
 
 
