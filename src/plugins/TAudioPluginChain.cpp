@@ -42,8 +42,8 @@ TAudioPluginChain::TAudioPluginChain(TContextItem* parent, TSession* session)
 
     set_session(session);
 
-    connect(this, SIGNAL(privatePluginAdded(TAudioPlugin*)), this, SLOT(private_plugin_added(TAudioPlugin*)));
-    connect(this, SIGNAL(privatePluginRemoved(TAudioPlugin*)), this, SLOT(private_plugin_removed(TAudioPlugin*)));
+    connect(this, &TAudioPluginChain::privatePluginAdded, this, &TAudioPluginChain::private_plugin_added);
+    connect(this, &TAudioPluginChain::privatePluginRemoved, this, &TAudioPluginChain::private_plugin_removed);
 }
 
 TAudioPluginChain::~ TAudioPluginChain()

@@ -25,13 +25,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProcessCallBackData.h"
 #include "TSession.h"
 #include <QDomNode>
-#include "TTransportControl.h"
 #include "TAudioThreadMessageQueue.h"
 #include "defines.h"
 
 class TProject;
 class TAudioTrack;
 class TAudioSource;
+class TReadAudioSource;
+class TWriteAudioSource;
 class TAudioTrack;
 class TAudioClip;
 class TDiskIOThread;
@@ -42,6 +43,7 @@ class TSnapList;
 class TTimeLineRuler;
 class TBusTrack;
 class TTrack;
+class TTransportControl;
 
 class TSheet : public TSession
 {
@@ -66,12 +68,15 @@ public:
     int get_audio_track_count() const {return m_audioTracks.size();}
 
     TProject* get_project() const {return m_project;}
-    TDiskIOThread*	get_read_diskio() const {
-        return m_readDiskIO;
-    }
-    TDiskIOThread* get_write_diskio() const {
-        return m_writeDiskIO;
-    }
+    void add_audio_source_to_diskio(TReadAudioSource *source) const;
+    void remove_audio_source_from_diskio(TReadAudioSource *source) const;
+    void add_audio_source_to_diskio(TWriteAudioSource *source) const;
+    void remove_audio_source_from_diskio(TWriteAudioSource *source) const;
+
+    int get_read_diskio_buffers_fill_status();
+    int get_write_diskio_buffers_fill_status();
+    bool get_read_diskio_cpu_time(float &time);
+    bool get_write_diskio_cpu_time(float &time);
 
     TAudioClipManager* get_audioclip_manager() const;
 
@@ -192,8 +197,6 @@ signals:
     void stateChanged();
 
 private slots:
-    void handle_diskio_writebuffer_overrun();
-    void handle_diskio_readbuffer_underrun();
     void prepare_recording();
     void clip_finished_recording(TAudioClip* clip);
     void config_changed();

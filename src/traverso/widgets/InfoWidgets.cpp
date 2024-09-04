@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioDevice.h"
 #include "TConfig.h"
-#include "TDiskIOThread.h"
 #include "TMainWindow.h"
 #include "TInputEventDispatcher.h"
 #include "MessageWidget.h" 
@@ -173,13 +172,13 @@ void SystemResources::update_status( )
             return;
         }
 
-        bufReadStatus = sheet->get_read_diskio()->get_buffers_fill_status();
-        bufWriteStatus = sheet->get_write_diskio()->get_buffers_fill_status();
+        bufReadStatus = sheet->get_read_diskio_buffers_fill_status();
+        bufWriteStatus = sheet->get_write_diskio_buffers_fill_status();
         float time;
-        if (sheet->get_read_diskio()->get_cpu_time(time)) {
+        if (sheet->get_read_diskio_cpu_time(time)) {
             m_diskReadCpuUsage->set_value(time);
         }
-        if (sheet->get_write_diskio()->get_cpu_time(time)) {
+        if (sheet->get_write_diskio_cpu_time(time)) {
             m_diskWriteCpuUsage->set_value(time);
         }
 	}

@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2008 Remon Sijrier 
+Copyright (C) 2005-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -40,7 +40,6 @@ class TAudioTrack;
 class TPeak;
 class AudioBus;
 class TAudioPluginChain;
-class TLocation;
 class TFadeCurve;
 
 class TAudioClip : public TAudioProcessingNode
@@ -175,7 +174,6 @@ public slots:
     TCommand* reset_fade_in();
     TCommand* reset_fade_out();
     TCommand* reset_fade_both();
-    TCommand* normalize();
     TCommand* lock();
 
 private slots:

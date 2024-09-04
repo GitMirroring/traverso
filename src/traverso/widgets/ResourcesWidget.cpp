@@ -179,7 +179,7 @@ ResourcesWidget::ResourcesWidget(QWidget * parent)
     connect(sheetComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(sheet_combo_box_index_changed(int)));
     connect(sheetComboBox, SIGNAL(activated(int)), this, SLOT(sheet_combo_box_index_changed(int)));
 
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
+    connect(&pm(), &TProjectManager::projectLoaded, this, &ResourcesWidget::set_project);
 }
 
 ResourcesWidget::~ ResourcesWidget()

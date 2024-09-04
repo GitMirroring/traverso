@@ -73,7 +73,7 @@ AudioClipEditDialog::AudioClipEditDialog(TAudioClip* clip, QWidget* parent)
 	
 	connect(clip, SIGNAL(stateChanged()), this, SLOT(clip_state_changed()));
     connect(clip->get_location(), SIGNAL(locationChanged()), this, SLOT(audioclip_location_changed()));
-	connect(clip, SIGNAL(fadeAdded(FadeCurve*)), this, SLOT(fade_curve_added()));
+    connect(clip, &TAudioClip::fadeAdded, this, &AudioClipEditDialog::fade_curve_added);
 	
 	connect(clipGainSpinBox, SIGNAL(valueChanged(double)), this, SLOT(gain_spinbox_value_changed(double)));
 	

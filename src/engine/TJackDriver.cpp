@@ -54,7 +54,7 @@ TJackDriver::TJackDriver(TAudioDevice* device)
     m_isSlave = false;
     m_running = 0;
 
-    connect(this, SIGNAL(pcpairRemoved(PortChannelPair*)), this, SLOT(cleanup_removed_port_channel_pair(PortChannelPair*)));
+    connect(this, &TJackDriver::pcpairRemoved, this, &TJackDriver::cleanup_removed_port_channel_pair);
 }
 
 TJackDriver::~TJackDriver( )

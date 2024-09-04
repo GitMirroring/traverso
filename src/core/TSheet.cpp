@@ -42,6 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioClip.h"
 #include "TExportSpecification.h"
 #include "TDiskIOThread.h"
+#include "TReadAudioSource.h"
 #include "TWriteAudioSource.h"
 #include "TAudioClipManager.h"
 #include "TAudioThreadMessageQueue.h"
@@ -138,8 +139,6 @@ void TSheet::init()
     m_readDiskIO->set_resample_quality(converter_type);
 
     connect(m_readDiskIO, SIGNAL(seekFinished()), this, SLOT(seek_finished()), Qt::QueuedConnection);
-    connect (m_readDiskIO, SIGNAL(readSourceBufferUnderRun()), this, SLOT(handle_diskio_readbuffer_underrun()));
-    connect (m_readDiskIO, SIGNAL(writeSourceBufferOverRun()), this, SLOT(handle_diskio_writebuffer_overrun()));
 
     m_writeDiskIO = new TDiskIOThread();
 
@@ -634,25 +633,6 @@ void TSheet::set_audio_sources_dir(const QString &dir)
     }
 }
 
-void TSheet::handle_diskio_readbuffer_underrun( )
-{
-    if (is_transport_rolling()) {
-        printf("Sheet:: DiskIO ReadBuffer UnderRun signal received!\n");
-        tInformUser().critical(tr("Hard Disk overload detected!"));
-        tInformUser().critical(tr("Failed to fill ReadBuffer in time"));
-    }
-}
-
-void TSheet::handle_diskio_writebuffer_overrun( )
-{
-    if (is_transport_rolling()) {
-        printf("Sheet:: DiskIO WriteBuffer OverRun signal received!\n");
-        tInformUser().critical(tr("Hard Disk overload detected!"));
-        tInformUser().critical(tr("Failed to empty WriteBuffer in time"));
-    }
-}
-
-
 TTimeRef TSheet::get_last_location() const
 {
     TTimeRef lastAudio = m_audioClipManager->get_last_location();
@@ -1003,6 +983,42 @@ TAudioTrack * TSheet::get_audio_track_for_index(int index)
     }
 
     return nullptr;
+}
+
+void TSheet::add_audio_source_to_diskio(TReadAudioSource *source) const {
+    m_readDiskIO->add_audio_source(source);
+}
+
+void TSheet::remove_audio_source_from_diskio(TReadAudioSource *source) const {
+    m_readDiskIO->remove_audio_source(source);
+}
+
+void TSheet::add_audio_source_to_diskio(TWriteAudioSource *source) const {
+    m_writeDiskIO->add_audio_source(source);
+}
+
+void TSheet::remove_audio_source_from_diskio(TWriteAudioSource *source) const {
+    m_writeDiskIO->remove_audio_source(source);
+}
+
+int TSheet::get_read_diskio_buffers_fill_status()
+{
+    return m_readDiskIO->get_buffers_fill_status();
+}
+
+int TSheet::get_write_diskio_buffers_fill_status()
+{
+    return m_writeDiskIO->get_buffers_fill_status();
+}
+
+bool TSheet::get_read_diskio_cpu_time(float &time)
+{
+    return m_readDiskIO->get_cpu_time(time);
+}
+
+bool TSheet::get_write_diskio_cpu_time(float &time)
+{
+    return m_writeDiskIO->get_cpu_time(time);
 }
 
 QList<TAudioTrack *> TSheet::get_solo_tracks() const

@@ -46,8 +46,8 @@ PluginChainView::PluginChainView(TSheetView* sv, ViewItem* parent, TAudioPluginC
         add_plugin(plugin);
     }
 
-    connect(chain, SIGNAL(pluginAdded(TAudioPlugin*)), this, SLOT(add_plugin(TAudioPlugin*)));
-    connect(chain, SIGNAL(pluginRemoved(TAudioPlugin*)), this, SLOT(remove_plugin(TAudioPlugin*)));
+    connect(chain, &TAudioPluginChain::pluginAdded, this, &PluginChainView::add_plugin);
+    connect(chain, &TAudioPluginChain::pluginRemoved, this, &PluginChainView::remove_plugin);
     connect(m_sv->get_clips_viewport()->horizontalScrollBar(), SIGNAL(valueChanged(int)),
             this, SLOT(scrollbar_value_changed(int)));
 }

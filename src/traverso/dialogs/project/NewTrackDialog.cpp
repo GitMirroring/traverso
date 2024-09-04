@@ -49,7 +49,7 @@ NewTrackDialog::NewTrackDialog(QWidget * parent)
     m_completer.setFilterMode(Qt::MatchContains);
     m_completer.setCaseSensitivity(Qt::CaseInsensitive);
 
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
+    connect(&pm(), &TProjectManager::projectLoaded, this, &NewTrackDialog::set_project);
     connect(closeButton, SIGNAL(clicked()), this, SLOT(close_clicked()));
     connect(addTrackBusButton, SIGNAL(clicked()), this, SLOT(create_track()));
     connect(isBusTrack, SIGNAL(toggled(bool)), this, SLOT(update_buses_comboboxes()));

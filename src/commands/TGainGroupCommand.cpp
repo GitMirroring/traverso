@@ -245,12 +245,16 @@ void TGainGroupCommand::reset_gain()
         gain->set_new_gain(1.0f);
     }
 
-    // Update the vieport's hold cursor with the _actuall_ gain value!
-    cpointer().set_canvas_cursor_text(get_db_string_from_object());
+    cpointer().set_canvas_cursor_text("0.0 dB");
 }
 
 void TGainGroupCommand::toggle_primary_gain_only()
 {
+    if (m_gainCommands.size() == 1) {
+        cpointer().set_canvas_cursor_text(tr("Clip is not part of a selection..."), 2000);
+        return;
+    }
+
     m_primaryGainOnly = !m_primaryGainOnly;
     cpointer().set_canvas_cursor_text(m_primaryGainOnly ? tr("To Selection: Off") : tr("To Selection: On"));
 }

@@ -23,7 +23,8 @@ MeterView::MeterView(MeterWidget* widget)
 
 	// Connections to core:
     connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
-        connect(&timer, SIGNAL(timeout()), this, SLOT(update_data()));
+    connect(&pm(), &TProjectManager::projectLoaded, this, &MeterView::set_project);
+    connect(&timer, SIGNAL(timeout()), this, SLOT(update_data()));
 	m_delayTimer.setSingleShot(true);
 	connect(&m_delayTimer, SIGNAL(timeout()), this, SLOT(delay_timeout()));
 }

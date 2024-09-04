@@ -33,7 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 #include "Utils.h"
 
-#include "Debugger.h"
 
 static const int HOR_BUTTON_HEIGHT = 30;
 static const int VER_BUTTON_HEIGHT = 28;
@@ -152,13 +151,13 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
 
         connect(session, SIGNAL(transportStarted()), this, SLOT(session_transport_started()));
         connect(session, SIGNAL(transportStopped()), this, SLOT(session_transport_stopped()));
-        connect(session, SIGNAL(sessionAdded(TSession*)), this, SLOT(child_session_added(TSession*)));
-        connect(session, SIGNAL(sessionRemoved(TSession*)), this, SLOT(child_session_removed(TSession*)));
+        connect(session, &TSession::sessionAdded, this, &TSessionTabWidget::child_session_added);
+        connect(session, &TSession::sessionRemoved, this, &TSessionTabWidget::child_session_removed);
         connect(session, SIGNAL(propertyChanged()), this, SLOT(session_property_changed()));
         connect(m_toolBar, SIGNAL(orientationChanged(Qt::Orientation)), this, SLOT(toolbar_orientation_changed(Qt::Orientation)));
         connect(this, SIGNAL(clicked()), this, SLOT(button_clicked()));
-        connect(pm().get_project(), SIGNAL(currentSessionChanged(TSession*)), this, SLOT(project_current_session_changed(TSession*)));
-        connect(pm().get_project(), SIGNAL(sessionIsAlreadyCurrent(TSession*)), this, SLOT(project_session_is_current(TSession*)));
+        connect(pm().get_project(), &TProject::currentSessionChanged, this, &TSessionTabWidget::project_current_session_changed);
+        connect(pm().get_project(), &TProject::sessionIsAlreadyCurrent, this, &TSessionTabWidget::project_session_is_current);
 
         if (pm().get_project()->get_current_session() == m_session) {
                 project_current_session_changed(m_session);

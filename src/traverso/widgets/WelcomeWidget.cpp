@@ -49,7 +49,7 @@ WelcomeWidget::WelcomeWidget(QWidget *parent)
         connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_combo_box()));
         connect(&pm(), SIGNAL(projectDirChangeDetected()), this, SLOT(update_projects_combo_box()));
         connect(&pm(), SIGNAL(projectsListChanged()), this, SLOT(update_projects_combo_box()));
-        connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
+        connect(&pm(), &TProjectManager::projectLoaded, this, &WelcomeWidget::set_project);
         connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_directory_line_edit()));
 }
 

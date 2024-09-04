@@ -356,7 +356,7 @@ TMainWindow::TMainWindow()
 	}
 
 	// Connections to core:
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
+    connect(&pm(), &TProjectManager::projectLoaded, this, &TMainWindow::set_project);
 	connect(&pm(), SIGNAL(unsupportedProjectDirChangeDetected()), this, SLOT(project_dir_change_detected()));
 	connect(&pm(), SIGNAL(projectLoadFailed(QString,QString)), this, SLOT(project_load_failed(QString,QString)));
 	connect(&pm(), SIGNAL(projectFileVersionMismatch(QString,QString)), this, SLOT(project_file_mismatch(QString,QString)), Qt::QueuedConnection);
@@ -487,8 +487,8 @@ void TMainWindow::add_session(TSession *session)
 	TSheet* sheet = qobject_cast<TSheet*>(session);
 	if (sheet) {
 		connect(session, SIGNAL(snapChanged()), this, SLOT(update_snap_state()));
-		connect(session, SIGNAL(sessionAdded(TSession*)), this, SLOT(add_session(TSession*)));
-		connect(session, SIGNAL(sessionRemoved(TSession*)), this, SLOT(remove_session(TSession*)));
+        connect(session, &TSession::sessionAdded, this, &TMainWindow::add_session);
+        connect(session, &TSession::sessionRemoved, this, &TMainWindow::remove_session);
 	}
 }
 

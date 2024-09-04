@@ -56,7 +56,7 @@ TAudioBusVUMonitorWidget::TAudioBusVUMonitorWidget(QWidget* parent)
     m_menu = nullptr;
 
     connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(create_vu_meters()));
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
+    connect(&pm(), &TProjectManager::projectLoaded, this, &TAudioBusVUMonitorWidget::set_project);
 }
 
 
@@ -161,7 +161,7 @@ void TAudioBusVUMonitorWidget::set_project(TProject * project)
     Q_UNUSED(project);
 
     if (project) {
-        connect(project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
+        connect(project, &TProject::currentSessionChanged, this, &TAudioBusVUMonitorWidget::set_session);
     }
     m_sheet = 0;
 }

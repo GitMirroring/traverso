@@ -154,6 +154,7 @@
 		<color name="Track:background" red="48" green="48" blue="48" alpha="100" />
 		<color name="Track:mousehover"  red="88" green="88" blue="88"  alpha="255" />
 		
+                <color name="TrackPanel:header:background" red="49" green="49" blue="49" alpha="255" />
 		<color name="TrackPanel:background" red="48" green="48" blue="48" alpha="255" />
 		<color name="TrackPanel:text" red="195" green="195" blue="195" alpha="255" />
 		<color name="TrackPanel:slider:border"  red="48" green="48" blue="48"  alpha="255" />

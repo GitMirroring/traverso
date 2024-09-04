@@ -20,15 +20,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include <cfloat>
-#include <QInputDialog>
 
 #include "CommandGroup.h"
 #include "TContextItem.h"
 #include "Fade.h"
-#include "PCommand.h"
 #include "TReadAudioSource.h"
 #include "TAudioClip.h"
-#include "TAudioSource.h"
 #include "TLocation.h"
 #include "TWriteAudioSource.h"
 #include "TSheet.h"
@@ -36,18 +33,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioTrack.h"
 #include "AudioBus.h"
 #include "TAudioDevice.h"
-#include "TDiskIOThread.h"
 #include "TExportSpecification.h"
 #include "TAudioClipManager.h"
 #include "TResourcesManager.h"
 #include "TCurve.h"
 #include "TFadeCurve.h"
-#include "TAudioThreadMessageQueue.h"
 #include "TProjectManager.h"
 #include "TPeak.h"
 #include "TProject.h"
 #include "Utils.h"
-#include "TInformUser.h"
 #include "TConfig.h"
 #include "TAudioPluginChain.h"
 #include "GainEnvelope.h"
@@ -118,7 +112,7 @@ TAudioClip::~TAudioClip()
 {
     PENTERDES;
     if (m_readSource) {
-        m_sheet->get_read_diskio()->remove_audio_source(m_readSource);
+        m_sheet->remove_audio_source_from_diskio(m_readSource);
     }
 
     if (m_peak) {
@@ -593,7 +587,7 @@ int TAudioClip::init_recording()
     m_writer->set_process_peaks( true );
     m_writer->set_recording( true );
 
-    m_sheet->get_write_diskio()->add_audio_source(m_writer);
+    m_sheet->add_audio_source_to_diskio(m_writer);
 
     // Writers exportFinished() signal comes from DiskIO thread, so we have to connect by Qt::QueuedConnection
     connect(m_writer, SIGNAL(exportFinished()), this, SLOT(finish_write_source()), Qt::QueuedConnection);
@@ -711,12 +705,12 @@ void TAudioClip::finish_write_source()
     if (m_readSource->set_file(m_writer->get_filename()) < 0) {
         PERROR("Setting file for ReadSource failed after finishing recording");
     } else {
-        m_sheet->get_read_diskio()->add_audio_source(m_readSource);
+        m_sheet->add_audio_source_to_diskio(m_readSource);
         // re-inits the lenght from the audiofile due calling rsm->set_source_for_clip()
         m_length = TTimeRef();
     }
 
-    m_sheet->get_write_diskio()->remove_audio_source(m_writer);
+    m_sheet->remove_audio_source_from_diskio(m_writer);
 
     m_writer = nullptr;
 
@@ -767,7 +761,7 @@ void TAudioClip::set_sheet( TSheet * sheet )
 {
     m_sheet = sheet;
     if (m_readSource && m_isReadSourceValid) {
-        m_sheet->get_read_diskio()->add_audio_source(m_readSource);
+        m_sheet->add_audio_source_to_diskio(m_readSource);
     } else {
         PWARN("AudioClip::set_sheet() : Setting Sheet, but no ReadSource available!!");
     }
@@ -834,28 +828,6 @@ int TAudioClip::recording_state( ) const
 {
     return m_recordingStatus;
 }
-
-TCommand * TAudioClip::normalize( )
-{
-    bool ok = false;
-    audio_sample_t normfactor = 0.0;
-
-    double d = QInputDialog::getDouble(nullptr, tr("Normalization"),
-                                       tr("Set normalization level (dB):"), 0.0, -120, 0, 1, &ok);
-    if (ok) {
-        normfactor = calculate_normalization_factor(audio_sample_t(d));
-    } else {
-        return ied().failure();
-    }
-
-    if (qFuzzyCompare(normfactor, get_gain())) {
-        tInformUser().information(tr("Requested normalization factor equals actual level, nothing to be done"));
-        return ied().failure();
-    }
-
-    return new PCommand(this, "set_gain", normfactor, get_gain(), tr("AudioClip: Normalized to %1 dB").arg(d));
-}
-
 
 float TAudioClip::calculate_normalization_factor(float targetdB)
 {

@@ -68,6 +68,8 @@ TraversoCommands::TraversoCommands()
 
 void TraversoCommands::load(TShortCutManager* m)
 {
+    m_manager = m;
+
     // known submenu titles
     m->add_translation("Utilities", tr("Utilities"));
     m->add_translation("Fade", tr("Fade In/Out"));
@@ -207,7 +209,7 @@ void TraversoCommands::load(TShortCutManager* m)
 
     add_function(&TSheetView::staticMetaObject,     tr("Zoom"),             "Zoom",             ZoomCommand,        "", USE_X, NO_Y,    QVariantList() << "HJogZoom" << "1.2" << "0.2");
 
-// ----------------------------------------------------------------------------------------------------------------------- //
+    // ----------------------------------------------------------------------------------------------------------------------- //
 
     m->add_function(&TAudioClip::staticMetaObject,      tr("Lock"),             "AudioClipLock",                "lock()");
     m->add_function(&TAudioClipView::staticMetaObject,  tr("Adjust Length"), "AudioClipFadeLength",          "fade_range()");
@@ -336,7 +338,7 @@ void TraversoCommands::load(TShortCutManager* m)
 
 
 void TraversoCommands::add_function(const QMetaObject *metaObject,
-                                    const QMetaObject *inheritedMetaObject,
+                                    const QMetaObject *basedMetaObject,
                                     const QString &description,
                                     const char *commandName,
                                     TraversoCommand command,
@@ -345,7 +347,7 @@ void TraversoCommands::add_function(const QMetaObject *metaObject,
                                     bool useY,
                                     const QVariantList &args)
 {
-    auto function = tShortCutManager().add_function(metaObject, description, commandName, slotSignature);
+    auto function = m_manager->add_function(metaObject, description, commandName, slotSignature);
 
     if (!function) {
         PERROR(QString("TraversoCommands::add_function: Could not register function for %1").arg(commandName));
@@ -354,8 +356,8 @@ void TraversoCommands::add_function(const QMetaObject *metaObject,
 
     function->set_plugin_name("TraversoCommands");
 
-    if (inheritedMetaObject) {
-        function->set_base_metaobject(inheritedMetaObject);
+    if (basedMetaObject) {
+        function->set_base_metaobject(basedMetaObject);
     }
     function->set_use_x(useX);
     function->set_use_y(useY);
@@ -723,32 +725,31 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             return nullptr;
         }
 
+        bool ok;
+        double requestedNormFactor = QInputDialog::getDouble(0, tr("Normalization"),
+                                                             tr("Set Normalization level:"), 0.0, -120, 0, 1, &ok);
+
+        if (!ok) {
+            return nullptr;
+        }
+
         if (clip->is_selected()) {
-            bool ok;
-            float normfactor = FLT_MAX;
-
-            double d = QInputDialog::getDouble(0, tr("Normalization"),
-                                               tr("Set Normalization level:"), 0.0, -120, 0, 1, &ok);
-
-            if (!ok) {
-                return nullptr;
-            }
             QList<TAudioClip* > selection;
             clip->get_sheet()->get_audioclip_manager()->get_selected_clips(selection);
-            foreach(TAudioClip* selected, selection) {
-                normfactor = std::min(selected->calculate_normalization_factor(d), normfactor);
-            }
 
             CommandGroup* group = new CommandGroup(clip, tr("Normalize Selected Clips"));
 
-            for(TAudioClip* selected : selection) {
-                group->add_command(new PCommand(selected, "set_gain", normfactor, selected->get_gain(), tr("AudioClip: Normalize")));
+            for(TAudioClip* selectedClip : selection) {
+                group->add_command(new PCommand(selectedClip, "set_gain",
+                                                selectedClip->calculate_normalization_factor(requestedNormFactor),
+                                                selectedClip->get_gain(),
+                                                tr("AudioClip: Normalize")));
             }
 
             return group;
         }
 
-        return clip->normalize();
+        return new PCommand(clip, "set_gain", clip->calculate_normalization_factor(requestedNormFactor), clip->get_gain(), tr("AudioClip: Normalize"));
     }
     case MoveMarkerCommand:
     {

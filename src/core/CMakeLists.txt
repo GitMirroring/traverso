@@ -72,6 +72,7 @@ TTransport.cpp TTransport.h
 TShortCutFunction.h TShortCutFunction.cpp
 TShortCut.h TShortCut.cpp
 TExportSpecification.h TExportSpecification.cpp
+TAudioClipAddRemoveSpec.h
 )
 
 IF(UNIX)
@@ -94,8 +95,7 @@ ENDIF(UNIX)
 
 SET(TRAVERSO_CORE_LIBRARY "traversocore")
 
-ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE}
-	TAudioClipAddRemoveSpec.h)
+ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE})
 
 IF(USE_PCH)
     ADD_DEPENDENCIES(traversocore precompiled_headers)

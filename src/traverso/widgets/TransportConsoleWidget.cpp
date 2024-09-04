@@ -97,13 +97,13 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
 void TransportConsoleWidget::set_project(TProject* project)
 {
     if (m_project) {
-        disconnect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
+        disconnect(m_project, &TProject::currentSessionChanged, this, &TransportConsoleWidget::set_session);
     }
 
     m_project = project;
 
     if (m_project) {
-        connect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
+        connect(m_project, &TProject::currentSessionChanged, this, &TransportConsoleWidget::set_session);
     } else {
         set_session(nullptr);
     }

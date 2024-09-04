@@ -94,7 +94,7 @@ private:
     }
 
     void add_function(const QMetaObject *metaObject,
-                      const QMetaObject *inheritedMetaObject,
+                      const QMetaObject *basedMetaObject,
                       const QString &description,
                       const char *commandName,
                       TraversoCommand command=NoCommand,
@@ -103,6 +103,7 @@ private:
                       bool useY = false,
                       const QVariantList &args = QVariantList());
 
+    TShortCutManager* m_manager{nullptr};
 };
 
 class TResetBase : public QObject
