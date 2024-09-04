@@ -651,7 +651,7 @@ void TInputEventDispatcher::finish_hold()
 
     clear_hold_modifier_keys();
 
-    if (m_holdingCommand->restoreCursorPosition())
+    if (m_holdingCommand->wants_cursor_position_to_be_restored())
     {
         cpointer().set_canvas_cursor_pos(cpointer().on_first_input_event_scene_pos());
     }

@@ -996,7 +996,7 @@ void TMainWindow::process_context_menu_action( QAction * action )
 	ied().dispatch_shortcut_from_contextmenu(function);
 }
 
-TCommand * TMainWindow::show_context_menu( )
+DISPATCH_RULE_IS_ALWAYS TCommand * TMainWindow::show_context_menu( )
 {
 	QList<QObject* > items;
 

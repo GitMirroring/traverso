@@ -19,46 +19,34 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "Gain.h"
+#include "GainCommand.h"
 
 #include "TContextItem.h"
-#include "TSheet.h"
-#include "TBusTrack.h"
+#include "TAudioProcessingNode.h"
 #include "Mixer.h"
-
-
-
 #include "Debugger.h"
-#include "qobjectdefs.h"
 
 /**
- *	\class Gain
-    \brief Change (jog) the Gain of an TAudioProcessingNode, or set to a pre-defined value
+ *	\class GainCommand
+    \brief Change (jog) the GainCommand of an TAudioProcessingNode, or set to a pre-defined value
 
     \sa TraversoCommands
  */
 
 
-Gain::Gain(TContextItem* context, const QVariantList& /*args*/)
+GainCommand::GainCommand(TAudioProcessingNode* context, const QVariantList& /*args*/)
     : TCommand(context, "")
+    , m_audioProcessingNode(context)
 {
-    m_gainObject = context;
-    m_newGain = m_origGain = get_gain_from_object(m_gainObject);
-
-    TSheet* sheet = qobject_cast<TSheet*>(context);
-    if (sheet) {
-        // if context == sheet, then use sheets master out
-        // as the gain object as sheet itself doesn't apply any gain.
-        m_gainObject = sheet->get_master_out_bus_track();
-    }
+    m_newGain = m_origGain = m_audioProcessingNode->get_gain();
 }
 
-Gain::~Gain()
+GainCommand::~GainCommand()
 {
     PENTERDES;
 }
 
-int Gain::prepare_actions()
+int GainCommand::prepare_actions()
 {
     if (qFuzzyCompare(m_origGain, m_newGain)) {
         // Nothing happened!
@@ -67,16 +55,16 @@ int Gain::prepare_actions()
     return 1;
 }
 
-void Gain::apply_new_gain_to_object(float newGain)
+void GainCommand::apply_new_gain_to_object(float newGain)
 {
     m_newGain = newGain;
-    QMetaObject::invokeMethod(m_gainObject, "set_gain", Q_ARG(float, m_newGain));
+    m_audioProcessingNode->set_gain(m_newGain);
     // the gainobject is able to refuse the new value, so we set our
     // newGain value to the value the gainobject internally decided to go for
-    m_newGain = get_gain_from_object(m_gainObject);
+    m_newGain = m_audioProcessingNode->get_gain();
 }
 
-int Gain::do_action()
+int GainCommand::do_action()
 {
     PENTER;
 
@@ -84,57 +72,57 @@ int Gain::do_action()
     // however, do_action() is always called from the TInputEventDispatcher
     // So do not start the animated gain setting since it will start from
     // the m_oldgain value.
-    if (qFuzzyCompare(m_newGain, get_gain_from_object(m_gainObject))) {
+    if (qFuzzyCompare(m_newGain, m_audioProcessingNode->get_gain())) {
         return 1;
     }
 
     // so this will only be reached after an undo/redo sequence
-    QMetaObject::invokeMethod(m_gainObject, "set_gain_animated", Q_ARG(float, m_newGain));
+    m_audioProcessingNode->set_gain_animated(m_newGain);
 
 
     return 1;
 }
 
-int Gain::undo_action()
+int GainCommand::undo_action()
 {
     PENTER;
 
-    QMetaObject::invokeMethod(m_gainObject, "set_gain_animated", Q_ARG(float, m_origGain));
+    m_audioProcessingNode->set_gain_animated(m_origGain);
 
     return 1;
 }
 
-void Gain::cancel_action()
+void GainCommand::cancel_action()
 {
     undo_action();
 }
 
-void Gain::increase_gain(  )
+void GainCommand::increase_gain(  )
 {
     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
     dbFactor += 0.2f;
     apply_new_gain_to_object(dB_to_scale_factor(dbFactor));
 }
 
-void Gain::decrease_gain()
+void GainCommand::decrease_gain()
 {
     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
     dbFactor -= 0.2f;
     apply_new_gain_to_object(dB_to_scale_factor(dbFactor));
 }
 
-void Gain::set_new_gain(float newGain)
+void GainCommand::set_new_gain(float newGain)
 {
     m_newGain = newGain;
     do_action();
 }
 
-void Gain::set_new_gain_numerical_input(float newGain)
+void GainCommand::set_new_gain_numerical_input(float newGain)
 {
     m_newGain = newGain;
 }
 
-int Gain::process_mouse_move(qreal diffY)
+int GainCommand::process_mouse_move(qreal diffY)
 {
     qreal of = 0;
     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
@@ -150,17 +138,4 @@ int Gain::process_mouse_move(qreal diffY)
     apply_new_gain_to_object(dB_to_scale_factor(dbFactor + float(of)));
 
     return 1;
-}
-
-float Gain::get_gain_from_object(QObject *object)
-{
-    float gain = 1.0f;
-
-    if ( ! QMetaObject::invokeMethod(object, "get_gain",
-                                     Qt::DirectConnection,
-                                     Q_RETURN_ARG(float, gain)) ) {
-        PWARN("Gain::get_gain_from_object QMetaObject::invokeMethod failed");
-    }
-
-    return gain;
 }

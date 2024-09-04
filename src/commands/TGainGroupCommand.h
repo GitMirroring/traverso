@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Remon Sijrier
+    Copyright (C) 2019 - 2024 Remon Sijrier
 
     This file is part of Traverso
 
@@ -24,14 +24,15 @@
 #include "TCommand.h"
 #include <QPoint>
 
-class Gain;
+class GainCommand;
+class TAudioProcessingNode;
 
 class TGainGroupCommand : public TCommand
 {
     Q_OBJECT
 
 public :
-    TGainGroupCommand(TContextItem* context, const QVariantList& args);
+    TGainGroupCommand(TContextItem* context);
     ~TGainGroupCommand();
 
     int begin_hold();
@@ -47,13 +48,12 @@ public :
     int do_action();
     int undo_action();
 
-    bool restoreCursorPosition() const {return true;}
+    bool wants_cursor_position_to_be_restored() const {return true;}
 
-    void add_command(Gain* cmd);
+    void add_audio_processing_node(TAudioProcessingNode *audioProcessingNode, const QVariantList& args);
 
 private:
-    QList<Gain* >	m_gainCommands;
-    Gain*           m_primaryGain;
+    std::vector<std::unique_ptr<GainCommand> >	m_gainCommands;
     QPointF         m_origPos;
     TContextItem*    m_contextItem;
     bool            m_primaryGainOnly;

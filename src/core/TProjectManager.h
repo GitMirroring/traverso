@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef ProjectManager_H
 #define ProjectManager_H
 
+#include "TCommand.h"
 #include "TContextItem.h"
 #include <QList>
 #include <QStringList>
@@ -72,7 +73,7 @@ public:
 
 
 public slots:
-    TCommand* save_project();
+    DISPATCH_RULE_IS_ALWAYS TCommand* save_project();
     TCommand* close_current_project();
     TCommand* exit();
 

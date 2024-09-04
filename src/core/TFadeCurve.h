@@ -23,6 +23,7 @@ $Id: FadeCurve.h,v 1.19 2008/01/21 16:22:14 r_sijrier Exp $
 #ifndef TFADE_CURVE_H
 #define TFADE_CURVE_H
 
+#include "TCommand.h"
 #include "TCurve.h"
 
 #include <QString>
@@ -99,9 +100,9 @@ private:
 public slots:
 	void solve_node_positions();
 	
-	TCommand* toggle_bypass();
-	TCommand* set_mode();
-	TCommand* toggle_raster();
+    DISPATCH_RULE_IS_ALWAYS TCommand* toggle_bypass();
+    DISPATCH_RULE_IS_ALWAYS TCommand* set_mode();
+    DISPATCH_RULE_IS_ALWAYS TCommand* toggle_raster();
 	
 signals:
 	void modeChanged();

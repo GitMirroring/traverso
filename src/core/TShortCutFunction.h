@@ -62,7 +62,9 @@ public:
     bool uses_inherited_base() const {return m_usesBaseFunction;}
     bool uses_x() const {return m_useX;}
     bool uses_y() const {return m_useY;}
-    bool always_safe_to_dispatch() const {return m_alwaysSafeToDispatch;}
+    bool always_safe_to_dispatch() const {
+        return TCommand::matches_dispatch_rule_always(m_metaMethod.tag());
+    }
 
     void set_base_metaobject(const QMetaObject* base)
     {
@@ -74,8 +76,6 @@ public:
         Q_ASSERT(baseShortCutFunction);
         m_baseShortCutFunction = baseShortCutFunction;
     }
-
-    void set_always_safe_to_dispatch(bool alwaysSafe) {m_alwaysSafeToDispatch = alwaysSafe;}
 
     void add_keys(const QStringList & keys) {m_keys << keys;}
     void add_modifier_key(int modifier) { m_modifierkeys.append(modifier);}
@@ -132,7 +132,6 @@ private:
     bool                m_useY{false};
     bool                m_usesAutoRepeat{false};
     bool                m_usesBaseFunction{false};
-    bool                m_alwaysSafeToDispatch{false};
 
     int                 m_sortorder{0};
     int                 m_autorepeatInterval{-1};

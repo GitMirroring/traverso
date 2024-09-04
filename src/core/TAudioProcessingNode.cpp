@@ -84,7 +84,7 @@ void TAudioProcessingNode::set_muted( bool muted )
     emit audibleStateChanged();
 }
 
-TCommand* TAudioProcessingNode::mute()
+DISPATCH_RULE_IS_ALWAYS TCommand* TAudioProcessingNode::mute()
 {
     PENTER;
     set_muted(!m_isMuted);

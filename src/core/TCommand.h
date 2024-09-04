@@ -27,6 +27,12 @@
 #include <QUndoCommand>
 #include <QUndoStack>
 
+#ifndef Q_MOC_RUN
+// Used to tell the Input Event Dispatchter this function is to allowed
+// even if an hold action is active
+#  define DISPATCH_RULE_IS_ALWAYS
+#endif
+
 class TContextItem;
 class QUndoStack;
 
@@ -44,6 +50,10 @@ public :
         DO
     };
 
+    static bool matches_dispatch_rule_always(const QString& rule) {
+        return rule == "DISPATCH_RULE_IS_ALWAYS";
+    }
+
     virtual int begin_hold();
     virtual int finish_hold();
     virtual int prepare_actions();
@@ -56,7 +66,7 @@ public :
     virtual void set_jog_bypassed(bool /*bypassed*/) {}
     virtual bool is_hold_command() const {return true;}
     virtual bool supportsEnterFinishesHold() const {return true;}
-    virtual bool restoreCursorPosition() const {return false;}
+    virtual bool wants_cursor_position_to_be_restored() const {return false;}
 
     void undo() {undo_action();}
     void redo() {do_action();}

@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TrackPanelView.h"
 #include <Utils.h>
 #include <Mixer.h>
-#include <Gain.h>
+#include <GainCommand.h>
 #include <TrackPan.h>
 #include "TProject.h"
 #include "TProjectManager.h"

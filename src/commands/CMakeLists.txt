@@ -19,7 +19,7 @@ CommandGroup.cpp
 Crop.cpp
 ExternalProcessingDialog.cpp
 Fade.cpp
-Gain.cpp
+GainCommand.cpp GainCommand.h
 TGainGroupCommand.cpp
 TAudioFileImportCommand.cpp
 MoveClip.cpp

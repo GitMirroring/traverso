@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef T_AUDIO_PROCESSING_NODE_H
 #define T_AUDIO_PROCESSING_NODE_H
 
+#include "TCommand.h"
 #include "TContextItem.h"
 #include "defines.h"
 
@@ -83,7 +84,7 @@ public slots:
 
     void set_gain(float gain);
     void set_gain_animated(float gain);
-    TCommand* mute();
+    DISPATCH_RULE_IS_ALWAYS TCommand* mute();
 
 signals:
     void audibleStateChanged();

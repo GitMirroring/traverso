@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2019 Remon Sijrier
+Copyright (C) 2019-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -20,48 +20,28 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TGainGroupCommand.h"
 
-#include "Gain.h"
-#include "TAudioProcessingNode.h"
+#include "GainCommand.h"
 #include "Mixer.h"
 #include "Utils.h"
-
-
-
+#include "TAudioProcessingNode.h"
 #include "Debugger.h"
 
 
-TGainGroupCommand::TGainGroupCommand(TContextItem *context, const QVariantList &args)
+TGainGroupCommand::TGainGroupCommand(TContextItem *context)
     : TCommand (context)
-    , m_primaryGain(nullptr)
     , m_contextItem(context)
     , m_primaryGainOnly(false)
 {
     m_canvasCursorFollowsMouseCursor = false;
 
-    QString des = "";
-    TAudioProcessingNode* data = qobject_cast<TAudioProcessingNode*>(context);
-    QString name;
-    if (data) {
-        name = data->get_name();
-    }
-
-    if (!args.empty()) {
-        des = QString(context->metaObject()->className()) + ": Reset gain";
-    } else {
-        des = "Gain (" + QString(context->metaObject()->className()) + " " + name + ")";
-    }
-
-    setText(des);
-
+    TAudioProcessingNode* node = qobject_cast<TAudioProcessingNode*>(context);
+    Q_ASSERT(node);
+    setText("Gain: " + node->get_name());
 }
 
 TGainGroupCommand::~ TGainGroupCommand()
 {
     PENTERDES;
-
-    for(auto gain : m_gainCommands) {
-        delete gain;
-    }
 }
 
 void TGainGroupCommand::set_cursor_shape(int useX, int useY)
@@ -89,13 +69,15 @@ int TGainGroupCommand::finish_hold()
 void TGainGroupCommand::cancel_action()
 {
     PENTER;
-    for(auto gain : m_gainCommands) {
+    for (auto const &gain : m_gainCommands) {
         gain->cancel_action();
     }
 }
 
 void TGainGroupCommand::process_collected_number(const QString &collected)
 {
+    Q_ASSERT(m_gainCommands.size() > 0);
+
     if (collected.size() == 0) {
         cpointer().set_canvas_cursor_text(" dB");
         return;
@@ -127,9 +109,9 @@ void TGainGroupCommand::process_collected_number(const QString &collected)
     }
 
     if (m_primaryGainOnly) {
-        m_primaryGain->set_new_gain(newGain);
+        m_gainCommands.at(0)->set_new_gain(newGain);
     } else {
-        for(auto gain : m_gainCommands) {
+        for (auto const &gain : m_gainCommands) {
             gain->set_new_gain_numerical_input(newGain);
         }
     }
@@ -137,12 +119,14 @@ void TGainGroupCommand::process_collected_number(const QString &collected)
 
 int TGainGroupCommand::jog()
 {
+    Q_ASSERT(m_gainCommands.size() > 0);
+
     qreal diff = m_origPos.y() - cpointer().scene_y();
 
     if (m_primaryGainOnly) {
-        m_primaryGain->process_mouse_move(diff);
+        m_gainCommands.at(0)->process_mouse_move(diff);
     } else {
-        for(auto gain : m_gainCommands) {
+        for (auto const &gain : m_gainCommands) {
             gain->process_mouse_move(diff);
         }
     }
@@ -158,11 +142,11 @@ int TGainGroupCommand::jog()
 
 int TGainGroupCommand::prepare_actions()
 {
-    if (m_gainCommands.isEmpty()) {
+    if (m_gainCommands.size() == 0) {
         return -1;
     }
 
-    for(auto gain : m_gainCommands) {
+    for (auto const &gain : m_gainCommands) {
         if (gain->prepare_actions() == -1) {
             printf("one of the commands in the group failed prepare_actions\n");
             return -1;
@@ -174,10 +158,12 @@ int TGainGroupCommand::prepare_actions()
 
 int TGainGroupCommand::do_action()
 {
+    Q_ASSERT(m_gainCommands.size() > 0);
+
     if (m_primaryGainOnly) {
-        m_primaryGain->do_action();
+        m_gainCommands.at(0)->do_action();
     } else {
-        for(auto gain : m_gainCommands) {
+        for (auto const &gain : m_gainCommands) {
             gain->do_action();
         }
     }
@@ -187,10 +173,12 @@ int TGainGroupCommand::do_action()
 
 int TGainGroupCommand::undo_action()
 {
+    Q_ASSERT(m_gainCommands.size() > 0);
+
     if (m_primaryGainOnly) {
-        m_primaryGain->undo_action();
+        m_gainCommands.at(0)->undo_action();
     } else {
-        for(auto gain : m_gainCommands) {
+        for (auto const &gain : m_gainCommands) {
             gain->undo_action();
         }
     }
@@ -198,18 +186,11 @@ int TGainGroupCommand::undo_action()
     return 1;
 }
 
-void TGainGroupCommand::add_command(Gain *cmd) {
-    Q_ASSERT(cmd);
+void TGainGroupCommand::add_audio_processing_node(TAudioProcessingNode* audioProcessingNode, const QVariantList& args)
+{
+    Q_ASSERT(audioProcessingNode);
 
-    if (!m_primaryGain) {
-        m_primaryGain = cmd;
-    }
-
-    if (m_gainCommands.contains(cmd)) {
-        return;
-    }
-
-    m_gainCommands.append(cmd);
+    m_gainCommands.push_back(std::make_unique<GainCommand>(audioProcessingNode, args));
 }
 
 QString TGainGroupCommand::get_db_string_from_object()
@@ -228,10 +209,12 @@ QString TGainGroupCommand::get_db_string_from_object()
 
 void TGainGroupCommand::increase_gain(  )
 {
+    Q_ASSERT(m_gainCommands.size() > 0);
+
     if (m_primaryGainOnly) {
-        m_primaryGain->increase_gain();
+        m_gainCommands.at(0)->increase_gain();
     } else {
-        for(auto gain : m_gainCommands) {
+        for (auto const &gain : m_gainCommands) {
             gain->increase_gain();
         }
     }
@@ -242,10 +225,12 @@ void TGainGroupCommand::increase_gain(  )
 
 void TGainGroupCommand::decrease_gain()
 {
+    Q_ASSERT(m_gainCommands.size() > 0);
+
     if (m_primaryGainOnly) {
-        m_primaryGain->decrease_gain();
+        m_gainCommands.at(0)->decrease_gain();
     } else {
-        for(auto gain : m_gainCommands) {
+        for (auto const &gain : m_gainCommands) {
             gain->decrease_gain();
         }
     }
@@ -256,8 +241,8 @@ void TGainGroupCommand::decrease_gain()
 
 void TGainGroupCommand::reset_gain()
 {
-    for (auto gain : m_gainCommands) {
-        gain->set_new_gain(1.0);
+    for (auto const &gain : m_gainCommands) {
+        gain->set_new_gain(1.0f);
     }
 
     // Update the vieport's hold cursor with the _actuall_ gain value!
@@ -267,6 +252,7 @@ void TGainGroupCommand::reset_gain()
 void TGainGroupCommand::toggle_primary_gain_only()
 {
     m_primaryGainOnly = !m_primaryGainOnly;
+    cpointer().set_canvas_cursor_text(m_primaryGainOnly ? tr("To Selection: Off") : tr("To Selection: On"));
 }
 
 // eof

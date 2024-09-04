@@ -47,7 +47,7 @@ public :
         int jog();
 
 	void set_cursor_shape(int useX, int useY);
-	bool restoreCursorPosition() const {return true;}
+	bool wants_cursor_position_to_be_restored() const {return true;}
 	
 private :	
 	float	m_origPan;

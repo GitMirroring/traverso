@@ -19,21 +19,21 @@
 
 */
 
-#ifndef GAIN_H
-#define GAIN_H
+#ifndef GAINCOMMAND_H
+#define GAINCOMMAND_H
 
 #include "TCommand.h"
 
 class TContextItem;
+class TAudioProcessingNode;
 
-
-class Gain : public TCommand
+class GainCommand : public TCommand
 {
     Q_OBJECT
 
 public :
-    Gain(TContextItem* context, const QVariantList& args);
-    ~Gain();
+    GainCommand(TAudioProcessingNode *context, const QVariantList& args);
+    ~GainCommand();
 
     int prepare_actions();
     int do_action();
@@ -46,10 +46,8 @@ public :
     void set_new_gain(float newGain);
     void set_new_gain_numerical_input(float newGain);
 
-    static float get_gain_from_object(QObject* object);
-
 private :
-    TContextItem*        m_gainObject;
+    TAudioProcessingNode*        m_audioProcessingNode;
     float 		m_origGain;
     float 		m_newGain;
 

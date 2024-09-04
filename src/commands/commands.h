@@ -14,7 +14,7 @@
 #include "PCommand.h"
 #include "ClipSelection.h"
 #include "Fade.h"
-#include "Gain.h"
+#include "GainCommand.h"
 #include "CommandGroup.h"
 #include "TAddRemoveCommand.h"
 #include "AudioClipExternalProcessing.h"

@@ -32,7 +32,6 @@ const bool USE_X = true;
 const bool USE_Y = true;
 const bool NO_X = false;
 const bool NO_Y = false;
-const bool ALWAYS_SAFE_TO_DISPATCH = true;
 
 class TraversoCommands : public TCommandPlugin
 {

@@ -1,20 +1,5 @@
-#CMAKE SETUP
 #Require 3.1.0 for Qt finding
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16.0 FATAL_ERROR)
-
-SET(CMAKE_COLOR_MAKEFILE ON)
-SET(CMAKE_VERBOSE_MAKEFILE ON)
-SET(CMAKE_INCLUDE_CURRENT_DIR TRUE)
-SET(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
-SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
-
-
-IF(COMMAND CMAKE_POLICY)
-        CMAKE_POLICY(SET CMP0005 NEW)
-        CMAKE_POLICY(SET CMP0003 NEW)
-ENDIF(COMMAND CMAKE_POLICY)
-
-
 
 #PROJECT SETUP
 PROJECT(traverso)
@@ -24,12 +9,13 @@ SET (VERSION_PATCH "1")
 SET (VERSION_SUFFIX "-git-01-11-2010")
 SET (VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}${VERSION_SUFFIX})
 
-MESSAGE(STATUS "Traverso ${VERSION} will be built to install into ${CMAKE_INSTALL_PREFIX}")
+# At release set this on:
+LIST(APPEND TRAVERSO_DEFINES -DQT_NO_DEBUG)
 
 OPTION(WANT_JACK    	"Include Jack (Jack Audio Connection Kit) support" ON)
 OPTION(WANT_ALSA    	"Include ALSA (Advanced Linux Sound Architecture) support" ON)
 OPTION(WANT_PORTAUDIO	"Include PortAudio support (Driver support for Mac OS X and Windows" ON)
-OPTION(WANT_PULSEAUDIO	"Include PulseAudio support (Driver support for Linux and Windows" ON)
+OPTION(WANT_PULSEAUDIO	"Include PulseAudio support (Sound Server for Linux" ON)
 OPTION(WANT_COREAUDIO	"Include CoreAudio support (Driver support for Mac OS X" OFF)
 OPTION(WANT_LV2		"Include LV2 Plugin support" ON)
 OPTION(WANT_MP3_ENCODE	"Include mp3 encoding support, for creating mp3 files" ON)
@@ -41,6 +27,17 @@ OPTION(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)
 OPTION(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu, and compile with an optimal set of compiler flags" OFF)
 OPTION(WANT_SSE "Use sse instruction set. This option is only effective if DETECT_HOST_CPU_FEATURES is OFF." ON)
 
+#CMAKE SETUP
+SET(CMAKE_COLOR_MAKEFILE ON)
+SET(CMAKE_VERBOSE_MAKEFILE ON)
+SET(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+SET(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
+SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
+
+IF(COMMAND CMAKE_POLICY)
+        CMAKE_POLICY(SET CMP0005 NEW)
+	CMAKE_POLICY(SET CMP0003 NEW)
+ENDIF(COMMAND CMAKE_POLICY)
 
 SET(MAIN_DIR_NAME "src")
 IF(TAG_VERSION)
@@ -573,3 +570,5 @@ MP3 read support	:	${HAVE_MP3_DECODING}
 MP3 writing support	:	${HAVE_MP3_ENCODING}
 SSE Optimizations       :       ${HOST_SUPPORTS_SSE}
 ")
+
+MESSAGE(STATUS "Traverso ${VERSION} will be built to install into ${CMAKE_INSTALL_PREFIX}")

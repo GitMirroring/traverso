@@ -102,7 +102,7 @@ private :
 public slots:
     void clip_position_changed(TAudioClip* clip);
 
-    TCommand* toggle_arm();
+    DISPATCH_RULE_IS_ALWAYS TCommand* toggle_arm();
 
 private slots:
     void private_add_clip(TAudioClip* clip);
