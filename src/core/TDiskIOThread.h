@@ -60,8 +60,14 @@ public:
     uint get_output_rate() {return m_outputSampleRate;}
 	int get_resample_quality() {return m_resampleQuality;}
 
-    void add_processed_audio_thread_frames(nframes_t nframes);
-    void wakeup();
+    void add_processed_audio_thread_frames(nframes_t nframes)
+    {
+        m_audioThreadProcessedFramesQueue->try_enqueue(nframes);
+    }
+    void wakeup()
+    {
+        m_audioThreadProcessedFramesQueue->try_enqueue(0);
+    }
 
 protected:
     void run() override;
@@ -91,7 +97,8 @@ private:
     TTimeRef            m_transportLocation;
     TTimeRef            m_seekTransportLocation;
 	
-    void stop_disk_thread();    
+    void stop_disk_thread();
+    void check_for_seek_requested();
 
 public slots:
     void seek();

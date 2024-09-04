@@ -148,6 +148,7 @@ TDiskIOThread::~TDiskIOThread()
     PENTERDES;
     stop_disk_thread();
 
+    // the shared buffers should have only one user by now, that is us, so only 1 user
     Q_ASSERT(m_fileDecodeBuffer.use_count() == 1);
     Q_ASSERT(m_resampleDecodeBuffer.use_count() == 1);
 }
@@ -203,11 +204,16 @@ bool TDiskIOThread::do_work( )
     }
 
     nframes_t audioThreadProcessedFrames;
+    // Here we wait (block) till at least one of the following has happened:
+    // 1: the owner of this DiskIOThread has put at least 1 value via add_processed_audio_thread_frames(nframes_t nframes)
+    // usually before or after a process cycle
+    // 2: wake_up() has been called by the owner of this object which essentially does the same thing
     m_audioThreadProcessedFramesQueue->wait_dequeue(audioThreadProcessedFrames);
 
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
     nframes_t totalFrames = audioThreadProcessedFrames;
+
     while(m_audioThreadProcessedFramesQueue->try_dequeue(audioThreadProcessedFrames)) {
         totalFrames += audioThreadProcessedFrames;
     }
@@ -228,14 +234,10 @@ bool TDiskIOThread::do_work( )
         m_resampleQualityChanged = false;
     }
 
+    check_for_seek_requested();
 
-    for (auto source : m_audioSources)
+    for (const auto source : m_audioSources)
     {
-        if (m_seekRequested.load()) {
-            printf("DiskIO::do_work: Seek requested, starting seek now\n");
-            seek();
-        }
-
         TAudioSourceBufferStatus* status = source->get_buffer_status();
 
         if (status->get_fill_status() <= 80 || status->out_of_sync()) {
@@ -251,12 +253,22 @@ bool TDiskIOThread::do_work( )
                 m_bufferFillStatus.store(status->get_fill_status());
             }
         }
+
+        check_for_seek_requested();
     }
 
     auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
     m_doWorktTime.fetch_add(totalTime);
 
     return true;
+}
+
+void TDiskIOThread::check_for_seek_requested()
+{
+    if (m_seekRequested.load()) {
+        printf("DiskIO::do_work: Seek requested, starting seek now\n");
+        seek();
+    }
 }
 
 void TDiskIOThread::add_audio_source(TAudioSource* source)
@@ -335,16 +347,6 @@ int TDiskIOThread::get_buffers_fill_status( )
     m_bufferFillStatus.store(100);
 
     return status;
-}
-
-void TDiskIOThread::add_processed_audio_thread_frames(nframes_t nframes)
-{
-    m_audioThreadProcessedFramesQueue->try_enqueue(nframes);
-}
-
-void TDiskIOThread::wakeup()
-{
-    m_audioThreadProcessedFramesQueue->try_enqueue(0);
 }
 
 void TDiskIOThread::stop_disk_thread( )
