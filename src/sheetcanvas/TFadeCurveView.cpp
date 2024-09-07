@@ -56,7 +56,7 @@ TFadeCurveView::TFadeCurveView(TSheetView* sv, TAudioClipView* parent, TFadeCurv
     Q_ASSERT(m_fadeCurve);
 
     for(TCurveNode* node = m_fadeCurve->get_nodes().first(); node != nullptr; node = node->next) {
-        TCurveNode* guinode = new TCurveNode(node->get_when() / m_sv->timeref_scalefactor, node->get_value());
+        TCurveNode* guinode = new TCurveNode(m_guicurve, node->get_when() / m_sv->timeref_scalefactor, node->get_value());
         TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(guinode, false));
 		cmd->set_instantanious(true);
 		TCommand::process_command(cmd);
@@ -126,8 +126,8 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 	QColor color = m_fadeCurve->is_bypassed() ? 
 			themer()->get_color("Fade:bypassed") :
 			themer()->get_color("Fade:default");
-	
-        if (has_active_context()) {
+
+    if (has_active_context()) {
 		color.setAlpha(color.alpha() + 10);
 	}
 	
@@ -174,7 +174,7 @@ int TFadeCurveView::get_vector(qreal xstart, int pixelcount, TAudioBuffer &buffe
 	
 	if (m_fadeCurve->get_fade_type() == TFadeCurve::FadeOut) {
 		
-		// If the fade widt is larger the the clipview, add the difference,
+        // If the fade width is longer the the clipview, add the difference,
 		// since the 'start' of the FadeCurveView lies beyond the left edge of the clip!
 		if (m_boundingRect.width() > m_parentViewItem->boundingRect().width()) {
             xstart += m_boundingRect.width() - m_parentViewItem->boundingRect().width();
@@ -182,32 +182,8 @@ int TFadeCurveView::get_vector(qreal xstart, int pixelcount, TAudioBuffer &buffe
 		
 		// map the xstart position to the FadeCurveViews x position
         qreal mappedx = mapFromParent(QPointF(xstart, 0)).x();
-        qreal x = mappedx;
-        // float* p = buffer;
-		
-		// check if the xstart lies before 'our' first pixel
-		if (mappedx < 0) {
-			x = 0;
-			// substract the difference from the pixelcount
-			pixelcount += mappedx;
-			
-			// point to the mapped location of the buffer.
-            // p = buffer - int(mappedx);
-            buffer.set_data_start_offset(-mappedx);
-			
-			// and if pixelcount is 0, there is nothing to do!
-			if (pixelcount <= 0) {
-				return 0;
-			}
-			
-			// Any pixels outside of our range shouldn't alter the waveform,
-			// so let's assign 1 to them!
-			for (int i=0; i < - mappedx; ++i) {
-                buffer[i] = 1;
-			}
-		}
 
-        m_guicurve->get_vector(x, x + pixelcount, buffer, nframes_t(pixelcount));
+        m_guicurve->get_vector(mappedx, mappedx + pixelcount, buffer, nframes_t(pixelcount));
 
         buffer.set_data_start_offset(0);
 		

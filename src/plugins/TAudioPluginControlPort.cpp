@@ -72,7 +72,7 @@ void TAudioPluginControlPort::set_use_automation(bool automation)
 	if (!m_curve) {
 		m_curve = new TCurve(m_plugin);
 		// Add the first default node:
-        TCurveNode* node = new TCurveNode(0.0, 1.0);
+        TCurveNode* node = new TCurveNode(m_curve, 0.0, 1.0);
 		TAddRemoveCommand* cmd = (TAddRemoveCommand*)m_curve->add_node(node, false);
 		cmd->set_instantanious(true);
 		TCommand::process_command(cmd);

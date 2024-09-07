@@ -23,22 +23,21 @@ $Id: CurveNode.h,v 1.9 2007/11/19 11:18:53 r_sijrier Exp $
 #ifndef T_CURVENODE_H
 #define T_CURVENODE_H
 
-#include "qobject.h"
+class TCurve;
 
-class TCurveNode : public QObject
+class TCurveNode
 {
-    Q_OBJECT
 
 public:
-    TCurveNode(double when, double  val);
+     TCurveNode(TCurve* curve, double when, double  val);
 
     ~TCurveNode();
 	
     void set_when(double when);
 	
     void set_when_and_value(double when, double value);
-	
-    void set_relative_when_and_value(double relwhen, double value, double range);
+
+    void set_relative_when_and_value(double relwhen, double value);
 	
     inline double get_when() const {return m_when;}
     inline double get_value() const {return m_value;}
@@ -47,25 +46,17 @@ public:
         return this->get_when() < other.get_when();
     }
 
-    void set_coeff(uint index, double value) {
-        Q_ASSERT(index <= 4);
-        m_coeff[index] = value;
-    }
+    TCurve*	m_curve;
 
-    double get_coeff(uint index) {
-        Q_ASSERT(index <= 4);
-        return m_coeff[index];
-    }
 
     TCurveNode* next;
 
 private:
-    double  m_coeff[4];
+    double  coeff[4];
     double 	m_when;
     double 	m_value;
 
-signals:
-    void nodePositionChanged();
+    friend class TCurve;
 };
 
 

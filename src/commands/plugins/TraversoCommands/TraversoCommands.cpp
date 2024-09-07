@@ -86,7 +86,6 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&TAudioClipView::staticMetaObject,       tr("Audio Clip"));
     m->add_meta_object(&TCurve::staticMetaObject,               tr("Curve"));
     m->add_meta_object(&CurveView::staticMetaObject,            tr("Curve"));
-    m->add_meta_object(&TCurveNode::staticMetaObject,           tr("Curve Node"));
     m->add_meta_object(&TTimeLineRuler::staticMetaObject,       tr("Time Line"));
     m->add_meta_object(&TimeLineView::staticMetaObject,         tr("Time Line"));
     m->add_meta_object(&TAudioPlugin::staticMetaObject,         tr("Plugin"));
