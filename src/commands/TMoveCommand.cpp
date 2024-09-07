@@ -21,7 +21,7 @@
 
 #include "TMoveCommand.h"
 
-#include "ClipsViewPort.h"
+#include "TClipsViewPort.h"
 #include "TInputEventDispatcher.h"
 #include "TProject.h"
 #include "TProjectManager.h"

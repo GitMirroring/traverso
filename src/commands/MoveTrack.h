@@ -27,14 +27,14 @@
 
 class TSheetView;
 class TTrack;
-class TrackView;
+class TTrackView;
 
 class MoveTrack : public TCommand
 {
         Q_OBJECT
 
 public :
-        MoveTrack(TrackView* view);
+        MoveTrack(TTrackView* view);
         ~MoveTrack();
 
         int begin_hold();
@@ -52,7 +52,7 @@ public :
 
 private:
         TSheetView*      m_sv;
-        TrackView*      m_trackView;
+        TTrackView*      m_trackView;
 
 public slots:
         void move_up();

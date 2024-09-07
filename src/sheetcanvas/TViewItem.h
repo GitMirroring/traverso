@@ -44,7 +44,7 @@ class TSheetView;
 #endif
 
 
-class ViewItem : public TContextItem, public QGraphicsItem
+class TViewItem : public TContextItem, public QGraphicsItem
 {
     Q_OBJECT
 #if QT_VERSION >= 0x040600
@@ -53,7 +53,7 @@ class ViewItem : public TContextItem, public QGraphicsItem
 
 public:
 
-    ViewItem(ViewItem* parentViewItem=nullptr, TContextItem* parentContext=nullptr) :
+    TViewItem(TViewItem* parentViewItem=nullptr, TContextItem* parentContext=nullptr) :
         TContextItem(parentViewItem)
       , QGraphicsItem(parentViewItem)
     {
@@ -62,7 +62,7 @@ public:
         m_hasMouseTracking = false;
     }
 
-    virtual ~ViewItem() {}
+    virtual ~TViewItem() {}
 
     enum {Type = UserType + 1};
 
@@ -71,7 +71,7 @@ public:
         for (int i=0; i< QGraphicsItem::childItems().size(); ++i) {
             QGraphicsItem* item = QGraphicsItem::childItems().at(i);
             if (is_viewitem(item)) {
-                (qgraphicsitem_cast<ViewItem*>(item))->calculate_bounding_rect();
+                (qgraphicsitem_cast<TViewItem*>(item))->calculate_bounding_rect();
             }
         }
     }
@@ -105,13 +105,13 @@ public:
 protected:
 
     TSheetView* 	m_sv;
-    ViewItem*	m_parentViewItem;
+    TViewItem*	m_parentViewItem;
     QRectF		m_boundingRect;
     bool            m_hasMouseTracking;
 };
 
-inline QRectF ViewItem::boundingRect() const {return m_boundingRect;}
-inline int ViewItem::type() const {return Type;}
+inline QRectF TViewItem::boundingRect() const {return m_boundingRect;}
+inline int TViewItem::type() const {return Type;}
 
 #endif
 

@@ -43,7 +43,7 @@ static const int DOT_SIZE		= 6;
 const char* DOT_COLOR{"#78817B"};
 
 TFadeCurveView::TFadeCurveView(TSheetView* sv, TAudioClipView* parent, TFadeCurve * fadeCurve )
-    : ViewItem(parent, fadeCurve)
+    : TViewItem(parent, fadeCurve)
     , m_fadeCurve(fadeCurve)
 {
 	PENTERCONS;

@@ -23,31 +23,31 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TRACK_VIEW_H
 
 #include "TTrack.h"
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include <QPropertyAnimation>
 
 class TAudioClip;
 class TAudioTrack;
-class PluginChainView;
+class TAudioPluginChainView;
 class TCurveView;
 class TTrack;
-class TrackPanelView;
+class TTrackPanelView;
 class TTrackLaneView;
 
 
-class TrackView : public ViewItem
+class TTrackView : public TViewItem
 {
         Q_OBJECT
     Q_PROPERTY(qreal yPosition READ getYPosition WRITE setYPosition)
 
 public:
-	TrackView(TSheetView* sv, TTrack* track);
-	~TrackView();
+    TTrackView(TSheetView* sv, TTrack* track);
+    ~TTrackView();
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
     TTrack* get_track() const {return m_track;}
-    TrackPanelView* get_panel_view() const {return m_panel;}
+    TTrackPanelView* get_panel_view() const {return m_panel;}
     TTrackLaneView* get_primary_lane_view() const {return m_primaryLaneView;}
 
     void set_moving(bool move);
@@ -65,10 +65,10 @@ public:
 protected:
 	TTrackLaneView*		m_primaryLaneView;
 	TTrackLaneView*		m_volumeAutomationLaneView;
-	PluginChainView*	m_pluginChainView;
+	TAudioPluginChainView*	m_pluginChainView;
     TCurveView*              m_curveView;
 	TTrack*                  m_track;
-	TrackPanelView*		m_panel{};
+	TTrackPanelView*		m_panel{};
 	int			m_height{};
 	int			m_paintBackground{};
 	int			m_topborderwidth{};
@@ -77,7 +77,7 @@ protected:
 
 	void add_lane_view(TTrackLaneView* laneView);
 
-        friend class TrackPanelView;
+        friend class TTrackPanelView;
         friend class AudioTrackPanelView;
         friend class TBusTrackPanelView;
 

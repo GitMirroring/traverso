@@ -6,7 +6,6 @@ ${CMAKE_SOURCE_DIR}/src/engine
 ${CMAKE_SOURCE_DIR}/src/plugins
 ${CMAKE_SOURCE_DIR}/src/plugins/native
 ${CMAKE_SOURCE_DIR}/src/plugins/LV2
-${CMAKE_SOURCE_DIR}/src/3rdparty/slv2
 ${CMAKE_SOURCE_DIR}/src/traverso
 ${CMAKE_SOURCE_DIR}/src/traverso/dialogs
 )
@@ -14,33 +13,33 @@ ${CMAKE_SOURCE_DIR}/src/traverso/dialogs
 SET(TRAVERSO_SONGCANVAS_SOURCES
 TAudioClipView.cpp TAudioClipView.h
 TAudioTrackView.cpp TAudioTrackView.h
-ClipsViewPort.cpp
-Cursors.cpp
-CurveNodeView.cpp CurveNodeView.h
+TClipsViewPort.cpp TClipsViewPort.h
+Cursors.cpp Cursors.h
+TCurveNodeView.cpp TCurveNodeView.h
 TCurveView.cpp TCurveView.h
 TFadeCurveView.cpp TFadeCurveView.h
 TTimeLineMarkerView.cpp TTimeLineMarkerView.h
-LineView.cpp
-PluginChainView.cpp
-TAudioPluginView.cpp
-PositionIndicator.cpp
-TrackView.cpp
-TTrackLaneView.cpp
+TLineView.cpp TLineView.h
+TAudioPluginChainView.cpp TAudioPluginChainView.h
+TAudioPluginView.cpp TAudioPluginView.h
+TPositionIndicator.cpp TPositionIndicator.h
+TTrackView.cpp TTrackView.h
+TTrackLaneView.cpp TTrackLaneView.h
 TSheetView.cpp TSheetView.h
-SheetWidget.cpp
-TBusTrackView.cpp
-TimeLineView.cpp
-TimeLineViewPort.cpp
-TrackPanelView.cpp
-TrackPanelViewPort.cpp
-ViewItem.cpp
-ViewPort.cpp
-dialogs/AudioClipEditDialog.cpp
-dialogs/TTrackManagerDialog.cpp
-VUMeterView.cpp
-TCanvasCursor.cpp
-TKnobView.cpp
-TTextView.cpp
+TSheetWidget.cpp TSheetWidget.h
+TBusTrackView.cpp TBusTrackView.h
+TTimeLineRulerView.cpp TTimeLineRulerView.h
+TTimeLineRulerViewPort.cpp TTimeLineRulerViewPort.h
+TTrackPanelView.cpp TTrackPanelView.h
+TTrackPanelViewPort.cpp TTrackPanelViewPort.h
+TViewItem.cpp TViewItem.h
+TViewPort.cpp TViewPort.h
+dialogs/AudioClipEditDialog.cpp dialogs/AudioClipEditDialog.h
+dialogs/TTrackManagerDialog.cpp dialogs/TTrackManagerDialog.h
+TVUMeterView.cpp TVUMeterView.h
+TCanvasCursor.cpp TCanvasCursor.h
+TKnobView.cpp TKnobView.h
+TTextView.cpp TTextView.h
 )
 
 

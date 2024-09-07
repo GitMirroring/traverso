@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2006-2007 Remon Sijrier 
+    Copyright (C) 2006 Remon Sijrier 
  
     This file is part of Traverso
  
@@ -17,44 +17,29 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  
+    $Id: TTrackPanelViewPort.cpp,v 1.1 2008/01/21 16:17:30 r_sijrier Exp $
 */
 
-#ifndef CLIPS_VIEW_PORT_H
-#define CLIPS_VIEW_PORT_H
-
-#include <QGraphicsScene>
-#include <QGraphicsItem>
-#include <QStyleOptionGraphicsItem>
-
-#include "ViewPort.h"
-
-class SheetWidget;
-class TAudioFileImportCommand;
+#include "TTrackPanelViewPort.h"
 		
-class ClipsViewPort : public ViewPort
+#include "TSheetWidget.h"
+#include "TSheetView.h"
+#include "TTrackPanelView.h"
+#include <TContextPointer.h>
+
+#include <Debugger.h>
+
+
+TTrackPanelViewPort::TTrackPanelViewPort(QGraphicsScene* scene, TSheetWidget* sw)
+	: TViewPort(scene, sw)
 {
-	Q_OBJECT
+        setFixedWidth(230);
 
-public:
-	ClipsViewPort(QGraphicsScene* scene, SheetWidget* sw);
-        ~ClipsViewPort() {}
+	m_sw = sw;
+        m_sv = sw->get_sheetview();
 	
+        setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+}
 
-protected:
-    void resizeEvent(QResizeEvent* e);
-	void paintEvent( QPaintEvent* e);
-	void dragEnterEvent(QDragEnterEvent *event);
-	void dropEvent(QDropEvent *event);
-    void dragMoveEvent(QDragMoveEvent *event);
-
-private:
-	SheetWidget*	m_sw;
-	QList<TAudioFileImportCommand*>	m_imports;
-	QList<qint64 >	m_resourcesImport;
-	TAudioTrack*     m_importTrack{};
-};
-
-
-#endif
 
 //eof

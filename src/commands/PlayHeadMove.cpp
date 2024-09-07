@@ -22,7 +22,7 @@
 #include "PlayHeadMove.h"
 
 #include "TSheetView.h"
-#include "ClipsViewPort.h"
+#include "TClipsViewPort.h"
 #include "Cursors.h"
 #include "TSnapList.h"
 #include "TSession.h"
@@ -64,7 +64,7 @@ int PlayHeadMove::begin_hold()
     m_origXPos = m_newXPos = int(m_session->get_transport_location() / d->sv->timeref_scalefactor);
     m_holdCursorSceneY = cpointer().scene_y();
 
-    ClipsViewPort* port = d->sv->get_clips_viewport();
+    TClipsViewPort* port = d->sv->get_clips_viewport();
     cpointer().set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), cpointer().mouse_viewport_y()));
     int x = port->mapFromScene(m_playhead->scenePos()).x();
 

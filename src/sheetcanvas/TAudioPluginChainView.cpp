@@ -19,12 +19,12 @@
 
 */
 
-#include "PluginChainView.h"
+#include "TAudioPluginChainView.h"
 
 #include <QScrollBar>
 
 #include "TSheetView.h"
-#include "ClipsViewPort.h"
+#include "TClipsViewPort.h"
 #include "TAudioPluginView.h"
 #include "TAudioPluginChain.h"
 #include "TAudioPlugin.h"
@@ -32,32 +32,32 @@
 #include "Debugger.h"
 
 
-PluginChainView::PluginChainView(TSheetView* sv, ViewItem* parent, TAudioPluginChain* chain)
-    : ViewItem(parent, parent)
+TAudioPluginChainView::TAudioPluginChainView(TSheetView* sv, TViewItem *parent, TAudioPluginChain* chain)
+    : TViewItem(parent, parent)
     , m_pluginchain(chain)
 {
     PENTERCONS;
 
     setZValue(parent->zValue() + 10);
     m_sv = sv;
-    PluginChainView::calculate_bounding_rect();
+    TAudioPluginChainView::calculate_bounding_rect();
 
     for(auto plugin : chain->get_plugins()) {
         add_plugin(plugin);
     }
 
-    connect(chain, &TAudioPluginChain::pluginAdded, this, &PluginChainView::add_plugin);
-    connect(chain, &TAudioPluginChain::pluginRemoved, this, &PluginChainView::remove_plugin);
+    connect(chain, &TAudioPluginChain::pluginAdded, this, &TAudioPluginChainView::add_plugin);
+    connect(chain, &TAudioPluginChain::pluginRemoved, this, &TAudioPluginChainView::remove_plugin);
     connect(m_sv->get_clips_viewport()->horizontalScrollBar(), SIGNAL(valueChanged(int)),
             this, SLOT(scrollbar_value_changed(int)));
 }
 
-PluginChainView::~PluginChainView( )
+TAudioPluginChainView::~TAudioPluginChainView( )
 {
     PENTERDES2;
 }
 
-void PluginChainView::add_plugin( TAudioPlugin * plugin )
+void TAudioPluginChainView::add_plugin( TAudioPlugin * plugin )
 {
     TAudioPluginView* view = new TAudioPluginView(this, m_pluginchain, plugin, m_pluginViews.size());
 
@@ -75,7 +75,7 @@ void PluginChainView::add_plugin( TAudioPlugin * plugin )
     }
 }
 
-void PluginChainView::remove_plugin( TAudioPlugin * plugin )
+void TAudioPluginChainView::remove_plugin( TAudioPlugin * plugin )
 {
     foreach(TAudioPluginView* view, m_pluginViews) {
         if (view->get_plugin() == plugin) {
@@ -101,22 +101,22 @@ void PluginChainView::remove_plugin( TAudioPlugin * plugin )
     m_parentViewItem->update();
 }
 
-void PluginChainView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
+void TAudioPluginChainView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
 {
     Q_UNUSED(painter);
     Q_UNUSED(option);
     Q_UNUSED(widget);
 }
 
-void PluginChainView::scrollbar_value_changed(int value)
+void TAudioPluginChainView::scrollbar_value_changed(int value)
 {
     setPos(value, y());
 }
 
-void PluginChainView::calculate_bounding_rect()
+void TAudioPluginChainView::calculate_bounding_rect()
 {
     m_boundingRect = m_parentViewItem->boundingRect();
     setPos(pos().x(), - 1);
-    ViewItem::calculate_bounding_rect();
+    TViewItem::calculate_bounding_rect();
 }
 

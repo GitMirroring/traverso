@@ -22,19 +22,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef CURVE_NODE_VIEW_H
 #define CURVE_NODE_VIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
 #include <TCurveNode.h>
 
 class TCurveView;
 
-class CurveNodeView : public ViewItem, public TCurveNode
+class TCurveNodeView : public TViewItem, public TCurveNode
 {
 	Q_OBJECT
 
 public:
-    CurveNodeView(TSheetView* sv, TCurveView* curveview, TCurveNode* node, TCurve* guicurve);
-    ~CurveNodeView();
+    TCurveNodeView(TSheetView* sv, TCurveView* curveview, TCurveNode* node, TCurve* guicurve);
+    ~TCurveNodeView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 	void calculate_bounding_rect();

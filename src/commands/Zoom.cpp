@@ -22,10 +22,10 @@
 #include "Zoom.h"
 
 #include "TSheetView.h"
-#include "TrackView.h"
+#include "TTrackView.h"
 #include "TSheet.h"
 #include "TTrack.h"
-#include "ClipsViewPort.h"
+#include "TClipsViewPort.h"
 #include "TContextPointer.h"
 #include "TInputEventDispatcher.h"
 #include <QPoint>

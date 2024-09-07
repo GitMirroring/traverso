@@ -34,8 +34,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInputEventDispatcher.h"
 
 #include "TSheetView.h"
-#include "ViewPort.h"
-#include "ViewItem.h"
+#include "TClipsViewPort.h"
+#include "TViewItem.h"
 #include "TContextPointer.h"
 
 #include "TInformUser.h"
@@ -44,14 +44,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 /**
- * \class ViewPort
+ * \class TViewPort
  * \brief An Interface class to create Contextual, or so called 'Soft Selection' enabled Widgets.
 
-	The ViewPort class inherits QGraphicsView, and thus is a true Canvas type of Widget.<br />
-	Reimplement ViewPort to create a 'Soft Selection' enabled widget. You have to create <br />
-	a QGraphicsScene object yourself, and set it as the scene the ViewPort visualizes.
+	The TViewPort class inherits QGraphicsView, and thus is a true Canvas type of Widget.<br />
+	Reimplement TViewPort to create a 'Soft Selection' enabled widget. You have to create <br />
+	a QGraphicsScene object yourself, and set it as the scene the TViewPort visualizes.
 
-	ViewPort should be used to visualize 'core' data objects. This is done by creating a <br />
+	TViewPort should be used to visualize 'core' data objects. This is done by creating a <br />
 	ViewItem object for each core class that has to be visualized. The naming convention <br />
 	for classes that inherit ViewItem is: core class name + View.<br />
 	E.g. the ViewItem class that represents an AudioClip should be named AudioClipView.
@@ -64,7 +64,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  *	\sa ContextPointer, TInputEventDispatcher
  */
 
-ViewPort::ViewPort(QGraphicsScene* scene, QWidget* parent)
+TViewPort::TViewPort(QGraphicsScene* scene, QWidget* parent)
     : QGraphicsView(scene, parent)
     , m_sv(nullptr)
 {
@@ -102,7 +102,7 @@ ViewPort::ViewPort(QGraphicsScene* scene, QWidget* parent)
     });
 }
 
-ViewPort::~ViewPort()
+TViewPort::~TViewPort()
 {
 	PENTERDES;
 
@@ -111,7 +111,7 @@ ViewPort::~ViewPort()
     }
 }
 
-bool ViewPort::event(QEvent * event)
+bool TViewPort::event(QEvent * event)
 {
 	// We want Tab events also send to the InputEngine
 	// so treat them as 'normal' key events.
@@ -138,20 +138,20 @@ bool ViewPort::event(QEvent * event)
 	return QGraphicsView::event(event);
 }
 
-void ViewPort::grab_mouse()
+void TViewPort::grab_mouse()
 {
     m_grabMouseGuardTimer.start(m_mouseGrabCheckTime);
    viewport()->grabMouse();
 }
 
-void ViewPort::release_mouse()
+void TViewPort::release_mouse()
 {
     m_grabMouseGuardTimer.stop();
     viewport()->releaseMouse();
 }
 
 
-void ViewPort::mouseMoveEvent(QMouseEvent* event)
+void TViewPort::mouseMoveEvent(QMouseEvent* event)
 {
     PENTER3;
 
@@ -186,9 +186,9 @@ void ViewPort::mouseMoveEvent(QMouseEvent* event)
     event->accept();
 }
 
-void ViewPort::detect_items_below_cursor()
+void TViewPort::detect_items_below_cursor()
 {
-    QList<ViewItem*> mouseTrackingItems;
+    QList<TViewItem*> mouseTrackingItems;
 
     QList<QGraphicsItem *> itemsUnderCursor = scene()->items(cpointer().scene_pos());
     QList<TContextItem*> activeContextItems;
@@ -203,9 +203,9 @@ void ViewPort::detect_items_below_cursor()
     {
         foreach(QGraphicsItem* item, itemsUnderCursor)
         {
-            if (ViewItem::is_viewitem(item))
+            if (TViewItem::is_viewitem(item))
             {
-                ViewItem* viewItem = static_cast<ViewItem*>(item);
+                TViewItem* viewItem = static_cast<TViewItem*>(item);
                 if (!viewItem->item_ignores_context())
                 {
                     activeContextItems.append(viewItem);
@@ -233,7 +233,7 @@ void ViewPort::detect_items_below_cursor()
     }
 }
 
-void ViewPort::tabletEvent(QTabletEvent * event)
+void TViewPort::tabletEvent(QTabletEvent * event)
 {
     PMESG("ViewPort tablet event:: x, y: %d, %d", (int)event->position().x(), (int)event->position().y());
 	PMESG("ViewPort tablet event:: high resolution x, y: %f, %f",
@@ -243,7 +243,7 @@ void ViewPort::tabletEvent(QTabletEvent * event)
 	QGraphicsView::tabletEvent(event);
 }
 
-void ViewPort::enterEvent(QEnterEvent* e)
+void TViewPort::enterEvent(QEnterEvent* e)
 {
     if (ied().is_holding()) {
         // we allready have viewport so do nothing
@@ -267,7 +267,7 @@ void ViewPort::enterEvent(QEnterEvent* e)
     e->accept();
 }
 
-void ViewPort::leaveEvent(QEvent* e)
+void TViewPort::leaveEvent(QEvent* e)
 {
     if (ied().is_holding()) {
         e->accept();
@@ -295,66 +295,66 @@ void ViewPort::leaveEvent(QEvent* e)
     e->accept();
 }
 
-void ViewPort::keyPressEvent( QKeyEvent * e)
+void TViewPort::keyPressEvent( QKeyEvent * e)
 {
 	ied().catch_key_press(e);
 	e->accept();
 }
 
-void ViewPort::keyReleaseEvent( QKeyEvent * e)
+void TViewPort::keyReleaseEvent( QKeyEvent * e)
 {
 	ied().catch_key_release(e);
     e->accept();
 }
 
-void ViewPort::dragEnterEvent(QDragEnterEvent *event)
+void TViewPort::dragEnterEvent(QDragEnterEvent *event)
 {
     event->accept();
 }
 
-void ViewPort::dragMoveEvent(QDragMoveEvent *event)
+void TViewPort::dragMoveEvent(QDragMoveEvent *event)
 {
     event->ignore();
 }
 
-void ViewPort::mousePressEvent( QMouseEvent * e )
+void TViewPort::mousePressEvent( QMouseEvent * e )
 {
 	ied().catch_mousebutton_press(e);
 	e->accept();
 }
 
-void ViewPort::mouseReleaseEvent( QMouseEvent * e )
+void TViewPort::mouseReleaseEvent( QMouseEvent * e )
 {
 	ied().catch_mousebutton_release(e);
 	e->accept();
 }
 
-void ViewPort::mouseDoubleClickEvent( QMouseEvent * e )
+void TViewPort::mouseDoubleClickEvent( QMouseEvent * e )
 {
 	ied().catch_mousebutton_press(e);
 	e->accept();
 }
 
-void ViewPort::wheelEvent( QWheelEvent * e )
+void TViewPort::wheelEvent( QWheelEvent * e )
 {
 	ied().catch_scroll(e);
 	e->accept();
 }
 
-void ViewPort::paintEvent( QPaintEvent* e )
+void TViewPort::paintEvent( QPaintEvent* e )
 {
 // 	PWARN("ViewPort::paintEvent()");
 	QGraphicsView::paintEvent(e);
 }
 
-void ViewPort::set_canvas_cursor_shape(const QString &shape, int alignment)
+void TViewPort::set_canvas_cursor_shape(const QString &shape, int alignment)
 {
     if (m_sv) {
         m_sv->set_cursor_shape(shape, alignment);
     }
 }
 
-void ViewPort::set_canvas_cursor_text( const QString & text, int mseconds)
+void TViewPort::set_canvas_cursor_text( const QString & text, int mseconds)
 {
     if (!m_sv) {
         PERROR(QString("ViewPort::set_canvas_cursor_text: no sheetview set to set text %1").arg(text));
@@ -364,7 +364,7 @@ void ViewPort::set_canvas_cursor_text( const QString & text, int mseconds)
 	m_sv->set_edit_cursor_text(text, mseconds);
 }
 
-void ViewPort::set_canvas_cursor_pos(QPointF pos, CursorMoveReason reason)
+void TViewPort::set_canvas_cursor_pos(QPointF pos, CursorMoveReason reason)
 {
     m_sv->set_canvas_cursor_pos(pos, reason);
 }

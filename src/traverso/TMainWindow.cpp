@@ -61,8 +61,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QStandardItemModel>
 
 #include "TProjectManager.h"
-#include "TrackView.h"
-#include "ViewPort.h"
+#include "TTrackView.h"
+#include "TClipsViewPort.h"
 #include "TFadeCurve.h"
 #include "TConfig.h"
 #include "TAudioPlugin.h"
@@ -71,7 +71,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TThemer.h"
 #include "TAudioFileCopyConvert.h"
 
-#include "../sheetcanvas/SheetWidget.h"
+#include "../sheetcanvas/TSheetWidget.h"
 
 #include "qundogroup.h"
 #include "ui_QuickStart.h"
@@ -401,7 +401,7 @@ void TMainWindow::set_project(TProject* project)
 {
 	PENTER;
 
-	foreach(SheetWidget* sw, m_sheetWidgets) {
+	foreach(TSheetWidget* sw, m_sheetWidgets) {
         remove_session(sw->get_session());
 	}
 
@@ -477,7 +477,7 @@ void TMainWindow::add_session(TSession *session)
 		m_sessionTabWidgets.insert(session, tabWidget);
 	}
 
-	SheetWidget* sheetWidget = new SheetWidget(session, m_centerAreaWidget);
+	TSheetWidget* sheetWidget = new TSheetWidget(session, m_centerAreaWidget);
 	m_sheetWidgets.insert(session, sheetWidget);
 	m_centerAreaWidget->addWidget(sheetWidget);
 
@@ -494,7 +494,7 @@ void TMainWindow::add_session(TSession *session)
 
 void TMainWindow::remove_session(TSession* session)
 {
-	SheetWidget* sw = m_sheetWidgets.value(session);
+	TSheetWidget* sw = m_sheetWidgets.value(session);
 	if (sw) {
 		m_sheetWidgets.remove(session);
 		m_centerAreaWidget->removeWidget(sw);
@@ -519,7 +519,7 @@ void TMainWindow::show_session(TSession* session)
         return;
     }
 
-    SheetWidget* sheetWidget = nullptr;
+    TSheetWidget* sheetWidget = nullptr;
 
 	if (!session) {
 		m_snapAction->setEnabled(false);
@@ -1769,7 +1769,7 @@ void TMainWindow::track_finder_model_index_changed(const QModelIndex& index)
 {
 	qlonglong id = index.data(Qt::UserRole).toLongLong();
 
-	foreach(SheetWidget* sw, m_sheetWidgets) {
+	foreach(TSheetWidget* sw, m_sheetWidgets) {
         TSession* session = sw->get_session();
         if (!session) return;
         TTrack* track = session->get_track(id);
@@ -1809,7 +1809,7 @@ TCommand* TMainWindow::browse_to_first_track_in_active_sheet()
 {
 	if (m_currentSheetWidget) {
 		TSheetView* sv = m_currentSheetWidget->get_sheetview();
-		QList<TrackView*> tracks = sv->get_track_views();
+		QList<TTrackView*> tracks = sv->get_track_views();
 		if (tracks.size()) {
 			sv->browse_to_track(tracks.first()->get_track());
 		}
@@ -1822,7 +1822,7 @@ TCommand* TMainWindow::browse_to_last_track_in_active_sheet()
 {
 	if (m_currentSheetWidget) {
 		TSheetView* sv = m_currentSheetWidget->get_sheetview();
-		QList<TrackView*> tracks = sv->get_track_views();
+		QList<TTrackView*> tracks = sv->get_track_views();
 		if (tracks.size()) {
 			sv->browse_to_track(tracks.last()->get_track());
 		}

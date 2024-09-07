@@ -23,20 +23,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define CURVE_VIEW_H
 
 #include "TAudioBuffer.h"
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include "TTimeRef.h"
 #include <QTimer>
 
 class TCurve;
 class TCurveNode;
-class CurveNodeView;
+class TCurveNodeView;
 
-class TCurveView : public ViewItem
+class TCurveView : public TViewItem
 {
 	Q_OBJECT
 
 public:
-	TCurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve);
+    TCurveView(TSheetView* sv, TViewItem* parentViewItem, TCurve* curve);
 	~TCurveView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -50,8 +50,8 @@ public:
 
         void set_start_offset(const TTimeRef &offset);
         TTimeRef get_start_offset() const {return m_startoffset;}
-        CurveNodeView* get_node_view_after(TTimeRef location) const;
-        CurveNodeView* get_node_view_before(TTimeRef location) const;
+        TCurveNodeView* get_node_view_after(TTimeRef location) const;
+        TCurveNodeView* get_node_view_before(TTimeRef location) const;
         TCurve* get_curve() const {return m_curve;}
 	
         void update_softselected_node(QPointF pos);
@@ -62,13 +62,13 @@ private:
 	TCurve*		m_curve;
 	TCurve*		m_guicurve;
 	QTimer		m_blinkTimer;
-	CurveNodeView*	m_blinkingNode;
+	TCurveNodeView*	m_blinkingNode;
 	int		m_blinkDarkness{};
 	int		m_blinkColorDirection;
-	QList<CurveNodeView*>	m_nodeViews;
+	QList<TCurveNodeView*>	m_nodeViews;
 	TTimeRef		m_startoffset;
 	
-	QList<CurveNodeView*>	get_selected_nodes();
+	QList<TCurveNodeView*>	get_selected_nodes();
 
 public slots:
 	TCommand* add_node();

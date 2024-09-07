@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TimeLineView.h"
+#include "TTimeLineRulerView.h"
 
 #include <QPainter>
 
@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TThemer.h"
 #include "TSheetView.h"
 #include "TTimeLineMarkerView.h"
-#include "TimeLineViewPort.h"
+#include "TTimeLineRulerViewPort.h"
 #include "TMainWindow.h"
 
 #include <TSheet.h>
@@ -51,8 +51,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #define MARKER_SOFT_SELECTION_DISTANCE 50
 
-TimeLineView::TimeLineView(TSheetView* view)
-    : ViewItem(nullptr, view->get_sheet()->get_timeline())
+TTimeLineRulerView::TTimeLineRulerView(TSheetView* view)
+    : TViewItem(nullptr, view->get_sheet()->get_timeline())
     , m_blinkingMarker(nullptr)
 {
     PENTERCONS2;
@@ -61,7 +61,7 @@ TimeLineView::TimeLineView(TSheetView* view)
     m_boundingRect = QRectF(0, 0, MAX_CANVAS_WIDTH, TIMELINE_HEIGHT);
     m_timeline = m_sv->get_sheet()->get_timeline();
 
-    TimeLineView::load_theme_data();
+    TTimeLineRulerView::load_theme_data();
 
     // Create MarkerViews for existing markers
     for(TTimeLineMarker* marker : m_timeline->get_markers()) {
@@ -69,8 +69,8 @@ TimeLineView::TimeLineView(TSheetView* view)
     }
 
     // Make connections to the 'core'
-    connect(m_timeline, &TTimeLineRuler::markerAdded, this, &TimeLineView::add_new_marker_view);
-    connect(m_timeline, &TTimeLineRuler::markerRemoved, this, &TimeLineView::remove_marker_view);
+    connect(m_timeline, &TTimeLineRuler::markerAdded, this, &TTimeLineRulerView::add_new_marker_view);
+    connect(m_timeline, &TTimeLineRuler::markerRemoved, this, &TTimeLineRulerView::remove_marker_view);
     connect(m_timeline, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
 
     m_hasMouseTracking = true;
@@ -100,23 +100,23 @@ TimeLineView::TimeLineView(TSheetView* view)
 }
 
 
-TimeLineView::~TimeLineView()
+TTimeLineRulerView::~TTimeLineRulerView()
 {
     PENTERDES;
 }
 
 
-void TimeLineView::hzoom_changed( )
+void TTimeLineRulerView::hzoom_changed( )
 {
     update();
 }
 
-TCommand* TimeLineView::show_marker_dialog()
+TCommand* TTimeLineRulerView::show_marker_dialog()
 {
     return TMainWindow::instance()->show_marker_dialog();
 }
 
-void TimeLineView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
+void TTimeLineRulerView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
     PENTER3;
     Q_UNUSED(widget);
@@ -206,14 +206,14 @@ void TimeLineView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opti
     painter->restore();
 }
 
-void TimeLineView::calculate_bounding_rect()
+void TTimeLineRulerView::calculate_bounding_rect()
 {
     update();
-    ViewItem::calculate_bounding_rect();
+    TViewItem::calculate_bounding_rect();
 }
 
 
-void TimeLineView::add_new_marker_view(TTimeLineMarker * marker)
+void TTimeLineRulerView::add_new_marker_view(TTimeLineMarker * marker)
 {
     TTimeLineMarkerView* view = new TTimeLineMarkerView(marker, m_sv, this);
     view->set_active(false);
@@ -221,7 +221,7 @@ void TimeLineView::add_new_marker_view(TTimeLineMarker * marker)
     view->update();
 }
 
-void TimeLineView::remove_marker_view(TTimeLineMarker * marker)
+void TTimeLineRulerView::remove_marker_view(TTimeLineMarker * marker)
 {
     foreach(TTimeLineMarkerView* view, m_markerViews) {
         if (view->get_marker() == marker) {
@@ -234,7 +234,7 @@ void TimeLineView::remove_marker_view(TTimeLineMarker * marker)
     }
 }
 
-TCommand* TimeLineView::add_marker()
+TCommand* TTimeLineRulerView::add_marker()
 {
     QPointF point = mapFromScene(cpointer().scene_pos());
 
@@ -247,17 +247,17 @@ TCommand* TimeLineView::add_marker()
     return add_marker_at(when);
 }
 
-TCommand* TimeLineView::add_marker_at_playhead()
+TCommand* TTimeLineRulerView::add_marker_at_playhead()
 {
     return add_marker_at(m_sv->get_sheet()->get_transport_location());
 }
 
-TCommand* TimeLineView::add_marker_at_work_cursor()
+TCommand* TTimeLineRulerView::add_marker_at_work_cursor()
 {
     return add_marker_at(m_sv->get_sheet()->get_work_location());
 }
 
-TCommand* TimeLineView::add_marker_at(const TTimeRef when)
+TCommand* TTimeLineRulerView::add_marker_at(const TTimeRef when)
 {
     CommandGroup* group = new CommandGroup(m_timeline, "");
 
@@ -286,7 +286,7 @@ TCommand* TimeLineView::add_marker_at(const TTimeRef when)
     return group;
 }
 
-TCommand* TimeLineView::playhead_to_marker()
+TCommand* TTimeLineRulerView::playhead_to_marker()
 {
     update_softselected_marker(cpointer().on_first_input_event_scene_pos());
 
@@ -298,12 +298,12 @@ TCommand* TimeLineView::playhead_to_marker()
     return ied().did_not_implement();
 }
 
-TCommand* TimeLineView::remove_marker()
+TCommand* TTimeLineRulerView::remove_marker()
 {
     if (m_blinkingMarker) {
         TTimeLineMarker* marker = m_blinkingMarker->get_marker();
         if (marker->get_type() == TTimeLineMarker::ENDMARKER && m_markerViews.size() > 1) {
-            tInformUser().information(tr("You have to remove all other markers first."));
+            cpointer().set_canvas_cursor_text(tr("Remove all other markers first."), 2000);
             return ied().failure();
         }
         return m_timeline->remove_marker(marker);
@@ -312,7 +312,7 @@ TCommand* TimeLineView::remove_marker()
     return nullptr;
 }
 
-void TimeLineView::update_softselected_marker(QPointF pos)
+void TTimeLineRulerView::update_softselected_marker(QPointF pos)
 {
     // TODO : pos is scene_pos, but Marker positions are relative
     // to parent, not to scene, but since TimeLineView spans the scene
@@ -357,7 +357,7 @@ void TimeLineView::update_softselected_marker(QPointF pos)
 }
 
 
-void TimeLineView::active_context_changed()
+void TTimeLineRulerView::active_context_changed()
 {
     PENTER;
     if (has_active_context()) {
@@ -382,12 +382,12 @@ void TimeLineView::active_context_changed()
 }
 
 
-void TimeLineView::mouse_hover_move_event()
+void TTimeLineRulerView::mouse_hover_move_event()
 {
     update_softselected_marker(cpointer().scene_pos());
 }
 
-TCommand * TimeLineView::drag_marker()
+TCommand * TTimeLineRulerView::drag_marker()
 {
     update_softselected_marker(cpointer().on_first_input_event_scene_pos());
 
@@ -398,7 +398,7 @@ TCommand * TimeLineView::drag_marker()
     return ied().failure();
 }
 
-TCommand * TimeLineView::clear_markers()
+TCommand * TTimeLineRulerView::clear_markers()
 {
     CommandGroup* group = new CommandGroup(m_timeline, tr("Clear Markers"));
 
@@ -409,13 +409,13 @@ TCommand * TimeLineView::clear_markers()
     return group;
 }
 
-void TimeLineView::load_theme_data()
+void TTimeLineRulerView::load_theme_data()
 {
     // TODO Load pixmap, fonts, colors from themer() !!
-    TimeLineView::calculate_bounding_rect();
+    TTimeLineRulerView::calculate_bounding_rect();
 }
 
-TTimeLineMarkerView* TimeLineView::get_marker_view_after(const TTimeRef &location)
+TTimeLineMarkerView* TTimeLineRulerView::get_marker_view_after(const TTimeRef &location)
 {
     // FIXME: only keep this list sorted if markers are added/moved??
     std::sort(m_markerViews.begin(), m_markerViews.end(), [&](TTimeLineMarkerView* left, TTimeLineMarkerView* right) {
@@ -430,7 +430,7 @@ TTimeLineMarkerView* TimeLineView::get_marker_view_after(const TTimeRef &locatio
     return nullptr;
 }
 
-TTimeLineMarkerView* TimeLineView::get_marker_view_before(const TTimeRef &location)
+TTimeLineMarkerView* TTimeLineRulerView::get_marker_view_before(const TTimeRef &location)
 {
     // FIXME: only keep this list sorted if markers are added/moved??
     std::sort(m_markerViews.begin(), m_markerViews.end(), [&](TTimeLineMarkerView* left, TTimeLineMarkerView* right) {

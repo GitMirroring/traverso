@@ -23,16 +23,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TKNOBVIEW_H
 
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
 class TTrack;
 
-class TKnobView : public ViewItem
+class TKnobView : public TViewItem
 {
 	Q_OBJECT
 
 public:
-	TKnobView(ViewItem* parent);
+	TKnobView(TViewItem* parent);
 	TKnobView(){}
 
 
@@ -69,7 +69,7 @@ class TPanKnobView : public TKnobView
 	Q_OBJECT
 
 public:
-	TPanKnobView(ViewItem* parent, TTrack* track);
+	TPanKnobView(TViewItem* parent, TTrack* track);
 
 	TTrack* get_track() const {return m_track;}
 
@@ -90,7 +90,7 @@ class TGainKnobView : public TKnobView
     Q_OBJECT
 
 public:
-    TGainKnobView(ViewItem* parent, TTrack* track);
+    TGainKnobView(TViewItem* parent, TTrack* track);
 
     TTrack* get_track() const {return m_track;}
 

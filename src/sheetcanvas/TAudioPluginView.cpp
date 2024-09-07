@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QPainter>
 
 #include "TAudioTrackView.h"
-#include "PluginChainView.h"
+#include "TAudioPluginChainView.h"
 #include "TMainWindow.h"
 
 #include <TThemer.h>
@@ -39,8 +39,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Debugger.h"
 
-TAudioPluginView::TAudioPluginView(PluginChainView* parent, TAudioPluginChain* chain, TAudioPlugin* plugin, int index)
-	: ViewItem(parent, plugin)
+TAudioPluginView::TAudioPluginView(TAudioPluginChainView* parent, TAudioPluginChain* chain, TAudioPlugin* plugin, int index)
+	: TViewItem(parent, plugin)
 	, m_pluginchain(chain)
 	, m_plugin(plugin)
 	, m_index(index)

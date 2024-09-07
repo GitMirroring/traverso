@@ -19,20 +19,20 @@
  
 */
 
-#include "PositionIndicator.h"
+#include "TPositionIndicator.h"
 
 #include <QColor>
 #include "Utils.h"
 #include "TThemer.h"
 
-PositionIndicator::PositionIndicator(ViewItem* parentView)
-    : ViewItem(parentView, nullptr)
+TPositionIndicator::TPositionIndicator(TViewItem* parentView)
+    : TViewItem(parentView, nullptr)
 {
     set_ignore_context(true);
 	setZValue(200);
 }
 
-void PositionIndicator::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
+void TPositionIndicator::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)
 {
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
@@ -45,7 +45,7 @@ void PositionIndicator::paint(QPainter * painter, const QStyleOptionGraphicsItem
     painter->restore();
 }
 
-void PositionIndicator::calculate_bounding_rect()
+void TPositionIndicator::calculate_bounding_rect()
 {
 	prepareGeometryChange();
     QFontMetrics fm(themer()->get_font("TrackPanel:fontscale:name"));
@@ -69,7 +69,7 @@ void PositionIndicator::calculate_bounding_rect()
 	painter.drawRoundedRect(m_boundingRect, rounding, rounding);
 }
 
-void PositionIndicator::set_text(const QString& primary)
+void TPositionIndicator::set_text(const QString& primary)
 {
     m_primaryText = primary;
     calculate_bounding_rect();

@@ -24,8 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TBusTrack.h"
 
-#include "PluginChainView.h"
-#include "TrackPanelView.h"
+#include "TAudioPluginChainView.h"
+#include "TTrackPanelView.h"
 #include "TSheetView.h"
 #include "TTrackLaneView.h"
 #include "TThemer.h"
@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Debugger.h>
 
 TBusTrackView::TBusTrackView(TSheetView* sv, TBusTrack* group)
-        : TrackView(sv, group)
+        : TTrackView(sv, group)
 {
     PENTERCONS;
 
@@ -46,7 +46,7 @@ TBusTrackView::TBusTrackView(TSheetView* sv, TBusTrack* group)
     pluginsLaneview->hide();
     add_lane_view(pluginsLaneview);
 
-    m_pluginChainView = new PluginChainView(m_sv, pluginsLaneview, m_track->get_plugin_chain());
+    m_pluginChainView = new TAudioPluginChainView(m_sv, pluginsLaneview, m_track->get_plugin_chain());
 
     m_panel = new TBusTrackPanelView(this);
     calculate_bounding_rect();
@@ -58,7 +58,7 @@ void TBusTrackView::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt
 {
         Q_UNUSED(widget);
 
-        TrackView::paint(painter, option, widget);
+        TTrackView::paint(painter, option, widget);
 
 // 	printf("TrackView:: PAINT :: exposed rect is: x=%f, y=%f, w=%f, h=%f\n", option->exposedRect.x(), option->exposedRect.y(), option->exposedRect.width(), option->exposedRect.height());
 

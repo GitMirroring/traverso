@@ -25,8 +25,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Debugger.h"
 
-TTrackLaneView::TTrackLaneView(ViewItem* parent)
-    : ViewItem(parent, nullptr)
+TTrackLaneView::TTrackLaneView(TViewItem* parent)
+    : TViewItem(parent, nullptr)
 {
 	m_sv = parent->get_sheetview();
 	m_height = 150;
@@ -36,7 +36,7 @@ TTrackLaneView::TTrackLaneView(ViewItem* parent)
 	setZValue(parent->zValue() + 1);
 }
 
-void TTrackLaneView::set_child_view(ViewItem *view)
+void TTrackLaneView::set_child_view(TViewItem *view)
 {
 	m_childView = view;
 
@@ -70,7 +70,7 @@ void TTrackLaneView::calculate_bounding_rect()
 	if (m_panel) {
 		m_panel->calculate_bounding_rect();
 	}
-	ViewItem::calculate_bounding_rect();
+    TViewItem::calculate_bounding_rect();
 }
 
 void TTrackLaneView::load_theme_data()

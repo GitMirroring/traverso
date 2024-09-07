@@ -23,15 +23,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TCanvasCursor.h"
 
 #include "TSheetView.h"
-#include "ViewPort.h"
-#include "PositionIndicator.h"
+#include "TClipsViewPort.h"
+#include "TPositionIndicator.h"
 
 #include "Debugger.h"
 
 TCanvasCursor::TCanvasCursor(TSheetView* )
-    : ViewItem(nullptr)
+    : TViewItem(nullptr)
 {
-    m_positionIndicator = new PositionIndicator(this);
+    m_positionIndicator = new TPositionIndicator(this);
     m_positionIndicator->hide();
 
     set_ignore_context(true);
@@ -169,7 +169,7 @@ void TCanvasCursor::set_cursor_shape(const QString &shape, int alignment)
 
 void TCanvasCursor::update_textitem_pos()
 {
-    ViewPort* vp = static_cast<ViewPort*>(cpointer().get_viewport());
+    TViewPort* vp = static_cast<TViewPort*>(cpointer().get_viewport());
     if (!vp || !m_positionIndicator->isVisible())
     {
         return;

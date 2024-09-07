@@ -23,7 +23,7 @@
 
 #include <cmath>
 
-#include "ViewPort.h"
+#include "TClipsViewPort.h"
 
 #include "TContextPointer.h"
 #include "TTrack.h"

@@ -23,13 +23,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QInputDialog>
 #include <QGraphicsScene>
 
-#include "TrackView.h"
+#include "TTrackView.h"
 #include "TTrackLaneView.h"
-#include "PluginChainView.h"
+#include "TAudioPluginChainView.h"
 #include "TThemer.h"
-#include "TrackPanelViewPort.h"
+#include "TTrackPanelViewPort.h"
 #include "TSheetView.h"
-#include "TrackPanelView.h"
+#include "TTrackPanelView.h"
 #include "TMainWindow.h"
 
 #include <TSheet.h>
@@ -43,8 +43,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <Debugger.h>
 
-TrackView::TrackView(TSheetView* sv, TTrack * track)
-	: ViewItem(nullptr, track)
+TTrackView::TTrackView(TSheetView* sv, TTrack * track)
+	: TViewItem(nullptr, track)
 {
         PENTERCONS;
 	m_sv = sv;
@@ -56,7 +56,7 @@ TrackView::TrackView(TSheetView* sv, TTrack * track)
 
 	m_sv->scene()->addItem(this);
 
-    TrackView::load_theme_data();
+    TTrackView::load_theme_data();
 
 	m_isMoving = false;
 
@@ -75,10 +75,10 @@ TrackView::TrackView(TSheetView* sv, TTrack * track)
 	m_visibleLanes = 1;
 }
 
-TrackView:: ~ TrackView( )
+TTrackView:: ~ TTrackView( )
 = default;
 
-void TrackView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
+void TTrackView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
         Q_UNUSED(widget);
 
@@ -131,19 +131,19 @@ void TrackView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     painter->restore();
 }
 
-int TrackView::get_height( ) const
+int TTrackView::get_height( ) const
 {
 	return m_sv->get_track_height(m_track);
 }
 
-TCommand* TrackView::edit_properties( )
+TCommand* TTrackView::edit_properties( )
 {
         TTrackManagerDialog* manager = new TTrackManagerDialog(m_track, TMainWindow::instance());
         manager->open();
         return nullptr;
 }
 
-TCommand* TrackView::add_new_plugin( )
+TCommand* TTrackView::add_new_plugin( )
 {
         PluginSelectorDialog::instance()->set_description(tr("Track %1:  %2")
                         .arg(m_track->get_sort_index()+1).arg(m_track->get_name()));
@@ -158,26 +158,26 @@ TCommand* TrackView::add_new_plugin( )
         return nullptr;
 }
 
-void TrackView::add_lane_view(TTrackLaneView *laneView)
+void TTrackView::add_lane_view(TTrackLaneView *laneView)
 {
 	m_laneViews.append(laneView);
 }
 
-void TrackView::set_height( int height )
+void TTrackView::set_height( int height )
 {
         m_height = height;
 	m_primaryLaneView->set_height(height);
 	layout_lanes();
 }
 
-void TrackView::set_moving(bool move)
+void TTrackView::set_moving(bool move)
 {
         m_isMoving = move;
         update();
         m_panel->update();
 }
 
-void TrackView::move_to( int x, int y )
+void TTrackView::move_to( int x, int y )
 {
 	Q_UNUSED(x);
 //	setPos(0, y);
@@ -190,18 +190,18 @@ void TrackView::move_to( int x, int y )
     m_animation->start();
 }
 
-bool TrackView::animatedMoveRunning() const
+bool TTrackView::animatedMoveRunning() const
 {
     return m_animation->state() == QPropertyAnimation::Running;
 }
 
-void TrackView::setYPosition(qreal position)
+void TTrackView::setYPosition(qreal position)
 {
     setPos(0, position);
     m_panel->setPos(-m_sv->get_trackpanel_view_port()->width(), position);
 }
 
-void TrackView::layout_lanes()
+void TTrackView::layout_lanes()
 {
 	int verticalposition = m_cliptopmargin;
 	m_visibleLanes = 0;
@@ -215,7 +215,7 @@ void TrackView::layout_lanes()
 	}
 }
 
-int TrackView::get_total_height()
+int TTrackView::get_total_height()
 {
 	int totalHeight = 0;
 	foreach(TTrackLaneView* lane, m_laneViews) {
@@ -230,16 +230,16 @@ int TrackView::get_total_height()
 	return totalHeight;
 }
 
-void TrackView::calculate_bounding_rect()
+void TTrackView::calculate_bounding_rect()
 {
         prepareGeometryChange();
 	set_height(m_sv->get_track_height(m_track));
 	m_boundingRect = QRectF(0, 0, MAX_CANVAS_WIDTH, get_total_height());
         m_panel->calculate_bounding_rect();
-        ViewItem::calculate_bounding_rect();
+        TViewItem::calculate_bounding_rect();
 }
 
-void TrackView::load_theme_data()
+void TTrackView::load_theme_data()
 {
         m_paintBackground = themer()->get_property("Track:paintbackground").toInt();
         m_topborderwidth = themer()->get_property("Track:topborderwidth").toInt();
@@ -250,7 +250,7 @@ void TrackView::load_theme_data()
 	m_laneSpacing = 2;
 }
 
-void TrackView::automation_visibility_changed()
+void TTrackView::automation_visibility_changed()
 {
 	if (m_track->show_track_volume_automation()) {
 		m_volumeAutomationLaneView->setVisible(true);

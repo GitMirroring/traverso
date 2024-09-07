@@ -19,17 +19,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef LINE_VIEW_H
-#define LINE_VIEW_H
+#ifndef TLINE_VIEW_H
+#define TLINE_VIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
-class LineView : public ViewItem
+class TLineView : public TViewItem
 {
 	Q_OBJECT
 public:
 		
-	LineView(ViewItem* parent) : ViewItem(parent, 0) 
+    TLineView(TViewItem* parent) : TViewItem(parent, 0)
 	{
 		setZValue(parent->zValue() + 1);
 		m_boundingRect = QRectF(0, 0, 1, parent->boundingRect().height());

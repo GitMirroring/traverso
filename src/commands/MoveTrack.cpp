@@ -21,12 +21,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "MoveTrack.h"
 
-#include "ClipsViewPort.h"
+#include "TClipsViewPort.h"
 #include "TContextPointer.h"
 #include "TSheet.h"
 #include "TSheetView.h"
 #include "TTrack.h"
-#include "TrackView.h"
+#include "TTrackView.h"
 #include "TProject.h"
 #include "TProjectManager.h"
 
@@ -37,7 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Debugger.h"
 
-MoveTrack::MoveTrack(TrackView* view)
+MoveTrack::MoveTrack(TTrackView* view)
     : TCommand(view->get_related_context_item(), "")
     , m_trackView(view)
 {

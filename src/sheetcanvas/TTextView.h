@@ -22,13 +22,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef TTEXTVIEW_H
 #define TTEXTVIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
-class TTextView : public ViewItem
+class TTextView : public TViewItem
 {
     Q_OBJECT
 public:
-    TTextView(ViewItem* parent);
+    TTextView(TViewItem* parent);
     ~TTextView();
 
     void paint(QPainter* painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

@@ -56,7 +56,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioClip* clip )
-    : ViewItem(parent->get_primary_lane_view(), clip)
+    : TViewItem(parent->get_primary_lane_view(), clip)
     , m_tv(parent)
     , m_clip(clip)
 {
@@ -714,7 +714,7 @@ void TAudioClipView::calculate_bounding_rect()
     }
 
     update_start_pos();
-    ViewItem::calculate_bounding_rect();
+    TViewItem::calculate_bounding_rect();
 }
 
 void TAudioClipView::update_start_pos()

@@ -26,15 +26,15 @@
 
 #include <QTimer>
 
-#include <ViewPort.h>
-#include <ViewItem.h>
+#include <TViewPort.h>
+#include <TViewItem.h>
 
 class MeterView;
 class TSession;
 class TProject;
 class TAudioPlugin;
 
-class MeterWidget : public ViewPort
+class MeterWidget : public TViewPort
 {
 
 public:

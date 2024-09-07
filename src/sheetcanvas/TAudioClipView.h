@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef AUDIO_CLIP_VIEW_H
 #define AUDIO_CLIP_VIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include <defines.h>
 #include <QList>
 #include <QTimer>
@@ -41,7 +41,7 @@ class TFadeCurveView;
 class TPeak;
 
 
-class TAudioClipView : public ViewItem
+class TAudioClipView : public TViewItem
 {
 	Q_OBJECT
 

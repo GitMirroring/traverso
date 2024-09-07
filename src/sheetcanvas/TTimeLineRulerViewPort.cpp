@@ -19,18 +19,18 @@
  
 */
 
-#include "TimeLineViewPort.h"
+#include "TTimeLineRulerViewPort.h"
 #include "TSheetView.h"
-#include "SheetWidget.h"
-#include "TimeLineView.h"
+#include "TSheetWidget.h"
+#include "TTimeLineRulerView.h"
 #include <QScrollBar>
 #include <QWheelEvent>
 #include <TContextPointer.h>
 		
 #include <Debugger.h>
 
-TimeLineViewPort::TimeLineViewPort(QGraphicsScene* scene, SheetWidget* sw)
-	: ViewPort(scene, sw)
+TTimeLineRulerViewPort::TTimeLineRulerViewPort(QGraphicsScene* scene, TSheetWidget* sw)
+	: TViewPort(scene, sw)
 {
         setFixedHeight(TIMELINE_HEIGHT);
 	setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -39,13 +39,13 @@ TimeLineViewPort::TimeLineViewPort(QGraphicsScene* scene, SheetWidget* sw)
 	m_timeLineView = 0;
 }
 
-TimeLineViewPort::~ TimeLineViewPort()
+TTimeLineRulerViewPort::~ TTimeLineRulerViewPort()
 {
 PENTERDES;
 }
 
 
-void TimeLineViewPort::wheelEvent ( QWheelEvent * e )
+void TTimeLineRulerViewPort::wheelEvent ( QWheelEvent * e )
 {
     if (e->angleDelta().y() > 0) {
 		m_sv->scroll_left();
@@ -54,15 +54,15 @@ void TimeLineViewPort::wheelEvent ( QWheelEvent * e )
 	}
 }
 
-void TimeLineViewPort::set_sheetview( TSheetView * view )
+void TTimeLineRulerViewPort::set_sheetview( TSheetView * view )
 {
-	m_timeLineView = new TimeLineView(view);
+	m_timeLineView = new TTimeLineRulerView(view);
 	scene()->addItem(m_timeLineView);
 	m_timeLineView->setPos(0, -TIMELINE_HEIGHT);
 	m_sv = view;
 }
 
-void TimeLineViewPort::scale_factor_changed()
+void TTimeLineRulerViewPort::scale_factor_changed()
 {
 	if (m_timeLineView) {
 		m_timeLineView->calculate_bounding_rect();

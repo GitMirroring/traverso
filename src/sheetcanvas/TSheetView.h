@@ -22,7 +22,7 @@
 #ifndef SONG_VIEW_H
 #define SONG_VIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include "TViewPortInterface.h"
 #include <QPropertyAnimation>
 #include "TTimeRef.h"
@@ -31,20 +31,20 @@ class TAudioClip;
 class TSheet;
 class TAudioClipView;
 class TAudioTrackView;
-class ClipsViewPort;
+class TClipsViewPort;
 class TCurveView;
-class CurveNodeView;
+class TCurveNodeView;
 class TTimeLineMarkerView;
-class TrackPanelViewPort;
-class TimeLineViewPort;
-class TimeLineView;
-class TrackView;
+class TTrackPanelViewPort;
+class TTimeLineRulerViewPort;
+class TTimeLineRulerView;
+class TTrackView;
 class TSession;
-class SheetWidget;
+class TSheetWidget;
 class TAudioTrackView;
 class TTrack;
-class PlayHead;
-class WorkCursor;
+class TPlayHead;
+class TWorkCursor;
 class TCanvasCursor;
 class TCurve;
 
@@ -58,25 +58,25 @@ struct ItemBrowserData {
 		timeLineView = 0;
 	}
 
-	TimeLineView* timeLineView;
+	TTimeLineRulerView* timeLineView;
 	TTimeLineMarkerView* markerView;
-	TrackView* tv;
+	TTrackView* tv;
 	TAudioTrackView* atv;
 	TAudioClipView* acv;
 	TCurveView* curveView;
 	QString currentContext;
 };
 
-class TSheetView : public ViewItem
+class TSheetView : public TViewItem
 {
 	Q_OBJECT
 
 public :
 
-    TSheetView(SheetWidget* sheetwidget,
-			ClipsViewPort* viewPort,
-			TrackPanelViewPort* tpvp,
-			TimeLineViewPort* tlvp,
+    TSheetView(TSheetWidget* sheetwidget,
+			TClipsViewPort* viewPort,
+			TTrackPanelViewPort* tpvp,
+			TTimeLineRulerViewPort* tlvp,
 			TSession* sheet);
     ~TSheetView();
 
@@ -84,15 +84,15 @@ public :
 	QRectF boundingRect() const {return QRectF();}
 
 	TSession* get_sheet() const {return m_session;}
-	TrackPanelViewPort* get_trackpanel_view_port() const;
-	ClipsViewPort* get_clips_viewport() const;
-	TimeLineViewPort* get_timeline_viewport() const;
-	PlayHead* get_play_cursor() const {return m_playCursor;}
-	WorkCursor* get_work_cursor() const {return m_workCursor;}
+	TTrackPanelViewPort* get_trackpanel_view_port() const;
+	TClipsViewPort* get_clips_viewport() const;
+	TTimeLineRulerViewPort* get_timeline_viewport() const;
+	TPlayHead* get_play_cursor() const {return m_playCursor;}
+	TWorkCursor* get_work_cursor() const {return m_workCursor;}
 
     TAudioTrackView* get_audio_trackview_at_scene_pos(QPointF point);
-    TrackView* get_trackview_at_scene_pos(QPointF point);
-	QList<TrackView*> get_track_views() const;
+    TTrackView* get_trackview_at_scene_pos(QPointF point);
+	QList<TTrackView*> get_track_views() const;
 	int get_track_height(TTrack* track) const;
     qreal get_mean_track_height() const {return m_meanTrackHeight;}
 	static QHash<QString, QString>* cursor_dict();
@@ -106,11 +106,11 @@ public :
 	void clipviewport_resize_event();
 	int hscrollbar_value() const;
 	int vscrollbar_value() const;
-	void move_trackview_up(TrackView* trackView);
-	void move_trackview_down(TrackView* trackView);
-	void to_top(TrackView* trackView);
-	void to_bottom(TrackView* trackView);
-	void set_track_height(TrackView* view, int newheight);
+	void move_trackview_up(TTrackView* trackView);
+	void move_trackview_down(TTrackView* trackView);
+	void to_top(TTrackView* trackView);
+	void to_bottom(TTrackView* trackView);
+	void set_track_height(TTrackView* view, int newheight);
 	void set_hscrollbar_value(int value);
 	void set_vscrollbar_value(int value);
 
@@ -123,24 +123,24 @@ public :
 	void browse_to_track(TTrack* track);
 	void browse_to_audio_clip_view(TAudioClipView* acv);
 	void browse_to_curve_view(TCurveView* curveView);
-	void browse_to_curve_node_view(CurveNodeView* nodeView);
+	void browse_to_curve_node_view(TCurveNodeView* nodeView);
 	void browse_to_marker_view(TTimeLineMarkerView* markerView);
-	void center_in_view(ViewItem* item, enum Qt::AlignmentFlag = Qt::AlignHCenter);
+	void center_in_view(TViewItem* item, enum Qt::AlignmentFlag = Qt::AlignHCenter);
     void keyboard_move_canvas_cursor_to_location(const TTimeRef &location, qreal sceneY);
 
 	qint64		timeref_scalefactor;
 
 private:
     TSession*           m_session;
-    PlayHead*           m_playCursor;
-	ClipsViewPort* 		m_clipsViewPort;
-	TrackPanelViewPort*	m_tpvp;
-	TimeLineViewPort*	m_tlvp;
-	QList<TrackView*>	m_audioTrackViews;
-	QList<TrackView*>	m_busTrackViews;
-    TrackView*          m_sheetMasterOutView;
-    TrackView*          m_projectMasterOutView;
-    WorkCursor*         m_workCursor;
+    TPlayHead*           m_playCursor;
+	TClipsViewPort* 		m_clipsViewPort;
+	TTrackPanelViewPort*	m_tpvp;
+	TTimeLineRulerViewPort*	m_tlvp;
+	QList<TTrackView*>	m_audioTrackViews;
+	QList<TTrackView*>	m_busTrackViews;
+    TTrackView*          m_sheetMasterOutView;
+    TTrackView*          m_projectMasterOutView;
+    TWorkCursor*         m_workCursor;
     TCanvasCursor*      m_canvasCursor;
     QPropertyAnimation* m_canvasCursorMoveAnimation;
     int                 m_sceneHeight{};

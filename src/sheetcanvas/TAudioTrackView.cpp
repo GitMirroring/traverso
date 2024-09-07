@@ -25,11 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioTrackView.h"
 #include "TAudioClipView.h"
-#include "PluginChainView.h"
+#include "TAudioPluginChainView.h"
 #include "TLocation.h"
 #include "TThemer.h"
 #include "TSheetView.h"
-#include "TrackPanelView.h"
+#include "TTrackPanelView.h"
 #include "TMainWindow.h"
 
 #include "TSheet.h"
@@ -44,20 +44,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Debugger.h>
 
 TAudioTrackView::TAudioTrackView(TSheetView* sv, TAudioTrack * track)
-    : TrackView(sv, track)
+    : TTrackView(sv, track)
 {
     PENTERCONS;
 
     m_track = track;
     TAudioTrackView::load_theme_data();
 
-    m_panel = new AudioTrackPanelView(this);
+    m_panel = new TAudioTrackPanelView(this);
 
     auto pluginsLaneview = new TTrackLaneView(this);
     pluginsLaneview->set_height(28);
     pluginsLaneview->hide();
     add_lane_view(pluginsLaneview);
-    m_pluginChainView = new PluginChainView(m_sv, pluginsLaneview, m_track->get_plugin_chain());
+    m_pluginChainView = new TAudioPluginChainView(m_sv, pluginsLaneview, m_track->get_plugin_chain());
 
     calculate_bounding_rect();
 
@@ -75,7 +75,7 @@ void TAudioTrackView::paint(QPainter* painter, const QStyleOptionGraphicsItem* o
 {
     Q_UNUSED(widget);
 
-    TrackView::paint(painter, option, widget);
+    TTrackView::paint(painter, option, widget);
 
     // 	printf("TrackView:: PAINT :: exposed rect is: x=%f, y=%f, w=%f, h=%f\n", option->exposedRect.x(), option->exposedRect.y(), option->exposedRect.width(), option->exposedRect.height());
 
@@ -203,7 +203,7 @@ void TAudioTrackView::automation_visibility_changed()
         }
     }
 
-    TrackView::automation_visibility_changed();
+    TTrackView::automation_visibility_changed();
 
     // TODO: should be move to ContextItem::set_ignore_context() ?
     // cpointer().request_viewport_to_detect_items_below_cursor();

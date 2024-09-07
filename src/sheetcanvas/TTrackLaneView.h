@@ -22,24 +22,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef TTRACKLANEVIEW_H
 #define TTRACKLANEVIEW_H
 
-#include "TrackView.h"
-#include "TrackPanelView.h"
+#include "TTrackView.h"
+#include "TTrackPanelView.h"
 
 class TTrackLanePanelView;
 
-class TTrackLaneView : public ViewItem
+class TTrackLaneView : public TViewItem
 {
 	Q_OBJECT
 
 public:
-	TTrackLaneView(ViewItem* parent);
+	TTrackLaneView(TViewItem* parent);
 	~TTrackLaneView();
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
     int get_height() const { return m_height;}
 	void set_height(int height);
-	void set_child_view(ViewItem* view);
+	void set_child_view(TViewItem* view);
 	QString get_name() const;
 
 	void move_to(int x, int y);
@@ -49,7 +49,7 @@ public:
 private:
 	TTrackLanePanelView*	m_panel;
 	QString		m_name;
-	ViewItem*	m_childView;
+	TViewItem*	m_childView;
 	int		m_height;
 	bool		m_paintBackground{};
 };

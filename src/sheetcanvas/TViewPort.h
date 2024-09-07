@@ -19,15 +19,15 @@
 
 */
 
-#ifndef VIEWPORT_H
-#define VIEWPORT_H
+#ifndef TVIEWPORT_H
+#define TVIEWPORT_H
 
 #include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QTimer>
 #include "TViewPortInterface.h"
 
-class ViewItem;
+class TViewItem;
 class TSheetView;
 class TContextItem;
 class TAudioFileImportCommand;
@@ -35,13 +35,13 @@ class TAudioTrack;
 class HoldCursor;
 class QGraphicsTextItem;
 
-class ViewPort : public QGraphicsView, public TViewPortInterface
+class TViewPort : public QGraphicsView, public TViewPortInterface
 {
     Q_OBJECT
 
 public :
-    ViewPort(QGraphicsScene* scene, QWidget* parent);
-    virtual ~ViewPort();
+    TViewPort(QGraphicsScene* scene, QWidget* parent);
+    virtual ~TViewPort();
 
     // Set functions
     void set_canvas_cursor_text(const QString& text, int mseconds=-1);

@@ -20,10 +20,10 @@
 */
 
 		
-#include "SheetWidget.h"
-#include "TrackPanelViewPort.h"
-#include "ClipsViewPort.h"
-#include "TimeLineViewPort.h"
+#include "TSheetWidget.h"
+#include "TTrackPanelViewPort.h"
+#include "TClipsViewPort.h"
+#include "TTimeLineRulerViewPort.h"
 #include "TSheetView.h"
 #include "TThemer.h"
 #include "TPeak.h"
@@ -41,7 +41,7 @@
 #include <Debugger.h>
 
 SheetPanelView::SheetPanelView(QGraphicsScene* scene, TSession* sheet)
-	: ViewItem(nullptr, nullptr)
+	: TViewItem(nullptr, nullptr)
 	, m_sheet(sheet)
 {
         scene->addItem(this);
@@ -54,8 +54,8 @@ void SheetPanelView::paint(QPainter * painter, const QStyleOptionGraphicsItem * 
         painter->fillRect(-3, 0, 3, -TIMELINE_HEIGHT - 1, themer()->get_color("TrackPanel:trackseparation"));
 }
 
-SheetPanelViewPort::SheetPanelViewPort(QGraphicsScene * scene, SheetWidget * sw)
-	: ViewPort(scene, sw)
+SheetPanelViewPort::SheetPanelViewPort(QGraphicsScene * scene, TSheetWidget * sw)
+	: TViewPort(scene, sw)
 {
     setSceneRect(-230, -TIMELINE_HEIGHT, 230, 0);
     setFixedSize(230, TIMELINE_HEIGHT);
@@ -100,7 +100,7 @@ TTimeLabel::TTimeLabel(QWidget* parent, TSession *session)
 }
 
 
-SheetWidget::SheetWidget(TSession* sheet, QWidget* parent)
+TSheetWidget::TSheetWidget(TSession* sheet, QWidget* parent)
     : QFrame(parent)
 	, m_session(sheet)
 {
@@ -112,9 +112,9 @@ SheetWidget::SheetWidget(TSession* sheet, QWidget* parent)
 	m_hScrollBar = new QScrollBar(this);
 	m_hScrollBar->setOrientation(Qt::Horizontal);
 
-	m_trackPanel = new TrackPanelViewPort(m_scene, this);
-    m_clipsViewPort = new ClipsViewPort(m_scene, this);
-	m_timeLine = new TimeLineViewPort(m_scene, this);
+	m_trackPanel = new TTrackPanelViewPort(m_scene, this);
+    m_clipsViewPort = new TClipsViewPort(m_scene, this);
+	m_timeLine = new TTimeLineRulerViewPort(m_scene, this);
 	m_sheetPanelVP = new SheetPanelViewPort(m_scene, this);
 
 
@@ -186,7 +186,7 @@ SheetWidget::SheetWidget(TSession* sheet, QWidget* parent)
 }
 
 
-SheetWidget::~ SheetWidget()
+TSheetWidget::~ TSheetWidget()
 {
 	PENTERDES;
 	if (!m_session) {
@@ -197,22 +197,22 @@ SheetWidget::~ SheetWidget()
 }
 
 
-QSize SheetWidget::minimumSizeHint() const
+QSize TSheetWidget::minimumSizeHint() const
 {
 	return QSize(400, 200);
 }
 
-QSize SheetWidget::sizeHint() const
+QSize TSheetWidget::sizeHint() const
 {
 	return QSize(700, 600);
 }
 
-void SheetWidget::load_theme_data()
+void TSheetWidget::load_theme_data()
 {
 	QList<QGraphicsItem*> list = m_scene->items();
 	
 	for (int i = 0; i < list.size(); ++i) {
-		ViewItem* item = qgraphicsitem_cast<ViewItem*>(list.at(i));
+        TViewItem* item = qgraphicsitem_cast<TViewItem*>(list.at(i));
 		if (item) {
 			item->load_theme_data();
 		}
@@ -220,27 +220,27 @@ void SheetWidget::load_theme_data()
 	
 }
 
-TSheet* SheetWidget::get_sheet() const
+TSheet* TSheetWidget::get_sheet() const
 {
     return qobject_cast<TSheet*>(m_session);
 }
 
-TSession *SheetWidget::get_session() const
+TSession *TSheetWidget::get_session() const
 {
     return m_session;
 }
 
-TSheetView * SheetWidget::get_sheetview() const
+TSheetView * TSheetWidget::get_sheetview() const
 {
 	return m_sv;
 }
 
-void SheetWidget::zoom_slider_value_changed(int value)
+void TSheetWidget::zoom_slider_value_changed(int value)
 {
         m_session->set_hzoom(TPeak::zoomStep[value]);
 }
 
-void SheetWidget::sheet_zoom_level_changed()
+void TSheetWidget::sheet_zoom_level_changed()
 {
         int level = m_session->get_hzoom();
         for (int i=0; i<TPeak::ZOOM_LEVELS; ++i) {

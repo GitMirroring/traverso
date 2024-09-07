@@ -21,10 +21,10 @@
 
 #include "TTimeLineMarkerView.h"
 #include "TSheetView.h"
-#include "LineView.h"
+#include "TLineView.h"
 #include "TThemer.h"
-#include "ClipsViewPort.h"
-#include "PositionIndicator.h"
+#include "TClipsViewPort.h"
+#include "TPositionIndicator.h"
 #include "MoveMarker.h"
 
 #include <QFont>
@@ -37,14 +37,14 @@
 
 #include "Debugger.h"
 
-TTimeLineMarkerView::TTimeLineMarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parentView)
-	: ViewItem(parentView, marker)
+TTimeLineMarkerView::TTimeLineMarkerView(TTimeLineMarker* marker, TSheetView* sv, TViewItem *parentView)
+	: TViewItem(parentView, marker)
 	, m_dragging(false)
 {
 	PENTERCONS2;
 	m_sv = sv;
 	m_marker = marker;
-	m_line = new LineView(this);
+	m_line = new TLineView(this);
     m_posIndicator = nullptr;
 
     m_width = 16;
@@ -186,7 +186,7 @@ void TTimeLineMarkerView::update_drawing()
 void TTimeLineMarkerView::set_dragging(bool dragging)
 {
         if (! m_posIndicator) {
-                m_posIndicator = new PositionIndicator(this);
+                m_posIndicator = new TPositionIndicator(this);
         }
 
         if (dragging) {

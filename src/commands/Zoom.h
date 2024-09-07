@@ -29,7 +29,7 @@
 #include <QPointF>
 
 class TSheetView;
-class TrackView;
+class TTrackView;
 class QPoint;
 
 class Zoom : public TCommand
@@ -66,7 +66,7 @@ private :
     int collected_number_to_track_height(const QString& collected) const;
 
     TSheetView* m_sv;
-    TrackView* m_tv;
+    TTrackView* m_tv;
 
 public slots:
     void vzoom_in();

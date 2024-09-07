@@ -28,8 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Utils.h>
 #include <Mixer.h>
 
-TKnobView::TKnobView(ViewItem *parent)
-    : ViewItem(parent, nullptr)
+TKnobView::TKnobView(TViewItem *parent)
+    : TViewItem(parent, nullptr)
 {
     m_minValue = -1.0;
     m_maxValue = 1.0;
@@ -143,7 +143,7 @@ void TKnobView::set_title(const QString &title)
     m_parentViewItem->update();
 }
 
-TPanKnobView::TPanKnobView(ViewItem* parent, TTrack* track)
+TPanKnobView::TPanKnobView(TViewItem* parent, TTrack* track)
 	: TKnobView(parent)
 	, m_track(track)
 {
@@ -170,7 +170,7 @@ TCommand* TPanKnobView::pan_right()
 }
 
 
-TGainKnobView::TGainKnobView(ViewItem* parent, TTrack* track)
+TGainKnobView::TGainKnobView(TViewItem* parent, TTrack* track)
     : TKnobView(parent)
     , m_track(track)
 {

@@ -19,7 +19,7 @@
 
 */
 
-#include "VUMeterView.h"
+#include "TVUMeterView.h"
 
 #include <QPainter>
 #include <QGradient>
@@ -53,12 +53,12 @@
 
 
 // initialize static variables
-QVector<float> VUMeterView::lut;
+QVector<float> TVUMeterView::lut;
 
-VUMeterView::VUMeterView(ViewItem* parent, TTrack* track)
-    : ViewItem(parent)
+TVUMeterView::TVUMeterView(TViewItem* parent, TTrack* track)
+    : TViewItem(parent)
 {
-    VUMeterView::load_theme_data();
+    TVUMeterView::load_theme_data();
     m_audioTrack = qobject_cast<TAudioTrack*>(track);
 
     for (int i = 0; i < 2; ++i) {
@@ -76,11 +76,11 @@ VUMeterView::VUMeterView(ViewItem* parent, TTrack* track)
     }
 }
 
-VUMeterView::~ VUMeterView( )
+TVUMeterView::~ TVUMeterView( )
     = default;
 
 
-void VUMeterView::paint(QPainter *painter, const QStyleOptionGraphicsItem */*option*/, QWidget */*widget*/)
+void TVUMeterView::paint(QPainter *painter, const QStyleOptionGraphicsItem */*option*/, QWidget */*widget*/)
 {
     PENTER3;
 
@@ -114,12 +114,12 @@ void VUMeterView::paint(QPainter *painter, const QStyleOptionGraphicsItem */*opt
     painter->restore();
 }
 
-void VUMeterView::calculate_bounding_rect()
+void TVUMeterView::calculate_bounding_rect()
 {
-    ViewItem::calculate_bounding_rect();
+    TViewItem::calculate_bounding_rect();
 }
 
-void VUMeterView::set_bounding_rect(QRectF rect)
+void TVUMeterView::set_bounding_rect(QRectF rect)
 {
     m_boundingRect = rect;
     int vertPos = 0;
@@ -140,7 +140,7 @@ void VUMeterView::set_bounding_rect(QRectF rect)
     //        ruler->set_bounding_rect(rect);
 }
 
-void VUMeterView::update_orientation(Qt::Orientation orientation)
+void TVUMeterView::update_orientation(Qt::Orientation orientation)
 {
     m_orientation = orientation;
     foreach(VUMeterLevelView* level, m_levels) {
@@ -148,7 +148,7 @@ void VUMeterView::update_orientation(Qt::Orientation orientation)
     }
 }
 
-void VUMeterView::calculate_lut_data()
+void TVUMeterView::calculate_lut_data()
 {
     for (int i = 60; i >= -700; i -= 2) {
         if (i >= -200) {
@@ -165,20 +165,20 @@ void VUMeterView::calculate_lut_data()
     }
 }
 
-void VUMeterView::reset()
+void TVUMeterView::reset()
 {
     foreach(VUMeterLevelView* level, m_levels) {
         level->reset();
     }
 }
 
-void VUMeterView::load_theme_data()
+void TVUMeterView::load_theme_data()
 {
     m_vulevelspacing = themer()->get_property("VUMeterView:layout:vuspacing", 1).toInt();
     m_widgetBgBrush = themer()->get_brush("VUMeter:background:widget");
 }
 
-void VUMeterView::audiotrack_armed_changed()
+void TVUMeterView::audiotrack_armed_changed()
 {
     update();
 }
@@ -199,8 +199,8 @@ void VUMeterView::audiotrack_armed_changed()
 static const int TICK_LINE_LENGTH	= 2;
 static const float LUT_MULTIPLY		= 5.0;
 
-VUMeterRulerView::VUMeterRulerView(ViewItem* parent)
-    : ViewItem(parent)
+VUMeterRulerView::VUMeterRulerView(TViewItem* parent)
+    : TViewItem(parent)
 {
     m_boundingRect = parent->boundingRect();
 
@@ -236,11 +236,11 @@ void VUMeterRulerView::paint(QPainter *painter, const QStyleOptionGraphicsItem *
         int idx = int(LUT_MULTIPLY * float(-m_presetMark[j] + 6));
 
         // check the LUT index (I had exceptions without that check)
-        if ((idx < 0) || (idx >= VUMeterView::VUMeterView_lut()->size())) {
+        if ((idx < 0) || (idx >= TVUMeterView::VUMeterView_lut()->size())) {
             continue;
         }
 
-        deltaY = int( VUMeterView::VUMeterView_lut()->at(idx)/115.0  * levelRange );
+        deltaY = int( TVUMeterView::VUMeterView_lut()->at(idx)/115.0  * levelRange );
         QString spm("%1");
         spm = spm.arg(m_presetMark[j], 2, 10, QLatin1Char('0'));
 
@@ -293,8 +293,8 @@ static const int PEAK_HOLD_MODE = 1;		// 0 = no peak hold, 1 = dynamic, 2 = cons
 static const bool SHOW_RMS = false;		// toggle RMS lines on / off
 
 
-VUMeterLevelView::VUMeterLevelView(ViewItem* parent, TVUMonitor* monitor)
-    : ViewItem(parent)
+VUMeterLevelView::VUMeterLevelView(TViewItem* parent, TVUMonitor* monitor)
+    : TViewItem(parent)
 {
     m_monitor = monitor;
 
@@ -533,7 +533,7 @@ int VUMeterLevelView::get_meter_position(float f)
     }
 
     // if idx > size of the LUT, dBVal is somewhere < -70 dB, which is not displayed
-    if (idx >= VUMeterView::VUMeterView_lut()->size()) {
+    if (idx >= TVUMeterView::VUMeterView_lut()->size()) {
         if (m_orientation == Qt::Horizontal) {
             return 0;
         } else {
@@ -541,9 +541,9 @@ int VUMeterLevelView::get_meter_position(float f)
         }
     } else {
         if (m_orientation == Qt::Horizontal) {
-            return  int(VUMeterView::VUMeterView_lut()->at(idx)/115.0f * float(m_boundingRect.width()));
+            return  int(TVUMeterView::VUMeterView_lut()->at(idx)/115.0f * float(m_boundingRect.width()));
         } else {
-            return  int(m_boundingRect.height() - int(VUMeterView::VUMeterView_lut()->at(idx)/115.0f * float(m_boundingRect.height())));
+            return  int(m_boundingRect.height() - int(TVUMeterView::VUMeterView_lut()->at(idx)/115.0f * float(m_boundingRect.height())));
         }
     }
 }

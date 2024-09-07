@@ -22,14 +22,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef TEDITCURSOR_H
 #define TEDITCURSOR_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
 #include <QTimer>
 
 class TSheetView;
-class PositionIndicator;
+class TPositionIndicator;
 
-class TCanvasCursor : public ViewItem
+class TCanvasCursor : public TViewItem
 {
     Q_OBJECT
     Q_PROPERTY(QPointF position READ get_pos WRITE set_pos)
@@ -49,7 +49,7 @@ public:
     void set_cursor_shape(const QString& shape, int alignment);
 
 private:
-    PositionIndicator*      m_positionIndicator;
+    TPositionIndicator*      m_positionIndicator;
 
     QString         m_shape;
     qreal			m_xOffset;

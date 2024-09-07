@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "ClipsViewPort.h"
+#include "TClipsViewPort.h"
 
 #include "TAudioClip.h"
 #include "TAudioTrack.h"
@@ -27,12 +27,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProjectManager.h"
 #include "TReadAudioSource.h"
 #include "TResourcesManager.h"
-#include "SheetWidget.h"
+#include "TSheetWidget.h"
 #include "TSheetView.h"
 #include "TSheet.h"
 #include "TAudioTrackView.h"
 #include "TLocation.h"
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include "TAudioFileImportCommand.h"
 #include "CommandGroup.h"
 #include "RemoveClip.h"
@@ -49,8 +49,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 		
 #include <Debugger.h>
 		
-ClipsViewPort::ClipsViewPort(QGraphicsScene* scene, SheetWidget* sw)
-	: ViewPort(scene, sw)
+TClipsViewPort::TClipsViewPort(QGraphicsScene* scene, TSheetWidget* sw)
+	: TViewPort(scene, sw)
 {
 	m_sw = sw;
 	viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
@@ -61,20 +61,20 @@ ClipsViewPort::ClipsViewPort(QGraphicsScene* scene, SheetWidget* sw)
 	scale(1.0, 1.0);
 }
 
-void ClipsViewPort::resizeEvent( QResizeEvent * e )
+void TClipsViewPort::resizeEvent( QResizeEvent * e )
 {
-	ViewPort::resizeEvent(e);
+	TViewPort::resizeEvent(e);
 //	m_sw->get_sheetview()->clipviewport_resize_event();
 }
 
 
-void ClipsViewPort::paintEvent(QPaintEvent * e)
+void TClipsViewPort::paintEvent(QPaintEvent * e)
 {
 	QGraphicsView::paintEvent(e);
 }
 
 
-void ClipsViewPort::dragEnterEvent( QDragEnterEvent * event )
+void TClipsViewPort::dragEnterEvent( QDragEnterEvent * event )
 {
 	m_imports.clear();
 	m_resourcesImport.clear();
@@ -128,7 +128,7 @@ void ClipsViewPort::dragEnterEvent( QDragEnterEvent * event )
     }
 }
 
-void ClipsViewPort::dropEvent(QDropEvent* event )
+void TClipsViewPort::dropEvent(QDropEvent* event )
 {
 	PENTER;
 	Q_UNUSED(event)
@@ -184,7 +184,7 @@ void ClipsViewPort::dropEvent(QDropEvent* event )
 	TCommand::process_command(group);
 }
 
-void ClipsViewPort::dragMoveEvent( QDragMoveEvent * event )
+void TClipsViewPort::dragMoveEvent( QDragMoveEvent * event )
 {
 	TProject* project = pm().get_project();
 	if (!project) {

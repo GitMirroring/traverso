@@ -24,7 +24,7 @@
 #include "Debugger.h"
 
 MeterWidget::MeterWidget(QWidget* parent, MeterView* item)
-	: ViewPort(0, parent)
+	: TViewPort(0, parent)
 	, m_item(item)
 {
 	PENTERCONS;

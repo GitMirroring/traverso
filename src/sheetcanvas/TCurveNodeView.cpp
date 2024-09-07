@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "CurveNodeView.h"
+#include "TCurveNodeView.h"
 #include "TSheetView.h"
 
 #include <QPainter>
@@ -31,8 +31,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <Debugger.h>
 
-CurveNodeView::CurveNodeView( TSheetView * sv, TCurveView* curveview, TCurveNode * node, TCurve* guicurve)
-    : ViewItem(curveview, nullptr)
+TCurveNodeView::TCurveNodeView( TSheetView * sv, TCurveView* curveview, TCurveNode * node, TCurve* guicurve)
+    : TViewItem(curveview, nullptr)
     , TCurveNode(guicurve, node->get_when(), node->get_value())
     , m_node(node)
 {
@@ -43,18 +43,18 @@ CurveNodeView::CurveNodeView( TSheetView * sv, TCurveView* curveview, TCurveNode
 
 	setFlags(QGraphicsItem::ItemIgnoresTransformations);
 
-    CurveNodeView::load_theme_data();
-    CurveNodeView::calculate_bounding_rect();
+    TCurveNodeView::load_theme_data();
+    TCurveNodeView::calculate_bounding_rect();
 
     connect(m_node->m_curve, SIGNAL(nodePositionChanged()), this, SLOT(update_pos()));
 }
 
-CurveNodeView::~ CurveNodeView( )
+TCurveNodeView::~ TCurveNodeView( )
 {
 	PENTERDES;
 }
 
-void CurveNodeView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
+void TCurveNodeView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
 {
         // TODO: Render to a pixmap, and just paint that, it should be much faster
 	Q_UNUSED(option);
@@ -90,7 +90,7 @@ void CurveNodeView::paint( QPainter * painter, const QStyleOptionGraphicsItem * 
 } 
 
 
-void CurveNodeView::calculate_bounding_rect()
+void TCurveNodeView::calculate_bounding_rect()
 {
     prepareGeometryChange();
 
@@ -108,12 +108,12 @@ void CurveNodeView::calculate_bounding_rect()
 }
 
 
-void CurveNodeView::set_color(const QColor &color)
+void TCurveNodeView::set_color(const QColor &color)
 {
     m_color = color;
 }
 
-void CurveNodeView::update_pos( )
+void TCurveNodeView::update_pos( )
 {
 	qreal halfwidth = (m_boundingRect.width() / 2);
 	qreal parentheight = m_parentViewItem->get_height();
@@ -124,19 +124,19 @@ void CurveNodeView::update_pos( )
     set_when_and_value((m_node->get_when() / m_sv->timeref_scalefactor), m_node->get_value());
 }
 
-void CurveNodeView::set_soft_selected(bool selected)
+void TCurveNodeView::set_soft_selected(bool selected)
 {
 	m_isSoftSelected = selected;
     calculate_bounding_rect();
 }
 
-void CurveNodeView::set_hard_selected(bool selected)
+void TCurveNodeView::set_hard_selected(bool selected)
 {
 	m_isHardSelected = selected;
     calculate_bounding_rect();
 }
 
-void CurveNodeView::load_theme_data()
+void TCurveNodeView::load_theme_data()
 {
 	m_color = themer()->get_color("CurveNode:default");
 }

@@ -55,6 +55,7 @@ private:
 		RemoveTrackCommand,
         RemoveCurveNodeCommmand,
 		RemovePluginCommand,
+        RemoveTimeLineRulerMarkerCommand,
 		AudioClipExternalProcessingCommand,
 		ClipSelectionCommand,
 		MoveClipCommand,

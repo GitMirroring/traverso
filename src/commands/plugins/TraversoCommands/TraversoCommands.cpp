@@ -24,8 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QInputDialog>
 #include <QStringList>
 
-#include "PositionIndicator.h"
-#include "SheetWidget.h"
+#include "TPositionIndicator.h"
+#include "TSheetWidget.h"
 #include "TAudioClipManager.h"
 #include "TAudioClip.h"
 #include "TAudioTrack.h"
@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TShortCutFunction.h"
 #include "TShortCutManager.h"
 #include "TTimeLineRuler.h"
-#include "VUMeterView.h"
+#include "TVUMeterView.h"
 #include "libtraversosheetcanvas.h"
 #include "commands.h"
 #include <cfloat>
@@ -87,7 +87,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&TCurve::staticMetaObject,               tr("Curve"));
     m->add_meta_object(&TCurveView::staticMetaObject,           tr("Curve"));
     m->add_meta_object(&TTimeLineRuler::staticMetaObject,       tr("Time Line"));
-    m->add_meta_object(&TimeLineView::staticMetaObject,         tr("Time Line"));
+    m->add_meta_object(&TTimeLineRulerView::staticMetaObject,   tr("Time Line"));
     m->add_meta_object(&TAudioPlugin::staticMetaObject,         tr("Plugin"));
     m->add_meta_object(&TAudioPluginView::staticMetaObject,     tr("Plugin"));
     m->add_meta_object(&TFadeCurve::staticMetaObject,           tr("Fade Curve"));
@@ -122,11 +122,11 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&TrackPanelGain::staticMetaObject,       tr("Gain"));
     m->add_meta_object(&TrackPanelLed::staticMetaObject,        tr("Track Panel Button"));
     m->add_meta_object(&VUMeterLevelView::staticMetaObject,     tr("VU Level"));
-    m->add_meta_object(&VUMeterView::staticMetaObject,          tr("VU Level"));
-    m->add_meta_object(&AudioTrackPanelView::staticMetaObject,  tr("Audio Track"));
-    m->add_meta_object(&PlayHead::staticMetaObject,             tr("Play Cursor"));
-    m->add_meta_object(&WorkCursor::staticMetaObject,           tr("Work Cursor"));
-    m->add_meta_object(&PositionIndicator::staticMetaObject,    tr("Position Indicator"));
+    m->add_meta_object(&TVUMeterView::staticMetaObject,          tr("VU Level"));
+    m->add_meta_object(&TAudioTrackPanelView::staticMetaObject,  tr("Audio Track"));
+    m->add_meta_object(&TPlayHead::staticMetaObject,             tr("Play Cursor"));
+    m->add_meta_object(&TWorkCursor::staticMetaObject,           tr("Work Cursor"));
+    m->add_meta_object(&TPositionIndicator::staticMetaObject,    tr("Position Indicator"));
     m->add_meta_object(&TAudioProcessingNode::staticMetaObject, tr("Audio Processing Node"));
 
     m->add_meta_object(&HoldCommand::staticMetaObject,          tr("Hold Command"));
@@ -146,13 +146,14 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_base_function(&TDeleteBase::staticMetaObject,            tr("Delete"),               "DeleteBase");
 
     add_function(&TAudioClip::staticMetaObject,         &TDeleteBase::staticMetaObject, tr("Remove AudioClip"),  "RemoveClip",           RemoveClipCommand);
-    add_function(&TAudioPluginView::staticMetaObject,   &TDeleteBase::staticMetaObject, "",                      "RemovePlugin",         RemovePluginCommand);
-    add_function(&TCurveView::staticMetaObject,          &TDeleteBase::staticMetaObject, tr("Remove Node(s)"),    "RemoveCurveNode",      RemoveCurveNodeCommmand);
-    add_function(&TTrack::staticMetaObject,             &TDeleteBase::staticMetaObject, "",                      "RemoveTrack",          RemoveTrackCommand);
+    add_function(&TAudioPluginView::staticMetaObject,   &TDeleteBase::staticMetaObject, tr("Remove Plugin"),     "RemovePlugin",         RemovePluginCommand);
+    add_function(&TCurveView::staticMetaObject,         &TDeleteBase::staticMetaObject, tr("Remove Node(s)"),    "RemoveCurveNode",      RemoveCurveNodeCommmand);
+    add_function(&TTrack::staticMetaObject,             &TDeleteBase::staticMetaObject, tr("Remove Track"),      "RemoveTrack",          RemoveTrackCommand);
+    add_function(&TTimeLineRulerView::staticMetaObject, &TDeleteBase::staticMetaObject, tr("Remove Marker"),     "RemoveTimeLineRulerMarker",RemoveTimeLineRulerMarkerCommand);
 
     m->add_base_function(&TEditPropertiesBase::staticMetaObject,    tr("Edit Properties"),      "EditPropertiesBase");
 
-    m->add_function(&TrackView::staticMetaObject,       &TEditPropertiesBase::staticMetaObject, "EditTrackProperties", "edit_properties()");
+    m->add_function(&TTrackView::staticMetaObject,      &TEditPropertiesBase::staticMetaObject, "EditTrackProperties", "edit_properties()");
 
     m->add_base_function(&TGainBase::staticMetaObject,              tr("Gain"),                 "GainBase");
 
@@ -164,10 +165,10 @@ void TraversoCommands::load(TShortCutManager* m)
 
     add_function(&TAudioClipView::staticMetaObject,     &TMoveBase::staticMetaObject, "",                        "MoveClip",             MoveClipCommand, "", USE_X, USE_Y, QVariantList() << "move");
     add_function(&TAudioPluginView::staticMetaObject,   &TMoveBase::staticMetaObject, "",                        "MovePlugin",           MovePluginCommand, "", USE_X, NO_Y, QVariantList() << "false");
-    add_function(&TCurveView::staticMetaObject,          &TMoveBase::staticMetaObject, tr("Move Curve Node(s)"),  "MoveCurveNodes",       MoveCurveNodesCommand, "", USE_X, USE_Y);
-    add_function(&TrackView::staticMetaObject,          &TMoveBase::staticMetaObject, tr("Move Up/Down"),        "MoveTrack",            MoveTrackCommand, "", NO_X, USE_Y);
-    add_function(&TimeLineView::staticMetaObject,       &TMoveBase::staticMetaObject, tr("Move Marker"),         "TimeLineMoveMarker",   MoveMarkerCommand, "", USE_X, NO_Y);
-    add_function(&TTimeLineMarkerView::staticMetaObject,         &TMoveBase::staticMetaObject, tr("Move Marker"),         "MoveMarker",           MoveMarkerCommand, "", USE_X, NO_Y);
+    add_function(&TCurveView::staticMetaObject,         &TMoveBase::staticMetaObject, tr("Move Curve Node(s)"),  "MoveCurveNodes",       MoveCurveNodesCommand, "", USE_X, USE_Y);
+    add_function(&TTrackView::staticMetaObject,         &TMoveBase::staticMetaObject, tr("Move Up/Down"),        "MoveTrack",            MoveTrackCommand, "", NO_X, USE_Y);
+    add_function(&TTimeLineRulerView::staticMetaObject, &TMoveBase::staticMetaObject, tr("Move Marker"),         "TimeLineMoveMarker",   MoveMarkerCommand, "", USE_X, NO_Y);
+    add_function(&TTimeLineMarkerView::staticMetaObject,&TMoveBase::staticMetaObject, tr("Move Marker"),         "MoveMarker",           MoveMarkerCommand, "", USE_X, NO_Y);
 
     add_function(&TAudioClip::staticMetaObject,     tr("External Processing"),  "AudioClipExternalProcessing", AudioClipExternalProcessingCommand);
 
@@ -186,7 +187,7 @@ void TraversoCommands::load(TShortCutManager* m)
     add_function(&TAudioClipView::staticMetaObject, tr("Copy"),             "CopyClip",         MoveClipCommand,    "", USE_X, USE_Y,   QVariantList() << "copy");
     add_function(&TAudioTrackView::staticMetaObject,tr("Fold Track"),       "FoldTrack",        MoveClipCommand,    "", USE_X, NO_Y,    QVariantList() << "fold_track");
     add_function(&TSheetView::staticMetaObject,     tr("Fold Sheet"),       "FoldSheet",        MoveClipCommand,    "", USE_X, USE_Y,   QVariantList() << "fold_sheet");
-    add_function(&TimeLineView::staticMetaObject,   tr("Fold Markers"),     "FoldMarkers",      MoveClipCommand,    "", USE_X, NO_Y,    QVariantList() << "fold_markers");
+    add_function(&TTimeLineRulerView::staticMetaObject,   tr("Fold Markers"),     "FoldMarkers",      MoveClipCommand,    "", USE_X, NO_Y,    QVariantList() << "fold_markers");
 
     add_function(&TAudioClipView::staticMetaObject, tr("Move Edge"),        "MoveClipEdge",     MoveEdgeCommand,    "", USE_X, NO_Y,    QVariantList() << "false");
 
@@ -298,14 +299,14 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&SpectralMeterView::staticMetaObject, tr("Reset average curve"),                "SpectralMeterResetAverageCurve",   "reset()");
     m->add_function(&SpectralMeterView::staticMetaObject, tr("Toggle average curve"),               "SpectralMeterToggleDisplayRange",  "set_mode()");
 
-    m->add_function(&TimeLineView::staticMetaObject, tr("Add Marker"),                      "TimeLineAddMarker",                "add_marker()");
-    m->add_function(&TimeLineView::staticMetaObject, tr("Add Marker at Playhead"),          "TimeLineAddMarkerAtPlayhead",      "add_marker_at_playhead()");
-    m->add_function(&TimeLineView::staticMetaObject, tr("Add Marker at Work Cursor"),       "TimeLineAddMarkerAtWorkCursor",    "add_marker_at_work_cursor()");
-    m->add_function(&TimeLineView::staticMetaObject, tr("Playhead to Marker"),              "TimeLinePlayheadToMarker",         "playhead_to_marker()");
-    m->add_function(&TimeLineView::staticMetaObject, tr("Edit Markers"),                    "TimeLineShowMarkerDialog",         "show_marker_dialog()");
+    m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Add Marker"),                      "TimeLineAddMarker",                "add_marker()");
+    m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Add Marker at Playhead"),          "TimeLineAddMarkerAtPlayhead",      "add_marker_at_playhead()");
+    m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Add Marker at Work Cursor"),       "TimeLineAddMarkerAtWorkCursor",    "add_marker_at_work_cursor()");
+    m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Playhead to Marker"),              "TimeLinePlayheadToMarker",         "playhead_to_marker()");
+    m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Edit Markers"),                    "TimeLineShowMarkerDialog",         "show_marker_dialog()");
 
     m->add_function(&TTrack::staticMetaObject,      tr("Solo"),             "Solo",                         "solo()");
-    m->add_function(&TrackView::staticMetaObject,   tr("Add new Plugin"),   "TrackAddPlugin",               "add_new_plugin()");
+    m->add_function(&TTrackView::staticMetaObject,   tr("Add new Plugin"),   "TrackAddPlugin",               "add_new_plugin()");
 
     m->add_function(&TPanKnobView::staticMetaObject, tr("Pan to Left"),     "PanKnobPanLeft",               "pan_left()");
     m->add_function(&TPanKnobView::staticMetaObject, tr("Pan to Right"),    "PanKnobPanRight",              "pan_right()");
@@ -381,7 +382,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             return ied().failure();
         }
 
-        SheetWidget* widget = TMainWindow::instance()->getCurrentSheetWidget();
+        TSheetWidget* widget = TMainWindow::instance()->getCurrentSheetWidget();
         if (widget)
         {
             return new PlayHeadMove(widget->get_sheetview());
@@ -400,7 +401,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             contextItem = contextItem->get_related_context_item();
         } else if (TAudioClipView* view = qobject_cast<TAudioClipView*>(contextItem)) {
             contextItem = view->get_related_context_item();
-        } else if (TrackView* view = qobject_cast<TrackView*>(contextItem)) {
+        } else if (TTrackView* view = qobject_cast<TTrackView*>(contextItem)) {
             contextItem = view->get_related_context_item();
         }
 
@@ -541,6 +542,13 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         }
         return ied().failure();
     }
+    case RemoveTimeLineRulerMarkerCommand:
+    {
+        if (auto view = qobject_cast<TTimeLineRulerView*>(obj)) {
+            return view->remove_marker();
+        }
+        return ied().failure();
+    }
     case AudioClipExternalProcessingCommand:
     {
         if (auto clip = qobject_cast<TAudioClip*>(obj)) {
@@ -580,7 +588,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     case MoveClipCommand:
     {
         // cast to super class ViewItem since we use MoveClip also to fold Track or Sheet
-        if (auto view = qobject_cast<ViewItem*>(obj)) {
+        if (auto view = qobject_cast<TViewItem*>(obj)) {
             return new MoveClip(view, arguments);
         }
         return ied().failure();
@@ -588,7 +596,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case MoveTrackCommand:
     {
-        if (auto view = qobject_cast<TrackView*>(obj)) {
+        if (auto view = qobject_cast<TTrackView*>(obj)) {
             return new MoveTrack(view);
         }
         return ied().failure();
@@ -752,7 +760,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     }
     case MoveMarkerCommand:
     {
-        if (auto view = qobject_cast<TimeLineView*>(obj)) {
+        if (auto view = qobject_cast<TTimeLineRulerView*>(obj)) {
             return view->drag_marker();
         }
 

@@ -22,29 +22,29 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef TRACK_PANEL_VIEW_H
 #define TRACK_PANEL_VIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
 class TTrack;
 class TAudioTrack;
-class TrackView;
+class TTrackView;
 class TTrackLaneView;
-class TrackPanelView;
+class TTrackPanelView;
 class TAudioTrackView;
-class TrackPanelViewPort;
+class TTrackPanelViewPort;
 class PanelLed;
-class AudioTrackPanelView;
+class TAudioTrackPanelView;
 class TBusTrackView;
-class VUMeterView;
+class TVUMeterView;
 class TPanKnobView;
 class TGainKnobView;
 class TTextView;
 
-class TrackPanelGain : public ViewItem
+class TrackPanelGain : public TViewItem
 {
 	Q_OBJECT
 
 public:
-        TrackPanelGain(TrackPanelView* parent, TTrack* track);
+        TrackPanelGain(TTrackPanelView* parent, TTrack* track);
 	TrackPanelGain(){}
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -61,11 +61,11 @@ private:
 };
 
 
-class TrackPanelLed : public ViewItem
+class TrackPanelLed : public TViewItem
 {
 	Q_OBJECT
 public:
-	TrackPanelLed(TrackPanelView* view, QObject* obj, const QString& name, const QString& toggleslot);
+    TrackPanelLed(TTrackPanelView* view, QObject* obj, const QString& name, const QString& toggleslot);
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 	void set_bounding_rect(QRectF rect);
@@ -82,23 +82,23 @@ public slots:
 	TCommand* toggle();
 };
 
-class TrackPanelView : public ViewItem
+class TTrackPanelView : public TViewItem
 {
 	Q_OBJECT
 
 public:
-        TrackPanelView(TrackView* trackView);
-        ~TrackPanelView();
+        TTrackPanelView(TTrackView* trackView);
+        ~TTrackPanelView();
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 	void calculate_bounding_rect();
 	
-        TrackView* get_track_view() const {return m_trackView;}
+        TTrackView* get_track_view() const {return m_trackView;}
 
 protected:
         TTrack*                  m_track;
-        TrackView*              m_trackView;
-	TrackPanelViewPort*	m_viewPort;
+        TTrackView*              m_trackView;
+	TTrackPanelViewPort*	m_viewPort;
 	
 	TrackPanelLed*          m_infoLed;
 	TrackPanelLed*          m_muteLed;
@@ -119,9 +119,9 @@ protected:
     int LED_SPACING;
 
 
-        VUMeterView*            m_vuMeterView;
+        TVUMeterView*            m_vuMeterView;
 
-	QMap<int, ViewItem*>	m_ledViews;
+    QMap<int, TViewItem*>	m_ledViews;
 
         virtual void layout_panel_items();
 
@@ -133,13 +133,13 @@ private slots:
 
 
 
-class AudioTrackPanelView : public TrackPanelView
+class TAudioTrackPanelView : public TTrackPanelView
 {
         Q_OBJECT
 
 public:
-        AudioTrackPanelView(TAudioTrackView* trackView);
-        ~AudioTrackPanelView();
+        TAudioTrackPanelView(TAudioTrackView* trackView);
+        ~TAudioTrackPanelView();
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
@@ -153,7 +153,7 @@ private:
 };
 
 
-class TBusTrackPanelView : public TrackPanelView
+class TBusTrackPanelView : public TTrackPanelView
 {
         Q_OBJECT
 
@@ -173,7 +173,7 @@ private:
 
 
 
-class TTrackLanePanelView : public ViewItem
+class TTrackLanePanelView : public TViewItem
 {
 	Q_OBJECT
 

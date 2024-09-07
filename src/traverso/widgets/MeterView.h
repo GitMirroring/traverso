@@ -1,7 +1,7 @@
 #ifndef T_METERVIEW_H
 #define T_METERVIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
 #include <QTimer>
 
@@ -10,7 +10,7 @@ class TAudioPlugin;
 class TProject;
 class TSession;
 
-class MeterView : public ViewItem
+class MeterView : public TViewItem
 {
 	Q_OBJECT
 

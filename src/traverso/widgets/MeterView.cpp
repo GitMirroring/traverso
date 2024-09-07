@@ -10,7 +10,7 @@ static const int STOP_DELAY = 6000; // in ms
 
 
 MeterView::MeterView(MeterWidget* widget)
-    : ViewItem(nullptr, nullptr)
+    : TViewItem(nullptr, nullptr)
 	, m_widget(widget)
     , m_meter(nullptr)
     , m_session(nullptr)

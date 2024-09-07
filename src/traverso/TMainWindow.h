@@ -39,7 +39,7 @@ class TTrack;
 class TProject;
 class TAudioBusVUMonitorWidget;
 class InfoBox;
-class ViewPort;
+class TViewPort;
 class TContextItem;
 class TCommand;
 
@@ -60,7 +60,7 @@ class QStandardItemModel;
 
 class ResourcesWidget;
 class ResourcesInfoWidget;
-class SheetWidget;
+class TSheetWidget;
 class CorrelationMeterWidget;
 class SpectralMeterWidget;
 class TransportConsoleWidget;
@@ -113,7 +113,7 @@ public :
 
     QLineEdit* get_track_finder() const {return m_trackFinder;}
     QMenu* create_context_menu(QObject* item, QList<TShortCutFunction* >* list = 0);
-    SheetWidget* getCurrentSheetWidget() const {return m_currentSheetWidget;}
+    TSheetWidget* getCurrentSheetWidget() const {return m_currentSheetWidget;}
 
 protected:
     void timerEvent(QTimerEvent *event);
@@ -129,9 +129,9 @@ private:
     QStackedWidget*         m_centerAreaWidget;
     int                     m_previousCenterAreaWidgetIndex;
     int                     m_vuLevelUpdateFrequency;
-    QHash<TSession*, SheetWidget* > m_sheetWidgets;
+    QHash<TSession*, TSheetWidget* > m_sheetWidgets;
     QHash<TSession*, TSessionTabWidget* > m_sessionTabWidgets;
-    SheetWidget*		m_currentSheetWidget;
+    TSheetWidget*		m_currentSheetWidget;
     QHash<QString, QMenu*>	m_contextMenus;
     ExportDialog*		m_exportDialog;
     CDWritingDialog*	m_cdWritingDialog;

@@ -22,17 +22,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef AUDIO_TRACK_VIEW_H
 #define AUDIO_TRACK_VIEW_H
 
-#include "TrackView.h"
+#include "TTrackView.h"
 
 #include "TTimeRef.h"
 
 class TAudioClip;
 class TAudioClipView;
 class TAudioTrack;
-class AudioTrackPanelView;
-class PluginChainView;
+class TAudioTrackPanelView;
+class TAudioPluginChainView;
 
-class TAudioTrackView : public TrackView
+class TAudioTrackView : public TTrackView
 {
 	Q_OBJECT
 

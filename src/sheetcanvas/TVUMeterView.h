@@ -21,7 +21,7 @@
 #ifndef VUMeterView_H
 #define VUMeterView_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include "TMainWindow.h"
 
 class TTrack;
@@ -32,12 +32,12 @@ class QLabel;
 class QHBoxLayout;
 class QVBoxLayout;
 
-class VUMeterRulerView : public ViewItem
+class VUMeterRulerView : public TViewItem
 {
         Q_OBJECT
 
 public:
-       VUMeterRulerView(ViewItem* parent);
+       VUMeterRulerView(TViewItem* parent);
 
        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
        void set_bounding_rect(QRectF rect);
@@ -55,13 +55,13 @@ private slots:
 
 
 
-class VUMeterView : public ViewItem
+class TVUMeterView : public TViewItem
 {
         Q_OBJECT
 
 public:
-        VUMeterView(ViewItem* parent, TTrack* track);
-        ~VUMeterView();
+        TVUMeterView(TViewItem* parent, TTrack* track);
+        ~TVUMeterView();
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
         void calculate_bounding_rect();
@@ -100,7 +100,7 @@ private slots:
  * @return Pointer to the lookup table, which is of format QVector<float>
  */
 
-inline QVector<float>* VUMeterView::VUMeterView_lut()
+inline QVector<float>* TVUMeterView::VUMeterView_lut()
 {
         if (lut.isEmpty()) {
                 calculate_lut_data();
@@ -109,12 +109,12 @@ inline QVector<float>* VUMeterView::VUMeterView_lut()
 }
 
 
-class VUMeterLevelView : public ViewItem, public AbstractVUMeterLevel
+class VUMeterLevelView : public TViewItem, public AbstractVUMeterLevel
 {
         Q_OBJECT
 
 public:
-        VUMeterLevelView(ViewItem* parent, TVUMonitor* monitor);
+        VUMeterLevelView(TViewItem* parent, TVUMonitor* monitor);
         ~VUMeterLevelView();
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

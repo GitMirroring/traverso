@@ -25,16 +25,16 @@
 
 #include <QFrame>
 #include <QPushButton>
-#include "ViewItem.h"
-#include "ViewPort.h"
+#include "TViewItem.h"
+#include "TClipsViewPort.h"
 
 class QGridLayout;
 class QGraphicsScene;
 class QScrollBar;
 		
-class TrackPanelViewPort;
-class TimeLineViewPort;
-class ClipsViewPort;
+class TTrackPanelViewPort;
+class TTimeLineRulerViewPort;
+class TClipsViewPort;
 class SheetPanelViewPort;
 
 class TProject;
@@ -42,10 +42,10 @@ class TSession;
 class TCommand;
 class TSheetView;
 class TSheet;
-class SheetWidget;
+class TSheetWidget;
 
 
-class SheetPanelView : public ViewItem
+class SheetPanelView : public TViewItem
 {
 	Q_OBJECT
 public:
@@ -58,11 +58,11 @@ private:
         TSession* m_sheet;
 };
 
-class SheetPanelViewPort : public ViewPort
+class SheetPanelViewPort : public TViewPort
 {
         Q_OBJECT
 public:
-        SheetPanelViewPort(QGraphicsScene* scene, SheetWidget* sw);
+        SheetPanelViewPort(QGraphicsScene* scene, TSheetWidget* sw);
         ~SheetPanelViewPort() {}
 
         void set_sheet_view(TSheetView* view) { m_sv = view;}
@@ -86,12 +86,12 @@ private:
     TSession*   m_session;
 };
 
-class SheetWidget : public QFrame
+class TSheetWidget : public QFrame
 {
 	Q_OBJECT
 public:
-        SheetWidget(TSession* sheet, QWidget* parent=0);
-	~SheetWidget();
+        TSheetWidget(TSession* sheet, QWidget* parent=0);
+    ~TSheetWidget();
 	
         TSheet* get_sheet() const;
         TSession* get_session() const;
@@ -105,9 +105,9 @@ private:
 	TSheetView* 		m_sv;
         TSession*		m_session;
 	QGridLayout*		m_mainLayout;
-	TrackPanelViewPort*	m_trackPanel;
-	TimeLineViewPort*	m_timeLine;
-	ClipsViewPort*		m_clipsViewPort;
+	TTrackPanelViewPort*	m_trackPanel;
+	TTimeLineRulerViewPort*	m_timeLine;
+	TClipsViewPort*		m_clipsViewPort;
 	SheetPanelViewPort*	m_sheetPanelVP;
 	QGraphicsScene* 	m_scene;
 	QScrollBar*		m_vScrollBar;

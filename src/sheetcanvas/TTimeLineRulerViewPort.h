@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2006 Remon Sijrier 
+    Copyright (C) 2006-2024 Remon Sijrier
  
     This file is part of Traverso
  
@@ -17,29 +17,39 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  
-    $Id: TrackPanelViewPort.cpp,v 1.1 2008/01/21 16:17:30 r_sijrier Exp $
+    $Id: TimeLineViewPort.h,v 1.2 2009/01/19 21:07:19 r_sijrier Exp $
 */
 
-#include "TrackPanelViewPort.h"
+#ifndef T_TIME_LINE_RULER_VIEW_PORT_H
+#define T_TIME_LINE_RULER_VIEW_PORT_H
+
+#include "TViewPort.h"
+
+class TSheetWidget;
+class TSheetView;
+class TTimeLineRulerView;
+
+#define TIMELINE_HEIGHT 46
 		
-#include "SheetWidget.h"
-#include "TSheetView.h"
-#include "TrackPanelView.h"
-#include <TContextPointer.h>
-
-#include <Debugger.h>
-
-
-TrackPanelViewPort::TrackPanelViewPort(QGraphicsScene* scene, SheetWidget* sw)
-	: ViewPort(scene, sw)
+class TTimeLineRulerViewPort : public TViewPort
 {
-        setFixedWidth(230);
-
-	m_sw = sw;
-        m_sv = sw->get_sheetview();
+public:
+    TTimeLineRulerViewPort(QGraphicsScene* scene, TSheetWidget* sw);
+    ~TTimeLineRulerViewPort();
 	
-        setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-}
+	void set_sheetview(TSheetView* view);
+	void scale_factor_changed();
+	TTimeLineRulerView* get_timeline_view() const {return m_timeLineView;}
+	
 
+protected:
+	void wheelEvent ( QWheelEvent * e );
+
+
+private:
+	TTimeLineRulerView* 	m_timeLineView;
+};
+
+#endif
 
 //eof

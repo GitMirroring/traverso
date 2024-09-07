@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2006 Remon Sijrier 
+    Copyright (C) 2006-2024 Remon Sijrier
  
     This file is part of Traverso
  
@@ -17,31 +17,44 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  
-    $Id: TrackPanelViewPort.h,v 1.1 2008/01/21 16:17:30 r_sijrier Exp $
 */
 
-#ifndef TRACK_PANEL_VIEW_PORT_H
-#define TRACK_PANEL_VIEW_PORT_H
+#ifndef T_CLIPS_VIEW_PORT_H
+#define T_CLIPS_VIEW_PORT_H
 
-#include "ViewPort.h"
+#include <QGraphicsScene>
+#include <QGraphicsItem>
+#include <QStyleOptionGraphicsItem>
+
+#include "TViewPort.h"
+
+class TSheetWidget;
+class TAudioFileImportCommand;
 		
-class SheetWidget;
-		
-class TrackPanelViewPort : public ViewPort
+class TClipsViewPort : public TViewPort
 {
+	Q_OBJECT
+
 public:
-	TrackPanelViewPort(QGraphicsScene* scene, SheetWidget* sw);
-	~TrackPanelViewPort() {};
+    TClipsViewPort(QGraphicsScene* scene, TSheetWidget* sw);
+        ~TClipsViewPort() {}
+	
+
+protected:
+    void resizeEvent(QResizeEvent* e);
+	void paintEvent( QPaintEvent* e);
+	void dragEnterEvent(QDragEnterEvent *event);
+	void dropEvent(QDropEvent *event);
+    void dragMoveEvent(QDragMoveEvent *event);
 
 private:
-	SheetWidget*	m_sw;
+	TSheetWidget*	m_sw;
+	QList<TAudioFileImportCommand*>	m_imports;
+	QList<qint64 >	m_resourcesImport;
+	TAudioTrack*     m_importTrack{};
 };
+
 
 #endif
 
 //eof
-
- 
- 
- 
- 

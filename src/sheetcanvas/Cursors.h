@@ -22,22 +22,22 @@
 #ifndef CURSORS_H
 #define CURSORS_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include <QTimer>
 #include <QTimeLine>
 #include <QBrush>
 
 class TSession;
 class TSheetView;
-class ClipsViewPort;
+class TClipsViewPort;
 		
-class PlayHead : public ViewItem
+class TPlayHead : public TViewItem
 {
         Q_OBJECT
 
 public:
-        PlayHead(TSheetView* sv, TSession* session, ClipsViewPort* vp);
-        ~PlayHead();
+        TPlayHead(TSheetView* sv, TSession* session, TClipsViewPort* vp);
+        ~TPlayHead();
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 	void set_bounding_rect(QRectF rect);
@@ -58,7 +58,7 @@ private:
         TSession*	m_session;
         QTimer		m_playTimer;
         QTimeLine	m_animation;
-        ClipsViewPort*	m_vp;
+        TClipsViewPort*	m_vp;
         bool 		m_follow{};
 	bool		m_followDisabled{};
         PlayHeadMode	m_mode;
@@ -87,13 +87,13 @@ public slots:
 
 
 
-class WorkCursor : public ViewItem
+class TWorkCursor : public TViewItem
 {
         Q_OBJECT
 
 public:
-        WorkCursor(TSheetView* sv, TSession* session);
-        ~WorkCursor();
+        TWorkCursor(TSheetView* sv, TSession* session);
+        ~TWorkCursor();
 
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 	void set_bounding_rect(QRectF rect);

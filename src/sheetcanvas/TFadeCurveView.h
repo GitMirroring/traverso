@@ -24,14 +24,14 @@ $Id: FadeCurveView.h,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 #define FADE_VIEW_H
 
 #include "TAudioBuffer.h"
-#include "ViewItem.h"
+#include "TViewItem.h"
 
 class TCurve;
 class TFadeCurve;
 class TAudioClipView;
 class TAudioClip;
 
-class TFadeCurveView : public ViewItem
+class TFadeCurveView : public TViewItem
 {
 	Q_OBJECT
 		

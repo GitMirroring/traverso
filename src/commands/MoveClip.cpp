@@ -52,7 +52,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 /**
  *	Creates  a Move Clip or Copy Clip Command object.
  */
-MoveClip::MoveClip(ViewItem* view, const QVariantList& args)
+MoveClip::MoveClip(TViewItem* view, const QVariantList& args)
     : TMoveCommand(nullptr, view->get_related_context_item(), "")
     , m_actionType(UNDEFINED)
     , m_d(new MoveClipData)
@@ -475,7 +475,7 @@ void MoveClip::do_move()
     m_group.move_to(m_newTrackIndex, m_trackStartLocation + m_posDiff);
 
     if (m_d) {
-        TrackView* tv = d->sv->get_track_views().at(m_newTrackIndex);
+        TTrackView* tv = d->sv->get_track_views().at(m_newTrackIndex);
         qreal sceneY = tv->scenePos().y() + tv->boundingRect().height() / 2;
         d->sv->keyboard_move_canvas_cursor_to_location(m_trackStartLocation + m_posDiff + m_d->relativeWorkCursorPos, sceneY);
         d->sv->set_edit_cursor_text(TTimeRef::timeref_to_text(m_trackStartLocation + m_posDiff, d->sv->timeref_scalefactor));

@@ -22,7 +22,7 @@
 #ifndef TIME_LINE_VIEW_H
 #define TIME_LINE_VIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
 #include "TTimeRef.h"
 
@@ -32,13 +32,13 @@ class TTimeLineMarkerView;
 class TTimeLineMarker;
 
 
-class TimeLineView : public ViewItem
+class TTimeLineRulerView : public TViewItem
 {
     Q_OBJECT
 
 public:
-    TimeLineView(TSheetView* view);
-    ~TimeLineView();
+    TTimeLineRulerView(TSheetView* view);
+    ~TTimeLineRulerView();
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
     void calculate_bounding_rect();

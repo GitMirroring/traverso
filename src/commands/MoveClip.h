@@ -34,7 +34,7 @@ class TAudioClip;
 class TSession;
 class TAudioTrack;
 class TSheetView;
-class ViewItem;
+class TViewItem;
 class Zoom;
 
 typedef struct {
@@ -47,7 +47,7 @@ class MoveClip : public TMoveCommand
 	Q_OBJECT
 	
 public :
-	MoveClip(ViewItem* view, const QVariantList& args);
+    MoveClip(TViewItem* view, const QVariantList& args);
         ~MoveClip();
 
         int begin_hold();

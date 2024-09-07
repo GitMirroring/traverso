@@ -28,10 +28,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheet.h"
 #include "TSheetView.h"
 #include "TAudioClipView.h"
-#include "LineView.h"
+#include "TLineView.h"
 #include "TSnapList.h"
 #include "TLocation.h"
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include "Fade.h"
 #include "TThemer.h"
 
@@ -127,7 +127,7 @@ int SplitClip::undo_action()
 
 int SplitClip::begin_hold()
 {
-	m_splitcursor = new LineView(m_cv);
+	m_splitcursor = new TLineView(m_cv);
 	m_splitcursor->set_color(themer()->get_color("AudioClip:contour"));
     // fake mouse move to update splitcursor position
     jog();

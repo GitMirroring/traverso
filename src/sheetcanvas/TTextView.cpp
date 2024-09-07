@@ -23,8 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <TThemer.h>
 
-TTextView::TTextView(ViewItem *parent)
-    :ViewItem (parent)
+TTextView::TTextView(TViewItem *parent)
+    :TViewItem (parent)
 {
     m_boundingRect = QRectF(0, 0, 196, 18);
 }
@@ -51,7 +51,7 @@ void TTextView::paint(QPainter *painter, const QStyleOptionGraphicsItem */*optio
 
 void TTextView::calculate_bounding_rect()
 {
-    ViewItem::calculate_bounding_rect();
+    TViewItem::calculate_bounding_rect();
 }
 
 void TTextView::setText(const QString &text)

@@ -23,22 +23,22 @@
 #define T_AUDIO_PLUGIN_VIEW_H
 
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include <QString>
 
 class TAudioPluginPropertiesDialog;
 
 class TAudioTrackView;
-class PluginChainView;
+class TAudioPluginChainView;
 class TAudioPlugin;
 class TAudioPluginChain;
 
-class TAudioPluginView : public ViewItem
+class TAudioPluginView : public TViewItem
 {
     Q_OBJECT
 
 public:
-    TAudioPluginView(PluginChainView* pcv, TAudioPluginChain* chain, TAudioPlugin* plugin, int index);
+    TAudioPluginView(TAudioPluginChainView* pcv, TAudioPluginChain* chain, TAudioPlugin* plugin, int index);
     ~TAudioPluginView();
 
     TAudioPlugin* get_plugin();

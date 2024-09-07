@@ -19,19 +19,19 @@
  
 */
 
-#ifndef POSITION_INDICATOR_H
-#define POSITION_INDICATOR_H
+#ifndef TPOSITION_INDICATOR_H
+#define TPOSITION_INDICATOR_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 #include <QPixmap>
 
-class PositionIndicator : public ViewItem
+class TPositionIndicator : public TViewItem
 {
 	Q_OBJECT
 	
 public:
-	PositionIndicator(ViewItem* parent);
-        ~PositionIndicator() {}
+    TPositionIndicator(TViewItem* parent);
+        ~TPositionIndicator() {}
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 	void calculate_bounding_rect();

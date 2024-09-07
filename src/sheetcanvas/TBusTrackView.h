@@ -22,11 +22,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef SUB_GROUP_VIEW_H
 #define SUB_GROUP_VIEW_H
 
-#include "TrackView.h"
+#include "TTrackView.h"
 
 class TBusTrack;
 
-class TBusTrackView : public TrackView
+class TBusTrackView : public TTrackView
 {
         Q_OBJECT
 

@@ -30,7 +30,7 @@ class TAudioTrack;
 class TSheetView;
 class TSession;
 class TAudioClipView;
-class LineView;
+class TLineView;
 
 class SplitClip : public TMoveCommand
 {
@@ -58,7 +58,7 @@ private :
         TAudioClip* leftClip;
         TAudioClip* rightClip;
 	TTimeRef m_splitPoint;
-	LineView* m_splitcursor{};
+	TLineView* m_splitcursor{};
 
         void do_keyboard_move(const TTimeRef &location);
 

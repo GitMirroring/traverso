@@ -36,21 +36,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "TThemer.h"
 #include "TAudioClipView.h"
 #include "TCurveView.h"
-#include "CurveNodeView.h"
+#include "TCurveNodeView.h"
 #include "TTimeLineMarkerView.h"
 #include "TSheetView.h"
-#include "SheetWidget.h"
+#include "TSheetWidget.h"
 #include "TAudioTrackView.h"
 #include "TBusTrackView.h"
-#include "TrackPanelView.h"
+#include "TTrackPanelView.h"
 #include "Cursors.h"
-#include "ClipsViewPort.h"
-#include "TimeLineViewPort.h"
-#include "TimeLineView.h"
-#include "TrackPanelViewPort.h"
+#include "TClipsViewPort.h"
+#include "TTimeLineRulerViewPort.h"
+#include "TTimeLineRulerView.h"
+#include "TTrackPanelViewPort.h"
 #include "TCanvasCursor.h"
 #include "TSession.h"
-#include "ViewPort.h"
+#include "TClipsViewPort.h"
 #include "TMoveCommand.h"
 
 #include "TProjectManager.h"
@@ -60,12 +60,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 
 QHash<QString, QString> TSheetView::m_cursorsDict;
 
-TSheetView::TSheetView(SheetWidget* sheetwidget,
-	ClipsViewPort* viewPort,
-	TrackPanelViewPort* tpvp,
-	TimeLineViewPort* tlvp,
+TSheetView::TSheetView(TSheetWidget* sheetwidget,
+	TClipsViewPort* viewPort,
+	TTrackPanelViewPort* tpvp,
+	TTimeLineRulerViewPort* tlvp,
 	TSession* session)
-	: ViewItem(nullptr, session)
+	: TViewItem(nullptr, session)
 {
 	setZValue(1);
 
@@ -84,8 +84,8 @@ TSheetView::TSheetView(SheetWidget* sheetwidget,
 
 	m_clipsViewPort->scene()->addItem(this);
 
-	m_playCursor = new PlayHead(this, m_session, m_clipsViewPort);
-	m_workCursor = new WorkCursor(this, m_session);
+	m_playCursor = new TPlayHead(this, m_session, m_clipsViewPort);
+	m_workCursor = new TWorkCursor(this, m_session);
     m_canvasCursor = new TCanvasCursor(this);
     scene()->addItem(m_canvasCursor);
 
@@ -183,16 +183,16 @@ TAudioTrackView* TSheetView::get_audio_trackview_at_scene_pos( QPointF point )
 
 }
 
-TrackView* TSheetView::get_trackview_at_scene_pos( QPointF point )
+TTrackView* TSheetView::get_trackview_at_scene_pos( QPointF point )
 {
 	QList<QGraphicsItem*> views = m_clipsViewPort->items(m_clipsViewPort->mapFromScene(point));
 
 	for (int i=0; i<views.size(); ++i) {
-		TrackView* view = dynamic_cast<TrackView*>(views.at(i));
+		TTrackView* view = dynamic_cast<TTrackView*>(views.at(i));
 		if (view) {
 			return view;
 		}
-		TrackPanelView* tpv = dynamic_cast<TrackPanelView*>(views.at(i));
+		TTrackPanelView* tpv = dynamic_cast<TTrackPanelView*>(views.at(i));
 		if (tpv)
 		{
 			return tpv->get_track_view();
@@ -203,7 +203,7 @@ TrackView* TSheetView::get_trackview_at_scene_pos( QPointF point )
 }
 
 
-void TSheetView::move_trackview_up(TrackView *trackView)
+void TSheetView::move_trackview_up(TTrackView *trackView)
 {
 	int index = trackView->get_track()->get_sort_index();
 	if (index == 0 || trackView->get_track() == m_session->get_master_out_bus_track()) {
@@ -238,7 +238,7 @@ void TSheetView::move_trackview_up(TrackView *trackView)
 	layout_tracks();
 }
 
-void TSheetView::move_trackview_down(TrackView *trackView)
+void TSheetView::move_trackview_down(TTrackView *trackView)
 {
 	int index = trackView->get_track()->get_sort_index();
 	if (index >= m_audioTrackViews.size() || trackView->get_track() == m_session->get_master_out_bus_track()) {
@@ -280,13 +280,13 @@ void TSheetView::move_trackview_down(TrackView *trackView)
 
 }
 
-void TSheetView::to_bottom(TrackView *trackView)
+void TSheetView::to_bottom(TTrackView *trackView)
 {
     TAudioTrackView* atv = qobject_cast<TAudioTrackView*>(trackView);
 	TBusTrackView* btv = qobject_cast<TBusTrackView*>(trackView);
 
 	if (atv) {
-		QList<TrackView*> list = m_audioTrackViews;
+		QList<TTrackView*> list = m_audioTrackViews;
 		list.removeAll(atv);
 		for(int i=0; i<list.size(); i++) {
 			list.at(i)->get_track()->set_sort_index(i);
@@ -295,7 +295,7 @@ void TSheetView::to_bottom(TrackView *trackView)
 	}
 
 	if (btv) {
-		QList<TrackView*> list = m_busTrackViews;
+		QList<TTrackView*> list = m_busTrackViews;
 		list.removeAll(atv);
 
 		for(int i=0; i<list.size(); i++) {
@@ -308,7 +308,7 @@ void TSheetView::to_bottom(TrackView *trackView)
 	layout_tracks();
 }
 
-void TSheetView::to_top(TrackView *trackView)
+void TSheetView::to_top(TTrackView *trackView)
 {
 	int index = trackView->get_track()->get_sort_index();
 	if (index == 0) {
@@ -320,7 +320,7 @@ void TSheetView::to_top(TrackView *trackView)
 	TBusTrackView* btv = qobject_cast<TBusTrackView*>(trackView);
 
 	if (atv) {
-		QList<TrackView*> list = m_audioTrackViews;
+		QList<TTrackView*> list = m_audioTrackViews;
 		list.removeAll(atv);
 		atv->get_track()->set_sort_index(0);
 
@@ -330,7 +330,7 @@ void TSheetView::to_top(TrackView *trackView)
 	}
 
 	if (btv) {
-		QList<TrackView*> list = m_busTrackViews;
+		QList<TTrackView*> list = m_busTrackViews;
 		list.removeAll(atv);
 		btv->get_track()->set_sort_index(0);
 
@@ -345,7 +345,7 @@ void TSheetView::to_top(TrackView *trackView)
 
 void TSheetView::add_new_track_view(TTrack* track)
 {
-    TrackView* view = nullptr;
+    TTrackView* view = nullptr;
 
 	TAudioTrack* audioTrack = qobject_cast<TAudioTrack*>(track);
 	TBusTrack* busTrack = qobject_cast<TBusTrack*>(track);
@@ -377,13 +377,13 @@ void TSheetView::add_new_track_view(TTrack* track)
 
 void TSheetView::remove_track_view(TTrack* track)
 {
-	QList<TrackView*> views;
+	QList<TTrackView*> views;
 	views.append(m_audioTrackViews);
 	views.append(m_busTrackViews);
 
-	foreach(TrackView* view, views) {
+	foreach(TTrackView* view, views) {
 		if (view->get_track() == track) {
-			TrackPanelView* panel = view->get_panel_view();
+			TTrackPanelView* panel = view->get_panel_view();
 			scene()->removeItem(panel);
 			scene()->removeItem(view);
 			m_audioTrackViews.removeAll(view);
@@ -456,7 +456,7 @@ void TSheetView::vzoom(qreal factor)
 {
 	PENTER;
 	for (int i=0; i<m_audioTrackViews.size(); ++i) {
-		TrackView* view = m_audioTrackViews.at(i);
+		TTrackView* view = m_audioTrackViews.at(i);
 		TTrack* track = view->get_track();
 		int height = get_track_height(track);
         height = int(height * factor);
@@ -476,16 +476,16 @@ TCommand* TSheetView::toggle_expand_all_tracks(int height)
 {
 	if (height < 0) {
 		if (m_meanTrackHeight > m_trackMinimumHeight) {
-			foreach(TrackView* view, get_track_views()) {
+			foreach(TTrackView* view, get_track_views()) {
 				m_session->set_track_height(view->get_track()->get_id(), m_trackMinimumHeight);
 			}
 		} else {
-			foreach(TrackView* view, get_track_views()) {
+			foreach(TTrackView* view, get_track_views()) {
 				m_session->set_track_height(view->get_track()->get_id(), TTrack::INITIAL_HEIGHT);
 			}
 		}
 	} else {
-		foreach(TrackView* view, get_track_views()) {
+		foreach(TTrackView* view, get_track_views()) {
 			m_session->set_track_height(view->get_track()->get_id(), height);
 		}
 	}
@@ -495,7 +495,7 @@ TCommand* TSheetView::toggle_expand_all_tracks(int height)
     return nullptr;
 }
 
-void TSheetView::set_track_height(TrackView *view, int newheight)
+void TSheetView::set_track_height(TTrackView *view, int newheight)
 {
 	if (newheight > m_trackMaximumHeight) {
 		newheight = m_trackMaximumHeight;
@@ -526,13 +526,13 @@ void TSheetView::layout_tracks()
 	int verticalposition = m_trackTopIndent;
 	int totalTrackHeightPrimaryLanes = 0;
 
-	QList<TrackView*> views = get_track_views();
-    std::sort(views.begin(), views.end(), [&](TrackView* left, TrackView* right) {
+	QList<TTrackView*> views = get_track_views();
+    std::sort(views.begin(), views.end(), [&](TTrackView* left, TTrackView* right) {
         return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
     });
 
 	for (int i=0; i<views.size(); ++i) {
-		TrackView* view = views.at(i);
+		TTrackView* view = views.at(i);
 		view->move_to(0, verticalposition);
 		verticalposition += view->get_total_height() + m_trackSeperatingHeight;
 		totalTrackHeightPrimaryLanes += get_track_height(view->get_track());
@@ -548,7 +548,7 @@ void TSheetView::layout_tracks()
 
 void TSheetView::update_tracks_bounding_rect()
 {
-	QList<TrackView*> views = get_track_views();
+	QList<TTrackView*> views = get_track_views();
 
 	for (int i=0; i<views.size(); ++i) {
 		views.at(i)->calculate_bounding_rect();
@@ -625,24 +625,24 @@ TCommand* TSheetView::goto_end()
 }
 
 
-TrackPanelViewPort* TSheetView::get_trackpanel_view_port( ) const
+TTrackPanelViewPort* TSheetView::get_trackpanel_view_port( ) const
 {
 	return m_tpvp;
 }
 
-ClipsViewPort * TSheetView::get_clips_viewport() const
+TClipsViewPort * TSheetView::get_clips_viewport() const
 {
 	return m_clipsViewPort;
 }
 
-TimeLineViewPort* TSheetView::get_timeline_viewport() const
+TTimeLineRulerViewPort* TSheetView::get_timeline_viewport() const
 {
 	return m_tlvp;
 }
 
 TCommand * TSheetView::touch( )
 {
-    ViewPort* viewPort = dynamic_cast<ViewPort*>(cpointer().get_viewport());
+    TViewPort* viewPort = dynamic_cast<TViewPort*>(cpointer().get_viewport());
 
     if (!viewPort) {
         return ied().failure();
@@ -818,7 +818,7 @@ void TSheetView::session_horizontal_scrollbar_position_changed()
 
 void TSheetView::browse_to_track(TTrack *track)
 {
-	QList<TrackView*> views = get_track_views();
+	QList<TTrackView*> views = get_track_views();
 	if (m_sheetMasterOutView) {
 		views.append(m_sheetMasterOutView);
 	}
@@ -826,7 +826,7 @@ void TSheetView::browse_to_track(TTrack *track)
 		views.append(m_projectMasterOutView);
 	}
 
-	foreach(TrackView* view, views) {
+	foreach(TTrackView* view, views) {
 		if (view->get_track() == track) {
 			QList<TContextItem*> list;
 			list.append(view);
@@ -892,7 +892,7 @@ void TSheetView::browse_to_marker_view(TTimeLineMarkerView *markerView)
 	cpointer().set_active_context_items_by_keyboard_input(contexts);
 }
 
-void TSheetView::browse_to_curve_node_view(CurveNodeView *nodeView)
+void TSheetView::browse_to_curve_node_view(TCurveNodeView *nodeView)
 {
     QList<TContextItem*> activeList;
 	TCurveView* curveView = nodeView->get_curve_view();
@@ -931,13 +931,13 @@ void TSheetView::collect_item_browser_data(ItemBrowserData &data)
 
 	foreach(TContextItem* obj, list) {
         if (!data.timeLineView) {
-			data.timeLineView = qobject_cast<TimeLineView*>(obj);
+			data.timeLineView = qobject_cast<TTimeLineRulerView*>(obj);
 		}
 		if (!data.markerView) {
 			data.markerView = qobject_cast<TTimeLineMarkerView*>(obj);
 		}
 		if (!data.tv) {
-			data.tv = qobject_cast<TrackView*>(obj);
+			data.tv = qobject_cast<TTrackView*>(obj);
 		}
 		if (!data.atv) {
             data.atv = qobject_cast<TAudioTrackView*>(obj);
@@ -957,7 +957,7 @@ TCommand* TSheetView::to_upper_context_level()
 	ItemBrowserData data;
 	collect_item_browser_data(data);
 
-	if (data.currentContext == "TimeLineView" || data.currentContext == "MarkerView") {
+    if (data.currentContext == "TTimeLineRulerView" || data.currentContext == "TTimeLineMarkerView") {
         Q_ASSERT(data.tv);
 		browse_to_track(data.tv->get_track());
     } else if (data.currentContext == "TAudioTrackView") {
@@ -982,7 +982,7 @@ TCommand* TSheetView::to_lower_context_level()
 	ItemBrowserData data;
 	collect_item_browser_data(data);
 
-	if (data.currentContext == "CurveView")
+    if (data.currentContext == "TCurveView")
 	{
         if (data.acv) {
             browse_to_audio_clip_view(data.acv);
@@ -1008,13 +1008,13 @@ TCommand* TSheetView::browse_to_context_item_below()
 	ItemBrowserData data;
 	collect_item_browser_data(data);
 
-	if (data.currentContext == "CurveView") {
+    if (data.currentContext == "TCurveView") {
 		return nullptr;
 	}
 
     if (data.currentContext == "TAudioClipView") {
 		while (data.atv) {
-			QList<TrackView*> views = get_track_views();
+			QList<TTrackView*> views = get_track_views();
 			int index = views.indexOf(data.atv);
 			if (index < (views.size() - 1)) {
                 data.atv = qobject_cast<TAudioTrackView*>(views.at(index + 1));
@@ -1036,7 +1036,7 @@ TCommand* TSheetView::browse_to_context_item_below()
 	}
 
     if (data.currentContext == "TAudioTrackView" || data.currentContext == "TBusTrackView") {
-		QList<TrackView*> views = get_track_views();
+		QList<TTrackView*> views = get_track_views();
 		int index = views.indexOf(data.tv);
 		if (index < (views.size() - 1)) {
 			index += 1;
@@ -1060,7 +1060,7 @@ TCommand* TSheetView::browse_to_context_item_above()
 	ItemBrowserData data;
 	collect_item_browser_data(data);
 
-	if (data.currentContext == "CurveView") {
+    if (data.currentContext == "TCurveView") {
 		return nullptr;
 	}
 
@@ -1103,7 +1103,7 @@ TCommand* TSheetView::browse_to_next_context_item()
 	ItemBrowserData data;
 	collect_item_browser_data(data);
 
-	if (data.currentContext == "TimeLineView" || data.currentContext == "MarkerView") {
+    if (data.currentContext == "TTimeLineRulerView" || data.currentContext == "TTimeLineMarkerView") {
 		TTimeLineMarkerView* markerView = m_tlvp->get_timeline_view()->get_marker_view_after(m_session->get_work_location());
 		if (!markerView) {
 			return nullptr;
@@ -1113,7 +1113,7 @@ TCommand* TSheetView::browse_to_next_context_item()
 	}
 	if (data.currentContext == "CurveView") {
         Q_ASSERT(data.curveView);
-        CurveNodeView* nodeView = data.curveView->get_node_view_after(m_session->get_work_location());
+        TCurveNodeView* nodeView = data.curveView->get_node_view_after(m_session->get_work_location());
 		if (!nodeView) {
 			return nullptr;
 		}
@@ -1161,7 +1161,7 @@ TCommand* TSheetView::browse_to_previous_context_item()
 	ItemBrowserData data;
 	collect_item_browser_data(data);
 
-	if (data.currentContext == "TimeLineView" || data.currentContext == "MarkerView") {
+    if (data.currentContext == "TTimeLineRulerView" || data.currentContext == "TTimeLineMarkerView") {
         Q_ASSERT(m_tlvp);
 		TTimeLineMarkerView* markerView = m_tlvp->get_timeline_view()->get_marker_view_before(m_session->get_work_location());
 		if (!markerView) {
@@ -1171,8 +1171,8 @@ TCommand* TSheetView::browse_to_previous_context_item()
 
 	}
 
-	if (data.currentContext == "CurveView") {
-        CurveNodeView* nodeView = data.curveView->get_node_view_before(m_session->get_work_location());
+    if (data.currentContext == "TCurveView") {
+        TCurveNodeView* nodeView = data.curveView->get_node_view_before(m_session->get_work_location());
 		if (!nodeView) {
 			return nullptr;
 		}
@@ -1210,7 +1210,7 @@ TCommand* TSheetView::browse_to_previous_context_item()
 	return nullptr;
 }
 
-void TSheetView::center_in_view(ViewItem *item, enum Qt::AlignmentFlag flag)
+void TSheetView::center_in_view(TViewItem *item, enum Qt::AlignmentFlag flag)
 {
 	if (flag == Qt::AlignHCenter) {
         set_hscrollbar_value(int(item->scenePos().x() - m_clipsViewPort->width() / 2));
@@ -1251,9 +1251,9 @@ void TSheetView::keyboard_move_canvas_cursor_to_location(const TTimeRef &locatio
     do_keyboard_canvas_cursor_move(QPointF(location / timeref_scalefactor, sceneY));
 }
 
-QList<TrackView*> TSheetView::get_track_views() const
+QList<TTrackView*> TSheetView::get_track_views() const
 {
-    QList<TrackView*> views;
+    QList<TTrackView*> views;
     if (m_sheetMasterOutView) {
 		views.append(m_sheetMasterOutView);
 	}

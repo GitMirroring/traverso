@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TCurveView.h"
 #include "TSheetView.h"
-#include "CurveNodeView.h"
+#include "TCurveNodeView.h"
 #include <TThemer.h>
 
 #include <TCurve.h>
@@ -42,8 +42,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cfloat>
 
-TCurveView::TCurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve)
-    : ViewItem(parentViewItem, curve)
+TCurveView::TCurveView(TSheetView* sv, TViewItem *parentViewItem, TCurve* curve)
+    : TViewItem(parentViewItem, curve)
     , m_curve(curve)
 {
     setZValue(parentViewItem->zValue() + 1);
@@ -123,7 +123,7 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
 
     Q_ASSERT(m_nodeViews.size() > 0);
 
-    CurveNodeView* firstNodeView = m_nodeViews.constFirst();
+    TCurveNodeView* firstNodeView = m_nodeViews.constFirst();
     if (firstNodeView->get_when() > xstart) {
         int y = int(height - (firstNodeView->get_value() * height));
         int length = int(firstNodeView->get_when()) - xstart - offset;
@@ -138,7 +138,7 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
         }
     }
 
-    CurveNodeView* lastNodeView = m_nodeViews.constLast();
+    TCurveNodeView* lastNodeView = m_nodeViews.constLast();
     if (lastNodeView->get_when() < (xstart + pixelcount + offset)) {
         int y = int(height - (lastNodeView->get_value() * height));
         int x = int(lastNodeView->get_when()) - offset;
@@ -182,7 +182,7 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
     // vertically at the exact same x position. The curve line won't be painted
     // by the routine above (it doesn't catch the second node position obviously)
     // so we add curvenodes _always_ to solve this problem easily :-)
-    for(CurveNodeView* view : m_nodeViews) {
+    for(TCurveNodeView* view : m_nodeViews) {
         qreal x = view->x();
         if ( (x > xstart) && x < (xstart + pixelcount)) {
             polygon <<  QPointF( x + view->boundingRect().width() / 2,
@@ -212,7 +212,7 @@ int TCurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &b
 
 void TCurveView::add_curvenode_view(TCurveNode* node)
 {
-    CurveNodeView* nodeview = new CurveNodeView(m_sv, this, node, m_guicurve);
+    TCurveNodeView* nodeview = new TCurveNodeView(m_sv, this, node, m_guicurve);
     m_nodeViews.append(nodeview);
 
 
@@ -221,7 +221,7 @@ void TCurveView::add_curvenode_view(TCurveNode* node)
         cmd->set_instantanious(true);
         TCommand::process_command(cmd);
 
-        std::sort(m_nodeViews.begin(), m_nodeViews.end(), [&](CurveNodeView* left, CurveNodeView* right){
+        std::sort(m_nodeViews.begin(), m_nodeViews.end(), [&](TCurveNodeView* left, TCurveNodeView* right){
             return left->get_when() < right->get_when();
         });
 
@@ -231,7 +231,7 @@ void TCurveView::add_curvenode_view(TCurveNode* node)
 
 void TCurveView::remove_curvenode_view(TCurveNode* node)
 {
-    for(CurveNodeView* nodeview : m_nodeViews) {
+    for(TCurveNodeView* nodeview : m_nodeViews) {
         if (nodeview->get_curve_node() == node) {
             m_nodeViews.removeAll(nodeview);
             if (nodeview == m_blinkingNode) {
@@ -259,7 +259,7 @@ void TCurveView::calculate_bounding_rect()
     // can be painted in the margin area, so they won't chop off.
     m_boundingRect = QRectF(0, 0, m_parentViewItem->boundingRect().width(), m_parentViewItem->get_height() - BORDER_MARGIN);
     setPos(0, BORDER_MARGIN / 2);
-    ViewItem::calculate_bounding_rect();
+    TViewItem::calculate_bounding_rect();
 }
 
 void TCurveView::active_context_changed()
@@ -307,13 +307,13 @@ void TCurveView::update_softselected_node(QPointF point)
 
     QPointF pos = mapToItem(this, point);
 
-    CurveNodeView* prevNode = m_blinkingNode;
+    TCurveNodeView* prevNode = m_blinkingNode;
     m_blinkingNode = m_nodeViews.first();
 
     if (! m_blinkingNode)
         return;
 
-    foreach(CurveNodeView* nodeView, m_nodeViews) {
+    foreach(TCurveNodeView* nodeView, m_nodeViews) {
 
         QPointF nodePos(nodeView->scenePos().x(), nodeView->scenePos().y());
 
@@ -390,7 +390,7 @@ TCommand* TCurveView::remove_node()
 
     update_softselected_node(cpointer().on_first_input_event_scene_pos());
 
-    QList<CurveNodeView*> nodesToBeRemoved = get_selected_nodes();
+    QList<TCurveNodeView*> nodesToBeRemoved = get_selected_nodes();
 
 
     if (!nodesToBeRemoved.size()) {
@@ -402,7 +402,7 @@ TCommand* TCurveView::remove_node()
     QString description = tr("Removed %n Node(s)", "", nodesToBeRemoved.size());
     CommandGroup* group = new CommandGroup(m_curve, description);
 
-    foreach(CurveNodeView* nodeView, nodesToBeRemoved) {
+    foreach(TCurveNodeView* nodeView, nodesToBeRemoved) {
         nodeView->set_hard_selected(false);
         group->add_command(m_curve->remove_node(nodeView->get_curve_node()));
     }
@@ -416,9 +416,9 @@ TCommand* TCurveView::drag_node()
 
     update_softselected_node(cpointer().on_first_input_event_scene_pos());
 
-    QList<CurveNodeView*> selectedNodeViews = get_selected_nodes();
+    QList<TCurveNodeView*> selectedNodeViews = get_selected_nodes();
     QList<TCurveNode*> selectedNodes;
-    foreach(CurveNodeView* nodeView, selectedNodeViews) {
+    foreach(TCurveNodeView* nodeView, selectedNodeViews) {
         selectedNodes.append(nodeView->get_curve_node());
     }
 
@@ -480,10 +480,10 @@ TCommand* TCurveView::drag_node()
 
 void TCurveView::node_moved( )
 {
-    CurveNodeView* prev = nullptr;
-    CurveNodeView* next = nullptr;
+    TCurveNodeView* prev = nullptr;
+    TCurveNodeView* next = nullptr;
 
-    QList<CurveNodeView*> selectedNodes = get_selected_nodes();
+    QList<TCurveNodeView*> selectedNodes = get_selected_nodes();
 
     if (!selectedNodes.size()) {
         // even though there are no selected nodes, a curve node did move
@@ -492,8 +492,8 @@ void TCurveView::node_moved( )
         return;
     }
 
-    CurveNodeView* firstSelectedNodeView = selectedNodes.first();
-    CurveNodeView* lastSelectedNodeView = selectedNodes.last();
+    TCurveNodeView* firstSelectedNodeView = selectedNodes.first();
+    TCurveNodeView* lastSelectedNodeView = selectedNodes.last();
 
     int xleft = (int) firstSelectedNodeView->x();
     int xright = (int) lastSelectedNodeView->x();
@@ -583,7 +583,7 @@ TCommand* TCurveView::select_lazy_selected_node()
 TCommand* TCurveView::toggle_select_all_nodes()
 {
     bool selectedNodes = false;
-    foreach(CurveNodeView* nodeView, m_nodeViews) {
+    foreach(TCurveNodeView* nodeView, m_nodeViews) {
         if (nodeView->is_hard_selected()) {
             selectedNodes = true;
             break;
@@ -591,11 +591,11 @@ TCommand* TCurveView::toggle_select_all_nodes()
     }
 
     if (selectedNodes) {
-        foreach(CurveNodeView* nodeView, m_nodeViews) {
+        foreach(TCurveNodeView* nodeView, m_nodeViews) {
             nodeView->set_hard_selected(false);
         }
     } else {
-        foreach(CurveNodeView* nodeView, m_nodeViews) {
+        foreach(TCurveNodeView* nodeView, m_nodeViews) {
             nodeView->set_hard_selected(true);
         }
     }
@@ -605,12 +605,12 @@ TCommand* TCurveView::toggle_select_all_nodes()
     return ied().succes();
 }
 
-CurveNodeView* TCurveView::get_node_view_before(TTimeRef location) const
+TCurveNodeView* TCurveView::get_node_view_before(TTimeRef location) const
 {
     TTimeRef curveStartOffset = m_curve->get_start_offset();
 
     for (int i = m_nodeViews.size() - 1; i>=0; --i) {
-        CurveNodeView* nodeview = m_nodeViews.at(i);
+        TCurveNodeView* nodeview = m_nodeViews.at(i);
         TTimeRef absoluteLocation = TTimeRef(nodeview->get_curve_node()->get_when()) + curveStartOffset;
         if (absoluteLocation < location) {
             return nodeview;
@@ -620,11 +620,11 @@ CurveNodeView* TCurveView::get_node_view_before(TTimeRef location) const
     return nullptr;
 }
 
-CurveNodeView* TCurveView::get_node_view_after(TTimeRef location) const
+TCurveNodeView* TCurveView::get_node_view_after(TTimeRef location) const
 {
     TTimeRef curveStartOffset = m_curve->get_start_offset();
 
-    foreach(CurveNodeView* nodeview, m_nodeViews) {
+    foreach(TCurveNodeView* nodeview, m_nodeViews) {
         TTimeRef absoluteLocation = TTimeRef(nodeview->get_curve_node()->get_when()) + curveStartOffset;
         if (absoluteLocation > location) {
             return nodeview;
@@ -639,11 +639,11 @@ QString TCurveView::get_name() const
     return "Gain Envelope";
 }
 
-QList<CurveNodeView*> TCurveView::get_selected_nodes()
+QList<TCurveNodeView*> TCurveView::get_selected_nodes()
 {
-    QList<CurveNodeView*> list;
+    QList<TCurveNodeView*> list;
 
-    foreach(CurveNodeView* curveNodeView, m_nodeViews) {
+    foreach(TCurveNodeView* curveNodeView, m_nodeViews) {
         if (curveNodeView->is_hard_selected()) {
             list.append(curveNodeView);
         }

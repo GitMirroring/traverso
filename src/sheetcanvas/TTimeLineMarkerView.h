@@ -22,21 +22,21 @@
 #ifndef T_TIMELINE_MARKER_VIEW_H
 #define T_TIMELINE_MARKER_VIEW_H
 
-#include "ViewItem.h"
+#include "TViewItem.h"
 
 class TTimeLineMarker;
 class TCommand;
 class TSheetView;
-class LineView;
+class TLineView;
 class QColor;
-class PositionIndicator;
+class TPositionIndicator;
 
-class TTimeLineMarkerView : public ViewItem
+class TTimeLineMarkerView : public TViewItem
 {
 	Q_OBJECT
 	
 public:
-    TTimeLineMarkerView(TTimeLineMarker* marker, TSheetView* sv, ViewItem* parent);
+    TTimeLineMarkerView(TTimeLineMarker* marker, TSheetView* sv, TViewItem* parent);
     ~TTimeLineMarkerView() {}
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -51,11 +51,11 @@ public:
 	
 private:
 	TTimeLineMarker* m_marker;
-	LineView* m_line;
+	TLineView* m_line;
 	QColor	m_fillColor;
 	bool	m_active{};
 	bool	m_dragging;
-	PositionIndicator* m_posIndicator;
+	TPositionIndicator* m_posIndicator;
     int	m_height;
 	int	m_width;
 	

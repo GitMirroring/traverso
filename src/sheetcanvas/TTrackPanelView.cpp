@@ -28,15 +28,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TCurveView.h"
 #include "TConfig.h"
-#include "TrackPanelView.h"
+#include "TTrackPanelView.h"
 #include "TTrackLaneView.h"
 #include "TAudioTrackView.h"
 #include "TBusTrackView.h"
 #include "TSheetView.h"
 #include <TThemer.h>
-#include "TrackPanelViewPort.h"
+#include "TTrackPanelViewPort.h"
 #include <TAudioTrack.h>
-#include "TrackPanelView.h"
+#include "TTrackPanelView.h"
 #include <Utils.h>
 #include <Mixer.h>
 #include <GainCommand.h>
@@ -46,7 +46,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheet.h"
 #include "TTrack.h"
 #include "TMainWindow.h"
-#include "VUMeterView.h"
+#include "TVUMeterView.h"
 #include "TKnobView.h"
 #include "TTextView.h"
 		
@@ -57,8 +57,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 
-TrackPanelView::TrackPanelView(TrackView* view)
-        : ViewItem(nullptr, view)
+TTrackPanelView::TTrackPanelView(TTrackView* view)
+        : TViewItem(nullptr, view)
 {
 
     PENTERCONS;
@@ -103,7 +103,7 @@ TrackPanelView::TrackPanelView(TrackView* view)
 		m_preLedButton->ison_changed(true);
 	}
 
-    m_vuMeterView = new VUMeterView(this, m_track);
+    m_vuMeterView = new TVUMeterView(this, m_track);
 
     m_viewPort->scene()->addItem(this);
 
@@ -123,13 +123,13 @@ TrackPanelView::TrackPanelView(TrackView* view)
     connect(themer(), SIGNAL(themeLoaded()), this, SLOT(theme_config_changed()));
 }
 
-TrackPanelView::~TrackPanelView( )
+TTrackPanelView::~TTrackPanelView( )
 {
         PENTERDES;
 }
 
 
-void TrackPanelView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
+void TTrackPanelView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
         Q_UNUSED(widget);
 
@@ -166,19 +166,19 @@ void TrackPanelView::paint(QPainter* painter, const QStyleOptionGraphicsItem* op
         painter->fillRect(m_viewPort->width() - 1, 0, 1, m_trackView->get_total_height() - 1, themer()->get_color("Track:clipbottomoffset"));
 }
 
-void TrackPanelView::update_name()
+void TTrackPanelView::update_name()
 {
         m_trackNameView->setText(m_track->get_name());
 }
 
-void TrackPanelView::calculate_bounding_rect()
+void TTrackPanelView::calculate_bounding_rect()
 {
     prepareGeometryChange();
     m_boundingRect = QRectF(0, 0, m_viewPort->width(), m_trackView->get_total_height());
     layout_panel_items();
 }
 
-void TrackPanelView::layout_panel_items()
+void TTrackPanelView::layout_panel_items()
 {
     m_trackNameView->setPos(INDENT, 4);
 
@@ -200,7 +200,7 @@ void TrackPanelView::layout_panel_items()
     }
 
     int ledViewXPos = INDENT;
-    foreach(ViewItem* ledView, m_ledViews) {
+    for(TViewItem* ledView : m_ledViews) {
         ledView->setPos(ledViewXPos, LED_Y_POS);
         ledViewXPos += ledView->boundingRect().width() + LED_SPACING;
     }
@@ -209,17 +209,17 @@ void TrackPanelView::layout_panel_items()
     m_gainKnob->setPos(m_panKnob->pos().x() + m_panKnob->boundingRect().width() + LED_SPACING, LED_Y_POS);
 }
 
-void TrackPanelView::theme_config_changed()
+void TTrackPanelView::theme_config_changed()
 {
-        layout_panel_items();
-	foreach(ViewItem* ledViews, m_ledViews) {
-		ledViews->update();
+    layout_panel_items();
+    for(TViewItem* ledViews : m_ledViews) {
+        ledViews->update();
 	}
 }
 
 
-AudioTrackPanelView::AudioTrackPanelView(TAudioTrackView* trackView)
-        : TrackPanelView(trackView)
+TAudioTrackPanelView::TAudioTrackPanelView(TAudioTrackView* trackView)
+        : TTrackPanelView(trackView)
 {
 	PENTERCONS;
 
@@ -236,25 +236,25 @@ AudioTrackPanelView::AudioTrackPanelView(TAudioTrackView* trackView)
     connect(m_tv->get_track(), SIGNAL(armedChanged(bool)), m_recLed, SLOT(ison_changed(bool)));
 }
 
-AudioTrackPanelView::~AudioTrackPanelView( )
+TAudioTrackPanelView::~TAudioTrackPanelView( )
 {
 	PENTERDES;
 }
 
 
-void AudioTrackPanelView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
+void TAudioTrackPanelView::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
-    TrackPanelView::paint(painter, option, widget);
+    TTrackPanelView::paint(painter, option, widget);
 }
 
-void AudioTrackPanelView::layout_panel_items()
+void TAudioTrackPanelView::layout_panel_items()
 {
-        TrackPanelView::layout_panel_items();
+        TTrackPanelView::layout_panel_items();
 }
 
 
 TBusTrackPanelView::TBusTrackPanelView(TBusTrackView* view)
-        : TrackPanelView(view)
+        : TTrackPanelView(view)
 {
         PENTERCONS;
 }
@@ -276,18 +276,18 @@ void TBusTrackPanelView::paint(QPainter* painter, const QStyleOptionGraphicsItem
         QColor color = themer()->get_color("BusTrack:background");
         painter->fillRect(xstart, m_trackView->m_topborderwidth, pixelcount, m_sv->get_track_height(m_track) - m_trackView->m_bottomborderwidth, color);
 
-        TrackPanelView::paint(painter, option, widget);
+        TTrackPanelView::paint(painter, option, widget);
 }
 
 
 void TBusTrackPanelView::layout_panel_items()
 {
-        TrackPanelView::layout_panel_items();
+        TTrackPanelView::layout_panel_items();
 }
 
 
 TTrackLanePanelView::TTrackLanePanelView(TTrackLaneView* laneView)
-	: ViewItem(laneView, laneView)
+	: TViewItem(laneView, laneView)
 {
 	PENTERCONS;
 	m_laneView = laneView;
@@ -346,8 +346,8 @@ void TTrackLanePanelView::calculate_bounding_rect()
 }
 
 
-TrackPanelGain::TrackPanelGain(TrackPanelView *parent, TTrack *track)
-        : ViewItem(parent, nullptr)
+TrackPanelGain::TrackPanelGain(TTrackPanelView *parent, TTrack *track)
+        : TViewItem(parent, nullptr)
         , m_track(track)
 {
 }
@@ -441,8 +441,8 @@ TCommand* TrackPanelGain::gain_decrement()
 }
 
 
-TrackPanelLed::TrackPanelLed(TrackPanelView* view, QObject *obj, const QString& name, const QString& toggleslot)
-        : ViewItem(view, nullptr)
+TrackPanelLed::TrackPanelLed(TTrackPanelView* view, QObject *obj, const QString& name, const QString& toggleslot)
+        : TViewItem(view, nullptr)
 	, m_name(name)
 	, m_toggleslot(toggleslot)
 	, m_isOn(false)
