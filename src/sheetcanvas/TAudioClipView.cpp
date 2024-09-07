@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheetView.h"
 #include "TAudioTrackView.h"
 #include "TFadeCurveView.h"
-#include "CurveView.h"
+#include "TCurveView.h"
 
 #include "TAudioClip.h"
 #include "TReadAudioSource.h"
@@ -80,7 +80,7 @@ TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioCl
         add_new_fade_curve_view(curve);
     }
 
-    m_gainCurveView = new CurveView(m_sv, this, m_clip->get_plugin_chain()->get_fader()->get_curve());
+    m_gainCurveView = new TCurveView(m_sv, this, m_clip->get_plugin_chain()->get_fader()->get_curve());
     // CurveViews don't 'get' their start offset, it's only a property for AudioClips..
     // So to be sure the CurveNodeViews start offset get updated as well,
     // we call curveviews calculate_bounding_rect() function!
@@ -236,7 +236,7 @@ void TAudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
     int mixCurveData = 0;
     int mixAudioClipCurveData = 0;
     int mixTrackAutomationData = 0;
-    CurveView* trackAutomationView = m_tv->get_gain_curve_view();
+    TCurveView* trackAutomationView = m_tv->get_gain_curve_view();
     mixAudioClipCurveData |= m_gainCurveView->has_nodes();
     mixTrackAutomationData |= trackAutomationView->has_nodes();
 

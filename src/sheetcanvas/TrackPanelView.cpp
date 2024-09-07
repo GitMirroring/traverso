@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QAction>
 #include <QStringList>
 
-#include "CurveView.h"
+#include "TCurveView.h"
 #include "TConfig.h"
 #include "TrackPanelView.h"
 #include "TTrackLaneView.h"
@@ -319,8 +319,8 @@ void TTrackLanePanelView::paint(QPainter* painter, const QStyleOptionGraphicsIte
 	painter->setPen(QColor(100, 100, 100, 100));
 	int xpos = 50;
 	int halfFontHeight = 5;
-	int height = m_laneView->get_height() - CurveView::BORDER_MARGIN;
-	int topBorderMargin = CurveView::BORDER_MARGIN / 2;
+	int height = m_laneView->get_height() - TCurveView::BORDER_MARGIN;
+	int topBorderMargin = TCurveView::BORDER_MARGIN / 2;
 
     int y = int( (1.0f - dB_to_scale_factor(0.0)) * height + topBorderMargin);
 	int textY = y + halfFontHeight;

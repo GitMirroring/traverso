@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 class TAudioClip;
 class TAudioTrack;
 class PluginChainView;
-class CurveView;
+class TCurveView;
 class TTrack;
 class TrackPanelView;
 class TTrackLaneView;
@@ -66,7 +66,7 @@ protected:
 	TTrackLaneView*		m_primaryLaneView;
 	TTrackLaneView*		m_volumeAutomationLaneView;
 	PluginChainView*	m_pluginChainView;
-	CurveView*              m_curveView;
+    TCurveView*              m_curveView;
 	TTrack*                  m_track;
 	TrackPanelView*		m_panel{};
 	int			m_height{};

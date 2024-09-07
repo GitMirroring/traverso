@@ -85,7 +85,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&TAudioClip::staticMetaObject,           tr("Audio Clip"));
     m->add_meta_object(&TAudioClipView::staticMetaObject,       tr("Audio Clip"));
     m->add_meta_object(&TCurve::staticMetaObject,               tr("Curve"));
-    m->add_meta_object(&CurveView::staticMetaObject,            tr("Curve"));
+    m->add_meta_object(&TCurveView::staticMetaObject,           tr("Curve"));
     m->add_meta_object(&TTimeLineRuler::staticMetaObject,       tr("Time Line"));
     m->add_meta_object(&TimeLineView::staticMetaObject,         tr("Time Line"));
     m->add_meta_object(&TAudioPlugin::staticMetaObject,         tr("Plugin"));
@@ -147,7 +147,7 @@ void TraversoCommands::load(TShortCutManager* m)
 
     add_function(&TAudioClip::staticMetaObject,         &TDeleteBase::staticMetaObject, tr("Remove AudioClip"),  "RemoveClip",           RemoveClipCommand);
     add_function(&TAudioPluginView::staticMetaObject,   &TDeleteBase::staticMetaObject, "",                      "RemovePlugin",         RemovePluginCommand);
-    add_function(&CurveView::staticMetaObject,          &TDeleteBase::staticMetaObject, tr("Remove Node(s)"),    "RemoveCurveNode",      RemoveCurveNodeCommmand);
+    add_function(&TCurveView::staticMetaObject,          &TDeleteBase::staticMetaObject, tr("Remove Node(s)"),    "RemoveCurveNode",      RemoveCurveNodeCommmand);
     add_function(&TTrack::staticMetaObject,             &TDeleteBase::staticMetaObject, "",                      "RemoveTrack",          RemoveTrackCommand);
 
     m->add_base_function(&TEditPropertiesBase::staticMetaObject,    tr("Edit Properties"),      "EditPropertiesBase");
@@ -164,7 +164,7 @@ void TraversoCommands::load(TShortCutManager* m)
 
     add_function(&TAudioClipView::staticMetaObject,     &TMoveBase::staticMetaObject, "",                        "MoveClip",             MoveClipCommand, "", USE_X, USE_Y, QVariantList() << "move");
     add_function(&TAudioPluginView::staticMetaObject,   &TMoveBase::staticMetaObject, "",                        "MovePlugin",           MovePluginCommand, "", USE_X, NO_Y, QVariantList() << "false");
-    add_function(&CurveView::staticMetaObject,          &TMoveBase::staticMetaObject, tr("Move Curve Node(s)"),  "MoveCurveNodes",       MoveCurveNodesCommand, "", USE_X, USE_Y);
+    add_function(&TCurveView::staticMetaObject,          &TMoveBase::staticMetaObject, tr("Move Curve Node(s)"),  "MoveCurveNodes",       MoveCurveNodesCommand, "", USE_X, USE_Y);
     add_function(&TrackView::staticMetaObject,          &TMoveBase::staticMetaObject, tr("Move Up/Down"),        "MoveTrack",            MoveTrackCommand, "", NO_X, USE_Y);
     add_function(&TimeLineView::staticMetaObject,       &TMoveBase::staticMetaObject, tr("Move Marker"),         "TimeLineMoveMarker",   MoveMarkerCommand, "", USE_X, NO_Y);
     add_function(&TTimeLineMarkerView::staticMetaObject,         &TMoveBase::staticMetaObject, tr("Move Marker"),         "MoveMarker",           MoveMarkerCommand, "", USE_X, NO_Y);
@@ -229,9 +229,9 @@ void TraversoCommands::load(TShortCutManager* m)
 
     m->add_function(&CorrelationMeterView::staticMetaObject, tr("Toggle display range"), "CorrelationMeterToggleDisplayRange", "set_mode()");
 
-    m->add_function(&CurveView::staticMetaObject,   tr("New Node"),         "AddCurveNode",                 "add_node()");
-    m->add_function(&CurveView::staticMetaObject,   tr("Select All Nodes"), "CurveSelectAllNodes",          "toggle_select_all_nodes()");
-    m->add_function(&CurveView::staticMetaObject,   tr("Select Node"),      "CurveSelectNode",              "select_lazy_selected_node()");
+    m->add_function(&TCurveView::staticMetaObject,   tr("New Node"),         "AddCurveNode",                 "add_node()");
+    m->add_function(&TCurveView::staticMetaObject,   tr("Select All Nodes"), "CurveSelectAllNodes",          "toggle_select_all_nodes()");
+    m->add_function(&TCurveView::staticMetaObject,   tr("Select Node"),      "CurveSelectNode",              "select_lazy_selected_node()");
 
     m->add_function(&TFadeCurve::staticMetaObject,  tr("Cycle Shape"),      "FadeCurveCycleShape",          "set_mode()");
     m->add_function(&TFadeCurve::staticMetaObject,  &TToggleBypassBase::staticMetaObject,                   "FadeCurveToggleBypass", "toggle_bypass()");
@@ -535,7 +535,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case RemoveCurveNodeCommmand:
     {
-        if (auto curveView = qobject_cast<CurveView*>(obj))
+        if (auto curveView = qobject_cast<TCurveView*>(obj))
         {
             return curveView->remove_node();
         }
@@ -691,7 +691,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case MoveCurveNodesCommand:
     {
-        if (auto curveView = qobject_cast<CurveView*>(obj)) {
+        if (auto curveView = qobject_cast<TCurveView*>(obj)) {
             return curveView->drag_node();
         }
         return ied().failure();

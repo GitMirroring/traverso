@@ -16,8 +16,8 @@ TAudioClipView.cpp TAudioClipView.h
 TAudioTrackView.cpp TAudioTrackView.h
 ClipsViewPort.cpp
 Cursors.cpp
-CurveNodeView.cpp
-CurveView.cpp
+CurveNodeView.cpp CurveNodeView.h
+TCurveView.cpp TCurveView.h
 TFadeCurveView.cpp TFadeCurveView.h
 TTimeLineMarkerView.cpp TTimeLineMarkerView.h
 LineView.cpp

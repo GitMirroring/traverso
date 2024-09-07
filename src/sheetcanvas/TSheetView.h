@@ -32,7 +32,7 @@ class TSheet;
 class TAudioClipView;
 class TAudioTrackView;
 class ClipsViewPort;
-class CurveView;
+class TCurveView;
 class CurveNodeView;
 class TTimeLineMarkerView;
 class TrackPanelViewPort;
@@ -63,7 +63,7 @@ struct ItemBrowserData {
 	TrackView* tv;
 	TAudioTrackView* atv;
 	TAudioClipView* acv;
-	CurveView* curveView;
+	TCurveView* curveView;
 	QString currentContext;
 };
 
@@ -122,7 +122,7 @@ public :
 
 	void browse_to_track(TTrack* track);
 	void browse_to_audio_clip_view(TAudioClipView* acv);
-	void browse_to_curve_view(CurveView* curveView);
+	void browse_to_curve_view(TCurveView* curveView);
 	void browse_to_curve_node_view(CurveNodeView* nodeView);
 	void browse_to_marker_view(TTimeLineMarkerView* markerView);
 	void center_in_view(ViewItem* item, enum Qt::AlignmentFlag = Qt::AlignHCenter);

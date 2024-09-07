@@ -36,7 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TTrack.h>
 #include <Utils.h>
 #include "TAudioPluginChain.h"
-#include "CurveView.h"
+#include "TCurveView.h"
 
 #include <PluginSelectorDialog.h>
 #include "dialogs/TTrackManagerDialog.h"
@@ -69,7 +69,7 @@ TrackView::TrackView(TSheetView* sv, TTrack * track)
 	m_volumeAutomationLaneView = new TTrackLaneView(this);
 	m_laneViews.append(m_volumeAutomationLaneView);
 
-	m_curveView = new CurveView(m_sv, m_volumeAutomationLaneView, m_track->get_plugin_chain()->get_fader()->get_curve());
+	m_curveView = new TCurveView(m_sv, m_volumeAutomationLaneView, m_track->get_plugin_chain()->get_fader()->get_curve());
 	m_volumeAutomationLaneView->set_child_view(m_curveView);
 
 	m_visibleLanes = 1;

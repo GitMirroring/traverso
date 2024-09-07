@@ -31,13 +31,13 @@ class TCurve;
 class TCurveNode;
 class CurveNodeView;
 
-class CurveView : public ViewItem
+class TCurveView : public ViewItem
 {
 	Q_OBJECT
 
 public:
-	CurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve);
-	~CurveView();
+	TCurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve);
+	~TCurveView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
     int get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer);

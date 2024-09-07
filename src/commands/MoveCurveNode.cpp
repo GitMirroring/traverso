@@ -23,7 +23,7 @@
 #include "MoveCurveNode.h"
 
 #include "TCurve.h"
-#include "CurveView.h"
+#include "TCurveView.h"
 #include "TCurveNode.h"
 #include "TSheetView.h"
 #include "Mixer.h"

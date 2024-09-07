@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "TContextPointer.h"
 #include "TThemer.h"
 #include "TAudioClipView.h"
-#include "CurveView.h"
+#include "TCurveView.h"
 #include "CurveNodeView.h"
 #include "TTimeLineMarkerView.h"
 #include "TSheetView.h"
@@ -859,7 +859,7 @@ void TSheetView::browse_to_audio_clip_view(TAudioClipView* acv)
 	cpointer().set_active_context_items_by_keyboard_input(activeList);
 }
 
-void TSheetView::browse_to_curve_view(CurveView *curveView)
+void TSheetView::browse_to_curve_view(TCurveView *curveView)
 {
 	QList<TContextItem*> activeList;
 	TAudioClipView* acv = static_cast<TAudioClipView*>(curveView->parentItem());
@@ -895,7 +895,7 @@ void TSheetView::browse_to_marker_view(TTimeLineMarkerView *markerView)
 void TSheetView::browse_to_curve_node_view(CurveNodeView *nodeView)
 {
     QList<TContextItem*> activeList;
-	CurveView* curveView = nodeView->get_curve_view();
+	TCurveView* curveView = nodeView->get_curve_view();
     curveView->update_softselected_node(nodeView->scenePos());
 
 	TAudioClipView* acv = static_cast<TAudioClipView*>(curveView->parentItem());
@@ -946,7 +946,7 @@ void TSheetView::collect_item_browser_data(ItemBrowserData &data)
 			data.acv = qobject_cast<TAudioClipView*>(obj);
 		}
 		if (!data.curveView) {
-			data.curveView = qobject_cast<CurveView*>(obj);
+			data.curveView = qobject_cast<TCurveView*>(obj);
 		}
 	}
 

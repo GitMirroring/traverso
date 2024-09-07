@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "CurveView.h"
+#include "TCurveView.h"
 #include "TSheetView.h"
 #include "CurveNodeView.h"
 #include <TThemer.h>
@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cfloat>
 
-CurveView::CurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve)
+TCurveView::TCurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve)
     : ViewItem(parentViewItem, curve)
     , m_curve(curve)
 {
@@ -50,7 +50,7 @@ CurveView::CurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve)
     setFlags(QGraphicsItem::ItemUsesExtendedStyleOption);
 
     m_sv = sv;
-    CurveView::load_theme_data();
+    TCurveView::load_theme_data();
 
     m_blinkColorDirection = 1;
     m_blinkingNode = nullptr;
@@ -63,21 +63,21 @@ CurveView::CurveView(TSheetView* sv, ViewItem* parentViewItem, TCurve* curve)
     }
 
     connect(&m_blinkTimer, SIGNAL(timeout()), this, SLOT(update_blink_color()));
-    connect(m_curve, &TCurve::nodeAdded, this, &CurveView::add_curvenode_view);
-    connect(m_curve, &TCurve::nodeRemoved, this, &CurveView::remove_curvenode_view);
+    connect(m_curve, &TCurve::nodeAdded, this, &TCurveView::add_curvenode_view);
+    connect(m_curve, &TCurve::nodeRemoved, this, &TCurveView::remove_curvenode_view);
     connect(m_curve, SIGNAL(nodePositionChanged()), this, SLOT(node_moved()));
     connect(m_curve, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
 
     m_hasMouseTracking = true;
 }
 
-CurveView::~ CurveView( )
+TCurveView::~ TCurveView( )
 {
     m_guicurve->clear_curve();
     delete m_guicurve;
 }
 
-void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
+void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
 {
     Q_UNUSED(widget);
     PENTER2;
@@ -199,7 +199,7 @@ void CurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opti
     painter->restore();
 }
 
-int CurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer)
+int TCurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer)
 {
     if (m_guicurve->get_nodes().size() == 1 && m_guicurve->get_nodes().first()->get_value() == 1.0) {
         return 0;
@@ -210,7 +210,7 @@ int CurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &bu
     return 1;
 }
 
-void CurveView::add_curvenode_view(TCurveNode* node)
+void TCurveView::add_curvenode_view(TCurveNode* node)
 {
     CurveNodeView* nodeview = new CurveNodeView(m_sv, this, node, m_guicurve);
     m_nodeViews.append(nodeview);
@@ -229,7 +229,7 @@ void CurveView::add_curvenode_view(TCurveNode* node)
     }
 }
 
-void CurveView::remove_curvenode_view(TCurveNode* node)
+void TCurveView::remove_curvenode_view(TCurveNode* node)
 {
     for(CurveNodeView* nodeview : m_nodeViews) {
         if (nodeview->get_curve_node() == node) {
@@ -252,7 +252,7 @@ void CurveView::remove_curvenode_view(TCurveNode* node)
     }
 }
 
-void CurveView::calculate_bounding_rect()
+void TCurveView::calculate_bounding_rect()
 {
     // Add a bit of top/bottom margin so the curve line doesn't go all the
     // way to the top/bottom of the view, and as a side effect, the nodes
@@ -262,7 +262,7 @@ void CurveView::calculate_bounding_rect()
     ViewItem::calculate_bounding_rect();
 }
 
-void CurveView::active_context_changed()
+void TCurveView::active_context_changed()
 {
     if (has_active_context()) {
         m_blinkTimer.start(40);
@@ -285,7 +285,7 @@ void CurveView::active_context_changed()
 }
 
 
-void CurveView::mouse_hover_move_event()
+void TCurveView::mouse_hover_move_event()
 {
     update_softselected_node(cpointer().scene_pos());
 
@@ -299,7 +299,7 @@ void CurveView::mouse_hover_move_event()
 }
 
 
-void CurveView::update_softselected_node(QPointF point)
+void TCurveView::update_softselected_node(QPointF point)
 {
     if (m_nodeViews.isEmpty()) {
         return;
@@ -344,7 +344,7 @@ void CurveView::update_softselected_node(QPointF point)
 }
 
 
-void CurveView::update_blink_color()
+void TCurveView::update_blink_color()
 {
     if (!m_blinkingNode) {
         return;
@@ -368,7 +368,7 @@ void CurveView::update_blink_color()
 }
 
 
-TCommand* CurveView::add_node()
+TCommand* TCurveView::add_node()
 {
     PENTER;
     QPointF point = mapFromScene(cpointer().scene_pos());
@@ -384,7 +384,7 @@ TCommand* CurveView::add_node()
 }
 
 
-TCommand* CurveView::remove_node()
+TCommand* TCurveView::remove_node()
 {
     PENTER;
 
@@ -410,7 +410,7 @@ TCommand* CurveView::remove_node()
     return group;
 }
 
-TCommand* CurveView::drag_node()
+TCommand* TCurveView::drag_node()
 {
     PENTER;
 
@@ -478,7 +478,7 @@ TCommand* CurveView::drag_node()
                              minWhenDiff, maxWhenDiff, minValueDiff, maxValuediff, text);
 }
 
-void CurveView::node_moved( )
+void TCurveView::node_moved( )
 {
     CurveNodeView* prev = nullptr;
     CurveNodeView* next = nullptr;
@@ -533,22 +533,22 @@ void CurveView::node_moved( )
     update(xleft, 0, xright - xleft + 3, m_boundingRect.height());
 }
 
-void CurveView::load_theme_data()
+void TCurveView::load_theme_data()
 {
-    CurveView::calculate_bounding_rect();
+    TCurveView::calculate_bounding_rect();
 }
 
-void CurveView::set_start_offset(const TTimeRef &offset)
+void TCurveView::set_start_offset(const TTimeRef &offset)
 {
     m_startoffset = offset;
 }
 
-bool CurveView::has_nodes() const
+bool TCurveView::has_nodes() const
 {
     return m_guicurve->get_nodes().size() > 1 ? true : false;
 }
 
-float CurveView::get_default_value()
+float TCurveView::get_default_value()
 {
     if (m_guicurve->get_nodes().isEmpty()) {
         return 1.0f;
@@ -557,7 +557,7 @@ float CurveView::get_default_value()
     return float(m_guicurve->get_nodes().first()->get_value());
 }
 
-TCommand * CurveView::remove_all_nodes()
+TCommand * TCurveView::remove_all_nodes()
 {
     CommandGroup* group = new CommandGroup(m_curve, tr("Clear Nodes"));
 
@@ -568,7 +568,7 @@ TCommand * CurveView::remove_all_nodes()
     return group;
 }
 
-TCommand* CurveView::select_lazy_selected_node()
+TCommand* TCurveView::select_lazy_selected_node()
 {
     if (!m_blinkingNode)
     {
@@ -580,7 +580,7 @@ TCommand* CurveView::select_lazy_selected_node()
     return ied().succes();
 }
 
-TCommand* CurveView::toggle_select_all_nodes()
+TCommand* TCurveView::toggle_select_all_nodes()
 {
     bool selectedNodes = false;
     foreach(CurveNodeView* nodeView, m_nodeViews) {
@@ -605,7 +605,7 @@ TCommand* CurveView::toggle_select_all_nodes()
     return ied().succes();
 }
 
-CurveNodeView* CurveView::get_node_view_before(TTimeRef location) const
+CurveNodeView* TCurveView::get_node_view_before(TTimeRef location) const
 {
     TTimeRef curveStartOffset = m_curve->get_start_offset();
 
@@ -620,7 +620,7 @@ CurveNodeView* CurveView::get_node_view_before(TTimeRef location) const
     return nullptr;
 }
 
-CurveNodeView* CurveView::get_node_view_after(TTimeRef location) const
+CurveNodeView* TCurveView::get_node_view_after(TTimeRef location) const
 {
     TTimeRef curveStartOffset = m_curve->get_start_offset();
 
@@ -634,12 +634,12 @@ CurveNodeView* CurveView::get_node_view_after(TTimeRef location) const
     return nullptr;
 }
 
-QString CurveView::get_name() const
+QString TCurveView::get_name() const
 {
     return "Gain Envelope";
 }
 
-QList<CurveNodeView*> CurveView::get_selected_nodes()
+QList<CurveNodeView*> TCurveView::get_selected_nodes()
 {
     QList<CurveNodeView*> list;
 

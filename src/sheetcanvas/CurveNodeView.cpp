@@ -27,11 +27,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TCurveNode.h>
 #include <TThemer.h>
 #include <TCurve.h>
-#include "CurveView.h"
+#include "TCurveView.h"
 
 #include <Debugger.h>
 
-CurveNodeView::CurveNodeView( TSheetView * sv, CurveView* curveview, TCurveNode * node, TCurve* guicurve)
+CurveNodeView::CurveNodeView( TSheetView * sv, TCurveView* curveview, TCurveNode * node, TCurve* guicurve)
     : ViewItem(curveview, nullptr)
     , TCurveNode(guicurve, node->get_when(), node->get_value())
     , m_node(node)

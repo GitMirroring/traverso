@@ -26,7 +26,7 @@
 #include "TTimeRef.h"
 #include <QRectF>
 
-class CurveView;
+class TCurveView;
 class TCurveNode;
 class TCurve;
 class QPoint;

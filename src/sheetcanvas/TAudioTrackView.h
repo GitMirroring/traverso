@@ -45,7 +45,7 @@ public:
         TAudioTrack* get_track() const {return m_track;}
         TAudioClipView* get_nearest_audioclip_view(TTimeRef location) const;
         QList<TAudioClipView* > get_clipviews() {return m_clipViews;}
-	CurveView* get_gain_curve_view() const {return m_curveView;}
+	TCurveView* get_gain_curve_view() const {return m_curveView;}
 	
         int get_height() const;
 	

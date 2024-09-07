@@ -2,7 +2,7 @@
 #include "ClipsViewPort.h"
 #include "Cursors.h"
 #include "CurveNodeView.h"
-#include "CurveView.h"
+#include "TCurveView.h"
 #include "TFadeCurveView.h"
 #include "TTimeLineMarkerView.h"
 #include "TAudioPluginView.h"

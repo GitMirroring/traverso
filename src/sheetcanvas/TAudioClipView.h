@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 class TAudioClip;
 class TSheet;
 class TFadeCurve;
-class CurveView;
+class TCurveView;
 class TSheetView;
 class TAudioTrackView;
 class TFadeCurveView;
@@ -54,7 +54,7 @@ public:
 	
 	TAudioClip* get_clip() const {return m_clip;}
         TAudioTrackView* get_audio_track_view() const {return m_tv;}
-        CurveView* get_gain_curve_view() const {return m_gainCurveView;}
+        TCurveView* get_gain_curve_view() const {return m_gainCurveView;}
 	int get_height() const {return m_height;}
 	
 	void calculate_bounding_rect();
@@ -65,7 +65,7 @@ private:
         QList<TFadeCurveView*> m_fadeCurveViews;
 	TAudioClip* 	m_clip;
 	TSheet*		m_sheet;
-        CurveView* 	m_gainCurveView;
+        TCurveView* 	m_gainCurveView;
 	QPolygonF 	m_polygon;
 	QPixmap 	m_clipInfo;
 	QTimer 		m_recordingTimer;
