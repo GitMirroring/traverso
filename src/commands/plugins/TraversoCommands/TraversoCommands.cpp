@@ -73,6 +73,10 @@ void TraversoCommands::load(TShortCutManager* m)
     // known submenu titles
     m->add_translation("Utilities", tr("Utilities"));
     m->add_translation("Fade", tr("Fade In/Out"));
+    m->add_translation("Navigate", tr("Navigate"));
+    m->add_translation("Playhead", tr("Playhead"));
+    m->add_translation("WorkCursor", tr("WorkCursor"));
+    m->add_translation("Shuttle", tr("Shuttle"));
 
     // register meta objects
     m->add_meta_object(&TSheet::staticMetaObject,               tr("Sheet"));
@@ -129,19 +133,39 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&TPositionIndicator::staticMetaObject,    tr("Position Indicator"));
     m->add_meta_object(&TAudioProcessingNode::staticMetaObject, tr("Audio Processing Node"));
 
-    m->add_meta_object(&HoldCommand::staticMetaObject,          tr("Hold Command"));
+    m->add_base_function(&TNavigationBaseUp::staticMetaObject,          tr("Navigate Up"),              "TNavigationBaseUp");
+    m->add_base_function(&TNavigationBaseDown::staticMetaObject,        tr("Navigate Down"),            "TNavigationBaseDown");
+    m->add_base_function(&TNavigationBaseLeft::staticMetaObject,        tr("Navigate Left"),            "TNavigationBaseLeft");
+    m->add_base_function(&TNavigationBaseRight::staticMetaObject,       tr("Navigate Right"),           "TNavigationBaseRight");
 
-    // Does this do anything or is it bypassed hard coded in TInputEventDispatcher ?
-    // m->add_function(&TCommand::staticMetaObject, tr("Reject"), "RejectHoldCommand", "");
-    // m->add_function(&TCommand::staticMetaObject, tr("Accept"), "AcceptHoldCommand", "");
+    // Hold Commands need 1 key to start, and then additional keys for specific functionality
+    // For features like navigating with arrow keys this is less productive, so we register the navigation
+    // shortcut function to start autorepeating on itself.
+    // We have to register the navigation keys twice, one to start the hold command and one for the
+    // the autorepeat slot to get invoked.
+    TShortCutFunction* shortCutFunction{nullptr};
+    shortCutFunction = add_function(&TSheetView::staticMetaObject, &TNavigationBaseUp::staticMetaObject, "", "ArrowKeyBrowserStartUp",  ArrowKeyBrowserCommand, "", NO_X, USE_Y);
+    Q_ASSERT(shortCutFunction);
+    shortCutFunction->set_auto_repeats_on_itself(true);
 
-    tr("Routing Indicator");
-    tr("Navigate");
+    shortCutFunction = add_function(&TSheetView::staticMetaObject, &TNavigationBaseDown::staticMetaObject, "", "ArrowKeyBrowserStartDown",     ArrowKeyBrowserCommand, "", NO_X, USE_Y);
+    Q_ASSERT(shortCutFunction);
+    shortCutFunction->set_auto_repeats_on_itself(true);
 
-    add_function(&ArrowKeyBrowser::staticMetaObject, tr("Up"), "ArrowKeyBrowserUp",         ArrowKeyBrowserCommand, "up()");
-    add_function(&ArrowKeyBrowser::staticMetaObject, tr("Down"), "ArrowKeyBrowserDown",     ArrowKeyBrowserCommand, "down()");
-    add_function(&ArrowKeyBrowser::staticMetaObject, tr("Left"), "ArrowKeyBrowserLeft",     ArrowKeyBrowserCommand, "left()");
-    add_function(&ArrowKeyBrowser::staticMetaObject, tr("Right"), "ArrowKeyBrowserRight",   ArrowKeyBrowserCommand, "right()");
+    shortCutFunction = add_function(&TSheetView::staticMetaObject, &TNavigationBaseLeft::staticMetaObject, "", "ArrowKeyBrowserStartLeft",     ArrowKeyBrowserCommand, "", USE_X, NO_Y);
+    Q_ASSERT(shortCutFunction);
+    shortCutFunction->set_auto_repeats_on_itself(true);
+
+    shortCutFunction = add_function(&TSheetView::staticMetaObject, &TNavigationBaseRight::staticMetaObject, "", "ArrowKeyBrowserStartRight",   ArrowKeyBrowserCommand, "", USE_X, NO_Y);
+    Q_ASSERT(shortCutFunction);
+    shortCutFunction->set_auto_repeats_on_itself(true);
+
+    // ArrowKeyBrowserCommand will create an ArrowKeyBrowser Command, and since that will start autorepeat the same key
+    // we can now register a new shortcut function to dispatch on the ArrowKeyBrowser Command object
+    m->add_function(&ArrowKeyBrowser::staticMetaObject, &TNavigationBaseUp::staticMetaObject,       "ArrowKeyBrowserUp",      "up()");
+    m->add_function(&ArrowKeyBrowser::staticMetaObject, &TNavigationBaseDown::staticMetaObject,     "ArrowKeyBrowserDown",    "down()");
+    m->add_function(&ArrowKeyBrowser::staticMetaObject, &TNavigationBaseLeft::staticMetaObject,     "ArrowKeyBrowserLeft",    "left()");
+    m->add_function(&ArrowKeyBrowser::staticMetaObject, &TNavigationBaseRight::staticMetaObject,    "ArrowKeyBrowserRight",   "right()");
 
     m->add_base_function(&TDeleteBase::staticMetaObject,            tr("Delete"),               "DeleteBase");
 
@@ -337,7 +361,7 @@ void TraversoCommands::load(TShortCutManager* m)
 }
 
 
-void TraversoCommands::add_function(const QMetaObject *metaObject,
+TShortCutFunction* TraversoCommands::add_function(const QMetaObject *metaObject,
                                     const QMetaObject *basedMetaObject,
                                     const QString &description,
                                     const char *commandName,
@@ -351,7 +375,7 @@ void TraversoCommands::add_function(const QMetaObject *metaObject,
 
     if (!function) {
         PERROR(QString("TraversoCommands::add_function: Could not register function for %1").arg(commandName));
-        return;
+        return nullptr;
     }
 
     function->set_plugin_name("TraversoCommands");
@@ -364,6 +388,8 @@ void TraversoCommands::add_function(const QMetaObject *metaObject,
     function->set_arguments(args);
 
     m_dict.insert(function->get_command_name(), command);
+
+    return function;
 
 }
 
@@ -708,7 +734,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     case ArrowKeyBrowserCommand:
     {
         if (auto view = qobject_cast<TSheetView*>(obj)) {
-            return new ArrowKeyBrowser(view, arguments);
+            return new ArrowKeyBrowser(view);
         }
         PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
                "ArrowKeyBrowserCommand needs an SheetView as argument");

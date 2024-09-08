@@ -30,24 +30,35 @@ class TSheetView;
 
 class ArrowKeyBrowser : public TCommand
 {
-        Q_OBJECT
+    Q_OBJECT
 public:
-        ArrowKeyBrowser(TSheetView* sv, const QVariantList& args);
+    explicit ArrowKeyBrowser(TSheetView* sv);
 
-        int begin_hold();
-        int finish_hold();
+    int prepare_actions() {return 1;}
+    int do_action();
+    int undo_action() {return 1;};
+    int begin_hold() {return 1;};
+    int finish_hold() {return -1;};
 
-        void set_cursor_shape(int useX, int useY);
-	bool supportsEnterFinishesHold() const {return false;}
+    void set_cursor_shape(int useX, int useY);
+    bool supportsEnterFinishesHold() const {return false;}
 
 private:
-        TSheetView*      m_sv;
+    TSheetView*     m_sv;
+    int             m_action;
+
+    enum {
+        LEFT = 0,
+        RIGHT,
+        UP,
+        DOWN
+    };
 
 public slots:
-	void up();
-	void down();
-	void left();
-	void right();
+    void up();
+    void down();
+    void left();
+    void right();
 };
 
 #endif // ARROWKEYBROWSER_H

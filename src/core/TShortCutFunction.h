@@ -59,6 +59,7 @@ public:
     TShortCutFunction* get_base_shortcut_function() const {return m_baseShortCutFunction;}
 
     bool uses_autorepeat() const {return m_usesAutoRepeat;}
+    bool auto_repeats_on_itself() const {return m_autoRepeatsOnItself;}
     bool uses_inherited_base() const {return m_usesBaseFunction;}
     bool uses_x() const {return m_useX;}
     bool uses_y() const {return m_useY;}
@@ -92,6 +93,7 @@ public:
     void set_use_x(bool useX) {m_useX = useX;}
     void set_use_y(bool useY) {m_useY = useY;}
     void set_arguments(const QVariantList &args) {m_arguments = args;}
+    void set_auto_repeats_on_itself(bool dispatchesOnItself) {m_autoRepeatsOnItself = dispatchesOnItself;}
 
     static void make_shortcut_key_human_readable(QString& key, bool formatHtml=false);
 
@@ -131,6 +133,7 @@ private:
     bool                m_useX{false};
     bool                m_useY{false};
     bool                m_usesAutoRepeat{false};
+    bool                m_autoRepeatsOnItself{false};
     bool                m_usesBaseFunction{false};
 
     int                 m_sortorder{0};

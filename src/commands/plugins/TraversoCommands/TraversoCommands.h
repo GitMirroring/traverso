@@ -82,7 +82,7 @@ private:
 	};
 
 private:
-    void add_function(const QMetaObject *metaObject,
+    TShortCutFunction* add_function(const QMetaObject *metaObject,
                       const QString &description,
                       const char *commandName,
                       TraversoCommand command=NoCommand,
@@ -91,10 +91,10 @@ private:
                       bool useY = false,
                       const QVariantList &args = QVariantList())
     {
-        add_function(metaObject, nullptr, description, commandName, command, slotSignature, useX, useY, args);
+        return add_function(metaObject, nullptr, description, commandName, command, slotSignature, useX, useY, args);
     }
 
-    void add_function(const QMetaObject *metaObject,
+    TShortCutFunction* add_function(const QMetaObject *metaObject,
                       const QMetaObject *basedMetaObject,
                       const QString &description,
                       const char *commandName,
@@ -132,6 +132,22 @@ class TToggleVerticalBase : QObject
     Q_OBJECT
 };
 class TEditPropertiesBase : QObject
+{
+    Q_OBJECT
+};
+class TNavigationBaseUp : QObject
+{
+    Q_OBJECT
+};
+class TNavigationBaseDown : QObject
+{
+    Q_OBJECT
+};
+class TNavigationBaseLeft : QObject
+{
+    Q_OBJECT
+};
+class TNavigationBaseRight : QObject
 {
     Q_OBJECT
 };

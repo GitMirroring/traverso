@@ -21,51 +21,48 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "ArrowKeyBrowser.h"
 
+#include "Debugger.h"
 #include "TSheetView.h"
 
-#include "Debugger.h"
 
-ArrowKeyBrowser::ArrowKeyBrowser(TSheetView *sv, const QVariantList&  /*args*/)
+ArrowKeyBrowser::ArrowKeyBrowser(TSheetView *sv)
 {
-        m_sv = sv;
+    m_sv = sv;
 }
 
-int ArrowKeyBrowser::begin_hold()
+int ArrowKeyBrowser::do_action()
 {
-        return 1;
-}
+    PENTER;
 
-int ArrowKeyBrowser::finish_hold()
-{
-        return -1;
+    return -1;
 }
 
 void ArrowKeyBrowser::set_cursor_shape(int useX, int useY)
 {
-        if (useX) {
-		cpointer().set_canvas_cursor_shape(":/cursorHoldLr");
-        }
-        if (useY) {
-		cpointer().set_canvas_cursor_shape(":/cursorHoldUd");
-        }
+    if (useX) {
+        cpointer().set_canvas_cursor_shape(":/cursorHoldLr");
+    }
+    if (useY) {
+        cpointer().set_canvas_cursor_shape(":/cursorHoldUd");
+    }
 }
 
 void ArrowKeyBrowser::up()
 {
-	m_sv->browse_to_context_item_above();
+    m_sv->browse_to_context_item_above();
 }
 
 void ArrowKeyBrowser::down()
 {
-	m_sv->browse_to_context_item_below();
+    m_sv->browse_to_context_item_below();
 }
 
 void ArrowKeyBrowser::left()
 {
-	m_sv->browse_to_previous_context_item();
+    m_sv->browse_to_previous_context_item();
 }
 
 void ArrowKeyBrowser::right()
 {
-	m_sv->browse_to_next_context_item();
+    m_sv->browse_to_next_context_item();
 }

@@ -29,7 +29,7 @@ class TRealTimeLinkedList
 {
 
 public:
-    TRealTimeLinkedList() : m_size(0), m_head(nullptr), m_last(nullptr) {}
+    explicit TRealTimeLinkedList() {}
     ~TRealTimeLinkedList() {}
 
 
@@ -216,9 +216,9 @@ public:
         }
     }
 private:
-    int m_size;
-    T m_head;
-    T m_last;
+    int m_size{0};
+    T m_head{nullptr};
+    T m_last{nullptr};
 
 };
 

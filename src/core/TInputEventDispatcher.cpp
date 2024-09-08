@@ -325,9 +325,14 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
                     m_enterFinishesHold = true;
                 }
 
-                if (shortCutFunction->uses_autorepeat()) {
+                // If the same key to start the hold command is also used for auto repeat dispatching
+                // on itself we have to simulate the same key press and start the auto repeat timer
+                // Use case: arrow key starts navigation hold command, while holding that key it starts
+                // to use auto repeat to call the holds command slot to navigate to the next item etc.
+                if (shortCutFunction->auto_repeats_on_itself()) {
                     PMESG("Function uses autorepeat");
                     process_press_event(shortCut->get_key_value());
+                    m_holdKeyRepeatTimer.start(10);
                 }
 
                 if (!command->supportsEnterFinishesHold()) {

@@ -19,8 +19,8 @@
 
 */
 
-#ifndef INPUT_EVENT_DISPATCHER_H
-#define INPUT_EVENT_DISPATCHER_H
+#ifndef TINPUT_EVENT_DISPATCHER_H
+#define TINPUT_EVENT_DISPATCHER_H
 
 
 
@@ -41,12 +41,6 @@ class TShortCutManager;
 class QKeyEvent;
 class QWheelEvent;
 class QMouseEvent;
-
-class HoldCommand : public QObject
-{
-    Q_OBJECT
-};
-
 
 class TInputEventDispatcher : public QObject
 {

@@ -104,12 +104,12 @@ TShortcutEditorDialog::TShortcutEditorDialog(QWidget *parent)
 
     foreach(QString className, baseClassNamesMap)
     {
-        ui->objectsComboBox->addItem(baseClassNamesMap.key(className) + " " + tr("(Common Shortcut)"), className);
+        ui->objectsComboBox->addItem(baseClassNamesMap.key(className) + " " + tr("(Base Shortcut)"), className);
     }
 
     foreach(QString className, commandClassNamesMap)
     {
-        ui->objectsComboBox->addItem(commandClassNamesMap.key(className) + " " + tr("(Additional keys)"), className);
+        ui->objectsComboBox->addItem(commandClassNamesMap.key(className) + " " + tr("(Function keys)"), className);
     }
 
 	connect(ui->objectsComboBox, SIGNAL(activated(int)), this, SLOT(objects_combo_box_activated(int)));
