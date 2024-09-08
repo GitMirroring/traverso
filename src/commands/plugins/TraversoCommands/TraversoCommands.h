@@ -82,7 +82,7 @@ private:
 	};
 
 private:
-    TShortCutFunction* add_function(const QMetaObject *metaObject,
+    [[maybe_unused]] TShortCutFunction* add_function(const QMetaObject *metaObject,
                       const QString &description,
                       const char *commandName,
                       TraversoCommand command=NoCommand,
@@ -94,7 +94,7 @@ private:
         return add_function(metaObject, nullptr, description, commandName, command, slotSignature, useX, useY, args);
     }
 
-    TShortCutFunction* add_function(const QMetaObject *metaObject,
+    [[maybe_unused]] TShortCutFunction* add_function(const QMetaObject *metaObject,
                       const QMetaObject *basedMetaObject,
                       const QString &description,
                       const char *commandName,
