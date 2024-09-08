@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2010 Remon Sijrier
+Copyright (C) 2010-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -43,77 +43,77 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 TTrackManagerDialog::TTrackManagerDialog(TTrack *track, QWidget *parent)
-        : QDialog(parent)
-        , m_track(track)
+    : QDialog(parent)
+    , m_track(track)
 {
-        setupUi(this);
-        setAttribute(Qt::WA_DeleteOnClose);
+    setupUi(this);
+    setAttribute(Qt::WA_DeleteOnClose);
 
-        preSendsGainPanGroupBox->setEnabled(false);
-        postSendsGainPanGroupBox->setEnabled(false);
+    preSendsGainPanGroupBox->setEnabled(false);
+    postSendsGainPanGroupBox->setEnabled(false);
 
-        m_routingInputMenu = m_routingOutputMenu = m_preSendsMenu = nullptr;
-        m_selectedPostSend = m_selectedPreSend = nullptr;
-        create_routing_input_menu();
-        create_routing_output_menu();
-        create_pre_sends_menu();
+    m_routingInputMenu = m_routingOutputMenu = m_preSendsMenu = nullptr;
+    m_selectedPostSend = m_selectedPreSend = nullptr;
+    create_routing_input_menu();
+    create_routing_output_menu();
+    create_pre_sends_menu();
 
-        update_routing_input_output_widget_view();
-        update_pre_post_fader_plugins_widget_view();
+    update_routing_input_output_widget_view();
+    update_pre_post_fader_plugins_widget_view();
 
-        trackPanSlider->setValue(int(m_track->get_pan() * 64));
-        trackGainSlider->setValue(int(Mixer::coefficient_to_dB(m_track->get_gain()) * 10.f));
+    trackPanSlider->setValue(int(m_track->get_pan() * 64));
+    trackGainSlider->setValue(int(Mixer::coefficient_to_dB(m_track->get_gain()) * 10.f));
 
-        update_gain_indicator();
-        update_pan_indicator();
-        update_track_status_buttons(true);
+    update_gain_indicator();
+    update_pan_indicator();
+    update_track_status_buttons(true);
 
-        nameLineEdit->setText(m_track->get_name());
+    nameLineEdit->setText(m_track->get_name());
 
-        if (m_track->get_type() == TTrack::AUDIO) {
-                trackLabel->setText(tr("Audio Track:"));
-                routingInputButton->setText("Set Input");
-        }
-        if (m_track->get_type() == TTrack::BUS) {
-                trackLabel->setText(tr("Bus Track:"));
-                routingInputButton->setText("Add Input");
-        }
+    if (m_track->get_type() == TTrack::AUDIO) {
+        trackLabel->setText(tr("Audio Track:"));
+        routingInputButton->setText("Set Input");
+    }
+    if (m_track->get_type() == TTrack::BUS) {
+        trackLabel->setText(tr("Bus Track:"));
+        routingInputButton->setText("Add Input");
+    }
 
-        prePluginsUpButton->setIcon(QIcon(":/up"));
-        prePluginsDownButton->setIcon(QIcon(":/down"));
-        postPluginsUpButton->setIcon(QIcon(":/up"));
-        postPluginsDownButton->setIcon(QIcon(":/down"));
+    prePluginsUpButton->setIcon(QIcon(":/up"));
+    prePluginsDownButton->setIcon(QIcon(":/down"));
+    postPluginsUpButton->setIcon(QIcon(":/up"));
+    postPluginsDownButton->setIcon(QIcon(":/down"));
 
-        MasterOutSubGroup* master = qobject_cast<MasterOutSubGroup*>(m_track);
-        if (master) {
-                // Master Buses are not allowed to be renamed to avoid confusion
-                nameLineEdit->setEnabled(false);
-                trackLabel->setText(tr("Master Bus:"));
-        }
-        if (m_track->get_type() == TTrack::BOUNCE) {
-            setEnabled(false);
-        }
+    MasterOutSubGroup* master = qobject_cast<MasterOutSubGroup*>(m_track);
+    if (master) {
+        // Master Buses are not allowed to be renamed to avoid confusion
+        nameLineEdit->setEnabled(false);
+        trackLabel->setText(tr("Master Bus:"));
+    }
+    if (m_track->get_type() == TTrack::BOUNCE) {
+        setEnabled(false);
+    }
 
-        connect(m_track, SIGNAL(panChanged()), this, SLOT(update_pan_indicator()));
-        connect(m_track, SIGNAL(stateChanged()), this, SLOT(update_gain_indicator()));
-        connect(m_track, SIGNAL(soloChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
-        connect(m_track, SIGNAL(muteChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
-        TAudioTrack* audiotrack = qobject_cast<TAudioTrack*>(m_track);
-        if (audiotrack) {
-                connect(audiotrack, SIGNAL(armedChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
-        } else {
-                recordButton->hide();
-        }
-        connect(pm().get_project(), SIGNAL(trackPropertyChanged()), this, SLOT(update_routing_input_output_widget_view()));
+    connect(m_track, SIGNAL(panChanged()), this, SLOT(update_pan_indicator()));
+    connect(m_track, SIGNAL(stateChanged()), this, SLOT(update_gain_indicator()));
+    connect(m_track, SIGNAL(soloChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
+    connect(m_track, SIGNAL(muteChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
+    TAudioTrack* audiotrack = qobject_cast<TAudioTrack*>(m_track);
+    if (audiotrack) {
+        connect(audiotrack, SIGNAL(armedChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
+    } else {
+        recordButton->hide();
+    }
+    connect(pm().get_project(), SIGNAL(trackPropertyChanged()), this, SLOT(update_routing_input_output_widget_view()));
 
-        connect(preSendsListWidget, SIGNAL(itemSelectionChanged()), this, SLOT(pre_sends_selection_changed()));
-        connect(routingOutputListWidget, SIGNAL(itemSelectionChanged()), this, SLOT(post_sends_selection_changed()));
-        connect(trackGainSlider, SIGNAL(valueChanged(int)), this, SLOT(track_gain_value_changed(int)));
-        connect(trackPanSlider, SIGNAL(valueChanged(int)), this, SLOT(track_pan_value_changed(int)));
-        connect(postSendsGainSlider, SIGNAL(valueChanged(int)), this, SLOT(post_sends_gain_value_changed(int)));
-        connect(postSendsPanSlider, SIGNAL(valueChanged(int)), this, SLOT(post_sends_pan_value_changed(int)));
-        connect(preSendsGainSlider, SIGNAL(valueChanged(int)), this, SLOT(pre_sends_gain_value_changed(int)));
-        connect(preSendsPanSlider, SIGNAL(valueChanged(int)), this, SLOT(pre_sends_pan_value_changed(int)));
+    connect(preSendsListWidget, SIGNAL(itemSelectionChanged()), this, SLOT(pre_sends_selection_changed()));
+    connect(routingOutputListWidget, SIGNAL(itemSelectionChanged()), this, SLOT(post_sends_selection_changed()));
+    connect(trackGainSlider, SIGNAL(valueChanged(int)), this, SLOT(track_gain_value_changed(int)));
+    connect(trackPanSlider, SIGNAL(valueChanged(int)), this, SLOT(track_pan_value_changed(int)));
+    connect(postSendsGainSlider, SIGNAL(valueChanged(int)), this, SLOT(post_sends_gain_value_changed(int)));
+    connect(postSendsPanSlider, SIGNAL(valueChanged(int)), this, SLOT(post_sends_pan_value_changed(int)));
+    connect(preSendsGainSlider, SIGNAL(valueChanged(int)), this, SLOT(pre_sends_gain_value_changed(int)));
+    connect(preSendsPanSlider, SIGNAL(valueChanged(int)), this, SLOT(pre_sends_pan_value_changed(int)));
 }
 
 TTrackManagerDialog::~TTrackManagerDialog()
@@ -128,489 +128,483 @@ TTrackManagerDialog::~TTrackManagerDialog()
 
 void TTrackManagerDialog::create_routing_input_menu()
 {
-        if (m_routingInputMenu) {
-                delete m_routingInputMenu;
+    if (m_routingInputMenu) {
+        delete m_routingInputMenu;
+    }
+
+    m_routingInputMenu = new QMenu;
+
+    if (m_track->get_type() == TTrack::AUDIO) {
+        foreach(AudioBus* bus, pm().get_project()->get_hardware_buses()) {
+            if (bus->is_input() && bus->is_valid()) {
+                QAction* action = m_routingInputMenu->addAction(bus->get_name());
+                action->setData(bus->get_id());
+            }
         }
+    }
 
-        m_routingInputMenu = new QMenu;
+    TProject* project = pm().get_project();
+    TSheet* sheet = qobject_cast<TSheet*>(m_track->get_session());
+    bool isProjectBus = false;
 
-        if (m_track->get_type() == TTrack::AUDIO) {
-                foreach(AudioBus* bus, pm().get_project()->get_hardware_buses()) {
-                        if (bus->is_input() && bus->is_valid()) {
-                                QAction* action = m_routingInputMenu->addAction(bus->get_name());
-                                action->setData(bus->get_id());
-                        }
-                }
+    for(TBusTrack* track : project->get_bus_tracks()) {
+        if (track == m_track) {
+            isProjectBus = true;
+            break;
         }
+    }
 
-        TProject* project = pm().get_project();
-        TSheet* sheet = qobject_cast<TSheet*>(m_track->get_session());
-        bool isProjectBus = false;
-
-        foreach(TBusTrack* track, project->get_bus_tracks()) {
-                if (track == m_track) {
-                        isProjectBus = true;
-                        break;
+    if (m_track->get_type() == TTrack::BUS) {
+        QList<TTrack*> tracks;
+        if (m_track == project->get_master_out_bus_track()) {
+            tracks = project->get_tracks();
+            tracks.append(project->get_sheet_tracks());
+        } else if (isProjectBus) {
+            for(TSheet* sheet : project->get_sheets()) {
+                for(TAudioTrack* track : sheet->get_audio_tracks()) {
+                    tracks.append(track);
                 }
+                for(TBusTrack* track : sheet->get_bus_tracks()) {
+                    tracks.append(track);
+                }
+                tracks.append(sheet->get_master_out_bus_track());
+
+            }
+        } else if (sheet){
+            for(TAudioTrack* at : sheet->get_audio_tracks()) {
+                tracks.append(at);
+            }
+            if (m_track == sheet->get_master_out_bus_track()) {
+                for(TBusTrack* sg : sheet->get_bus_tracks()) {
+                    tracks.append(sg);
+                }
+            }
         }
-
-        if (m_track->get_type() == TTrack::BUS) {
-                QList<TTrack*> tracks;
-                if (m_track == project->get_master_out_bus_track()) {
-                        tracks = project->get_tracks();
-                        tracks.append(project->get_sheet_tracks());
-                } else if (isProjectBus) {
-                        foreach(TSheet* sheet, project->get_sheets()) {
-                                foreach(TAudioTrack* track, sheet->get_audio_tracks()) {
-                                        tracks.append(track);
-                                }
-                                foreach(TBusTrack* track, sheet->get_bus_tracks()) {
-                                        tracks.append(track);
-                                }
-                                tracks.append(sheet->get_master_out_bus_track());
-
-                        }
-                } else if (sheet){
-                        foreach(TAudioTrack* at, sheet->get_audio_tracks()) {
-                                tracks.append(at);
-                        }
-                        if (m_track == sheet->get_master_out_bus_track()) {
-                                foreach(TBusTrack* sg, sheet->get_bus_tracks()) {
-                                        tracks.append(sg);
-                                }
-                        }
-                }
-                foreach(TTrack* track, tracks) {
-                        QAction* action = m_routingInputMenu->addAction(track->get_name());
-                        action->setData(track->get_id());
-                }
+        for(TTrack* track : tracks) {
+            QAction* action = m_routingInputMenu->addAction(track->get_name());
+            action->setData(track->get_id());
         }
+    }
 
-        routingInputButton->setMenu(m_routingInputMenu);
+    routingInputButton->setMenu(m_routingInputMenu);
 
-        connect(m_routingInputMenu, SIGNAL(triggered(QAction*)), this, SLOT(routingInputMenuActionTriggered(QAction*)));
+    connect(m_routingInputMenu, SIGNAL(triggered(QAction*)), this, SLOT(routingInputMenuActionTriggered(QAction*)));
 
 }
 
 void TTrackManagerDialog::create_routing_output_menu()
 {
-        if (m_routingOutputMenu) {
-                delete m_routingOutputMenu;
-        }
+    if (m_routingOutputMenu) {
+        delete m_routingOutputMenu;
+    }
 
-        m_routingOutputMenu = create_sends_menu();
+    m_routingOutputMenu = create_sends_menu();
 
-        routingOutputButton->setMenu(m_routingOutputMenu);
+    routingOutputButton->setMenu(m_routingOutputMenu);
 
-        connect(m_routingOutputMenu, SIGNAL(triggered(QAction*)), this, SLOT(routingOutputMenuActionTriggered(QAction*)));
+    connect(m_routingOutputMenu, SIGNAL(triggered(QAction*)), this, SLOT(routingOutputMenuActionTriggered(QAction*)));
 }
 
 void TTrackManagerDialog::create_pre_sends_menu()
 {
-        if (m_preSendsMenu) {
-                delete m_preSendsMenu;
-        }
+    if (m_preSendsMenu) {
+        delete m_preSendsMenu;
+    }
 
-        m_preSendsMenu = create_sends_menu();
+    m_preSendsMenu = create_sends_menu();
 
-        preSendsButton->setMenu(m_preSendsMenu);
+    preSendsButton->setMenu(m_preSendsMenu);
 
-        connect(m_preSendsMenu, SIGNAL(triggered(QAction*)), this, SLOT(preSendsMenuActionTriggered(QAction*)));
+    connect(m_preSendsMenu, SIGNAL(triggered(QAction*)), this, SLOT(preSendsMenuActionTriggered(QAction*)));
 }
 
 QMenu* TTrackManagerDialog::create_sends_menu()
 {
-        QMenu* menu = new QMenu;
-        QAction* action;
+    QMenu* menu = new QMenu;
+    QAction* action;
 
-        TSheet* sheet = qobject_cast<TSheet*>(m_track->get_session());
-        TProject* project = pm().get_project();
+    TSheet* sheet = qobject_cast<TSheet*>(m_track->get_session());
+    TProject* project = pm().get_project();
 
-        TBusTrack* sheetMaster = nullptr;
-        TBusTrack* projectMaster = project->get_master_out_bus_track();
+    TBusTrack* sheetMaster = nullptr;
+    TBusTrack* projectMaster = project->get_master_out_bus_track();
 
-        if (sheet) {
-                sheetMaster = sheet->get_master_out_bus_track();
+    if (sheet) {
+        sheetMaster = sheet->get_master_out_bus_track();
+    }
+
+    if (!(m_track == projectMaster)) {
+        action = menu->addAction(projectMaster->get_name());
+        action->setData(projectMaster->get_id());
+    }
+
+    if (sheetMaster && !(m_track == sheetMaster)) {
+        action = menu->addAction(sheetMaster->get_name());
+        action->setData(sheetMaster->get_id());
+    }
+
+    if (sheet) {
+        QList<TBusTrack*> busTracks = sheet->get_bus_tracks();
+        // FIXME: this doesn't make sense at all
+        if (!(m_track->get_type() == TTrack::BUS) && busTracks.size()) {
+            for(TBusTrack* busTrack : busTracks) {
+                action = menu->addAction(busTrack->get_name());
+                action->setData(busTrack->get_id());
+            }
         }
+        menu->addSeparator();
+    }
 
-        if (!(m_track == projectMaster)) {
-                action = menu->addAction(projectMaster->get_name());
-                action->setData(projectMaster->get_id());
+    if (project) {
+        QList<TBusTrack*> busTracks = project->get_bus_tracks();
+        for(TBusTrack* busTrack : busTracks) {
+            action = menu->addAction(busTrack->get_name());
+            action->setData(busTrack->get_id());
         }
+        menu->addSeparator();
+    }
 
-        if (sheetMaster && !(m_track == sheetMaster)) {
-                action = menu->addAction(sheetMaster->get_name());
-                action->setData(sheetMaster->get_id());
+
+
+    for(AudioBus* bus : pm().get_project()->get_hardware_buses()) {
+        if (bus->is_output() && bus->is_valid()) {
+            action = menu->addAction(bus->get_name());
+            action->setData(bus->get_id());
         }
+    }
 
-        if (sheet) {
-                QList<TBusTrack*> busTracks = sheet->get_bus_tracks();
-                // FIXME: this doesn't make sense at all
-                if (!(m_track->get_type() == TTrack::BUS) && busTracks.size()) {
-                        foreach(TBusTrack* busTrack, busTracks) {
-                                action = menu->addAction(busTrack->get_name());
-                                action->setData(busTrack->get_id());
-                        }
-                }
-                menu->addSeparator();
-        }
-
-        if (project) {
-                QList<TBusTrack*> busTracks = project->get_bus_tracks();
-                foreach(TBusTrack* busTrack, busTracks) {
-                        action = menu->addAction(busTrack->get_name());
-                        action->setData(busTrack->get_id());
-                }
-                menu->addSeparator();
-        }
-
-
-
-        foreach(AudioBus* bus, pm().get_project()->get_hardware_buses()) {
-                if (bus->is_output() && bus->is_valid()) {
-                        action = menu->addAction(bus->get_name());
-                        action->setData(bus->get_id());
-                }
-        }
-
-        return menu;
+    return menu;
 }
 
 void TTrackManagerDialog::accept()
 {
-        QDialog::accept();
+    QDialog::accept();
 
-        m_track->set_name(nameLineEdit->text());
+    m_track->set_name(nameLineEdit->text());
 }
 
 void TTrackManagerDialog::reject()
 {
-        QDialog::reject();
+    QDialog::reject();
 }
 
 void TTrackManagerDialog::routingInputMenuActionTriggered(QAction *action)
 {
-        PENTER2;
+    PENTER2;
 
-        TProject* project = pm().get_project();
-        if (!project) {
-                return;
-        }
+    TProject* project = pm().get_project();
+    if (!project) {
+        return;
+    }
 
-        if (!action) {
-                return;
-        }
+    if (!action) {
+        return;
+    }
 
-        if (m_track->get_type() == TTrack::AUDIO) {
-                m_track->add_input_bus(action->text());
-        }
+    if (m_track->get_type() == TTrack::AUDIO) {
+        m_track->add_input_bus(action->text());
+    }
 
-        if (m_track->get_type() == TTrack::BUS) {
-                qint64 senderId = action->data().toLongLong();
-                TTrack* sender = project->get_track(senderId);
-                if (sender) {
-                        sender->add_post_send(m_track->get_id());
-                }
+    if (m_track->get_type() == TTrack::BUS) {
+        qint64 senderId = action->data().toLongLong();
+        TTrack* sender = project->get_track(senderId);
+        if (sender) {
+            sender->add_post_send(m_track->get_id());
         }
+    }
 }
 
 void TTrackManagerDialog::routingOutputMenuActionTriggered(QAction *action)
 {
-        TProject* project = pm().get_project();
-        if (action && project) {
-                m_track->add_post_send(action->data().toLongLong());
-        }
+    TProject* project = pm().get_project();
+    if (action && project) {
+        m_track->add_post_send(action->data().toLongLong());
+    }
 }
 
 void TTrackManagerDialog::preSendsMenuActionTriggered(QAction *action)
 {
-        TProject* project = pm().get_project();
-        if (action && project) {
-                m_track->add_pre_send(action->data().toLongLong());
-        }
+    TProject* project = pm().get_project();
+    if (action && project) {
+        m_track->add_pre_send(action->data().toLongLong());
+    }
 }
 
 
 void TTrackManagerDialog::update_routing_input_output_widget_view()
 {
-        routingInputListWidget->clear();
+    routingInputListWidget->clear();
 
-        if (m_track->get_type() == TTrack::BUS) {
-                QList<TSend*> inputs = pm().get_project()->get_inputs_for_bus_track(qobject_cast<TBusTrack*>(m_track));
-                foreach(TSend* send, inputs) {
-                        QListWidgetItem* item = new QListWidgetItem(routingInputListWidget);
-                        item->setText(send->get_from_name());
-                        item->setData(Qt::UserRole, send->get_id());
-                }
+    if (m_track->get_type() == TTrack::BUS) {
+        QList<TSend*> inputs = pm().get_project()->get_inputs_for_bus_track(qobject_cast<TBusTrack*>(m_track));
+        foreach(TSend* send, inputs) {
+            QListWidgetItem* item = new QListWidgetItem(routingInputListWidget);
+            item->setText(send->get_from_name());
+            item->setData(Qt::UserRole, send->get_id());
         }
+    }
 
-        //FIXME
-        // What does this code actually do?
-        // clang says, item is a potentential memory leak
-        if (m_track->get_type() == TTrack::AUDIO) {
-                QListWidgetItem* item = new QListWidgetItem(routingInputListWidget);
-                AudioBus* bus = m_track->get_input_bus();
-                if (bus) {
-                        item->setText(bus->get_name());
-                        if (!bus->is_valid()) {
-                                item->setForeground(QColor(Qt::lightGray));
-                        }
-                }
+    //FIXME
+    // What does this code actually do?
+    // clang says, item is a potentential memory leak
+    if (m_track->get_type() == TTrack::AUDIO) {
+        QListWidgetItem* item = new QListWidgetItem(routingInputListWidget);
+        AudioBus* bus = m_track->get_input_bus();
+        if (bus) {
+            item->setText(bus->get_name());
+            if (!bus->is_valid()) {
+                item->setForeground(QColor(Qt::lightGray));
+            }
         }
+    }
 
 
-        routingOutputListWidget->clear();
+    routingOutputListWidget->clear();
 
-        QList<TSend*> postSends = m_track->get_post_sends();
-        foreach(TSend* send, postSends) {
-                QListWidgetItem* item = new QListWidgetItem(routingOutputListWidget);
-                item->setText(send->get_name());
-                AudioBus* bus = send->get_bus();
-                if (bus && !bus->is_valid()) {
-                        item->setForeground(QColor(Qt::lightGray));
-                }
-                item->setData(Qt::UserRole, send->get_id());
+    QList<TSend*> postSends = m_track->get_post_sends();
+    foreach(TSend* send, postSends) {
+        QListWidgetItem* item = new QListWidgetItem(routingOutputListWidget);
+        item->setText(send->get_name());
+        AudioBus* bus = send->get_bus();
+        if (bus && !bus->is_valid()) {
+            item->setForeground(QColor(Qt::lightGray));
         }
+        item->setData(Qt::UserRole, send->get_id());
+    }
 
-        preSendsListWidget->clear();
-        QList<TSend*> preSends = m_track->get_pre_sends();
-        foreach(TSend* send, preSends) {
-                QListWidgetItem* item = new QListWidgetItem(preSendsListWidget);
-                item->setText(send->get_name());
-                AudioBus* bus = send->get_bus();
-                if (bus && !bus->is_valid()) {
-                        item->setForeground(QColor(Qt::lightGray));
-                }
-                item->setData(Qt::UserRole, send->get_id());
+    preSendsListWidget->clear();
+    QList<TSend*> preSends = m_track->get_pre_sends();
+    foreach(TSend* send, preSends) {
+        QListWidgetItem* item = new QListWidgetItem(preSendsListWidget);
+        item->setText(send->get_name());
+        AudioBus* bus = send->get_bus();
+        if (bus && !bus->is_valid()) {
+            item->setForeground(QColor(Qt::lightGray));
         }
+        item->setData(Qt::UserRole, send->get_id());
+    }
 }
 
 void TTrackManagerDialog::update_pre_post_fader_plugins_widget_view()
 {
     postFaderPluginsListWidget->clear();
     QList<TAudioPlugin*> postFaderPlugins = m_track->get_plugin_chain()->get_post_fader_plugins();
-    foreach(TAudioPlugin* plugin, postFaderPlugins) {
-            QListWidgetItem* item = new QListWidgetItem(postFaderPluginsListWidget);
-            item->setText(plugin->get_name());
-            item->setData(Qt::UserRole, plugin->get_id());
+    for(TAudioPlugin* plugin : postFaderPlugins) {
+        QListWidgetItem* item = new QListWidgetItem(postFaderPluginsListWidget);
+        item->setText(plugin->get_name());
+        item->setData(Qt::UserRole, plugin->get_id());
     }
 
 
     preFaderPluginsListWidget->clear();
     QList<TAudioPlugin*> preFaderPlugins = m_track->get_plugin_chain()->get_pre_fader_plugins();
-    foreach(TAudioPlugin* plugin, preFaderPlugins) {
-            QListWidgetItem* item = new QListWidgetItem(preFaderPluginsListWidget);
-            item->setText(plugin->get_name());
-            item->setData(Qt::UserRole, plugin->get_id());
+    for(TAudioPlugin* plugin : preFaderPlugins) {
+        QListWidgetItem* item = new QListWidgetItem(preFaderPluginsListWidget);
+        item->setText(plugin->get_name());
+        item->setData(Qt::UserRole, plugin->get_id());
     }
 }
 
 void TTrackManagerDialog::on_routingInputRemoveButton_clicked()
 {
-        QList<QListWidgetItem*> selectedItems = routingInputListWidget->selectedItems();
-        foreach(QListWidgetItem* item, selectedItems) {
-                qint64 id = item->data(Qt::UserRole).toLongLong();
-                QList<qint64> toBeRemoved;
-                toBeRemoved.append(id);
-                QList<TTrack*> tracks = pm().get_project()->get_sheet_tracks();
-                tracks.append(pm().get_project()->get_tracks());
-                foreach(TTrack* track, tracks) {
-                        QList<TSend*> preSends = track->get_pre_sends();
-                        foreach(TSend* send, preSends) {
-                                if (send->get_id() == id) {
-                                        track->remove_pre_sends(toBeRemoved);
-                                }
-                        }
-                        QList<TSend*> postSends = track->get_post_sends();
-                        foreach(TSend* send, postSends) {
-                                if (send->get_id() == id) {
-                                        track->remove_post_sends(toBeRemoved);
-                                }
-                        }
-                }
-        }
+    QList<QListWidgetItem*> selectedItems = routingInputListWidget->selectedItems();
+    QList<qint64> toBeRemoved;
+
+    for(QListWidgetItem* item : selectedItems) {
+        qint64 id = item->data(Qt::UserRole).toLongLong();
+        toBeRemoved.append(id);
+    }
+
+    QList<TTrack*> tracks = pm().get_project()->get_sheet_tracks();
+    for(TTrack* track : tracks) {
+        track->remove_pre_sends(toBeRemoved);
+        track->remove_post_sends(toBeRemoved);
+    }
+
 }
 
 void TTrackManagerDialog::on_preSendsRemoveButton_clicked()
 {
-        QList<QListWidgetItem*> selectedItems = preSendsListWidget->selectedItems();
-        QList<qint64> toBeRemoved;
-        foreach(QListWidgetItem* item, selectedItems) {
-                qint64 id = item->data(Qt::UserRole).toLongLong();
-                toBeRemoved.append(id);
-        }
+    QList<QListWidgetItem*> selectedItems = preSendsListWidget->selectedItems();
+    QList<qint64> toBeRemoved;
 
-        m_track->remove_pre_sends(toBeRemoved);
+    for(QListWidgetItem* item : selectedItems) {
+        qint64 id = item->data(Qt::UserRole).toLongLong();
+        toBeRemoved.append(id);
+    }
+
+    m_track->remove_pre_sends(toBeRemoved);
 }
 
 void TTrackManagerDialog::on_routingOutputRemoveButton_clicked()
 {
-        QList<QListWidgetItem*> selectedItems = routingOutputListWidget->selectedItems();
-        QList<qint64> toBeRemoved;
-        foreach(QListWidgetItem* item, selectedItems) {
-                qint64 id = item->data(Qt::UserRole).toLongLong();
-                toBeRemoved.append(id);
-        }
+    QList<QListWidgetItem*> selectedItems = routingOutputListWidget->selectedItems();
+    QList<qint64> toBeRemoved;
 
-        m_track->remove_post_sends(toBeRemoved);
+    for(QListWidgetItem* item : selectedItems) {
+        qint64 id = item->data(Qt::UserRole).toLongLong();
+        toBeRemoved.append(id);
+    }
+
+    m_track->remove_post_sends(toBeRemoved);
 }
 
 
 void TTrackManagerDialog::update_gain_indicator()
 {
-        gainLabel->setText(m_track->get_gain_db_string());
+    gainLabel->setText(m_track->get_gain_db_string());
 }
 
 void TTrackManagerDialog::update_pan_indicator()
 {
-        panLabel->setText(QByteArray::number(double(m_track->get_pan()), 'f', 2));
+    panLabel->setText(QByteArray::number(double(m_track->get_pan()), 'f', 2));
 }
 
 void TTrackManagerDialog::pre_sends_selection_changed()
 {
-        QList<QListWidgetItem*> selectedItems = preSendsListWidget->selectedItems();
-        if (selectedItems.size()) {
-                preSendsGainPanGroupBox->setEnabled(true);
-                qint64 sendId = selectedItems.first()->data(Qt::UserRole).toLongLong();
-                m_selectedPreSend = m_track->get_send(sendId);
-                if (m_selectedPreSend) {
-                        preSendsGainSlider->setValue(int(Mixer::coefficient_to_dB(m_selectedPreSend->get_gain()) * 10.f));
-                        postSendsPanSlider->setValue(int(m_selectedPreSend->get_pan() * 64));
-                }
-        } else {
-                preSendsGainPanGroupBox->setEnabled(false);
-                m_selectedPreSend = nullptr;
+    QList<QListWidgetItem*> selectedItems = preSendsListWidget->selectedItems();
+    if (selectedItems.size()) {
+        preSendsGainPanGroupBox->setEnabled(true);
+        qint64 sendId = selectedItems.first()->data(Qt::UserRole).toLongLong();
+        m_selectedPreSend = m_track->get_send(sendId);
+        if (m_selectedPreSend) {
+            preSendsGainSlider->setValue(int(Mixer::coefficient_to_dB(m_selectedPreSend->get_gain()) * 10.f));
+            postSendsPanSlider->setValue(int(m_selectedPreSend->get_pan() * 64));
         }
+    } else {
+        preSendsGainPanGroupBox->setEnabled(false);
+        m_selectedPreSend = nullptr;
+    }
 }
 
 void TTrackManagerDialog::post_sends_selection_changed()
 {
-        QList<QListWidgetItem*> selectedItems = routingOutputListWidget->selectedItems();
-        if (selectedItems.size()) {
-                postSendsGainPanGroupBox->setEnabled(true);
-                qint64 sendId = selectedItems.first()->data(Qt::UserRole).toLongLong();
-                m_selectedPostSend = m_track->get_send(sendId);
-                if (m_selectedPostSend) {
-                        postSendsGainSlider->setValue(int(Mixer::coefficient_to_dB(m_selectedPostSend->get_gain()) * 10));
-                        postSendsPanSlider->setValue(int(m_selectedPostSend->get_pan() * 64));
-                }
-        } else {
-                postSendsGainPanGroupBox->setEnabled(false);
-                m_selectedPreSend = nullptr;
+    QList<QListWidgetItem*> selectedItems = routingOutputListWidget->selectedItems();
+    if (selectedItems.size()) {
+        postSendsGainPanGroupBox->setEnabled(true);
+        qint64 sendId = selectedItems.first()->data(Qt::UserRole).toLongLong();
+        m_selectedPostSend = m_track->get_send(sendId);
+        if (m_selectedPostSend) {
+            postSendsGainSlider->setValue(int(Mixer::coefficient_to_dB(m_selectedPostSend->get_gain()) * 10));
+            postSendsPanSlider->setValue(int(m_selectedPostSend->get_pan() * 64));
         }
+    } else {
+        postSendsGainPanGroupBox->setEnabled(false);
+        m_selectedPreSend = nullptr;
+    }
 }
 
 void TTrackManagerDialog::track_gain_value_changed(int value)
 {
-        float v = float(value) / 10;
-        float gain = dB_to_scale_factor(v);
-        m_track->set_gain(gain);
+    float v = float(value) / 10;
+    float gain = dB_to_scale_factor(v);
+    m_track->set_gain(gain);
 }
 
 void TTrackManagerDialog::track_pan_value_changed(int value)
 {
-        float pan = float(value) / 64;
-        m_track->set_pan(pan);
+    float pan = float(value) / 64;
+    m_track->set_pan(pan);
 }
 
 void TTrackManagerDialog::pre_sends_gain_value_changed(int value)
 {
-        if (!m_selectedPreSend) {
-                return;
-        }
+    if (!m_selectedPreSend) {
+        return;
+    }
 
-        qreal v = value / 10;
-        float gain = dB_to_scale_factor(float(v));
-        QByteArray gainString = QByteArray::number(v, 'f', 1) + " dB";
-        preSendGainLabel->setText(gainString);
-        m_selectedPreSend->set_gain(gain);
+    qreal v = value / 10;
+    float gain = dB_to_scale_factor(float(v));
+    QByteArray gainString = QByteArray::number(v, 'f', 1) + " dB";
+    preSendGainLabel->setText(gainString);
+    m_selectedPreSend->set_gain(gain);
 }
 
 void TTrackManagerDialog::pre_sends_pan_value_changed(int value)
 {
-        if (!m_selectedPreSend) {
-                return;
-        }
+    if (!m_selectedPreSend) {
+        return;
+    }
 
-        float pan = float(value) / 64;
-        QByteArray panString = QByteArray::number(double(pan), 'f', 2);
-        preSendPanLabel->setText(panString);
-        m_selectedPreSend->set_pan(pan);
+    float pan = float(value) / 64;
+    QByteArray panString = QByteArray::number(double(pan), 'f', 2);
+    preSendPanLabel->setText(panString);
+    m_selectedPreSend->set_pan(pan);
 }
 
 void TTrackManagerDialog::post_sends_gain_value_changed(int value)
 {
-        if (!m_selectedPostSend) {
-                return;
-        }
-        float v = float(value) / 10;
-        float gain = dB_to_scale_factor(v);
-        QByteArray gainString = QByteArray::number(double(v), 'f', 1) + " dB";
-        postSendGainLabel->setText(gainString);
-        m_selectedPostSend->set_gain(gain);
+    if (!m_selectedPostSend) {
+        return;
+    }
+    float v = float(value) / 10;
+    float gain = dB_to_scale_factor(v);
+    QByteArray gainString = QByteArray::number(double(v), 'f', 1) + " dB";
+    postSendGainLabel->setText(gainString);
+    m_selectedPostSend->set_gain(gain);
 }
 
 void TTrackManagerDialog::post_sends_pan_value_changed(int value)
 {
-        if (!m_selectedPostSend) {
-                return;
-        }
+    if (!m_selectedPostSend) {
+        return;
+    }
 
-        float pan = float(value) / 64;
-        QByteArray panString = QByteArray::number(double(pan), 'f', 2);
-        postSendPanLabel->setText(panString);
-        m_selectedPostSend->set_pan(pan);
+    float pan = float(value) / 64;
+    QByteArray panString = QByteArray::number(double(pan), 'f', 2);
+    postSendPanLabel->setText(panString);
+    m_selectedPostSend->set_pan(pan);
 }
 
 void TTrackManagerDialog::on_muteButton_clicked()
 {
-        m_track->mute();
+    m_track->mute();
 }
 
 void TTrackManagerDialog::on_soloButton_clicked()
 {
-        m_track->solo();
+    m_track->solo();
 }
 
 void TTrackManagerDialog::on_recordButton_clicked()
 {
-        TAudioTrack* audiotrack = qobject_cast<TAudioTrack*>(m_track);
-        if (audiotrack) {
-                audiotrack->toggle_arm();
-        }
+    TAudioTrack* audiotrack = qobject_cast<TAudioTrack*>(m_track);
+    if (audiotrack) {
+        audiotrack->toggle_arm();
+    }
 }
 
 void TTrackManagerDialog::on_monitorButton_clicked()
 {
-//        m_track->monitor();
+    //        m_track->monitor();
 }
 
 void TTrackManagerDialog::update_track_status_buttons(bool)
 {
-        QPalette defaultPalette = TMainWindow::instance()->palette();
-        QPalette highlightedPalette = TMainWindow::instance()->palette();
+    QPalette defaultPalette = TMainWindow::instance()->palette();
+    QPalette highlightedPalette = TMainWindow::instance()->palette();
 
-        if (m_track->is_muted()) {
-                highlightedPalette.setColor(QPalette::Button, themer()->get_color("TrackPanel:muteled"));
-                muteButton->setPalette(highlightedPalette);
+    if (m_track->is_muted()) {
+        highlightedPalette.setColor(QPalette::Button, themer()->get_color("TrackPanel:muteled"));
+        muteButton->setPalette(highlightedPalette);
+    } else {
+        muteButton->setPalette(defaultPalette);
+    }
+
+    if (m_track->is_solo()) {
+        highlightedPalette.setColor(QPalette::Button, themer()->get_color("TrackPanel:sololed"));
+        soloButton->setPalette(highlightedPalette);
+    } else {
+        soloButton->setPalette(defaultPalette);
+    }
+
+    TAudioTrack* audiotrack = qobject_cast<TAudioTrack*>(m_track);
+    if (audiotrack) {
+        if (audiotrack->armed()) {
+            highlightedPalette.setColor(QPalette::Button, themer()->get_color("TrackPanel:recled"));
+            recordButton->setPalette(highlightedPalette);
         } else {
-                muteButton->setPalette(defaultPalette);
+            recordButton->setPalette(defaultPalette);
         }
-
-        if (m_track->is_solo()) {
-                highlightedPalette.setColor(QPalette::Button, themer()->get_color("TrackPanel:sololed"));
-                soloButton->setPalette(highlightedPalette);
-        } else {
-                soloButton->setPalette(defaultPalette);
-        }
-
-        TAudioTrack* audiotrack = qobject_cast<TAudioTrack*>(m_track);
-        if (audiotrack) {
-                if (audiotrack->armed()) {
-                        highlightedPalette.setColor(QPalette::Button, themer()->get_color("TrackPanel:recled"));
-                        recordButton->setPalette(highlightedPalette);
-                } else {
-                        recordButton->setPalette(defaultPalette);
-                }
-        }
+    }
 }
