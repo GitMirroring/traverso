@@ -276,7 +276,10 @@ void TDiskIOThread::add_audio_source(TAudioSource* source)
     PENTER2;
 
     Q_ASSERT(source);
-    Q_ASSERT(source->get_channel_count() > 0);
+    if (source->get_channel_count() == 0) {
+        PMESG("TDiskIOThread::add_audio_source: source has no channels, not adding it to queue");
+        return;
+    }
 
     source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
     source->set_file_decode_buffer(m_fileDecodeBuffer);
