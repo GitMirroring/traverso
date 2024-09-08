@@ -23,7 +23,7 @@
 
 #include "TSheetView.h"
 #include "TClipsViewPort.h"
-#include "Cursors.h"
+#include "TWorkCursorView.h"
 #include "TSnapList.h"
 #include "TSession.h"
 #include "TConfig.h"

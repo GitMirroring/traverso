@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Remon Sijrier 
+Copyright (C) 2007-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,8 +19,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TIME_LINE_H
-#define TIME_LINE_H
+#ifndef TTIME_LINE_RULER_H
+#define TTIME_LINE_RULER_H
 
 #include "TContextItem.h"
 #include <QDomNode>
@@ -35,46 +35,46 @@ class TExportSpecification;
 
 class TTimeLineRuler : public TContextItem
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
-        TTimeLineRuler(TSession* sheet);
-        ~TTimeLineRuler() {}
-	
-	QDomNode get_state(QDomDocument doc);
-	int set_state(const QDomNode& node);
-	
-	QList<TTimeLineMarker*> get_markers() const {return m_markers;}
-        QList<TTimeLineMarker*> get_cd_layout(bool & endmarker);
-        TSession *get_sheet() const {return m_sheet;}
-	
-	TTimeLineMarker* get_marker(qint64 id);
-	TTimeLineMarker* get_end_marker();
-	bool get_end_location(TTimeRef& location);
-	bool get_start_location(TTimeRef& location);
-	bool has_end_marker();
+    TTimeLineRuler(TSession* sheet);
+    ~TTimeLineRuler() {}
 
-	TCommand* add_marker(TTimeLineMarker* marker, bool historable=true);
-	TCommand* remove_marker(TTimeLineMarker* marker, bool historable=true);
+    QDomNode get_state(QDomDocument doc);
+    int set_state(const QDomNode& node);
 
-        QString format_cdtrack_name(TTimeLineMarker *, int);
-        QList<TTimeLineMarker *> get_cdtrack_list(TExportSpecification*);
-        QString get_cdrdao_tracklist(TExportSpecification* spec, bool pregap = false);
+    QList<TTimeLineMarker*> get_markers() const {return m_markers;}
+    QList<TTimeLineMarker*> get_cd_layout(bool & endmarker);
+    TSession *get_sheet() const {return m_sheet;}
+
+    TTimeLineMarker* get_marker(qint64 id);
+    TTimeLineMarker* get_end_marker();
+    bool get_end_location(TTimeRef& location);
+    bool get_start_location(TTimeRef& location);
+    bool has_end_marker();
+
+    TCommand* add_marker(TTimeLineMarker* marker, bool historable=true);
+    TCommand* remove_marker(TTimeLineMarker* marker, bool historable=true);
+
+    QString format_cdtrack_name(TTimeLineMarker *, int);
+    QList<TTimeLineMarker *> get_cdtrack_list(TExportSpecification*);
+    QString get_cdrdao_tracklist(TExportSpecification* spec, bool pregap = false);
 
 
 private:
-        TSession* m_sheet;
-	QList<TTimeLineMarker*> m_markers;
-	void index_markers();
+    TSession* m_sheet;
+    QList<TTimeLineMarker*> m_markers;
+    void index_markers();
 
 private slots:
-	void private_add_marker(TTimeLineMarker* marker);
-	void private_remove_marker(TTimeLineMarker* marker);
-	void marker_position_changed();
+    void private_add_marker(TTimeLineMarker* marker);
+    void private_remove_marker(TTimeLineMarker* marker);
+    void marker_position_changed();
 
 signals:
-	void markerAdded(TTimeLineMarker*);
-	void markerRemoved(TTimeLineMarker*);
-	void markerPositionChanged();
+    void markerAdded(TTimeLineMarker*);
+    void markerRemoved(TTimeLineMarker*);
+    void markerPositionChanged();
 };
 
 #endif

@@ -1,6 +1,6 @@
 #include "TAudioClipView.h"
 #include "TClipsViewPort.h"
-#include "Cursors.h"
+#include "TWorkCursorView.h"
 #include "TCurveNodeView.h"
 #include "TCurveView.h"
 #include "TFadeCurveView.h"

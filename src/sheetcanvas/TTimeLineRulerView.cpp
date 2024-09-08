@@ -29,7 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeLineMarkerView.h"
 #include "TTimeLineRulerViewPort.h"
 #include "TMainWindow.h"
-
 #include <TSheet.h>
 #include <TTimeLineRuler.h>
 #include <TTimeLineMarker.h>
@@ -37,16 +36,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <Utils.h>
 #include <defines.h>
 #include <CommandGroup.h>
-#include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 #include <cstdlib>
+#include "Debugger.h"
 
 #include <QFont>
 #include <QDebug>
 
 
 
-#include "Debugger.h"
 
 
 #define MARKER_SOFT_SELECTION_DISTANCE 50

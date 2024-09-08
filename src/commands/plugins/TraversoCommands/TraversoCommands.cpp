@@ -128,8 +128,8 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&VUMeterLevelView::staticMetaObject,     tr("VU Level"));
     m->add_meta_object(&TVUMeterView::staticMetaObject,          tr("VU Level"));
     m->add_meta_object(&TAudioTrackPanelView::staticMetaObject,  tr("Audio Track"));
-    m->add_meta_object(&TPlayHead::staticMetaObject,             tr("Play Cursor"));
-    m->add_meta_object(&TWorkCursor::staticMetaObject,           tr("Work Cursor"));
+    m->add_meta_object(&TPlayHeadView::staticMetaObject,             tr("Play Cursor"));
+    m->add_meta_object(&TWorkCursorView::staticMetaObject,           tr("Work Cursor"));
     m->add_meta_object(&TPositionIndicator::staticMetaObject,    tr("Position Indicator"));
     m->add_meta_object(&TAudioProcessingNode::staticMetaObject, tr("Audio Processing Node"));
 

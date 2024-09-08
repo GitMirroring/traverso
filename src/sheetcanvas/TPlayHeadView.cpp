@@ -1,45 +1,18 @@
-/*
-    Copyright (C) 2005-2007 Remon Sijrier 
- 
-    This file is part of Traverso
- 
-    Traverso is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
- 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
- 
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
- 
-*/
 
-#include "Cursors.h"
-#include "TSheetView.h"
+#include "TPlayHeadView.h"
 #include "TClipsViewPort.h"
+#include "TSheetView.h"
 #include "TAudioDevice.h"
+
 #include <TSheet.h>
-#include "TConfig.h"
 #include <TThemer.h>
-
-#include <QPen>
-#include <QScrollBar>
-#include <QApplication>
-		
-
-
-#include "Debugger.h"
+#include "TConfig.h"
+#include "qapplication.h"
 
 #define ANIME_DURATION		1000
-#define AUTO_SCROLL_MARGIN	0.05  // autoscroll when within 5% of the clip view port
+#define AUTO_SCROLL_MARGIN	0.05  // autoscroll when
 
-
-TPlayHead::TPlayHead(TSheetView* sv, TSession* session, TClipsViewPort* vp)
+TPlayHeadView::TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* vp)
         : TViewItem(nullptr, session)
         , m_session(session)
         , m_vp(vp)
@@ -62,27 +35,27 @@ TPlayHead::TPlayHead(TSheetView* sv, TSession* session, TClipsViewPort* vp)
 	connect(&m_animation, SIGNAL(finished()), this, SLOT(animation_finished()));
         connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
 
-    TPlayHead::load_theme_data();
+    TPlayHeadView::load_theme_data();
 
 	setZValue(99);
 }
 
-TPlayHead::~TPlayHead( )
+TPlayHeadView::~TPlayHeadView( )
 {
         PENTERDES2;
 }
 
-void TPlayHead::check_config( )
+void TPlayHeadView::check_config( )
 {
     m_mode = static_cast<PlayHeadMode>(config().get_property("PlayHead", "Scrollmode", ANIMATED_FLIP_PAGE).toInt());
 	m_follow = config().get_property("PlayHead", "Follow", true).toBool();
 	m_followDisabled = false;
 }
 
-void TPlayHead::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
+void TPlayHeadView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
 {
 	Q_UNUSED(option);
-	Q_UNUSED(widget);
+    Q_UNUSED(widget);
 
     if (m_pixActive.height() != int(m_boundingRect.height())) {
         create_pixmap();
@@ -91,8 +64,7 @@ void TPlayHead::paint( QPainter * painter, const QStyleOptionGraphicsItem * opti
     painter->drawPixmap(0, 0, int(m_boundingRect.width()), int(m_boundingRect.height()), m_pixActive);
 }
 
-
-void TPlayHead::create_pixmap()
+void TPlayHeadView::create_pixmap()
 {
     m_pixActive = QPixmap(int(m_boundingRect.width()), int(m_boundingRect.height()));
     m_pixActive.fill(Qt::transparent);
@@ -101,7 +73,7 @@ void TPlayHead::create_pixmap()
     p.fillRect(QRectF(0, 0, m_boundingRect.width() - 2, m_boundingRect.height()), m_brushActive);
 }
 
-void TPlayHead::play_start()
+void TPlayHeadView::play_start()
 {
 	show();
 
@@ -115,7 +87,7 @@ void TPlayHead::play_start()
 	}
 }
 
-void TPlayHead::play_stop()
+void TPlayHeadView::play_stop()
 {
 	m_playTimer.stop();
 
@@ -129,12 +101,12 @@ void TPlayHead::play_stop()
 
 }
 
-void TPlayHead::disable_follow()
+void TPlayHeadView::disable_follow()
 {
 	m_followDisabled = true;
 }
 
-void TPlayHead::enable_follow()
+void TPlayHeadView::enable_follow()
 {
 	m_followDisabled = false;
 	// This function is called after the sheet finished a seek action.
@@ -144,7 +116,7 @@ void TPlayHead::enable_follow()
 	}
 }
 
-void TPlayHead::update_position()
+void TPlayHeadView::update_position()
 {
 	QPointF newPos(m_session->get_transport_location() / m_sv->timeref_scalefactor, 1);
     qreal playBufferTimePositionCompensation = 0;
@@ -214,7 +186,7 @@ void TPlayHead::update_position()
 	}
 }
 
-void TPlayHead::set_animation_value(int /*value*/)
+void TPlayHeadView::set_animation_value(int /*value*/)
 {
 	// When the scalefactor changed, stop the animation here as it's no longer valid to run
 	// and reset the animation timeline time back to 0.
@@ -250,25 +222,24 @@ void TPlayHead::set_animation_value(int /*value*/)
 	}
 }
 
-void TPlayHead::animation_finished()
+void TPlayHeadView::animation_finished()
 {
 	if (m_session->is_transport_rolling()) {
 		play_start();
 	}
 }
 
-
-void TPlayHead::set_bounding_rect( QRectF rect )
+void TPlayHeadView::set_bounding_rect( QRectF rect )
 {
 	m_boundingRect = rect;
 }
 
-bool TPlayHead::is_active()
+bool TPlayHeadView::is_active()
 {
 	return m_playTimer.isActive();
 }
 
-void TPlayHead::set_active(bool active)
+void TPlayHeadView::set_active(bool active)
 {
 	if (active) {
 		play_start();
@@ -277,74 +248,19 @@ void TPlayHead::set_active(bool active)
 	}
 }
 
-void TPlayHead::set_mode( PlayHeadMode mode )
+void TPlayHeadView::set_mode( PlayHeadMode mode )
 {
 	m_mode = mode;
 }
 
-void TPlayHead::toggle_follow( )
+void TPlayHeadView::toggle_follow( )
 {
 	m_follow = ! m_follow;
 }
 
-void TPlayHead::load_theme_data()
+void TPlayHeadView::load_theme_data()
 {
     m_brushActive = themer()->get_brush("Playhead:active");
     m_brushInactive = themer()->get_brush("Playhead:inactive");
 }
-
-/**************************************************************/
-/*                    TWorkCursor                              */
-/**************************************************************/
-
-
-TWorkCursor::TWorkCursor(TSheetView* sv, TSession* session)
-        : TViewItem(nullptr, session)
-        , m_session(session)
-	, m_sv(sv)
-{
-	setZValue(100);
-}
-
-TWorkCursor::~TWorkCursor( )
-{
-        PENTERDES2;
-}
-
-void TWorkCursor::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
-{
-	Q_UNUSED(option);
-	Q_UNUSED(widget);
-	
-	if (m_pix.height() != int(m_boundingRect.height())) {
-		update_background();
-	}
-	
-	painter->drawPixmap(0, 0, int(m_boundingRect.width()), int(m_boundingRect.height()), m_pix);
-}
-
-void TWorkCursor::update_position()
-{
-	setPos(m_session->get_work_location() / m_sv->timeref_scalefactor, 1);
-}
-
-void TWorkCursor::set_bounding_rect( QRectF rect )
-{
-	m_boundingRect = rect;
-}
-
-void TWorkCursor::update_background()
-{
-	m_pix = QPixmap(int(m_boundingRect.width()), int(m_boundingRect.height()));
-	m_pix.fill(Qt::transparent);
-	QPainter p(&m_pix);
-	QPen pen;
-	pen.setWidth(4);
-	pen.setStyle(Qt::DashDotLine);
-	pen.setColor(themer()->get_color("Workcursor:default"));
-	p.setPen(pen);
-	p.drawLine(0, 0, int(m_boundingRect.width()), int(m_boundingRect.height()));
-}
-
-
 

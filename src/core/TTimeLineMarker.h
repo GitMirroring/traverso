@@ -36,7 +36,8 @@ class TTimeLineMarker : public TContextItem
 public:
     enum MarkerType {
 		CDTRACK,
-		ENDMARKER
+        ENDMARKER,
+        PLAYHEADMARKER
 	};
 
     TTimeLineMarker(TTimeLineRuler* tl, const TTimeRef when, MarkerType type = CDTRACK);

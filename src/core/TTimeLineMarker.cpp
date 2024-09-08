@@ -80,10 +80,12 @@ QDomNode TTimeLineMarker::get_state(QDomDocument doc)
 			break;
 		case ENDMARKER:
 			domNode.setAttribute("type",  "ENDMARKER");
-			break;
-	}
+            break;
+        case PLAYHEADMARKER:
+            break;
+        }
 
-	return domNode;
+        return domNode;
 }
 
 int TTimeLineMarker::set_state(const QDomNode & node)

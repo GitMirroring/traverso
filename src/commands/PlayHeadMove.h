@@ -27,7 +27,7 @@
 
 class TSession;
 class TSheetView;
-class TPlayHead;
+class TPlayHeadView;
 
 class PlayHeadMove : public TMoveCommand
 {
@@ -46,7 +46,7 @@ public :
     bool supportsEnterFinishesHold() const {return false;}
 
 private :
-	TPlayHead*	m_playhead;
+	TPlayHeadView*	m_playhead;
         TSession*	m_session;
 	bool		m_resync;
 	int		m_origXPos{};

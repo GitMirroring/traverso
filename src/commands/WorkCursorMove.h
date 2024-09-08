@@ -27,8 +27,8 @@
 
 class TSession;
 class TSheetView;
-class TPlayHead;
-class TWorkCursor;
+class TPlayHeadView;
+class TWorkCursorView;
 
 class WorkCursorMove : public TMoveCommand
 {
@@ -48,8 +48,8 @@ public :
 
 private :
 	TSession*	m_session;
-	TPlayHead*	m_playCursor;
-	TWorkCursor*     m_workCursor;
+	TPlayHeadView*	m_playCursor;
+	TWorkCursorView*     m_workCursor;
 	TTimeRef		m_origPos;
 	int             m_holdCursorSceneY;
 	bool            m_browseMarkers;

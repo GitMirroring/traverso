@@ -43,7 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "TAudioTrackView.h"
 #include "TBusTrackView.h"
 #include "TTrackPanelView.h"
-#include "Cursors.h"
+#include "TWorkCursorView.h"
 #include "TClipsViewPort.h"
 #include "TTimeLineRulerViewPort.h"
 #include "TTimeLineRulerView.h"
@@ -84,8 +84,8 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 
 	m_clipsViewPort->scene()->addItem(this);
 
-	m_playCursor = new TPlayHead(this, m_session, m_clipsViewPort);
-	m_workCursor = new TWorkCursor(this, m_session);
+	m_playCursor = new TPlayHeadView(this, m_session, m_clipsViewPort);
+	m_workCursor = new TWorkCursorView(this, m_session);
     m_canvasCursor = new TCanvasCursor(this);
     scene()->addItem(m_canvasCursor);
 

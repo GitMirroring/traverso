@@ -33,7 +33,7 @@
 #include "TTimeLineRulerView.h"
 #include "TTimeLineMarkerView.h"
 #include "TTimeLineRuler.h"
-#include "Cursors.h"
+#include "TWorkCursorView.h"
 
 #include <Debugger.h>
 

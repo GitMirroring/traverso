@@ -14,7 +14,8 @@ SET(TRAVERSO_SONGCANVAS_SOURCES
 TAudioClipView.cpp TAudioClipView.h
 TAudioTrackView.cpp TAudioTrackView.h
 TClipsViewPort.cpp TClipsViewPort.h
-Cursors.cpp Cursors.h
+TWorkCursorView.cpp TWorkCursorView.h
+TPlayHeadView.h TPlayHeadView.cpp
 TCurveNodeView.cpp TCurveNodeView.h
 TCurveView.cpp TCurveView.h
 TFadeCurveView.cpp TFadeCurveView.h
@@ -46,7 +47,7 @@ TTextView.cpp TTextView.h
 SET(TRAVERSO_SONGCANVAS_LIBRARY "traversosheetcanvas")
 
 ADD_LIBRARY(${TRAVERSO_SONGCANVAS_LIBRARY} STATIC 
-	${TRAVERSO_SONGCANVAS_SOURCES} 
+	${TRAVERSO_SONGCANVAS_SOURCES}
 )
 
 IF(USE_PCH)
