@@ -66,6 +66,7 @@ public:
     bool always_safe_to_dispatch() const {
         return TCommand::matches_dispatch_rule_always(m_metaMethod.tag());
     }
+    bool plugin_based() const {return !m_pluginname.isEmpty();}
 
     void set_base_metaobject(const QMetaObject* base)
     {

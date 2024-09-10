@@ -32,6 +32,7 @@
 #include "defines.h"
 
 class TCommand;
+class TContextItem;
 class TMoveCommand;
 class TCommandPlugin;
 class TShortCut;
@@ -114,7 +115,7 @@ private:
 
     int             m_dispatchResult{};
     int             m_unbypassJogDistance{};
-    int             m_holdEventCode;
+    int             m_holdEventKeyValue;
 
     void 			finish_hold();
     void 			reset();
@@ -122,6 +123,8 @@ private:
 
     //! call the slot that handler a given action
     int dispatch_shortcut(TShortCut* shortCut, bool fromContextMenu=false);
+    TShortCutFunction* find_shortcut_function_for_metaobject(const QMetaObject* metaObject, TShortCut* shortCut);
+    TCommand* create_command_from_plugin(QObject *contextItem, TShortCutFunction* shortCutFunction);
 
     void set_holding(bool holding);
     void process_press_event(int keyValue);
