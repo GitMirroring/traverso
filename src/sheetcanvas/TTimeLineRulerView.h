@@ -48,6 +48,7 @@ public:
 
     TTimeLineMarkerView* get_marker_view_after(const TTimeRef &location);
     TTimeLineMarkerView* get_marker_view_before(const TTimeRef &location);
+    TTimeLineMarkerView* get_soft_selected_marker_view();
 
 private:
     QList<TTimeLineMarkerView* > m_markerViews;
@@ -69,7 +70,6 @@ public slots:
     TCommand* add_marker_at_playhead();
     TCommand* add_marker_at_work_cursor();
     TCommand* remove_marker();
-    TCommand* drag_marker();
     TCommand* clear_markers();
     TCommand* playhead_to_marker();
     TCommand *show_marker_dialog();

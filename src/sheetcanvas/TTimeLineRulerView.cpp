@@ -21,9 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TTimeLineRulerView.h"
 
-#include <QPainter>
-
-#include "MoveMarker.h"
 #include "TThemer.h"
 #include "TSheetView.h"
 #include "TTimeLineMarkerView.h"
@@ -40,12 +37,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cstdlib>
 #include "Debugger.h"
 
-#include <QFont>
+#include <QPainter>
 #include <QDebug>
-
-
-
-
+#include <QFont>
 
 #define MARKER_SOFT_SELECTION_DISTANCE 50
 
@@ -385,15 +379,11 @@ void TTimeLineRulerView::mouse_hover_move_event()
     update_softselected_marker(cpointer().scene_pos());
 }
 
-TCommand * TTimeLineRulerView::drag_marker()
+TTimeLineMarkerView* TTimeLineRulerView::get_soft_selected_marker_view()
 {
     update_softselected_marker(cpointer().on_first_input_event_scene_pos());
 
-    if (m_blinkingMarker) {
-        return new MoveMarker(m_blinkingMarker, m_sv->timeref_scalefactor, tr("Move Marker"));
-    }
-
-    return ied().failure();
+    return m_blinkingMarker;
 }
 
 TCommand * TTimeLineRulerView::clear_markers()

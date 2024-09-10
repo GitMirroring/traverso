@@ -25,17 +25,15 @@
 #include "TThemer.h"
 #include "TClipsViewPort.h"
 #include "TPositionIndicator.h"
-#include "MoveMarker.h"
+#include <TTimeLineMarker.h>
+#include <Utils.h>
+#include "Debugger.h"
 
 #include <QFont>
 #include <QFontMetrics>
 #include <QColor>
-#include <TSheet.h>
-#include <TTimeLineMarker.h>
-#include <Utils.h>
 #include <QDebug>
 
-#include "Debugger.h"
 
 TTimeLineMarkerView::TTimeLineMarkerView(TTimeLineMarker* marker, TSheetView* sv, TViewItem *parentView)
 	: TViewItem(parentView, marker)
@@ -206,9 +204,4 @@ void TTimeLineMarkerView::active_context_changed()
         } else {
                 set_active(false);
         }
-}
-
-TCommand* TTimeLineMarkerView::drag_marker()
-{
-	return new MoveMarker(this, m_sv->timeref_scalefactor, tr("Move Marker"));
 }

@@ -787,11 +787,15 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     case MoveMarkerCommand:
     {
         if (auto view = qobject_cast<TTimeLineRulerView*>(obj)) {
-            return view->drag_marker();
+            auto markerView = view->get_soft_selected_marker_view();
+            if (!markerView) {
+                return ied().failure();
+            }
+            return new MoveMarker(markerView, view->get_sheetview()->timeref_scalefactor, tr("Move Marker"));
         }
 
         if (auto markerView = qobject_cast<TTimeLineMarkerView*>(obj)) {
-            return markerView->drag_marker();
+            return new MoveMarker(markerView, markerView->get_sheetview()->timeref_scalefactor, tr("Move Marker"));
         }
 
         return ied().failure();

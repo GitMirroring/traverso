@@ -50,20 +50,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 PCommand::PCommand(TContextItem* item, const char* slot, const QString& des)
-	: TCommand(item, des)
-	, m_contextitem(item)
-	, m_slot(slot)
+    : TCommand(item, des)
+    , m_contextitem(item)
+    , m_slot(slot)
 {
 }
 
 PCommand::PCommand(TContextItem * item, const char * slot, const QVariant& doValue, const QVariant& undoValue, const QString & des)
-	: TCommand(item, des)
-	, m_contextitem(item)
-	, m_slot(slot)
-	, m_doValue(doValue)
-	, m_undoValue(undoValue)
+    : TCommand(item, des)
+    , m_contextitem(item)
+    , m_slot(slot)
+    , m_doValue(doValue)
+    , m_undoValue(undoValue)
 {
-	
+
 }
 
 
@@ -72,66 +72,66 @@ PCommand::~PCommand()
 
 int PCommand::prepare_actions()
 {
-	return 1;
+    return 1;
 }
 
 int PCommand::do_action()
 {
-        PENTER;
-        if (!m_doValue.isNull()) {
-                if (m_doValue.typeName() == QString("TTimeRef")) {
-                        if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(TTimeRef, m_doValue.value<TTimeRef>()))) {
-                                return 1;
-                        }
-                }
-
-                bool ok;
-
-                if (m_doValue.typeName() == QString("float")) {
-                            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(float, m_doValue.toDouble(&ok)))) {
-                                    return 1;
-                            }
-                }
-
-                if (m_doValue.typeName() == QString("double")) {
-                            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(double, m_doValue.toDouble(&ok)))) {
-                                    return 1;
-                            }
-                }
-
-                return -1;
+    PENTER;
+    if (!m_doValue.isNull()) {
+        if (m_doValue.typeName() == QString("TTimeRef")) {
+            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(TTimeRef, m_doValue.value<TTimeRef>()))) {
+                return 1;
+            }
         }
 
-        return QMetaObject::invokeMethod(m_contextitem, m_slot);
+        bool ok;
+
+        if (m_doValue.typeName() == QString("float")) {
+            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(float, m_doValue.toDouble(&ok)))) {
+                return 1;
+            }
+        }
+
+        if (m_doValue.typeName() == QString("double")) {
+            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(double, m_doValue.toDouble(&ok)))) {
+                return 1;
+            }
+        }
+
+        return -1;
+    }
+
+    return QMetaObject::invokeMethod(m_contextitem, m_slot);
 }
 
 int PCommand::undo_action()
 {
-	PENTER;
-	if (!m_undoValue.isNull()) {
-		if (m_undoValue.typeName() == QString("TTimeRef")) {
-			if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(TTimeRef, m_undoValue.value<TTimeRef>()))) {
-				return 1;
-			}
-		}
-		
-                bool ok;
+    PENTER;
+    if (!m_undoValue.isNull()) {
+        if (m_undoValue.typeName() == QString("TTimeRef")) {
+            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(TTimeRef, m_undoValue.value<TTimeRef>()))) {
+                return 1;
+            }
+        }
 
-                if (m_undoValue.typeName() == QString("float")) {
-                            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(float, m_undoValue.toDouble(&ok)))) {
-                                    return 1;
-                            }
-                }
+        bool ok;
 
-                if (m_undoValue.typeName() == QString("double")) {
-                            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(double, m_undoValue.toDouble(&ok)))) {
-                                    return 1;
-                            }
-                }
+        if (m_undoValue.typeName() == QString("float")) {
+            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(float, m_undoValue.toDouble(&ok)))) {
+                return 1;
+            }
+        }
 
-                return -1;
-	}
+        if (m_undoValue.typeName() == QString("double")) {
+            if (QMetaObject::invokeMethod(m_contextitem, m_slot, Qt::DirectConnection, Q_ARG(double, m_undoValue.toDouble(&ok)))) {
+                return 1;
+            }
+        }
+
+        return -1;
+    }
 
 
-	return QMetaObject::invokeMethod(m_contextitem, m_slot);
+    return QMetaObject::invokeMethod(m_contextitem, m_slot);
 }

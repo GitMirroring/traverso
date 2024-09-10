@@ -333,13 +333,13 @@ QPointF TFadeCurve::get_curve_point( float f)
     return QPointF(x, y);
 }
 
-void TFadeCurve::set_range(double when)
+void TFadeCurve::set_range(double range)
 {
-    if (when <= 0.0f) {
-        when = 0.1;
+    if (range <= 0.0f) {
+        range = 0.1;
     }
 
-    TCurve::set_range(when);
+    TCurve::set_range(range);
     emit rangeChanged();
 }
 

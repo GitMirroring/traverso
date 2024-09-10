@@ -940,9 +940,8 @@ void TMainWindow::create_menus( )
     m_resampleQualityMenu->setToolTipsVisible(true);
 
     for (int convertorType : ResampleAudioReader::get_convertor_types()) {
-        action = m_resampleQualityMenu->addAction("");
+        action = m_resampleQualityMenu->addAction(ResampleAudioReader::get_convertor_type_name(convertorType));
         action->setData(convertorType);
-        action->setText(ResampleAudioReader::get_convertor_type_name(convertorType));
         action->setToolTip(ResampleAudioReader::get_convertor_type_description(convertorType));
         connect(action, &QAction::triggered, this, [this, action, convertorType]() {
             config().set_property("Conversion", "RTResamplingConverterType", convertorType);

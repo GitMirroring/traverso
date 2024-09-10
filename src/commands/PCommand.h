@@ -30,25 +30,25 @@ class TContextItem;
 
 class PCommand : public TCommand
 {
-        Q_OBJECT
+    Q_OBJECT
 
 public :
-        PCommand(TContextItem* item, const char* slot, const QString& des);
-	PCommand(TContextItem* item, const char* slot, const QVariant &doValue, const QVariant &undoValue, const QString& des);
-        ~PCommand();
+    PCommand(TContextItem* item, const char* slot, const QString& des);
+    PCommand(TContextItem* item, const char* slot, const QVariant &doValue, const QVariant &undoValue, const QString& des);
+    ~PCommand();
 
-        int prepare_actions();
-        int do_action();
-        int undo_action();
-        bool is_hold_command() const {return false;}
+    int prepare_actions();
+    int do_action();
+    int undo_action();
+    bool is_hold_command() const {return false;}
 
 private :
-        TContextItem*	m_contextitem;
-        const char*	m_slot;
-	QVariant	m_doValue;
-	QVariant	m_undoValue;
+    TContextItem*	m_contextitem;
+    const char*	m_slot;
+    QVariant	m_doValue;
+    QVariant	m_undoValue;
 
 };
 
 #endif
- 
+

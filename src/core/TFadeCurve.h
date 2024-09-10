@@ -73,7 +73,6 @@ public:
 	
 	bool is_bypassed() const {return m_bypass;}
 	
-	void set_range(double pos);
 	void set_mode(int m);
 
     QString fade_type_to_string() const;
@@ -99,11 +98,12 @@ private:
 	
 public slots:
 	void solve_node_positions();
-	
+    void set_range(double range);
+
     DISPATCH_RULE_IS_ALWAYS TCommand* toggle_bypass();
     DISPATCH_RULE_IS_ALWAYS TCommand* set_mode();
     DISPATCH_RULE_IS_ALWAYS TCommand* toggle_raster();
-	
+
 signals:
 	void modeChanged();
 	void bendValueChanged();

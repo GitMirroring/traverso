@@ -42,7 +42,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TThemer.h"
 #include "TConfig.h"
 #include <TFadeCurve.h>
-#include <TCurve.h>
 #include "TMainWindow.h"
 #include "TAudioPluginChain.h"
 #include "Fade.h"

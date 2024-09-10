@@ -62,10 +62,7 @@ private:
 private slots:
     void update_position();
     void update_drawing();
-        void active_context_changed();
-
-public slots:
-        TCommand* drag_marker();
+    void active_context_changed();
 };
 
 #endif
