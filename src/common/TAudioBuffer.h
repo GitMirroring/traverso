@@ -168,6 +168,7 @@ private:
 
         delete [] m_buffer;
         m_buffer = nullptr;
+        m_size = 0;
     }
 
     audio_sample_t* m_buffer{nullptr};
