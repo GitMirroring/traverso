@@ -29,12 +29,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class TQueueBufferSlot {
 public:
-    explicit TQueueBufferSlot(int slotNumber, uint channelCount, nframes_t bufferSize) {
-        m_fileLocation = TTimeRef();
-        m_transportLocation = TTimeRef();
-        m_slotNumber = slotNumber;
-        m_bufferSize = bufferSize;
-        m_bufferWriteOffset = 0;
+    explicit TQueueBufferSlot(int slotNumber, uint channelCount, nframes_t bufferSize)
+        : m_slotNumber(slotNumber), m_bufferSize(bufferSize)
+    {
         for (uint chan=0; chan < channelCount; ++chan) {
             m_buffers.push_back(std::make_unique<TRealTimeAudioBuffer>(bufferSize));
         }
@@ -82,12 +79,12 @@ public:
     }
 
 private:
-    TTimeRef            m_fileLocation;
-    TTimeRef            m_transportLocation;
-    int                 m_slotNumber;
+    TTimeRef            m_fileLocation{};
+    TTimeRef            m_transportLocation{};
+    int                 m_slotNumber{-1};
     std::vector<std::unique_ptr<TRealTimeAudioBuffer>> m_buffers;
-    nframes_t           m_bufferSize;
-    nframes_t           m_bufferWriteOffset;
+    nframes_t           m_bufferSize{0};
+    nframes_t           m_bufferWriteOffset{0};
 };
 
 #endif // TQUEUEBUFFERSLOT_H

@@ -1,3 +1,25 @@
+/*
+Copyright (C) 2024 Remon Sijrier
+
+This file is part of Traverso
+
+Traverso is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
+
+*/
+
+
 #ifndef TAUDIOBUFFER_H
 #define TAUDIOBUFFER_H
 
@@ -111,22 +133,15 @@ public:
 private:
     friend class TRealTimeAudioBuffer;
     explicit TAudioBuffer(nframes_t size, bool wantsMemLock)
-        : m_buffer(nullptr)
-        , m_size(0)
-        , m_readOffset(0)
-        , m_memLocked(false)
-        , m_wantsMemLock(wantsMemLock)
+        : m_wantsMemLock(wantsMemLock)
     {
         resize(size);
     }
 
-    audio_sample_t* m_buffer;
-    nframes_t       m_size;
-    nframes_t       m_readOffset;
-    bool            m_memLocked;
-    bool            m_wantsMemLock;
-
     void allocate_buffer_data(nframes_t size) {
+        Q_ASSERT(!m_buffer);
+        Q_ASSERT(m_size == 0);
+
         m_buffer = new audio_sample_t[size];
         m_size = size;
 
@@ -155,6 +170,11 @@ private:
         m_buffer = nullptr;
     }
 
+    audio_sample_t* m_buffer{nullptr};
+    nframes_t       m_size{0};
+    nframes_t       m_readOffset{0};
+    bool            m_memLocked{false};
+    bool            m_wantsMemLock{false};
 };
 
 class TRealTimeAudioBuffer : public TAudioBuffer
