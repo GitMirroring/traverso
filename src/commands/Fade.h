@@ -24,7 +24,6 @@ $Id: Fade.h,v 1.13 2008/01/21 16:22:11 r_sijrier Exp $
 #define FADE_H
 
 #include "TCommand.h"
-#include "TMoveCommand.h"
 
 #include <QPoint>
 
@@ -34,52 +33,6 @@ class TFadeCurve;
 class TFadeCurveView;
 class TSheetView;
 class TSheet;
-
-class FadeRange : public TMoveCommand
-{
-    Q_OBJECT
-
-public :
-    FadeRange(TAudioClip* clip, TFadeCurve* curve, qint64 scalefactor);
-    FadeRange(TAudioClip* clip, TFadeCurve* curve, double newVal);
-    ~FadeRange();
-
-    int begin_hold();
-    int finish_hold();
-    int prepare_actions();
-    int do_action();
-    int undo_action();
-    void cancel_action();
-
-    int jog();
-
-    void set_cursor_shape(int useX, int useY);
-    bool wants_cursor_position_to_be_restored() const {return true;}
-
-private :
-    TFadeCurve*	m_curve;
-    double 		m_origRange;
-    double 		m_newRange;
-    struct FadeRangePrivate {
-        TSheet* sheet;
-        TAudioClip* clip;
-        int origX;
-        int direction;
-        qint64 scalefactor;
-    };
-    FadeRangePrivate* frp;
-
-    void do_keyboard_move(double range);
-
-
-public slots:
-    void next_snap_pos();
-    void prev_snap_pos();
-    void move_left();
-    void move_right();
-    void reset_length();
-};
-
 
 class FadeStrength : public TCommand
 {

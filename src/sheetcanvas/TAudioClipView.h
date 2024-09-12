@@ -122,12 +122,8 @@ public slots:
 	void update_start_pos();
 	void position_changed();
 	
-	TCommand* fade_range();
-	TCommand* clip_fade_in();
-	TCommand* clip_fade_out();
 	TCommand* select_fade_in_shape();
 	TCommand* select_fade_out_shape();
-	TCommand* reset_fade();
 	TCommand* set_audio_file();
 	TCommand* edit_properties();
 	

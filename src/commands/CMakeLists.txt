@@ -22,6 +22,7 @@ Fade.cpp
 GainCommand.cpp GainCommand.h
 TGainGroupCommand.cpp
 TAudioFileImportCommand.cpp
+TFadeRangeCommand.cpp TFadeRangeCommand.h
 MoveClip.cpp
 MoveCurveNode.cpp
 MoveEdge.cpp

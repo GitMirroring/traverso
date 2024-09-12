@@ -21,9 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cfloat>
 
-#include "CommandGroup.h"
 #include "TContextItem.h"
-#include "Fade.h"
 #include "TReadAudioSource.h"
 #include "TAudioClip.h"
 #include "TLocation.h"
@@ -378,7 +376,7 @@ void TAudioClip::set_track_end_location(const TTimeRef& location)
     }
 }
 
-void TAudioClip::set_fade_in(double range)
+void TAudioClip::set_fade_in_range(double range)
 {
     if (!m_fadeIn) {
         create_fade(TFadeCurve::FadeIn);
@@ -386,7 +384,7 @@ void TAudioClip::set_fade_in(double range)
     m_fadeIn->set_range(range);
 }
 
-void TAudioClip::set_fade_out(double range)
+void TAudioClip::set_fade_out_range(double range)
 {
     if (!m_fadeOut) {
         create_fade(TFadeCurve::FadeOut);
@@ -602,38 +600,18 @@ TCommand* TAudioClip::lock()
     return nullptr;
 }
 
-TCommand* TAudioClip::reset_fade_in()
+void TAudioClip::reset_fade_in()
 {
     if (m_fadeIn) {
-        return new FadeRange(this, m_fadeIn, 1.0);
+        m_fadeIn->set_range(0.99);
     }
-    return nullptr;
 }
 
-TCommand* TAudioClip::reset_fade_out()
+void TAudioClip::reset_fade_out()
 {
     if (m_fadeOut) {
-        return new FadeRange(this, m_fadeOut, 1.0);
+        m_fadeOut->set_range(0.99);
     }
-    return nullptr;
-}
-
-TCommand* TAudioClip::reset_fade_both()
-{
-    if (!m_fadeOut && !m_fadeIn) {
-        return nullptr;
-    }
-
-    CommandGroup* group = new CommandGroup(this, tr("Remove Fades"));
-
-    if (m_fadeIn) {
-        group->add_command(reset_fade_in());
-    }
-    if (m_fadeOut) {
-        group->add_command(reset_fade_out());
-    }
-
-    return group;
 }
 
 TAudioClip* TAudioClip::create_copy( )
@@ -858,13 +836,23 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
     return float(target/maxamp);
 }
 
-TFadeCurve * TAudioClip::get_fade_in( ) const
+// Returns fade in curve, creates one if it does not exist
+TFadeCurve * TAudioClip::get_fade_in()
 {
+    if (!m_fadeIn) {
+        set_fade_in_range(1.0);
+        Q_ASSERT(m_fadeIn);
+    }
     return m_fadeIn;
 }
 
-TFadeCurve * TAudioClip::get_fade_out( ) const
+// Returns fade out curve, creates one if it does not exist
+TFadeCurve * TAudioClip::get_fade_out()
 {
+    if (!m_fadeOut) {
+        set_fade_out_range(1.0);
+        Q_ASSERT(m_fadeOut);
+    }
     return m_fadeOut;
 }
 

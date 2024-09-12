@@ -66,10 +66,12 @@ public:
     // preferably we wouldn't have to re-implement this function
     // TODO: make every start dependent item not have to re-implement ?
     void set_location_start(const TTimeRef& location);
-    void set_fade_in(double range);
-    void set_fade_out(double range);
+    void set_fade_in_range(double range);
+    void set_fade_out_range(double range);
     void set_track(TAudioTrack* track);
     void set_sheet(TSheet* sheet);
+    void reset_fade_in();
+    void reset_fade_out();
 
     void set_selected(bool selected);
     void set_as_moving(bool moving);
@@ -80,8 +82,10 @@ public:
     TSheet* get_sheet() const;
     TPeak* get_peak() const {return m_peak;}
     QDomNode get_state(QDomDocument doc);
-    TFadeCurve* get_fade_in() const;
-    TFadeCurve* get_fade_out() const;
+    TFadeCurve* get_fade_in();
+    TFadeCurve* get_fade_out();
+    bool has_fade_in() const {return m_fadeIn != nullptr;}
+    bool has_fade_out() const {return m_fadeOut != nullptr;}
 
     TTimeRef get_source_length() const;
     TTimeRef get_length() const {return m_length;}
@@ -171,9 +175,6 @@ public slots:
     void toggle_mute();
     void toggle_lock();
 
-    TCommand* reset_fade_in();
-    TCommand* reset_fade_out();
-    TCommand* reset_fade_both();
     TCommand* lock();
 
 private slots:

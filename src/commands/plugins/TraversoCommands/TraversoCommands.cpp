@@ -110,7 +110,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&PlayHeadMove::staticMetaObject,         tr("Move Play Head"));
     m->add_meta_object(&MoveEdge::staticMetaObject,             tr("Move Clip Edge"));
     m->add_meta_object(&CropClip::staticMetaObject,             tr("Cut Clip (Magnetic)"));
-    m->add_meta_object(&FadeRange::staticMetaObject,            tr("Fade Length"));
+    m->add_meta_object(&TFadeRangeCommand::staticMetaObject,            tr("Fade Length"));
     m->add_meta_object(&FadeBend::staticMetaObject,             tr("Bend Factor"));
     m->add_meta_object(&FadeStrength::staticMetaObject,         tr("Strength Factor"));
     m->add_meta_object(&SplitClip::staticMetaObject,            tr("Split Clip"));
@@ -199,6 +199,8 @@ void TraversoCommands::load(TShortCutManager* m)
     add_function(&TAudioClip::staticMetaObject,     tr("(De)Select"),       "ClipSelectionSelect", ClipSelectionCommand, "", NO_X, NO_Y, QVariantList()<< "toggle_selected");
     add_function(&TAudioClipView::staticMetaObject, tr("Magnetic Cut"),     "CropClip",         CropClipCommand, "", USE_X, USE_Y);
 
+    add_function(&TAudioClipView::staticMetaObject, tr("Adjust Length"),    "AudioClipFadeLength",  FadeRangeCommand, "", USE_X, NO_Y);
+    add_function(&TAudioClipView::staticMetaObject, tr("Adjust Length"),    "AudioClipFadeLengthBoth",  FadeRangeCommand, "", USE_X, NO_Y, QVariantList() << "both");
     add_function(&TFadeCurveView::staticMetaObject, tr("Adjust Bend"),      "FadeCurveBend",    FadeCurveBendCommand, "", NO_X, USE_Y);
     add_function(&TFadeCurveView::staticMetaObject, tr("Adjust Strength"),  "FadeCurveStrenght",FadeCurveStrengthCommand, "", USE_X, NO_Y);
 
@@ -236,7 +238,6 @@ void TraversoCommands::load(TShortCutManager* m)
     // ----------------------------------------------------------------------------------------------------------------------- //
 
     m->add_function(&TAudioClip::staticMetaObject,      tr("Lock"),             "AudioClipLock",                "lock()");
-    m->add_function(&TAudioClipView::staticMetaObject,  tr("Adjust Length"), "AudioClipFadeLength",          "fade_range()");
     m->add_function(&TAudioClipView::staticMetaObject,      &TEditPropertiesBase::staticMetaObject,         "EditAudioClipProperties", "edit_properties()");
     m->add_function(&TAudioClipView::staticMetaObject,  tr("Reset Audio File"), "AudioClipSetAudioFile",     "set_audio_file()");
 
@@ -263,7 +264,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&TFadeCurve::staticMetaObject,  tr("Toggle Raster"),    "FadeCurveToggleRaster",        "toggle_raster()");
     m->add_function(&TFadeCurveView::staticMetaObject, tr("Select Preset"), "FadeSelectPreset",             "select_fade_shape()");
 
-    m->add_function(&FadeRange::staticMetaObject, &TResetBase::staticMetaObject, "FadeResetLength",         "reset_length()");
+    m->add_function(&TFadeRangeCommand::staticMetaObject, &TResetBase::staticMetaObject, "FadeResetLength",         "reset_length()");
 
     m->add_function(&TGainGroupCommand::staticMetaObject, tr("Increase"),   "GainIncrease",                 "increase_gain()");
     m->add_function(&TGainGroupCommand::staticMetaObject, tr("Decrease"),   "GainDecrease",                 "decrease_gain()");
@@ -395,7 +396,9 @@ TShortCutFunction* TraversoCommands::add_function(const QMetaObject *metaObject,
 
 TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVariantList arguments)
 {
-    switch (m_dict.value(commandName)) {
+    TraversoCommand command = static_cast<TraversoCommand>(m_dict.value(commandName, NoCommand));
+
+    switch (command) {
     case TransportSetPositionCommand:
     {
         TProject* project = pm().get_project();
@@ -646,41 +649,11 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             return nullptr;
         }
 
-        int x = (int) (cpointer().on_first_input_event_scene_x() - view->scenePos().x());
-
-        if (x < (view->boundingRect().width() / 2)) {
+        if (view->is_left_from_center(cpointer().on_first_input_event_scene_x())) {
             return new MoveEdge(view, view->get_sheetview(), "set_left_edge");
         } else {
             return new MoveEdge(view, view->get_sheetview(), "set_right_edge");
         }
-    }
-
-        // The existence of this is doubtfull. Using [ E ] is so much easier
-        // then trying to mimic 'if near to edge, drag edge' features.
-    case MoveClipOrEdgeCommand:
-    {
-        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
-
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
-                   "MoveClipOrEdgeCommand needs an AudioClipView as argument");
-            return nullptr;
-        }
-
-        int x = (int) (cpointer().on_first_input_event_scene_x() - view->scenePos().x());
-
-        int edge_width = 0;
-        if (arguments.size() == 2) {
-            edge_width = arguments[0].toInt();
-        }
-
-        if (x < edge_width) {
-            return new MoveEdge(view, view->get_sheetview(), "set_left_edge");
-        } else if (x > (view->boundingRect().width() - edge_width)) {
-            return new MoveEdge(view, view->get_sheetview(), "set_right_edge");
-        }
-
-        return new MoveClip(view, QVariantList() << "move");
     }
 
     case SplitClipCommand:
@@ -802,10 +775,21 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     }
     case FadeRangeCommand:
     {
-        if (auto view = qobject_cast<TFadeCurveView*>(obj)) {
-            return new FadeRange(view->get_audio_clip(), view->get_fade(), view->get_sheetview()->timeref_scalefactor);
+        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
+        if (!view) {
+            return ied().failure();
         }
-        return ied().failure();
+
+        TAudioClip* clip = view->get_clip();
+        if (arguments.size() > 0 && arguments.at(0).toString() == "both") {
+            return new TFadeRangeCommand(clip, clip->get_fade_in(), clip->get_fade_out(), view->get_sheetview()->timeref_scalefactor);
+        }
+
+        if (view->is_left_from_center(cpointer().on_first_input_event_scene_x())) {
+            return new TFadeRangeCommand(clip, clip->get_fade_in(), nullptr, view->get_sheetview()->timeref_scalefactor);
+        }
+
+        return new TFadeRangeCommand(clip, nullptr, clip->get_fade_out(), view->get_sheetview()->timeref_scalefactor);
     }
     case FadeCurveBendCommand:
     {
@@ -836,6 +820,9 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         return ied().failure();
     }
 
+    case NoCommand:
+        PERROR(QString("My dictionary does not know this command: %1").arg(commandName));
+        break;
     }
 
     return ied().did_not_implement();

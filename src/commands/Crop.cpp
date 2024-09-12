@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioClipView.h"
 #include "TContextPointer.h"
 #include "TCommand.h"
-#include "Fade.h"
 #include "TSheetView.h"
 #include "TAudioClip.h"
 #include "TResourcesManager.h"
@@ -94,20 +93,12 @@ int CropClip::prepare_actions()
 	leftClip->set_sheet(m_clip->get_sheet());
 	leftClip->set_location_start(m_clip->get_location()->get_start());
 	leftClip->set_right_edge(TTimeRef(x1 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location()->get_start());
-	if (leftClip->get_fade_out()) {
-        auto cmd = leftClip->reset_fade_out();
-        cmd->set_do_not_push_to_historystack();
-		TCommand::process_command(cmd);
-	}
+    leftClip->reset_fade_out();
 
 	rightClip->set_sheet(m_clip->get_sheet());
 	rightClip->set_left_edge(TTimeRef(x2 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location()->get_start());
     rightClip->set_location_start(leftClip->get_location()->get_end());
-	if (rightClip->get_fade_in()) {
-        auto cmd = rightClip->reset_fade_in();
-        cmd->set_do_not_push_to_historystack();
-		TCommand::process_command(cmd);
-	}
+    rightClip->reset_fade_in();
 
 	return 1;
 }
@@ -135,6 +126,7 @@ int CropClip::do_action()
     TCommand::process_command(m_track->add_clip(spec));
     spec.set_clip(rightClip);
     TCommand::process_command(m_track->add_clip(spec));
+
     spec.set_clip(m_clip);
     TCommand::process_command(m_track->remove_clip(spec));
 
@@ -145,10 +137,10 @@ int CropClip::undo_action()
 {
 	PENTER;
     TAudioClipAddRemoveSpec spec;
-    spec.set_clip(m_clip);
     spec.set_is_historable(false);
     spec.set_is_move(false);
 
+    spec.set_clip(m_clip);
     TCommand::process_command(m_track->add_clip(spec));
 
     spec.set_clip(leftClip);

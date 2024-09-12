@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2006 Remon Sijrier 
+Copyright (C) 2005-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,8 +19,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef VIEW_ITEM_H
-#define VIEW_ITEM_H
+#ifndef TVIEW_ITEM_H
+#define TVIEW_ITEM_H
 
 #include <TContextItem.h>
 #include <QGraphicsScene>
@@ -100,6 +100,11 @@ public:
     }
 
     bool has_mouse_tracking() const {return m_hasMouseTracking;}
+
+    bool is_left_from_center(qreal sceneX) {
+        return ((sceneX - scenePos().x()) < (boundingRect().width() / 2));
+
+    }
 
 
 protected:

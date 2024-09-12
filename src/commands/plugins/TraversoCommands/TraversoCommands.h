@@ -60,13 +60,11 @@ private:
 		ClipSelectionCommand,
 		MoveClipCommand,
 		MoveTrackCommand,
-		MoveClipOrEdgeCommand,
-		SplitClipCommand,
+        SplitClipCommand,
 		CropClipCommand,
 		ArmTracksCommand,
 		ZoomCommand,
-		ScrollCommand,
-		ShuttleCommand,
+        ShuttleCommand,
 		NormalizeClipCommand,
 		ArrowKeyBrowserCommand,
 		WorkCursorMoveCommand,
@@ -78,7 +76,7 @@ private:
         FadeCurveBendCommand,
         FadeCurveStrengthCommand,
         GainShowAutomationCommand,
-        TransportSetPositionCommand
+        TransportSetPositionCommand,
 	};
 
 private:

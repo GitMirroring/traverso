@@ -1,0 +1,204 @@
+#include "TFadeRangeCommand.h"
+
+#include "TFadeCurve.h"
+#include "TAudioClip.h"
+#include "TSheet.h"
+#include "TInputEventDispatcher.h"
+#include "TSnapList.h"
+
+TFadeRangeCommand::TFadeRangeCommand(TAudioClip* clip, TFadeCurve* fadeIn, TFadeCurve *fadeOut, qint64 scalefactor)
+    : TMoveCommand(nullptr, clip, "")
+    , m_fadeIn(fadeIn)
+    , m_fadeOut(fadeOut)
+    , frp(new FadeRangePrivate())
+{
+    m_canvasCursorFollowsMouseCursor = false;
+    frp->scalefactor = scalefactor;
+    frp->clip = clip;
+    frp->sheet = clip->get_sheet();
+    if (m_fadeIn && m_fadeOut) {
+        setText(tr("Fade Both: length"));
+    } else if (m_fadeIn) {
+        setText(tr("Fade In: length"));
+    } else if (m_fadeOut){
+        setText(tr("Fade Out: length"));
+    }
+}
+
+TFadeRangeCommand::~TFadeRangeCommand()
+{}
+
+int TFadeRangeCommand::prepare_actions()
+{
+    return 1;
+}
+
+int TFadeRangeCommand::begin_hold()
+{
+    frp->origX = cpointer().on_first_input_event_x();
+    if (m_fadeIn) {
+        m_fadeInNewRange = m_fadeInOrigRange = m_fadeIn->get_range();
+    }
+    if (m_fadeOut) {
+        m_fadeOutNewRange = m_fadeOutOrigRange = m_fadeOut->get_range();
+    }
+    return 1;
+}
+
+int TFadeRangeCommand::finish_hold()
+{
+    delete frp;
+    frp = nullptr;
+    return 1;
+}
+
+int TFadeRangeCommand::do_action()
+{
+    if (m_fadeIn) {
+        m_fadeIn->set_range( m_fadeInNewRange );
+    }
+    if (m_fadeOut) {
+        m_fadeOut->set_range(m_fadeOutNewRange);
+    }
+    return 1;
+}
+
+int TFadeRangeCommand::undo_action()
+{
+    if (m_fadeIn) {
+        m_fadeIn->set_range( m_fadeInOrigRange );
+    }
+    if (m_fadeOut) {
+        m_fadeOut->set_range(m_fadeOutOrigRange);
+    }
+    return 1;
+}
+
+void TFadeRangeCommand::cancel_action()
+{
+    finish_hold();
+    undo_action();
+}
+
+void TFadeRangeCommand::set_cursor_shape(int useX, int useY)
+{
+    Q_UNUSED(useX);
+    Q_UNUSED(useY);
+
+    cpointer().set_canvas_cursor_shape(":/cursorHoldLr");
+}
+
+int TFadeRangeCommand::jog()
+{
+    int deltaX = frp->origX - (cpointer().mouse_viewport_x());
+    TTimeRef location = TTimeRef(m_fadeInNewRange);
+
+    if (m_fadeIn) {
+        m_fadeInNewRange = m_fadeInOrigRange - ( deltaX * frp->scalefactor);
+        m_fadeIn->set_range( m_fadeInNewRange );
+        location = TTimeRef(m_fadeInNewRange);
+    }
+    if (m_fadeOut) {
+        m_fadeOutNewRange = m_fadeOutOrigRange + (deltaX * frp->scalefactor * (m_fadeIn ? -1 : 1));
+        m_fadeOut->set_range(m_fadeOutNewRange);
+        location = TTimeRef(m_fadeOutNewRange);
+    }
+
+    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_ms_3(location));
+
+    return 1;
+}
+
+void TFadeRangeCommand::move_left()
+{
+
+    if (d->doSnap) {
+        return prev_snap_pos();
+    }
+
+    if (m_fadeIn) {
+        m_fadeInNewRange -= frp->scalefactor * d->speed;
+    }
+    if (m_fadeOut) {
+        m_fadeOutNewRange += frp->scalefactor * d->speed * (m_fadeIn ? -1 : 1);
+    }
+
+    do_keyboard_move();
+}
+
+void TFadeRangeCommand::move_right()
+{
+
+    if (d->doSnap) {
+        return next_snap_pos();
+    }
+
+    if (m_fadeIn) {
+        m_fadeInNewRange += frp->scalefactor * d->speed;
+    }
+    if (m_fadeOut) {
+        m_fadeOutNewRange -= frp->scalefactor * d->speed * (m_fadeIn ? -1 : 1);
+    }
+
+    do_keyboard_move();
+}
+
+void TFadeRangeCommand::reset_length()
+{
+    m_fadeInNewRange = 1.0;
+    m_fadeOutNewRange = 1.0;
+    do_action();
+}
+
+void TFadeRangeCommand::next_snap_pos()
+{
+    if (m_fadeIn) {
+        TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location()->get_start() + m_fadeInNewRange);
+        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
+        m_fadeInNewRange = newpos.universal_frame();
+    }
+    if (m_fadeOut) {
+        TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location()->get_start() + m_fadeOutNewRange) * (m_fadeIn ? -1 : 1);
+        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
+        m_fadeOutNewRange = newpos.universal_frame();
+    }
+
+
+    do_keyboard_move();
+}
+
+void TFadeRangeCommand::prev_snap_pos()
+{
+    if (m_fadeIn) {
+        TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location()->get_start() + m_fadeInNewRange);
+        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
+        m_fadeInNewRange = newpos.universal_frame();
+    }
+    if (m_fadeOut) {
+        TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location()->get_start() + m_fadeOutNewRange);
+        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
+        m_fadeOutNewRange = newpos.universal_frame();
+    }
+    do_keyboard_move();
+}
+
+void TFadeRangeCommand::do_keyboard_move()
+{
+    ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
+
+    QString location;
+
+    if (m_fadeIn) {
+        location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeInNewRange));
+    }
+    if (m_fadeOut) {
+        location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
+    }
+    if (m_fadeIn && m_fadeOut) {
+        location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeInNewRange)) + " - " + TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
+    }
+
+    cpointer().set_canvas_cursor_text(location);
+
+    do_action();
+}

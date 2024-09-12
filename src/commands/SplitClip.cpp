@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSnapList.h"
 #include "TLocation.h"
 #include "TViewItem.h"
-#include "Fade.h"
+// #include "Fade.h"
 #include "TThemer.h"
 
 
@@ -71,20 +71,12 @@ int SplitClip::prepare_actions()
 	leftClip->set_sheet(m_clip->get_sheet());
 	leftClip->set_location_start(m_clip->get_location()->get_start());
 	leftClip->set_right_edge(m_splitPoint);
-	if (leftClip->get_fade_out()) {
-		FadeRange* cmd = (FadeRange*)leftClip->reset_fade_out();
-        cmd->set_do_not_push_to_historystack();
-		TCommand::process_command(cmd);
-	}
+    leftClip->reset_fade_out();
 	
 	rightClip->set_sheet(m_clip->get_sheet());
 	rightClip->set_left_edge(m_splitPoint);
 	rightClip->set_location_start(m_splitPoint);
-	if (rightClip->get_fade_in()) {
-		FadeRange* cmd = (FadeRange*)rightClip->reset_fade_in();
-        cmd->set_do_not_push_to_historystack();
-		TCommand::process_command(cmd);
-	}
+    rightClip->reset_fade_in();
 	
 	return 1;
 }
@@ -94,16 +86,17 @@ int SplitClip::do_action()
 {
 	PENTER;
     TAudioClipAddRemoveSpec spec;
-    spec.set_clip(leftClip);
     spec.set_is_historable(false);
     spec.set_is_move(false);
 
+    spec.set_clip(leftClip);
     TCommand::process_command(m_track->add_clip(spec));
     spec.set_clip(rightClip);
     TCommand::process_command(m_track->add_clip(spec));
+
     spec.set_clip(m_clip);
     TCommand::process_command(m_track->remove_clip(spec));
-	
+
 	return 1;
 }
 
@@ -112,17 +105,18 @@ int SplitClip::undo_action()
 	PENTER;
 
     TAudioClipAddRemoveSpec spec;
-    spec.set_clip(m_clip);
     spec.set_is_historable(false);
     spec.set_is_move(false);
 
+    spec.set_clip(m_clip);
     TCommand::process_command(m_track->add_clip(spec));
+
     spec.set_clip(leftClip);
     TCommand::process_command(m_track->remove_clip(spec));
     spec.set_clip(rightClip);
     TCommand::process_command(m_track->remove_clip(spec));
-	
-	return 1;
+
+    return 1;
 }
 
 int SplitClip::begin_hold()

@@ -186,11 +186,7 @@ void AudioClipEditDialog::fadein_edit_changed(const QTime& time)
 
 	locked = true;
     double range = double(TTimeRef::qtime_to_timeref(time).universal_frame());
-	if (range == 0) {
-		m_clip->set_fade_in(1);
-	} else {
-		m_clip->set_fade_in(range);
-	}
+    m_clip->set_fade_in_range(range);
 	locked = false;
 }
 
@@ -200,11 +196,7 @@ void AudioClipEditDialog::fadeout_edit_changed(const QTime& time)
 
 	locked = true;
     double range = double(TTimeRef::qtime_to_timeref(time).universal_frame());
-	if (range == 0) {
-		m_clip->set_fade_out(1);
-	} else {
-		m_clip->set_fade_out(range);
-	}
+    m_clip->set_fade_out_range(range);
 	locked = false;
 }
 
@@ -279,7 +271,7 @@ void AudioClipEditDialog::fadeout_strength_changed()
 
 void AudioClipEditDialog::fadein_mode_edit_changed(int index)
 {
-	if (!m_clip->get_fade_in()) return;
+    if (!m_clip->has_fade_in()) return;
 	locked = true;
 	m_clip->get_fade_in()->set_mode(index);
 	locked = false;
@@ -287,7 +279,7 @@ void AudioClipEditDialog::fadein_mode_edit_changed(int index)
 
 void AudioClipEditDialog::fadeout_mode_edit_changed(int index)
 {
-	if (!m_clip->get_fade_out()) return;
+    if (!m_clip->has_fade_out()) return;
 	locked = true;
 	m_clip->get_fade_out()->set_mode(index);
 	locked = false;
@@ -295,7 +287,7 @@ void AudioClipEditDialog::fadeout_mode_edit_changed(int index)
 
 void AudioClipEditDialog::fadein_bending_edit_changed(double value)
 {
-	if (!m_clip->get_fade_in()) return;
+    if (!m_clip->has_fade_in()) return;
 	locked = true;
 	m_clip->get_fade_in()->set_bend_factor(value);
 	locked = false;
@@ -303,7 +295,7 @@ void AudioClipEditDialog::fadein_bending_edit_changed(double value)
 
 void AudioClipEditDialog::fadeout_bending_edit_changed(double value)
 {
-	if (!m_clip->get_fade_out()) return;
+    if (!m_clip->has_fade_out()) return;
 	locked = true;
 	m_clip->get_fade_out()->set_bend_factor(value);
 	locked = false;
@@ -311,7 +303,7 @@ void AudioClipEditDialog::fadeout_bending_edit_changed(double value)
 
 void AudioClipEditDialog::fadein_strength_edit_changed(double value)
 {
-	if (!m_clip->get_fade_in()) return;
+    if (!m_clip->has_fade_in()) return;
 	locked = true;
 	m_clip->get_fade_in()->set_strength_factor(value);
 	locked = false;
@@ -319,7 +311,7 @@ void AudioClipEditDialog::fadein_strength_edit_changed(double value)
 
 void AudioClipEditDialog::fadeout_strength_edit_changed(double value)
 {
-	if (!m_clip->get_fade_out()) return;
+    if (!m_clip->has_fade_out()) return;
 	locked = true;
 	m_clip->get_fade_out()->set_strength_factor(value);
 	locked = false;
@@ -327,35 +319,35 @@ void AudioClipEditDialog::fadeout_strength_edit_changed(double value)
 
 void AudioClipEditDialog::fadein_linear()
 {
-	if (!m_clip->get_fade_in()) return;
+    if (!m_clip->has_fade_in()) return;
 	fadeInBendingBox->setValue(0.5);
 	fadeInStrengthBox->setValue(0.5);
 }
 
 void AudioClipEditDialog::fadein_default()
 {
-	if (!m_clip->get_fade_in()) return;
+    if (!m_clip->has_fade_in()) return;
 	fadeInBendingBox->setValue(0.0);
 	fadeInStrengthBox->setValue(0.5);
 }
 
 void AudioClipEditDialog::fadeout_linear()
 {
-	if (!m_clip->get_fade_out()) return;
+    if (!m_clip->has_fade_out()) return;
 	fadeOutBendingBox->setValue(0.5);
 	fadeOutStrengthBox->setValue(0.5);
 }
 
 void AudioClipEditDialog::fadeout_default()
 {
-	if (!m_clip->get_fade_out()) return;
+    if (!m_clip->has_fade_out()) return;
 	fadeOutBendingBox->setValue(0.0);
 	fadeOutStrengthBox->setValue(0.5);
 }
 
 void AudioClipEditDialog::fade_curve_added()
 {
-	if (m_clip->get_fade_in()) {
+    if (m_clip->has_fade_in()) {
 		fadein_length_changed();
 		fadein_mode_changed();
 		fadein_bending_changed();
@@ -365,7 +357,7 @@ void AudioClipEditDialog::fade_curve_added()
 		connect(m_clip->get_fade_in(), SIGNAL(bendValueChanged()), this, SLOT(fadein_bending_changed()));
 		connect(m_clip->get_fade_in(), SIGNAL(strengthValueChanged()), this, SLOT(fadein_strength_changed()));
 	}
-	if (m_clip->get_fade_out()) {
+    if (m_clip->has_fade_out()) {
 		fadeout_length_changed();
 		fadeout_mode_changed();
 		fadeout_bending_changed();

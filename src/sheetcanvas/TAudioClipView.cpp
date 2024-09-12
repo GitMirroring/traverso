@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2009 Remon Sijrier
+Copyright (C) 2005-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -72,11 +72,11 @@ TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioCl
     m_waitingForPeaks = false;
     m_progress = 0;
 
-    if (TFadeCurve* curve = m_clip->get_fade_in()) {
-        add_new_fade_curve_view(curve);
+    if (m_clip->has_fade_in()) {
+        add_new_fade_curve_view(m_clip->get_fade_in());
     }
-    if (TFadeCurve* curve = m_clip->get_fade_out()) {
-        add_new_fade_curve_view(curve);
+    if (m_clip->has_fade_out()) {
+        add_new_fade_curve_view(m_clip->get_fade_out());
     }
 
     m_gainCurveView = new TCurveView(m_sv, this, m_clip->get_plugin_chain()->get_fader()->get_curve());
@@ -720,45 +720,6 @@ void TAudioClipView::update_start_pos()
 {
     // 	printf("AudioClipView::update_start_pos()\n");
     setPos((double(m_clip->get_location()->get_start().universal_frame()) / m_sv->timeref_scalefactor), 0);
-}
-
-TCommand * TAudioClipView::fade_range()
-{
-    Q_ASSERT(m_sheet);
-    qreal x = cpointer().on_first_input_event_scene_x() - scenePos().x();
-
-    if (x < (m_boundingRect.width() / 2)) {
-        return clip_fade_in();
-    } 
-    return clip_fade_out();
-}
-
-TCommand * TAudioClipView::clip_fade_in( )
-{
-    if (! m_clip->get_fade_in()) {
-        // This implicitely creates the fadecurve
-        m_clip->set_fade_in(1);
-    }
-    return new FadeRange(m_clip, m_clip->get_fade_in(), m_sv->timeref_scalefactor);
-}
-
-TCommand * TAudioClipView::clip_fade_out( )
-{
-    if (! m_clip->get_fade_out()) {
-        m_clip->set_fade_out(1);
-    }
-    return new FadeRange(m_clip, m_clip->get_fade_out(), m_sv->timeref_scalefactor);
-}
-
-TCommand * TAudioClipView::reset_fade()
-{
-    Q_ASSERT(m_sheet);
-    qreal x = cpointer().on_first_input_event_scene_x() - scenePos().x();
-
-    if (x < (m_boundingRect.width() / 2)) {
-        return m_clip->reset_fade_in();
-    } 
-    return m_clip->reset_fade_out();
 }
 
 void TAudioClipView::position_changed()

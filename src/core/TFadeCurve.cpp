@@ -335,8 +335,8 @@ QPointF TFadeCurve::get_curve_point( float f)
 
 void TFadeCurve::set_range(double range)
 {
-    if (range <= 0.0f) {
-        range = 0.1;
+    if (range <= 1.0) {
+        range = 1.0;
     }
 
     TCurve::set_range(range);
