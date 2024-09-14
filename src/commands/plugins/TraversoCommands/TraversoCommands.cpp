@@ -78,6 +78,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_translation("Playhead", tr("Playhead"));
     m->add_translation("WorkCursor", tr("WorkCursor"));
     m->add_translation("Shuttle", tr("Shuttle"));
+    m->add_translation("Edge Trim", tr("Edge Trim"));
 
     // register meta objects
     m->add_meta_object(&TSheet::staticMetaObject,               tr("Sheet"));
