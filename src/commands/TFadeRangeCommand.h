@@ -15,17 +15,16 @@ public :
     TFadeRangeCommand(TAudioClip* clip, TFadeCurve* fadeIn, TFadeCurve* fadeOut, qint64 scalefactor);
     ~TFadeRangeCommand();
 
-    int begin_hold();
-    int finish_hold();
-    int prepare_actions();
-    int do_action();
-    int undo_action();
-    void cancel_action();
+    int begin_hold() override;
+    int finish_hold() override;
+    int prepare_actions() override;
+    int do_action() override;
+    int undo_action() override;
+    void cancel_action() override;
 
-    int jog();
+    int jog() override;
 
-    void set_cursor_shape(int useX, int useY);
-    bool wants_cursor_position_to_be_restored() const {return true;}
+    bool wants_cursor_position_to_be_restored() const  override {return true;}
 
 private :
     TFadeCurve*	m_fadeIn{nullptr};
@@ -43,13 +42,16 @@ private :
     FadeRangePrivate* frp;
 
     void do_keyboard_move();
+    void update_canvas_cursor_text();
 
 
 public slots:
     void next_snap_pos();
     void prev_snap_pos();
-    void move_left();
-    void move_right();
+    void move_left() override;
+    void move_right() override;
+    void move_up() override {}; // no support for moving up atm
+    void move_down() override {}; // no support for moving down atm
     void reset_length();
 };
 

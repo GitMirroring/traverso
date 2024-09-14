@@ -36,7 +36,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TLocation.h"
 #include "Utils.h"
 #include "TAddRemoveCommand.h"
-#include "PCommand.h"
 #include "Debugger.h"
 
 
@@ -371,7 +370,7 @@ bool TAudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef&
     return (trackExportStartLocation != TTimeRef::max_length() && trackExportEndLocation != TTimeRef());
 }
 
-TAudioClip* TAudioTrack::get_clip_after(const TTimeRef& pos)
+TAudioClip* TAudioTrack::get_clip_after(const TTimeRef& pos) const
 {
     for(TAudioClip* clip : m_guiAudioClips) {
         if (clip->get_location()->get_start() > pos) {
@@ -381,7 +380,17 @@ TAudioClip* TAudioTrack::get_clip_after(const TTimeRef& pos)
     return nullptr;
 }
 
-TAudioClip* TAudioTrack::get_clip_before(const TTimeRef& pos)
+TAudioClip *TAudioTrack::get_audio_clip_after(TAudioClip *audioClip) const
+{
+    auto index = m_guiAudioClips.indexOf(audioClip);
+    if (index >= 0 && (index + 1) < m_guiAudioClips.size()) {
+        return m_guiAudioClips.at(index + 1);
+    }
+
+    return nullptr;
+}
+
+TAudioClip* TAudioTrack::get_clip_before(const TTimeRef& pos) const
 {
     TTimeRef shortestDistance = TTimeRef::max_length();
     TAudioClip* nearest = nullptr;
@@ -397,6 +406,16 @@ TAudioClip* TAudioTrack::get_clip_before(const TTimeRef& pos)
     }
 
     return nearest;
+}
+
+TAudioClip *TAudioTrack::get_clip_at_location(const TTimeRef &location) const
+{
+    for(TAudioClip* clip : m_guiAudioClips) {
+        if (clip->get_location()->get_start() < location && clip->get_location()->get_end() > location) {
+            return clip;
+        }
+    }
+    return nullptr;
 }
 
 

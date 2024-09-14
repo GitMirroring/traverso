@@ -80,34 +80,6 @@ void TFadeRangeCommand::cancel_action()
     undo_action();
 }
 
-void TFadeRangeCommand::set_cursor_shape(int useX, int useY)
-{
-    Q_UNUSED(useX);
-    Q_UNUSED(useY);
-
-    cpointer().set_canvas_cursor_shape(":/cursorHoldLr");
-}
-
-int TFadeRangeCommand::jog()
-{
-    int deltaX = frp->origX - (cpointer().mouse_viewport_x());
-    TTimeRef location = TTimeRef(m_fadeInNewRange);
-
-    if (m_fadeIn) {
-        m_fadeInNewRange = m_fadeInOrigRange - ( deltaX * frp->scalefactor);
-        m_fadeIn->set_range( m_fadeInNewRange );
-        location = TTimeRef(m_fadeInNewRange);
-    }
-    if (m_fadeOut) {
-        m_fadeOutNewRange = m_fadeOutOrigRange + (deltaX * frp->scalefactor * (m_fadeIn ? -1 : 1));
-        m_fadeOut->set_range(m_fadeOutNewRange);
-        location = TTimeRef(m_fadeOutNewRange);
-    }
-
-    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_ms_3(location));
-
-    return 1;
-}
 
 void TFadeRangeCommand::move_left()
 {
@@ -186,6 +158,32 @@ void TFadeRangeCommand::do_keyboard_move()
 {
     ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
 
+    do_action();
+
+    update_canvas_cursor_text();
+}
+
+int TFadeRangeCommand::jog()
+{
+    int deltaX = frp->origX - (cpointer().mouse_viewport_x());
+
+    if (m_fadeIn) {
+        m_fadeInNewRange = m_fadeInOrigRange - ( deltaX * frp->scalefactor);
+    }
+    if (m_fadeOut) {
+        m_fadeOutNewRange = m_fadeOutOrigRange + (deltaX * frp->scalefactor * (m_fadeIn ? -1 : 1));
+    }
+
+    do_action();
+
+    update_canvas_cursor_text();
+
+    return 1;
+}
+
+
+void TFadeRangeCommand::update_canvas_cursor_text()
+{
     QString location;
 
     if (m_fadeIn) {
@@ -195,10 +193,10 @@ void TFadeRangeCommand::do_keyboard_move()
         location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
     }
     if (m_fadeIn && m_fadeOut) {
-        location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeInNewRange)) + " - " + TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
+        location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeInNewRange)) + "  |  " + TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
     }
 
     cpointer().set_canvas_cursor_text(location);
-
-    do_action();
 }
+
+

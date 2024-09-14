@@ -323,6 +323,23 @@ qreal TContextPointer::on_first_input_event_scene_x() const
     return m_viewPort->map_to_scene(m_mouseData->onFirstInputEventPos).x();
 }
 
+TTimeRef TContextPointer::on_first_input_event_timeref_location() const {
+    if (!m_viewPort) {
+        return TTimeRef();
+    }
+
+    return TTimeRef(on_first_input_event_scene_x() * m_viewPort->get_timeref_scale_factor());
+}
+
+TTimeRef TContextPointer::timeref_location() const
+{
+    if (!m_viewPort) {
+        return TTimeRef();
+    }
+
+    return TTimeRef(scene_x() * m_viewPort->get_timeref_scale_factor());
+}
+
 QPointF TContextPointer::on_first_input_event_scene_pos() const
 {
    if (!m_viewPort) {

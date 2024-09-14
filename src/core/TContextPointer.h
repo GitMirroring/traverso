@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2005-2010 Remon Sijrier
+    Copyright (C) 2005-2024 Remon Sijrier
 
     This file is part of Traverso
 
@@ -23,6 +23,7 @@
 #define TCONTEXTPOINTER_H
 
 #include <QObject>
+#include "TTimeRef.h"
 
 class TViewPortInterface;
 class TContextItem;
@@ -104,6 +105,9 @@ public:
          * @return The scene x coordinate on first input event, -1 if no Port was set
      */
     qreal on_first_input_event_scene_x() const;
+
+    TTimeRef on_first_input_event_timeref_location() const;
+    TTimeRef timeref_location() const;
 
     QPointF on_first_input_event_scene_pos() const;
 

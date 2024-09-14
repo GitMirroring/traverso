@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2005-2007 Remon Sijrier 
+    Copyright (C) 2005-2024 Remon Sijrier
  
     This file is part of Traverso
  
@@ -19,54 +19,53 @@
  
 */
 
-#ifndef SPLITCLIPACTION_H
-#define SPLITCLIPACTION_H
+#ifndef TSPLIT_CLIP_COMMAND_H
+#define TSPLIT_CLIP_COMMAND_H
 
 #include "TMoveCommand.h"
 #include "TTimeRef.h"
 
 class TAudioClip;
 class TAudioTrack;
-class TSheetView;
 class TSession;
 class TAudioClipView;
 class TLineView;
 
-class SplitClip : public TMoveCommand
+class TSplitAudioClipCommand : public TMoveCommand
 {
-        Q_OBJECT
+    Q_OBJECT
 public :
-	SplitClip(TAudioClipView* view);
-        ~SplitClip() {}
+    TSplitAudioClipCommand(TAudioClipView* view);
+    ~TSplitAudioClipCommand() {}
 
-        int prepare_actions();
-        int do_action();
-        int undo_action();
+    int prepare_actions();
+    int do_action();
+    int undo_action();
 
-	int begin_hold();
-	int finish_hold();
-	void cancel_action();
-	void set_cursor_shape(int useX, int useY);
+    int begin_hold();
+    int finish_hold();
+    void cancel_action();
 
-	int jog();
-	
+    int jog();
+
 private :
-        TSession*  m_session;
-	TAudioClipView* m_cv;
-        TAudioTrack* m_track;
-        TAudioClip* m_clip;
-        TAudioClip* leftClip;
-        TAudioClip* rightClip;
-	TTimeRef m_splitPoint;
-	TLineView* m_splitcursor{};
+    TSession*  m_session;
+    TAudioClipView* m_cv;
+    TAudioTrack* m_track;
+    TAudioClip* m_clip;
+    TAudioClip* leftClip{nullptr};
+    TAudioClip* rightClip{nullptr};
+    TTimeRef m_splitLocation{};
+    TLineView* m_splitcursor{};
 
-        void do_keyboard_move(const TTimeRef &location);
+    void do_keyboard_move(const TTimeRef &location);
+    void update_canvas_cursor_text() const;
 
 public slots:
-        void move_left();
-        void move_right();
-        void next_snap_pos();
-        void prev_snap_pos();
+    void move_left();
+    void move_right();
+    void next_snap_pos();
+    void prev_snap_pos();
 
 };
 

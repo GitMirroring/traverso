@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007-2010 Remon Sijrier
+Copyright (C) 2007-2024 Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,19 +19,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TRAVERSO_COMMANDS_H
-#define TRAVERSO_COMMANDS_H
+#ifndef TTRAVERSO_COMMANDS_H
+#define TTRAVERSO_COMMANDS_H
 
 
 #include <TCommandPlugin.h>
 
 class TShortCutFunction;
 class TShortCutManager;
-
-const bool USE_X = true;
-const bool USE_Y = true;
-const bool NO_X = false;
-const bool NO_Y = false;
 
 class TraversoCommands : public TCommandPlugin
 {
@@ -44,6 +39,12 @@ public:
     TCommand* create(QObject* obj, const QString& commandName, QVariantList arguments);
 
 private:
+
+    const bool USE_X = true;
+    const bool USE_Y = true;
+    const bool NO_X = false;
+    const bool NO_Y = false;
+
     enum TraversoCommand {
         NoCommand,
 		GainCommand,
@@ -60,7 +61,8 @@ private:
 		ClipSelectionCommand,
 		MoveClipCommand,
 		MoveTrackCommand,
-        SplitClipCommand,
+        SplitAudioClipCommand,
+        AudioClipDualTrimCommand,
 		CropClipCommand,
 		ArmTracksCommand,
 		ZoomCommand,

@@ -25,6 +25,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QPointF>
 #include <QList>
 
+#include "TTimeRef.h"
+
 class TContextItem;
 
 class TViewPortInterface
@@ -55,6 +57,17 @@ public:
 
     virtual void grab_mouse() = 0;
     virtual void release_mouse() = 0;
+
+    void set_timeref_scale_factor(qint64 timeRefScaleFactor) {
+        m_timeRefScaleFactor = timeRefScaleFactor;
+    }
+    qint64 get_timeref_scale_factor() const {
+        return m_timeRefScaleFactor;
+    }
+
+private:
+    qint64      m_timeRefScaleFactor{TTimeRef::UNIVERSAL_SAMPLE_RATE};
+
 };
 
 #endif // TVIEWPORTINTERFACE_H

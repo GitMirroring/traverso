@@ -41,6 +41,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInputEventDispatcher.h"
 #include "TShortCutFunction.h"
 #include "TShortCutManager.h"
+#include "TSplitAudioClipCommand.h"
 #include "TTimeLineRuler.h"
 #include "TVUMeterView.h"
 #include "libtraversosheetcanvas.h"
@@ -110,10 +111,11 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&PlayHeadMove::staticMetaObject,         tr("Move Play Head"));
     m->add_meta_object(&MoveEdge::staticMetaObject,             tr("Move Clip Edge"));
     m->add_meta_object(&CropClip::staticMetaObject,             tr("Cut Clip (Magnetic)"));
-    m->add_meta_object(&TFadeRangeCommand::staticMetaObject,            tr("Fade Length"));
+    m->add_meta_object(&TFadeRangeCommand::staticMetaObject,    tr("Fade Length"));
     m->add_meta_object(&FadeBend::staticMetaObject,             tr("Bend Factor"));
     m->add_meta_object(&FadeStrength::staticMetaObject,         tr("Strength Factor"));
-    m->add_meta_object(&SplitClip::staticMetaObject,            tr("Split Clip"));
+    m->add_meta_object(&TSplitAudioClipCommand::staticMetaObject,tr("Split Clip"));
+    m->add_meta_object(&TAudioClipDualTrimCommand::staticMetaObject, tr("Audio Clip Dual Trim"));
     m->add_meta_object(&TPanKnobView::staticMetaObject,         tr("Pan Knob"));
     m->add_meta_object(&TTransport::staticMetaObject,           tr("Transport"));
     m->add_meta_object(&SpectralMeterView::staticMetaObject,    tr("Spectral Analyzer"));
@@ -200,7 +202,7 @@ void TraversoCommands::load(TShortCutManager* m)
     add_function(&TAudioClipView::staticMetaObject, tr("Magnetic Cut"),     "CropClip",         CropClipCommand, "", USE_X, USE_Y);
 
     add_function(&TAudioClipView::staticMetaObject, tr("Adjust Length"),    "AudioClipFadeLength",  FadeRangeCommand, "", USE_X, NO_Y);
-    add_function(&TAudioClipView::staticMetaObject, tr("Adjust Length"),    "AudioClipFadeLengthBoth",  FadeRangeCommand, "", USE_X, NO_Y, QVariantList() << "both");
+    add_function(&TAudioClipView::staticMetaObject, tr("Adjust Length Both"),    "AudioClipFadeLengthBoth",  FadeRangeCommand, "", USE_X, NO_Y, QVariantList() << "both");
     add_function(&TFadeCurveView::staticMetaObject, tr("Adjust Bend"),      "FadeCurveBend",    FadeCurveBendCommand, "", NO_X, USE_Y);
     add_function(&TFadeCurveView::staticMetaObject, tr("Adjust Strength"),  "FadeCurveStrenght",FadeCurveStrengthCommand, "", USE_X, NO_Y);
 
@@ -221,7 +223,8 @@ void TraversoCommands::load(TShortCutManager* m)
 
     add_function(&TSheetView::staticMetaObject,     tr("Shuttle"),          "Shuttle",          ShuttleCommand,     "", USE_X, USE_Y);
 
-    add_function(&TAudioClipView::staticMetaObject, tr("Split"),            "SplitClip",        SplitClipCommand,   "", USE_X, NO_Y);
+    add_function(&TAudioClipView::staticMetaObject, tr("Split"),            "SplitClip",        SplitAudioClipCommand,   "", USE_X, NO_Y);
+    add_function(&TAudioClipView::staticMetaObject,tr("Dual Trim"),         "AudioClipDualTrim",AudioClipDualTrimCommand,"", USE_X, NO_Y);
 
     add_function(&TTrack::staticMetaObject,         tr("Track Pan"),        "TrackPan",         TrackPanCommand);
     add_function(&TPanKnobView::staticMetaObject,   tr("Pan"),              "PanKnobPanorama",  TrackPanCommand);
@@ -639,7 +642,6 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         return ied().failure();
     }
 
-
     case MoveEdgeCommand:
     {
         TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
@@ -656,10 +658,18 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
         }
     }
 
-    case SplitClipCommand:
+    case AudioClipDualTrimCommand:
+    {
+        TAudioClipView* audioClipView = qobject_cast<TAudioClipView*>(obj);
+        Q_ASSERT(audioClipView);
+
+        return new TAudioClipDualTrimCommand(audioClipView->get_sheetview(), audioClipView->get_clip()->get_track());
+    }
+
+    case SplitAudioClipCommand:
     {
         if (auto view = qobject_cast<TAudioClipView*>(obj)) {
-            return new SplitClip(view);
+            return new TSplitAudioClipCommand(view);
         }
         return ied().failure();
     }

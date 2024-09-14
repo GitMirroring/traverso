@@ -1,4 +1,4 @@
-#include "SplitClip.h"
+#include "TSplitAudioClipCommand.h"
 #include "MoveClip.h"
 #include "MoveCurveNode.h"
 #include "MoveMarker.h"
@@ -24,3 +24,4 @@
 #include "ArrowKeyBrowser.h"
 #include "TGainGroupCommand.h"
 #include "TFadeRangeCommand.h"
+#include "TAudioClipDualTrimCommand.h"

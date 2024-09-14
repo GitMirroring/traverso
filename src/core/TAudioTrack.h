@@ -51,8 +51,12 @@ public :
     TAudioClip* init_recording();
     TCommand* add_clip(const TAudioClipAddRemoveSpec &spec);
     TCommand* remove_clip(const TAudioClipAddRemoveSpec &spec);
-    TAudioClip* get_clip_after(const TTimeRef& pos);
-    TAudioClip* get_clip_before(const TTimeRef& pos);
+
+    TAudioClip* get_clip_after(const TTimeRef& pos) const;
+    TAudioClip* get_audio_clip_after(TAudioClip* audioClip) const;
+    TAudioClip* get_clip_before(const TTimeRef& pos) const;
+    TAudioClip* get_clip_at_location(const TTimeRef& location) const;
+
     TSheet* get_sheet() const {return m_sheet;}
     QDomNode get_state(QDomDocument doc, bool istemplate=false);
     QList<TAudioClip*> get_audioclips() const {return  m_guiAudioClips;}

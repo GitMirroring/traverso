@@ -30,7 +30,8 @@ MoveMarker.cpp
 MovePlugin.cpp
 MoveTrack.cpp
 PCommand.cpp
-SplitClip.cpp
+TSplitAudioClipCommand.cpp TSplitAudioClipCommand.h
+TAudioClipDualTrimCommand.h TAudioClipDualTrimCommand.cpp
 TrackPan.cpp
 Zoom.cpp
 ArmTracks.cpp
