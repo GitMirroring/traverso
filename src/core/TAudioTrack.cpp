@@ -115,7 +115,7 @@ TTimeRef TAudioTrack::get_end_location() const
 {
     TTimeRef endLocation{};
     if (!m_guiAudioClips.isEmpty()) {
-        endLocation = m_guiAudioClips.last()->get_location()->get_end();
+        endLocation = m_guiAudioClips.last()->get_location_end();
     }
     return endLocation;
 }
@@ -357,12 +357,12 @@ bool TAudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef&
 
     for(TAudioClip* clip : m_guiAudioClips) {
         if (! clip->is_muted() ) {
-            if (clip->get_location()->get_end() > trackExportEndLocation) {
-                trackExportEndLocation = clip->get_location()->get_end();
+            if (clip->get_location_end() > trackExportEndLocation) {
+                trackExportEndLocation = clip->get_location_end();
             }
 
-            if (clip->get_location()->get_start() < trackExportStartLocation) {
-                trackExportStartLocation = clip->get_location()->get_start();
+            if (clip->get_location_start() < trackExportStartLocation) {
+                trackExportStartLocation = clip->get_location_start();
             }
         }
     }
@@ -373,7 +373,7 @@ bool TAudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef&
 TAudioClip* TAudioTrack::get_clip_after(const TTimeRef& pos) const
 {
     for(TAudioClip* clip : m_guiAudioClips) {
-        if (clip->get_location()->get_start() > pos) {
+        if (clip->get_location_start() > pos) {
             return clip;
         }
     }
@@ -390,14 +390,25 @@ TAudioClip *TAudioTrack::get_audio_clip_after(TAudioClip *audioClip) const
     return nullptr;
 }
 
+TAudioClip *TAudioTrack::get_audio_clip_before(TAudioClip *audioClip) const
+{
+    auto index = m_guiAudioClips.indexOf(audioClip);
+    if ((index - 1) >= 0) {
+        return m_guiAudioClips.at(index - 1);
+    }
+
+    return nullptr;
+}
+
+
 TAudioClip* TAudioTrack::get_clip_before(const TTimeRef& pos) const
 {
     TTimeRef shortestDistance = TTimeRef::max_length();
     TAudioClip* nearest = nullptr;
 
     for(TAudioClip* clip : m_guiAudioClips) {
-        if (clip->get_location()->get_start() < pos) {
-            TTimeRef diff = pos - clip->get_location()->get_start();
+        if (clip->get_location_start() < pos) {
+            TTimeRef diff = pos - clip->get_location_start();
             if (diff < shortestDistance) {
                 shortestDistance = diff;
                 nearest = clip;
@@ -408,10 +419,11 @@ TAudioClip* TAudioTrack::get_clip_before(const TTimeRef& pos) const
     return nearest;
 }
 
+
 TAudioClip *TAudioTrack::get_clip_at_location(const TTimeRef &location) const
 {
     for(TAudioClip* clip : m_guiAudioClips) {
-        if (clip->get_location()->get_start() < location && clip->get_location()->get_end() > location) {
+        if (clip->get_location_start() < location && clip->get_location_end() > location) {
             return clip;
         }
     }
@@ -462,7 +474,7 @@ void TAudioTrack::private_audioclip_added(TAudioClip *clip)
 {
     m_guiAudioClips.append(clip);
     std::sort(m_guiAudioClips.begin(), m_guiAudioClips.end(), [&](TAudioClip* left, TAudioClip* right) {
-        return left->get_location()->get_start() < right->get_location()->get_start();
+        return left->get_location_start() < right->get_location_start();
     });
     emit audioClipAdded(clip);
 }
@@ -476,7 +488,7 @@ void TAudioTrack::private_audioclip_removed(TAudioClip* clip)
 void TAudioTrack::clip_position_changed(TAudioClip * clip)
 {
     std::sort(m_guiAudioClips.begin(), m_guiAudioClips.end(), [&](TAudioClip* left, TAudioClip* right) {
-        return left->get_location()->get_start() < right->get_location()->get_start();
+        return left->get_location_start() < right->get_location_start();
     });
 
     if (m_sheet && m_sheet->is_transport_rolling()) {

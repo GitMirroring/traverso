@@ -55,6 +55,7 @@ public :
     TAudioClip* get_clip_after(const TTimeRef& pos) const;
     TAudioClip* get_audio_clip_after(TAudioClip* audioClip) const;
     TAudioClip* get_clip_before(const TTimeRef& pos) const;
+    TAudioClip* get_audio_clip_before(TAudioClip* audioClip) const;
     TAudioClip* get_clip_at_location(const TTimeRef& location) const;
 
     TSheet* get_sheet() const {return m_sheet;}
