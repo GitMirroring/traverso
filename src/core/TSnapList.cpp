@@ -87,8 +87,8 @@ void TSnapList::update_snaplist()
 			continue;
 		}
 
-		TTimeRef startlocation = clip->get_location()->get_start();
-        TTimeRef endlocation = clip->get_location()->get_end();
+        TTimeRef startlocation = clip->get_location_start();
+        TTimeRef endlocation = clip->get_location_end();
 
 		if (startlocation > endlocation) {
 			PERROR("clip xstart > xend, this must be a programming error!");

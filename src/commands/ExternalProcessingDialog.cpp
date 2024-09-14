@@ -31,17 +31,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TProject.h>
 #include <TResourcesManager.h>
 #include <Utils.h>
-#include "TLocation.h"
 #include "TMainWindow.h"
 
 #include <QFile>
 #include <QCompleter>
-
-
-
-#include "Debugger.h"
-
-
 
 ExternalProcessingDialog::ExternalProcessingDialog(QWidget * parent, AudioClipExternalProcessing* acep)
 	: QDialog(parent)
@@ -219,7 +212,7 @@ void ExternalProcessingDialog::process_finished(int exitcode, QProcess::ExitStat
 	// Clips live at project level, we have to set its Sheet, Track and ReadSource explicitely!!
 	m_acep->m_resultingclip->set_sheet(m_acep->m_clip->get_sheet());
 	m_acep->m_resultingclip->set_track(m_acep->m_clip->get_track());
-	m_acep->m_resultingclip->set_location_start(m_acep->m_clip->get_location()->get_start());
+    m_acep->m_resultingclip->set_location_start(m_acep->m_clip->get_location_start());
 	
 	close();
 }

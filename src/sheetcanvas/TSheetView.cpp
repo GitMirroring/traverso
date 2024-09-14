@@ -1128,7 +1128,7 @@ TCommand* TSheetView::browse_to_next_context_item()
     if (data.currentContext == "TAudioClipView") {
         Q_ASSERT(data.atv);
         Q_ASSERT(data.acv);
-        TAudioClip* nextClip = data.atv->get_track()->get_clip_after(data.acv->get_clip()->get_location()->get_start());
+        TAudioClip* nextClip = data.atv->get_track()->get_clip_after(data.acv->get_clip()->get_location_start());
 		if (!nextClip) {
 			return nullptr;
 		}
@@ -1185,7 +1185,7 @@ TCommand* TSheetView::browse_to_previous_context_item()
 	}
 
     if (data.currentContext == "TAudioClipView") {
-        TAudioClip* nextClip = data.atv->get_track()->get_clip_before(data.acv->get_clip()->get_location()->get_start());
+        TAudioClip* nextClip = data.atv->get_track()->get_clip_before(data.acv->get_clip()->get_location_start());
 		if (!nextClip) {
 			return nullptr;
 		}

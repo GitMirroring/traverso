@@ -36,9 +36,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "Zoom.h"
 
-
-
-
 #include "Debugger.h"
 
 /**
@@ -142,7 +139,7 @@ MoveClip::MoveClip(TViewItem* view, const QVariantList& args)
             foreach(TAudioTrack* track, tracks) {
                 QList<TAudioClip*> clips = track->get_audioclips();
                 foreach(TAudioClip* clip, clips) {
-                    if (clip->get_location()->get_end() > currentLocation) {
+                    if (clip->get_location_end() > currentLocation) {
                         movingClips.append(clip);
                     }
                 }

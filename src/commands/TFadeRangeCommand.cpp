@@ -1,3 +1,24 @@
+/*
+Copyright (C) 2024 Remon Sijrier
+
+This file is part of Traverso
+
+Traverso is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
+
+*/
+
 #include "TFadeRangeCommand.h"
 
 #include "TFadeCurve.h"
@@ -125,13 +146,13 @@ void TFadeRangeCommand::reset_length()
 void TFadeRangeCommand::next_snap_pos()
 {
     if (m_fadeIn) {
-        TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location()->get_start() + m_fadeInNewRange);
-        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
+        TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location_start() + m_fadeInNewRange);
+        TTimeRef newpos = snap - frp->clip->get_location_start();
         m_fadeInNewRange = newpos.universal_frame();
     }
     if (m_fadeOut) {
-        TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location()->get_start() + m_fadeOutNewRange) * (m_fadeIn ? -1 : 1);
-        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
+        TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location_start() + m_fadeOutNewRange) * (m_fadeIn ? -1 : 1);
+        TTimeRef newpos = snap - frp->clip->get_location_start();
         m_fadeOutNewRange = newpos.universal_frame();
     }
 
@@ -142,13 +163,13 @@ void TFadeRangeCommand::next_snap_pos()
 void TFadeRangeCommand::prev_snap_pos()
 {
     if (m_fadeIn) {
-        TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location()->get_start() + m_fadeInNewRange);
-        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
+        TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location_start() + m_fadeInNewRange);
+        TTimeRef newpos = snap - frp->clip->get_location_start();
         m_fadeInNewRange = newpos.universal_frame();
     }
     if (m_fadeOut) {
-        TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location()->get_start() + m_fadeOutNewRange);
-        TTimeRef newpos = snap - frp->clip->get_location()->get_start();
+        TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location_start() + m_fadeOutNewRange);
+        TTimeRef newpos = snap - frp->clip->get_location_start();
         m_fadeOutNewRange = newpos.universal_frame();
     }
     do_keyboard_move();

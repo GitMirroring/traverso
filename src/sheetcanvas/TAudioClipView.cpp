@@ -719,7 +719,7 @@ void TAudioClipView::calculate_bounding_rect()
 void TAudioClipView::update_start_pos()
 {
     // 	printf("AudioClipView::update_start_pos()\n");
-    setPos((double(m_clip->get_location()->get_start().universal_frame()) / m_sv->timeref_scalefactor), 0);
+    setPos((double(m_clip->get_location_start().universal_frame()) / m_sv->timeref_scalefactor), 0);
 }
 
 void TAudioClipView::position_changed()

@@ -31,7 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheet.h"
 #include "TAudioTrack.h"
 #include "TInputEventDispatcher.h"
-#include "TLocation.h"
 #include <limits.h>
 
 
@@ -91,13 +90,13 @@ int CropClip::prepare_actions()
 	rightClip = resources_manager()->get_clip(m_clip->get_id());
 
 	leftClip->set_sheet(m_clip->get_sheet());
-	leftClip->set_location_start(m_clip->get_location()->get_start());
-	leftClip->set_right_edge(TTimeRef(x1 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location()->get_start());
+    leftClip->set_location_start(m_clip->get_location_start());
+    leftClip->set_right_edge(TTimeRef(x1 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location_start());
     leftClip->reset_fade_out();
 
 	rightClip->set_sheet(m_clip->get_sheet());
-	rightClip->set_left_edge(TTimeRef(x2 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location()->get_start());
-    rightClip->set_location_start(leftClip->get_location()->get_end());
+    rightClip->set_left_edge(TTimeRef(x2 * m_cv->get_sheetview()->timeref_scalefactor) + m_clip->get_location_start());
+    rightClip->set_location_start(leftClip->get_location_end());
     rightClip->reset_fade_in();
 
 	return 1;

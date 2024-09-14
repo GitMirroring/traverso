@@ -58,7 +58,7 @@ int TSplitAudioClipCommand::prepare_actions()
         m_splitLocation = TTimeRef(cpointer().scene_x() * d->sv->timeref_scalefactor);
     }
 
-    if (m_splitLocation <= m_clip->get_location()->get_start() || m_splitLocation >= m_clip->get_location()->get_start() + m_clip->get_length()) {
+    if (m_splitLocation <= m_clip->get_location_start() || m_splitLocation >= m_clip->get_location_start() + m_clip->get_length()) {
         return -1;
     }
 
@@ -66,7 +66,7 @@ int TSplitAudioClipCommand::prepare_actions()
     rightClip = resources_manager()->get_clip(m_clip->get_id());
 
     leftClip->set_sheet(m_clip->get_sheet());
-    leftClip->set_location_start(m_clip->get_location()->get_start());
+    leftClip->set_location_start(m_clip->get_location_start());
     leftClip->set_right_edge(m_splitLocation);
     leftClip->reset_fade_out();
 
@@ -206,11 +206,11 @@ void TSplitAudioClipCommand::do_keyboard_move(const TTimeRef &location)
 {
     m_splitLocation = location;
 
-    if (m_splitLocation < m_clip->get_location()->get_start()) {
-        m_splitLocation = m_clip->get_location()->get_start();
+    if (m_splitLocation < m_clip->get_location_start()) {
+        m_splitLocation = m_clip->get_location_start();
     }
-    if (m_splitLocation > m_clip->get_location()->get_end()) {
-        m_splitLocation = m_clip->get_location()->get_end();
+    if (m_splitLocation > m_clip->get_location_end()) {
+        m_splitLocation = m_clip->get_location_end();
     }
 
     QPointF pos = m_cv->mapFromScene(m_splitLocation / d->sv->timeref_scalefactor, m_splitcursor->scenePos().y());

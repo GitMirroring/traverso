@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 
 #include "TAudioProcessingNode.h"
-#include "TLocation.h"
 #include "TProcessCallBackData.h"
 #include "TRealTimeLinkedList.h"
 #include "TTimeRef.h"
@@ -41,6 +40,7 @@ class TPeak;
 class AudioBus;
 class TAudioPluginChain;
 class TFadeCurve;
+class TLocation;
 
 class TAudioClip : public TAudioProcessingNode
 {
@@ -100,6 +100,9 @@ public:
     TReadAudioSource* get_readsource() const;
     inline TLocation* get_location() const {return m_location;}
 
+    TTimeRef get_location_start() const;
+    TTimeRef get_location_end() const;
+
     QDomNode get_dom_node() const;
 
     bool is_take() const;
@@ -109,7 +112,7 @@ public:
     bool is_readsource_invalid() const {return !m_isReadSourceValid;}
 
     bool operator<(const TAudioClip &other){
-        return this->get_location()->get_start() < other.get_location()->get_start();
+        return this->get_location_start() < other.get_location_start();
     }
 
     bool is_moving() const {return m_isMoving;}

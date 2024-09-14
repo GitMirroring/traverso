@@ -76,7 +76,7 @@ void TAudioClipGroup::move_to(int trackIndex, const TTimeRef &location)
             }
         }
 
-        TTimeRef offset = clip->get_location()->get_start() - m_location->get_start();
+        TTimeRef offset = clip->get_location_start() - m_location->get_start();
         clip->set_location_start(location + offset);
     }
 
@@ -103,11 +103,11 @@ void TAudioClipGroup::update_state()
         if (index > m_bottomTrackIndex) {
             m_bottomTrackIndex = index;
         }
-        if (m_location->get_start() > clip->get_location()->get_start()) {
-            m_location->set_start(this, clip->get_location()->get_start());
+        if (m_location->get_start() > clip->get_location_start()) {
+            m_location->set_start(this, clip->get_location_start());
         }
-        if (m_location->get_end() < clip->get_location()->get_end()) {
-            m_location->set_end(this, clip->get_location()->get_end());
+        if (m_location->get_end() < clip->get_location_end()) {
+            m_location->set_end(this, clip->get_location_end());
         }
     }
 }
@@ -134,7 +134,7 @@ QList<TAudioClip*> TAudioClipGroup::copy_clips()
         TAudioClip* newclip = resources_manager()->get_clip(clip->get_id());
         newclip->set_sheet(clip->get_sheet());
         newclip->set_track(clip->get_track());
-        newclip->set_location_start(clip->get_location()->get_start());
+        newclip->set_location_start(clip->get_location_start());
         newclips.append(newclip);
     }
 

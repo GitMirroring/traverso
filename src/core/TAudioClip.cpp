@@ -919,6 +919,16 @@ TReadAudioSource * TAudioClip::get_readsource() const
     return m_readSource;
 }
 
+TTimeRef TAudioClip::get_location_start() const
+{
+    return m_location->get_start();
+}
+
+TTimeRef TAudioClip::get_location_end() const
+{
+    return m_location->get_end();
+}
+
 void TAudioClip::set_as_moving(bool moving)
 {
     m_isMoving = moving;

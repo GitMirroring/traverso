@@ -63,13 +63,13 @@ int MoveEdge::begin_hold()
 {
 	PENTER;
 	if (m_edge == "set_left_edge") {
-		m_newPos = m_originalPos = m_clip->get_location()->get_start();
+        m_newPos = m_originalPos = m_clip->get_location_start();
         m_otherEdgePos = m_clip->get_location()->get_end();
 		cpointer().set_canvas_cursor_text(tr("Left Edge"), 800);
 	}
 	if (m_edge == "set_right_edge") {
-        m_newPos = m_originalPos = m_clip->get_location()->get_end();
-		m_otherEdgePos = m_clip->get_location()->get_start();
+        m_newPos = m_originalPos = m_clip->get_location_end();
+        m_otherEdgePos = m_clip->get_location_start();
 		cpointer().set_canvas_cursor_text(tr("Right Edge"), 800);
 	}
 
@@ -142,12 +142,12 @@ int MoveEdge::jog()
 
 	if (m_edge == "set_right_edge") {
 		m_clip->set_right_edge(m_newPos);
-        m_newPos = m_clip->get_location()->get_end();
+        m_newPos = m_clip->get_location_end();
 	}
 
 	if (m_edge == "set_left_edge") {
 		m_clip->set_left_edge(m_newPos);
-		m_newPos = m_clip->get_location()->get_start();
+        m_newPos = m_clip->get_location_start();
 	}
 
     cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
@@ -199,11 +199,11 @@ void MoveEdge::do_keyboard_move()
 	do_action();
 
 	if (m_edge == "set_right_edge") {
-        m_newPos = m_clip->get_location()->get_end();
+        m_newPos = m_clip->get_location_end();
 	}
 
 	if (m_edge == "set_left_edge") {
-		m_newPos = m_clip->get_location()->get_start();
+        m_newPos = m_clip->get_location_start();
 	}
 
     cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newPos, d->sv->timeref_scalefactor));

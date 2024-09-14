@@ -31,7 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheetView.h"
 #include "TSheet.h"
 #include "TAudioTrackView.h"
-#include "TLocation.h"
 #include "TViewItem.h"
 #include "TAudioFileImportCommand.h"
 #include "CommandGroup.h"
@@ -152,7 +151,7 @@ void TClipsViewPort::dropEvent(QDropEvent* event )
 				clip->set_state(clip->get_dom_node());
 			}
             clip->set_location_start(startpos);
-            startpos = clip->get_location()->get_end();
+            startpos = clip->get_location_end();
 			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
 			group->add_command(arc);
 			continue;
@@ -164,7 +163,7 @@ void TClipsViewPort::dropEvent(QDropEvent* event )
 			clip->set_sheet(m_importTrack->get_sheet());
 			clip->set_track(m_importTrack);
 			clip->set_location_start(startpos);
-            startpos = clip->get_location()->get_end();
+            startpos = clip->get_location_end();
 			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
 			group->add_command(arc);
 		}
