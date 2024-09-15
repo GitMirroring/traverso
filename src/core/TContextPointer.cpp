@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 #include "Debugger.h"
+#include "qapplication.h"
 
 
 /**
@@ -57,6 +58,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 struct TMouseData {
     QPoint  onFirstInputEventPos;
+    QPoint onFirstInputEventGlobalMousePos;
     QPoint  jogStartGlobalMousePos;   // global Mouse Screen position at jog start
     QPoint  viewPortMousePos;
     QPointF  globalMousePos;           // global Mouse Screen position while holding
@@ -375,6 +377,16 @@ QPointF TContextPointer::get_global_mouse_pos() const
     return m_mouseData->globalMousePos;
 }
 
+void TContextPointer::restore_global_mouse_pos_after_context_menu_dispatch() const
+{
+    QCursor::setPos(m_mouseData->onFirstInputEventGlobalMousePos);
+    // Although the global mouse cursor is now back at it's original position,
+    // opening a context menu means we lost focus of the ViewPort and the
+    // QCursor::setPos() does not give us our ViewPort focus back unfortunately.
+    // Calling qApp->processEvents() apparently does:
+    qApp->processEvents();
+}
+
 void TContextPointer::update_mouse_positions(const QPoint &pos, const QPointF &globalPos)
 {
     m_mouseData->viewPortMousePos = pos;
@@ -456,6 +468,7 @@ void TContextPointer::prepare_for_shortcut_dispatch()
 
     m_onFirstInputEventActiveContextItems = m_activeContextItems;
     m_mouseData->onFirstInputEventPos = m_mouseData->viewPortMousePos;
+    m_mouseData->onFirstInputEventGlobalMousePos = QCursor::pos();
 }
 
 void TContextPointer::remove_from_active_context_list(TContextItem *item)

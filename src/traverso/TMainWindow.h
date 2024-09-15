@@ -204,7 +204,6 @@ public slots :
     void show_settings_dialog();
     void show_settings_dialog_sound_system_page();
     void open_help_browser();
-    void process_context_menu_action(QAction* action);
     void set_fade_in_shape(QAction* action);
     void set_fade_out_shape(QAction* action);
     void config_changed();
@@ -254,6 +253,7 @@ private slots:
     void update_temp_follow_state(bool state);
     void track_finder_model_index_changed(const QModelIndex& index);
     void track_finder_return_pressed();
+    void context_menu_action_triggered(QAction* action);
 
     TCommand* undo();
     TCommand* redo();

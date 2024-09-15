@@ -147,6 +147,7 @@ public:
     bool left_mouse_click_bypasses_jog() const {return m_mouseLeftClickBypassesJog;}
 
     QPointF get_global_mouse_pos() const;
+    void restore_global_mouse_pos_after_context_menu_dispatch() const;
 
     void update_mouse_positions(const QPoint &mouse_viewport_pos, const QPointF &globalPos);
     void request_viewport_to_detect_items_below_cursor();

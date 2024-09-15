@@ -986,15 +986,6 @@ void TMainWindow::set_project_actions_enabled(bool enable)
 }
 
 
-void TMainWindow::process_context_menu_action( QAction * action )
-{
-	QMenu* menu = qobject_cast<QMenu*>(action->parent());
-	QCursor::setPos(menu->pos());
-	qApp->processEvents();
-	TShortCutFunction* function = (TShortCutFunction*) action->data().value<void*>();
-	ied().dispatch_shortcut_from_contextmenu(function);
-}
-
 DISPATCH_RULE_IS_ALWAYS TCommand * TMainWindow::show_context_menu( )
 {
 	QList<QObject* > items;
@@ -1073,9 +1064,8 @@ DISPATCH_RULE_IS_ALWAYS TCommand * TMainWindow::show_context_menu( )
                 }
             }
 
-
             m_contextMenus.insert(className, toplevelmenu);
-            connect(toplevelmenu, SIGNAL(triggered(QAction*)), this, SLOT(process_context_menu_action(QAction*)));
+            connect(toplevelmenu, &QMenu::triggered, this, &TMainWindow::context_menu_action_triggered);
         }
     }
 
@@ -1186,6 +1176,10 @@ void TMainWindow::add_function_to_menu(TShortCutFunction *function, QMenu *menu)
     action->setData(v);
 }
 
+void TMainWindow::context_menu_action_triggered(QAction *action)
+{
+    ied().dispatch_shortcut_from_contextmenu((TShortCutFunction*)action->data().value<void*>());
+}
 
 void TMainWindow::set_insertsilence_track(TAudioTrack* track)
 {
@@ -1790,13 +1784,11 @@ void TMainWindow::track_finder_return_pressed()
 	}
 }
 
-
 void TMainWindow::track_finder_show_initial_text()
 {
 	m_trackFinder->setStyleSheet("color: gray; background-color: white");
 	m_trackFinder->setText(tr("Track Finder"));
 }
-
 
 TCommand* TMainWindow::browse_to_first_track_in_active_sheet()
 {

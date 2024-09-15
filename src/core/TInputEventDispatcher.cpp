@@ -110,6 +110,8 @@ int TInputEventDispatcher::dispatch_shortcut_from_contextmenu(TShortCutFunction*
     PENTER2;
     Q_ASSERT(m_shortCutManager);
 
+    cpointer().restore_global_mouse_pos_after_context_menu_dispatch();
+
     QStringList keys = function->get_keys();
     if (!keys.size()) {
         return -1;
