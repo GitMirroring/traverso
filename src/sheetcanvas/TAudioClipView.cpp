@@ -194,8 +194,8 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
     }
 
     // Draw the contour
-    // painter->setPen(themer()->get_color("AudioClip:contour"));
-    // painter->drawRect(m_boundingRect.adjusted(0, 0, -1.5, -1));
+    painter->setPen(themer()->get_color("AudioClip:contour"));
+    painter->drawRect(m_boundingRect.adjusted(0.0, 0, -0.5, -0.5));
 
     // Paint a pixmap if the clip is locked
     if (m_clip->is_locked()) {
