@@ -46,6 +46,13 @@ TMoveCommand::TMoveCommand(TSheetView *sv, TContextItem* item, const QString &de
     connect(&d->shuttleTimer, SIGNAL(timeout()), this, SLOT (update_shuttle()));
 }
 
+TMoveCommand::~TMoveCommand()
+{
+    if (d) {
+        cleanup_and_free_data();
+    }
+}
+
 void TMoveCommand::cancel_action()
 {
     if (!d) {

@@ -1116,7 +1116,7 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
 	menu->addSeparator();
 	menu->setFont(themer()->get_font("ContextMenu:fontscale:actions"));
 
-	QMap<QString, QList<TShortCutFunction*>* > submenus;
+    QMultiMap<QString, TShortCutFunction* > submenus;
 
 	for (int i=0; i<list.size(); ++i) {
 		TShortCutFunction* function = list.at(i);
@@ -1127,21 +1127,15 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
         if (function->get_submenu_name().isEmpty()) {
             add_function_to_menu(function, menu);
 		} else {
-            QList<TShortCutFunction*>* list;
-            if ( ! submenus.contains(function->get_submenu_name())) {
-                submenus.insert(function->get_submenu_name(), new QList<TShortCutFunction*>());
-            }
-            list = submenus.value(function->get_submenu_name());
-            list->append(function);
+            submenus.insert(function->get_submenu_name(), function);
         }
 	}
 
 	// For all submenus, create the Menu, and add
 	// actions, a little code duplication here, adding action to the
 	// menu is also done ~10 lines up ...
-	QList<QString> keys = submenus.keys();
-    for(const QString &key : keys) {
-        QList<TShortCutFunction*> list = *submenus.value(key);
+    for(const QString &key : submenus.uniqueKeys()) {
+        QList<TShortCutFunction*> list = submenus.values(key);
 
         std::sort(list.begin(), list.end(), [&](TShortCutFunction* left, TShortCutFunction* right) {
             return left->get_sort_order() < right->get_sort_order();

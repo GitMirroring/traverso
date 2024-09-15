@@ -35,7 +35,7 @@ class TMoveCommand : public TCommand
 
 public :
     TMoveCommand (TSheetView* sv, TContextItem* item, const QString& description);
-    virtual ~TMoveCommand (){}
+    virtual ~TMoveCommand ();
 
     int begin_hold();
     int finish_hold();
