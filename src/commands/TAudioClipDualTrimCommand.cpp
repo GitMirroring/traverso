@@ -106,6 +106,11 @@ int TAudioClipDualTrimCommand::begin_hold()
         m_rightAudioClip = audioClipAfter;
     }
 
+    if (m_leftAudioClip->extandable_length_right() <= TTimeRef() || m_rightAudioClip->extandable_lenght_left() <= TTimeRef()) {
+        set_canvas_cursor_text(tr("Dual Trim: Edges at max and min length"));
+        return -1;
+    }
+
     m_origLocation = m_newLocation = m_leftAudioClip->get_location_end();
 
 
