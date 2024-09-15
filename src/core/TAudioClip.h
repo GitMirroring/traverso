@@ -62,9 +62,6 @@ public:
     int init_recording();
     int process(TProcessCallBackData &processData);
 
-    // Re-implemented from LocationItem::set_location_start
-    // preferably we wouldn't have to re-implement this function
-    // TODO: make every start dependent item not have to re-implement ?
     void set_location_start(const TTimeRef& location);
     void set_fade_in_range(double range);
     void set_fade_out_range(double range);
@@ -91,6 +88,8 @@ public:
     TTimeRef get_length() const {return m_length;}
     TTimeRef get_source_start_location() const {return m_sourceStartLocation;}
     TTimeRef get_source_end_location() const {return m_sourceEndLocation;}
+    TTimeRef extandable_length_right() const;
+    TTimeRef extandable_lenght_left() const;
 
     uint get_channel_count() const;
     uint get_rate() const;

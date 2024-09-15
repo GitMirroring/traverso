@@ -103,7 +103,7 @@ TAudioClip::TAudioClip(const QDomNode& node)
     m_domNode = node.cloneNode();
     //	init();
     // first init to set variables that are referenced in:
-    TAudioClip::set_location_start(location);
+    set_location_start(location);
 }
 
 TAudioClip::~TAudioClip()
@@ -179,7 +179,7 @@ int TAudioClip::set_state(const QDomNode& node)
     // after curves (those created in plugins too!) are inited and having
     // their state set.
     TTimeRef location(e.attribute( "trackstart", "" ).toLongLong(&ok));
-    TAudioClip::set_location_start(location);
+    set_location_start(location);
 
     return 1;
 }
@@ -272,30 +272,30 @@ void TAudioClip::set_left_edge(const TTimeRef &location)
         newLeftLocation = TTimeRef();
     }
 
-    if (newLeftLocation < m_location->get_start()) {
+    if (newLeftLocation < get_location_start()) {
 
-        TTimeRef availableTimeLeft = m_sourceStartLocation;
+        TTimeRef availableTimeLeft = extandable_lenght_left();
 
-        TTimeRef movingToLeft = m_location->get_start() - newLeftLocation;
+        TTimeRef movingToLeft = get_location_start() - newLeftLocation;
 
         if (movingToLeft > availableTimeLeft) {
             movingToLeft = availableTimeLeft;
         }
 
         set_source_start_location( m_sourceStartLocation - movingToLeft );
-        TAudioClip::set_location_start(m_location->get_start() - movingToLeft);
-    } else if (newLeftLocation > m_location->get_start()) {
+        set_location_start(get_location_start() - movingToLeft);
+    } else if (newLeftLocation > get_location_start()) {
 
         TTimeRef availableTimeRight = m_length;
 
-        TTimeRef movingToRight = newLeftLocation - m_location->get_start();
+        TTimeRef movingToRight = newLeftLocation - get_location_start();
 
         if (movingToRight > (availableTimeRight - TTimeRef(nframes_t(4), get_rate())) ) {
             movingToRight = (availableTimeRight - TTimeRef(nframes_t(4), get_rate()));
         }
 
         set_source_start_location( m_sourceStartLocation + movingToRight );
-        TAudioClip::set_location_start(m_location->get_start() + movingToRight);
+        set_location_start(get_location_start() + movingToRight);
     }
 }
 
@@ -307,11 +307,11 @@ void TAudioClip::set_right_edge(const TTimeRef &location)
         newRightLocation = TTimeRef();
     }
 
-    if (newRightLocation > m_location->get_end()) {
+    if (newRightLocation > get_location_end()) {
 
-        TTimeRef availableTimeRight = m_sourceLength - m_sourceEndLocation;
+        TTimeRef availableTimeRight = extandable_length_right();
 
-        TTimeRef movingToRight = newRightLocation - m_location->get_end();
+        TTimeRef movingToRight = newRightLocation - get_location_end();
 
         if (movingToRight > availableTimeRight) {
             movingToRight = availableTimeRight;
@@ -333,6 +333,16 @@ void TAudioClip::set_right_edge(const TTimeRef &location)
         set_source_end_location( m_sourceEndLocation - movingToLeft);
         set_track_end_location( m_location->get_end() - movingToLeft );
     }
+}
+
+TTimeRef TAudioClip::extandable_length_right() const
+{
+    return m_sourceLength - m_sourceEndLocation;
+}
+
+TTimeRef TAudioClip::extandable_lenght_left() const
+{
+    return m_sourceStartLocation;
 }
 
 void TAudioClip::set_source_start_location(const TTimeRef& location)
