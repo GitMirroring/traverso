@@ -44,14 +44,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define MARKER_SOFT_SELECTION_DISTANCE 50
 
 TTimeLineRulerView::TTimeLineRulerView(TSheetView* view)
-    : TViewItem(nullptr, view->get_sheet()->get_timeline())
+    : TViewItem(nullptr, view->get_sheet()->get_timeline_ruler())
     , m_blinkingMarker(nullptr)
 {
     PENTERCONS2;
 
     m_sv = view;
     m_boundingRect = QRectF(0, 0, MAX_CANVAS_WIDTH, TIMELINE_HEIGHT);
-    m_timeline = m_sv->get_sheet()->get_timeline();
+    m_timeline = m_sv->get_sheet()->get_timeline_ruler();
 
     TTimeLineRulerView::load_theme_data();
 
@@ -224,58 +224,6 @@ void TTimeLineRulerView::remove_marker_view(TTimeLineMarker * marker)
             return;
         }
     }
-}
-
-TCommand* TTimeLineRulerView::add_marker()
-{
-    QPointF point = mapFromScene(cpointer().scene_pos());
-
-    qreal x = point.x();
-    if (x < 0) {
-        return nullptr;
-    }
-    TTimeRef when(x * m_sv->timeref_scalefactor);
-
-    return add_marker_at(when);
-}
-
-TCommand* TTimeLineRulerView::add_marker_at_playhead()
-{
-    return add_marker_at(m_sv->get_sheet()->get_transport_location());
-}
-
-TCommand* TTimeLineRulerView::add_marker_at_work_cursor()
-{
-    return add_marker_at(m_sv->get_sheet()->get_work_location());
-}
-
-TCommand* TTimeLineRulerView::add_marker_at(const TTimeRef when)
-{
-    CommandGroup* group = new CommandGroup(m_timeline, "");
-
-    // check if it is the first marker added to the timeline
-    if (m_timeline->get_markers().empty()) {
-        if (when > TTimeRef()) {  // add one at the beginning of the sheet
-            TTimeLineMarker* m = new TTimeLineMarker(m_timeline, TTimeRef(), TTimeLineMarker::CDTRACK);
-            m->set_description("");
-            group->add_command(m_timeline->add_marker(m));
-        }
-
-        TTimeRef lastlocation = m_sv->get_sheet()->get_last_location();
-        if (when < lastlocation) {  // add one at the end of the sheet
-            TTimeLineMarker* me = new TTimeLineMarker(m_timeline, lastlocation, TTimeLineMarker::ENDMARKER);
-            me->set_description(tr("End"));
-            group->add_command(m_timeline->add_marker(me));
-        }
-    }
-
-    TTimeLineMarker* marker = new TTimeLineMarker(m_timeline, when, TTimeLineMarker::CDTRACK);
-    marker->set_description("");
-
-    group->setText(tr("Add Marker"));
-    group->add_command(m_timeline->add_marker(marker));
-
-    return group;
 }
 
 TCommand* TTimeLineRulerView::playhead_to_marker()

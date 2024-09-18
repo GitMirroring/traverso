@@ -47,6 +47,7 @@ private:
 
     enum TraversoCommand {
         NoCommand,
+        AddMarkerCommand,
 		GainCommand,
 		TrackPanCommand,
 		ImportAudioCommand,
@@ -80,6 +81,12 @@ private:
         GainShowAutomationCommand,
         TransportSetPositionCommand,
 	};
+
+    enum MarkerLocation {
+        PlayCursor = 0,
+        WorkCursor,
+        CursorLocation
+    };
 
 private:
     [[maybe_unused]] TShortCutFunction* add_function(const QMetaObject *metaObject,

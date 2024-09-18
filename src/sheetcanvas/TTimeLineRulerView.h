@@ -58,7 +58,6 @@ private:
 
     QHash<qint64, QString>	m_zooms;
 
-    TCommand* add_marker_at(const TTimeRef when);
     void update_softselected_marker(QPointF pos);
 
 
@@ -66,9 +65,6 @@ public slots:
     void hzoom_changed();
 
 public slots:
-    TCommand* add_marker();
-    TCommand* add_marker_at_playhead();
-    TCommand* add_marker_at_work_cursor();
     TCommand* remove_marker();
     TCommand* clear_markers();
     TCommand* playhead_to_marker();

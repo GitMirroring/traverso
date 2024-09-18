@@ -61,7 +61,7 @@ public:
 	virtual TTimeRef get_transport_location() const;
 	virtual TSnapList* get_snap_list() const;
 	TTrack* get_track(qint64 id) const;
-	TTimeLineRuler* get_timeline() const;
+	TTimeLineRuler* get_timeline_ruler() const;
 	TSession* get_parent_session() const {return m_parentSession;}
 	QString get_name() const {return m_name;}
 	int get_track_height(qint64 trackId) const {return m_trackHeights.value(trackId, 150);}
@@ -110,7 +110,7 @@ protected:
 
     TSnapList*           m_snaplist;
     TLocation*          m_workSnap;
-    TTimeLineRuler*     m_timeline;
+    TTimeLineRuler*     m_timeLineRuler;
     QString             m_name;
 
     int                 m_scrollBarXValue{};

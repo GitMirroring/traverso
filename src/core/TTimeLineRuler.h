@@ -53,13 +53,13 @@ public:
     bool get_start_location(TTimeRef& location);
     bool has_end_marker();
 
+    TCommand* add_marker_at(const TTimeRef when);
     TCommand* add_marker(TTimeLineMarker* marker, bool historable=true);
     TCommand* remove_marker(TTimeLineMarker* marker, bool historable=true);
 
     QString format_cdtrack_name(TTimeLineMarker *, int);
     QList<TTimeLineMarker *> get_cdtrack_list(TExportSpecification*);
     QString get_cdrdao_tracklist(TExportSpecification* spec, bool pregap = false);
-
 
 private:
     TSession* m_sheet;

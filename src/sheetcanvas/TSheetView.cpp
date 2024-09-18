@@ -764,21 +764,6 @@ void TSheetView::load_theme_data()
 	update_tracks_bounding_rect();
 }
 
-TCommand * TSheetView::add_marker()
-{
-	return m_tlvp->get_timeline_view()->add_marker();
-}
-
-TCommand * TSheetView::add_marker_at_playhead()
-{
-	return m_tlvp->get_timeline_view()->add_marker_at_playhead();
-}
-
-TCommand * TSheetView::add_marker_at_work_cursor()
-{
-	return m_tlvp->get_timeline_view()->add_marker_at_work_cursor();
-}
-
 TCommand * TSheetView::center_playhead( )
 {
 	TTimeRef centerX = m_session->get_transport_location();

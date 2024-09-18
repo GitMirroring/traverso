@@ -124,7 +124,7 @@ MoveClip::MoveClip(TViewItem* view, const QVariantList& args)
         }
 
         if (m_actionType == FOLD_SHEET || m_actionType == FOLD_MARKERS) {
-            QList<TTimeLineMarker*> movingMarkers = d->sv->get_sheet()->get_timeline()->get_markers();
+            QList<TTimeLineMarker*> movingMarkers = d->sv->get_sheet()->get_timeline_ruler()->get_markers();
             foreach(TTimeLineMarker* marker, movingMarkers) {
                 if (marker->get_location()->get_start() > currentLocation) {
                     MarkerAndOrigin markerAndOrigin;

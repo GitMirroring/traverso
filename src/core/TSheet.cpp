@@ -145,7 +145,7 @@ void TSheet::init()
     m_audioClipManager = new TAudioClipManager(this);
     set_related_context_item( m_audioClipManager );
     create_history_stack();
-    m_timeline->set_history_stack(get_history_stack());
+    m_timeLineRuler->set_history_stack(get_history_stack());
 
     connect(this, SIGNAL(prepareRecording()), this, SLOT(prepare_recording()));
     connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(audiodevice_params_changed()), Qt::DirectConnection);
@@ -204,7 +204,7 @@ int TSheet::set_state( const QDomNode & node )
     // TTimeLineRuler used to be called TimeLine so to keep old projects
     // working and not lose Markers (which are a child node of TimeLine
     // we keep calling it TimeLine (?)
-    m_timeline->set_state(node.firstChildElement("TimeLine"));
+    m_timeLineRuler->set_state(node.firstChildElement("TimeLine"));
 
 
     QDomNode masterOutNode = node.firstChildElement("MasterOut");
@@ -276,7 +276,7 @@ QDomNode TSheet::get_state(QDomDocument doc, bool istemplate)
 
     sheetNode.appendChild(m_audioClipManager->get_state(doc));
 
-    sheetNode.appendChild(m_timeline->get_state(doc));
+    sheetNode.appendChild(m_timeLineRuler->get_state(doc));
 
     QDomNode masterOutNode = doc.createElement("MasterOut");
     masterOutNode.appendChild(m_masterOutBusTrack->get_state(doc, istemplate));
@@ -327,7 +327,7 @@ bool TSheet::get_cd_export_range(TTimeRef &startLocation, TTimeRef &endLocation)
     //         spec->set_export_end_location(TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(markers.at(i+1)->get_when())));
     //         spec->name          = m_timeline->format_cdtrack_name(markers.at(i), i+1);
 
-    if (m_timeline->get_start_location(startLocation)) {
+    if (m_timeLineRuler->get_start_location(startLocation)) {
         // round down to the start of the CD frame (75th of a sec)
         startLocation = TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(startLocation));
         PMESG("Start marker found at %s", QS_C(TTimeRef::timeref_to_cd(startLocation)));
@@ -336,7 +336,7 @@ bool TSheet::get_cd_export_range(TTimeRef &startLocation, TTimeRef &endLocation)
         return false;
     }
 
-    if (m_timeline->get_end_location(endLocation)) {
+    if (m_timeLineRuler->get_end_location(endLocation)) {
         endLocation = TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(endLocation));
         PMESG("End marker found at %s", QS_C(TTimeRef::timeref_to_cd(endLocation)));
     } else {
@@ -637,7 +637,7 @@ TTimeRef TSheet::get_last_location() const
 {
     TTimeRef lastAudio = m_audioClipManager->get_last_location();
     TTimeRef endMarkerLocation = TTimeRef();
-    m_timeline->get_end_location(endMarkerLocation);
+    m_timeLineRuler->get_end_location(endMarkerLocation);
     return std::max(lastAudio , endMarkerLocation);
 }
 

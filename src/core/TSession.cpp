@@ -43,11 +43,11 @@ TSession::TSession(TSession *parentSession)
     m_masterOutBusTrack = nullptr;
     m_bounceTrack = nullptr;
     m_snaplist = nullptr;
-    m_timeline = nullptr;
+    m_timeLineRuler = nullptr;
     m_workSnap = nullptr;
 
 	if (!parentSession) {
-		m_timeline = new TTimeLineRuler(this);
+        m_timeLineRuler = new TTimeLineRuler(this);
 		m_snaplist = new TSnapList(this);
         m_workSnap = new TLocation(this);
 		m_workSnap->set_snap_list(m_snaplist);
@@ -225,13 +225,13 @@ TLocation* TSession::get_work_snap() const
 	return m_workSnap;
 }
 
-TTimeLineRuler* TSession::get_timeline() const
+TTimeLineRuler* TSession::get_timeline_ruler() const
 {
 	if (m_parentSession) {
-		return m_parentSession->get_timeline();
+        return m_parentSession->get_timeline_ruler();
 	}
 
-	return m_timeline;
+    return m_timeLineRuler;
 }
 
 TTimeRef TSession::get_work_location() const

@@ -99,7 +99,7 @@ void MarkerDialog::update_marker_treeview()
 	m_marker = (TTimeLineMarker*)nullptr;
 	markersTreeWidget->clear();
 
-        TTimeLineRuler* tl = m_session->get_timeline();
+        TTimeLineRuler* tl = m_session->get_timeline_ruler();
 		
 	foreach(TTimeLineMarker* marker, tl->get_markers()) {
 		QString name = marker->get_description();
@@ -202,7 +202,7 @@ void MarkerDialog::position_changed(const QString &s)
 // find the marker based on it's id.
 TTimeLineMarker * MarkerDialog::get_marker(qint64 id)
 {
-        TTimeLineRuler* tl = m_session->get_timeline();
+        TTimeLineRuler* tl = m_session->get_timeline_ruler();
 
 	foreach(TTimeLineMarker* marker, tl->get_markers()) {
 		if (marker->get_id() == id) {
@@ -447,7 +447,7 @@ void MarkerDialog::remove_marker()
 		return;
 	}
 
-        TTimeLineRuler* tl = m_session->get_timeline();
+        TTimeLineRuler* tl = m_session->get_timeline_ruler();
 		
 	TAddRemoveCommand *ar = (TAddRemoveCommand*) tl->remove_marker(m_marker);
 	TCommand::process_command(ar);
@@ -481,7 +481,7 @@ void MarkerDialog::export_toc()
 	out << "    <hr>\n";
 	out << "    <table>\n      <tr><th>Position (mm:ss:frames)</th><th>Title</th>\n";
 
-        TTimeLineRuler* tl = m_session->get_timeline();
+        TTimeLineRuler* tl = m_session->get_timeline_ruler();
 	foreach(TTimeLineMarker* marker, tl->get_markers()) {
 		QString name = marker->get_description();
         QString pos = TTimeRef::timeref_to_cd(marker->get_location()->get_start());

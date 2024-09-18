@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TTimeLineRuler.h"
 
+#include "CommandGroup.h"
 #include "TSession.h"
 #include "TTimeLineMarker.h"
 #include "TExportSpecification.h"
@@ -332,4 +333,37 @@ QString TTimeLineRuler::get_cdrdao_tracklist(TExportSpecification* spec, bool pr
         }
 
         return output;
+}
+
+TCommand *TTimeLineRuler::add_marker_at(const TTimeRef when)
+{
+    if (when < TTimeRef()) {
+        return nullptr;
+    }
+
+    CommandGroup* group = new CommandGroup(this, "");
+
+    // check if it is the first marker added to the timeline
+    if (get_markers().empty()) {
+        if (when > TTimeRef()) {  // add one at the beginning of the sheet
+            TTimeLineMarker* m = new TTimeLineMarker(this, TTimeRef(), TTimeLineMarker::CDTRACK);
+            m->set_description("");
+            group->add_command(add_marker(m));
+        }
+
+        TTimeRef lastlocation = m_sheet->get_last_location();
+        if (when < lastlocation) {  // add one at the end of the sheet
+            TTimeLineMarker* me = new TTimeLineMarker(this, lastlocation, TTimeLineMarker::ENDMARKER);
+            me->set_description(tr("End"));
+            group->add_command(this->add_marker(me));
+        }
+    }
+
+    TTimeLineMarker* marker = new TTimeLineMarker(this, when, TTimeLineMarker::CDTRACK);
+    marker->set_description("");
+
+    group->setText(tr("Add Marker"));
+    group->add_command(this->add_marker(marker));
+
+    return group;
 }

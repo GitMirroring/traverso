@@ -197,6 +197,13 @@ void TraversoCommands::load(TShortCutManager* m)
     add_function(&TTimeLineRulerView::staticMetaObject, &TMoveBase::staticMetaObject, tr("Move Marker"),         "TimeLineMoveMarker",   MoveMarkerCommand, "", USE_X, NO_Y);
     add_function(&TTimeLineMarkerView::staticMetaObject,&TMoveBase::staticMetaObject, tr("Move Marker"),         "MoveMarker",           MoveMarkerCommand, "", USE_X, NO_Y);
 
+    add_function(&TSheet::staticMetaObject,         tr("Add Marker"),                       "SheetAddMarker",               AddMarkerCommand, "", NO_X, NO_Y, QVariantList() << MarkerLocation::CursorLocation);
+    add_function(&TSheet::staticMetaObject,         tr("Add Marker at Playhead"),           "SheetAddMarkerAtPlayhead",     AddMarkerCommand, "", NO_X, NO_Y, QVariantList() << MarkerLocation::PlayCursor);
+    add_function(&TSheet::staticMetaObject,         tr("Add Marker at Work Cursor"),        "SheetAddMarkerAtWorkCursor",   AddMarkerCommand, "", NO_X, NO_Y, QVariantList() << MarkerLocation::WorkCursor);
+    add_function(&TTimeLineRuler::staticMetaObject, tr("Add Marker"),                       "TimeLineAddMarker",            AddMarkerCommand, "", NO_X, NO_Y, QVariantList() << MarkerLocation::CursorLocation);
+    add_function(&TTimeLineRuler::staticMetaObject, tr("Add Marker at Playhead"),           "TimeLineAddMarkerAtPlayhead",  AddMarkerCommand, "", NO_X, NO_Y, QVariantList() << MarkerLocation::PlayCursor);
+    add_function(&TTimeLineRuler::staticMetaObject, tr("Add Marker at Work Cursor"),        "TimeLineAddMarkerAtWorkCursor",AddMarkerCommand, "", NO_X, NO_Y, QVariantList() << MarkerLocation::WorkCursor);
+
     add_function(&TAudioClip::staticMetaObject,     tr("External Processing"),  "AudioClipExternalProcessing", AudioClipExternalProcessingCommand);
 
     add_function(&TAudioClip::staticMetaObject,     tr("(De)Select"),       "ClipSelectionSelect", ClipSelectionCommand, "", NO_X, NO_Y, QVariantList()<< "toggle_selected");
@@ -308,9 +315,6 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&TProjectManager::staticMetaObject, tr("Save Project"), "ProjectSave",                  "save_project()");
 
     m->add_function(&TSheetView::staticMetaObject,  &TEditPropertiesBase::staticMetaObject, "EditSongProperties",           "edit_properties()");
-    m->add_function(&TSheetView::staticMetaObject,  tr("Add Marker at Playhead"),           "SheetAddMarkerAtPlayhead",     "add_marker_at_playhead()");
-    m->add_function(&TSheetView::staticMetaObject,  tr("Add Marker at Work Cursor"),        "SheetAddMarkerAtWorkCursor",   "add_marker_at_work_cursor()");
-    m->add_function(&TSheetView::staticMetaObject,  tr("Add Marker"),       "SheetAddMarker",               "add_marker()");
     m->add_function(&TSheetView::staticMetaObject,  tr("Up"),               "ViewScrollUp",                 "scroll_up()");
     m->add_function(&TSheetView::staticMetaObject,  tr("Down"),             "ViewScrollDown",               "scroll_down()");
     m->add_function(&TSheetView::staticMetaObject,  tr("Set"),              "WorkCursorTouch",              "touch()");
@@ -328,9 +332,6 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&SpectralMeterView::staticMetaObject, tr("Reset average curve"),                "SpectralMeterResetAverageCurve",   "reset()");
     m->add_function(&SpectralMeterView::staticMetaObject, tr("Toggle average curve"),               "SpectralMeterToggleDisplayRange",  "set_mode()");
 
-    m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Add Marker"),                      "TimeLineAddMarker",                "add_marker()");
-    m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Add Marker at Playhead"),          "TimeLineAddMarkerAtPlayhead",      "add_marker_at_playhead()");
-    m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Add Marker at Work Cursor"),       "TimeLineAddMarkerAtWorkCursor",    "add_marker_at_work_cursor()");
     m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Playhead to Marker"),              "TimeLinePlayheadToMarker",         "playhead_to_marker()");
     m->add_function(&TTimeLineRulerView::staticMetaObject, tr("Edit Markers"),                    "TimeLineShowMarkerDialog",         "show_marker_dialog()");
 
@@ -403,6 +404,33 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     TraversoCommand command = static_cast<TraversoCommand>(m_dict.value(commandName, NoCommand));
 
     switch (command) {
+    case AddMarkerCommand:
+    {
+        TTimeLineRuler* timeLineRuler = qobject_cast<TTimeLineRuler*>(obj);
+        TSession* session;
+        if (timeLineRuler) {
+            session = timeLineRuler->get_sheet();
+        } else {
+            session = qobject_cast<TSheet*>(obj);
+            Q_ASSERT(session);
+            timeLineRuler = session->get_timeline_ruler();
+        }
+
+        Q_ASSERT(timeLineRuler);
+
+        Q_ASSERT(arguments.size() == 1);
+        MarkerLocation markerLocation = static_cast<MarkerLocation>(arguments.at(0).toInt());
+        switch (markerLocation) {
+        case CursorLocation:
+            return timeLineRuler->add_marker_at(cpointer().on_first_input_event_timeref_location());
+        case PlayCursor:
+            return timeLineRuler->add_marker_at(session->get_transport_location());
+        case WorkCursor:
+            return timeLineRuler->add_marker_at(session->get_work_location());
+        default: return nullptr;
+        }
+        return nullptr;
+    }
     case TransportSetPositionCommand:
     {
         TProject* project = pm().get_project();

@@ -177,7 +177,7 @@ void WorkCursorMove::toggle_snap_on_off()
 
 void WorkCursorMove::browse_to_next_marker()
 {
-	QList<TTimeLineMarker*> markers = m_session->get_timeline()->get_markers();
+	QList<TTimeLineMarker*> markers = m_session->get_timeline_ruler()->get_markers();
 	QList<TContextItem*> contexts = m_contextPointer->get_active_context_items();
 	TTimeLineMarkerView* view;
 	foreach(TContextItem* item, contexts) {
@@ -212,7 +212,7 @@ void WorkCursorMove::browse_to_next_marker()
 
 void WorkCursorMove::browse_to_previous_marker()
 {
-	QList<TTimeLineMarker*> markers = m_session->get_timeline()->get_markers();
+	QList<TTimeLineMarker*> markers = m_session->get_timeline_ruler()->get_markers();
 	QList<TContextItem*> contexts = m_contextPointer->get_active_context_items();
 	TTimeLineMarkerView* view;
 	foreach(TContextItem* item, contexts) {

@@ -192,9 +192,6 @@ public slots:
     TCommand* browse_to_time_line();
     TCommand* goto_begin();
     TCommand* goto_end();
-    TCommand* add_marker();
-    TCommand* add_marker_at_playhead();
-    TCommand* add_marker_at_work_cursor();
     TCommand* center_playhead();
     TCommand* toggle_expand_all_tracks(int height = -1);
     TCommand* edit_properties();
