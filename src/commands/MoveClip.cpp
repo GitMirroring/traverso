@@ -115,10 +115,10 @@ MoveClip::MoveClip(TViewItem* view, const QVariantList& args)
 
         d->doSnap = d->sv->get_sheet()->is_snap_on();
 
-        TTimeRef currentLocation = TTimeRef(m_contextPointer->on_first_input_event_scene_x() * d->sv->timeref_scalefactor);
+        TTimeRef currentLocation = TTimeRef(cpointer().on_first_input_event_scene_x() * d->sv->timeref_scalefactor);
 
-        if (d->sv->get_audio_trackview_at_scene_pos(m_contextPointer->scene_pos())) {
-            m_d->pointedTrackIndex = d->sv->get_audio_trackview_at_scene_pos(m_contextPointer->scene_pos())->get_track()->get_sort_index();
+        if (d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())) {
+            m_d->pointedTrackIndex = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())->get_track()->get_sort_index();
         } else {
             m_d->pointedTrackIndex = 0;
         }

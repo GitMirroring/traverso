@@ -521,11 +521,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     case ImportAudioCommand:
     {
         TAudioTrack* track = qobject_cast<TAudioTrack*>(obj);
-        if (! track) {
-            PERROR("TraversoCommands: Supplied QObject was not a Track! "
-                   "ImportAudioCommand needs a Track as argument");
-            return nullptr;
-        }
+        Q_ASSERT(track);
 
         auto audioFileImportCommand = new TAudioFileImportCommand(track);
         audioFileImportCommand->set_track(track);
@@ -535,11 +531,8 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     case InsertSilenceCommand:
     {
         TAudioTrack* track = qobject_cast<TAudioTrack*>(obj);
-        if (! track) {
-            PERROR("TraversoCommands: Supplied QObject was not a Track! "
-                   "ImportAudioCommand needs a Track as argument");
-            return nullptr;
-        }
+        Q_ASSERT(track);
+
         TTimeRef length(10*TTimeRef::UNIVERSAL_SAMPLE_RATE);
         auto audioFileImportCommand = new TAudioFileImportCommand(track);
         audioFileImportCommand->set_track(track);
@@ -550,18 +543,16 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case AddNewAudioTrackCommand:
     {
-        if (auto sheet = qobject_cast<TSheet*>(obj)) {
-            return sheet->add_track(new TAudioTrack(sheet, "Unnamed", TAudioTrack::INITIAL_HEIGHT));
-        }
-        return ied().failure();
+        TSheet* sheet = qobject_cast<TSheet*>(obj);
+        Q_ASSERT(sheet);
+        return sheet->add_track(new TAudioTrack(sheet, "Unnamed", TAudioTrack::INITIAL_HEIGHT));
     }
 
     case RemoveClipCommand:
     {
-        if (auto clip = qobject_cast<TAudioClip*>(obj)) {
-            return new AddRemoveClip(clip, AddRemoveClip::REMOVE);
-        }
-        return ied().failure();
+        TAudioClip* audioClip = qobject_cast<TAudioClip*>(obj);
+        Q_ASSERT(audioClip);
+        return new AddRemoveClip(audioClip, AddRemoveClip::REMOVE);
     }
 
     case RemoveTrackCommand:
@@ -589,33 +580,28 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case RemovePluginCommand:
     {
-        if (auto view = qobject_cast<TAudioPluginView*>(obj)) {
-            return view->remove_plugin();
-        }
-        return ied().failure();
+        TAudioPluginView* audioPluginView = qobject_cast<TAudioPluginView*>(obj);
+        Q_ASSERT(audioPluginView);
+        return audioPluginView->remove_plugin();
     }
 
     case RemoveCurveNodeCommmand:
     {
-        if (auto curveView = qobject_cast<TCurveView*>(obj))
-        {
-            return curveView->remove_node();
-        }
-        return ied().failure();
+        TCurveView* curveView = qobject_cast<TCurveView*>(obj);
+        Q_ASSERT(curveView);
+        return curveView->remove_node();
     }
     case RemoveTimeLineRulerMarkerCommand:
     {
-        if (auto view = qobject_cast<TTimeLineRulerView*>(obj)) {
-            return view->remove_marker();
-        }
-        return ied().failure();
+        TTimeLineRulerView* timeLineRulerView = qobject_cast<TTimeLineRulerView*>(obj);
+        Q_ASSERT(timeLineRulerView);
+        return timeLineRulerView->remove_marker();
     }
     case AudioClipExternalProcessingCommand:
     {
-        if (auto clip = qobject_cast<TAudioClip*>(obj)) {
-            return new AudioClipExternalProcessing(clip);
-        }
-        return ied().failure();
+        TAudioClip* audioClip = qobject_cast<TAudioClip*>(obj);
+        Q_ASSERT(audioClip);
+        return new AudioClipExternalProcessing(audioClip);
     }
 
     case ClipSelectionCommand:
@@ -649,41 +635,34 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     case MoveClipCommand:
     {
         // cast to super class ViewItem since we use MoveClip also to fold Track or Sheet
-        if (auto view = qobject_cast<TViewItem*>(obj)) {
-            return new MoveClip(view, arguments);
-        }
-        return ied().failure();
+        TViewItem* viewItem = qobject_cast<TViewItem*>(obj);
+        Q_ASSERT(viewItem);
+        return new MoveClip(viewItem, arguments);
     }
 
     case MoveTrackCommand:
     {
-        if (auto view = qobject_cast<TTrackView*>(obj)) {
-            return new MoveTrack(view);
-        }
-        return ied().failure();
+        TTrackView* trackView = qobject_cast<TTrackView*>(obj);
+        Q_ASSERT(trackView);
+        return new MoveTrack(trackView);
     }
 
     case MovePluginCommand:
     {
-        if (auto view = qobject_cast<TAudioPluginView*>(obj)) {
-            return new MovePlugin(view);
-        }
-        return ied().failure();
+        TAudioPluginView* audioPluginView = qobject_cast<TAudioPluginView*>(obj);
+        Q_ASSERT(audioPluginView);
+        return new MovePlugin(audioPluginView);
     }
 
     case MoveEdgeCommand:
     {
-        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
-        if (!view) {
-            PERROR("TraversoCommands: Supplied QObject was not an AudioClipView! "
-                   "MoveEdgeCommand needs an AudioClipView as argument");
-            return nullptr;
-        }
+        TAudioClipView* audioClipView = qobject_cast<TAudioClipView*>(obj);
+        Q_ASSERT(audioClipView);
 
-        if (view->is_left_from_center(cpointer().on_first_input_event_scene_x())) {
-            return new MoveEdge(view, view->get_sheetview(), "set_left_edge");
+        if (audioClipView->is_left_from_center(cpointer().on_first_input_event_scene_x())) {
+            return new MoveEdge(audioClipView, audioClipView->get_sheetview(), "set_left_edge");
         } else {
-            return new MoveEdge(view, view->get_sheetview(), "set_right_edge");
+            return new MoveEdge(audioClipView, audioClipView->get_sheetview(), "set_right_edge");
         }
     }
 
@@ -697,78 +676,64 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
 
     case SplitAudioClipCommand:
     {
-        if (auto view = qobject_cast<TAudioClipView*>(obj)) {
-            return new TSplitAudioClipCommand(view);
-        }
-        return ied().failure();
+        TAudioClipView* audioClipView = qobject_cast<TAudioClipView*>(obj);
+        Q_ASSERT(audioClipView);
+        return new TSplitAudioClipCommand(audioClipView);
     }
 
     case CropClipCommand:
     {
-        if (auto view = qobject_cast<TAudioClipView*>(obj)) {
-            return new CropClip(view);
-        }
-        return ied().failure();
+        TAudioClipView* audioClipView = qobject_cast<TAudioClipView*>(obj);
+        Q_ASSERT(audioClipView);
+        return new CropClip(audioClipView);
     }
 
     case ArmTracksCommand:
     {
-        if (auto view = qobject_cast<TSheetView*>(obj)) {
-            return new ArmTracks(view);
-        }
-        return ied().failure();
+        TSheetView* sheetView = qobject_cast<TSheetView*>(obj);
+        Q_ASSERT(sheetView);
+        return new ArmTracks(sheetView);
     }
 
     case ZoomCommand:
     {
-        if (auto view = qobject_cast<TSheetView*>(obj)) {
-            return new Zoom(view, arguments);
-        }
-        return ied().failure();
+        TSheetView* sheetView = qobject_cast<TSheetView*>(obj);
+        Q_ASSERT(sheetView);
+        return new Zoom(sheetView, arguments);
     }
 
     case WorkCursorMoveCommand:
     {
-        if (auto view = qobject_cast<TSheetView*>(obj)) {
-            return new WorkCursorMove(view);
-        }
-        return ied().failure();
+        TSheetView* sheetView = qobject_cast<TSheetView*>(obj);
+        Q_ASSERT(sheetView);
+        return new WorkCursorMove(sheetView);
     }
 
     case MoveCurveNodesCommand:
     {
-        if (auto curveView = qobject_cast<TCurveView*>(obj)) {
-            return curveView->drag_node();
-        }
-        return ied().failure();
+        TCurveView* curveView = qobject_cast<TCurveView*>(obj);
+        Q_ASSERT(curveView);
+        return curveView->drag_node();
     }
 
     case ArrowKeyBrowserCommand:
     {
-        if (auto view = qobject_cast<TSheetView*>(obj)) {
-            return new ArrowKeyBrowser(view);
-        }
-        PERROR("TraversoCommands: Supplied QObject was not an SheetView! "
-               "ArrowKeyBrowserCommand needs an SheetView as argument");
-        return ied().failure();
+        TSheetView* sheetView = qobject_cast<TSheetView*>(obj);
+        Q_ASSERT(sheetView);
+        return new ArrowKeyBrowser(sheetView);
     }
 
     case ShuttleCommand:
     {
-        if (auto view = qobject_cast<TSheetView*>(obj)) {
-            return new TMoveCommand(view, nullptr, "");
-        }
-        return ied().failure();
+        TSheetView* sheetView = qobject_cast<TSheetView*>(obj);
+        Q_ASSERT(sheetView);
+        return new TMoveCommand(sheetView, nullptr, "");
     }
 
     case NormalizeClipCommand:
     {
-        TAudioClip* clip = qobject_cast<TAudioClip*>(obj);
-        if (!clip) {
-            PERROR("TraversoCommands: Supplied QObject was not a Clip! "
-                   "RemoveClipCommand needs a Clip as argument");
-            return nullptr;
-        }
+        TAudioClip* audioClip = qobject_cast<TAudioClip*>(obj);
+        Q_ASSERT(audioClip);
 
         bool ok;
         double requestedNormFactor = QInputDialog::getDouble(0, tr("Normalization"),
@@ -778,11 +743,11 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             return nullptr;
         }
 
-        if (clip->is_selected()) {
+        if (audioClip->is_selected()) {
             QList<TAudioClip* > selection;
-            clip->get_sheet()->get_audioclip_manager()->get_selected_clips(selection);
+            audioClip->get_sheet()->get_audioclip_manager()->get_selected_clips(selection);
 
-            CommandGroup* group = new CommandGroup(clip, tr("Normalize Selected Clips"));
+            CommandGroup* group = new CommandGroup(audioClip, tr("Normalize Selected Clips"));
 
             for(TAudioClip* selectedClip : selection) {
                 group->add_command(new PCommand(selectedClip, "set_gain",
@@ -794,7 +759,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             return group;
         }
 
-        return new PCommand(clip, "set_gain", clip->calculate_normalization_factor(requestedNormFactor), clip->get_gain(), tr("AudioClip: Normalize"));
+        return new PCommand(audioClip, "set_gain", audioClip->calculate_normalization_factor(requestedNormFactor), audioClip->get_gain(), tr("AudioClip: Normalize"));
     }
     case MoveMarkerCommand:
     {
@@ -814,35 +779,31 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     }
     case FadeRangeCommand:
     {
-        TAudioClipView* view = qobject_cast<TAudioClipView*>(obj);
-        if (!view) {
-            return ied().failure();
-        }
+        TAudioClipView* audioClipView = qobject_cast<TAudioClipView*>(obj);
+        Q_ASSERT(audioClipView);
 
-        TAudioClip* clip = view->get_clip();
+        TAudioClip* clip = audioClipView->get_clip();
         if (arguments.size() > 0 && arguments.at(0).toString() == "both") {
-            return new TFadeRangeCommand(clip, clip->get_fade_in(), clip->get_fade_out(), view->get_sheetview()->timeref_scalefactor);
+            return new TFadeRangeCommand(clip, clip->get_fade_in(), clip->get_fade_out(), audioClipView->get_sheetview()->timeref_scalefactor);
         }
 
-        if (view->is_left_from_center(cpointer().on_first_input_event_scene_x())) {
-            return new TFadeRangeCommand(clip, clip->get_fade_in(), nullptr, view->get_sheetview()->timeref_scalefactor);
+        if (audioClipView->is_left_from_center(cpointer().on_first_input_event_scene_x())) {
+            return new TFadeRangeCommand(clip, clip->get_fade_in(), nullptr, audioClipView->get_sheetview()->timeref_scalefactor);
         }
 
-        return new TFadeRangeCommand(clip, nullptr, clip->get_fade_out(), view->get_sheetview()->timeref_scalefactor);
+        return new TFadeRangeCommand(clip, nullptr, clip->get_fade_out(), audioClipView->get_sheetview()->timeref_scalefactor);
     }
     case FadeCurveBendCommand:
     {
-        if (auto view = qobject_cast<TFadeCurveView*>(obj)) {
-            return new FadeBend(view);
-        }
-        return ied().failure();
+        TFadeCurveView* fadeCurveView = qobject_cast<TFadeCurveView*>(obj);
+        Q_ASSERT(fadeCurveView);
+        return new FadeBend(fadeCurveView);
     }
     case FadeCurveStrengthCommand:
     {
-        if (auto view = qobject_cast<TFadeCurveView*>(obj)) {
-            return new FadeStrength(view);
-        }
-        return ied().failure();
+        TFadeCurveView* fadeCurveView = qobject_cast<TFadeCurveView*>(obj);
+        Q_ASSERT(fadeCurveView);
+        return new FadeStrength(fadeCurveView);
     }
     case GainShowAutomationCommand:
     {
