@@ -56,7 +56,7 @@ int TAudioClipDualTrimCommand::undo_action()
 
 int TAudioClipDualTrimCommand::begin_hold()
 {
-    TTimeRef cursorLocation = cpointer().on_first_input_event_timeref_location();
+    TTimeRef cursorLocation = m_contextPointer->on_first_input_event_timeref_location();
 
     TAudioClip* pointedAudioClip = m_audioTrack->get_clip_at_location(cursorLocation);
     if (!pointedAudioClip) {
@@ -129,9 +129,9 @@ void TAudioClipDualTrimCommand::cancel_action()
 
 int TAudioClipDualTrimCommand::jog()
 {
-    m_newLocation = cpointer().timeref_location();
+    m_newLocation = m_contextPointer->timeref_location();
 
-    cpointer().set_canvas_cursor_pos(cpointer().on_first_input_event_scene_pos());
+    m_contextPointer->set_canvas_cursor_pos(m_contextPointer->on_first_input_event_scene_pos());
 
     do_action();
 
@@ -141,5 +141,5 @@ int TAudioClipDualTrimCommand::jog()
 
 void TAudioClipDualTrimCommand::set_canvas_cursor_text(const QString &text)
 {
-    cpointer().set_canvas_cursor_text(text, 2000);
+    m_contextPointer->set_canvas_cursor_text(text, 2000);
 }

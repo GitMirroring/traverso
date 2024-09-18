@@ -131,7 +131,7 @@ TAddRemoveCommand::TAddRemoveCommand(TContextItem* parent, TContextItem* item, c
     m_arg = item;
 
     if (item && item->has_active_context()) {
-        cpointer().remove_from_active_context_list(item);
+        m_contextPointer->remove_from_active_context_list(item);
     }
 }
 
@@ -272,7 +272,7 @@ int TAddRemoveCommand::un_redo_action(ActionType actionType)
     // update the cursor to the context item that we are adding here
     // in case the mouse cursor did not move and the position of this object
     // is below the mouse cursor position
-    // cpointer().request_viewport_to_detect_items_below_cursor();
+    // m_contextPointer->request_viewport_to_detect_items_below_cursor();
 
     return 1;
 }

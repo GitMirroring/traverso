@@ -45,7 +45,7 @@ WorkCursorMove::WorkCursorMove(TSheetView* sv)
     m_workCursor = d->sv->get_work_cursor();
     m_playCursor = d->sv->get_play_cursor();
 
-	m_holdCursorSceneY = cpointer().scene_y();
+	m_holdCursorSceneY = m_contextPointer->scene_y();
 }
 
 int WorkCursorMove::finish_hold()
@@ -62,7 +62,7 @@ int WorkCursorMove::begin_hold()
 	}
 
 	m_session->get_work_snap()->set_snappable(false);
-	cpointer().set_canvas_cursor_shape(":/cursorHoldLr");
+	m_contextPointer->set_canvas_cursor_shape(":/cursorHoldLr");
 	m_origPos = m_session->get_work_location();
 
 	return 1;
@@ -85,7 +85,7 @@ void WorkCursorMove::set_cursor_shape(int useX, int useY)
 int WorkCursorMove::jog()
 {
 	PENTER;
-	int x = cpointer().scene_x();
+	int x = m_contextPointer->scene_x();
 
 	if (x < 0) {
 		x = 0;
@@ -104,8 +104,8 @@ int WorkCursorMove::jog()
 
 	m_session->set_work_at(newLocation);
 
-    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(newLocation, d->sv->timeref_scalefactor));
-	cpointer().set_canvas_cursor_pos(QPointF(m_workCursor->scenePos().x(), m_holdCursorSceneY));
+    m_contextPointer->set_canvas_cursor_text(TTimeRef::timeref_to_text(newLocation, d->sv->timeref_scalefactor));
+	m_contextPointer->set_canvas_cursor_pos(QPointF(m_workCursor->scenePos().x(), m_holdCursorSceneY));
 
 	return 1;
 }
@@ -178,12 +178,12 @@ void WorkCursorMove::toggle_snap_on_off()
 void WorkCursorMove::browse_to_next_marker()
 {
 	QList<TTimeLineMarker*> markers = m_session->get_timeline()->get_markers();
-	QList<TContextItem*> contexts = cpointer().get_active_context_items();
+	QList<TContextItem*> contexts = m_contextPointer->get_active_context_items();
 	TTimeLineMarkerView* view;
 	foreach(TContextItem* item, contexts) {
 		view = qobject_cast<TTimeLineMarkerView*>(item);
 		if (view) {
-			cpointer().remove_from_active_context_list(item);
+			m_contextPointer->remove_from_active_context_list(item);
 			contexts.removeAll(item);
 		}
 	}
@@ -207,18 +207,18 @@ void WorkCursorMove::browse_to_next_marker()
         do_keyboard_move(next->get_location()->get_start());
 	}
 
-	cpointer().set_active_context_items_by_keyboard_input(contexts);
+	m_contextPointer->set_active_context_items_by_keyboard_input(contexts);
 }
 
 void WorkCursorMove::browse_to_previous_marker()
 {
 	QList<TTimeLineMarker*> markers = m_session->get_timeline()->get_markers();
-	QList<TContextItem*> contexts = cpointer().get_active_context_items();
+	QList<TContextItem*> contexts = m_contextPointer->get_active_context_items();
 	TTimeLineMarkerView* view;
 	foreach(TContextItem* item, contexts) {
 		view = qobject_cast<TTimeLineMarkerView*>(item);
 		if (view) {
-			cpointer().remove_from_active_context_list(item);
+			m_contextPointer->remove_from_active_context_list(item);
 			contexts.removeAll(item);
 		}
 	}
@@ -244,15 +244,15 @@ void WorkCursorMove::browse_to_previous_marker()
         do_keyboard_move(prev->get_location()->get_start());
 	}
 
-	cpointer().set_active_context_items_by_keyboard_input(contexts);
+	m_contextPointer->set_active_context_items_by_keyboard_input(contexts);
 }
 
 void WorkCursorMove::remove_markers_from_active_context()
 {
-	QList<TContextItem*> contexts = cpointer().get_active_context_items();
+	QList<TContextItem*> contexts = m_contextPointer->get_active_context_items();
 	foreach(TContextItem* item, contexts) {
 		if (item->inherits("MarkerView")) {
-			cpointer().remove_from_active_context_list(item);
+			m_contextPointer->remove_from_active_context_list(item);
 		}
 	}
 }

@@ -49,15 +49,15 @@ void TGainGroupCommand::set_cursor_shape(int useX, int useY)
     Q_UNUSED(useX);
     Q_UNUSED(useY);
 
-    cpointer().set_canvas_cursor_shape(":/cursorGain");
+    m_contextPointer->set_canvas_cursor_shape(":/cursorGain");
 }
 
 
 int TGainGroupCommand::begin_hold()
 {
-    m_origPos = cpointer().scene_pos();
+    m_origPos = m_contextPointer->scene_pos();
 
-    cpointer().set_canvas_cursor_text(get_db_string_from_object());
+    m_contextPointer->set_canvas_cursor_text(get_db_string_from_object());
     return 1;
 }
 
@@ -79,7 +79,7 @@ void TGainGroupCommand::process_collected_number(const QString &collected)
     Q_ASSERT(m_gainCommands.size() > 0);
 
     if (collected.size() == 0) {
-        cpointer().set_canvas_cursor_text(" dB");
+        m_contextPointer->set_canvas_cursor_text(" dB");
         return;
     }
 
@@ -89,7 +89,7 @@ void TGainGroupCommand::process_collected_number(const QString &collected)
         if (collected.contains(".") || collected.contains("-")) {
             QString s = collected;
             s.append(" dB");
-            cpointer().set_canvas_cursor_text(s);
+            m_contextPointer->set_canvas_cursor_text(s);
         }
         return;
     }
@@ -103,9 +103,9 @@ void TGainGroupCommand::process_collected_number(const QString &collected)
 
     // Update the vieport's hold cursor with the _actuall_ gain value!
     if(rightfromdot) {
-        cpointer().set_canvas_cursor_text(QByteArray::number(double(dbFactor), 'f', rightfromdot).append(" dB"));
+        m_contextPointer->set_canvas_cursor_text(QByteArray::number(double(dbFactor), 'f', rightfromdot).append(" dB"));
     } else {
-        cpointer().set_canvas_cursor_text(QByteArray::number(double(dbFactor)).append(" dB"));
+        m_contextPointer->set_canvas_cursor_text(QByteArray::number(double(dbFactor)).append(" dB"));
     }
 
     if (m_primaryGainOnly) {
@@ -121,7 +121,7 @@ int TGainGroupCommand::jog()
 {
     Q_ASSERT(m_gainCommands.size() > 0);
 
-    qreal diff = m_origPos.y() - cpointer().scene_y();
+    qreal diff = m_origPos.y() - m_contextPointer->scene_y();
 
     if (m_primaryGainOnly) {
         m_gainCommands.at(0)->process_mouse_move(diff);
@@ -131,10 +131,10 @@ int TGainGroupCommand::jog()
         }
     }
 
-    cpointer().set_canvas_cursor_pos(m_origPos);
+    m_contextPointer->set_canvas_cursor_pos(m_origPos);
 
     // Update the vieport's hold cursor!
-    cpointer().set_canvas_cursor_text(get_db_string_from_object());
+    m_contextPointer->set_canvas_cursor_text(get_db_string_from_object());
 
     return 1;
 }
@@ -220,7 +220,7 @@ void TGainGroupCommand::increase_gain(  )
     }
 
     // Update the vieport's hold cursor with the _actuall_ gain value!
-    cpointer().set_canvas_cursor_text(get_db_string_from_object());
+    m_contextPointer->set_canvas_cursor_text(get_db_string_from_object());
 }
 
 void TGainGroupCommand::decrease_gain()
@@ -236,7 +236,7 @@ void TGainGroupCommand::decrease_gain()
     }
 
     // Update the vieport's hold cursor with the _actuall_ gain value!
-    cpointer().set_canvas_cursor_text(get_db_string_from_object());
+    m_contextPointer->set_canvas_cursor_text(get_db_string_from_object());
 }
 
 void TGainGroupCommand::reset_gain()
@@ -245,23 +245,23 @@ void TGainGroupCommand::reset_gain()
         gain->set_new_gain(1.0f);
     }
 
-    cpointer().set_canvas_cursor_text("0.0 dB");
+    m_contextPointer->set_canvas_cursor_text("0.0 dB");
 }
 
 void TGainGroupCommand::toggle_primary_gain_only()
 {
     if (m_gainCommands.size() == 1) {
-        cpointer().set_canvas_cursor_text(tr("Clip is not part of a selection..."), 2000);
+        m_contextPointer->set_canvas_cursor_text(tr("Clip is not part of a selection..."), 2000);
         return;
     }
 
     m_primaryGainOnly = !m_primaryGainOnly;
-    cpointer().set_canvas_cursor_text(m_primaryGainOnly ? tr("To Selection: Off") : tr("To Selection: On"));
+    m_contextPointer->set_canvas_cursor_text(m_primaryGainOnly ? tr("To Selection: Off") : tr("To Selection: On"));
 }
 
 void TGainGroupCommand::numerical_input()
 {
-    cpointer().set_canvas_cursor_text(tr("Use numerical keys to set gain dB value..."), 2000);
+    m_contextPointer->set_canvas_cursor_text(tr("Use numerical keys to set gain dB value..."), 2000);
 }
 
 // eof

@@ -143,6 +143,8 @@ private:
     TWorkCursorView*         m_workCursor;
     TCanvasCursor*      m_canvasCursor;
     QPropertyAnimation* m_canvasCursorMoveAnimation;
+    TContextPointer*    m_contextPointer{nullptr};
+
     int                 m_sceneHeight{};
     qreal               m_meanTrackHeight{};
     QScrollBar*         m_vScrollBar;

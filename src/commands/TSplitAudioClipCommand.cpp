@@ -55,7 +55,7 @@ TSplitAudioClipCommand::TSplitAudioClipCommand(TAudioClipView* view)
 int TSplitAudioClipCommand::prepare_actions()
 {
     if (m_splitLocation == TTimeRef()) {
-        m_splitLocation = TTimeRef(cpointer().scene_x() * d->sv->timeref_scalefactor);
+        m_splitLocation = TTimeRef(m_contextPointer->scene_x() * d->sv->timeref_scalefactor);
     }
 
     if (m_splitLocation <= m_clip->get_location_start() || m_splitLocation >= m_clip->get_location_start() + m_clip->get_length()) {
@@ -141,7 +141,7 @@ void TSplitAudioClipCommand::cancel_action()
 
 int TSplitAudioClipCommand::jog()
 {
-    int x = cpointer().scene_x();
+    int x = m_contextPointer->scene_x();
 
     if (x < 0) {
         x = 0;
@@ -154,7 +154,7 @@ int TSplitAudioClipCommand::jog()
         m_splitLocation = slist->get_snap_value(m_splitLocation);
     }
 
-    QPointF point = m_cv->mapFromScene(m_splitLocation / d->sv->timeref_scalefactor, cpointer().mouse_viewport_y());
+    QPointF point = m_cv->mapFromScene(m_splitLocation / d->sv->timeref_scalefactor, m_contextPointer->mouse_viewport_y());
     int xpos = (int) point.x();
     if (xpos < 0) {
         xpos = 0;
@@ -221,7 +221,7 @@ void TSplitAudioClipCommand::do_keyboard_move(const TTimeRef &location)
 
 void TSplitAudioClipCommand::update_canvas_cursor_text() const
 {
-    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_splitLocation, d->sv->timeref_scalefactor));
+    m_contextPointer->set_canvas_cursor_text(TTimeRef::timeref_to_text(m_splitLocation, d->sv->timeref_scalefactor));
 }
 
 // eof

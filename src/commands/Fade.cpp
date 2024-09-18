@@ -69,7 +69,7 @@ FadeBend::FadeBend(TFadeCurve *fade, double val)
 int FadeBend::begin_hold()
 {
 	PENTER;
-	origY = cpointer().on_first_input_event_y();
+	origY = m_contextPointer->on_first_input_event_y();
 	oldValue = m_fade->get_bend_factor();
 	newBend = origBend = oldValue;
 	m_fv->set_holding(true);
@@ -110,14 +110,14 @@ void FadeBend::set_cursor_shape(int useX, int useY)
 	Q_UNUSED(useX);
 	Q_UNUSED(useY);
 	
-	cpointer().set_canvas_cursor_shape(":/cursorHoldUd");
+	m_contextPointer->set_canvas_cursor_shape(":/cursorHoldUd");
 }
 
 int FadeBend::jog()
 {
 	int direction = (m_fade->get_fade_type() == TFadeCurve::FadeIn) ? 1 : -1;
 	
-	float dx = (float(origY - cpointer().mouse_viewport_y()) / CURSOR_SPEED);
+	float dx = (float(origY - m_contextPointer->mouse_viewport_y()) / CURSOR_SPEED);
 
 	if (m_fade->get_raster()) {
 		float value = round_float(oldValue + dx * direction);
@@ -128,9 +128,9 @@ int FadeBend::jog()
 
 	oldValue = m_fade->get_bend_factor();
 	newBend = oldValue;
-	cpointer().set_canvas_cursor_text(QByteArray::number(newBend, 'f', 2));
+	m_contextPointer->set_canvas_cursor_text(QByteArray::number(newBend, 'f', 2));
 	
-	origY = cpointer().mouse_viewport_y();
+	origY = m_contextPointer->mouse_viewport_y();
 	
 	return 1;
 }
@@ -160,7 +160,7 @@ FadeStrength::FadeStrength(TFadeCurve *fade, double val)
 int FadeStrength::begin_hold()
 {
 	PENTER;
-	origY = cpointer().on_first_input_event_y();
+	origY = m_contextPointer->on_first_input_event_y();
 	oldValue = m_fade->get_strength_factor();
 	newStrength = origStrength = oldValue;
 	m_fv->set_holding(true);
@@ -201,12 +201,12 @@ void FadeStrength::set_cursor_shape(int useX, int useY)
 	Q_UNUSED(useX);
 	Q_UNUSED(useY);
 	
-	cpointer().set_canvas_cursor_shape(":/cursorHoldUd");
+	m_contextPointer->set_canvas_cursor_shape(":/cursorHoldUd");
 }
 
 int FadeStrength::jog()
 {
-    float dy = float(origY - cpointer().mouse_viewport_y()) / CURSOR_SPEED;
+    float dy = float(origY - m_contextPointer->mouse_viewport_y()) / CURSOR_SPEED;
 	
 	if (m_fade->get_bend_factor() >= 0.5) {
 		m_fade->set_strength_factor(oldValue + dy );
@@ -221,9 +221,9 @@ int FadeStrength::jog()
 	
 	oldValue = m_fade->get_strength_factor();
 	newStrength = oldValue;
-	cpointer().set_canvas_cursor_text(QByteArray::number(newStrength, 'f', 2));
+	m_contextPointer->set_canvas_cursor_text(QByteArray::number(newStrength, 'f', 2));
 
-	origY = cpointer().mouse_viewport_y();
+	origY = m_contextPointer->mouse_viewport_y();
 
 	return 1;
 }

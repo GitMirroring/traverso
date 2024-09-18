@@ -34,6 +34,7 @@
 #endif
 
 class TContextItem;
+class TContextPointer;
 class QUndoStack;
 
 class TCommand : public QObject, public QUndoCommand
@@ -73,12 +74,16 @@ public :
 
     void set_valid(bool valid);
     void set_do_not_push_to_historystack();
+    void set_context_pointer(TContextPointer* contextPointer) {
+        m_contextPointer = contextPointer;
+    }
     bool canvas_cursor_follows_mouse_cursor() const {return m_canvasCursorFollowsMouseCursor;}
 
     static void process_command(TCommand* cmd);
 
 
 protected:
+    TContextPointer*    m_contextPointer{nullptr};
     bool 		m_isValid;
     bool        m_canvasCursorFollowsMouseCursor;
 

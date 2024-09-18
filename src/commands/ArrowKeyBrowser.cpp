@@ -40,10 +40,10 @@ int ArrowKeyBrowser::do_action()
 void ArrowKeyBrowser::set_cursor_shape(int useX, int useY)
 {
     if (useX) {
-        cpointer().set_canvas_cursor_shape(":/cursorHoldLr");
+        m_contextPointer->set_canvas_cursor_shape(":/cursorHoldLr");
     }
     if (useY) {
-        cpointer().set_canvas_cursor_shape(":/cursorHoldUd");
+        m_contextPointer->set_canvas_cursor_shape(":/cursorHoldUd");
     }
 }
 

@@ -133,7 +133,7 @@ void MoveMarker::prev_snap_pos()
 
 int MoveMarker::jog()
 {
-    TTimeRef newpos = TTimeRef(cpointer().scene_x() * mmd->scalefactor);
+    TTimeRef newpos = TTimeRef(m_contextPointer->scene_x() * mmd->scalefactor);
 
     bool didSnap = false;
 
@@ -149,11 +149,11 @@ int MoveMarker::jog()
     m_newLocation = newpos;
     m_marker->set_when(m_newLocation);
     if (didSnap) {
-        QPointF scenePos = cpointer().scene_pos();
+        QPointF scenePos = m_contextPointer->scene_pos();
         scenePos.setX(mmd->view->x());
-        cpointer().set_canvas_cursor_pos(scenePos);
+        m_contextPointer->set_canvas_cursor_pos(scenePos);
     } else {
-        cpointer().set_canvas_cursor_pos(cpointer().scene_pos());
+        m_contextPointer->set_canvas_cursor_pos(m_contextPointer->scene_pos());
     }
 
 //	d->view->set_position(int(m_newWhen / d->scalefactor));

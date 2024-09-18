@@ -36,7 +36,7 @@ MovePlugin::~MovePlugin()
 
 int MovePlugin::begin_hold()
 {
-    m_sceneXStartPos = cpointer().on_first_input_event_scene_x();
+    m_sceneXStartPos = m_contextPointer->on_first_input_event_scene_x();
     m_pluginViewOrigXPos = m_pluginView->x();
     m_pluginView->set_moving(true);
 
@@ -81,7 +81,7 @@ void MovePlugin::cancel_action()
 
 int MovePlugin::jog()
 {
-    qreal diff = m_sceneXStartPos - cpointer().scene_x();
+    qreal diff = m_sceneXStartPos - m_contextPointer->scene_x();
     qreal newXPos = m_pluginViewOrigXPos - diff;
     if (newXPos < 0) {
         newXPos = 0;

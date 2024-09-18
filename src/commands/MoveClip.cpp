@@ -115,10 +115,10 @@ MoveClip::MoveClip(TViewItem* view, const QVariantList& args)
 
         d->doSnap = d->sv->get_sheet()->is_snap_on();
 
-        TTimeRef currentLocation = TTimeRef(cpointer().on_first_input_event_scene_x() * d->sv->timeref_scalefactor);
+        TTimeRef currentLocation = TTimeRef(m_contextPointer->on_first_input_event_scene_x() * d->sv->timeref_scalefactor);
 
-        if (d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())) {
-            m_d->pointedTrackIndex = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos())->get_track()->get_sort_index();
+        if (d->sv->get_audio_trackview_at_scene_pos(m_contextPointer->scene_pos())) {
+            m_d->pointedTrackIndex = d->sv->get_audio_trackview_at_scene_pos(m_contextPointer->scene_pos())->get_track()->get_sort_index();
         } else {
             m_d->pointedTrackIndex = 0;
         }
@@ -199,12 +199,12 @@ int MoveClip::begin_hold()
 
     m_group.set_as_moving(true);
 
-    m_d->sceneXStartPos = cpointer().on_first_input_event_scene_x();
+    m_d->sceneXStartPos = m_contextPointer->on_first_input_event_scene_x();
     m_d->relativeWorkCursorPos = m_session->get_work_location() - m_group.get_location()->get_start();
 
     d->sv->stop_follow_play_head();
 
-    if (!cpointer().keyboard_only_input()) {
+    if (!m_contextPointer->keyboard_only_input()) {
         // FIXME
         // is already called from TInputEventDispatcher but there we do
         // not check for keyboard_only_input. should we do that, what is
@@ -212,7 +212,7 @@ int MoveClip::begin_hold()
 //        MoveCommand::begin_hold();
     }
 
-    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_group.get_location()->get_start(), d->sv->timeref_scalefactor));
+    m_contextPointer->set_canvas_cursor_text(TTimeRef::timeref_to_text(m_group.get_location()->get_start(), d->sv->timeref_scalefactor));
 
     return 1;
 }
@@ -301,7 +301,7 @@ int MoveClip::jog()
         return 0;
     }
 
-    TAudioTrackView* trackView = d->sv->get_audio_trackview_at_scene_pos(cpointer().scene_pos());
+    TAudioTrackView* trackView = d->sv->get_audio_trackview_at_scene_pos(m_contextPointer->scene_pos());
     int deltaTrackIndex = 0;
     if (trackView/* && !(m_actionType == FOLD_SHEET)*/) {
         deltaTrackIndex = trackView->get_track()->get_sort_index() - m_d->pointedTrackIndex;
@@ -314,7 +314,7 @@ int MoveClip::jog()
     // Only assign if we the movements is allowed in horizontal direction
     TTimeRef diff_f;
     if (!m_d->verticalOnly) {
-        diff_f = (cpointer().scene_x() - m_d->sceneXStartPos) * d->sv->timeref_scalefactor;
+        diff_f = (m_contextPointer->scene_x() - m_d->sceneXStartPos) * d->sv->timeref_scalefactor;
     }
 
     // If the moved distance (diff_f) makes as go beyond the left most position (== 0, or TTimeRef())
@@ -343,7 +343,7 @@ int MoveClip::jog()
         markerAndOrigin.marker->set_when(markerAndOrigin.origin + m_posDiff);
     }
 
-    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(newTrackStartLocation, d->sv->timeref_scalefactor));
+    m_contextPointer->set_canvas_cursor_text(TTimeRef::timeref_to_text(newTrackStartLocation, d->sv->timeref_scalefactor));
 
     return 1;
 }
@@ -441,11 +441,11 @@ void MoveClip::start_zoom()
     if (!m_d->zoom) {
         m_d->zoom = new Zoom(d->sv, QList<QVariant>() << "HJogZoom" << "1.2" << "0.2");
         m_d->zoom->begin_hold();
-        cpointer().set_canvas_cursor_shape(":/cursorZoomHorizontal");
+        m_contextPointer->set_canvas_cursor_shape(":/cursorZoomHorizontal");
         // FIXME, should no longer be handled from inherited class
 //        stop_shuttle();
     } else {
-        cpointer().set_canvas_cursor_shape(":/cursorHoldLrud");
+        m_contextPointer->set_canvas_cursor_shape(":/cursorHoldLrud");
         // FIXME, should no longer be handled from inherited class
 //        start_shuttle(true);
         delete m_d->zoom;
@@ -458,10 +458,10 @@ void MoveClip::toggle_vertical_only()
     m_d->verticalOnly = !m_d->verticalOnly;
     if (m_d->verticalOnly) {
         set_cursor_shape(0, 1);
-        cpointer().set_canvas_cursor_text(tr("Vertical On"), 1000);
+        m_contextPointer->set_canvas_cursor_text(tr("Vertical On"), 1000);
     } else {
         set_cursor_shape(1, 1);
-        cpointer().set_canvas_cursor_text(tr("Vertical Off"), 1000);
+        m_contextPointer->set_canvas_cursor_text(tr("Vertical Off"), 1000);
     }
 }
 

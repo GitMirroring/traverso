@@ -81,6 +81,7 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
     m_projectMasterOutView = nullptr;
     timeref_scalefactor = TTimeRef::UNIVERSAL_SAMPLE_RATE;
     m_hasMouseTracking = true;
+    m_contextPointer = &cpointer();
 
 	m_clipsViewPort->scene()->addItem(this);
 
@@ -130,7 +131,7 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 	connect(m_hScrollBar, SIGNAL(valueChanged(int)), this, SLOT(hscrollbar_value_changed(int)));
 	connect(m_vScrollBar, SIGNAL(valueChanged(int)), m_clipsViewPort->verticalScrollBar(), SLOT(setValue(int)));
 
-	connect(&cpointer(), SIGNAL(contextChanged()), this, SLOT(context_changed()));
+    connect(m_contextPointer, SIGNAL(contextChanged()), this, SLOT(context_changed()));
 
 	// fill the view with trackviews, add_new_trackview()
 	// doesn't yet layout the new tracks.
@@ -165,7 +166,7 @@ void TSheetView::scale_factor_changed( )
     timeref_scalefactor = qint64(zoom * (TTimeRef::UNIVERSAL_SAMPLE_RATE / 44100));
 	m_tlvp->scale_factor_changed();
 
-    if(auto viewPort = cpointer().get_viewport()) {
+    if(auto viewPort = m_contextPointer->get_viewport()) {
         viewPort->set_timeref_scale_factor(timeref_scalefactor);
     }
 
@@ -646,7 +647,7 @@ TTimeLineRulerViewPort* TSheetView::get_timeline_viewport() const
 
 TCommand * TSheetView::touch( )
 {
-    TViewPort* viewPort = dynamic_cast<TViewPort*>(cpointer().get_viewport());
+    TViewPort* viewPort = dynamic_cast<TViewPort*>(m_contextPointer->get_viewport());
 
     if (!viewPort) {
         return ied().failure();
@@ -663,9 +664,9 @@ TCommand * TSheetView::touch( )
     // so x=on_first_input_event_x() must have served a purpose in the past
     // The whole logic of placing cursors needs to be reviewed anyways :)
     if (!viewPort) {
-		x = cpointer().on_first_input_event_x();
+        x = m_contextPointer->on_first_input_event_x();
 	} else {
-        x = cpointer().mouse_viewport_x();
+        x = m_contextPointer->mouse_viewport_x();
 	}
 
     m_session->set_work_at(TTimeRef(qRound(viewPort->map_to_scene(QPoint(x, 0)).x()) * timeref_scalefactor));
@@ -675,14 +676,14 @@ TCommand * TSheetView::touch( )
 
 TCommand * TSheetView::touch_play_cursor( )
 {
-	if (cpointer().get_viewport() == m_tpvp) {
+    if (m_contextPointer->get_viewport() == m_tpvp) {
 		return ied().did_not_implement();
 	}
 	int x;
-	if (!cpointer().get_viewport()) {
-		x = cpointer().on_first_input_event_x();
+    if (!m_contextPointer->get_viewport()) {
+        x = m_contextPointer->on_first_input_event_x();
 	} else {
-        x = cpointer().mouse_viewport_x();
+        x = m_contextPointer->mouse_viewport_x();
 	}
 	m_session->set_transport_location(TTimeRef(qRound(m_clipsViewPort->mapToScene(x, 0).x()) * timeref_scalefactor));
 
@@ -836,7 +837,7 @@ void TSheetView::browse_to_track(TTrack *track)
 			list.append(view);
 			list.append(this);
 
-			cpointer().set_active_context_items_by_keyboard_input(list);
+            m_contextPointer->set_active_context_items_by_keyboard_input(list);
 
             keyboard_move_canvas_cursor_to_location(m_session->get_work_location(), view->scenePos().y() + view->boundingRect().height() / 2);
 
@@ -860,7 +861,7 @@ void TSheetView::browse_to_audio_clip_view(TAudioClipView* acv)
     }
 
 
-	cpointer().set_active_context_items_by_keyboard_input(activeList);
+    m_contextPointer->set_active_context_items_by_keyboard_input(activeList);
 }
 
 void TSheetView::browse_to_curve_view(TCurveView *curveView)
@@ -871,7 +872,7 @@ void TSheetView::browse_to_curve_view(TCurveView *curveView)
 	activeList.append(acv);
 	activeList.append(acv->get_audio_track_view());
 	activeList.append(this);
-	cpointer().set_active_context_items_by_keyboard_input(activeList);
+    m_contextPointer->set_active_context_items_by_keyboard_input(activeList);
 }
 
 void TSheetView::browse_to_marker_view(TTimeLineMarkerView *markerView)
@@ -880,20 +881,20 @@ void TSheetView::browse_to_marker_view(TTimeLineMarkerView *markerView)
 		return;
 	}
 
-	QList<TContextItem*> contexts = cpointer().get_active_context_items();
+    QList<TContextItem*> contexts = m_contextPointer->get_active_context_items();
 	TTimeLineMarkerView* view;
 	foreach(TContextItem* item, contexts) {
 		view = qobject_cast<TTimeLineMarkerView*>(item);
 		if (view) {
-			cpointer().remove_from_active_context_list(item);
+            m_contextPointer->remove_from_active_context_list(item);
 			contexts.removeAll(item);
 		}
 	}
 
-    keyboard_move_canvas_cursor_to_location(TTimeRef(markerView->get_marker()->get_location()->get_start()), cpointer().scene_y());
+    keyboard_move_canvas_cursor_to_location(TTimeRef(markerView->get_marker()->get_location()->get_start()), m_contextPointer->scene_y());
 
 	contexts.prepend(markerView);
-	cpointer().set_active_context_items_by_keyboard_input(contexts);
+    m_contextPointer->set_active_context_items_by_keyboard_input(contexts);
 }
 
 void TSheetView::browse_to_curve_node_view(TCurveNodeView *nodeView)
@@ -911,23 +912,23 @@ void TSheetView::browse_to_curve_node_view(TCurveNodeView *nodeView)
     keyboard_move_canvas_cursor_to_location(TTimeRef(nodeView->get_curve_node()->get_when()) + curveView->get_curve()->get_start_offset(),
 			   nodeView->scenePos().y() + nodeView->boundingRect().height() / 2);
 
-	cpointer().set_active_context_items_by_keyboard_input(activeList);
+    m_contextPointer->set_active_context_items_by_keyboard_input(activeList);
 
 }
 
 TCommand* TSheetView::browse_to_time_line()
 {
-	QList<TContextItem*> items = cpointer().get_active_context_items();
+    QList<TContextItem*> items = m_contextPointer->get_active_context_items();
 	items.prepend(m_tlvp->get_timeline_view());
 
-	cpointer().set_active_context_items_by_keyboard_input(items);
+    m_contextPointer->set_active_context_items_by_keyboard_input(items);
 
 	return nullptr;
 }
 
 void TSheetView::collect_item_browser_data(ItemBrowserData &data)
 {
-	QList<TContextItem*> list = cpointer().get_active_context_items();
+    QList<TContextItem*> list = m_contextPointer->get_active_context_items();
 
 	if (!list.empty()) {
 		data.currentContext = list.first()->metaObject()->className();
@@ -1152,7 +1153,7 @@ TCommand* TSheetView::browse_to_next_context_item()
 	}
 
 	activeList.append(this);
-	cpointer().set_active_context_items_by_keyboard_input(activeList);
+    m_contextPointer->set_active_context_items_by_keyboard_input(activeList);
 
 
 	return nullptr;
@@ -1209,7 +1210,7 @@ TCommand* TSheetView::browse_to_previous_context_item()
 	}
 
 	activeList.append(this);
-	cpointer().set_active_context_items_by_keyboard_input(activeList);
+    m_contextPointer->set_active_context_items_by_keyboard_input(activeList);
 
 	return nullptr;
 }
@@ -1249,7 +1250,7 @@ void TSheetView::keyboard_move_canvas_cursor_to_location(const TTimeRef &locatio
 	}
 
 	QPoint pos = m_clipsViewPort->mapFromScene(location / timeref_scalefactor, sceneY);
-    cpointer().store_canvas_cursor_position(pos);
+    m_contextPointer->store_canvas_cursor_position(pos);
 
     m_canvasCursor->set_text(TTimeRef::timeref_to_text(location, timeref_scalefactor));
     do_keyboard_canvas_cursor_move(QPointF(location / timeref_scalefactor, sceneY));
@@ -1335,7 +1336,7 @@ void TSheetView::do_keyboard_canvas_cursor_move(const QPointF &position)
 
 void TSheetView::mouse_hover_move_event()
 {
-   set_canvas_cursor_pos(cpointer().scene_pos(), TViewPortInterface::CursorMoveReason::MOUSE_MOVE_EVENT);
+   set_canvas_cursor_pos(m_contextPointer->scene_pos(), TViewPortInterface::CursorMoveReason::MOUSE_MOVE_EVENT);
 }
 
 void TSheetView::context_changed()
@@ -1348,13 +1349,13 @@ void TSheetView::context_changed()
 	ItemBrowserData data;
 	collect_item_browser_data(data);
 
-    QList<TContextItem*> items = cpointer().get_active_context_items();
+    QList<TContextItem*> items = m_contextPointer->get_active_context_items();
 
     if (!items.isEmpty()) {
         foreach(TContextItem * item, items) {
             QString cursorShape = cursor_dict()->value(item->metaObject()->className(), "");
             if (!cursorShape.isEmpty()) {
-                cpointer().set_canvas_cursor_shape(cursorShape, Qt::AlignTop | Qt::AlignHCenter);
+                m_contextPointer->set_canvas_cursor_shape(cursorShape, Qt::AlignTop | Qt::AlignHCenter);
                 break;
             }
         }

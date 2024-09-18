@@ -33,6 +33,7 @@
 
 class TCommand;
 class TContextItem;
+class TContextPointer;
 class TMoveCommand;
 class TCommandPlugin;
 class TShortCut;
@@ -81,6 +82,8 @@ private:
     TInputEventDispatcher(const TInputEventDispatcher&) : QObject() {}
     ~TInputEventDispatcher();
 
+    static const int NO_HOLD_EVENT = -100;
+
     enum BroadcastResult {
         RESULT_NOT_SET = 0,
         SUCCESS=1,
@@ -100,22 +103,25 @@ private:
     QHash<int, HoldModifierKey>  m_holdModifierKeys;
 
     QHash<QString, int>	m_modes;
-    TShortCutManager*   m_shortCutManager = nullptr;;
-    TCommand*           m_holdingCommand;
-    TMoveCommand*       m_moveCommand;
+    TShortCutManager*   m_shortCutManager = nullptr;
+    TContextPointer*    m_contextPointer{nullptr};
+    TCommand*           m_holdingCommand{nullptr};
+    TMoveCommand*       m_moveCommand{nullptr};
     QString             m_sCollectedNumber;
     QPoint              m_jogBypassPos;
     QTimer              m_holdKeyRepeatTimer;
 
 
-    bool 			m_isHolding{};
-    bool			m_enterFinishesHold{};
-    bool			m_cancelHold{};
-    bool			m_bypassJog{};
+    bool 			m_isHolding{false};
+    bool			m_enterFinishesHold{false};
+    bool			m_cancelHold{false};
+    bool			m_bypassJog{false};
 
-    int             m_dispatchResult{};
+    int             m_dispatchResult{RESULT_NOT_SET};
     int             m_unbypassJogDistance{};
-    int             m_holdEventKeyValue;
+    // holdEventKeyCode MUST be a value != ANY key code!
+    // when set to 'not matching any key!!!!!!
+    int             m_holdEventKeyValue{NO_HOLD_EVENT};
 
     void 			finish_hold();
     void 			reset();

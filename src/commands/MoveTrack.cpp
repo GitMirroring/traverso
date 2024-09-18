@@ -99,9 +99,9 @@ int MoveTrack::jog()
         return 1;
     }
 
-    if ((m_trackView->scenePos().y() + m_trackView->boundingRect().height()) < cpointer().scene_y()) {
+    if ((m_trackView->scenePos().y() + m_trackView->boundingRect().height()) < m_contextPointer->scene_y()) {
         m_sv->move_trackview_down(m_trackView);
-    } else if ((m_trackView->scenePos().y()) > (cpointer().scene_y())) {
+    } else if ((m_trackView->scenePos().y()) > (m_contextPointer->scene_y())) {
         m_sv->move_trackview_up(m_trackView);
     }
 
@@ -124,7 +124,7 @@ void MoveTrack::move_down()
 void MoveTrack::set_cursor_shape(int /*useX*/, int useY)
 {
     if (useY) {
-        cpointer().set_canvas_cursor_shape(":/cursorHoldUd");
+        m_contextPointer->set_canvas_cursor_shape(":/cursorHoldUd");
     }
 }
 

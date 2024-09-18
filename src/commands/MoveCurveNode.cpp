@@ -64,12 +64,12 @@ void MoveCurveNode::toggle_vertical_only()
     mcnd->verticalOnly = !mcnd->verticalOnly;
     if (mcnd->verticalOnly)
 	{
-		cpointer().set_canvas_cursor_text(tr("Vertical On"), 1000);
+		m_contextPointer->set_canvas_cursor_text(tr("Vertical On"), 1000);
 
 	}
 	else
 	{
-		cpointer().set_canvas_cursor_text(tr("Vertical Off"), 1000);
+		m_contextPointer->set_canvas_cursor_text(tr("Vertical Off"), 1000);
 	}
 }
 
@@ -98,7 +98,7 @@ void MoveCurveNode::cancel_action()
 
 int MoveCurveNode::begin_hold()
 {
-    mcnd->mousepos = QPoint(cpointer().on_first_input_event_x(), cpointer().on_first_input_event_y());
+    mcnd->mousepos = QPoint(m_contextPointer->on_first_input_event_x(), m_contextPointer->on_first_input_event_y());
     check_and_apply_when_and_value_diffs();
     return 1;
 }
@@ -152,12 +152,12 @@ void MoveCurveNode::move_right()
 
 void MoveCurveNode::set_cursor_shape(int useX, int useY)
 {
-//        cpointer().setCursor(":/cursorHoldLrud");
+//        m_contextPointer->setCursor(":/cursorHoldLrud");
 }
 
 int MoveCurveNode::jog()
 {
-	QPoint mousepos = cpointer().mouse_viewport_pos();
+	QPoint mousepos = m_contextPointer->mouse_viewport_pos();
 
 	int dx, dy;
     dx = mousepos.x() - mcnd->mousepos.x();
@@ -197,7 +197,7 @@ int MoveCurveNode::check_and_apply_when_and_value_diffs()
         // Use a delegate (or something similar) in the future that set's the correct value.
 	if (m_nodeDatas.size() == 1) {
 		float dbFactor = Mixer::coefficient_to_dB(m_nodeDatas.first().origValue + m_valueDiff);
-        cpointer().set_canvas_cursor_text(QByteArray::number(dbFactor, 'f', 1).append(" dB"));
+        m_contextPointer->set_canvas_cursor_text(QByteArray::number(dbFactor, 'f', 1).append(" dB"));
 	}
 
     return do_action();

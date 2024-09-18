@@ -96,7 +96,7 @@ int TMoveCommand::jog()
 
     auto direction = ShuttleDirection::RIGHT;
 
-    qreal normalizedX = qreal(cpointer().mouse_viewport_x()) / d->sv->get_clips_viewport()->width();
+    qreal normalizedX = qreal(m_contextPointer->mouse_viewport_x()) / d->sv->get_clips_viewport()->width();
     // clips viewport width to be used for active drag shuttle
     qreal dragShuttleRange = 0.18;
 
@@ -131,7 +131,7 @@ int TMoveCommand::jog()
 
     dragShuttleRange = 0.1;
     direction = ShuttleDirection::UP;
-    qreal normalizedY = qreal(cpointer().mouse_viewport_y()) / d->sv->get_clips_viewport()->height();
+    qreal normalizedY = qreal(m_contextPointer->mouse_viewport_y()) / d->sv->get_clips_viewport()->height();
 
     if (normalizedY < dragShuttleRange || normalizedY > (1.0 - dragShuttleRange)) {
         // this is where dragShuttle operates
@@ -177,7 +177,7 @@ void TMoveCommand::move_faster()
 	}
 
     pm().get_project()->set_keyboard_arrow_key_navigation_speed(d->speed);
-    cpointer().set_canvas_cursor_text(tr("Speed: %1").arg(d->speed), 1000);
+    m_contextPointer->set_canvas_cursor_text(tr("Speed: %1").arg(d->speed), 1000);
 }
 
 
@@ -200,7 +200,7 @@ void TMoveCommand::move_slower()
 	}
 
     pm().get_project()->set_keyboard_arrow_key_navigation_speed(d->speed);
-    cpointer().set_canvas_cursor_text(tr("Speed: %1").arg(d->speed), 1000);
+    m_contextPointer->set_canvas_cursor_text(tr("Speed: %1").arg(d->speed), 1000);
 }
 
 void TMoveCommand::process_collected_number(const QString &collected)
@@ -232,7 +232,7 @@ void TMoveCommand::process_collected_number(const QString &collected)
         default: d->speed = 2;
 		}
         pm().get_project()->set_keyboard_arrow_key_navigation_speed(d->speed);
-        cpointer().set_canvas_cursor_text(tr("Speed: %1").arg(d->speed), 1000);
+        m_contextPointer->set_canvas_cursor_text(tr("Speed: %1").arg(d->speed), 1000);
         ied().set_numerical_input("");
 	}
 }
@@ -245,17 +245,17 @@ void TMoveCommand::toggle_snap_on_off()
 
     if (d->doSnap)
 	{
-		cpointer().set_canvas_cursor_text(tr("Snap On"), 1000);
+		m_contextPointer->set_canvas_cursor_text(tr("Snap On"), 1000);
 	}
 	else
 	{
-		cpointer().set_canvas_cursor_text(tr("Snap Off"), 1000);
+		m_contextPointer->set_canvas_cursor_text(tr("Snap Off"), 1000);
 	}
 }
 
 void TMoveCommand::numerical_input()
 {
-    cpointer().set_canvas_cursor_text(tr("Use numerical keys to set speed..."), 2000);
+    m_contextPointer->set_canvas_cursor_text(tr("Use numerical keys to set speed..."), 2000);
 }
 
 void TMoveCommand::start_shuttle(bool drag)

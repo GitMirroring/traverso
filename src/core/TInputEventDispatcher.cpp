@@ -32,14 +32,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TShortCutManager.h"
 #include "TConfig.h"
 #include "TTimeRef.h"
-#include "TGlobalContext.h"
 #include "Debugger.h"
 
 #include <QMetaMethod>
 #include <QKeyEvent>
 #include <QWheelEvent>
 
-static const int NO_HOLD_EVENT = -100;
 
 /**
  * \class InputEventDispatcher
@@ -87,15 +85,7 @@ TInputEventDispatcher& ied()
 TInputEventDispatcher::TInputEventDispatcher()
 {
     PENTERCONS;
-    m_holdingCommand = nullptr;
-    m_moveCommand = nullptr;
-    // holdEvenCode MUST be a value != ANY key code!
-    // when set to 'not matching any key!!!!!!
-    m_holdEventKeyValue = NO_HOLD_EVENT;
-    m_cancelHold = false;
-    m_bypassJog = false;
-    m_enterFinishesHold = false;
-    m_sCollectedNumber = "";
+    m_contextPointer = &cpointer();
 
     m_modifierKeys << Qt::Key_Shift << Qt::Key_Control << Qt::Key_Alt << Qt::Key_Meta;
 
@@ -110,7 +100,7 @@ int TInputEventDispatcher::dispatch_shortcut_from_contextmenu(TShortCutFunction*
     PENTER2;
     Q_ASSERT(m_shortCutManager);
 
-    cpointer().restore_global_mouse_pos_after_context_menu_dispatch();
+    m_contextPointer->restore_global_mouse_pos_after_context_menu_dispatch();
 
     QStringList keys = function->get_keys();
     if (!keys.size()) {
@@ -151,7 +141,7 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
 
     PMESG("Dispatching key %d", shortCut->get_key_value());
 
-    QList<QObject* > contextItemsList = fromContextMenu ? cpointer().get_contextmenu_items() : cpointer().get_context_items();
+    QList<QObject* > contextItemsList = fromContextMenu ? m_contextPointer->get_contextmenu_items() : m_contextPointer->get_context_items();
 
     // If we're holding the first item we want to dispatch to is the holding command object
     if (m_holdingCommand) {
@@ -244,6 +234,8 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
         if (!command) {
             PMESG("No returned command object");
             break;
+        } else {
+            command->set_context_pointer(m_contextPointer);
         }
 
         if (command->is_hold_command()) {
@@ -299,7 +291,7 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
                     } else {
                         keyString = QKeySequence(shortCut->get_key_value()).toString();
                     }
-                    cpointer().set_canvas_cursor_text(tr("Press %1 or Enter to accept, Esc to cancel, Q for more").arg(keyString));
+                    m_contextPointer->set_canvas_cursor_text(tr("Press %1 or Enter to accept, Esc to cancel, Q for more").arg(keyString));
                 }
 
                 return 1;
@@ -408,19 +400,19 @@ void TInputEventDispatcher::jog()
     }
 
     if (m_bypassJog) {
-        QPoint diff = m_jogBypassPos - cpointer().mouse_viewport_pos();
+        QPoint diff = m_jogBypassPos - m_contextPointer->mouse_viewport_pos();
         if (diff.manhattanLength() > m_unbypassJogDistance) {
             m_bypassJog = false;
             m_holdingCommand->set_jog_bypassed(m_bypassJog);
         } else {
             return;
         }
-        m_jogBypassPos = cpointer().mouse_viewport_pos();
+        m_jogBypassPos = m_contextPointer->mouse_viewport_pos();
     }
 
     if (m_holdingCommand->jog() == 1 && m_holdingCommand->canvas_cursor_follows_mouse_cursor() && m_moveCommand) {
         m_moveCommand->TMoveCommand::jog();
-        cpointer().set_canvas_cursor_pos(cpointer().scene_pos());
+        m_contextPointer->set_canvas_cursor_pos(m_contextPointer->scene_pos());
     }
 }
 
@@ -428,7 +420,7 @@ void TInputEventDispatcher::bypass_jog_until_mouse_movements_exceeded_manhattenl
 {
     m_unbypassJogDistance = length;
     m_bypassJog = true;
-    m_jogBypassPos = cpointer().mouse_viewport_pos();
+    m_jogBypassPos = m_contextPointer->mouse_viewport_pos();
     if (m_holdingCommand) {
         m_holdingCommand->set_jog_bypassed(m_bypassJog);
     }
@@ -436,7 +428,7 @@ void TInputEventDispatcher::bypass_jog_until_mouse_movements_exceeded_manhattenl
 
 void TInputEventDispatcher::update_jog_bypass_pos()
 {
-    m_jogBypassPos = cpointer().mouse_viewport_pos();
+    m_jogBypassPos = m_contextPointer->mouse_viewport_pos();
 }
 
 void TInputEventDispatcher::set_holding(bool holding)
@@ -447,9 +439,9 @@ void TInputEventDispatcher::set_holding(bool holding)
 
     if (m_isHolding) {
         emit holdStarted();
-        cpointer().hold_start();
+        m_contextPointer->hold_start();
     } else {
-        cpointer().hold_finished();
+        m_contextPointer->hold_finished();
         emit holdFinished();
     }
 }
@@ -498,7 +490,7 @@ void TInputEventDispatcher::catch_key_release( QKeyEvent * e)
 void TInputEventDispatcher::catch_mousebutton_press( QMouseEvent * e )
 {
     if (e->button() == Qt::LeftButton) {
-        cpointer().mouse_button_left_pressed();
+        m_contextPointer->mouse_button_left_pressed();
     }
     process_press_event(int(e->button()));
 }
@@ -580,7 +572,7 @@ void TInputEventDispatcher::process_press_event(int keyValue)
 
     if (shortCut)
     {
-        cpointer().prepare_for_shortcut_dispatch();
+        m_contextPointer->prepare_for_shortcut_dispatch();
         dispatch_shortcut(shortCut);
         return;
     }
@@ -659,7 +651,7 @@ void TInputEventDispatcher::finish_hold()
 
     if (m_holdingCommand->wants_cursor_position_to_be_restored())
     {
-        cpointer().set_canvas_cursor_pos(cpointer().on_first_input_event_scene_pos());
+        m_contextPointer->set_canvas_cursor_pos(m_contextPointer->on_first_input_event_scene_pos());
     }
 
     if (m_cancelHold) {

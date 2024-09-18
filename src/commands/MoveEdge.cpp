@@ -65,12 +65,12 @@ int MoveEdge::begin_hold()
 	if (m_edge == "set_left_edge") {
         m_newPos = m_originalPos = m_clip->get_location_start();
         m_otherEdgePos = m_clip->get_location()->get_end();
-		cpointer().set_canvas_cursor_text(tr("Left Edge"), 800);
+		m_contextPointer->set_canvas_cursor_text(tr("Left Edge"), 800);
 	}
 	if (m_edge == "set_right_edge") {
         m_newPos = m_originalPos = m_clip->get_location_end();
         m_otherEdgePos = m_clip->get_location_start();
-		cpointer().set_canvas_cursor_text(tr("Right Edge"), 800);
+		m_contextPointer->set_canvas_cursor_text(tr("Right Edge"), 800);
 	}
 
     m_clip->get_location()->set_snappable(false);
@@ -125,7 +125,7 @@ int MoveEdge::undo_action()
 
 int MoveEdge::jog()
 {
-    m_newPos = TTimeRef(cpointer().scene_x() * d->sv->timeref_scalefactor);
+    m_newPos = TTimeRef(m_contextPointer->scene_x() * d->sv->timeref_scalefactor);
 
     if (d->sv->get_sheet()->is_snap_on()) {
         TSnapList* slist = d->sv->get_sheet()->get_snap_list();
@@ -150,7 +150,7 @@ int MoveEdge::jog()
         m_newPos = m_clip->get_location_start();
 	}
 
-    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
+    m_contextPointer->set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
 
 	return 1;
 }
@@ -206,7 +206,7 @@ void MoveEdge::do_keyboard_move()
         m_newPos = m_clip->get_location_start();
 	}
 
-    cpointer().set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
+    m_contextPointer->set_canvas_cursor_text(TTimeRef::timeref_to_text(m_newPos, d->sv->timeref_scalefactor));
 }
 
 // eof

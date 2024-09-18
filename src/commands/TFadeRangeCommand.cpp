@@ -56,7 +56,7 @@ int TFadeRangeCommand::prepare_actions()
 
 int TFadeRangeCommand::begin_hold()
 {
-    frp->origX = cpointer().on_first_input_event_x();
+    frp->origX = m_contextPointer->on_first_input_event_x();
     if (m_fadeIn) {
         m_fadeInNewRange = m_fadeInOrigRange = m_fadeIn->get_range();
     }
@@ -186,7 +186,7 @@ void TFadeRangeCommand::do_keyboard_move()
 
 int TFadeRangeCommand::jog()
 {
-    int deltaX = frp->origX - (cpointer().mouse_viewport_x());
+    int deltaX = frp->origX - (m_contextPointer->mouse_viewport_x());
 
     if (m_fadeIn) {
         m_fadeInNewRange = m_fadeInOrigRange - ( deltaX * frp->scalefactor);
@@ -217,7 +217,7 @@ void TFadeRangeCommand::update_canvas_cursor_text()
         location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeInNewRange)) + "  |  " + TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
     }
 
-    cpointer().set_canvas_cursor_text(location);
+    m_contextPointer->set_canvas_cursor_text(location);
 }
 
 
