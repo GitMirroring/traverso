@@ -122,9 +122,7 @@ void TReadAudioSource::private_init()
 	m_error = 0;
     m_resampleAudioReader = nullptr;
 
-    float oneToFourSeconds = 1.0f;
-    oneToFourSeconds += ((std::rand() * 3.0) / float(RAND_MAX));
-    m_aboutOneToFourSecondsTime = TTimeRef::UNIVERSAL_SAMPLE_RATE * oneToFourSeconds;
+    m_aboutOneToFourSecondsTime = TTimeRef::UNIVERSAL_SAMPLE_RATE * (TUtils::randomNumberBetween(0, 3) + 1.0);
 }
 
 TReadAudioSource::~TReadAudioSource()

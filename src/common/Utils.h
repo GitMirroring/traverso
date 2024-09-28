@@ -19,8 +19,8 @@
  
 */
 
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef T_UTILS_H
+#define T_UTILS_H
 
 #include <QPixmap>
 #include <QDateTime>
@@ -28,6 +28,12 @@
 #define QS_C(x) x.toUtf8().data()
 
 class QString;
+
+class TUtils
+{
+public:
+    static double randomNumberBetween(int start, int end);
+};
 
 QDateTime extract_date_time(qint64 id);
 

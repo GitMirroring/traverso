@@ -29,6 +29,8 @@
 #include <QTranslator>
 #include <QDir>
 #include <cmath>
+#include <random>
+#include "TTimeRef.h"
 
 qint64 create_id( )
 {
@@ -82,4 +84,16 @@ QString language_name_from_qm_file(const QString& lang)
     }
 
     return QString("Failed to load language name from qm file");
+}
+
+double TUtils::randomNumberBetween(int start, int end)
+{
+    std::mt19937_64 rng;
+    // initialize the random number generator with time-dependent seed
+    uint64_t timeSeed = TTimeRef::get_nanoseconds_since_epoch();
+    std::seed_seq ss{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed>>32)};
+    rng.seed(ss);
+    // initialize a uniform distribution between start and end
+    std::uniform_real_distribution<double> unif(start, end);
+    return unif(rng);
 }
