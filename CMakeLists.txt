@@ -472,22 +472,7 @@ ELSE(UNIX)
 ENDIF(UNIX)
 
 
-# Check GCC for PCH support
-SET(USE_PCH FALSE)
-
-IF(WANT_PCH)
-FIND_PACKAGE(PCHSupport)
-IF(PCHSupport_FOUND)
-        SET(USE_PCH TRUE)
-        SET(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} -include ${CMAKE_SOURCE_DIR}/src/precompile.h -Winvalid-pch")
-        SET(CMAKE_CXX_FLAGS_RELEASE  "${CMAKE_CXX_FLAGS_RELEASE} -include ${CMAKE_SOURCE_DIR}/src/precompile.h -Winvalid-pch")
-        MESSAGE(STATUS "Enabling precompiled headers for GCC ${gcc_compiler_version}")
-ENDIF(PCHSupport_FOUND)
-ELSE(WANT_PCH)
-        #QT_DEFENITIONS are added by pch, so when no pch support add them now!
-        ADD_DEFINITIONS(${QT_DEFINITIONS})
-ENDIF(WANT_PCH)
-
+ADD_DEFINITIONS(${QT_DEFINITIONS})
 ADD_DEFINITIONS(${TRAVERSO_DEFINES})
 SET(TRAVERSO_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/buildfiles)
 

@@ -350,17 +350,8 @@ void TThemer::load( )
 		m_properties.insert(name, value);
 		propertyNode = propertyNode.nextSibling();
 	}
-	
-	m_cursors.clear();
-	m_cursors.insert("Zoom", QCursor(find_pixmap(":/cursorZoom")));
-	m_cursors.insert("ZoomVertical", QCursor(find_pixmap(":/cursorZoomVertical")));
-	m_cursors.insert("ZoomHorizontal", QCursor(find_pixmap(":/cursorZoomHorizontal")));
-	
-	m_cursors.insert("LRUD", QCursor(find_pixmap(":/cursorHoldLrud")));
-	m_cursors.insert("LR", QCursor(find_pixmap(":/cursorHoldLr")));
-        m_cursors.insert("UD", QCursor(find_pixmap(":/cursorHoldUd")));
 
-        validate_loaded_theme();
+    validate_loaded_theme();
 
 	QFile cf("/home/remon/.traverso/themes/style.qss");
 	if (cf.open(QIODevice::ReadOnly))
@@ -441,11 +432,6 @@ QFont TThemer::get_font(const QString& fontname) const
 QVariant TThemer::get_property(const QString& propertyname, const QVariant& defaultValue) const
 {
 	return m_properties.value(propertyname, defaultValue);
-}
-
-QCursor TThemer::get_cursor(const QString & name) const
-{
-	return m_cursors.value(name);
 }
 
 void TThemer::reload_on_themefile_change(const QString&)

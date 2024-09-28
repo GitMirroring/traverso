@@ -28,7 +28,6 @@
 #include <QLinearGradient>
 #include <QFont>
 #include <QHash>
-#include <QCursor>
 #include <QString>
 #include <QVariant>
 #include <QPalette>
@@ -54,7 +53,6 @@ public:
 	QVariant get_property(const QString& propertyname, const QVariant& defaultValue=0) const;
 	QPalette system_palette() const {return m_systempallete;}
 	QStringList get_builtin_themes();
-	QCursor get_cursor(const QString& name) const;
 	QBrush get_brush(const QString& name, QPoint start = QPoint(0,0), QPoint stop = QPoint(0,0)) const;
 	QLinearGradient get_gradient(const QString& name) const;
 	
@@ -70,7 +68,6 @@ private:
         QHash<QString, QLinearGradient> m_gradients;
 	QHash<QString, QVariant> m_properties;
 	QHash<QString, QFont>	m_fonts;
-	QHash<QString, QCursor>	m_cursors;
 	QFileSystemWatcher*	m_watcher;
         QString			m_themefile;
 	int			m_coloradjust;
