@@ -44,8 +44,6 @@ WorkCursorMove::WorkCursorMove(TSheetView* sv)
 {
     m_workCursor = d->sv->get_work_cursor();
     m_playCursor = d->sv->get_play_cursor();
-
-	m_holdCursorSceneY = m_contextPointer->scene_y();
 }
 
 int WorkCursorMove::finish_hold()
@@ -64,6 +62,7 @@ int WorkCursorMove::begin_hold()
 	m_session->get_work_snap()->set_snappable(false);
 	m_contextPointer->set_canvas_cursor_shape(":/cursorHoldLr");
 	m_origPos = m_session->get_work_location();
+    m_holdCursorSceneY = m_contextPointer->scene_y();
 
 	return 1;
 }
