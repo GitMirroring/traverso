@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <samplerate.h>
 
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
 
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -71,7 +71,7 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 #define IOPRIO_CLASS_SHIFT	13
 #define IOPRIO_PRIO_MASK	0xff
 
-#endif // endif Q_OS_UNIX
+#endif // endif Q_OS_LINUX
 
 /** \class TDiskIOThread
  *	\brief handles all the read's and write's of AudioSources
@@ -84,8 +84,7 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 
 void TDiskIOThread::run()
 {
-#if defined (Q_OS_UNIX)
-
+#if defined(Q_OS_LINUX)
     // struct sched_param param;
     // param.sched_priority = 40;
     // if (pthread_setschedparam (pthread_self(), SCHED_FIFO, &param) != 0) {}

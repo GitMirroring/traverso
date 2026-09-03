@@ -154,7 +154,7 @@ void AudioDriverConfigPage::reset_default_config()
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
     config().set_property("Hardware", "pahostapi", "alsa");
 #endif
 #if defined (Q_OS_MAC)
@@ -177,7 +177,7 @@ void AudioDriverConfigPage::load_config( )
 {
     int samplerate = config().get_property("Hardware", "samplerate", 44100).toInt();
     int buffersize = config().get_property("Hardware", "buffersize", 512).toInt();
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
     QString driverType = config().get_property("Hardware", "drivertype", "ALSA").toString();
 #else
     QString driverType = config().get_property("Hardware", "drivertype", "PortAudio").toString();
@@ -246,7 +246,7 @@ void AudioDriverConfigPage::load_config( )
     m_portaudiodrivers->driverCombo->clear();
     QString defaulthostapi = "";
 
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
     m_portaudiodrivers->driverCombo->addItem("ALSA", "alsa");
     m_portaudiodrivers->driverCombo->addItem("Jack", "jack");
     m_portaudiodrivers->driverCombo->addItem("OSS", "oss");

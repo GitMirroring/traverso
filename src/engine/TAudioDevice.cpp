@@ -397,11 +397,13 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
             return;
         }
 
+#if defined (JACK_SUPPORT)
         if (ads.get_driver_type() == "Jack") {
 
             connect(&jackShutDownChecker, SIGNAL(timeout()), this, SLOT(check_jack_shutdown()));
             jackShutDownChecker.start(500);
         }
+#endif
     }
 
     emit started();

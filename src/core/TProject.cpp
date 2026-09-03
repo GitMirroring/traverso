@@ -680,7 +680,7 @@ void TProject::prepare_audio_device(QDomDocument doc)
     //        audioDeviceSetup.jackChannels.append(m_softwareAudioChannels.values());
 
     if (audioDeviceSetup.get_driver_type().isEmpty() || audioDeviceSetup.get_driver_type().isNull()) {
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
         audioDeviceSetup.set_driver_type(config().get_property("Hardware", "drivertype", "ALSA").toString());
 #else
         audioDeviceSetup.set_driver_type(config().get_property("Hardware", "drivertype", "PortAudio").toString());
@@ -706,7 +706,7 @@ void TProject::prepare_audio_device(QDomDocument doc)
 #if defined (PORTAUDIO_SUPPORT)
     if (audioDeviceSetup.get_driver_type() == "PortAudio") {
         if (audioDeviceSetup.get_card_device().isEmpty()) {
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
             audioDeviceSetup.set_card_device(config().get_property("Hardware", "pahostapi", "alsa").toString());
 #elif defined (Q_OS_MAC)
             audioDeviceSetup.set_card_device(config().get_property("Hardware", "pahostapi", "coreaudio").toString());

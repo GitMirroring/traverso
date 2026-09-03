@@ -12,10 +12,10 @@ SET (VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}${VERSION_SUFFIX}
 # At release set this on:
 LIST(APPEND TRAVERSO_DEFINES -DQT_NO_DEBUG)
 
-OPTION(WANT_JACK    	"Include Jack (Jack Audio Connection Kit) support" ON)
-OPTION(WANT_ALSA    	"Include ALSA (Advanced Linux Sound Architecture) support" ON)
+OPTION(WANT_JACK    	"Include Jack (Jack Audio Connection Kit) support" OFF)
+OPTION(WANT_ALSA    	"Include ALSA (Advanced Linux Sound Architecture) support" OFF)
 OPTION(WANT_PORTAUDIO	"Include PortAudio support (Driver support for Mac OS X and Windows" ON)
-OPTION(WANT_PULSEAUDIO	"Include PulseAudio support (Sound Server for Linux" ON)
+OPTION(WANT_PULSEAUDIO	"Include PulseAudio support (Sound Server for Linux" OFF)
 OPTION(WANT_COREAUDIO	"Include CoreAudio support (Driver support for Mac OS X" OFF)
 OPTION(WANT_LV2		"Include LV2 Plugin support" ON)
 OPTION(WANT_MP3_ENCODE	"Include mp3 encoding support, for creating mp3 files" ON)
@@ -25,7 +25,7 @@ OPTION(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug ouput on the command line
 OPTION(WANT_VECLIB_OPTIMIZATIONS "Build with veclib optimizations (Only for PPC based Mac OS X)" OFF)
 OPTION(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)
 OPTION(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu, and compile with an optimal set of compiler flags" OFF)
-OPTION(WANT_SSE "Use sse instruction set. This option is only effective if DETECT_HOST_CPU_FEATURES is OFF." ON)
+OPTION(WANT_SSE "Use sse instruction set. This option is only effective if DETECT_HOST_CPU_FEATURES is OFF." OFF)
 
 #CMAKE SETUP
 SET(CMAKE_COLOR_MAKEFILE ON)
@@ -84,11 +84,32 @@ SET(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 # Add Mac build paths for DarwinPorts / MacPorts
 # These need to be defined up here, above the include checks
-IF(APPLE)
-        INCLUDE_DIRECTORIES("/opt/local/include")
-        SET (CMAKE_REQUIRED_INCLUDES "/opt/local/include")
-        LINK_DIRECTORIES("/opt/local/lib")
-ENDIF(APPLE)
+if(APPLE)
+    if(EXISTS "/opt/homebrew/opt/qtbase")
+        list(PREPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qtbase")
+    elseif(EXISTS "/usr/local/opt/qtbase")
+        list(PREPEND CMAKE_PREFIX_PATH "/usr/local/opt/qtbase")
+    endif()
+
+    if(EXISTS "/opt/homebrew/opt/qtsvg")
+        list(PREPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qtsvg")
+    elseif(EXISTS "/usr/local/opt/qtsvg")
+        list(PREPEND CMAKE_PREFIX_PATH "/usr/local/opt/qtsvg")
+    endif()
+
+    if(APPLE)
+        set(Qt6Svg_DIR "/opt/homebrew/opt/qtsvg/lib/cmake/Qt6Svg" CACHE PATH "Path to Qt6Svg config" FORCE)
+    endif()
+    INCLUDE_DIRECTORIES("/opt/homebrew/include")
+    SET (CMAKE_REQUIRED_INCLUDES "/opt/homebrew/include")
+    LINK_DIRECTORIES("/opt/homebrew/lib")
+elseif(WIN32)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.lib")
+    set(BUILD_SHARED_LIBS OFF)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+    list(PREPEND CMAKE_PREFIX_PATH "C:/msys64/ucrt64/qt6-static/")
+    add_compile_options(-DFLAC__NO_DLL -DMPG123_STATIC -DOPT_STATIC)
+endif()
 
 SET(MINIMAL_ALSA_VERSION 1.0.0)
 SET(MINIMAL_JACK_VERSION 0.100)

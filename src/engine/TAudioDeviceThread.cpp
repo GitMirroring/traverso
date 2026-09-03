@@ -24,7 +24,7 @@ $Id: AudioDeviceThread.cpp,v 1.21 2007/10/20 17:38:19 r_sijrier Exp $
 
 #include "TAudioDevice.h"
 
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
 #include <dlfcn.h>
 #include <sys/resource.h>
 #include <sched.h>
@@ -49,7 +49,7 @@ public:
 protected:
 	void run() override
 	{
-#if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
 		struct sched_param param;
 		param.sched_priority = 90;
 		if (pthread_setschedparam (pthread_self(), SCHED_FIFO, &param) != 0) {}
@@ -63,7 +63,7 @@ protected:
 			if (guardedThread->watchdogCheck == 0) {
 				qCritical("WatchDog timed out!");
 //				guardedThread->terminate();
-#if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
 				kill (-getpgrp(), SIGABRT);
 #endif
 			}
@@ -127,7 +127,7 @@ void TAudioDeviceThread::set_real_time(bool realTime)
 
 int TAudioDeviceThread::become_realtime()
 {
-#if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
 
 	/* RTC stuff */
     struct sched_param param;
@@ -150,13 +150,13 @@ int TAudioDeviceThread::become_realtime()
 }
 
 
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
 typedef int* (*setaffinity_func_type)(pid_t,unsigned int,cpu_set_t *);
 #endif
 
 void TAudioDeviceThread::run_on_cpu( int cpu )
 {
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
     void *setaffinity_handle = dlopen(nullptr, RTLD_LAZY);
 	
     setaffinity_func_type setaffinity_func = reinterpret_cast<setaffinity_func_type>(dlsym(setaffinity_handle, "sched_setaffinity"));

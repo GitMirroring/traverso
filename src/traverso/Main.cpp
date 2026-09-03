@@ -41,7 +41,7 @@ Traverso* traverso;
 int signalcount = 0;
 
 
-#if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
 void catch_signal(int sig_num)
 {
 	if (!signalcount) {
@@ -59,7 +59,7 @@ void catch_signal(int sig_num)
 
 int main( int argc, char **argv )
 {
-#if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
 	signal(SIGINT, catch_signal);
 	signal(SIGSEGV, catch_signal);
 #endif
