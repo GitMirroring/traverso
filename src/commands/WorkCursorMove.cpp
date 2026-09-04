@@ -63,7 +63,9 @@ int WorkCursorMove::begin_hold()
 	m_contextPointer->set_canvas_cursor_shape(":/cursorHoldLr");
 	m_origPos = m_session->get_work_location();
     m_holdCursorSceneY = m_contextPointer->scene_y();
-
+	
+	jog();
+	
 	return 1;
 }
 

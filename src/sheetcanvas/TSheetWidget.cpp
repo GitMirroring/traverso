@@ -237,7 +237,8 @@ TSheetView * TSheetWidget::get_sheetview() const
 
 void TSheetWidget::zoom_slider_value_changed(int value)
 {
-        m_session->set_hzoom(TPeak::zoomStep[value]);
+    m_session->set_hzoom(TPeak::zoomStep[value]);
+    m_sv->center();
 }
 
 void TSheetWidget::sheet_zoom_level_changed()

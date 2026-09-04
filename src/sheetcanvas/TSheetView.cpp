@@ -524,7 +524,7 @@ void TSheetView::set_track_height(TTrackView *view, int newheight)
 void TSheetView::hzoom(qreal factor)
 {
 	PENTER;
-	m_session->set_hzoom(m_session->get_hzoom() * factor);
+	m_session->scale_hzoom(factor);
 	center();
 }
 
@@ -705,6 +705,14 @@ void TSheetView::set_snap_range(int /*start*/)
     // 			timeref_scalefactor);
 }
 
+TCommand* TSheetView::scroll_up_by(int delta)
+{
+	PENTER3;
+	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() - delta);
+
+    return nullptr;
+}
+
 TCommand* TSheetView::scroll_up( )
 {
 	PENTER3;
@@ -713,10 +721,25 @@ TCommand* TSheetView::scroll_up( )
     return nullptr;
 }
 
+TCommand* TSheetView::scroll_down_by(int delta)
+{
+	PENTER3;
+	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() + delta);
+    return nullptr;
+}
+
 TCommand* TSheetView::scroll_down( )
 {
 	PENTER3;
 	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() + int(m_meanTrackHeight * 0.75));
+    return nullptr;
+}
+
+TCommand* TSheetView::scroll_right_by(int delta)
+{
+	PENTER3;
+	stop_follow_play_head();
+	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() + delta);
     return nullptr;
 }
 
@@ -728,6 +751,14 @@ TCommand* TSheetView::scroll_right()
     return nullptr;
 }
 
+
+TCommand* TSheetView::scroll_left_by(int delta)
+{
+	PENTER3;
+	stop_follow_play_head();
+	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() - delta);
+    return nullptr;
+}
 
 TCommand* TSheetView::scroll_left()
 {

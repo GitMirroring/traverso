@@ -1,121 +1,105 @@
-#! /bin/bash
+#!/bin/bash
+set -e
 
 ###                                                    ###
 #    This script is used to create a bundle for OS X     #
 ###                                                    ###
 
-QT_PATH=/usr/local/Trolltech/Qt-4.5.0
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-mkdir -p traverso.app/Contents/MacOS/
-mkdir -p traverso.app/Contents/Resources/
-mkdir -p traverso.app/Contents/Frameworks/
-mkdir -p traverso.app/Contents/Frameworks/QtXml.framework/Versions/4/
-mkdir -p traverso.app/Contents/Frameworks/QtOpenGL.framework/Versions/4/
-mkdir -p traverso.app/Contents/Frameworks/QtGui.framework/Versions/4/
-mkdir -p traverso.app/Contents/Frameworks/QtCore.framework/Versions/4/
+# Find traverso binary
+BIN_PATH=""
+if [ -n "$1" ] && [ -f "$1" ]; then
+    BIN_PATH="$1"
+elif [ -f "build/bin/traverso" ]; then
+    BIN_PATH="build/bin/traverso"
+elif [ -f "bin/traverso" ]; then
+    BIN_PATH="bin/traverso"
+else
+    echo "Error: traverso binary not found. Please build the project first."
+    exit 1
+fi
 
-cp bin/traverso traverso.app/Contents/MacOS/
-cp resources/images/traverso_mac.icns traverso.app/Contents/Resources/Traverso.icns
-cp resources/Info.plist traverso.app/Contents/
-cp /opt/local/bin/cdrdao traverso.app/Contents/MacOS/
-cp /usr/local/bin/sox traverso.app/Contents/MacOS/
+echo "Using traverso binary: $BIN_PATH"
 
-cp /usr/local/lib/libsndfile.1.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libsamplerate.0.dylib  traverso.app/Contents/Frameworks
-cp /usr/local/lib/libportaudio.2.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/librdf.0.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/librasqal.1.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libvorbisfile.3.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libvorbisenc.2.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libvorbis.0.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libogg.0.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libmad.0.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libFLAC++.6.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libFLAC.8.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libraptor.1.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libst.0.dylib traverso.app/Contents/Frameworks
-cp /usr/local/lib/libwavpack.1.dylib traverso.app/Contents/Frameworks
-cp /opt/local/lib/libmp3lame.0.dylib traverso.app/Contents/Frameworks
-#cp /usr/local/lib/liblo.0.dylib traverso.app/Contents/Frameworks
-cp $QT_PATH/lib/QtXml.framework/Versions/4/QtXml traverso.app/Contents/Frameworks/QtXml.framework/Versions/4/
-cp $QT_PATH/lib/QtOpenGL.framework/Versions/4/QtOpenGL traverso.app/Contents/Frameworks/QtOpenGL.framework/Versions/4/
-cp $QT_PATH/lib/QtGui.framework/Versions/4/QtGui traverso.app/Contents/Frameworks/QtGui.framework/Versions/4/
-cp $QT_PATH/lib/QtCore.framework/Versions/4/QtCore traverso.app/Contents/Frameworks/QtCore.framework/Versions/4/
+# Find macdeployqt
+MACDEPLOYQT=""
+if command -v macdeployqt6 >/dev/null 2>&1; then
+    MACDEPLOYQT="$(command -v macdeployqt6)"
+else
+    echo "Error: macdeployqt not found."
+    exit 1
+fi
 
-install_name_tool -id @executable_path/../Frameworks/libsndfile.1.dylib traverso.app/Contents/Frameworks/libsndfile.1.dylib
-install_name_tool -id @executable_path/../Frameworks/libsamplerate.0.dylib traverso.app/Contents/Frameworks/libsamplerate.0.dylib
-install_name_tool -id @executable_path/../Frameworks/libportaudio.2.dylib traverso.app/Contents/Frameworks/libportaudio.2.dylib
-install_name_tool -id @executable_path/../Frameworks/librdf.0.dylib traverso.app/Contents/Frameworks/librdf.0.dylib
-install_name_tool -id @executable_path/../Frameworks/librasqal.1.dylib traverso.app/Contents/Frameworks/librasqal.1.dylib
-install_name_tool -id @executable_path/../Frameworks/libvorbis.0.dylib traverso.app/Contents/Frameworks/libvorbis.0.dylib
-install_name_tool -id @executable_path/../Frameworks/libvorbisfile.3.dylib traverso.app/Contents/Frameworks/libvorbisfile.3.dylib
-install_name_tool -id @executable_path/../Frameworks/libvorbisenc.2.dylib traverso.app/Contents/Frameworks/libvorbisenc.2.dylib
-install_name_tool -id @executable_path/../Frameworks/libogg.0.dylib traverso.app/Contents/Frameworks/libogg.0.dylib
-install_name_tool -id @executable_path/../Frameworks/libmad.0.dylib traverso.app/Contents/Frameworks/libmad.0.dylib
-install_name_tool -id @executable_path/../Frameworks/libraptor.1.dylib traverso.app/Contents/Frameworks/libraptor.1.dylib
-install_name_tool -id @executable_path/../Frameworks/libst.0.dylib traverso.app/Contents/Frameworks/libst.0.dylib
-install_name_tool -id @executable_path/../Frameworks/libwavpack.1.dylib traverso.app/Contents/Frameworks/libwavpack.1.dylib
-install_name_tool -id @executable_path/../Frameworks/libFLAC++.6.dylib traverso.app/Contents/Frameworks/libFLAC++.6.dylib
-install_name_tool -id @executable_path/../Frameworks/libFLAC.8.dylib traverso.app/Contents/Frameworks/libFLAC.8.dylib
-install_name_tool -id @executable_path/../Frameworks/libmp3lame.0.dylib traverso.app/Contents/Frameworks/libmp3lame.0.dylib
-#install_name_tool -id @executable_path/../Frameworks/liblo.0.dylib traverso.app/Contents/Frameworks/liblo.0.dylib
-install_name_tool -id @executable_path/../Frameworks/QtXml.framework/Versions/4/QtXml traverso.app/Contents/Frameworks/QtXml.framework/Versions/4/QtXml
-install_name_tool -id @executable_path/../Frameworks/QtOpenGL.framework/Versions/4/QtOpenGL traverso.app/Contents/Frameworks/QtOpenGL.framework/Versions/4/QtOpenGL
-install_name_tool -id @executable_path/../Frameworks/QtGui.framework/Versions/4/QtGui traverso.app/Contents/Frameworks/QtGui.framework/Versions/4/QtGui
-install_name_tool -id @executable_path/../Frameworks/QtCore.framework/Versions/4/QtCore traverso.app/Contents/Frameworks/QtCore.framework/Versions/4/QtCore
+echo "Using macdeployqt: $MACDEPLOYQT"
 
-install_name_tool -change /usr/local/lib/libsndfile.1.dylib @executable_path/../Frameworks/libsndfile.1.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libsamplerate.0.dylib @executable_path/../Frameworks/libsamplerate.0.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libportaudio.2.dylib @executable_path/../Frameworks/libportaudio.2.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/librdf.0.dylib @executable_path/../Frameworks/librdf.0.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/librasqal.1.dylib @executable_path/../Frameworks/librasqal.1.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libvorbis.0.dylib @executable_path/../Frameworks/libvorbis.0.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libvorbisfile.3.dylib @executable_path/../Frameworks/libvorbisfile.3.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libvorbisenc.2.dylib @executable_path/../Frameworks/libvorbisenc.2.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libogg.0.dylib @executable_path/../Frameworks/libogg.0.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libmad.0.dylib @executable_path/../Frameworks/libmad.0.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libraptor.1.dylib @executable_path/../Frameworks/libraptor.1.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libwavpack.1.dylib @executable_path/../Frameworks/libwavpack.1.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libFLAC++.6.dylib @executable_path/../Frameworks/libFLAC++.6.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libFLAC.8.dylib @executable_path/../Frameworks/libFLAC.8.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /opt/local/lib/libmp3lame.0.dylib @executable_path/../Frameworks/libmp3lame.0.dylib traverso.app/Contents/MacOS/traverso
-#install_name_tool -change /usr/local/lib/liblo.0.dylib @executable_path/../Frameworks/liblo.0.dylib traverso.app/Contents/MacOS/traverso
-install_name_tool -change /usr/local/lib/libst.0.dylib @executable_path/../Frameworks/libst.0.dylib traverso.app/Contents/MacOS/sox
-install_name_tool -change /usr/local/lib/libsndfile.1.dylib @executable_path/../Frameworks/libsndfile.1.dylib traverso.app/Contents/MacOS/sox
-install_name_tool -change /usr/local/lib/libsamplerate.0.dylib @executable_path/../Frameworks/libsamplerate.0.dylib traverso.app/Contents/MacOS/sox
-install_name_tool -change $QT_PATH/lib/QtXml.framework/Versions/4/QtXml @executable_path/../Frameworks/QtXml.framework/Versions/4/QtXml traverso.app/Contents/MacOS/traverso
-install_name_tool -change $QT_PATH/lib/QtOpenGL.framework/Versions/4/QtOpenGL @executable_path/../Frameworks/QtOpenGL.framework/Versions/4/QtOpenGL traverso.app/Contents/MacOS/traverso
-install_name_tool -change $QT_PATH/lib/QtGui.framework/Versions/4/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/4/QtGui traverso.app/Contents/MacOS/traverso
-install_name_tool -change $QT_PATH/lib/QtCore.framework/Versions/4/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/4/QtCore traverso.app/Contents/MacOS/traverso
+# Clean up previous bundle to prevent permission conflicts
+if [ -d "Traverso.app" ]; then
+    echo "Removing previous Traverso.app..."
+    chmod -R u+w Traverso.app 2>/dev/null || true
+    rm -rf Traverso.app
+fi
 
-install_name_tool -change $QT_PATH/lib/QtCore.framework/Versions/4/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/4/QtCore traverso.app/Contents/Frameworks/QtGui.framework/Versions/4/QtGui
-install_name_tool -change $QT_PATH/lib/QtCore.framework/Versions/4/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/4/QtCore traverso.app/Contents/Frameworks/QtXml.framework/Versions/4/QtXml
-install_name_tool -change $QT_PATH/lib/QtCore.framework/Versions/4/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/4/QtCore traverso.app/Contents/Frameworks/QtOpenGL.framework/Versions/4/QtOpenGL
-install_name_tool -change $QT_PATH/lib/QtGui.framework/Versions/4/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/4/QtGui traverso.app/Contents/Frameworks/QtOpenGL.framework/Versions/4/QtOpenGL
+mkdir -p Traverso.app/Contents/MacOS
+mkdir -p Traverso.app/Contents/Resources
 
-install_name_tool -change /usr/local/lib/librasqal.1.dylib @executable_path/../Frameworks/librasqal.1.dylib traverso.app/Contents/Frameworks/librdf.0.dylib
-install_name_tool -change /usr/local/lib/libraptor.1.dylib @executable_path/../Frameworks/libraptor.1.dylib traverso.app/Contents/Frameworks/librdf.0.dylib
-install_name_tool -change /usr/local/lib/libraptor.1.dylib @executable_path/../Frameworks/libraptor.1.dylib traverso.app/Contents/Frameworks/librasqal.1.dylib
-install_name_tool -change /usr/local/lib/libst.0.dylib @executable_path/../Frameworks/libst.0.dylib traverso.app/Contents/Frameworks/libst.0.dylib
-install_name_tool -change /usr/local/lib/libsndfile.1.dylib @executable_path/../Frameworks/libsndfile.1.dylib traverso.app/Contents/Frameworks/libst.0.dylib
-install_name_tool -change /usr/local/lib/libsamplerate.0.dylib @executable_path/../Frameworks/libsamplerate.0.dylib traverso.app/Contents/Frameworks/libst.0.dylib
-install_name_tool -change /usr/local/lib/libvorbisfile.3.dylib @executable_path/../Frameworks/libvorbisfile.3.dylib traverso.app/Contents/Frameworks/libvorbisfile.3.dylib
-install_name_tool -change /usr/local/lib/libvorbis.0.dylib @executable_path/../Frameworks/libvorbis.0.dylib traverso.app/Contents/Frameworks/libvorbisfile.3.dylib
-install_name_tool -change /usr/local/lib/libogg.0.dylib @executable_path/../Frameworks/libogg.0.dylib traverso.app/Contents/Frameworks/libvorbisfile.3.dylib
+cp "$BIN_PATH" Traverso.app/Contents/MacOS/traverso
+chmod +x Traverso.app/Contents/MacOS/traverso
 
-install_name_tool -change /usr/local/lib/libvorbis.0.dylib @executable_path/../Frameworks/libvorbis.0.dylib traverso.app/Contents/Frameworks/libvorbis.0.dylib
-install_name_tool -change /usr/local/lib/libogg.0.dylib @executable_path/../Frameworks/libogg.0.dylib traverso.app/Contents/Frameworks/libvorbis.0.dylib
-install_name_tool -change /usr/local/lib/libvorbis.0.dylib @executable_path/../Frameworks/libvorbis.0.dylib traverso.app/Contents/Frameworks/libvorbisenc.2.dylib
-install_name_tool -change /usr/local/lib/libogg.0.dylib @executable_path/../Frameworks/libogg.0.dylib traverso.app/Contents/Frameworks/libvorbisenc.2.dylib
+if [ -f "resources/images/traverso_mac.icns" ]; then
+    cp resources/images/traverso_mac.icns Traverso.app/Contents/Resources/Traverso.icns
+fi
 
-install_name_tool -change /usr/local/lib/libogg.0.dylib @executable_path/../Frameworks/libogg.0.dylib traverso.app/Contents/Frameworks/libogg.0.dylib
-install_name_tool -change /usr/local/lib/libmad.0.dylib @executable_path/../Frameworks/libmad.0.dylib traverso.app/Contents/Frameworks/libmad.0.dylib
+if [ -f "resources/Info.plist" ]; then
+    cp resources/Info.plist Traverso.app/Contents/Info.plist
+fi
 
-install_name_tool -change /usr/local/lib/libFLAC++.6.dylib @executable_path/../Frameworks/libFLAC++.6.dylib traverso.app/Contents/Frameworks/libFLAC++.6.dylib
-install_name_tool -change /usr/local/lib/libFLAC.8.dylib @executable_path/../Frameworks/libFLAC.8.dylib traverso.app/Contents/Frameworks/libFLAC++.6.dylib
-install_name_tool -change /usr/local/lib/libogg.0.dylib @executable_path/../Frameworks/libogg.0.dylib traverso.app/Contents/Frameworks/libFLAC++.6.dylib
-install_name_tool -change /usr/local/lib/libFLAC.8.dylib @executable_path/../Frameworks/libFLAC.8.dylib traverso.app/Contents/Frameworks/libFLAC.8.dylib
-install_name_tool -change /usr/local/lib/libogg.0.dylib @executable_path/../Frameworks/libogg.0.dylib traverso.app/Contents/Frameworks/libFLAC.8.dylib
+EXTRA_EXEC_FLAGS=()
 
-mv traverso.app Traverso.app
+# Locate and include optional helper binaries (sox, cdrdao)
+SOX_BIN=""
+if command -v sox >/dev/null 2>&1; then
+    SOX_BIN="$(command -v sox)"
+elif [ -x "/opt/homebrew/bin/sox" ]; then
+    SOX_BIN="/opt/homebrew/bin/sox"
+elif [ -x "/usr/local/bin/sox" ]; then
+    SOX_BIN="/usr/local/bin/sox"
+fi
 
+if [ -n "$SOX_BIN" ]; then
+    echo "Bundling sox from: $SOX_BIN"
+    cp "$SOX_BIN" Traverso.app/Contents/MacOS/sox
+    chmod +x Traverso.app/Contents/MacOS/sox
+    EXTRA_EXEC_FLAGS+=("-executable=Traverso.app/Contents/MacOS/sox")
+fi
+
+CDRDAO_BIN=""
+if command -v cdrdao >/dev/null 2>&1; then
+    CDRDAO_BIN="$(command -v cdrdao)"
+elif [ -x "/opt/homebrew/bin/cdrdao" ]; then
+    CDRDAO_BIN="/opt/homebrew/bin/cdrdao"
+elif [ -x "/usr/local/bin/cdrdao" ]; then
+    CDRDAO_BIN="/usr/local/bin/cdrdao"
+fi
+
+if [ -n "$CDRDAO_BIN" ]; then
+    echo "Bundling cdrdao from: $CDRDAO_BIN"
+    cp "$CDRDAO_BIN" Traverso.app/Contents/MacOS/cdrdao
+    chmod +x Traverso.app/Contents/MacOS/cdrdao
+    EXTRA_EXEC_FLAGS+=("-executable=Traverso.app/Contents/MacOS/cdrdao")
+fi
+
+# Run macdeployqt to deploy Qt frameworks, plugins and dylib dependencies
+echo "Running macdeployqt..."
+"$MACDEPLOYQT" ./Traverso.app -verbose=1 "${EXTRA_EXEC_FLAGS[@]}"
+
+# Re-sign the bundle (required on macOS ARM64/Apple Silicon after install_name_tool modifications)
+SIGN_IDENTITY="${CODE_SIGN_IDENTITY:--}"
+echo "Signing Traverso.app with identity '${SIGN_IDENTITY}'..."
+codesign --force --deep -s "$SIGN_IDENTITY" ./Traverso.app
+
+echo "Verifying code signature..."
+codesign -vvv --deep --strict ./Traverso.app
+
+echo "Successfully built and signed Traverso.app"

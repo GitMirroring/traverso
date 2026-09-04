@@ -43,7 +43,8 @@ public:
 	
 
 protected:
-	void wheelEvent ( QWheelEvent * e );
+	void wheelEvent (QWheelEvent *event) override;
+    bool event(QEvent *event) override;
 
 
 private:

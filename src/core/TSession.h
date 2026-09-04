@@ -75,6 +75,7 @@ public:
 
 
 	void set_hzoom(qreal hzoom);
+	void scale_hzoom(qreal scale);
     virtual void set_work_at(const TTimeRef &location, bool isFolder=false);
 	void set_scrollbar_xy(int x, int y);
 	void set_scrollbar_x(int x);

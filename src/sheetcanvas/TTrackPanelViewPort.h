@@ -34,7 +34,10 @@ public:
     ~TTrackPanelViewPort() {};
 
 private:
-	TSheetWidget*	m_sw;
+	void wheelEvent (QWheelEvent *event) override;
+    bool event(QEvent *event) override;
+
+    TSheetWidget*	m_sw;
 };
 
 #endif

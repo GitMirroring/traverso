@@ -65,7 +65,9 @@ int PlayHeadMove::begin_hold()
     m_holdCursorSceneY = m_contextPointer->scene_y();
 
     TClipsViewPort* port = d->sv->get_clips_viewport();
-    m_contextPointer->set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), m_contextPointer->mouse_viewport_y()));
+    // m_contextPointer->set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), m_contextPointer->mouse_viewport_y()));
+    jog();
+
     int x = port->mapFromScene(m_playhead->scenePos()).x();
 
     if (x < 0 || x > port->width()) {

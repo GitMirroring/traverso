@@ -48,7 +48,10 @@ protected:
     void dragMoveEvent(QDragMoveEvent *event);
 
 private:
-	TSheetWidget*	m_sw;
+	void wheelEvent (QWheelEvent *event) override;
+    bool event(QEvent *event) override;
+
+    TSheetWidget*	m_sw;
 	QList<TAudioFileImportCommand*>	m_imports;
 	QList<qint64 >	m_resourcesImport;
 	TAudioTrack*     m_importTrack{};

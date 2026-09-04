@@ -10,7 +10,7 @@ SET (VERSION_SUFFIX "-git-01-11-2010")
 SET (VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}${VERSION_SUFFIX})
 
 # At release set this on:
-LIST(APPEND TRAVERSO_DEFINES -DQT_NO_DEBUG)
+#LIST(APPEND TRAVERSO_DEFINES -DQT_NO_DEBUG)
 
 OPTION(WANT_JACK    	"Include Jack (Jack Audio Connection Kit) support" OFF)
 OPTION(WANT_ALSA    	"Include ALSA (Advanced Linux Sound Architecture) support" OFF)

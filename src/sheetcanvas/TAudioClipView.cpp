@@ -114,8 +114,8 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
 
     //	printf("x, w %f, %f\n", option->exposedRect.x(), option->exposedRect.width());
     qreal xstart = option->exposedRect.x();
-    qreal pixelcount = option->exposedRect.width();
-    if (pixelcount < 1.0) {
+    qreal pixelcount = option->exposedRect.width()+1;
+    if (pixelcount <= 1.0) {
         // apparently this function can be called with no pixelcount to go with
         // so return here nothing to be done
         return;

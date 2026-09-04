@@ -93,8 +93,9 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     qreal xstart = option->exposedRect.x();
     if (xstart > 0) {
             xstart -= 1;
-            pixelcount += 2;
+            pixelcount += 1;
     }
+	pixelcount += 1;
     qreal vector_start = xstart;
     qreal height = m_boundingRect.height();
     TAudioBuffer buffer(pixelcount);
