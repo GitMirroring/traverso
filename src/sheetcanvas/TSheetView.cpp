@@ -167,10 +167,9 @@ void TSheetView::scale_factor_changed( )
 	}
     timeref_scalefactor = qint64(zoom * (TTimeRef::UNIVERSAL_SAMPLE_RATE / 44100));
 	m_tlvp->scale_factor_changed();
-
-    if(auto viewPort = m_contextPointer->get_viewport()) {
-        viewPort->set_timeref_scale_factor(timeref_scalefactor);
-    }
+	m_clipsViewPort->set_timeref_scale_factor(timeref_scalefactor);
+	m_tlvp->set_timeref_scale_factor(timeref_scalefactor);
+	m_tpvp->set_timeref_scale_factor(timeref_scalefactor);
 
 	update_tracks_bounding_rect();
 }
