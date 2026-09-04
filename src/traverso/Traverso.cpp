@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifdef __SSE__
 #include <xmmintrin.h>
 #endif
-#if defined (__APPLE__)
+#if defined (__APPLE__) && defined (BUILD_VECLIB_OPTIMIZATIONS)
 #include <Carbon/Carbon.h> // For Gestalt
 #endif
 
