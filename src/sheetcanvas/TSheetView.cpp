@@ -194,9 +194,6 @@ TTrackView* TSheetView::get_trackview_at_scene_pos( QPointF point )
 	QList<QGraphicsItem*> views = m_clipsViewPort->items(m_clipsViewPort->mapFromScene(point));
 
 	for (int i=0; i<views.size(); ++i) {
-		if (views.at(i) == m_playCursor || views.at(i) == m_workCursor) {
-			continue;
-		}
 		TTrackView* view = dynamic_cast<TTrackView*>(views.at(i));
 		if (view) {
 			return view;

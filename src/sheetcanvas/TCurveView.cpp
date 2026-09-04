@@ -79,6 +79,7 @@ TCurveView::~ TCurveView( )
 
 void TCurveView::updateNodeVisibility(int startx, int endx)
 {
+    // We should only show the nodes that are visible within the bounds of the current clip
     for (TCurveNodeView* nodeView : m_nodeViews) {
         nodeView->setVisible(nodeView->pos().x() > startx && nodeView->pos().x() < endx);
     }

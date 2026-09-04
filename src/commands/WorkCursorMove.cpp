@@ -64,6 +64,7 @@ int WorkCursorMove::begin_hold()
 	m_origPos = m_session->get_work_location();
     m_holdCursorSceneY = m_contextPointer->scene_y();
 	
+	// Jog once, to update the work cursor position to the current mouse position
 	jog();
 	
 	return 1;

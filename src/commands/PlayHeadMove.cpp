@@ -66,6 +66,8 @@ int PlayHeadMove::begin_hold()
 
     TClipsViewPort* port = d->sv->get_clips_viewport();
     // m_contextPointer->set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), m_contextPointer->mouse_viewport_y()));
+
+	// Jog once, to update the play head cursor position to the current mouse position
     jog();
 
     int x = port->mapFromScene(m_playhead->scenePos()).x();
