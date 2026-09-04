@@ -58,6 +58,7 @@ TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioCl
     : TViewItem(parent->get_primary_lane_view(), clip)
     , m_tv(parent)
     , m_clip(clip)
+    , m_gainCurveView(nullptr)
 {
     PENTERCONS;
 
@@ -711,6 +712,10 @@ void TAudioClipView::calculate_bounding_rect()
         m_classicView = false;
     } else {
         m_classicView = ! config().get_property("Themer", "paintaudiorectified", false).toBool();
+    }
+
+    if (m_gainCurveView) {
+        m_gainCurveView->updateNodeVisibility(0, (m_clip->get_location_end()-m_clip->get_location_start()) / m_sv->timeref_scalefactor);
     }
 
     update_start_pos();

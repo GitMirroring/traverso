@@ -77,6 +77,13 @@ TCurveView::~ TCurveView( )
     delete m_guicurve;
 }
 
+void TCurveView::updateNodeVisibility(int startx, int endx)
+{
+    for (TCurveNodeView* nodeView : m_nodeViews) {
+        nodeView->setVisible(nodeView->pos().x() > startx && nodeView->pos().x() < endx);
+    }
+}
+
 void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
 {
     Q_UNUSED(widget);

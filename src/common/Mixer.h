@@ -65,7 +65,7 @@ void  x86_sse_mix_buffers_no_gain	(audio_sample_t*  dst, const audio_sample_t*  
 }
 #endif
 
-#if defined (__APPLE__)
+#if defined (Q_OS_MAC)
 
 float accel_compute_peak              (const audio_sample_t* buf, nframes_t nsamples, float current);
 void  accel_apply_gain_to_buffer      (audio_sample_t* buf, nframes_t nframes, float gain);

@@ -126,7 +126,7 @@ int GainCommand::process_mouse_move(qreal diffY)
 {
     qreal of = 0;
     
-#if defined(__APPLE__)
+#if defined(Q_OS_MAC) || defined(Q_OS_LINUX)
     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_origGain);
 #else
     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);

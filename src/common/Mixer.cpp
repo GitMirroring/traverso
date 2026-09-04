@@ -23,7 +23,7 @@
 #include "Mixer.h"
 #include "defines.h"
 #include <cmath> // used for fabs
-#if defined (__APPLE__)
+#if defined(Q_OS_MAC)
 #include <Accelerate/Accelerate.h>
 #endif
 
@@ -62,7 +62,7 @@ void default_mix_buffers_no_gain (audio_sample_t* dst, const audio_sample_t* src
 }
 
 
-#if defined (__APPLE__)
+#if defined (Q_OS_MAC)
 
 float accel_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current)
 {
