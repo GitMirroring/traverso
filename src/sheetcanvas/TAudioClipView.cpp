@@ -217,8 +217,9 @@ void TAudioClipView::draw_peaks(QPainter* p, qreal xstart, int pixelcount)
     // FIXME: find out why?
     if (xstart > 0) {
         xstart -= 1;
-        pixelcount += 2;
+        pixelcount += 1;
     }
+    pixelcount += 1;
 
     if (!peak) {
         //                PERROR("No Peak object available for clip %s", QS_C(m_clip->get_name()));
