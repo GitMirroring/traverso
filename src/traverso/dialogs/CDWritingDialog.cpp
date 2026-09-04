@@ -655,6 +655,7 @@ void CDWritingDialog::set_was_closed()
 QString CDWritingDialog::get_device(int index)
 {
 #if defined (Q_OS_MAC)
+	(void)index;
 	return cdDeviceComboBox->currentText();
 #else
 	return cdDeviceComboBox->itemData(index).toString();

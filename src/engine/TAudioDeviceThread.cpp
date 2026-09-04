@@ -174,6 +174,8 @@ void TAudioDeviceThread::run_on_cpu( int cpu )
 	else {
         printf("AudioDevice: Unable to set CPU affinity (glibc is too old)\n");
 	}
+#else
+	Q_UNUSED(cpu);
 #endif
 }
 

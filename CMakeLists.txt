@@ -1,6 +1,12 @@
 #Require 3.1.0 for Qt finding
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16.0 FATAL_ERROR)
 
+IF(APPLE)
+        SET(CMAKE_C_COMPILER clang CACHE FILEPATH "C compiler" FORCE)
+        SET(CMAKE_CXX_COMPILER clang++ CACHE FILEPATH "C++ compiler" FORCE)
+        SET(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "Minimum macOS version" FORCE)
+ENDIF()
+
 #PROJECT SETUP
 PROJECT(traverso)
 SET (VERSION_MAJOR "0")
@@ -22,7 +28,6 @@ OPTION(WANT_MP3_ENCODE	"Include mp3 encoding support, for creating mp3 files" ON
 OPTION(WANT_PCH     	"Use precompiled headers" OFF)
 OPTION(WANT_DEBUG   	"Debug build" ON)
 OPTION(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug ouput on the command line, always on for DEBUG builds" ON)
-OPTION(WANT_VECLIB_OPTIMIZATIONS "Build with veclib optimizations (Only for PPC based Mac OS X)" OFF)
 OPTION(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)
 OPTION(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu, and compile with an optimal set of compiler flags" OFF)
 OPTION(WANT_SSE "Use sse instruction set. This option is only effective if DETECT_HOST_CPU_FEATURES is OFF." OFF)
@@ -305,7 +310,7 @@ IF(UNIX)
 # @ MAC OS X builders, I've NO IDEA what this should be, please have a look at it
 # It should be possible to create a working bundle with CPack using stuff
 # defined here ....???
-                SET( ENV{MACOSX_DEPLOYMENT_TARGET} 10.3 )
+                SET( ENV{MACOSX_DEPLOYMENT_TARGET} 10.15 )
                 SET( ENV{LD_PREBIND} 1 )
                 SET( ENV{LD_PREBIND_ALLOW_OVERLAP} 1 )
 
@@ -313,14 +318,6 @@ IF(UNIX)
                 SET(BUILD_MAC_BUNDLE 1)
                 set(MACOSX_BUNDLE_ICON_FILE ${PROJECT_SOURCE_DIR}/resources/images/traverso_mac.icns)
 
-
-                IF(WANT_VECLIB_OPTIMIZATIONS)
-                        LIST(APPEND TRAVERSO_DEFINES -DBUILD_VECLIB_OPTIMIZATIONS)
-                        LINK_LIBRARIES( "-framework Accelerate" )
-                ENDIF(WANT_VECLIB_OPTIMIZATIONS)
-
-# This was copy pasted from another project, please remove if it's not needed!!
-                LINK_LIBRARIES( "-undefined dynamic_lookup" )
                 LINK_LIBRARIES( "-framework CoreFoundation" )
         ENDIF(APPLE)
 # END Mac OS X section

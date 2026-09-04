@@ -193,7 +193,15 @@ TARGET_LINK_LIBRARIES(traverso
         dl
 )
 
-IF(WIN32)
+
+if(APPLE)
+        TARGET_LINK_LIBRARIES(traverso
+                sndfile
+                fftw3
+                "-framework CoreFoundation"
+                "-framework Accelerate"
+        )
+ELSEIF(WIN32)
     TARGET_LINK_LIBRARIES(traverso
         sndfile-1
         fftw3-3

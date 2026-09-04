@@ -236,9 +236,10 @@ void TThemer::load( )
 	}
 
 	QString errorMsg;
-	if (!doc.setContent(&file, &errorMsg)) {
+        QDomDocument::ParseResult result = doc.setContent(file.readAll());
+        if (!result) {
 		file.close();
-                printf("Cannot set Content of XML file (%s)\n", QS_C(errorMsg));
+                printf("Cannot set Content of XML file (%s)\n", QS_C(result.errorMessage));
                 return;
 	}
 

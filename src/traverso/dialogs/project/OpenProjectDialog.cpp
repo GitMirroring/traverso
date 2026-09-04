@@ -82,9 +82,10 @@ void OpenProjectDialog::update_projects_list()
 		}
 
 		QString errorMsg;
-		if (!doc.setContent(&file, &errorMsg)) {
+		QDomDocument::ParseResult result = doc.setContent(file.readAll());
+		if (!result) {
 			file.close();
-            PWARN(QString("OpenProjectDialog:: Cannot set content of XML file (%1)").arg(errorMsg).toLatin1().data());
+            PWARN(QString("OpenProjectDialog:: Cannot set content of XML file (%1)").arg(result.errorMessage).toLatin1().data());
 			continue;
 		}
 

@@ -177,11 +177,11 @@ int SpectralMeter::get_data(QVector<float> &specl, QVector<float> &specr)
 	// below the BUFFER_READOUT_TOLERANCE.
     if (readcount < size_t(m_frlen)) {
 		// add another 'if' to avoid unlimited growth of the variable
-		if (m_bufferreadouts <= BUFFER_READOUT_TOLERANCE) {
+		if ((uint)m_bufferreadouts <= BUFFER_READOUT_TOLERANCE) {
 			m_bufferreadouts++;
 		}
 
-		if (m_bufferreadouts >= BUFFER_READOUT_TOLERANCE) {
+		if ((uint)m_bufferreadouts >= BUFFER_READOUT_TOLERANCE) {
 			// return spectra filled with 0	
 			specl.clear();
             specr.clear();

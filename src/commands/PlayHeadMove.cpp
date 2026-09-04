@@ -160,6 +160,7 @@ void PlayHeadMove::prev_snap_pos()
 
 void PlayHeadMove::do_keyboard_move(const TTimeRef &newLocation, bool centerInView)
 {
+    Q_UNUSED(centerInView);
     ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
 
     m_newTransportLocation = newLocation;

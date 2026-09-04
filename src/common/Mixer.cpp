@@ -23,6 +23,9 @@
 #include "Mixer.h"
 #include "defines.h"
 #include <cmath> // used for fabs
+#if defined (__APPLE__)
+#include <Accelerate/Accelerate.h>
+#endif
 
 Mixer::compute_peak_t			Mixer::compute_peak 		= nullptr;
 Mixer::apply_gain_to_buffer_t		Mixer::apply_gain_to_buffer 	= nullptr;
@@ -59,37 +62,34 @@ void default_mix_buffers_no_gain (audio_sample_t* dst, const audio_sample_t* src
 }
 
 
-#if defined (__APPLE__) && defined (BUILD_VECLIB_OPTIMIZATIONS)
-#include <Accelerate/Accelerate.h>
+#if defined (__APPLE__)
 
-float veclib_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current)
+float accel_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current)
 {
 	float tmpmax = 0.0f;
 	vDSP_maxmgv(buf, 1, &tmpmax, nsamples);
 	return f_max(current, tmpmax);
 }
 
-void veclib_find_peaks (const audio_sample_t* buf, nframes_t nframes, float *min, float *max)
+void accel_find_peaks (const audio_sample_t* buf, nframes_t nframes, float *min, float *max)
 {
 	vDSP_maxv (const_cast<audio_sample_t*>(buf), 1, max, nframes);
 	vDSP_minv (const_cast<audio_sample_t*>(buf), 1, min, nframes);
 }
 
-void veclib_apply_gain_to_buffer (audio_sample_t * buf, nframes_t nframes, float gain)
+void accel_apply_gain_to_buffer (audio_sample_t * buf, nframes_t nframes, float gain)
 {
 	vDSP_vsmul(buf, 1, &gain, buf, 1, nframes);
 }
 
-void veclib_mix_buffers_with_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes, float gain)
+void accel_mix_buffers_with_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes, float gain)
 {
 	vDSP_vsma(src, 1, &gain, dst, 1, dst, 1, nframes);
 }
 
-void veclib_mix_buffers_no_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes)
+void accel_mix_buffers_no_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes)
 {
-	// It seems that a vector mult only operation does not exist...
-	float gain = 1.0f;
-	vDSP_vsma(src, 1, &gain, dst, 1, dst, 1, nframes);
+	vDSP_vadd(src, 1, dst, 1, dst, 1, nframes);
 }
 
 #endif

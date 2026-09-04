@@ -41,11 +41,11 @@ public:
 	
 
 protected:
-    void resizeEvent(QResizeEvent* e);
-	void paintEvent( QPaintEvent* e);
-	void dragEnterEvent(QDragEnterEvent *event);
-	void dropEvent(QDropEvent *event);
-    void dragMoveEvent(QDragMoveEvent *event);
+    void resizeEvent(QResizeEvent* e) override;
+	void paintEvent( QPaintEvent* e) override;
+	void dragEnterEvent(QDragEnterEvent *event) override;
+	void dropEvent(QDropEvent *event) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
 
 private:
 	void wheelEvent (QWheelEvent *event) override;

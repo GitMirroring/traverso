@@ -71,6 +71,7 @@ void ProjectConverterDialog::file_merge_started(QString filename)
 
 void ProjectConverterDialog::file_merge_finished(QString filename)
 {
+	Q_UNUSED(filename);
 // 	taskTextBrowswer->append(tr("Finished converting %1").arg(filename));
 }
 

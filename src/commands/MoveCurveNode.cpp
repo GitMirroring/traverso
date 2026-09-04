@@ -152,6 +152,8 @@ void MoveCurveNode::move_right()
 
 void MoveCurveNode::set_cursor_shape(int useX, int useY)
 {
+    Q_UNUSED(useX);
+    Q_UNUSED(useY);
 //        m_contextPointer->setCursor(":/cursorHoldLrud");
 }
 
