@@ -758,6 +758,15 @@ void BehaviorConfigPage::save_config()
     config().set_property("AudioClip", "LockByDefault", lockClipsCheckBox->isChecked());
     config().set_property("ShortCuts", "ShowCursorHelp", showShortcutUsageMessagesCheckBox->isChecked());
 
+    QString onopenaction;
+    if (welcomeRadioButton->isChecked()) {
+        config().set_property("Project", "welcome", "welcome");
+    } else if (openLastProjectRadioButton->isChecked()) {
+        config().set_property("Project", "welcome", "restore");
+    } else {
+        config().set_property("Project", "welcome", "welcome");
+    }
+    
     QString oncloseaction;
     if (saveRadioButton->isChecked()) {
         config().set_property("Project", "onclose", "save");
@@ -770,6 +779,7 @@ void BehaviorConfigPage::save_config()
 
 void BehaviorConfigPage::load_config()
 {
+    QString onopeneaction = config().get_property("Project", "welcome", "welcome").toString();
     QString oncloseaction = config().get_property("Project", "onclose", "save").toString();
     int defaultNumTracks = config().get_property("Sheet", "trackCreationCount", 1).toInt();
     int scrollMode = config().get_property("PlayHead", "Scrollmode", 2).toInt();
@@ -783,6 +793,14 @@ void BehaviorConfigPage::load_config()
     lockClipsCheckBox->setChecked(lockClips);
     showShortcutUsageMessagesCheckBox->setChecked(showShortcutHelpMessages);
 
+    if (onopeneaction == "welcome") {
+        welcomeRadioButton->setChecked(true);
+    } else if (onopeneaction == "restore") {
+        openLastProjectRadioButton->setChecked(true);
+    } else {
+        welcomeRadioButton->setChecked(true);
+    }
+
     if (oncloseaction == "save") {
         saveRadioButton->setChecked(true);
     } else if (oncloseaction == "ask") {
@@ -792,7 +810,6 @@ void BehaviorConfigPage::load_config()
     }
 
     update_follow();
-
 }
 
 
@@ -805,6 +822,7 @@ void BehaviorConfigPage::update_follow()
 
 void BehaviorConfigPage::reset_default_config()
 {
+    config().set_property("Project", "welcome", "welcome");
     config().set_property("Project", "onclose", "save");
     config().set_property("Sheet", "trackCreationCount", 1);
     config().set_property("PlayHead", "Follow", 0);
