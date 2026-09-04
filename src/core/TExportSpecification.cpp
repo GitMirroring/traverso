@@ -184,7 +184,7 @@ void TExportSpecification::add_sheet_to_export(TSheet *sheet)
 
 void TExportSpecification::set_writer_type(const QString &writerType)
 {
-    Q_ASSERT(writerType == "sndfile" || writerType == "wavpack");
+    Q_ASSERT(writerType == "sndfile" || writerType == "wavpack" || writerType == "m4a");
 
     m_writerType = writerType;
 }

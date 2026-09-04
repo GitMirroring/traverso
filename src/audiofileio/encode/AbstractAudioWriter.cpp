@@ -23,13 +23,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "SFAudioWriter.h"
 #include "TExportSpecification.h"
 #include "WPAudioWriter.h"
-
 #include <QString>
 
+#if defined M4A_ENCODE_SUPPORT
+#include "FaacAudioWriter.h"
+#endif
+
 RELAYTOOL_WAVPACK;
-
-
-
+RELAYTOOL_FAAC;
 
 
 AbstractAudioWriter::AbstractAudioWriter(TExportSpecification *spec)
@@ -112,6 +113,11 @@ std::unique_ptr<AbstractAudioWriter> AbstractAudioWriter::create_audio_writer(TE
     else if (libwavpack_is_present && spec->get_writer_type() == "wavpack") {
         return std::unique_ptr<AbstractAudioWriter>(new WPAudioWriter(spec));
 	}
+#if defined M4A_ENCODE_SUPPORT
+    else if (libfaac_is_present && spec->get_writer_type() == "faac") {
+        return std::unique_ptr<AbstractAudioWriter>(new FaacAudioWriter(spec));
+	}
+#endif
 	
     return nullptr;
 }

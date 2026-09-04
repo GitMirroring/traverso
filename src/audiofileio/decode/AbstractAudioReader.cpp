@@ -25,17 +25,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "SFAudioReader.h"
 #include "WPAudioReader.h"
 
-#include "Utils.h"
+#if defined M4A_DECODE_SUPPORT
+#include "FaadAudioReader.h"
+#endif
 
+#include "Utils.h"
 #include <QString>
 
-
+RELAYTOOL_FAAD;
 
 #include "Debugger.h"
 
 
 AbstractAudioReader::AbstractAudioReader(const QString& filename)
 {
+    (void)libfaad_is_present;
     m_fileName = filename;
     m_readPos = m_channels = m_fileFrames = 0;
     m_fileSampleRate = 0;
@@ -129,6 +133,10 @@ std::unique_ptr<AbstractAudioReader> AbstractAudioReader::create_audio_reader(co
         newReader = std::unique_ptr<AbstractAudioReader>(new SFAudioReader(filename));
     } else if (WPAudioReader::can_decode(filename)) {
         newReader = std::unique_ptr<AbstractAudioReader>(new WPAudioReader(filename));
+#if defined M4A_DECODE_SUPPORT
+    } else if (FaadAudioReader::can_decode(filename)) {
+        newReader = std::unique_ptr<AbstractAudioReader>(new FaadAudioReader(filename));
+#endif
     } else {
         // Audio Format not supported by sndfile and not a wavpack
         PERROR(QString("File format not supported %1").arg(filename));

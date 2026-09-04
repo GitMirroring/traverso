@@ -391,9 +391,9 @@ FlacAudioReader::FlacAudioReader(const QString& filename)
 	
 	if (m_flac->is_valid()) {
 		m_channels = m_flac->m_channels;
-		m_nframes = m_flac->m_samples;
-		m_rate = m_flac->m_rate;
-		m_length = TTimeRef(m_nframes, m_rate);
+		m_fileFrames = m_flac->m_samples;
+		m_fileSampleRate = m_flac->m_rate;
+		m_length = TTimeRef(m_fileFrames, m_fileSampleRate);
 	}
 }
 
@@ -479,7 +479,7 @@ bool FlacAudioReader::seek_private(nframes_t start)
 {
 	Q_ASSERT(m_flac);
 	
-	if (start >= m_nframes) {
+	if (start >= m_fileFrames) {
 //		PERROR("FlacAudioReader: could not seek to frame %d within %s, it's past the end.", start, QS_C(m_fileName));
 		return false;
 	}
@@ -498,9 +498,10 @@ bool FlacAudioReader::seek_private(nframes_t start)
 }
 
 
-nframes_t FlacAudioReader::read_private(DecodeBuffer* buffer, nframes_t frameCount)
+nframes_t FlacAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t frameCount)
 {
 	Q_ASSERT(m_flac);
+	TAudioBuffer &readBuffer = buffer->get_read_buffer();
 	
 	nframes_t framesToCopy;
 	nframes_t framesAvailable;
@@ -558,23 +559,18 @@ nframes_t FlacAudioReader::read_private(DecodeBuffer* buffer, nframes_t frameCou
 		
 		framesAvailable = (m_flac->bufferUsed - m_flac->bufferStart) / get_num_channels() ;
 		framesToCopy = (frameCount - framesCoppied < framesAvailable) ? frameCount - framesCoppied : framesAvailable;
-		switch (get_num_channels()) {
-			case 1:
-				memcpy(buffer->destination[0] + framesCoppied, m_flac->internalBuffer + m_flac->bufferStart, framesToCopy * sizeof(audio_sample_t));
-				break;
-			case 2:
-				for (nframes_t i = 0; i < framesToCopy; i++) {
-					buffer->destination[0][framesCoppied + i] = m_flac->internalBuffer[m_flac->bufferStart + i * 2];
-					buffer->destination[1][framesCoppied + i] = m_flac->internalBuffer[m_flac->bufferStart + i * 2 + 1];
-				}
-				break;
-			default:
-				for (nframes_t i = 0; i < framesToCopy; i++) {
-                    for (uint c = 0; c < get_num_channels(); c++) {
-						buffer->destination[c][framesCoppied + i] = m_flac->internalBuffer[m_flac->bufferStart + i * get_num_channels() + c];
-					}
-				}
-				break;
+		for (nframes_t i = 0; i < framesToCopy; i++) {
+			for (uint channel = 0; channel < get_num_channels(); channel++) {
+				readBuffer[i * get_num_channels() + channel] =
+					m_flac->internalBuffer[m_flac->bufferStart + i * get_num_channels() + channel];
+			}
+		}
+
+		for (uint channel = 0; channel < get_num_channels(); channel++) {
+			TAudioBuffer &destination = buffer->get_destination_buffer(channel);
+			for (nframes_t i = 0; i < framesToCopy; i++) {
+				destination[framesCoppied + i] = readBuffer[i * get_num_channels() + channel];
+			}
 		}
 		
 		if(framesToCopy == framesAvailable) {

@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Ben Levitt 
+Copyright (C) 2026 Traverso Team
 
 This file is part of Traverso
 
@@ -19,31 +19,32 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef FLACAUDIOREADER_H
-#define FLACAUDIOREADER_H
+#ifndef FAADAUDIOREADER_H
+#define FAADAUDIOREADER_H
 
 #include "AbstractAudioReader.h"
 #include "TFileDecodeBuffer.h"
 
-
-class FlacPrivate;
-
-class FlacAudioReader : public AbstractAudioReader
+class FaadAudioReader : public AbstractAudioReader
 {
 public:
-	FlacAudioReader(const QString &filename);
-	~FlacAudioReader();
-	
-	QString decoder_type() const {return "flac";}
-	void clear_buffers();
+	FaadAudioReader(const QString& filename);
+	~FaadAudioReader() override;
 
-	static bool can_decode(const QString &filename);
-	
+	QString decoder_type() const override { return "faad"; }
+	void clear_buffers() override;
+
+	static bool can_decode(const QString& filename);
+
 protected:
-	bool seek_private(nframes_t start);
-	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t sampleCount);
-	
-	FlacPrivate *m_flac;
+	bool seek_private(nframes_t start) override;
+	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount) override;
+
+	void create_buffers();
+	bool initDecoderInternal();
+
+	class FaadDecoderPrivate;
+	FaadDecoderPrivate* d;
 };
 
-#endif
+#endif // FAADAUDIOREADER_H

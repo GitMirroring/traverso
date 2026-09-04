@@ -107,6 +107,24 @@ IF(AUTOPACKAGE_BUILD)
                 SET(LAME_STUB ../../${relaytool_invoke_result})
 
                 execute_process(
+                        COMMAND relaytool --relay faac -lfaac
+                        OUTPUT_VARIABLE relaytool_invoke_result
+                        RESULT_VARIABLE relaytool_failed
+                )
+                string(REGEX REPLACE "\n" "" relaytool_invoke_result "${relaytool_invoke_result}")
+                string(REGEX REPLACE " +$" "" relaytool_invoke_result "${relaytool_invoke_result}")
+                SET(FAAC_STUB ../../${relaytool_invoke_result})
+
+                execute_process(
+                        COMMAND relaytool --relay faad2 -lfaad2
+                        OUTPUT_VARIABLE relaytool_invoke_result
+                        RESULT_VARIABLE relaytool_failed
+                )
+                string(REGEX REPLACE "\n" "" relaytool_invoke_result "${relaytool_invoke_result}")
+                string(REGEX REPLACE " +$" "" relaytool_invoke_result "${relaytool_invoke_result}")
+                SET(FAAD_STUB ../../${relaytool_invoke_result})
+                
+                execute_process(
                         COMMAND relaytool --relay ogg -logg
                         OUTPUT_VARIABLE relaytool_invoke_result
                         RESULT_VARIABLE relaytool_failed
@@ -166,6 +184,8 @@ ADD_EXECUTABLE(traverso
     ${FLAC_STUB}
     ${MAD_STUB}
     ${LAME_STUB}
+    ${FAAC_STUB}
+    ${FAAD_STUB}
     ${OGG_STUB}
     ${VORBIS_STUB}
     ${VORBISFILE_STUB}
@@ -184,6 +204,8 @@ TARGET_LINK_LIBRARIES(traverso
         traversocommands
         samplerate
         wavpack
+        ${FAAC_STUB}
+        ${FAAD_STUB}
 	${OGG_LIB}
         ${VORBIS_LIB}
         ${VORBIS_FILE_LIB}
@@ -206,12 +228,12 @@ ELSEIF(WIN32)
         sndfile-1
         fftw3-3
     )
-ELSE(WIN32)
+ELSE()
     TARGET_LINK_LIBRARIES(traverso
         sndfile
         fftw3
     )
-ENDIF(WIN32)
+ENDIF(APPLE)
 
 
 IF(HAVE_PORTAUDIO)
@@ -233,12 +255,6 @@ IF(HAVE_LILV)
 	)
 ENDIF(HAVE_LILV)
 
-IF(HAVE_MP3_ENCODING)
-        TARGET_LINK_LIBRARIES(traverso
-                ${LAME_LIB}
-        )
-ENDIF(HAVE_MP3_ENCODING)
-
 
 # IF(HAVE_OPENGL)
 # 	TARGET_LINK_LIBRARIES(traverso
@@ -257,6 +273,18 @@ TARGET_LINK_LIBRARIES(traverso
         ${JACK_LIB}
 )
 ENDIF(HAVE_JACK)
+
+IF(HAVE_M4A_DECODING)
+TARGET_LINK_LIBRARIES(traverso
+        ${FAAD_LIB}
+)
+ENDIF(HAVE_M4A_DECODING)
+
+IF(HAVE_M4A_ENCODING)
+TARGET_LINK_LIBRARIES(traverso
+        ${FAAC_LIB}
+)
+ENDIF(HAVE_M4A_ENCODING)
 
 IF(USE_PCH)
     ADD_DEPENDENCIES(traverso precompiled_headers)

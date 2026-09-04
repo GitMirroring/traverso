@@ -838,7 +838,7 @@ TCommand * TAudioClipView::set_audio_file()
     QString filename = QFileDialog::getOpenFileName(TMainWindow::instance(),
                                                     tr("Reset Audio File for Clip: %1").arg(m_clip->get_name()),
                                                     rs->get_filename(),
-                                                    tr("All files (*);;Audio files (*.wav *.flac)"));
+                                        			tr("Audio files (*.wav *.flac *.ogg *.mp3 *.wv *.w64 *.m4a *.aac)"));
 
     if (filename.isEmpty()) {
         tInformUser().information(tr("No file selected!"));
