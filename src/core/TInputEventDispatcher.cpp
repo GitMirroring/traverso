@@ -449,7 +449,9 @@ void TInputEventDispatcher::set_holding(bool holding)
 void TInputEventDispatcher::reset()
 {
     PENTER;
-    set_holding(false);
+    if (m_isHolding) {
+        set_holding(false);
+    }
     m_cancelHold = false;
     m_bypassJog = false;
     m_enterFinishesHold = false;

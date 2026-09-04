@@ -125,8 +125,12 @@ void GainCommand::set_new_gain_numerical_input(float newGain)
 int GainCommand::process_mouse_move(qreal diffY)
 {
     qreal of = 0;
+    
+#if defined(__APPLE__)
+    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_origGain);
+#else
     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
-
+#endif
 
     if (dbFactor > -1) {
         of = diffY * 0.05;
