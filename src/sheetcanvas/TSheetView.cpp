@@ -418,9 +418,12 @@ void TSheetView::update_scrollbars()
 	m_hScrollBar->setSingleStep(m_clipsViewPort->width() / 10);
 	m_hScrollBar->setPageStep(m_clipsViewPort->width());
 
-	m_vScrollBar->setRange(0, m_sceneHeight - m_clipsViewPort->height() / 2);
+	m_vScrollBar->setRange(0, m_sceneHeight - m_clipsViewPort->height() + 8);
 	m_vScrollBar->setSingleStep(m_clipsViewPort->height() / 10);
 	m_vScrollBar->setPageStep(m_clipsViewPort->height());
+
+	bool needsVScrollBar = (m_sceneHeight - m_clipsViewPort->height() + 8 > 0);
+	m_vScrollBar->setVisible(needsVScrollBar);
 
     m_playCursor->set_bounding_rect(QRectF(0, 0, 4, m_vScrollBar->maximum() + m_clipsViewPort->height()));
 	m_playCursor->update_position();
