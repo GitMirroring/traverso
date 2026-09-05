@@ -310,7 +310,9 @@ bool TSession::is_child_session() const
 void TSession::set_hzoom( qreal hzoom )
 {
 	if (m_parentSession) {
-		return m_parentSession->set_hzoom(hzoom);
+		m_parentSession->set_hzoom(hzoom);
+		m_hzoom = m_parentSession->m_hzoom;
+		return;
 	}
 
 	if (hzoom > TPeak::max_zoom_value()) {
