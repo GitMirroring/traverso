@@ -30,6 +30,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <QtGlobal>
 
 #include "TVUMonitor.h"
 #include "TThemer.h"
@@ -626,7 +627,7 @@ void VUMeterLevel::update_peak( )
         m_monitor->set_read();
 
 	// if the meter drops to -inf, reset the 'over LED' and peak hold values
-	if ((peak == 0.0) && (tailDeltaY <= -70.0)) {
+	if ((qFuzzyCompare(peak, 0.0f)) && (tailDeltaY <= -70.0)) {
 		peakHoldValue = -120.0;
 		emit activate_over_led(false);
                 return;

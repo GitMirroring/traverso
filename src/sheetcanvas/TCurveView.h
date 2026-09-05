@@ -92,6 +92,8 @@ signals :
 	// emit from the gui so that we can stop following the playhead only
 	// when the user manually edits, not on undo/redo
 	void curveModified();
+	// Whenever the curve changes -- used to invalidate clip tile cache items
+	void curveUpdated(int xleft, int xright);
 };
 
 #endif

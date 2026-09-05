@@ -32,8 +32,8 @@ TCurveNode::TCurveNode(TCurve *curve, double when, double value)
 {
     coeff[0] = coeff[1] = coeff[2] = coeff[3] = 0.0;
 
-
-    set_when_and_value(when, value);
+    m_when = when;
+    m_value = value;
 
     next = nullptr;
 }

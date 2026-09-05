@@ -63,6 +63,7 @@ TAudioTrackView::TAudioTrackView(TSheetView* sv, TAudioTrack * track)
 
     connect(m_track, &TAudioTrack::audioClipAdded, this, &TAudioTrackView::add_new_audioclipview);
     connect(m_track, &TAudioTrack::audioClipRemoved, this, &TAudioTrackView::remove_audioclipview);
+    connect(m_curveView, SIGNAL(curveUpdated(int, int)), this, SLOT(update_clips_in_range(int, int)));
 
     for(TAudioClip* clip : m_track->get_audioclips()) {
         add_new_audioclipview(clip);
@@ -207,4 +208,19 @@ void TAudioTrackView::automation_visibility_changed()
 
     // TODO: should be move to ContextItem::set_ignore_context() ?
     // cpointer().request_viewport_to_detect_items_below_cursor();
+}
+
+void TAudioTrackView::update_clips_in_range(int xleft, int xright)
+{
+    for (TAudioClipView* clipView : m_clipViews) {
+        int clipStart = int(clipView->pos().x());
+        int clipEnd = int(clipStart + clipView->boundingRect().width());
+        if (xright >= clipStart && xleft <= clipEnd) {
+            int updateLeft = qMax(0, xleft - clipStart);
+            int updateRight = qMin(int(clipView->boundingRect().width()), xright - clipStart);
+            int updateWidth = updateRight - updateLeft + 3;
+            clipView->invalidate_tiles_range(updateLeft, updateLeft + updateWidth);
+            clipView->update(updateLeft, 0, updateWidth, clipView->boundingRect().height());
+        }
+    }
 }

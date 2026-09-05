@@ -125,6 +125,16 @@ int TCurve::set_state( const QDomNode & node )
 	return 1;
 }
 
+bool TCurve::is_trivial()
+{
+	return m_nodes.size() <= 1;
+}
+
+float TCurve::get_trivial_gain()
+{
+	return (m_nodes.size() == 0) ? 1.0 : (static_cast<TCurveNode*>(m_nodes.first()))->get_value();
+}
+
 int TCurve::process(
     AudioBus* audioBus,
 	const TTimeRef& startlocation,
@@ -143,7 +153,7 @@ int TCurve::process(
 	if (endlocation > qint64(get_range())) {
         audio_sample_t gain = audio_sample_t((static_cast<TCurveNode*>(m_nodes.last()))->get_value()) * makeupgain;
 
-		if (gain == 1.0f) {
+		if (qFuzzyCompare(gain, 1.0f)) {
 			return 0;
 		}
 
@@ -587,7 +597,7 @@ void TCurve::set_range(double when)
 	
     double factor = when / lastnode->get_when();
 	
-	if (factor == 1.0)
+	if (qFuzzyCompare(factor, 1.0))
 		return;
 	
 	x_scale (factor);
