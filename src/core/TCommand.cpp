@@ -101,13 +101,8 @@ TCommand::TCommand( const QString& des )
 TCommand::TCommand(TContextItem* item, const QString& des)
     : QUndoCommand(des)
 {
-    m_isValid = false;
-    m_canvasCursorFollowsMouseCursor = true;
-
     if (item) {
         m_historyStack = item->get_history_stack();
-    } else {
-        m_historyStack = nullptr;
     }
 }
 

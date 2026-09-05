@@ -25,7 +25,6 @@
 
 #include <QObject>
 #include <QUndoCommand>
-#include <QUndoStack>
 
 #ifndef Q_MOC_RUN
 // Used to tell the Input Event Dispatchter this function is to allowed
@@ -84,11 +83,11 @@ public :
 
 protected:
     TContextPointer*    m_contextPointer{nullptr};
-    bool 		m_isValid;
-    bool        m_canvasCursorFollowsMouseCursor;
+    bool 		m_isValid{false};
+    bool        m_canvasCursorFollowsMouseCursor{true};
 
 private:
-    QUndoStack* m_historyStack;
+    QUndoStack* m_historyStack{nullptr};
 
     friend class TInputEventDispatcher;
     int push_to_history_stack();
