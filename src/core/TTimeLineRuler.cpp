@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TExportSpecification.h"
 #include "Utils.h"
 #include "TAddRemoveCommand.h"
+#include "TLocation.h"
 
 #include <QRegularExpression>
 

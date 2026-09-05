@@ -1,6 +1,7 @@
 #include "TContextItem.h"
 
 #include "Utils.h"
+#include "TContextPointer.h"
 #include "qundogroup.h"
 #include "qundostack.h"
 

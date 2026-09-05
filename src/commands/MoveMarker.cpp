@@ -28,8 +28,8 @@
 #include "TSheetView.h"
 #include "TTimeLineRuler.h"
 #include "TInputEventDispatcher.h"
-
-
+#include "TContextPointer.h"
+#include "TLocation.h"
 #include "Debugger.h"
 
 MoveMarker::MoveMarker(TTimeLineMarkerView* mview, qint64 scalefactor, const QString& des)

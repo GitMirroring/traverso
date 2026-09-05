@@ -23,8 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef TCOMMAND_PLUGIN_H
 #define TCOMMAND_PLUGIN_H
 
-#include <QtPlugin>
-#include "TCommand.h"
 #include <QStringList>
 #include <QHash>
 #include <QVariant>
@@ -35,6 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  *
  */
 class TShortCutManager;
+class TCommand;
 
 class TCommandPlugin : public QObject
 {

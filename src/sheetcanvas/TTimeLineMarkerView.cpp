@@ -28,6 +28,7 @@
 #include <TTimeLineMarker.h>
 #include <Utils.h>
 #include "Debugger.h"
+#include "TLocation.h"
 
 #include <QFont>
 #include <QFontMetrics>

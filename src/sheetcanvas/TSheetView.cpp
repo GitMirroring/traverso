@@ -52,6 +52,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "TSession.h"
 #include "TClipsViewPort.h"
 #include "TMoveCommand.h"
+#include "TLocation.h"
 
 #include "TProjectManager.h"
 #include "TProject.h"

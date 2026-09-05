@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TSnapList.h"
 
+#include "TLocation.h"
 #include "TSession.h"
 #include "TSheet.h"
 #include "TAudioClip.h"

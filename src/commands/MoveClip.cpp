@@ -29,13 +29,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheet.h"
 #include "TAudioTrack.h"
 #include "TTimeLineRuler.h"
-
+#include "TLocation.h"
 #include "TSheetView.h"
 #include "TAudioTrackView.h"
 #include "TAudioClipView.h"
-
 #include "Zoom.h"
-
 #include "Debugger.h"
 
 /**

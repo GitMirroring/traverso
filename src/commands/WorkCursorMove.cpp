@@ -25,6 +25,7 @@
 #include "TContextItem.h"
 #include "TInputEventDispatcher.h"
 #include "TClipsViewPort.h"
+#include "TLocation.h"
 #include "TTimeLineMarker.h"
 #include "TSheet.h"
 #include "TSnapList.h"

@@ -23,7 +23,7 @@ $Id: AddRemove.cpp,v 1.6 2008/11/24 10:12:19 r_sijrier Exp $
 #include "TAddRemoveCommand.h"
 #include "TContextItem.h"
 #include <TSheet.h>
-
+#include "TContextPointer.h"
 
 
 #include "Debugger.h"

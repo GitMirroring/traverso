@@ -27,6 +27,7 @@
 #include "TCurveNode.h"
 #include "TSheetView.h"
 #include "Mixer.h"
+#include "TContextPointer.h"
 
 MoveCurveNode::MoveCurveNode(TCurve* curve,
 	QList<TCurveNode*> nodes,

@@ -39,6 +39,7 @@
 #include <TAddRemoveCommand.h>
 #include "TInformUser.h"
 #include "PCommand.h"
+#include "TLocation.h"
 
 MarkerDialog::MarkerDialog(QWidget * parent)
 	: QDialog(parent)

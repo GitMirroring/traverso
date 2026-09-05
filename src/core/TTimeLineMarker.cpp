@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TTimeLineMarker.h"
 #include "TSheet.h"
-
+#include "TLocation.h"
 #include "TTimeLineRuler.h"
 #include "Utils.h"
 

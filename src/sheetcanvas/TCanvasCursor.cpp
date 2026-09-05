@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheetView.h"
 #include "TClipsViewPort.h"
 #include "TPositionIndicator.h"
+#include "TContextPointer.h"
 
 #include "Debugger.h"
 

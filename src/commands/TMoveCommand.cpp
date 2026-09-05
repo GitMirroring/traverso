@@ -27,7 +27,7 @@
 #include "TProjectManager.h"
 #include "TSheet.h"
 #include "TSheetView.h"
-
+#include "TContextPointer.h"
 #include <QScrollBar>
 
 #include "Debugger.h"

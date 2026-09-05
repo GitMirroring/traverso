@@ -29,6 +29,7 @@
 #include "TSnapList.h"
 #include "Utils.h"
 #include "Debugger.h"
+#include "TLocation.h"
 
 TAudioClipManager::TAudioClipManager( TSheet* sheet )
 	: TContextItem(sheet)

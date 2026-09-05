@@ -28,7 +28,7 @@
 #include "TSession.h"
 #include "TConfig.h"
 #include "TInputEventDispatcher.h"
-
+#include "TContextPointer.h"
 #include <Debugger.h>
 
 PlayHeadMove::PlayHeadMove(TSheetView* sv)

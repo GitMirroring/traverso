@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QInputDialog>
 #include <QStringList>
 
+#include "TContextPointer.h"
 #include "TPositionIndicator.h"
 #include "TSheetWidget.h"
 #include "TAudioClipManager.h"

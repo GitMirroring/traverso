@@ -47,6 +47,7 @@ class TPlayHeadView;
 class TWorkCursorView;
 class TCanvasCursor;
 class TCurve;
+class TContextPointer;
 
 struct ItemBrowserData {
 	ItemBrowserData() {

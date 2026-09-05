@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheet.h"
 #include "TInputEventDispatcher.h"
 #include "TSnapList.h"
+#include "TContextPointer.h"
 
 TFadeRangeCommand::TFadeRangeCommand(TAudioClip* clip, TFadeCurve* fadeIn, TFadeCurve *fadeOut, qint64 scalefactor)
     : TMoveCommand(nullptr, clip, "")

@@ -24,10 +24,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TTIMELINEMARKER_H
 
 #include "TContextItem.h"
-#include "TLocation.h"
+#include "TTimeRef.h"
 #include <QDomNode>
 
 class TTimeLineRuler;
+class TLocation;
 
 class TTimeLineMarker : public TContextItem
 {
