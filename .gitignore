@@ -8,6 +8,7 @@
 
 # cmake products
 CMakeCache.txt
+CMakeLists.txt.orig
 CMakeFiles
 CPackConfig.cmake
 CPackSourceConfig.cmake
