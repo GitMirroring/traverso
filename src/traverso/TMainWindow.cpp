@@ -45,6 +45,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TVUMonitor.h"
 #include "TShortCutManager.h"
 #include "TInputEventDispatcher.h"
+#include "TContextPointer.h"
 
 #include <QDockWidget>
 #include <QUndoView>
@@ -362,6 +363,7 @@ TMainWindow::TMainWindow()
 	connect(&pm(), SIGNAL(projectFileVersionMismatch(QString,QString)), this, SLOT(project_file_mismatch(QString,QString)), Qt::QueuedConnection);
 
 	cpointer().add_contextitem(this);
+    cpointer().add_contextitem(&tShortCutManager());
     ied().set_shortcut_manager(&tShortCutManager());
 
 	connect(&config(), SIGNAL(configChanged()), this, SLOT(config_changed()));
@@ -1555,7 +1557,7 @@ TCommand* TMainWindow::show_shortcuts_edit_dialog()
 void TMainWindow::open_help_browser()
 {
 	tInformUser().information(tr("Opening User Manual in external browser!"));
-	QDesktopServices::openUrl(QUrl("http://traverso-daw.org/UserManual"));
+    QDesktopServices::openUrl(QUrl("http://traverso-daw.org/UserManual"));
 }
 
 void TMainWindow::project_dir_change_detected()

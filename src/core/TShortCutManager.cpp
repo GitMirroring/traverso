@@ -53,7 +53,6 @@ TShortCutManager& tShortCutManager()
 
 TShortCutManager::TShortCutManager()
 {
-	cpointer().add_contextitem(this);
 }
 
 TShortCutManager::~TShortCutManager()
