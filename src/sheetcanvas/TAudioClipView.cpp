@@ -93,7 +93,7 @@ TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioCl
     connect(m_gainCurveView, SIGNAL(curveUpdated(int, int)), this, SLOT(invalidate_tiles_range(int, int)));
 
     connect(m_clip, &TAudioClip::muteChanged, this, [this](){update();});
-    connect(m_clip, SIGNAL(muteChanged()), this, SLOT(invalidate_clip_tiles()));
+    connect(m_clip, SIGNAL(muteChanged(bool)), this, SLOT(invalidate_clip_tiles()));
     connect(m_clip, SIGNAL(edgeMoved(bool)), this, SLOT(invalidate_edge_tiles(bool)));
     connect(m_clip, &TAudioClip::stateChanged, this, [this](){clip_state_changed();});
     connect(m_clip, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
