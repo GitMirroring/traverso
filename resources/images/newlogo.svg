@@ -1,0 +1,29 @@
+<svg xmlns="http://w3.org" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Smooth Modern Dark Background Capsule for High-Contrast Rendering -->
+  <rect width="512" height="512" rx="64" fill="#111216"/>
+
+  <defs>
+    <!-- Het originele Traverso kleurprofiel: Diagonaal Neon-verloop -->
+    <linearGradient id="classicTraversoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF000"/>   <!-- Laser Geel -->
+      <stop offset="50%" stop-color="#FF5E00"/>  <!-- Electric Oranje -->
+      <stop offset="100%" stop-color="#FF003C"/> <!-- Fire Rood -->
+    </linearGradient>
+  </defs>
+
+  <!-- UNIFIED CLASSIC "T" WAVEFORM CORE -->
+  <g id="Complete-T-Waveform">
+    <!-- Horizontal Top Crossbar -->
+    <path d="M 104 150 C 164 100, 216 130, 236 165 L 256 195 L 276 165 C 296 130, 348 100, 408 150"
+          fill="none" stroke="url(#classicTraversoGrad)" stroke-width="48" stroke-linejoin="miter" stroke-miterlimit="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- INTEGRATED GRAPHIC TYPOGRAPHY (DAW) -->
+  <text x="270" y="420"
+        fill="url(#classicTraversoGrad)"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="150"
+        font-weight="750"
+        letter-spacing="25"
+        text-anchor="middle">DAW</text>
+</svg>

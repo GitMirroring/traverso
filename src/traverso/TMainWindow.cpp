@@ -156,7 +156,7 @@ TMainWindow::TMainWindow()
 
 	setWindowTitle("Traverso");
 	setMinimumSize(400, 300);
-	setWindowIcon(QPixmap (":/windowicon") );
+    setWindowIcon(QPixmap (":/newlogosvg") );
 
 	// Track finder and related
 	m_trackFinder = new QLineEdit(this);

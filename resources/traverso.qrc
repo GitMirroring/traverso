@@ -1,6 +1,6 @@
 <RCC>
     <qresource prefix="/">
-	<file alias="cursorZoom">images/cursorZoom.xpm</file>
+        <file alias="cursorZoom">images/cursorZoom.xpm</file>
         <file alias="cursorZoomHorizontal">images/cursorZoomHorizontal.xpm</file>
         <file alias="cursorZoomVertical">images/cursorZoomVertical.xpm</file>
         <file alias="cursorHoldLrud">images/cursorHoldLrud.xpm</file>
@@ -10,8 +10,8 @@
         <file alias="lock">images/lock.png</file>
         <file alias="traverso">images/traverso.xpm</file>
         <file alias="windowicon">images/windowicon.xpm</file>
-	<file alias="Traverso/shortcuts.ini">shortcuts.ini</file>
-	<file alias="fadeshapes">fadeshapes.xml</file>
+        <file alias="Traverso/shortcuts.ini">shortcuts.ini</file>
+        <file alias="fadeshapes">fadeshapes.xml</file>
         <file alias="themes/Traverso Light">themes/traversolight.xml</file>
         <file alias="themes/Ubuntu">themes/ubuntu.xml</file>
         <file alias="themes/Medium Contrast">themes/medium-contrast.xml</file>
@@ -68,15 +68,15 @@
         <file alias="add">images/icons/list-add.png</file>
         <file alias="remove">images/icons/list-remove.png</file>
         <file alias="welcomebackground">images/background_center_frame.png</file>
-        <file alias="welcomeheaderlogo">images/traverso.png</file>
-	<file>translations/traverso_nl.qm</file>
-	<file>translations/traverso_de.qm</file>
-	<file>translations/traverso_fr.qm</file>
-	<file>translations/traverso_bg.qm</file>
-	<file>translations/traverso_cs.qm</file>
-	<file>translations/traverso_es.qm</file>
-	<file>translations/traverso_ru.qm</file>
-	<file>translations/traverso_it.qm</file>
-	<file alias="project_conversion_description_2_3">projectconversion/2_to_3.html</file>
+        <file>translations/traverso_nl.qm</file>
+        <file>translations/traverso_de.qm</file>
+        <file>translations/traverso_fr.qm</file>
+        <file>translations/traverso_bg.qm</file>
+        <file>translations/traverso_cs.qm</file>
+        <file>translations/traverso_es.qm</file>
+        <file>translations/traverso_ru.qm</file>
+        <file>translations/traverso_it.qm</file>
+        <file alias="project_conversion_description_2_3">projectconversion/2_to_3.html</file>
+        <file alias="newlogosvg">images/newlogo.svg</file>
     </qresource>
 </RCC>

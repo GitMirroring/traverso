@@ -140,7 +140,7 @@
                </property>
                <property name="styleSheet">
                 <string notr="true">#logoLabel {
-	image: url(:/welcomeheaderlogo) 0;
+	image: url(:/newlogosvg) 0;
     border-width: 0;
 }
 </string>
