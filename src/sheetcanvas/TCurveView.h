@@ -45,7 +45,9 @@ public:
 	float get_default_value();
 	void calculate_bounding_rect();
 	void load_theme_data();
-        void mouse_hover_move_event();
+	void mouse_hover_move_event();
+	void updateNodeVisibility(int startx, int endx);
+	
 	QString get_name() const;
 
         void set_start_offset(const TTimeRef &offset);
@@ -90,6 +92,8 @@ signals :
 	// emit from the gui so that we can stop following the playhead only
 	// when the user manually edits, not on undo/redo
 	void curveModified();
+	// Whenever the curve changes -- used to invalidate clip tile cache items
+	void curveUpdated(int xleft, int xright);
 };
 
 #endif

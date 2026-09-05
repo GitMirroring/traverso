@@ -154,7 +154,7 @@ void AudioDriverConfigPage::reset_default_config()
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
     config().set_property("Hardware", "pahostapi", "alsa");
 #endif
 #if defined (Q_OS_MAC)
@@ -177,7 +177,7 @@ void AudioDriverConfigPage::load_config( )
 {
     int samplerate = config().get_property("Hardware", "samplerate", 44100).toInt();
     int buffersize = config().get_property("Hardware", "buffersize", 512).toInt();
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
     QString driverType = config().get_property("Hardware", "drivertype", "ALSA").toString();
 #else
     QString driverType = config().get_property("Hardware", "drivertype", "PortAudio").toString();
@@ -246,7 +246,7 @@ void AudioDriverConfigPage::load_config( )
     m_portaudiodrivers->driverCombo->clear();
     QString defaulthostapi = "";
 
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
     m_portaudiodrivers->driverCombo->addItem("ALSA", "alsa");
     m_portaudiodrivers->driverCombo->addItem("Jack", "jack");
     m_portaudiodrivers->driverCombo->addItem("OSS", "oss");
@@ -758,6 +758,15 @@ void BehaviorConfigPage::save_config()
     config().set_property("AudioClip", "LockByDefault", lockClipsCheckBox->isChecked());
     config().set_property("ShortCuts", "ShowCursorHelp", showShortcutUsageMessagesCheckBox->isChecked());
 
+    QString onopenaction;
+    if (welcomeRadioButton->isChecked()) {
+        config().set_property("Project", "welcome", "welcome");
+    } else if (openLastProjectRadioButton->isChecked()) {
+        config().set_property("Project", "welcome", "restore");
+    } else {
+        config().set_property("Project", "welcome", "welcome");
+    }
+    
     QString oncloseaction;
     if (saveRadioButton->isChecked()) {
         config().set_property("Project", "onclose", "save");
@@ -770,6 +779,7 @@ void BehaviorConfigPage::save_config()
 
 void BehaviorConfigPage::load_config()
 {
+    QString onopeneaction = config().get_property("Project", "welcome", "welcome").toString();
     QString oncloseaction = config().get_property("Project", "onclose", "save").toString();
     int defaultNumTracks = config().get_property("Sheet", "trackCreationCount", 1).toInt();
     int scrollMode = config().get_property("PlayHead", "Scrollmode", 2).toInt();
@@ -783,6 +793,14 @@ void BehaviorConfigPage::load_config()
     lockClipsCheckBox->setChecked(lockClips);
     showShortcutUsageMessagesCheckBox->setChecked(showShortcutHelpMessages);
 
+    if (onopeneaction == "welcome") {
+        welcomeRadioButton->setChecked(true);
+    } else if (onopeneaction == "restore") {
+        openLastProjectRadioButton->setChecked(true);
+    } else {
+        welcomeRadioButton->setChecked(true);
+    }
+
     if (oncloseaction == "save") {
         saveRadioButton->setChecked(true);
     } else if (oncloseaction == "ask") {
@@ -792,7 +810,6 @@ void BehaviorConfigPage::load_config()
     }
 
     update_follow();
-
 }
 
 
@@ -805,6 +822,7 @@ void BehaviorConfigPage::update_follow()
 
 void BehaviorConfigPage::reset_default_config()
 {
+    config().set_property("Project", "welcome", "welcome");
     config().set_property("Project", "onclose", "save");
     config().set_property("Sheet", "trackCreationCount", 1);
     config().set_property("PlayHead", "Follow", 0);
@@ -877,6 +895,11 @@ void KeyboardConfigPage::on_exportButton_clicked()
     QMessageBox::information( TMainWindow::instance(), tr("KeyMap Export"),
              tr("The exported keymap can be found here:\n\n %1").arg(QDir::homePath() + "/traversokeymap.html"),
              QMessageBox::Ok);
+}
+
+void KeyboardConfigPage::on_editKeymapButton_clicked()
+{
+    TMainWindow::instance()->show_shortcuts_edit_dialog();
 }
 
 

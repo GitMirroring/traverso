@@ -31,6 +31,7 @@
 #include <TSheet.h>
 #include "Utils.h"
 #include "TContextPointer.h"
+#include "ClipTileCache.h"
 
 #include <QGridLayout>
 #include <QScrollBar>
@@ -177,7 +178,10 @@ TSheetWidget::TSheetWidget(TSession* sheet, QWidget* parent)
 		m_clipsViewPort->verticalScrollBar(), 
 		SLOT(setValue(int)));
 	
-	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+    m_timeLine->horizontalScrollBar()->setValue(
+            m_clipsViewPort->horizontalScrollBar()->value());
+
+    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
 	
     setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
 
@@ -211,6 +215,8 @@ void TSheetWidget::load_theme_data()
 {
 	QList<QGraphicsItem*> list = m_scene->items();
 	
+    ctcache().invalidate_all();
+
 	for (int i = 0; i < list.size(); ++i) {
         TViewItem* item = qgraphicsitem_cast<TViewItem*>(list.at(i));
 		if (item) {
@@ -237,7 +243,8 @@ TSheetView * TSheetWidget::get_sheetview() const
 
 void TSheetWidget::zoom_slider_value_changed(int value)
 {
-        m_session->set_hzoom(TPeak::zoomStep[value]);
+    m_session->set_hzoom(TPeak::zoomStep[value]);
+    m_sv->center();
 }
 
 void TSheetWidget::sheet_zoom_level_changed()

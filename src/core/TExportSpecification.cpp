@@ -96,6 +96,7 @@ int TExportSpecification::is_valid()
 
 int TExportSpecification::start_export(TProject* project)
 {
+    Q_UNUSED(project);
 
     QDir dir(m_exportDir);
     if (!m_exportDir.isEmpty() && !dir.exists()) {
@@ -183,7 +184,7 @@ void TExportSpecification::add_sheet_to_export(TSheet *sheet)
 
 void TExportSpecification::set_writer_type(const QString &writerType)
 {
-    Q_ASSERT(writerType == "sndfile" || writerType == "wavpack");
+    Q_ASSERT(writerType == "sndfile" || writerType == "wavpack" || writerType == "m4a");
 
     m_writerType = writerType;
 }
@@ -422,6 +423,7 @@ void TExportSpecification::delete_render_buffer()
 
 int TExportSpecification::create_cdrdao_toc(TExportSpecification* spec)
 {
+    Q_UNUSED(spec);
     // QList<Sheet* > sheets;
     // QString filename = spec->get_export_dir();
 
@@ -494,6 +496,7 @@ int TExportSpecification::create_cdrdao_toc(TExportSpecification* spec)
 /* returns the total time of the data that will be written to CD */
 TTimeRef TExportSpecification::get_cd_totaltime(TExportSpecification* spec)
 {
+    Q_UNUSED(spec);
     // TODO
     // Used to be called from CDWritingDialog::sheet_mode_changed(bool b)
     // but that one needs investigation as well on usefullness.

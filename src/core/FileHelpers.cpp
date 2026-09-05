@@ -89,7 +89,7 @@ int TFileHelper::remove_recursively(const QString& pName)
 
 int TFileHelper::copy_recursively(const QString& pNameFrom, const QString& pNameTo)
 {
-#if defined (Q_OS_UNIX) || defined (Q_OS_MAC)
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
 	QString nameFrom = config().get_property("Project", "directory", "/directory/unknown").toString();
 	QString nameTo(nameFrom);
 

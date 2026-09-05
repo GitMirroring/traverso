@@ -139,7 +139,6 @@ typedef uint8_t            u_int8_t;
 	extern int libFLAC_is_present;\
  	extern int libFLAC_symbol_is_present(char *s);
 
-
 #define	RELAYTOOL_MAD \
 	extern int libmad_is_present;\
 	extern int libmad_symbol_is_present(char *s);
@@ -164,6 +163,14 @@ typedef uint8_t            u_int8_t;
 	extern int libmp3lame_is_present;\
 	extern int libmp3lame_symbol_is_present(char *s);
 
+#define RELAYTOOL_FAAC \
+	extern const int libfaac_is_present;\
+	extern int libfaac_symbol_is_present(char *s);
+
+#define RELAYTOOL_FAAD \
+	extern const int libfaad_is_present;\
+	extern int libfaad_symbol_is_present(char *s);
+
 #else
 
 
@@ -182,6 +189,14 @@ typedef uint8_t            u_int8_t;
 #define RELAYTOOL_MAD \
 	static const int libmad_is_present=1;\
 	static int __attribute__((unused)) libmad_symbol_is_present(char *) { return 1; }
+
+#define RELAYTOOL_FAAC \
+	static const int libfaac_is_present=1;\
+	static int __attribute__((unused)) libfaac_symbol_is_present(char *) { return 1; }
+
+#define RELAYTOOL_FAAD \
+	static const int libfaad_is_present=1;\
+	static int __attribute__((unused)) libfaad_symbol_is_present(char *) { return 1; }
 
 #define RELAYTOOL_OGG \
 	static const int libogg_is_present=1;\

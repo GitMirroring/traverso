@@ -90,7 +90,7 @@ FileWidget::FileWidget(QWidget *parent)
 
     setLayout(lay);
 
-    connect(m_dirView, SIGNAL(clicked(QModelIndex&)), this, SLOT(dirview_item_clicked(QModelIndex&)));
+    connect(m_dirView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(dirview_item_clicked(const QModelIndex&)));
     connect(upButton, SIGNAL(clicked()), this, SLOT(dir_up_button_clicked()));
     connect(m_box, SIGNAL(activated(int)), this, SLOT(box_actived(int)));
 }

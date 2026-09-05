@@ -397,11 +397,13 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
             return;
         }
 
+#if defined (JACK_SUPPORT)
         if (ads.get_driver_type() == "Jack") {
 
             connect(&jackShutDownChecker, SIGNAL(timeout()), this, SLOT(check_jack_shutdown()));
             jackShutDownChecker.start(500);
         }
+#endif
     }
 
     emit started();
@@ -694,6 +696,8 @@ int TAudioDevice::add_jack_channel(AudioChannel *channel)
 
         return 1;
     }
+#else
+    Q_UNUSED(channel);
 #endif
 
     return -1;
@@ -711,6 +715,8 @@ void TAudioDevice::remove_jack_channel(AudioChannel *channel)
         printf("removing channel from jackdriver\n");
         jackdriver->remove_channel(channel);
     }
+#else
+    Q_UNUSED(channel);
 #endif
 }
 

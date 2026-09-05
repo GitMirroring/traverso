@@ -248,16 +248,15 @@ int TPeak::calculate_peaks(int chan,
         }
 
         int offset = qRound(float(startPos) / nearestpow2) * 2;
-        int truncate = 0;
-
-        // Check if this zoom level has as many data as requested.
-        if ( (peakDataCount + offset) > data->headerdata.peakDataSizeForLevel[index]) {
-            truncate = peakDataCount - (data->headerdata.peakDataSizeForLevel[index] - offset);
-            // FIXME: truncate should not be needed or? drawing of peaks is not correct sometimes!
-            //FIXME: nothing done here?
-                       // qDebug("Peak::calculate_peaks truncate: %d", truncate);
-            //            peakDataCount = data->headerdata.peakDataSizeForLevel[index] - offset;
-        }
+        // int truncate = 0;
+        // // Check if this zoom level has as many data as requested.
+        // if ( (peakDataCount + offset) > data->headerdata.peakDataSizeForLevel[index]) {
+        //     truncate = peakDataCount - (data->headerdata.peakDataSizeForLevel[index] - offset);
+        //     // FIXME: truncate should not be needed or? drawing of peaks is not correct sometimes!
+        //     //FIXME: nothing done here?
+        //                // qDebug("Peak::calculate_peaks truncate: %d", truncate);
+        //     //            peakDataCount = data->headerdata.peakDataSizeForLevel[index] - offset;
+        // }
 
         nframes_t readposition = data->headerdata.headerSize + (data->headerdata.peakDataOffsets[index] + offset) * sizeof(peak_data_t);
         produced = data->peakreader->read_from(data->peakdataDecodeBuffer, readposition, peakDataCount);

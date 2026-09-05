@@ -114,7 +114,7 @@ void CorrelationMeter::process(AudioBus* bus, nframes_t nframes)
 
 	// We have all data to calculate the correlation coefficient
 	// for the processed buffer (but check for division by 0 first)
-    if ((a1sq == 0.0) || (a2sq == 0.0)) {
+    if ((qFuzzyCompare(a1sq, 0.0)) || (qFuzzyCompare(a2sq, 0.0))) {
 		r = 1.0;
 	} else {
         r = a1a2 / (sqrtf(a1sq) * sqrtf(a2sq));
@@ -243,7 +243,7 @@ int CorrelationMeter::get_data(qreal& r, qreal& direction)
 	// Now that we truely have taken into account all the levelLeft/Right data
 	// for all buffers that have been processed since last call to get_data()
 	// we now can calculate the direction variable.
-	if (levelLeft + levelRight == 0.0) {
+	if (qFuzzyCompare(levelLeft + levelRight, 0.0)) {
 		direction = 0.0;
 	} else {
         qreal vl = levelLeft / (levelLeft + levelRight);

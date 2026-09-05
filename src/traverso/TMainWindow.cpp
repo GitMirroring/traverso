@@ -71,6 +71,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeLineRuler.h"
 #include "TThemer.h"
 #include "TAudioFileCopyConvert.h"
+#include "ClipTileCache.h"
 
 #include "../sheetcanvas/TSheetWidget.h"
 
@@ -411,6 +412,8 @@ void TMainWindow::set_project(TProject* project)
 
     m_trackFinderModel.clear();
 	track_finder_show_initial_text();
+
+	ctcache().invalidate_all();
 
 	if ( m_project ) {
 		connect(m_project, SIGNAL(projectLoadFinished()), this, SLOT(project_load_finished()));
@@ -770,7 +773,7 @@ void TMainWindow::create_menus( )
 
 	action = menu->addAction(tr("&Close Project"));
 	m_projectMenuToolbarActions.append(action);
-	action->setShortcuts(QKeySequence::Cut);
+	action->setShortcuts(QKeySequence::Close);
 	action->setIcon(QIcon(":/exit"));
 	connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(close_current_project()));
 
@@ -1325,7 +1328,7 @@ void TMainWindow::import_audio()
 
 	QStringList files = QFileDialog::getOpenFileNames(this, tr("Open Audio Files"),
 			project->get_import_dir(),
-			tr("Audio files (*.wav *.flac *.ogg *.mp3 *.wv *.w64)"));
+			tr("Audio files (*.wav *.flac *.ogg *.mp3 *.wv *.w64 *.m4a *.aac)"));
 
 	if (files.isEmpty()) {
 		return;

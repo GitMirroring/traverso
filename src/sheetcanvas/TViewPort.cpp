@@ -155,6 +155,11 @@ void TViewPort::mouseMoveEvent(QMouseEvent* event)
 {
     PENTER3;
 
+    // Add this here to catch the case where the user clicks and drags in the window while it's in the background.
+    if (!cpointer().get_viewport()) {
+      cpointer().set_current_viewport(this);
+    }
+    
     cpointer().update_mouse_positions(event->pos(), event->globalPosition());
 
     if (cpointer().keyboard_only_input()) {

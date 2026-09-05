@@ -98,9 +98,11 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 
 	if (m_session->is_project_session()) {
 		m_projectMasterOutView = new TBusTrackView(this, pm().get_project()->get_master_out_bus_track());
+        connect(m_projectMasterOutView, SIGNAL(totalTrackHeightChanged()), this, SLOT(layout_tracks()));
 	}
 	if (sheet) {
 		m_sheetMasterOutView = new TBusTrackView(this, m_session->get_master_out_bus_track());
+        connect(m_sheetMasterOutView, SIGNAL(totalTrackHeightChanged()), this, SLOT(layout_tracks()));
 	}
 
 	connect(m_session, SIGNAL(workingPosChanged()), m_workCursor, SLOT(update_position()));
@@ -166,10 +168,9 @@ void TSheetView::scale_factor_changed( )
 	}
     timeref_scalefactor = qint64(zoom * (TTimeRef::UNIVERSAL_SAMPLE_RATE / 44100));
 	m_tlvp->scale_factor_changed();
-
-    if(auto viewPort = m_contextPointer->get_viewport()) {
-        viewPort->set_timeref_scale_factor(timeref_scalefactor);
-    }
+	m_clipsViewPort->set_timeref_scale_factor(timeref_scalefactor);
+	m_tlvp->set_timeref_scale_factor(timeref_scalefactor);
+	m_tpvp->set_timeref_scale_factor(timeref_scalefactor);
 
 	update_tracks_bounding_rect();
 }
@@ -414,9 +415,12 @@ void TSheetView::update_scrollbars()
 	m_hScrollBar->setSingleStep(m_clipsViewPort->width() / 10);
 	m_hScrollBar->setPageStep(m_clipsViewPort->width());
 
-	m_vScrollBar->setRange(0, m_sceneHeight - m_clipsViewPort->height() / 2);
+	m_vScrollBar->setRange(0, m_sceneHeight - m_clipsViewPort->height() + 8);
 	m_vScrollBar->setSingleStep(m_clipsViewPort->height() / 10);
 	m_vScrollBar->setPageStep(m_clipsViewPort->height());
+
+	bool needsVScrollBar = (m_sceneHeight - m_clipsViewPort->height() + 8 > 0);
+	m_vScrollBar->setVisible(needsVScrollBar);
 
     m_playCursor->set_bounding_rect(QRectF(0, 0, 4, m_vScrollBar->maximum() + m_clipsViewPort->height()));
 	m_playCursor->update_position();
@@ -522,7 +526,7 @@ void TSheetView::set_track_height(TTrackView *view, int newheight)
 void TSheetView::hzoom(qreal factor)
 {
 	PENTER;
-	m_session->set_hzoom(m_session->get_hzoom() * factor);
+	m_session->scale_hzoom(factor);
 	center();
 }
 
@@ -703,6 +707,14 @@ void TSheetView::set_snap_range(int /*start*/)
     // 			timeref_scalefactor);
 }
 
+TCommand* TSheetView::scroll_up_by(int delta)
+{
+	PENTER3;
+	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() - delta);
+
+    return nullptr;
+}
+
 TCommand* TSheetView::scroll_up( )
 {
 	PENTER3;
@@ -711,10 +723,25 @@ TCommand* TSheetView::scroll_up( )
     return nullptr;
 }
 
+TCommand* TSheetView::scroll_down_by(int delta)
+{
+	PENTER3;
+	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() + delta);
+    return nullptr;
+}
+
 TCommand* TSheetView::scroll_down( )
 {
 	PENTER3;
 	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() + int(m_meanTrackHeight * 0.75));
+    return nullptr;
+}
+
+TCommand* TSheetView::scroll_right_by(int delta)
+{
+	PENTER3;
+	stop_follow_play_head();
+	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() + delta);
     return nullptr;
 }
 
@@ -726,6 +753,14 @@ TCommand* TSheetView::scroll_right()
     return nullptr;
 }
 
+
+TCommand* TSheetView::scroll_left_by(int delta)
+{
+	PENTER3;
+	stop_follow_play_head();
+	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() - delta);
+    return nullptr;
+}
 
 TCommand* TSheetView::scroll_left()
 {
@@ -1346,7 +1381,7 @@ void TSheetView::context_changed()
             }
         }
     } else {
-    PERROR("cpointer returned empty context item list")
+    	// PERROR("cpointer returned empty context item list")
     }
 }
 

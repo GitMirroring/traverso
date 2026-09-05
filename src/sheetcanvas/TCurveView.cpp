@@ -77,6 +77,14 @@ TCurveView::~ TCurveView( )
     delete m_guicurve;
 }
 
+void TCurveView::updateNodeVisibility(int startx, int endx)
+{
+    // We should only show the nodes that are visible within the bounds of the current clip
+    for (TCurveNodeView* nodeView : m_nodeViews) {
+        int pos = nodeView->pos().x()+4 ; // +4 for half width of the node view
+        nodeView->setVisible(pos >= startx && pos <= endx);    }
+}
+
 void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
 {
     Q_UNUSED(widget);
@@ -161,6 +169,7 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
     xstart -= 1;
     if (xstart < 0) {
         xstart = 0;
+        pixelcount -= 1;
     }
 
     painter->setRenderHint(QPainter::Antialiasing);
@@ -201,7 +210,7 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
 
 int TCurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer)
 {
-    if (m_guicurve->get_nodes().size() == 1 && m_guicurve->get_nodes().first()->get_value() == 1.0) {
+    if (m_guicurve->get_nodes().size() == 1 && qFuzzyCompare(m_guicurve->get_nodes().first()->get_value(), 1.0)) {
         return 0;
     }
 
@@ -226,6 +235,7 @@ void TCurveView::add_curvenode_view(TCurveNode* node)
         });
 
         update();
+        emit curveUpdated(0, int(m_boundingRect.width()));
     }
 }
 
@@ -246,6 +256,7 @@ void TCurveView::remove_curvenode_view(TCurveNode* node)
                 scene()->removeItem(nodeview);
                 delete nodeview;
                 update();
+                emit curveUpdated(0, int(m_boundingRect.width()));
                 return;
             }
         }
@@ -489,6 +500,7 @@ void TCurveView::node_moved( )
         // even though there are no selected nodes, a curve node did move
         // e.g. by an undo action, so at least update the view
         update();
+        emit curveUpdated(0, int(m_boundingRect.width()));
         return;
     }
 
@@ -531,6 +543,7 @@ void TCurveView::node_moved( )
 
 
     update(xleft, 0, xright - xleft + 3, m_boundingRect.height());
+    emit curveUpdated(xleft, xright);
 }
 
 void TCurveView::load_theme_data()

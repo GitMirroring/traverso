@@ -35,6 +35,7 @@ FPU::FPU ()
     _flags = Flags (0);
 
 #if !( (defined __x86_64__) || (defined __i386__) ) // !ARCH_X86
+    (void)cpuflags;
     return;
 #else
 

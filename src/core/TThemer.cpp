@@ -236,9 +236,10 @@ void TThemer::load( )
 	}
 
 	QString errorMsg;
-	if (!doc.setContent(&file, &errorMsg)) {
+        QDomDocument::ParseResult result = doc.setContent(file.readAll());
+        if (!result) {
 		file.close();
-                printf("Cannot set Content of XML file (%s)\n", QS_C(errorMsg));
+                printf("Cannot set Content of XML file (%s)\n", QS_C(result.errorMessage));
                 return;
 	}
 
@@ -521,6 +522,7 @@ void TThemer::load_defaults()
         m_defaultColors.insert("AudioClip:clipinfobackground:inactive", p.color(QPalette::AlternateBase));
         m_defaultColors.insert("AudioClip:sampleoverload", QColor(Qt::red));
         m_defaultColors.insert("AudioClip:invalidreadsource", QColor(Qt::red));
+        m_defaultColors.insert("AudioClip:text", QColor(Qt::blue));
         m_defaultColors.insert("Curve:active", p.color(QPalette::BrightText));
         m_defaultColors.insert("CurveNode:default", p.color(QPalette::BrightText));
         m_defaultColors.insert("CurveNode:blink", p.color(QPalette::BrightText));
@@ -577,6 +579,8 @@ void TThemer::load_defaults()
         m_defaultColors.insert("SheetPanel:background", p.color(QPalette::Window));
         m_defaultColors.insert("Timeline:background", p.color(QPalette::Window));
         m_defaultColors.insert("Timeline:text", p.color(QPalette::WindowText));
+        m_defaultColors.insert("Timeline:majorticks", QColor(Qt::black));
+        m_defaultColors.insert("Timeline:minorticks", QColor(Qt::black));
         m_defaultColors.insert("Track:cliptopoffset", p.color(QPalette::Dark));
         m_defaultColors.insert("Track:clipbottomoffset", p.color(QPalette::Dark));
         m_defaultColors.insert("Track:background", p.color(QPalette::Base));

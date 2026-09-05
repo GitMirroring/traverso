@@ -297,6 +297,7 @@ void TAudioClip::set_left_edge(const TTimeRef &location)
         set_source_start_location( m_sourceStartLocation + movingToRight );
         set_location_start(get_location_start() + movingToRight);
     }
+    emit edgeMoved(true);
 }
 
 void TAudioClip::set_right_edge(const TTimeRef &location)
@@ -333,6 +334,7 @@ void TAudioClip::set_right_edge(const TTimeRef &location)
         set_source_end_location( m_sourceEndLocation - movingToLeft);
         set_track_end_location( m_location->get_end() - movingToLeft );
     }
+    emit edgeMoved(false);
 }
 
 TTimeRef TAudioClip::extandable_length_right() const
@@ -435,7 +437,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
         return 0;
     }
 
-    if (m_isMuted || (get_gain() == 0.0f) ) {
+    if (m_isMuted || (qFuzzyCompare(get_gain(), 0.0f)) ) {
         return 0;
     }
 
@@ -821,7 +823,7 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
 {
     float target = dB_to_scale_factor (targetdB);
 
-    if (target == 1.0f) {
+    if (qFuzzyCompare(target, 1.0f)) {
         /* do not normalize to precisely 1.0 (0 dBFS), to avoid making it appear
            that we may have clipped.
         */

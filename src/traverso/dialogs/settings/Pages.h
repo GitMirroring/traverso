@@ -153,6 +153,7 @@ public:
 
 private slots:
 	void on_exportButton_clicked();
+	void on_editKeymapButton_clicked();
 };
 
 

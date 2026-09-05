@@ -251,8 +251,9 @@ int TProject::load(const QString& projectfile)
 
     // Start setting and parsing the content of the xml file
     QString errorMsg;
-    if (!doc.setContent(&file, &errorMsg)) {
-        m_errorString = tr("Project %1: Failed to parse project.tpf file! (Reason: %2)").arg(m_name).arg(errorMsg);
+    QDomDocument::ParseResult result = doc.setContent(file.readAll());
+    if (!result) {
+        m_errorString = tr("Project %1: Failed to parse project.tpf file! (Reason: %2)").arg(m_name).arg(result.errorMessage);
         tInformUser().critical(m_errorString);
         return SETTING_XML_CONTENT_FAILED;
     }
@@ -479,9 +480,9 @@ int TProject::save_from_template_to_project_file(const QString& templateFile, co
     }
 
     // Start setting and parsing the content of the xml file
-    QString errorMsg;
-    if (!doc.setContent(&file, &errorMsg)) {
-        m_errorString = tr("Project %1: Failed to parse project.tpf file! (Reason: %2)").arg(m_name, errorMsg);
+    QDomDocument::ParseResult result = doc.setContent(file.readAll());
+    if (!result) {
+        m_errorString = tr("Project %1: Failed to parse project.tpf file! (Reason: %2)").arg(m_name, result.errorMessage);
         tInformUser().critical(m_errorString);
         return SETTING_XML_CONTENT_FAILED;
     }
@@ -680,7 +681,7 @@ void TProject::prepare_audio_device(QDomDocument doc)
     //        audioDeviceSetup.jackChannels.append(m_softwareAudioChannels.values());
 
     if (audioDeviceSetup.get_driver_type().isEmpty() || audioDeviceSetup.get_driver_type().isNull()) {
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
         audioDeviceSetup.set_driver_type(config().get_property("Hardware", "drivertype", "ALSA").toString());
 #else
         audioDeviceSetup.set_driver_type(config().get_property("Hardware", "drivertype", "PortAudio").toString());
@@ -706,7 +707,7 @@ void TProject::prepare_audio_device(QDomDocument doc)
 #if defined (PORTAUDIO_SUPPORT)
     if (audioDeviceSetup.get_driver_type() == "PortAudio") {
         if (audioDeviceSetup.get_card_device().isEmpty()) {
-#if defined (Q_OS_UNIX)
+#if defined (Q_OS_LINUX)
             audioDeviceSetup.set_card_device(config().get_property("Hardware", "pahostapi", "alsa").toString());
 #elif defined (Q_OS_MAC)
             audioDeviceSetup.set_card_device(config().get_property("Hardware", "pahostapi", "coreaudio").toString());

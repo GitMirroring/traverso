@@ -449,7 +449,9 @@ void TInputEventDispatcher::set_holding(bool holding)
 void TInputEventDispatcher::reset()
 {
     PENTER;
-    set_holding(false);
+    if (m_isHolding) {
+        set_holding(false);
+    }
     m_cancelHold = false;
     m_bypassJog = false;
     m_enterFinishesHold = false;
@@ -722,8 +724,9 @@ bool TInputEventDispatcher::check_number_collection(int eventcode)
     if (eventcode == Qt::Key_Backspace) {
         if (m_sCollectedNumber.size() > 0) {
             set_numerical_input(m_sCollectedNumber.left(m_sCollectedNumber.size() - 1));
+            return true;
         }
-        return true;
+        return false;
     }
     if (eventcode == Qt::Key_Minus) {
         if (m_sCollectedNumber.contains("-")) {
@@ -754,6 +757,11 @@ void TInputEventDispatcher::set_numerical_input(const QString &number)
 bool TInputEventDispatcher::is_holding( )
 {
     return m_isHolding;
+}
+
+bool TInputEventDispatcher::is_holding_modifier_key(int keycode)
+{
+    return m_activeModifierKeys.contains(keycode);
 }
 
 TCommand * TInputEventDispatcher::get_holding_command() const

@@ -37,13 +37,14 @@ public:
     TTimeLineRulerViewPort(QGraphicsScene* scene, TSheetWidget* sw);
     ~TTimeLineRulerViewPort();
 	
-	void set_sheetview(TSheetView* view);
+	void set_sheetview(TSheetView* view) override;
 	void scale_factor_changed();
 	TTimeLineRulerView* get_timeline_view() const {return m_timeLineView;}
 	
 
 protected:
-	void wheelEvent ( QWheelEvent * e );
+	void wheelEvent (QWheelEvent *event) override;
+    bool event(QEvent *event) override;
 
 
 private:

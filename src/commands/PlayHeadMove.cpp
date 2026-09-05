@@ -65,7 +65,11 @@ int PlayHeadMove::begin_hold()
     m_holdCursorSceneY = m_contextPointer->scene_y();
 
     TClipsViewPort* port = d->sv->get_clips_viewport();
-    m_contextPointer->set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), m_contextPointer->mouse_viewport_y()));
+    // m_contextPointer->set_canvas_cursor_pos(QPointF(m_playhead->scenePos().x(), m_contextPointer->mouse_viewport_y()));
+
+	// Jog once, to update the play head cursor position to the current mouse position
+    jog();
+
     int x = port->mapFromScene(m_playhead->scenePos()).x();
 
     if (x < 0 || x > port->width()) {
@@ -158,6 +162,7 @@ void PlayHeadMove::prev_snap_pos()
 
 void PlayHeadMove::do_keyboard_move(const TTimeRef &newLocation, bool centerInView)
 {
+    Q_UNUSED(centerInView);
     ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
 
     m_newTransportLocation = newLocation;

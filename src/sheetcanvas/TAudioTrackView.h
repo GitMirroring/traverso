@@ -67,6 +67,7 @@ protected slots:
 private slots:
 	void add_new_audioclipview(TAudioClip* clip);
 	void remove_audioclipview(TAudioClip* clip);
+	void update_clips_in_range(int xleft, int xright);
 };
 
 

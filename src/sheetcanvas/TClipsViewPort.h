@@ -41,14 +41,17 @@ public:
 	
 
 protected:
-    void resizeEvent(QResizeEvent* e);
-	void paintEvent( QPaintEvent* e);
-	void dragEnterEvent(QDragEnterEvent *event);
-	void dropEvent(QDropEvent *event);
-    void dragMoveEvent(QDragMoveEvent *event);
+    void resizeEvent(QResizeEvent* e) override;
+	void paintEvent( QPaintEvent* e) override;
+	void dragEnterEvent(QDragEnterEvent *event) override;
+	void dropEvent(QDropEvent *event) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
 
 private:
-	TSheetWidget*	m_sw;
+	void wheelEvent (QWheelEvent *event) override;
+    bool event(QEvent *event) override;
+
+    TSheetWidget*	m_sw;
 	QList<TAudioFileImportCommand*>	m_imports;
 	QList<qint64 >	m_resourcesImport;
 	TAudioTrack*     m_importTrack{};

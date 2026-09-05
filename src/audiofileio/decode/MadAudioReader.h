@@ -80,6 +80,7 @@ public:
     bool decodeNextFrame();
     bool findNextHeader();
     bool checkFrameHeader(mad_header* header) const;
+    static bool isXingOrInfoFrame(const mad_header* header, const unsigned char* frame_data, size_t frame_len);
 
     void createInputBuffer();
     void clearInputBuffer();
@@ -94,9 +95,10 @@ private:
     bool m_madStructuresInitialized;
     unsigned char* m_inputBuffer;
     bool m_bInputError;
+    bool m_eofPadded;
 
     int m_channels{};
-    uint m_sampleRate{};
+    int m_sampleRate{};
 };
 
 
@@ -105,8 +107,6 @@ class MadAudioReader : public AbstractAudioReader
 public:
 	MadAudioReader(const QString& filename);
 	~MadAudioReader();
-
-        void init();
 	
 	QString decoder_type() const {return "mad";}
 	void clear_buffers();
@@ -115,8 +115,8 @@ public:
 	
 protected:
 	bool seek_private(nframes_t start);
-	nframes_t read_private(DecodeBuffer* buffer, nframes_t frameCount);
-
+	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount);
+	
 	void create_buffers();
 	bool initDecoderInternal();
 	unsigned long countFrames();
@@ -126,10 +126,6 @@ protected:
 
 	class MadDecoderPrivate;
 	MadDecoderPrivate* d;
-
-private:
-        void private_cleanup();
-        void private_clear_buffers();
 };
 
 #endif

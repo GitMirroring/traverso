@@ -167,7 +167,8 @@ signals:
     void fadeAdded(TFadeCurve*);
     void fadeRemoved(TFadeCurve*);
     void recordingFinished(TAudioClip*);
-
+	void edgeMoved(bool);
+    
 public slots:
     void finish_recording();
     void finish_write_source();

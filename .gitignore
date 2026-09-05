@@ -4,6 +4,7 @@
 .*swp
 #*#
 .project
+.vscode
 
 # cmake products
 CMakeCache.txt
@@ -12,18 +13,22 @@ CPackConfig.cmake
 CPackSourceConfig.cmake
 cmake_install.cmake
 cmake_uninstall.cmake
+compile_commands.json
 Makefile
 /src/config.h
+.cmake
+.qt
 
 # build products
 /bin
 /lib
 /build
-
+Traverso.app
 *.[oa]
 
 /src/traverso/qrc_traverso.cxx
 qrc_*
 moc_*.cxx
 ui_*.h
-
+*autogen*
+*.depends

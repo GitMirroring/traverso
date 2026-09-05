@@ -65,12 +65,12 @@ void  x86_sse_mix_buffers_no_gain	(audio_sample_t*  dst, const audio_sample_t*  
 }
 #endif
 
-#if defined (__APPLE__)  && defined (BUILD_VECLIB_OPTIMIZATIONS)
+#if defined (Q_OS_MAC)
 
-float veclib_compute_peak              (const audio_sample_t* buf, nframes_t nsamples, float current);
-void  veclib_apply_gain_to_buffer      (audio_sample_t* buf, nframes_t nframes, float gain);
-void  veclib_mix_buffers_with_gain     (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes, float gain);
-void  veclib_mix_buffers_no_gain       (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes);
+float accel_compute_peak              (const audio_sample_t* buf, nframes_t nsamples, float current);
+void  accel_apply_gain_to_buffer      (audio_sample_t* buf, nframes_t nframes, float gain);
+void  accel_mix_buffers_with_gain     (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes, float gain);
+void  accel_mix_buffers_no_gain       (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes);
 
 #endif
 

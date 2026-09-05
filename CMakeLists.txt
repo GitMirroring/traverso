@@ -1,6 +1,12 @@
 #Require 3.1.0 for Qt finding
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16.0 FATAL_ERROR)
 
+IF(APPLE)
+        SET(CMAKE_C_COMPILER clang CACHE FILEPATH "C compiler" FORCE)
+        SET(CMAKE_CXX_COMPILER clang++ CACHE FILEPATH "C++ compiler" FORCE)
+        SET(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "Minimum macOS version" FORCE)
+ENDIF()
+
 #PROJECT SETUP
 PROJECT(traverso)
 SET (VERSION_MAJOR "0")
@@ -9,23 +15,74 @@ SET (VERSION_PATCH "1")
 SET (VERSION_SUFFIX "-git-01-11-2010")
 SET (VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}${VERSION_SUFFIX})
 
-# At release set this on:
-LIST(APPEND TRAVERSO_DEFINES -DQT_NO_DEBUG)
+# Options with platform defaults
+if(APPLE)
+    set(DEFAULT_WANT_ALSA OFF)
+    set(DEFAULT_WANT_JACK OFF)
+    set(DEFAULT_WANT_PORTAUDIO ON)
+    set(DEFAULT_WANT_COREAUDIO OFF)
+    set(DEFAULT_WANT_LV2 ON)
+    set(DEFAULT_WANT_SSE OFF)
+elseif(WIN32)
+    set(DEFAULT_WANT_ALSA OFF)
+    set(DEFAULT_WANT_JACK OFF)
+    set(DEFAULT_WANT_PORTAUDIO ON)
+    set(DEFAULT_WANT_COREAUDIO OFF)
+    set(DEFAULT_WANT_LV2 OFF)
+    set(DEFAULT_WANT_SSE OFF)
+else()
+    set(DEFAULT_WANT_ALSA ON)
+    set(DEFAULT_WANT_JACK ON)
+    set(DEFAULT_WANT_PORTAUDIO OFF)
+    set(DEFAULT_WANT_COREAUDIO OFF)
+    set(DEFAULT_WANT_LV2 ON)
+    set(DEFAULT_WANT_SSE ON)
+endif()
 
-OPTION(WANT_JACK    	"Include Jack (Jack Audio Connection Kit) support" ON)
-OPTION(WANT_ALSA    	"Include ALSA (Advanced Linux Sound Architecture) support" ON)
-OPTION(WANT_PORTAUDIO	"Include PortAudio support (Driver support for Mac OS X and Windows" ON)
-OPTION(WANT_PULSEAUDIO	"Include PulseAudio support (Sound Server for Linux" ON)
-OPTION(WANT_COREAUDIO	"Include CoreAudio support (Driver support for Mac OS X" OFF)
-OPTION(WANT_LV2		"Include LV2 Plugin support" ON)
-OPTION(WANT_MP3_ENCODE	"Include mp3 encoding support, for creating mp3 files" ON)
-OPTION(WANT_PCH     	"Use precompiled headers" OFF)
-OPTION(WANT_DEBUG   	"Debug build" ON)
+
+# At release set this on:
+#LIST(APPEND TRAVERSO_DEFINES -DQT_NO_DEBUG)
+
+# Qt6 setup
+if(APPLE)
+    if(EXISTS "/opt/homebrew/opt/qtbase")
+        list(PREPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qtbase")
+    elseif(EXISTS "/usr/local/opt/qtbase")
+        list(PREPEND CMAKE_PREFIX_PATH "/usr/local/opt/qtbase")
+    endif()
+
+    if(EXISTS "/opt/homebrew/opt/qtsvg")
+        list(PREPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qtsvg")
+    elseif(EXISTS "/usr/local/opt/qtsvg")
+        list(PREPEND CMAKE_PREFIX_PATH "/usr/local/opt/qtsvg")
+    endif()
+
+    if(APPLE)
+        set(Qt6Svg_DIR "/opt/homebrew/opt/qtsvg/lib/cmake/Qt6Svg" CACHE PATH "Path to Qt6Svg config" FORCE)
+    endif()
+elseif(WIN32)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.lib")
+    set(BUILD_SHARED_LIBS OFF)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+    list(PREPEND CMAKE_PREFIX_PATH "C:/msys64/ucrt64/qt6-static/")
+    add_compile_options(-DMPG123_STATIC -DOPT_STATIC)
+endif()
+
+option(WANT_JACK "Include JACK Audio Connection Kit support" ${DEFAULT_WANT_JACK})
+option(WANT_ALSA "Include ALSA support" ${DEFAULT_WANT_ALSA})
+option(WANT_PORTAUDIO "Include PortAudio support" ${DEFAULT_WANT_PORTAUDIO})
+option(WANT_PULSEAUDIO "Include PulseAudio support" OFF)
+option(WANT_COREAUDIO "Include CoreAudio support (macOS)" ${DEFAULT_WANT_COREAUDIO})
+option(WANT_LV2 "Include LV2 Plugin support" ${DEFAULT_WANT_LV2})
+option(WANT_M4A_DECODE "Include M4A/AAC decoding support (faad2)" ON)
+option(WANT_M4A_ENCODE "Include M4A/AAC encoding support (faac)" ON)
+option(WANT_PCH "Use precompiled headers" OFF)
+OPTION(WANT_DEBUG "Debug build" ON)
 OPTION(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug ouput on the command line, always on for DEBUG builds" ON)
-OPTION(WANT_VECLIB_OPTIMIZATIONS "Build with veclib optimizations (Only for PPC based Mac OS X)" OFF)
 OPTION(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)
+option(WANT_THREAD_CHECK "Enable runtime thread checks for debugging" OFF)
 OPTION(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu, and compile with an optimal set of compiler flags" OFF)
-OPTION(WANT_SSE "Use sse instruction set. This option is only effective if DETECT_HOST_CPU_FEATURES is OFF." ON)
+option(WANT_SSE "Use SSE instruction set optimizations (x86/x86_64 only)" ${DEFAULT_WANT_SSE})
 
 #CMAKE SETUP
 SET(CMAKE_COLOR_MAKEFILE ON)
@@ -84,11 +141,32 @@ SET(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 # Add Mac build paths for DarwinPorts / MacPorts
 # These need to be defined up here, above the include checks
-IF(APPLE)
-        INCLUDE_DIRECTORIES("/opt/local/include")
-        SET (CMAKE_REQUIRED_INCLUDES "/opt/local/include")
-        LINK_DIRECTORIES("/opt/local/lib")
-ENDIF(APPLE)
+if(APPLE)
+    if(EXISTS "/opt/homebrew/opt/qtbase")
+        list(PREPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qtbase")
+    elseif(EXISTS "/usr/local/opt/qtbase")
+        list(PREPEND CMAKE_PREFIX_PATH "/usr/local/opt/qtbase")
+    endif()
+
+    if(EXISTS "/opt/homebrew/opt/qtsvg")
+        list(PREPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qtsvg")
+    elseif(EXISTS "/usr/local/opt/qtsvg")
+        list(PREPEND CMAKE_PREFIX_PATH "/usr/local/opt/qtsvg")
+    endif()
+
+    if(APPLE)
+        set(Qt6Svg_DIR "/opt/homebrew/opt/qtsvg/lib/cmake/Qt6Svg" CACHE PATH "Path to Qt6Svg config" FORCE)
+    endif()
+    INCLUDE_DIRECTORIES("/opt/homebrew/include")
+    SET (CMAKE_REQUIRED_INCLUDES "/opt/homebrew/include")
+    LINK_DIRECTORIES("/opt/homebrew/lib")
+elseif(WIN32)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.lib")
+    set(BUILD_SHARED_LIBS OFF)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+    list(PREPEND CMAKE_PREFIX_PATH "C:/msys64/ucrt64/qt6-static/")
+    add_compile_options(-DMPG123_STATIC -DOPT_STATIC)
+endif()
 
 SET(MINIMAL_ALSA_VERSION 1.0.0)
 SET(MINIMAL_JACK_VERSION 0.100)
@@ -285,7 +363,7 @@ IF(UNIX)
 # @ MAC OS X builders, I've NO IDEA what this should be, please have a look at it
 # It should be possible to create a working bundle with CPack using stuff
 # defined here ....???
-                SET( ENV{MACOSX_DEPLOYMENT_TARGET} 10.3 )
+                SET( ENV{MACOSX_DEPLOYMENT_TARGET} 10.15 )
                 SET( ENV{LD_PREBIND} 1 )
                 SET( ENV{LD_PREBIND_ALLOW_OVERLAP} 1 )
 
@@ -293,14 +371,6 @@ IF(UNIX)
                 SET(BUILD_MAC_BUNDLE 1)
                 set(MACOSX_BUNDLE_ICON_FILE ${PROJECT_SOURCE_DIR}/resources/images/traverso_mac.icns)
 
-
-                IF(WANT_VECLIB_OPTIMIZATIONS)
-                        LIST(APPEND TRAVERSO_DEFINES -DBUILD_VECLIB_OPTIMIZATIONS)
-                        LINK_LIBRARIES( "-framework Accelerate" )
-                ENDIF(WANT_VECLIB_OPTIMIZATIONS)
-
-# This was copy pasted from another project, please remove if it's not needed!!
-                LINK_LIBRARIES( "-undefined dynamic_lookup" )
                 LINK_LIBRARIES( "-framework CoreFoundation" )
         ENDIF(APPLE)
 # END Mac OS X section
@@ -472,6 +542,33 @@ ELSE(UNIX)
 
 ENDIF(UNIX)
 
+macro(traverso_add_definition def)
+    list(APPEND TRAVERSO_DEFINES_LIST "${def}")
+    add_compile_definitions(${def})
+endmacro()
+
+set(HAVE_M4A_DECODING FALSE)
+if(WANT_M4A_DECODE)
+    pkg_check_modules(FAAD2 IMPORTED_TARGET faad2)
+    if(FAAD2_FOUND)
+        set(HAVE_M4A_DECODING TRUE)
+        traverso_add_definition(M4A_DECODE_SUPPORT)
+    else()
+        message(FATAL_ERROR "M4A decoding requested but faad2 not found")
+    endif()
+endif()
+
+set(HAVE_M4A_ENCODING FALSE)
+if(WANT_M4A_ENCODE)
+    pkg_check_modules(FAAC IMPORTED_TARGET faac)
+    if(FAAC_FOUND)
+        set(HAVE_M4A_ENCODING TRUE)
+        traverso_add_definition(M4A_ENCODE_SUPPORT)
+    else()
+        message(FATAL_ERROR "M4A encoding requested but faac not found")
+    endif()
+endif()
+
 ADD_DEFINITIONS(${QT_DEFINITIONS})
 ADD_DEFINITIONS(${TRAVERSO_DEFINES})
 SET(TRAVERSO_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/buildfiles)
@@ -543,16 +640,16 @@ CMAKE_BACKWARDS_COMPATIBILITY
 
 
 MESSAGE("
-Build options:
-Building in mode	:	${CMAKE_BUILD_TYPE}
-ALSA support		:	${HAVE_ALSA}
-Jack support		:	${HAVE_JACK}
-PortAudio support	:	${HAVE_PORTAUDIO}
-CoreAudio support	:	${HAVE_COREAUDIO}
-SLV2 support		:	${SLV2OPTIONS}
-MP3 read support	:	${HAVE_MP3_DECODING}
-MP3 writing support	:	${HAVE_MP3_ENCODING}
-SSE Optimizations       :       ${HOST_SUPPORTS_SSE}
+Traverso ${VERSION} Configuration Summary:
+  Building in mode      : ${CMAKE_BUILD_TYPE}
+  ALSA support          : ${HAVE_ALSA}
+  Jack support          : ${HAVE_JACK}
+  PortAudio support     : ${HAVE_PORTAUDIO}
+  CoreAudio support     : ${HAVE_COREAUDIO}
+  SLV2 support          : ${SLV2OPTIONS}
+  M4A decode support    : ${HAVE_M4A_DECODING}
+  M4A encode support    : ${HAVE_M4A_ENCODING}
+  SSE Optimizations     : ${HOST_SUPPORTS_SSE}
 ")
 
 MESSAGE(STATUS "Traverso ${VERSION} will be built to install into ${CMAKE_INSTALL_PREFIX}")

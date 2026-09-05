@@ -10,7 +10,7 @@ ${CMAKE_SOURCE_DIR}/src/traverso
 ${CMAKE_SOURCE_DIR}/src/traverso/dialogs
 )
 
-SET(TRAVERSO_SONGCANVAS_SOURCES
+SET(TRAVERSO_SHEETCANVAS_SOURCES
 TAudioClipView.cpp TAudioClipView.h
 TAudioTrackView.cpp TAudioTrackView.h
 TClipsViewPort.cpp TClipsViewPort.h
@@ -41,13 +41,14 @@ TVUMeterView.cpp TVUMeterView.h
 TCanvasCursor.cpp TCanvasCursor.h
 TKnobView.cpp TKnobView.h
 TTextView.cpp TTextView.h
+ClipTileCache.cpp ClipTileCache.h
 )
 
 
-SET(TRAVERSO_SONGCANVAS_LIBRARY "traversosheetcanvas")
+SET(TRAVERSO_SHEETCANVAS_LIBRARY "traversosheetcanvas")
 
-ADD_LIBRARY(${TRAVERSO_SONGCANVAS_LIBRARY} STATIC 
-	${TRAVERSO_SONGCANVAS_SOURCES}
+ADD_LIBRARY(${TRAVERSO_SHEETCANVAS_LIBRARY} STATIC 
+	${TRAVERSO_SHEETCANVAS_SOURCES}
 )
 
 IF(USE_PCH)

@@ -406,6 +406,10 @@ int TPortAudioDriver::_process_callback(
 {
     Q_UNUSED(timeInfo);
     Q_UNUSED(statusFlags);
+    Q_UNUSED(inputBuffer);
+    Q_UNUSED(outputBuffer);
+    Q_UNUSED(framesPerBuffer);
+    Q_UNUSED(arg);
 
     // TPortAudioDriver* driver  = static_cast<TPortAudioDriver *> (arg);
 
