@@ -421,7 +421,7 @@ void TAudioClipView::draw_tile(QPainter* painter, qreal xstart, int pixelcount)
                         polygon.append(QPointF(x, center - scale * curveMixdown[x] * pixelData[(x - dataOffset) * 2]));
                     }
                     for (int x = polygon.size() - 1; x >= 0; --x) {
-                        const int sample = (m_mergedView) ? int(polygon.at(x).x()) : x;
+                        const int sample = int(polygon.at(x).x());
                         const int pixel = sample - dataOffset;
                         polygon.append(QPointF(sample, center + scale * curveMixdown[sample] * pixelData[pixel * 2 + 1]));
                     }
@@ -429,9 +429,10 @@ void TAudioClipView::draw_tile(QPainter* painter, qreal xstart, int pixelcount)
                 } else {
                     // if Rectified View, calculate max of the minimum and maximum value.
                     QVarLengthArray<float> rectified(width);
-                    const int rectifiedCount = qMin(width, availpeaks / 2);
+                    const int first = dataOffset;
+                    const int last = qMin(width, dataOffset + availpeaks / 2);
                     const int base = m_mergedView ? height : int(channel+1) * channelHeight;
-                    for (int x = 0; x < rectifiedCount; ++x) {
+                    for (int x = first; x < last; ++x) {
                         const int pixel = x - dataOffset;
                         rectified[x] = -std::fabs(f_max(pixelData[pixel * 2], -pixelData[pixel * 2 + 1]));
                         const float curveValue = hasCurve ? curveMixdown[x] : 1.0f;
