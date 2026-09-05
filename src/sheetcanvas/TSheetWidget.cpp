@@ -178,7 +178,10 @@ TSheetWidget::TSheetWidget(TSession* sheet, QWidget* parent)
 		m_clipsViewPort->verticalScrollBar(), 
 		SLOT(setValue(int)));
 	
-	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+    m_timeLine->horizontalScrollBar()->setValue(
+            m_clipsViewPort->horizontalScrollBar()->value());
+
+    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
 	
     setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
 
