@@ -169,6 +169,7 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
     xstart -= 1;
     if (xstart < 0) {
         xstart = 0;
+        pixelcount -= 1;
     }
 
     painter->setRenderHint(QPainter::Antialiasing);

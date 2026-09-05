@@ -107,7 +107,7 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     m_guicurve->get_vector(vector_start, vector_start + pixelcount, buffer, nframes_t(pixelcount));
 	
 	for (int i=0; i<pixelcount; i++) {
-        polygon <<  QPointF(xstart + i, height - (double(buffer[i]) * height) );
+        polygon <<  QPointF(xstart + 1 + i, height - (double(buffer[i]) * height) );
 	}
 	
 	
