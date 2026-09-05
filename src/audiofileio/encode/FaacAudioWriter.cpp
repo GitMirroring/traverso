@@ -187,7 +187,7 @@ bool FaacAudioWriter::open_private()
 	m_faacInfo->frameSamples = info.frame_samples;
 	m_faacInfo->maxOutputBytes = info.max_output_bytes;
 #else
-	m_faacInfo->handle = faacEncOpen(m_rate, m_channels, &m_faacInfo->inputSamples, &m_faacInfo->maxOutputBytes);
+	m_faacInfo->handle = faacEncOpen(m_exportSpecification->get_sample_rate(), m_exportSpecification->get_channel_count(), &m_faacInfo->inputSamples, &m_faacInfo->maxOutputBytes);
 	if (!m_faacInfo->handle) {
 		// PERROR("FaacAudioWriter: faacEncOpen failed.");
 		fclose(m_fid);
@@ -208,7 +208,7 @@ bool FaacAudioWriter::open_private()
 	cfg->aacObjectType = (m_objectType == 5) ? 5 : LOW;
 	cfg->mpegVersion = MPEG4;
 	cfg->useTns = m_useTns ? 1 : 0;
-	cfg->allowMidside = (m_channels > 1 && m_useMidside) ? 1 : 0;
+	cfg->allowMidside = (m_exportSpecification->get_channel_count() > 1 && m_useMidside) ? 1 : 0;
 	cfg->outputFormat = 1; // 1 = ADTS
 	cfg->inputFormat = FAAC_INPUT_16BIT;
 
@@ -217,7 +217,7 @@ bool FaacAudioWriter::open_private()
 		cfg->bitRate = 0;
 	} else {
 		uint32_t kbps = (m_bitrate > 0) ? m_bitrate : 128;
-		cfg->bitRate = (kbps * 1000) / m_channels;
+		cfg->bitRate = (kbps * 1000) / m_exportSpecification->get_channel_count();
 		cfg->quantqual = 0;
 	}
 
