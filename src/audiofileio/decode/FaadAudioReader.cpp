@@ -283,7 +283,7 @@ bool FaadAudioReader::initDecoderInternal()
 
 			if (track->dsi && track->dsi_bytes > 0) {
 				char initRes = NeAACDecInit2(d->hDecoder, track->dsi, track->dsi_bytes, &rate, &ch);
-				if (initRes < 0) {
+				if (initRes > 0) {
 					return false;
 				}
 			} else if (d->sampleCount > 0) {
@@ -291,7 +291,7 @@ bool FaadAudioReader::initDecoderInternal()
 				MP4D_file_offset_t off = MP4D_frame_offset(&d->demux, d->audioTrack, 0, &fb, &ts, &dur);
 				QByteArray firstPkt = d->readBytes(off, fb);
 				long initRes = NeAACDecInit(d->hDecoder, reinterpret_cast<unsigned char*>(firstPkt.data()), fb, &rate, &ch);
-				if (initRes < 0) {
+				if (initRes > 0) {
 					return false;
 				}
 			}
@@ -377,7 +377,7 @@ bool FaadAudioReader::initDecoderInternal()
 	unsigned long rate = 0;
 	unsigned char ch = 0;
 	long initRes = NeAACDecInit(d->hDecoder, reinterpret_cast<unsigned char*>(firstFrame.data()), firstFrame.size(), &rate, &ch);
-	if (initRes < 0 || rate == 0 || ch == 0) {
+	if (initRes > 0 || rate == 0 || ch == 0) {
 		return false;
 	}
 
