@@ -96,6 +96,9 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
 #if defined (PORTAUDIO_SUPPORT)
         connect(m_portaudiodrivers->driverCombo, &QComboBox::currentIndexChanged, this, &AudioDriverConfigPage::portaudio_host_api_combobox_index_changed);
 #endif
+
+    update_latency_combobox();
+    
     load_config();
 }
 
@@ -243,6 +246,8 @@ void AudioDriverConfigPage::load_config( )
     }
 
     int index;
+    
+    (void)index;
 
 #if defined (ALSA_SUPPORT)
     m_alsadevices->devicesCombo->clear();

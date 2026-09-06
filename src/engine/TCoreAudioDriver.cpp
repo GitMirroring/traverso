@@ -613,6 +613,8 @@ int TCoreAudioDriver::process_callback(AudioUnitRenderActionFlags* flags,
                                        nframes_t nframes,
                                        AudioBufferList* output)
 {
+    Q_UNUSED(flags);
+
     if (m_capture) {
         if (!m_inputAudioUnit) {
             m_inputList->mNumberBuffers = 1;
@@ -697,6 +699,8 @@ OSStatus TCoreAudioDriver::capture_callback(AudioUnitRenderActionFlags* flags,
                                              const AudioTimeStamp* timestamp,
                                              nframes_t nframes)
 {
+    Q_UNUSED(flags);
+
     if (!m_capture || !m_inputList || !m_inputBuffer) {
         return noErr;
     }
