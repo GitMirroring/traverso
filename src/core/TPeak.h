@@ -96,18 +96,16 @@ class TPeak : public QObject
 	Q_OBJECT
 
 public:
-    static const int ZOOM_LEVELS = 22;
-	static const int SAVING_ZOOM_FACTOR = 8;
-	static const int MAX_ZOOM_USING_SOURCEFILE = SAVING_ZOOM_FACTOR - 1;
-	// Use ~ 1/4 the range of peak_data_t (== short) so we have headroom
-	// for samples in the range [-4, +4] or + 12 dB
-	static const int MAX_DB_VALUE = 8000;
-    constexpr static int zoomStep[ZOOM_LEVELS + 1]= {
-        // non-cached zoomlevels.
+    static const int ZOOM_LEVELS = 20; // so  21 levels
+    static const int SAVING_ZOOM_FACTOR = 8;
+    static const int MAX_ZOOM_USING_SOURCEFILE = SAVING_ZOOM_FACTOR - 1;
+    static const int MAX_DB_VALUE = 8000;
+
+    constexpr static int zoomStep[ZOOM_LEVELS + 1] = {
+        // Non-cached zoomlevels
         1, 2, 4, 8, 12, 16, 24, 32,
         // Cached zoomlevels
-        64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072/*, 262144, 524288, 1048576*/
-      // , 64 - 192 -  576,    577 - 1728 - 5184,   5185 - 15552 - 46656
+        64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144
     };
 
 
@@ -162,15 +160,15 @@ private:
 		int			processBufferSize;
 		int			normDataCount;
 	};
-	
-	struct PeakHeaderData {
-		int headerSize;
-		int normValuesDataOffset;
-		int peakDataOffsets[ZOOM_LEVELS - SAVING_ZOOM_FACTOR];
-		int peakDataSizeForLevel[ZOOM_LEVELS - SAVING_ZOOM_FACTOR];
-        char label[6];	//TPFxxx -> Traverso TPeak File version x.x.x
-		int version[2];
-	};
+
+    struct PeakHeaderData {
+        int headerSize;
+        int normValuesDataOffset;
+        int peakDataOffsets[ZOOM_LEVELS - SAVING_ZOOM_FACTOR + 1];
+        int peakDataSizeForLevel[ZOOM_LEVELS - SAVING_ZOOM_FACTOR + 1];
+        char label[6];
+        int version[2];
+    };
 
 	struct ChannelData {
 		ChannelData() {

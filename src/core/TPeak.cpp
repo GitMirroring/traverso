@@ -40,7 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #define NORMALIZE_CHUNK_SIZE	10000
 #define PEAKFILE_MAJOR_VERSION	1
-#define PEAKFILE_MINOR_VERSION	4
+#define PEAKFILE_MINOR_VERSION	5
 
 QHash<int, int> TPeak::chacheIndexLut;
 
@@ -415,23 +415,27 @@ int TPeak::finish_processing()
             data->pd->processBufferSize += 2;
         }
 
-        int totalBufferSize = 0;
-
+        // --- STEP 1: Calculate sizes per level with correct pair-rounding ---
         data->headerdata.peakDataSizeForLevel[0] = data->pd->processBufferSize;
-        totalBufferSize += data->pd->processBufferSize;
 
-        for( int i = SAVING_ZOOM_FACTOR + 1; i < ZOOM_LEVELS+1; ++i) {
-            data->headerdata.peakDataSizeForLevel[i - SAVING_ZOOM_FACTOR] = data->headerdata.peakDataSizeForLevel[i - SAVING_ZOOM_FACTOR - 1] / 2;
-            totalBufferSize += data->headerdata.peakDataSizeForLevel[i - SAVING_ZOOM_FACTOR];
+        for( int i = SAVING_ZOOM_FACTOR + 1; i < ZOOM_LEVELS; ++i) {
+            int prevSize = data->headerdata.peakDataSizeForLevel[i - SAVING_ZOOM_FACTOR - 1];
+            // If prevSize / 2 is odd (e.g., 14 shorts = 7 pairs), 1 pair remains unmatched.
+            // We round the number of pairs upwards, then multiply by 2 again to get the total shorts.
+            int numPairs = prevSize / 2;
+            int nextPairs = (numPairs + 1) / 2;
+            data->headerdata.peakDataSizeForLevel[i - SAVING_ZOOM_FACTOR] = nextPairs * 2;
         }
 
+        // Calculate the exact totalBufferSize based on the corrected level sizes
+        int totalBufferSize = 0;
+        for (int i = 0; i < ZOOM_LEVELS - SAVING_ZOOM_FACTOR; ++i) {
+            totalBufferSize += data->headerdata.peakDataSizeForLevel[i];
+        }
 
         data->file.seek(data->headerdata.headerSize);
 
-        // The routine below uses a different total buffer size calculation
-        // which might end up with a size >= totalbufferSize !!!
-        // Need to look into that, for now + 4 seems to work...
-        totalBufferSize += 4;
+        // No more "+ 4" guesswork needed; totalBufferSize is now guaranteed to be accurate
         std::vector<peak_data_t> saveBuffer = std::vector<peak_data_t>(totalBufferSize);
 
         int read = data->file.read((char*)saveBuffer.data(), sizeof(peak_data_t) * data->pd->processBufferSize) / sizeof(peak_data_t);
@@ -440,37 +444,44 @@ int TPeak::finish_processing()
             //			PERROR("couldn't read in all saved data?? (%d read)", read);
         }
 
-
         int prevLevelBufferPos = 0;
         int nextLevelBufferPos;
         data->headerdata.peakDataSizeForLevel[0] = data->pd->processBufferSize;
         data->headerdata.peakDataOffsets[0] = 0;
 
-        for (int i = SAVING_ZOOM_FACTOR+1; i < ZOOM_LEVELS+1; ++i) {
+        // --- STEP 2: Generate zoom levels without going out-of-bounds ---
+        for (int i = SAVING_ZOOM_FACTOR + 1; i < ZOOM_LEVELS; ++i) {
 
             int prevLevelSize = data->headerdata.peakDataSizeForLevel[i - SAVING_ZOOM_FACTOR - 1];
             data->headerdata.peakDataOffsets[i - SAVING_ZOOM_FACTOR] = data->headerdata.peakDataOffsets[i - SAVING_ZOOM_FACTOR - 1] + prevLevelSize;
             prevLevelBufferPos = data->headerdata.peakDataOffsets[i - SAVING_ZOOM_FACTOR - 1];
             nextLevelBufferPos = data->headerdata.peakDataOffsets[i - SAVING_ZOOM_FACTOR];
 
-
             int count = 0;
 
-            do {
-                if((nextLevelBufferPos + 1) > totalBufferSize) {
-                    qFatal("nextLeveBufferPos + 1 = %d, totalBufferSize: %d, count %d, preLevelSize %d\n", nextLevelBufferPos + 1, totalBufferSize, count, prevLevelSize);
-                }
-                Q_ASSERT((nextLevelBufferPos + 1) <= totalBufferSize);
-                Q_ASSERT((prevLevelBufferPos + 3) <= totalBufferSize);
+            // Process pairs as long as at least 4 shorts (2 pairs) are available
+            while (count + 3 < prevLevelSize) {
+                Q_ASSERT((nextLevelBufferPos + 1) < totalBufferSize);
+                Q_ASSERT((prevLevelBufferPos + 3) < totalBufferSize);
 
                 saveBuffer[nextLevelBufferPos] = std::max(saveBuffer[prevLevelBufferPos], saveBuffer[prevLevelBufferPos + 2]);
                 saveBuffer[nextLevelBufferPos + 1] = std::max(saveBuffer[prevLevelBufferPos + 1], saveBuffer[prevLevelBufferPos + 3]);
+
                 nextLevelBufferPos += 2;
                 prevLevelBufferPos += 4;
-                count+=4;
+                count += 4;
             }
-            while (count < prevLevelSize);
+
+            // If exactly 1 pair (2 shorts) remains due to an odd number of pairs
+            if (count + 1 < prevLevelSize) {
+                Q_ASSERT((nextLevelBufferPos + 1) < totalBufferSize);
+                Q_ASSERT((prevLevelBufferPos + 1) < totalBufferSize);
+
+                saveBuffer[nextLevelBufferPos] = saveBuffer[prevLevelBufferPos];
+                saveBuffer[nextLevelBufferPos + 1] = saveBuffer[prevLevelBufferPos + 1];
+            }
         }
+
 
         data->file.seek(data->headerdata.headerSize);
 
@@ -511,8 +522,8 @@ int TPeak::finish_processing()
     emit finished();
 
     return 1;
-
 }
+
 
 
 void TPeak::process(uint channel, const audio_sample_t* buffer, nframes_t nframes)
