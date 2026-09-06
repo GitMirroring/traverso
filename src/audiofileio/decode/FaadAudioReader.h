@@ -40,7 +40,6 @@ protected:
 	bool seek_private(nframes_t start) override;
 	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount) override;
 
-	void create_buffers();
 	bool initDecoderInternal();
 
 	class FaadDecoderPrivate;

@@ -39,8 +39,6 @@ RELAYTOOL_FAAD;
 // in case we run with memory leak detection enabled!
 #include "Debugger.h"
 
-static const uint OVERFLOW_BUFFER_FRAMES = 8192;
-
 static int mp4_read_callback(int64_t offset, void *buffer, size_t size, void *token)
 {
 	QFile *file = static_cast<QFile*>(token);
@@ -62,11 +60,9 @@ public:
 		, sampleCount(0)
 		, currentPacket(0)
 		, currentAdtsFrame(0)
-		, overflowBuffers(nullptr)
+		, overflowBuffer(1)
 		, overflowStart(0)
 		, overflowSize(0)
-		, overflowBufferSize(0)
-		, overflowChannelCount(0)
 	{
 		memset(&demux, 0, sizeof(demux));
 	}
@@ -90,7 +86,8 @@ public:
 			isMp4 = false;
 		}
 
-		clearOverflowBuffers();
+		overflowStart = 0;
+		overflowSize = 0;
 
 		if (file.isOpen()) {
 			file.close();
@@ -117,23 +114,6 @@ public:
 		return file.read(size);
 	}
 
-	void clearOverflowBuffers()
-	{
-		if (!overflowBuffers) {
-			return;
-		}
-
-		for (uint i = 0; i < overflowChannelCount; ++i) {
-			delete [] overflowBuffers[i];
-		}
-		delete [] overflowBuffers;
-		overflowBuffers = nullptr;
-		overflowStart = 0;
-		overflowSize = 0;
-		overflowBufferSize = 0;
-		overflowChannelCount = 0;
-	}
-
 	QFile file;
 	NeAACDecHandle hDecoder;
 	bool isMp4;
@@ -150,11 +130,9 @@ public:
 	unsigned int currentPacket;
 	unsigned int currentAdtsFrame;
 
-	audio_sample_t** overflowBuffers;
+	TAudioBuffer overflowBuffer;
 	nframes_t overflowStart;
 	nframes_t overflowSize;
-	uint overflowBufferSize;
-	uint overflowChannelCount;
 };
 
 FaadAudioReader::FaadAudioReader(const QString& filename)
@@ -176,27 +154,11 @@ FaadAudioReader::~FaadAudioReader()
 	delete d;
 }
 
-void FaadAudioReader::create_buffers()
-{
-	if (d->overflowBuffers) {
-		return;
-	}
-
-	d->overflowBufferSize = OVERFLOW_BUFFER_FRAMES;
-	d->overflowChannelCount = m_channels;
-	d->overflowBuffers = new audio_sample_t*[m_channels];
-	for (uint i = 0; i < m_channels; ++i) {
-		d->overflowBuffers[i] = new audio_sample_t[d->overflowBufferSize];
-		memset(d->overflowBuffers[i], 0, d->overflowBufferSize * sizeof(audio_sample_t));
-	}
-	d->overflowStart = 0;
-	d->overflowSize = 0;
-}
-
 void FaadAudioReader::clear_buffers()
 {
-	if (d && d->overflowBuffers) {
-		d->clearOverflowBuffers();
+	if (d) {
+		d->overflowStart = 0;
+		d->overflowSize = 0;
 	}
 }
 
@@ -442,10 +404,6 @@ bool FaadAudioReader::seek_private(nframes_t start)
 		}
 	}
 
-	if (!d->overflowBuffers) {
-		create_buffers();
-	}
-
 	d->overflowStart = 0;
 	d->overflowSize = 0;
 
@@ -487,11 +445,10 @@ bool FaadAudioReader::seek_private(nframes_t start)
 			if (offsetInPkt < decodedFrames) {
 				nframes_t rem = decodedFrames - offsetInPkt;
 				float* samples = static_cast<float*>(pcm);
-				for (uint c = 0; c < m_channels; ++c) {
-					for (nframes_t f = 0; f < rem; ++f) {
-						d->overflowBuffers[c][f] = samples[(offsetInPkt + f) * m_channels + c];
-					}
-				}
+				d->overflowBuffer.resize(rem * m_channels);
+				memcpy(d->overflowBuffer.get_data(rem * m_channels),
+				       samples + offsetInPkt * m_channels,
+				       rem * m_channels * sizeof(audio_sample_t));
 				d->overflowStart = 0;
 				d->overflowSize = rem;
 			}
@@ -532,11 +489,10 @@ bool FaadAudioReader::seek_private(nframes_t start)
 			if (offsetInFrame < decodedFrames) {
 				nframes_t rem = decodedFrames - offsetInFrame;
 				float* samples = static_cast<float*>(pcm);
-				for (uint c = 0; c < m_channels; ++c) {
-					for (nframes_t f = 0; f < rem; ++f) {
-						d->overflowBuffers[c][f] = samples[(offsetInFrame + f) * m_channels + c];
-					}
-				}
+				d->overflowBuffer.resize(rem * m_channels);
+				memcpy(d->overflowBuffer.get_data(rem * m_channels),
+				       samples + offsetInFrame * m_channels,
+				       rem * m_channels * sizeof(audio_sample_t));
 				d->overflowStart = 0;
 				d->overflowSize = rem;
 			}
@@ -560,17 +516,13 @@ nframes_t FaadAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t fra
 		}
 	};
 
-	if (!d->overflowBuffers) {
-		create_buffers();
-	}
-
 	// 1. Drain existing overflow samples
 	if (d->overflowSize > 0) {
 		nframes_t toCopy = std::min(d->overflowSize, frameCount);
 		for (nframes_t frame = 0; frame < toCopy; ++frame) {
 			for (uint channel = 0; channel < m_channels; ++channel) {
-				readBuffer[frame * m_channels + channel] =
-					d->overflowBuffers[channel][d->overflowStart + frame];
+				readBuffer[frame * m_channels + channel] = d->overflowBuffer[
+					(d->overflowStart + frame) * m_channels + channel];
 			}
 		}
 		copyInterleavedToDestination(toCopy, outputPos);
@@ -633,11 +585,10 @@ nframes_t FaadAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t fra
 		if (decodedFrames > space) {
 			// Store remaining samples in overflow buffer
 			nframes_t rem = decodedFrames - space;
-			for (uint c = 0; c < m_channels; ++c) {
-				for (nframes_t f = 0; f < rem; ++f) {
-					d->overflowBuffers[c][f] = samples[(space + f) * m_channels + c];
-				}
-			}
+			d->overflowBuffer.resize(rem * m_channels);
+			memcpy(d->overflowBuffer.get_data(rem * m_channels),
+			       samples + space * m_channels,
+			       rem * m_channels * sizeof(audio_sample_t));
 			d->overflowStart = 0;
 			d->overflowSize = rem;
 			break;
