@@ -89,7 +89,7 @@ NewProjectDialog::NewProjectDialog( QWidget * parent )
 	m_buttonGroup->addButton(radioButtonImport, 0);
 	m_buttonGroup->addButton(radioButtonEmpty, 1);
 
-    connect(useTemplateCheckBox, &QCheckBox::stateChanged, this, &NewProjectDialog::use_template_checkbox_state_changed);
+    connect(useTemplateCheckBox, &QCheckBox::checkStateChanged, this, &NewProjectDialog::use_template_checkbox_state_changed);
 	connect(buttonAdd, &QPushButton::clicked, this, &NewProjectDialog::add_files);
 	connect(buttonRemove, &QPushButton::clicked, this, &NewProjectDialog::remove_files);
 	connect(buttonUp, &QPushButton::clicked, this, &NewProjectDialog::move_up);

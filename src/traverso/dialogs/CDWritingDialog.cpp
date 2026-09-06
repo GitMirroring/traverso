@@ -73,7 +73,7 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	connect(startButton, &QPushButton::clicked, this, &CDWritingDialog::start_burn_process);
 	connect(stopButton, &QPushButton::clicked, this, &CDWritingDialog::stop_burn_process);
 	connect(refreshButton, &QPushButton::clicked, this, &CDWritingDialog::query_devices);
-	connect(cdDiskExportOnlyCheckBox, &QCheckBox::stateChanged, this, &CDWritingDialog::export_only_changed);
+	connect(cdDiskExportOnlyCheckBox, &QCheckBox::checkStateChanged, this, &CDWritingDialog::export_only_changed);
 		connect(m_exportSpec, &TExportSpecification::exportMessage, this, &CDWritingDialog::set_export_message);
 
 	

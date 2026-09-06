@@ -952,7 +952,7 @@ RecordingConfigPage::RecordingConfigPage(QWidget * parent)
     wavpackCompressionComboBox->addItem("Fast", "fast");
 
         connect(encodingComboBox, &QComboBox::activated, this, &RecordingConfigPage::encoding_index_changed);
-    connect(useResamplingCheckBox, &QCheckBox::stateChanged, this, &RecordingConfigPage::use_onthefly_resampling_checkbox_changed);
+    connect(useResamplingCheckBox, &QCheckBox::checkStateChanged, this, &RecordingConfigPage::use_onthefly_resampling_checkbox_changed);
 
     load_config();
 }

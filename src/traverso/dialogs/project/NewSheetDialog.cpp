@@ -45,7 +45,7 @@ NewSheetDialog::NewSheetDialog(QWidget * parent)
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 	
     connect(&pm(), &TProjectManager::projectLoaded, this, &NewSheetDialog::set_project);
-	connect(useTemplateCheckBox, &QCheckBox::stateChanged, this, &NewSheetDialog::use_template_checkbox_state_changed);
+	connect(useTemplateCheckBox, &QCheckBox::checkStateChanged, this, &NewSheetDialog::use_template_checkbox_state_changed);
 }
 
 void NewSheetDialog::accept()

@@ -68,7 +68,7 @@ ProjectManagerDialog::ProjectManagerDialog( QWidget * parent )
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 
 	connect(treeSheetWidget, &QTreeWidget::itemClicked, this, &ProjectManagerDialog::sheetitem_clicked);
-    connect(sheetsAreTrackFolderCheckBox, &QCheckBox::stateChanged, this, &ProjectManagerDialog::sheets_are_track_folder_check_box_state_changed);
+    connect(sheetsAreTrackFolderCheckBox, &QCheckBox::checkStateChanged, this, &ProjectManagerDialog::sheets_are_track_folder_check_box_state_changed);
     connect(&pm(), &TProjectManager::projectLoaded, this, &ProjectManagerDialog::set_project);
 }
 
