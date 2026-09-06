@@ -63,10 +63,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 	QPushButton* restoreDefaultsButton = buttonBox->addButton(QDialogButtonBox::RestoreDefaults); 
         restoreDefaultsButton->setText(tr("Restore Defaults"));
 	
-	connect(cancelButton, SIGNAL(clicked()), this, SLOT(close()));
-	connect(okButton, SIGNAL(clicked()), this, SLOT(save_config()));
-	connect(okButton, SIGNAL(clicked()), this, SLOT(close()));
-	connect(restoreDefaultsButton, SIGNAL(clicked()), this, SLOT(restore_defaults_button_clicked()));
+	connect(cancelButton, &QPushButton::clicked, this, &SettingsDialog::close);
+	connect(okButton, &QPushButton::clicked, this, &SettingsDialog::save_config);
+	connect(okButton, &QPushButton::clicked, this, &SettingsDialog::close);
+	connect(restoreDefaultsButton, &QPushButton::clicked, this, &SettingsDialog::restore_defaults_button_clicked);
 	
 	QHBoxLayout *buttonsLayout = new QHBoxLayout;
 	buttonsLayout->addWidget(buttonBox);
@@ -83,7 +83,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 	
 	setWindowTitle(tr("Preferences - Traverso"));
 	
-	connect(&config(), SIGNAL(configChanged()), this, SLOT(external_change_to_settings()));
+	connect(&config(), &TConfig::configChanged, this, &SettingsDialog::external_change_to_settings);
 	
     resize(500, 600);
 }
@@ -140,9 +140,7 @@ void SettingsDialog::createIcons()
     performanceButton->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     performanceButton->setSizeHint(QSize(100, 50));
 	
-    connect(contentsWidget,
-        SIGNAL(currentItemChanged(QListWidgetItem *, QListWidgetItem *)),
-        this, SLOT(changePage(QListWidgetItem *, QListWidgetItem*)));
+	connect(contentsWidget, &QListWidget::currentItemChanged, this, &SettingsDialog::changePage);
 }
 
 void SettingsDialog::changePage(QListWidgetItem *current, QListWidgetItem *previous)

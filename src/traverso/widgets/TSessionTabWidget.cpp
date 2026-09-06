@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QLabel>
 #include <QMenu>
 #include <QToolBar>
+#include <QToolButton>
 #include <QApplication>
 
 #include "TProjectManager.h"
@@ -69,7 +70,7 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
         // is processed in the correct order.
         m_arrowButtonMenu = new QMenu(TMainWindow::instance());
         m_arrowButtonMenu->installEventFilter(TMainWindow::instance());
-        connect(m_arrowButton, SIGNAL(clicked()), this, SLOT(arrow_button_clicked()));
+        connect(m_arrowButton, &QToolButton::clicked, this, &TSessionTabWidget::arrow_button_clicked);
 
         m_childLayout = new QHBoxLayout;
 
@@ -91,23 +92,23 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
 
                 if (m_session->is_project_session()) {
                         action = m_arrowButtonMenu->addAction(tr("Edit..."));
-                        connect(action, SIGNAL(triggered()), TMainWindow::instance(), SLOT(show_project_manager_dialog()));
+                        connect(action, &QAction::triggered, TMainWindow::instance(), &TMainWindow::show_project_manager_dialog);
                         action = m_arrowButtonMenu->addSeparator();
                 }
 
                 action = m_arrowButtonMenu->addAction(tr("New Track / Bus..."));
                 action->setIcon(find_pixmap(":/new"));
-                connect(action, SIGNAL(triggered()), this, SLOT(add_track_action_triggered()));
+                connect(action, &QAction::triggered, this, &TSessionTabWidget::add_track_action_triggered);
 
                 if (m_session->is_project_session()) {
                         action = m_arrowButtonMenu->addAction(tr("New Sheet..."));
                         action->setIcon(find_pixmap(":/new"));
-                        connect(action, SIGNAL(triggered()), TMainWindow::instance(), SLOT(show_newsheet_dialog()));
+                        connect(action, &QAction::triggered, TMainWindow::instance(), &TMainWindow::show_newsheet_dialog);
                 }
 
                 action = m_arrowButtonMenu->addAction(tr("New WorkSpace..."));
                 action->setIcon(find_pixmap(":/new"));
-                connect(action, SIGNAL(triggered()), this, SLOT(add_new_work_space_action_triggered()));
+                connect(action, &QAction::triggered, this, &TSessionTabWidget::add_new_work_space_action_triggered);
 
                 if (m_session->is_project_session()) {
 
@@ -115,7 +116,7 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
 
                         action = m_arrowButtonMenu->addAction(tr("Close Project"));
                         action->setIcon(QIcon(":/exit"));
-                        connect(action, SIGNAL(triggered()), this, SLOT(close_current_project()));
+                        connect(action, &QAction::triggered, this, &TSessionTabWidget::close_current_project);
                 }
 
                 m_nameLabel->setStyleSheet("color: black; border: none; background-color: none; font-size: 12px;");
@@ -136,12 +137,12 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
                 setLayout(m_childLayout);
 
                 action = m_arrowButtonMenu->addAction(tr("Edit..."));
-                connect(action, SIGNAL(triggered()), this, SLOT(add_track_action_triggered()));
+                connect(action, &QAction::triggered, this, &TSessionTabWidget::add_track_action_triggered);
 
                 m_arrowButtonMenu->addSeparator();
                 action = m_arrowButtonMenu->addAction(QIcon(":/exit"), tr("Close WorkSpace"));
                 action->setIcon(QIcon(":/exit"));
-                connect(action, SIGNAL(triggered()), this, SLOT(close_action_triggered()));
+                connect(action, &QAction::triggered, this, &TSessionTabWidget::close_action_triggered);
 
                 m_nameLabel->setStyleSheet("color: black; border: none; background-color: none; font-size: 11px;");
         }
@@ -149,13 +150,13 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
 
         calculate_size();
 
-        connect(session, SIGNAL(transportStarted()), this, SLOT(session_transport_started()));
-        connect(session, SIGNAL(transportStopped()), this, SLOT(session_transport_stopped()));
+        connect(session, &TSession::transportStarted, this, &TSessionTabWidget::session_transport_started);
+        connect(session, &TSession::transportStopped, this, &TSessionTabWidget::session_transport_stopped);
         connect(session, &TSession::sessionAdded, this, &TSessionTabWidget::child_session_added);
         connect(session, &TSession::sessionRemoved, this, &TSessionTabWidget::child_session_removed);
-        connect(session, SIGNAL(propertyChanged()), this, SLOT(session_property_changed()));
-        connect(m_toolBar, SIGNAL(orientationChanged(Qt::Orientation)), this, SLOT(toolbar_orientation_changed(Qt::Orientation)));
-        connect(this, SIGNAL(clicked()), this, SLOT(button_clicked()));
+        connect(session, &TSession::propertyChanged, this, &TSessionTabWidget::session_property_changed);
+        connect(m_toolBar, &QToolBar::orientationChanged, this, &TSessionTabWidget::toolbar_orientation_changed);
+        connect(this, &TSessionTabWidget::clicked, this, &TSessionTabWidget::button_clicked);
         connect(pm().get_project(), &TProject::currentSessionChanged, this, &TSessionTabWidget::project_current_session_changed);
         connect(pm().get_project(), &TProject::sessionIsAlreadyCurrent, this, &TSessionTabWidget::project_session_is_current);
 

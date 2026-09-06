@@ -112,9 +112,9 @@ private:
 
 
 		retranslateUi(PluginSelectorDialog);
-		QObject::connect(cancelButton, SIGNAL(clicked()), PluginSelectorDialog, SLOT(reject()));
-		QObject::connect(okButton, SIGNAL(clicked()), PluginSelectorDialog, SLOT(accept()));
-		QObject::connect(pluginTreeWidget, SIGNAL(activated(QModelIndex)), okButton, SLOT(click()));
+		QObject::connect(cancelButton, &QPushButton::clicked, PluginSelectorDialog, &PluginSelectorDialog::reject);
+		QObject::connect(okButton, &QPushButton::clicked, PluginSelectorDialog, &PluginSelectorDialog::accept);
+		QObject::connect(pluginTreeWidget, &QTreeWidget::activated, okButton, &QPushButton::click);
 
 		QMetaObject::connectSlotsByName(PluginSelectorDialog);
 	} // setupUi

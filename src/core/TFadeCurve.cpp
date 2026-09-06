@@ -57,10 +57,10 @@ TFadeCurve::TFadeCurve(TContextItem *parent, FadeType fadeType )
 
     next = nullptr;
 
-    connect(this, SIGNAL(stateChanged()), this, SLOT(solve_node_positions()));
-    connect(this, SIGNAL(bendValueChanged()), this, SIGNAL(stateChanged()));
-    connect(this, SIGNAL(strengthValueChanged()), this, SIGNAL(stateChanged()));
-    connect(this, SIGNAL(modeChanged()), this, SIGNAL(stateChanged()));
+    connect(this, &TFadeCurve::stateChanged, this, &TFadeCurve::solve_node_positions);
+    connect(this, &TFadeCurve::bendValueChanged, this, &TFadeCurve::stateChanged);
+    connect(this, &TFadeCurve::strengthValueChanged, this, &TFadeCurve::stateChanged);
+    connect(this, &TFadeCurve::modeChanged, this, &TFadeCurve::stateChanged);
 
     init();
 }

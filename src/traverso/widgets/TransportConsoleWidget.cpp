@@ -57,12 +57,18 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
         "border-radius: 10px;"
         "padding: 0 20 0 20;");
 
-    m_toStartAction = addAction(QIcon(":/skipleft"), tr("Skip to Start"), &transport(), SLOT(to_start()));
-    m_toLeftAction = addAction(QIcon(":/seekleft"), tr("Previous Snap Position"), &transport(), SLOT(prev_skip_pos()));
-    m_recAction = addAction(QIcon(":/record"), tr("Record"), this, SLOT(rec_toggled()));
-    m_playAction = addAction(QIcon(":/playstart"), tr("Play / Stop"), &transport(), SLOT(start_transport()));
-    m_toRightAction = addAction(QIcon(":/seekright"), tr("Next Snap Position"), &transport(), SLOT(next_skip_pos()));
-    m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"), &transport(), SLOT(to_end()));
+    m_toStartAction = addAction(QIcon(":/skipleft"), tr("Skip to Start"));
+    connect(m_toStartAction, &QAction::triggered, &transport(), &TTransport::to_start);
+    m_toLeftAction = addAction(QIcon(":/seekleft"), tr("Previous Snap Position"));
+    connect(m_toLeftAction, &QAction::triggered, &transport(), &TTransport::prev_skip_pos);
+    m_recAction = addAction(QIcon(":/record"), tr("Record"));
+    connect(m_recAction, &QAction::triggered, this, &TransportConsoleWidget::rec_toggled);
+    m_playAction = addAction(QIcon(":/playstart"), tr("Play / Stop"));
+    connect(m_playAction, &QAction::triggered, &transport(), &TTransport::start_transport);
+    m_toRightAction = addAction(QIcon(":/seekright"), tr("Next Snap Position"));
+    connect(m_toRightAction, &QAction::triggered, &transport(), &TTransport::next_skip_pos);
+    m_toEndAction = addAction(QIcon(":/skipright"), tr("Skip to End"));
+    connect(m_toEndAction, &QAction::triggered, &transport(), &TTransport::to_end);
     m_freeWheelingAction = addAction("RT", tr("Start/Stop FreeWheeling"), this, [](){
         audiodevice().set_free_wheeling(audiodevice().running_real_time());
     });
@@ -76,8 +82,8 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
 
     m_lastSnapPosition = TTimeRef();
 
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
-    connect(&audiodevice(), SIGNAL(finishedOneProcessCycle()), this, SLOT(update_label()));
+    connect(&pm(), &TProjectManager::projectLoaded, this, &TransportConsoleWidget::set_project);
+    connect(&audiodevice(), &TAudioDevice::finishedOneProcessCycle, this, &TransportConsoleWidget::update_label);
     connect(&audiodevice(), &TAudioDevice::freeWheelingChanged, this, [this](){
         m_freeWheelingAction->setChecked(!audiodevice().running_real_time());
         if (audiodevice().running_real_time()) {
@@ -119,9 +125,9 @@ void TransportConsoleWidget::set_session(TSession* session)
     }
 
     if (m_sheet) {
-        disconnect(m_sheet, SIGNAL(recordingStateChanged()), this, SLOT(update_recording_state()));
-        disconnect(m_sheet, SIGNAL(transportStarted()), this, SLOT(transport_started()));
-        disconnect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
+        disconnect(m_sheet, &TSheet::recordingStateChanged, this, &TransportConsoleWidget::update_recording_state);
+        disconnect(m_sheet, &TSheet::transportStarted, this, &TransportConsoleWidget::transport_started);
+        disconnect(m_sheet, &TSheet::transportStopped, this, &TransportConsoleWidget::transport_stopped);
 
     }
 
@@ -138,9 +144,9 @@ void TransportConsoleWidget::set_session(TSession* session)
 
     setEnabled(true);
 
-    connect(m_sheet, SIGNAL(recordingStateChanged()), this, SLOT(update_recording_state()));
-    connect(m_sheet, SIGNAL(transportStarted()), this, SLOT(transport_started()));
-    connect(m_sheet, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
+    connect(m_sheet, &TSheet::recordingStateChanged, this, &TransportConsoleWidget::update_recording_state);
+    connect(m_sheet, &TSheet::transportStarted, this, &TransportConsoleWidget::transport_started);
+    connect(m_sheet, &TSheet::transportStopped, this, &TransportConsoleWidget::transport_stopped);
 }
 
 void TransportConsoleWidget::rec_toggled()

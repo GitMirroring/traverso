@@ -43,7 +43,7 @@ TMoveCommand::TMoveCommand(TSheetView *sv, TContextItem* item, const QString &de
         d->doSnap = d->sv->get_sheet()->is_snap_on();
     }
 
-    connect(&d->shuttleTimer, SIGNAL(timeout()), this, SLOT (update_shuttle()));
+    connect(&d->shuttleTimer, &QTimer::timeout, this, &TMoveCommand::update_shuttle);
 }
 
 TMoveCommand::~TMoveCommand()

@@ -89,7 +89,7 @@ TInputEventDispatcher::TInputEventDispatcher()
 
     m_modifierKeys << Qt::Key_Shift << Qt::Key_Control << Qt::Key_Alt << Qt::Key_Meta;
 
-    connect(&m_holdKeyRepeatTimer, SIGNAL(timeout()), this, SLOT(process_hold_modifier_keys()));
+    connect(&m_holdKeyRepeatTimer, &QTimer::timeout, this, &TInputEventDispatcher::process_hold_modifier_keys);
 }
 
 TInputEventDispatcher::~ TInputEventDispatcher( )

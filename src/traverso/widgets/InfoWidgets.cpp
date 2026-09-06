@@ -150,13 +150,13 @@ SystemResources::SystemResources(QWidget * parent)
     setLayout(lay);
     setFrameStyle(QFrame::NoFrame);
 
-	connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(update_status()));
+	connect(&m_updateTimer, &QTimer::timeout, this, &SystemResources::update_status);
 	
 	update_status();
 
     m_updateTimer.start(750);
 
-    connect(&ied(), SIGNAL(collectedNumberChanged()), this, SLOT(collected_number_changed()));
+	connect(&ied(), &TInputEventDispatcher::collectedNumberChanged, this, &SystemResources::collected_number_changed);
 }
 
 void SystemResources::update_status( )
@@ -220,9 +220,9 @@ DriverInfo::DriverInfo( QWidget * parent )
 	
 	setFrameStyle(QFrame::NoFrame);
 	
-	connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(update_driver_info()));
-	connect(&audiodevice(), SIGNAL(bufferUnderRun()), this, SLOT(update_xrun_info()));
-    connect(m_driver, SIGNAL(clicked(bool)), TMainWindow::instance(), SLOT(show_settings_dialog_sound_system_page()));
+	connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &DriverInfo::update_driver_info);
+	connect(&audiodevice(), &TAudioDevice::bufferUnderRun, this, &DriverInfo::update_xrun_info);
+    connect(m_driver, &QPushButton::clicked, TMainWindow::instance(), &TMainWindow::show_settings_dialog_sound_system_page);
 	
 	update_driver_info();
 }
@@ -295,7 +295,7 @@ HDDSpaceInfo::HDDSpaceInfo(QWidget* parent )
 	
 	setFrameStyle(QFrame::NoFrame);
 	
-    connect(&updateTimer, SIGNAL(timeout()), this, SLOT(update_status()));
+	connect(&updateTimer, &QTimer::timeout, this, &HDDSpaceInfo::update_status);
 	
 	update_status();
     updateTimer.start(20000);
@@ -313,8 +313,8 @@ void HDDSpaceInfo::set_session(TSession* session)
 
     update_status();
 
-    connect(m_session, SIGNAL(transportStopped()), this, SLOT(sheet_stopped()), Qt::UniqueConnection);
-    connect(m_session, SIGNAL(transportStarted()), this, SLOT(sheet_started()), Qt::UniqueConnection);
+	connect(m_session, &TSession::transportStopped, this, &HDDSpaceInfo::sheet_stopped, Qt::UniqueConnection);
+	connect(m_session, &TSession::transportStarted, this, &HDDSpaceInfo::sheet_started, Qt::UniqueConnection);
 }
 
 void HDDSpaceInfo::sheet_started()
@@ -437,7 +437,7 @@ InfoWidget::InfoWidget(QWidget* parent)
 	, m_project(0)
 {
 	setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
+	connect(&pm(), &TProjectManager::projectLoaded, this, &InfoWidget::set_project);
 	
 	setFocusPolicy(Qt::NoFocus);
 }
@@ -447,7 +447,7 @@ void InfoWidget::set_project(TProject* project )
 {
 	m_project = project;
 	if (m_project) {
-                connect(m_project, SIGNAL(currentSessionChanged(TSession*)), this, SLOT(set_session(TSession*)));
+				connect(m_project, &TProject::currentSessionChanged, this, &InfoWidget::set_session);
 	} else {
                 set_session(0);
 	}

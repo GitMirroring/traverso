@@ -60,34 +60,33 @@ MarkerDialog::MarkerDialog(QWidget * parent)
 	pushButtonOk->setAutoDefault(false);
 
 	// connect other stuff related to the treeWidget
-	connect(lineEditTitle, SIGNAL(textEdited(const QString &)), this, SLOT(description_changed(const QString &)));
-	connect(lineEditPosition, SIGNAL(textEdited(const QString &)), this, SLOT(position_changed(const QString &)));
-	connect(markersTreeWidget, SIGNAL(currentItemChanged(QTreeWidgetItem *, QTreeWidgetItem *)),
-		 this, SLOT(item_changed(QTreeWidgetItem *, QTreeWidgetItem *)));
-	connect(pushButtonRemove, SIGNAL(clicked()), this, SLOT(remove_marker()));
+	connect(lineEditTitle, &QLineEdit::textEdited, this, &MarkerDialog::description_changed);
+	connect(lineEditPosition, &QLineEdit::textEdited, this, &MarkerDialog::position_changed);
+	connect(markersTreeWidget, &QTreeWidget::currentItemChanged, this, &MarkerDialog::item_changed);
+	connect(pushButtonRemove, &QPushButton::clicked, this, &MarkerDialog::remove_marker);
 
 	// connect the CD-Text widgets (LineEdits and ToolButtons)
-	connect(lineEditPosition, SIGNAL(returnPressed()), this, SLOT(position_enter()));
-	connect(lineEditTitle, SIGNAL(returnPressed()), this, SLOT(title_enter()));
-	connect(lineEditComposer, SIGNAL(returnPressed()), this, SLOT(composer_enter()));
-	connect(lineEditPerformer, SIGNAL(returnPressed()), this, SLOT(performer_enter()));
-	connect(lineEditArranger, SIGNAL(returnPressed()), this, SLOT(arranger_enter()));
-	connect(lineEditMessage, SIGNAL(returnPressed()), this, SLOT(message_enter()));
-	connect(lineEditSongwriter, SIGNAL(returnPressed()), this, SLOT(sheetwriter_enter()));
-	connect(lineEditIsrc, SIGNAL(returnPressed()), this, SLOT(isrc_enter()));
+	connect(lineEditPosition, &QLineEdit::returnPressed, this, &MarkerDialog::position_enter);
+	connect(lineEditTitle, &QLineEdit::returnPressed, this, &MarkerDialog::title_enter);
+	connect(lineEditComposer, &QLineEdit::returnPressed, this, &MarkerDialog::composer_enter);
+	connect(lineEditPerformer, &QLineEdit::returnPressed, this, &MarkerDialog::performer_enter);
+	connect(lineEditArranger, &QLineEdit::returnPressed, this, &MarkerDialog::arranger_enter);
+	connect(lineEditMessage, &QLineEdit::returnPressed, this, &MarkerDialog::message_enter);
+	connect(lineEditSongwriter, &QLineEdit::returnPressed, this, &MarkerDialog::sheetwriter_enter);
+	connect(lineEditIsrc, &QLineEdit::returnPressed, this, &MarkerDialog::isrc_enter);
 
-	connect(toolButtonTitleAll, SIGNAL(clicked()), this, SLOT(title_all()));
-	connect(toolButtonComposerAll, SIGNAL(clicked()), this, SLOT(composer_all()));
-	connect(toolButtonPerformerAll, SIGNAL(clicked()), this, SLOT(performer_all()));
-	connect(toolButtonArrangerAll, SIGNAL(clicked()), this, SLOT(arranger_all()));
-	connect(toolButtonMessageAll, SIGNAL(clicked()), this, SLOT(message_all()));
-	connect(toolButtonSongWriterAll, SIGNAL(clicked()), this, SLOT(songwriter_all()));
-	connect(toolButtonCopyAll, SIGNAL(clicked()), this, SLOT(copy_all()));
-	connect(toolButtonPEmphAll, SIGNAL(clicked()), this, SLOT(pemph_all()));
+	connect(toolButtonTitleAll, &QPushButton::clicked, this, &MarkerDialog::title_all);
+	connect(toolButtonComposerAll, &QPushButton::clicked, this, &MarkerDialog::composer_all);
+	connect(toolButtonPerformerAll, &QPushButton::clicked, this, &MarkerDialog::performer_all);
+	connect(toolButtonArrangerAll, &QPushButton::clicked, this, &MarkerDialog::arranger_all);
+	connect(toolButtonMessageAll, &QPushButton::clicked, this, &MarkerDialog::message_all);
+	connect(toolButtonSongWriterAll, &QPushButton::clicked, this, &MarkerDialog::songwriter_all);
+	connect(toolButtonCopyAll, &QPushButton::clicked, this, &MarkerDialog::copy_all);
+	connect(toolButtonPEmphAll, &QPushButton::clicked, this, &MarkerDialog::pemph_all);
 
-	connect(pushButtonExport, SIGNAL(clicked()), this, SLOT(export_toc()));
-	connect(pushButtonOk, SIGNAL(clicked()), this, SLOT(apply()));
-	connect(pushButtonCancel, SIGNAL(clicked()), this, SLOT(cancel()));
+	connect(pushButtonExport, &QPushButton::clicked, this, &MarkerDialog::export_toc);
+	connect(pushButtonOk, &QPushButton::clicked, this, &MarkerDialog::apply);
+	connect(pushButtonCancel, &QPushButton::clicked, this, &MarkerDialog::cancel);
 
 	update_marker_treeview();
 }

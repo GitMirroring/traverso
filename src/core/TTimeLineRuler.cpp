@@ -62,7 +62,7 @@ int TTimeLineRuler::set_state(const QDomNode & node)
 
 	while (!markerNode.isNull()) {
 		TTimeLineMarker* marker = new TTimeLineMarker(this, markerNode);
-        connect(marker->get_location(), SIGNAL(locationChanged()), this, SLOT(marker_position_changed()));
+        connect(marker->get_location(), &TLocation::locationChanged, this, &TTimeLineRuler::marker_position_changed);
 		m_markers.append(marker);
 		markerNode = markerNode.nextSibling();
 	}
@@ -74,7 +74,7 @@ int TTimeLineRuler::set_state(const QDomNode & node)
 
 TCommand * TTimeLineRuler::add_marker(TTimeLineMarker* marker, bool historable)
 {
-    connect(marker->get_location(), SIGNAL(locationChanged()), this, SLOT(marker_position_changed()));
+    connect(marker->get_location(), &TLocation::locationChanged, this, &TTimeLineRuler::marker_position_changed);
 	
 	TAddRemoveCommand* cmd;
 	cmd = new TAddRemoveCommand(this, marker, historable, m_sheet,

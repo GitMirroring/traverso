@@ -53,7 +53,7 @@ TTrack::TTrack(TSession* session)
 
     TProject* project = pm().get_project();
     if (project) {
-        connect(this, SIGNAL(routingConfigurationChanged()), project, SLOT(track_property_changed()));
+        connect(this, &TTrack::routingConfigurationChanged, project, &TProject::track_property_changed);
     }
 }
 

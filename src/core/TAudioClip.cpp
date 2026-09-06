@@ -78,7 +78,7 @@ TAudioClip::TAudioClip(const QString& name)
     // read in the configuration from the global configuration settings.
     update_global_configuration();
 
-    connect(&config(), SIGNAL(configChanged()), this, SLOT(update_global_configuration()));
+    connect(&config(), &TConfig::configChanged, this, &TAudioClip::update_global_configuration);
 }
 
 
@@ -600,8 +600,8 @@ int TAudioClip::init_recording()
     m_sheet->add_audio_source_to_diskio(m_writer);
 
     // Writers exportFinished() signal comes from DiskIO thread, so we have to connect by Qt::QueuedConnection
-    connect(m_writer, SIGNAL(exportFinished()), this, SLOT(finish_write_source()), Qt::QueuedConnection);
-    connect(m_sheet, SIGNAL(transportStopped()), this, SLOT(finish_recording()));
+    connect(m_writer, &TWriteAudioSource::exportFinished, this, &TAudioClip::finish_write_source, Qt::QueuedConnection);
+    connect(m_sheet, &TSheet::transportStopped, this, &TAudioClip::finish_recording);
 
     return 1;
 }
@@ -718,7 +718,7 @@ void TAudioClip::finish_recording()
     m_recordingStatus = FINISHING_RECORDING;
     m_writer->set_recording(false);
 
-    disconnect(m_sheet, SIGNAL(transportStopped()), this, SLOT(finish_recording()));
+    disconnect(m_sheet, &TSheet::transportStopped, this, &TAudioClip::finish_recording);
 }
 
 uint TAudioClip::get_channel_count( ) const
@@ -770,12 +770,12 @@ void TAudioClip::set_sheet( TSheet * sheet )
 void TAudioClip::set_track( TAudioTrack * track )
 {
     if (m_track) {
-        disconnect(m_track, SIGNAL(audibleStateChanged()), this, SLOT(track_audible_state_changed()));
+        disconnect(m_track, &TTrack::audibleStateChanged, this, &TAudioClip::track_audible_state_changed);
     }
 
     m_track = track;
 
-    connect(m_track, SIGNAL(audibleStateChanged()), this, SLOT(track_audible_state_changed()));
+    connect(m_track, &TTrack::audibleStateChanged, this, &TAudioClip::track_audible_state_changed);
     set_sources_active_state();
 }
 

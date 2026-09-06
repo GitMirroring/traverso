@@ -94,7 +94,7 @@ TVUMeterWidget::TVUMeterWidget(QWidget* parent, AudioBus* bus)
 		VUMeterOverLed* led = new VUMeterOverLed(levelLedLayoutwidget);
 		VUMeterLevel* level = new VUMeterLevel(levelLedLayoutwidget, bus->get_channel(i));
 		m_levels.append(level);
-		connect(level, SIGNAL(activate_over_led(bool)), led, SLOT(set_active(bool)));
+		connect(level, &VUMeterLevel::activate_over_led, led, &VUMeterOverLed::set_active);
 		
 		levellayout->addWidget(led);
 		levellayout->addWidget(level, 5);
@@ -141,7 +141,7 @@ TVUMeterWidget::TVUMeterWidget(QWidget* parent, AudioBus* bus)
 	
 	setLayout(mainlayout);
 
-	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+	connect(themer(), &TThemer::themeLoaded, this, &TVUMeterWidget::load_theme_data, Qt::QueuedConnection);
 }
 
 TVUMeterWidget::~ TVUMeterWidget( )
@@ -289,7 +289,7 @@ VUMeterRuler::VUMeterRuler(QWidget* parent)
 	lineMark.push_back(-60);
 
 	load_theme_data();
-	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+	connect(themer(), &TThemer::themeLoaded, this, &VUMeterRuler::load_theme_data, Qt::QueuedConnection);
 }
 
 void VUMeterRuler::paintEvent( QPaintEvent*  )
@@ -395,7 +395,7 @@ VUMeterOverLed::VUMeterOverLed(QWidget* parent)
 	isActive = false;
 
 	load_theme_data();
-	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+	connect(themer(), &TThemer::themeLoaded, this, &VUMeterOverLed::load_theme_data, Qt::QueuedConnection);
 }
 
 void VUMeterOverLed::paintEvent( QPaintEvent*  )
@@ -497,10 +497,10 @@ VUMeterLevel::VUMeterLevel(QWidget* parent, AudioChannel* chan)
 	setAttribute(Qt::WA_OpaquePaintEvent);
 	setAutoFillBackground(false);
 
-	connect(&audiodevice(), SIGNAL(stopped()), this, SLOT(stop()));
-	connect(&timer, SIGNAL(timeout()), this, SLOT(update_peak()));
-	connect(&phTimer, SIGNAL(timeout()), this, SLOT(reset_peak_hold_value()));
-	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+	connect(&audiodevice(), &TAudioDevice::stopped, this, &VUMeterLevel::stop);
+	connect(&timer, &QTimer::timeout, this, &VUMeterLevel::update_peak);
+	connect(&phTimer, &QTimer::timeout, this, &VUMeterLevel::reset_peak_hold_value);
+	connect(themer(), &TThemer::themeLoaded, this, &VUMeterLevel::load_theme_data, Qt::QueuedConnection);
 	load_theme_data();
 
 	timer.start(UPDATE_FREQ);

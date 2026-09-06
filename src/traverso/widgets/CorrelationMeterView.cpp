@@ -15,7 +15,7 @@ CorrelationMeterView::CorrelationMeterView(CorrelationMeterWidget* widget)
 
     CorrelationMeterView::load_theme_data();
     load_configuration();
-    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+    connect(themer(), &TThemer::themeLoaded, this, &CorrelationMeterView::load_theme_data, Qt::QueuedConnection);
 }
 
 void CorrelationMeterView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)

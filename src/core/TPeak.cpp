@@ -745,7 +745,7 @@ TPeakProcessor::TPeakProcessor()
 
     m_ppthread->start();
 
-    connect(this, SIGNAL(newTask()), this, SLOT(start_task()), Qt::QueuedConnection);
+    connect(this, &TPeakProcessor::newTask, this, &TPeakProcessor::start_task, Qt::QueuedConnection);
 }
 
 

@@ -12,7 +12,7 @@ SpectralMeterConfigWidget::SpectralMeterConfigWidget( QWidget * parent )
 
     load_configuration();
 
-    connect(buttonAdvanced, SIGNAL(toggled(bool)), this, SLOT(advancedButton_toggled(bool)));
+    connect(buttonAdvanced, &QCheckBox::toggled, this, &SpectralMeterConfigWidget::advancedButton_toggled);
 }
 
 void SpectralMeterConfigWidget::on_buttonApply_clicked()

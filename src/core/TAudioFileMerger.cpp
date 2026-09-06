@@ -37,7 +37,7 @@ TAudioFileMerger::TAudioFileMerger()
 	m_stopMerging = false;
 	moveToThread(this);
 	start();
-	connect(this, SIGNAL(dequeueTask()), this, SLOT(dequeue_tasks()), Qt::QueuedConnection);
+	connect(this, &TAudioFileMerger::dequeueTask, this, &TAudioFileMerger::dequeue_tasks, Qt::QueuedConnection);
 }
 
 void TAudioFileMerger::enqueue_task(TReadAudioSource * source0, TReadAudioSource * source1, const QString& dir, const QString & outfilename)

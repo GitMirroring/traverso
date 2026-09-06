@@ -22,11 +22,11 @@ MeterView::MeterView(MeterWidget* widget)
 	m_boundingRect = QRectF();
 
 	// Connections to core:
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
     connect(&pm(), &TProjectManager::projectLoaded, this, &MeterView::set_project);
-    connect(&timer, SIGNAL(timeout()), this, SLOT(update_data()));
+    connect(&pm(), &TProjectManager::projectLoaded, this, &MeterView::set_project);
+    connect(&timer, &QTimer::timeout, this, &MeterView::update_data);
 	m_delayTimer.setSingleShot(true);
-	connect(&m_delayTimer, SIGNAL(timeout()), this, SLOT(delay_timeout()));
+	connect(&m_delayTimer, &QTimer::timeout, this, &MeterView::delay_timeout);
 }
 
 MeterView::~MeterView()
@@ -51,8 +51,8 @@ void MeterView::set_project(TProject *project)
 	if (project) {
                 m_project = project;
                 m_project->add_meter(m_meter);
-                connect(m_project, SIGNAL(transportStarted()), this, SLOT(transport_started()));
-                connect(m_project, SIGNAL(transportStopped()), this, SLOT(transport_stopped()));
+                connect(m_project, &TProject::transportStarted, this, &MeterView::transport_started);
+                connect(m_project, &TProject::transportStopped, this, &MeterView::transport_stopped);
         } else {
 		m_project = 0;
 		timer.stop();

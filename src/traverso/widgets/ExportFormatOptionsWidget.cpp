@@ -76,7 +76,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	int rateIndex = sampleRateComboBox->findData(audiodevice().get_sample_rate());
 	sampleRateComboBox->setCurrentIndex(rateIndex >= 0 ? rateIndex : 3);
 	
-	connect(audioTypeComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(audio_type_changed(int)));
+	connect(audioTypeComboBox, &QComboBox::currentIndexChanged, this, &ExportFormatOptionsWidget::audio_type_changed);
 	
 	QString option;
 	int index;
@@ -108,7 +108,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	// First set to VBR, so that if we default to something else, it will trigger mp3_method_changed()
     index = mp3MethodComboBox->findData("vbr");
 	mp3MethodComboBox->setCurrentIndex(index >=0 ? index : 0);
-	connect(mp3MethodComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(mp3_method_changed(int)));
+	connect(mp3MethodComboBox, &QComboBox::currentIndexChanged, this, &ExportFormatOptionsWidget::mp3_method_changed);
 	
     option = config().get_property("ExportFormatOptionsWidget", "mp3MethodComboBox", "vbr").toString();
 	index = mp3MethodComboBox->findData(option);
@@ -159,7 +159,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	// First set to VBR, so that if we default to something else, it will trigger ogg_method_changed()
 	index = oggMethodComboBox->findData("vbr");
 	oggMethodComboBox->setCurrentIndex(index >=0 ? index : 0);
-	connect(oggMethodComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(ogg_method_changed(int)));
+	connect(oggMethodComboBox, &QComboBox::currentIndexChanged, this, &ExportFormatOptionsWidget::ogg_method_changed);
 	
     option = config().get_property("ExportFormatOptionsWidget", "oggMethodComboBox", "vbr").toString();
 	index = oggMethodComboBox->findData(option);

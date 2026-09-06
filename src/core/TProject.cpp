@@ -101,7 +101,7 @@ TProject::TProject(const QString& title)
     m_masterOutBusTrack = new MasterOutSubGroup(this, "");
     // FIXME: m_masterOut is a Track, but at this point in time, Track can't
     // get a reference to us via pm().get_project();
-    connect(m_masterOutBusTrack, SIGNAL(routingConfigurationChanged()), this, SLOT(track_property_changed()));
+    connect(m_masterOutBusTrack, &TBusTrack::routingConfigurationChanged, this, &TProject::track_property_changed);
 
 
     AudioBus* bus = m_masterOutBusTrack->get_process_bus();
@@ -115,7 +115,7 @@ TProject::TProject(const QString& title)
 
     connect(this, &TProject::privateSheetRemoved, this, &TProject::sheet_removed);
     connect(this, &TProject::privateSheetAdded, this, &TProject::sheet_added);
-    connect(this, SIGNAL(exportFinished()), this, SLOT(export_finished()), Qt::QueuedConnection);
+    connect(this, &TProject::exportFinished, this, &TProject::export_finished, Qt::QueuedConnection);
     connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &TProject::audiodevice_params_changed, Qt::DirectConnection);
     connect(&audiodevice(), &TAudioDevice::audioDeviceClientRemoved, this, &TProject::audio_device_removed_client);
 }

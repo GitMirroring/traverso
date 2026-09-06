@@ -45,7 +45,7 @@ NewSheetDialog::NewSheetDialog(QWidget * parent)
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 	
     connect(&pm(), &TProjectManager::projectLoaded, this, &NewSheetDialog::set_project);
-	connect(useTemplateCheckBox, SIGNAL(stateChanged (int)), this, SLOT(use_template_checkbox_state_changed(int)));
+	connect(useTemplateCheckBox, &QCheckBox::stateChanged, this, &NewSheetDialog::use_template_checkbox_state_changed);
 }
 
 void NewSheetDialog::accept()
@@ -135,7 +135,7 @@ void NewSheetDialog::update_template_combo()
 
                 // FIXME ? Maybe the dialog should be modal, and be recreated each time it is shown
                 // to avoid code complexity like this?
-//		connect(sheet, SIGNAL(propertyChanged()), this, SLOT(update_template_combo()));
+//		connect(sheet, &TSheet::propertyChanged, this, &NewSheetDialog::update_template_combo);
 	}
 }
 

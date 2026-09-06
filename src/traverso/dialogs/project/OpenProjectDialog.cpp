@@ -50,9 +50,9 @@ OpenProjectDialog::OpenProjectDialog( QWidget * parent )
 	projectListView->header()->resizeSection(0, 160);
 	projectListView->header()->resizeSection(1, 30);
 	
-	connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_list()));
-	connect(&pm(), SIGNAL(projectDirChangeDetected()), this, SLOT(update_projects_list()));
-	connect(projectListView, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(projectitem_clicked(QTreeWidgetItem*,int)));
+	connect(&pm(), &TProjectManager::currentProjectDirChanged, this, &OpenProjectDialog::update_projects_list);
+	connect(&pm(), &TProjectManager::projectDirChangeDetected, this, &OpenProjectDialog::update_projects_list);
+	connect(projectListView, &QTreeWidget::itemClicked, this, &OpenProjectDialog::projectitem_clicked);
 }
 
 OpenProjectDialog::~ OpenProjectDialog( )

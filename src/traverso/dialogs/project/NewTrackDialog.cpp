@@ -50,11 +50,11 @@ NewTrackDialog::NewTrackDialog(QWidget * parent)
     m_completer.setCaseSensitivity(Qt::CaseInsensitive);
 
     connect(&pm(), &TProjectManager::projectLoaded, this, &NewTrackDialog::set_project);
-    connect(closeButton, SIGNAL(clicked()), this, SLOT(close_clicked()));
-    connect(addTrackBusButton, SIGNAL(clicked()), this, SLOT(create_track()));
-    connect(isBusTrack, SIGNAL(toggled(bool)), this, SLOT(update_buses_comboboxes()));
-    connect(&m_timer, SIGNAL(timeout()), this, SLOT(reset_information_label()));
-    connect(trackName, SIGNAL(textChanged(QString)), SLOT(update_completer(QString)));
+    connect(closeButton, &QPushButton::clicked, this, &NewTrackDialog::close_clicked);
+    connect(addTrackBusButton, &QPushButton::clicked, this, &NewTrackDialog::create_track);
+    connect(isBusTrack, &QCheckBox::toggled, this, &NewTrackDialog::update_buses_comboboxes);
+    connect(&m_timer, &QTimer::timeout, this, &NewTrackDialog::reset_information_label);
+    connect(trackName, &QLineEdit::textChanged, this, &NewTrackDialog::update_completer);
 }
 
 void NewTrackDialog::showEvent(QShowEvent */*event*/)

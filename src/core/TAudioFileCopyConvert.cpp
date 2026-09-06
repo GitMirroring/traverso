@@ -39,7 +39,7 @@ TAudioFileCopyConvert::TAudioFileCopyConvert()
 	m_stopProcessing = false;
 	moveToThread(this);
 	start();
-	connect(this, SIGNAL(dequeueTask()), this, SLOT(dequeue_tasks()), Qt::QueuedConnection);
+	connect(this, &TAudioFileCopyConvert::dequeueTask, this, &TAudioFileCopyConvert::dequeue_tasks, Qt::QueuedConnection);
 }
 
 /**

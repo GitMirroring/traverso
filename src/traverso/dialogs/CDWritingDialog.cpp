@@ -52,8 +52,8 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	stopButton->hide();
 	set_project(pm().get_project());
 	
-	connect(closeButton, SIGNAL(clicked()), this, SLOT(hide()));
-    connect(&pm(), SIGNAL(projectLoaded(TProject*)), this, SLOT(set_project(TProject*)));
+	connect(closeButton, &QPushButton::clicked, this, &CDWritingDialog::hide);
+    connect(&pm(), &TProjectManager::projectLoaded, this, &CDWritingDialog::set_project);
 
 	m_burnprocess = new QProcess(this);
 	m_burnprocess->setProcessChannelMode(QProcess::MergedChannels);
@@ -67,15 +67,14 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	refreshButton->setMaximumHeight(26);
 	refreshButton->setMaximumWidth(30);
 	
-	connect(m_burnprocess, SIGNAL(readyReadStandardOutput()), this, SLOT(read_standard_output()));
-	connect(m_burnprocess, SIGNAL(started()), this, SLOT(cdrdao_process_started()));
-    connect(m_burnprocess, SIGNAL(finished(int,QProcess::ExitStatus)),
-        this, SLOT(cdrdao_process_finished(int,QProcess::ExitStatus)));
-	connect(startButton, SIGNAL(clicked()), this, SLOT(start_burn_process()));
-	connect(stopButton, SIGNAL(clicked()), this, SLOT(stop_burn_process()));
-	connect(refreshButton, SIGNAL(clicked()), this, SLOT(query_devices()));
-	connect(cdDiskExportOnlyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(export_only_changed(int)));
-        connect(m_project, SIGNAL(exportMessage(QString)), this, SLOT(set_export_message(QString)));
+	connect(m_burnprocess, &QProcess::readyReadStandardOutput, this, &CDWritingDialog::read_standard_output);
+	connect(m_burnprocess, &QProcess::started, this, &CDWritingDialog::cdrdao_process_started);
+    connect(m_burnprocess, &QProcess::finished, this, &CDWritingDialog::cdrdao_process_finished);
+	connect(startButton, &QPushButton::clicked, this, &CDWritingDialog::start_burn_process);
+	connect(stopButton, &QPushButton::clicked, this, &CDWritingDialog::stop_burn_process);
+	connect(refreshButton, &QPushButton::clicked, this, &CDWritingDialog::query_devices);
+	connect(cdDiskExportOnlyCheckBox, &QCheckBox::stateChanged, this, &CDWritingDialog::export_only_changed);
+		connect(m_exportSpec, &TExportSpecification::exportMessage, this, &CDWritingDialog::set_export_message);
 
 	
 	m_wodimAvailable = false;
@@ -322,8 +321,8 @@ void CDWritingDialog::cd_render()
 	
 		m_writingState = RENDER;
 
-		connect(m_project, SIGNAL(overallExportProgressChanged(int)), this, SLOT(cd_export_progress(int)));
-		connect(m_project, SIGNAL(exportFinished()), this, SLOT(cd_export_finished()));
+		connect(m_exportSpec, &TExportSpecification::progressChanged, this, &CDWritingDialog::cd_export_progress);
+		connect(m_project, &TProject::exportFinished, this, &CDWritingDialog::cd_export_finished);
 	
 		update_cdburn_status(tr("Rendering Sheet(s)"), NORMAL_MESSAGE);
 		
@@ -409,8 +408,8 @@ void CDWritingDialog::write_to_cd()
 void CDWritingDialog::cd_export_finished()
 {
 	PENTER;
-	disconnect(m_project, SIGNAL(overallExportProgressChanged(int)), this, SLOT(cd_export_progress(int)));
-	disconnect(m_project, SIGNAL(exportFinished()), this, SLOT(cd_export_finished()));
+	disconnect(m_exportSpec, &TExportSpecification::progressChanged, this, &CDWritingDialog::cd_export_progress);
+	disconnect(m_project, &TProject::exportFinished, this, &CDWritingDialog::cd_export_finished);
 	
     if (m_exportSpec->cancel_export_requested()) {
 		update_cdburn_status(tr("Render process stopped on user request."), NORMAL_MESSAGE);

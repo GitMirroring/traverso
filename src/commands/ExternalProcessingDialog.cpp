@@ -50,14 +50,14 @@ ExternalProcessingDialog::ExternalProcessingDialog(QWidget * parent, AudioClipEx
 	
 	command_lineedit_text_changed("sox");
 	
-	connect(m_processor, SIGNAL(readyReadStandardOutput()), this, SLOT(read_standard_output()));
-	connect(m_processor, SIGNAL(started()), this, SLOT(process_started()));
-    connect(m_processor, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(process_finished(int,QProcess::ExitStatus)));
-    connect(m_processor, SIGNAL(errorOccurred(QProcess::ProcessError)), this, SLOT(process_error(QProcess::ProcessError)));
-    connect(argsComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(arg_combo_index_changed(int)));
-    connect(programLineEdit, SIGNAL(textChanged(QString)), this, SLOT(command_lineedit_text_changed(QString)));
-	connect(startButton, SIGNAL(clicked()), this, SLOT(prepare_for_external_processing()));
-	connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+	connect(m_processor, &QProcess::readyReadStandardOutput, this, &ExternalProcessingDialog::read_standard_output);
+	connect(m_processor, &QProcess::started, this, &ExternalProcessingDialog::process_started);
+    connect(m_processor, &QProcess::finished, this, &ExternalProcessingDialog::process_finished);
+    connect(m_processor, &QProcess::errorOccurred, this, &ExternalProcessingDialog::process_error);
+    connect(argsComboBox, &QComboBox::currentIndexChanged, this, &ExternalProcessingDialog::arg_combo_index_changed);
+    connect(programLineEdit, &QLineEdit::textChanged, this, &ExternalProcessingDialog::command_lineedit_text_changed);
+	connect(startButton, &QPushButton::clicked, this, &ExternalProcessingDialog::prepare_for_external_processing);
+	connect(cancelButton, &QPushButton::clicked, this, &ExternalProcessingDialog::reject);
 }
 
 ExternalProcessingDialog::~ ExternalProcessingDialog()

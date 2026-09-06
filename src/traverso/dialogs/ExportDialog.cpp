@@ -90,7 +90,7 @@ void ExportDialog::on_startButton_clicked( )
 
     auto exportSpecification = m_project->get_export_specification();
 	
-	connect(m_project, SIGNAL(exportFinished()), this, SLOT(render_finished()));
+	connect(m_project, &TProject::exportFinished, this, &ExportDialog::render_finished);
     connect(exportSpecification, &TExportSpecification::exportMessage, this, [=](const QString& exportMessage) {
         exportMessagesLabel->setText(exportMessage);
     });
@@ -157,8 +157,7 @@ void ExportDialog::on_fileSelectButton_clicked( )
 
 void ExportDialog::render_finished( )
 {
-	disconnect(m_project, SIGNAL(exportFinished()), this, SLOT(render_finished()));
-    disconnect(m_project, SIGNAL(exportStartedForSheet(TSheet*)), this, SLOT (set_exporting_sheet(TSheet*)));
+	disconnect(m_project, &TProject::exportFinished, this, &ExportDialog::render_finished);
 	
 	startButton->show();
 	closeButton->show();

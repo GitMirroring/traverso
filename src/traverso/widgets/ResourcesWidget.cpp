@@ -90,9 +90,9 @@ FileWidget::FileWidget(QWidget *parent)
 
     setLayout(lay);
 
-    connect(m_dirView, SIGNAL(clicked(const QModelIndex&)), this, SLOT(dirview_item_clicked(const QModelIndex&)));
-    connect(upButton, SIGNAL(clicked()), this, SLOT(dir_up_button_clicked()));
-    connect(m_box, SIGNAL(activated(int)), this, SLOT(box_actived(int)));
+	connect(m_dirView, &QListView::clicked, this, &FileWidget::dirview_item_clicked);
+	connect(upButton, &QPushButton::clicked, this, &FileWidget::dir_up_button_clicked);
+	connect(m_box, &QComboBox::activated, this, &FileWidget::box_actived);
 }
 
 void FileWidget::dirview_item_clicked(const QModelIndex & index)
@@ -177,8 +177,8 @@ ResourcesWidget::ResourcesWidget(QWidget * parent)
     tab_2->layout()->addWidget(m_filewidget);
 
 
-    connect(sheetComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(sheet_combo_box_index_changed(int)));
-    connect(sheetComboBox, SIGNAL(activated(int)), this, SLOT(sheet_combo_box_index_changed(int)));
+    connect(sheetComboBox, &QComboBox::currentIndexChanged, this, &ResourcesWidget::sheet_combo_box_index_changed);
+    connect(sheetComboBox, &QComboBox::activated, this, &ResourcesWidget::sheet_combo_box_index_changed);
 
     connect(&pm(), &TProjectManager::projectLoaded, this, &ResourcesWidget::set_project);
 }
@@ -207,7 +207,7 @@ void ResourcesWidget::set_project(TProject * project)
         return;
 	}
 
-    connect(m_project, SIGNAL(projectLoadFinished()), this, SLOT(project_load_finished()));
+    connect(m_project, &TProject::projectLoadFinished, this, &ResourcesWidget::project_load_finished);
 }
 
 void ResourcesWidget::project_load_finished()
@@ -324,7 +324,7 @@ void ResourcesWidget::add_clip(TAudioClip * clip)
 		clipitem->setTextAlignment(2, Qt::AlignHCenter);
 		clipitem->setTextAlignment(3, Qt::AlignLeft);
 		
-        connect(clip->get_location(), SIGNAL(locationChanged()), clipitem, SLOT(clip_state_changed()));
+		connect(clip->get_location(), &TLocation::locationChanged, clipitem, &ClipTreeItem::clip_state_changed);
 	}
 	
 	update_clip_state(clip);
@@ -392,7 +392,7 @@ ClipTreeItem::ClipTreeItem(SourceTreeItem * parent, TAudioClip * clip)
 {
 	setData(0, Qt::UserRole, clip->get_id());
     connect(clip, &TAudioClip::recordingFinished, this, &ClipTreeItem::clip_state_changed);
-	connect(clip, SIGNAL(stateChanged()), this, SLOT(clip_state_changed()));
+	connect(clip, &TAudioClip::stateChanged, this, &ClipTreeItem::clip_state_changed);
 }
 
 void ClipTreeItem::clip_state_changed()
@@ -436,7 +436,7 @@ SourceTreeItem::SourceTreeItem(QTreeWidget* parent, TReadAudioSource * source)
 	: QTreeWidgetItem(parent)
 	, m_source(source)
 {
-	connect(m_source, SIGNAL(stateChanged()), this, SLOT(source_state_changed()));
+	connect(m_source, &TReadAudioSource::stateChanged, this, &SourceTreeItem::source_state_changed);
 }
 
 void SourceTreeItem::apply_filter(TSheet * sheet)

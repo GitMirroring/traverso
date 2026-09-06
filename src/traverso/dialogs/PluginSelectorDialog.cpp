@@ -81,7 +81,7 @@ PluginSelectorDialog::PluginSelectorDialog(QWidget* parent)
 	}
 #endif
 
-    connect(pluginTreeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)), this, SLOT(plugin_double_clicked()));
+    connect(pluginTreeWidget, &QTreeWidget::itemDoubleClicked, this, &PluginSelectorDialog::plugin_double_clicked);
 }
 
 PluginSelectorDialog::~PluginSelectorDialog( )

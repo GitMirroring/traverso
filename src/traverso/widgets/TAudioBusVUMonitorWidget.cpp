@@ -55,7 +55,7 @@ TAudioBusVUMonitorWidget::TAudioBusVUMonitorWidget(QWidget* parent)
 
     m_menu = nullptr;
 
-    connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(create_vu_meters()));
+    connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &TAudioBusVUMonitorWidget::create_vu_meters);
     connect(&pm(), &TProjectManager::projectLoaded, this, &TAudioBusVUMonitorWidget::set_project);
 }
 
@@ -117,8 +117,8 @@ void TAudioBusVUMonitorWidget::create_vu_meters( )
     //                AudioBus* bus = pm().get_project()->get_capture_bus(name);
     //                if (!bus) continue;
     //		VUMeter* meter = new VUMeter( this, bus );
-    //		connect(bus, SIGNAL(monitoringPeaksStarted()), meter, SLOT(peak_monitoring_started()));
-    //		connect(bus, SIGNAL(monitoringPeaksStopped()), meter, SLOT(peak_monitoring_stopped()));
+    //		connect(bus, &TAudioBus::monitoringPeaksStarted, meter, &TAudioMeter::peak_monitoring_started);
+    //		connect(bus, &TAudioBus::monitoringPeaksStopped, meter, &TAudioMeter::peak_monitoring_stopped);
     //                m_layout->addWidget(meter);
     //		inMeters.append(meter);
     //		meter->hide();
@@ -232,7 +232,7 @@ void TAudioBusVUMonitorWidget::show_menu()
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
         action->setShortcutVisibleInContextMenu(true);
 #endif
-        connect(action, SIGNAL(triggered(bool)), this, SLOT(reset_vu_meters()));
+        connect(action, &QAction::triggered, this, &TAudioBusVUMonitorWidget::reset_vu_meters);
     }
 
     m_menu->exec(QCursor::pos());

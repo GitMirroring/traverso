@@ -77,10 +77,12 @@ TAudioPluginPropertiesDialog::TAudioPluginPropertiesDialog(QWidget* parent, TAud
 		slider->update_slider_position();
 		m_sliders.append(slider);
 
-		connect(slider, SIGNAL(sliderValueChanged(float)), port, SLOT(set_control_value(float)));
+		connect(slider, &TAudioPluginSliderWidget::sliderValueChanged, port, &TAudioPluginControlPort::set_control_value);
 		// in case the plugin has a slave 'map' the signal to the slave port control slot too!
 		if (m_plugin->get_slave()) {
-			connect(slider, SIGNAL(sliderValueChanged(float)), m_plugin->get_slave()->get_control_port_by_index(port->get_index()), SLOT(set_control_value(float)));
+			connect(slider, &TAudioPluginSliderWidget::sliderValueChanged,
+					m_plugin->get_slave()->get_control_port_by_index(port->get_index()),
+					&TAudioPluginControlPort::set_control_value);
 		}
 		
 		QLabel* minvalue = new QLabel();
@@ -106,9 +108,9 @@ TAudioPluginPropertiesDialog::TAudioPluginPropertiesDialog(QWidget* parent, TAud
 		sliderWidgetLayout->addWidget(widget);
 	}
 	
-	connect(closeButton, SIGNAL(clicked()), this, SLOT(close()));
-	connect(resetButton, SIGNAL(clicked()), this, SLOT(reset_button_clicked()));
-	connect(m_bypassButton, SIGNAL(clicked()), this, SLOT(bypass_button_clicked()));
+	connect(closeButton, &QPushButton::clicked, this, &TAudioPluginPropertiesDialog::close);
+	connect(resetButton, &QPushButton::clicked, this, &TAudioPluginPropertiesDialog::reset_button_clicked);
+	connect(m_bypassButton, &QPushButton::clicked, this, &TAudioPluginPropertiesDialog::bypass_button_clicked);
 }
 
 void TAudioPluginPropertiesDialog::bypass_button_clicked()

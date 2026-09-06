@@ -43,14 +43,14 @@ WelcomeWidget::WelcomeWidget(QWidget *parent)
         update_projects_directory_line_edit();
         update_projects_combo_box();
 
-        connect(loadPreviousProjectButton, SIGNAL(clicked()), this, SLOT(load_previous_project_button_clicked()));
-        connect(loadExistingProjectButton, SIGNAL(clicked()), this, SLOT(load_existing_project_button_clicked()));
-        connect(createProjectPushbutton, SIGNAL(clicked()), this, SLOT(create_new_project_button_clicked()));
-        connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_combo_box()));
-        connect(&pm(), SIGNAL(projectDirChangeDetected()), this, SLOT(update_projects_combo_box()));
-        connect(&pm(), SIGNAL(projectsListChanged()), this, SLOT(update_projects_combo_box()));
+        connect(loadPreviousProjectButton, &QPushButton::clicked, this, &WelcomeWidget::load_previous_project_button_clicked);
+        connect(loadExistingProjectButton, &QPushButton::clicked, this, &WelcomeWidget::load_existing_project_button_clicked);
+        connect(createProjectPushbutton, &QPushButton::clicked, this, &WelcomeWidget::create_new_project_button_clicked);
+        connect(&pm(), &TProjectManager::currentProjectDirChanged, this, &WelcomeWidget::update_projects_combo_box);
+        connect(&pm(), &TProjectManager::projectDirChangeDetected, this, &WelcomeWidget::update_projects_combo_box);
+        connect(&pm(), &TProjectManager::projectsListChanged, this, &WelcomeWidget::update_projects_combo_box);
         connect(&pm(), &TProjectManager::projectLoaded, this, &WelcomeWidget::set_project);
-        connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_directory_line_edit()));
+        connect(&pm(), &TProjectManager::currentProjectDirChanged, this, &WelcomeWidget::update_projects_directory_line_edit);
 }
 
 

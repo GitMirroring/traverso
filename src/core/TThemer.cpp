@@ -112,7 +112,7 @@ TThemer::TThemer()
 
         load_defaults();
 	
-	connect(m_watcher, SIGNAL(fileChanged(const QString&)), this, SLOT(reload_on_themefile_change(const QString&)));
+	connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &TThemer::reload_on_themefile_change);
 }
 
 

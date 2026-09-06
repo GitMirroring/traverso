@@ -56,8 +56,8 @@ SpectralMeterView::SpectralMeterView(SpectralMeterWidget* widget)
 		m_freq_labels.push_back(90.0f * pow(10.0,i));
 	}
 
-	connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
-    connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(audiodevice_params_changed()));
+	connect(themer(), &TThemer::themeLoaded, this, &SpectralMeterView::load_theme_data, Qt::QueuedConnection);
+    connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &SpectralMeterView::audiodevice_params_changed);
 }
 
 void SpectralMeterView::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -397,7 +397,7 @@ TCommand* SpectralMeterView::edit_properties()
 
 	if (!m_config) {
 		m_config = new SpectralMeterConfigWidget(m_widget);
-		connect(m_config, SIGNAL(configChanged()), this, SLOT(load_configuration()));
+		connect(m_config, &SpectralMeterConfigWidget::configChanged, this, &SpectralMeterView::load_configuration);
 	}
 
 	m_config->show();

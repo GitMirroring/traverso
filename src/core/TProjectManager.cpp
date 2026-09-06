@@ -62,7 +62,7 @@ TProjectManager::TProjectManager()
 	
 	cpointer().add_contextitem(this);
 	
-    connect(m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(project_dir_rename_detected(QString)));
+    connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &TProjectManager::project_dir_rename_detected);
 }
 
 /**

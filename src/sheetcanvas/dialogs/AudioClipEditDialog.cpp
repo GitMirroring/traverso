@@ -33,6 +33,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClipExternalProcessing.h"
 #include "TInputEventDispatcher.h"
 
+#include <QComboBox>
+#include <QDoubleSpinBox>
+#include <QTimeEdit>
+
 #define TIME_FORMAT "hh:mm:ss.zzz"
 
 AudioClipEditDialog::AudioClipEditDialog(TAudioClip* clip, QWidget* parent) 
@@ -71,32 +75,32 @@ AudioClipEditDialog::AudioClipEditDialog(TAudioClip* clip, QWidget* parent)
 	// detect and set fade params
 	fade_curve_added();
 	
-	connect(clip, SIGNAL(stateChanged()), this, SLOT(clip_state_changed()));
-    connect(clip->get_location(), SIGNAL(locationChanged()), this, SLOT(audioclip_location_changed()));
+	connect(clip, &TAudioClip::stateChanged, this, &AudioClipEditDialog::clip_state_changed);
+    connect(clip->get_location(), &TLocation::locationChanged, this, &AudioClipEditDialog::audioclip_location_changed);
     connect(clip, &TAudioClip::fadeAdded, this, &AudioClipEditDialog::fade_curve_added);
 	
-	connect(clipGainSpinBox, SIGNAL(valueChanged(double)), this, SLOT(gain_spinbox_value_changed(double)));
+	connect(clipGainSpinBox, &QDoubleSpinBox::valueChanged, this, &AudioClipEditDialog::gain_spinbox_value_changed);
 	
-    connect(clipStartEdit, SIGNAL(timeChanged(QTime)), this, SLOT(clip_start_edit_changed(QTime)));
-    connect(clipLengthEdit, SIGNAL(timeChanged(QTime)), this, SLOT(clip_length_edit_changed(QTime)));
+	connect(clipStartEdit, &QTimeEdit::timeChanged, this, &AudioClipEditDialog::clip_start_edit_changed);
+	connect(clipLengthEdit, &QTimeEdit::timeChanged, this, &AudioClipEditDialog::clip_length_edit_changed);
 	
-    connect(fadeInEdit, SIGNAL(timeChanged(QTime)), this, SLOT(fadein_edit_changed(QTime)));
-	connect(fadeInModeBox, SIGNAL(currentIndexChanged(int)), this, SLOT(fadein_mode_edit_changed(int)));
-	connect(fadeInBendingBox, SIGNAL(valueChanged(double)), this, SLOT(fadein_bending_edit_changed(double)));
-	connect(fadeInStrengthBox, SIGNAL(valueChanged(double)), this, SLOT(fadein_strength_edit_changed(double)));
-	connect(fadeInLinearButton, SIGNAL(clicked()), this, SLOT(fadein_linear()));
-	connect(fadeInDefaultButton, SIGNAL(clicked()), this, SLOT(fadein_default()));
+    connect(fadeInEdit, &QTimeEdit::timeChanged, this, &AudioClipEditDialog::fadein_edit_changed);
+	connect(fadeInModeBox, &QComboBox::currentIndexChanged, this, &AudioClipEditDialog::fadein_mode_edit_changed);
+	connect(fadeInBendingBox, &QDoubleSpinBox::valueChanged, this, &AudioClipEditDialog::fadein_bending_edit_changed);
+	connect(fadeInStrengthBox, &QDoubleSpinBox::valueChanged, this, &AudioClipEditDialog::fadein_strength_edit_changed);
+	connect(fadeInLinearButton, &QPushButton::clicked, this, &AudioClipEditDialog::fadein_linear);
+	connect(fadeInDefaultButton, &QPushButton::clicked, this, &AudioClipEditDialog::fadein_default);
 
-    connect(fadeOutEdit, SIGNAL(timeChanged(QTime)), this, SLOT(fadeout_edit_changed(QTime)));
-	connect(fadeOutModeBox, SIGNAL(currentIndexChanged(int)), this, SLOT(fadeout_mode_edit_changed(int)));
-	connect(fadeOutBendingBox, SIGNAL(valueChanged(double)), this, SLOT(fadeout_bending_edit_changed(double)));
-	connect(fadeOutStrengthBox, SIGNAL(valueChanged(double)), this, SLOT(fadeout_strength_edit_changed(double)));
-	connect(fadeOutLinearButton, SIGNAL(clicked()), this, SLOT(fadeout_linear()));
-	connect(fadeOutDefaultButton, SIGNAL(clicked()), this, SLOT(fadeout_default()));
+    connect(fadeOutEdit, &QTimeEdit::timeChanged, this, &AudioClipEditDialog::fadeout_edit_changed);
+	connect(fadeOutModeBox, &QComboBox::currentIndexChanged, this, &AudioClipEditDialog::fadeout_mode_edit_changed);
+	connect(fadeOutBendingBox, &QDoubleSpinBox::valueChanged, this, &AudioClipEditDialog::fadeout_bending_edit_changed);
+	connect(fadeOutStrengthBox, &QDoubleSpinBox::valueChanged, this, &AudioClipEditDialog::fadeout_strength_edit_changed);
+	connect(fadeOutLinearButton, &QPushButton::clicked, this, &AudioClipEditDialog::fadeout_linear);
+	connect(fadeOutDefaultButton, &QPushButton::clicked, this, &AudioClipEditDialog::fadeout_default);
 	
-	connect(externalProcessingButton, SIGNAL(clicked()), this, SLOT(external_processing()));
-	connect(buttonBox, SIGNAL(accepted()), this, SLOT(save_changes()));
-    connect(buttonBox, SIGNAL(rejected()), this, SLOT(cancel_changes()));
+	connect(externalProcessingButton, &QPushButton::clicked, this, &AudioClipEditDialog::external_processing);
+	connect(buttonBox, &QDialogButtonBox::accepted, this, &AudioClipEditDialog::save_changes);
+    connect(buttonBox, &QDialogButtonBox::rejected, this, &AudioClipEditDialog::cancel_changes);
 }
 
 AudioClipEditDialog::~AudioClipEditDialog()
@@ -352,20 +356,20 @@ void AudioClipEditDialog::fade_curve_added()
 		fadein_mode_changed();
 		fadein_bending_changed();
 		fadein_strength_changed();
-		connect(m_clip->get_fade_in(), SIGNAL(rangeChanged()), this, SLOT(fadein_length_changed()));
-		connect(m_clip->get_fade_in(), SIGNAL(modeChanged()), this, SLOT(fadein_mode_changed()));
-		connect(m_clip->get_fade_in(), SIGNAL(bendValueChanged()), this, SLOT(fadein_bending_changed()));
-		connect(m_clip->get_fade_in(), SIGNAL(strengthValueChanged()), this, SLOT(fadein_strength_changed()));
+		connect(m_clip->get_fade_in(), &TFadeCurve::rangeChanged, this, &AudioClipEditDialog::fadein_length_changed);
+		connect(m_clip->get_fade_in(), &TFadeCurve::modeChanged, this, &AudioClipEditDialog::fadein_mode_changed);
+		connect(m_clip->get_fade_in(), &TFadeCurve::bendValueChanged, this, &AudioClipEditDialog::fadein_bending_changed);
+		connect(m_clip->get_fade_in(), &TFadeCurve::strengthValueChanged, this, &AudioClipEditDialog::fadein_strength_changed);
 	}
     if (m_clip->has_fade_out()) {
 		fadeout_length_changed();
 		fadeout_mode_changed();
 		fadeout_bending_changed();
 		fadeout_strength_changed();
-		connect(m_clip->get_fade_out(), SIGNAL(rangeChanged()), this, SLOT(fadeout_length_changed()));
-		connect(m_clip->get_fade_out(), SIGNAL(modeChanged()), this, SLOT(fadeout_mode_changed()));
-		connect(m_clip->get_fade_out(), SIGNAL(bendValueChanged()), this, SLOT(fadeout_bending_changed()));
-		connect(m_clip->get_fade_out(), SIGNAL(strengthValueChanged()), this, SLOT(fadeout_strength_changed()));
+		connect(m_clip->get_fade_out(), &TFadeCurve::rangeChanged, this, &AudioClipEditDialog::fadeout_length_changed);
+		connect(m_clip->get_fade_out(), &TFadeCurve::modeChanged, this, &AudioClipEditDialog::fadeout_mode_changed);
+		connect(m_clip->get_fade_out(), &TFadeCurve::bendValueChanged, this, &AudioClipEditDialog::fadeout_bending_changed);
+		connect(m_clip->get_fade_out(), &TFadeCurve::strengthValueChanged, this, &AudioClipEditDialog::fadeout_strength_changed);
 	}
 }
 

@@ -195,8 +195,8 @@ TAudioDevice::TAudioDevice()
     tsmp().prepare_event(m_finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");
 
 
-    connect(this, SIGNAL(xrunStormDetected()), this, SLOT(switch_to_null_driver()));
-    connect(&m_xrunResetTimer, SIGNAL(timeout()), this, SLOT(reset_xrun_counter()));
+    connect(this, &TAudioDevice::xrunStormDetected, this, &TAudioDevice::switch_to_null_driver);
+    connect(&m_xrunResetTimer, &QTimer::timeout, this, &TAudioDevice::reset_xrun_counter);
 
     m_xrunResetTimer.start(30000);
 }
@@ -343,13 +343,15 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
     create_driver();
 
     if (m_driver) {
-        connect(m_driver, SIGNAL(driverSetupMessage(QString,QString,int)), this, SLOT(driver_setup_message(QString,QString,int)));
+        connect(m_driver, &TAudioDriver::driverSetupMessage, this,
+            [this](const QString& driver, const QString& message, int severity) {
+                driver_setup_message(driver, message, severity);
+            });
         if (setup_driver() > 0) {
             m_driverType = m_setup.get_driver_type();
             m_driver->attach();
         } else {
             printf("AudioDevice:set_parameters: Failed to setup driver %s, falling back to Dummy Driver\n", QS_C(m_driverType));
-            disconnect(m_driver, SIGNAL(driverSetupMessage(QString,QString,int)), this, SLOT(driver_setup_message(QString,QString,int)));
             delete m_driver;
             m_driver = nullptr;
             set_parameters(m_fallBackSetup);
@@ -385,7 +387,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
 
         // When the audiothread fails for some reason we catch it in audiothread_finished()
         // by connecting the finished signal of the audio thread!
-        connect(m_audioThread, SIGNAL(finished()), this, SLOT(audiothread_finished()));
+        connect(m_audioThread, &QThread::finished, this, &TAudioDevice::audiothread_finished);
 
         // Start the audio thread, the driver->start() will be called from there!!
         m_audioThread->start();
@@ -400,7 +402,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
 #if defined (JACK_SUPPORT)
         if (ads.get_driver_type() == "Jack") {
 
-            connect(&jackShutDownChecker, SIGNAL(timeout()), this, SLOT(check_jack_shutdown()));
+            connect(&jackShutDownChecker, &QTimer::timeout, this, &TAudioDevice::check_jack_shutdown);
             jackShutDownChecker.start(500);
         }
 #endif
@@ -602,7 +604,7 @@ int TAudioDevice::shutdown( )
     m_runAudioThread.store(false);
 
     if (m_audioThread) {
-        disconnect(m_audioThread, SIGNAL(finished()), this, SLOT(audiothread_finished()));
+        disconnect(m_audioThread, &QThread::finished, this, &TAudioDevice::audiothread_finished);
 
         // Wait until the audioThread has finished execution. One second
         // should do, if it's still running then, the thread must have gone wild or something....

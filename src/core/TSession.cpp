@@ -77,19 +77,19 @@ void TSession::set_parent_session(TSession *parentSession)
 //        if (m_isProjectSession) {
 
 		if (m_parentSession) {
-			disconnect(m_parentSession, SIGNAL(transportStarted()), this, SIGNAL(transportStarted()));
-			disconnect(m_parentSession, SIGNAL(transportStopped()), this, SIGNAL(transportStopped()));
-            disconnect(m_parentSession, SIGNAL(transportLocationChanged()), this, SIGNAL(transportLocationChanged()));
-			disconnect(m_parentSession, SIGNAL(workingPosChanged()), this, SIGNAL(workingPosChanged()));
-			disconnect(m_parentSession, SIGNAL(hzoomChanged()), this, SIGNAL(hzoomChanged()));
-			disconnect(m_parentSession, SIGNAL(horizontalScrollBarValueChanged()), this, SIGNAL(horizontalScrollBarValueChanged()));
+			disconnect(m_parentSession, &TSession::transportStarted, this, &TSession::transportStarted);
+			disconnect(m_parentSession, &TSession::transportStopped, this, &TSession::transportStopped);
+            disconnect(m_parentSession, &TSession::transportLocationChanged, this, &TSession::transportLocationChanged);
+			disconnect(m_parentSession, &TSession::workingPosChanged, this, &TSession::workingPosChanged);
+			disconnect(m_parentSession, &TSession::hzoomChanged, this, &TSession::hzoomChanged);
+			disconnect(m_parentSession, &TSession::horizontalScrollBarValueChanged, this, &TSession::horizontalScrollBarValueChanged);
 		}
-		connect(parentSession, SIGNAL(transportStarted()), this, SIGNAL(transportStarted()));
-		connect(parentSession, SIGNAL(transportStopped()), this, SIGNAL(transportStopped()));
-        connect(parentSession, SIGNAL(transportLocationChanged()), this, SIGNAL(transportLocationChanged()));
-		connect(parentSession, SIGNAL(workingPosChanged()), this, SIGNAL(workingPosChanged()));
-		connect(parentSession, SIGNAL(hzoomChanged()), this, SIGNAL(hzoomChanged()));
-		connect(parentSession, SIGNAL(horizontalScrollBarValueChanged()), this, SIGNAL(horizontalScrollBarValueChanged()));
+		connect(parentSession, &TSession::transportStarted, this, &TSession::transportStarted);
+		connect(parentSession, &TSession::transportStopped, this, &TSession::transportStopped);
+        connect(parentSession, &TSession::transportLocationChanged, this, &TSession::transportLocationChanged);
+		connect(parentSession, &TSession::workingPosChanged, this, &TSession::workingPosChanged);
+		connect(parentSession, &TSession::hzoomChanged, this, &TSession::hzoomChanged);
+		connect(parentSession, &TSession::horizontalScrollBarValueChanged, this, &TSession::horizontalScrollBarValueChanged);
 //        }
 
 	m_parentSession = parentSession;

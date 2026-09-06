@@ -34,11 +34,11 @@ ProjectConverterDialog::ProjectConverterDialog(QWidget * parent)
 	stopConversionButton->hide();
 	loadProjectButton->hide();
 	
-	connect(m_converter, SIGNAL(progress(int)), progressBar, SLOT(setValue(int)));
-	connect(m_converter, SIGNAL(fileMergeStarted(QString)), this, SLOT(file_merge_started(QString)));
-	connect(m_converter, SIGNAL(fileMergeFinished(QString)), this, SLOT(file_merge_finished(QString)));
-	connect(m_converter, SIGNAL(message(QString)), this, SLOT(converter_messages(QString)));
-	connect(m_converter, SIGNAL(conversionFinished()), this, SLOT(conversion_finished()));
+	connect(m_converter, &TProjectConverter::progress, progressBar, &QProgressBar::setValue);
+	connect(m_converter, &TProjectConverter::fileMergeStarted, this, &ProjectConverterDialog::file_merge_started);
+	connect(m_converter, &TProjectConverter::fileMergeFinished, this, &ProjectConverterDialog::file_merge_finished);
+	connect(m_converter, &TProjectConverter::message, this, &ProjectConverterDialog::converter_messages);
+	connect(m_converter, &TProjectConverter::conversionFinished, this, &ProjectConverterDialog::conversion_finished);
 }
 
 

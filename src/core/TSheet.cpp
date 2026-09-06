@@ -136,7 +136,7 @@ void TSheet::init()
     m_readDiskIO->set_output_sample_rate(audiodevice().get_sample_rate());
     m_readDiskIO->set_resample_quality(converter_type);
 
-    connect(m_readDiskIO, SIGNAL(seekFinished()), this, SLOT(seek_finished()), Qt::QueuedConnection);
+    connect(m_readDiskIO, &TDiskIOThread::seekFinished, this, &TSheet::seek_finished, Qt::QueuedConnection);
 
     m_writeDiskIO = new TDiskIOThread();
 
@@ -145,9 +145,9 @@ void TSheet::init()
     create_history_stack();
     m_timeLineRuler->set_history_stack(get_history_stack());
 
-    connect(this, SIGNAL(prepareRecording()), this, SLOT(prepare_recording()));
-    connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(audiodevice_params_changed()), Qt::DirectConnection);
-    connect(&config(), SIGNAL(configChanged()), this, SLOT(config_changed()));
+    connect(this, &TSheet::prepareRecording, this, &TSheet::prepare_recording);
+    connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &TSheet::audiodevice_params_changed, Qt::DirectConnection);
+    connect(&config(), &TConfig::configChanged, this, &TSheet::config_changed);
 
     TAudioBusConfiguration busConfig;
     busConfig.name = "Sheet Render Bus";

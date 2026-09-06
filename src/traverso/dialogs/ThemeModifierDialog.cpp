@@ -49,10 +49,8 @@ ThemeModifierDialog::ThemeModifierDialog(QWidget* parent)
 
         horizontalLayout->addWidget(m_colorDialog);
 
-        connect(m_colorDialog, SIGNAL(currentColorChanged(QColor&)),
-                this, SLOT(current_color_changed(QColor&)));
-        connect(listWidget, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)),
-                this, SLOT(list_widget_item_changed(QListWidgetItem*,QListWidgetItem*)));
+        connect(m_colorDialog, &QColorDialog::currentColorChanged, this, &ThemeModifierDialog::current_color_changed);
+        connect(listWidget, &QListWidget::currentItemChanged, this, &ThemeModifierDialog::list_widget_item_changed);
 }
 
 void ThemeModifierDialog::current_color_changed(const QColor& color)

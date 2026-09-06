@@ -54,7 +54,7 @@ MessageWidget::MessageWidget( QWidget * parent )
 	
 	setLayout(lay);
 
-	connect(m_button, SIGNAL(clicked( bool )), message, SLOT(show_history()));
+	connect(m_button, &QPushButton::clicked, message, &MessageWidgetPrivate::show_history);
 }
 
 QSize MessageWidget::sizeHint() const
@@ -73,8 +73,8 @@ MessageWidgetPrivate::MessageWidgetPrivate( QWidget * parent )
 	
 	m_log = 0;
 	
-	connect(&tInformUser(), SIGNAL(message(InfoStruct)), this, SLOT(queue_message(InfoStruct)));
-	connect(&m_messageTimer, SIGNAL(timeout()), this, SLOT(dequeue_messagequeue()));
+	connect(&tInformUser(), &TInformUser::message, this, &MessageWidgetPrivate::queue_message);
+	connect(&m_messageTimer, &QTimer::timeout, this, &MessageWidgetPrivate::dequeue_messagequeue);
 }
 
 

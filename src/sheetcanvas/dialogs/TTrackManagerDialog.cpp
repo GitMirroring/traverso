@@ -94,26 +94,26 @@ TTrackManagerDialog::TTrackManagerDialog(TTrack *track, QWidget *parent)
         setEnabled(false);
     }
 
-    connect(m_track, SIGNAL(panChanged()), this, SLOT(update_pan_indicator()));
-    connect(m_track, SIGNAL(stateChanged()), this, SLOT(update_gain_indicator()));
-    connect(m_track, SIGNAL(soloChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
-    connect(m_track, SIGNAL(muteChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
+    connect(m_track, &TTrack::panChanged, this, &TTrackManagerDialog::update_pan_indicator);
+    connect(m_track, &TTrack::stateChanged, this, &TTrackManagerDialog::update_gain_indicator);
+    connect(m_track, &TTrack::soloChanged, this, &TTrackManagerDialog::update_track_status_buttons);
+    connect(m_track, &TTrack::muteChanged, this, &TTrackManagerDialog::update_track_status_buttons);
     TAudioTrack* audiotrack = qobject_cast<TAudioTrack*>(m_track);
     if (audiotrack) {
-        connect(audiotrack, SIGNAL(armedChanged(bool)), this, SLOT(update_track_status_buttons(bool)));
+        connect(audiotrack, &TAudioTrack::armedChanged, this, &TTrackManagerDialog::update_track_status_buttons);
     } else {
         recordButton->hide();
     }
-    connect(pm().get_project(), SIGNAL(trackPropertyChanged()), this, SLOT(update_routing_input_output_widget_view()));
+    connect(pm().get_project(), &TProject::trackPropertyChanged, this, &TTrackManagerDialog::update_routing_input_output_widget_view);
 
-    connect(preSendsListWidget, SIGNAL(itemSelectionChanged()), this, SLOT(pre_sends_selection_changed()));
-    connect(routingOutputListWidget, SIGNAL(itemSelectionChanged()), this, SLOT(post_sends_selection_changed()));
-    connect(trackGainSlider, SIGNAL(valueChanged(int)), this, SLOT(track_gain_value_changed(int)));
-    connect(trackPanSlider, SIGNAL(valueChanged(int)), this, SLOT(track_pan_value_changed(int)));
-    connect(postSendsGainSlider, SIGNAL(valueChanged(int)), this, SLOT(post_sends_gain_value_changed(int)));
-    connect(postSendsPanSlider, SIGNAL(valueChanged(int)), this, SLOT(post_sends_pan_value_changed(int)));
-    connect(preSendsGainSlider, SIGNAL(valueChanged(int)), this, SLOT(pre_sends_gain_value_changed(int)));
-    connect(preSendsPanSlider, SIGNAL(valueChanged(int)), this, SLOT(pre_sends_pan_value_changed(int)));
+    connect(preSendsListWidget, &QListWidget::itemSelectionChanged, this, &TTrackManagerDialog::pre_sends_selection_changed);
+    connect(routingOutputListWidget, &QListWidget::itemSelectionChanged, this, &TTrackManagerDialog::post_sends_selection_changed);
+    connect(trackGainSlider, &QSlider::valueChanged, this, &TTrackManagerDialog::track_gain_value_changed);
+    connect(trackPanSlider, &QSlider::valueChanged, this, &TTrackManagerDialog::track_pan_value_changed);
+    connect(postSendsGainSlider, &QSlider::valueChanged, this, &TTrackManagerDialog::post_sends_gain_value_changed);
+    connect(postSendsPanSlider, &QSlider::valueChanged, this, &TTrackManagerDialog::post_sends_pan_value_changed);
+    connect(preSendsGainSlider, &QSlider::valueChanged, this, &TTrackManagerDialog::pre_sends_gain_value_changed);
+    connect(preSendsPanSlider, &QSlider::valueChanged, this, &TTrackManagerDialog::pre_sends_pan_value_changed);
 }
 
 TTrackManagerDialog::~TTrackManagerDialog()
@@ -188,7 +188,7 @@ void TTrackManagerDialog::create_routing_input_menu()
 
     routingInputButton->setMenu(m_routingInputMenu);
 
-    connect(m_routingInputMenu, SIGNAL(triggered(QAction*)), this, SLOT(routingInputMenuActionTriggered(QAction*)));
+    connect(m_routingInputMenu, &QMenu::triggered, this, &TTrackManagerDialog::routingInputMenuActionTriggered);
 
 }
 
@@ -202,7 +202,7 @@ void TTrackManagerDialog::create_routing_output_menu()
 
     routingOutputButton->setMenu(m_routingOutputMenu);
 
-    connect(m_routingOutputMenu, SIGNAL(triggered(QAction*)), this, SLOT(routingOutputMenuActionTriggered(QAction*)));
+    connect(m_routingOutputMenu, &QMenu::triggered, this, &TTrackManagerDialog::routingOutputMenuActionTriggered);
 }
 
 void TTrackManagerDialog::create_pre_sends_menu()
@@ -215,7 +215,7 @@ void TTrackManagerDialog::create_pre_sends_menu()
 
     preSendsButton->setMenu(m_preSendsMenu);
 
-    connect(m_preSendsMenu, SIGNAL(triggered(QAction*)), this, SLOT(preSendsMenuActionTriggered(QAction*)));
+    connect(m_preSendsMenu, &QMenu::triggered, this, &TTrackManagerDialog::preSendsMenuActionTriggered);
 }
 
 QMenu* TTrackManagerDialog::create_sends_menu()

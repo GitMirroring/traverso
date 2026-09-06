@@ -78,7 +78,7 @@ void TCurve::init( )
     m_defaultValue = 1.0;
     m_session = nullptr;
 
-    connect(this, SIGNAL(nodePositionChanged()), this, SLOT(set_changed()));
+    connect(this, &TCurve::nodePositionChanged, this, &TCurve::set_changed);
 }
 
 

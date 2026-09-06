@@ -89,16 +89,16 @@ NewProjectDialog::NewProjectDialog( QWidget * parent )
 	m_buttonGroup->addButton(radioButtonImport, 0);
 	m_buttonGroup->addButton(radioButtonEmpty, 1);
 
-    connect(useTemplateCheckBox, SIGNAL(stateChanged(int)), this, SLOT(use_template_checkbox_state_changed(int)));
-	connect(buttonAdd, SIGNAL(clicked()), this, SLOT(add_files()));
-	connect(buttonRemove, SIGNAL(clicked()), this, SLOT(remove_files()));
-	connect(buttonUp, SIGNAL(clicked()), this, SLOT(move_up()));
-	connect(buttonDown, SIGNAL(clicked()), this, SLOT(move_down()));
+    connect(useTemplateCheckBox, &QCheckBox::stateChanged, this, &NewProjectDialog::use_template_checkbox_state_changed);
+	connect(buttonAdd, &QPushButton::clicked, this, &NewProjectDialog::add_files);
+	connect(buttonRemove, &QPushButton::clicked, this, &NewProjectDialog::remove_files);
+	connect(buttonUp, &QPushButton::clicked, this, &NewProjectDialog::move_up);
+	connect(buttonDown, &QPushButton::clicked, this, &NewProjectDialog::move_down);
 
-    connect(m_converter, SIGNAL(taskFinished(QString,int,QString)), this, SLOT(load_file(QString,int,QString)));
-    connect(m_buttonGroup, SIGNAL(idClicked(int)), stackedWidget, SLOT(setCurrentIndex(int)));
+    connect(m_converter, &TAudioFileCopyConvert::taskFinished, this, &NewProjectDialog::load_file);
+    connect(m_buttonGroup, &QButtonGroup::idClicked, stackedWidget, &QStackedWidget::setCurrentIndex);
 
-        connect(&pm(), SIGNAL(currentProjectDirChanged()), this, SLOT(update_projects_directory_line_edit()));
+        connect(&pm(), &TProjectManager::currentProjectDirChanged, this, &NewProjectDialog::update_projects_directory_line_edit);
 }
 
 NewProjectDialog::~ NewProjectDialog( )

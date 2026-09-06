@@ -112,22 +112,22 @@ TShortcutEditorDialog::TShortcutEditorDialog(QWidget *parent)
         ui->objectsComboBox->addItem(commandClassNamesMap.key(className) + " " + tr("(Function keys)"), className);
     }
 
-	connect(ui->objectsComboBox, SIGNAL(activated(int)), this, SLOT(objects_combo_box_activated(int)));
-	connect(ui->shortcutsTreeWidget, SIGNAL(itemSelectionChanged()), this, SLOT(shortcut_tree_widget_item_activated()));
-	connect(ui->showfunctionsCheckBox, SIGNAL(clicked()), this, SLOT(show_functions_checkbox_clicked()));
-	connect(&tShortCutManager(), SIGNAL(functionKeysChanged()), this, SLOT(function_keys_changed()));
-	connect(ui->keyComboBox1, SIGNAL(activated(int)), this, SLOT(key1_combo_box_activated(int)));
-	connect(ui->keyComboBox1, SIGNAL(activated(int)), this, SLOT(key_combo_box_activated(int)));
-	connect(ui->keyComboBox2, SIGNAL(activated(int)), this, SLOT(key_combo_box_activated(int)));
-	connect(ui->altCheckBox, SIGNAL(clicked()), this, SLOT(modifier_combo_box_toggled()));
-	connect(ui->ctrlCheckBox, SIGNAL(clicked()), this, SLOT(modifier_combo_box_toggled()));
-	connect(ui->shiftCheckBox, SIGNAL(clicked()), this, SLOT(modifier_combo_box_toggled()));
-	connect(ui->metaCheckBox, SIGNAL(clicked()), this, SLOT(modifier_combo_box_toggled()));
-	connect(ui->startDelaySpinBox, SIGNAL(editingFinished()), this, SLOT(modifier_combo_box_toggled()));
-	connect(ui->repeatIntervalSpinBox, SIGNAL(editingFinished()), this, SLOT(modifier_combo_box_toggled()));
-	connect(ui->configureInheritedShortcutPushButton, SIGNAL(clicked()), this, SLOT(configure_inherited_shortcut_pushbutton_clicked()));
-	connect(ui->baseFunctionGroupBox, SIGNAL(clicked()), this, SLOT(base_function_checkbox_clicked()));
-	connect(ui->buttonBox, SIGNAL(clicked(QAbstractButton*)), this, SLOT(button_box_button_clicked(QAbstractButton*)));
+	connect(ui->objectsComboBox, &QComboBox::activated, this, &TShortcutEditorDialog::objects_combo_box_activated);
+	connect(ui->shortcutsTreeWidget, &QTreeWidget::itemSelectionChanged, this, &TShortcutEditorDialog::shortcut_tree_widget_item_activated);
+	connect(ui->showfunctionsCheckBox, &QCheckBox::clicked, this, &TShortcutEditorDialog::show_functions_checkbox_clicked);
+	connect(&tShortCutManager(), &TShortCutManager::functionKeysChanged, this, &TShortcutEditorDialog::function_keys_changed);
+	connect(ui->keyComboBox1, &QComboBox::activated, this, &TShortcutEditorDialog::key1_combo_box_activated);
+	connect(ui->keyComboBox1, &QComboBox::activated, this, &TShortcutEditorDialog::key_combo_box_activated);
+	connect(ui->keyComboBox2, &QComboBox::activated, this, &TShortcutEditorDialog::key_combo_box_activated);
+	connect(ui->altCheckBox, &QCheckBox::clicked, this, &TShortcutEditorDialog::modifier_combo_box_toggled);
+	connect(ui->ctrlCheckBox, &QCheckBox::clicked, this, &TShortcutEditorDialog::modifier_combo_box_toggled);
+	connect(ui->shiftCheckBox, &QCheckBox::clicked, this, &TShortcutEditorDialog::modifier_combo_box_toggled);
+	connect(ui->metaCheckBox, &QCheckBox::clicked, this, &TShortcutEditorDialog::modifier_combo_box_toggled);
+	connect(ui->startDelaySpinBox, &QSpinBox::editingFinished, this, &TShortcutEditorDialog::modifier_combo_box_toggled);
+	connect(ui->repeatIntervalSpinBox, &QSpinBox::editingFinished, this, &TShortcutEditorDialog::modifier_combo_box_toggled);
+	connect(ui->configureInheritedShortcutPushButton, &QPushButton::clicked, this, &TShortcutEditorDialog::configure_inherited_shortcut_pushbutton_clicked);
+	connect(ui->baseFunctionGroupBox, &QGroupBox::clicked, this, &TShortcutEditorDialog::base_function_checkbox_clicked);
+	connect(ui->buttonBox, &QDialogButtonBox::clicked, this, &TShortcutEditorDialog::button_box_button_clicked);
 
 	// teasing the dialog to get into the 'no functions selected' state
 	// and updating it accordingly.

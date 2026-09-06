@@ -93,7 +93,7 @@ void TAudioClipManager::add_clip( TAudioClip * clip )
 	
 	m_clips.append( clip );
 	
-    connect(clip->get_location(), SIGNAL(locationChanged()), this, SLOT(update_last_frame()));
+    connect(clip->get_location(), &TLocation::locationChanged, this, &TAudioClipManager::update_last_frame);
 	
 	m_sheet->get_snap_list()->mark_dirty();
 	update_last_frame();

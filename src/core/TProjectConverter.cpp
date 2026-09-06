@@ -35,7 +35,7 @@ TProjectConverter::TProjectConverter()
 {
 	m_projectfileversion = -1;
 	m_merger = 0;
-	connect(this, SIGNAL(conversionFinished()), this, SLOT(conversion_finished()));
+	connect(this, &TProjectConverter::conversionFinished, this, &TProjectConverter::conversion_finished);
 }
 
 int TProjectConverter::start()
@@ -106,10 +106,10 @@ int TProjectConverter::start_conversion_from_version_2_to_3()
 	
 	m_merger = new TAudioFileMerger;
 	m_filesToMerge = m_filesMerged = 0;
-	connect(m_merger, SIGNAL(progress(int)), this, SIGNAL(progress(int)));
-	connect(m_merger, SIGNAL(taskStarted(QString)), this, SLOT(file_merge_started(QString)));
-	connect(m_merger, SIGNAL(taskFinished(QString)), this, SLOT(file_merge_finished(QString)));
-	connect(m_merger, SIGNAL(processingStopped()), this, SLOT(processing_stopped()));
+	connect(m_merger, &TAudioFileMerger::progress, this, &TProjectConverter::progress);
+	connect(m_merger, &TAudioFileMerger::taskStarted, this, &TProjectConverter::file_merge_started);
+	connect(m_merger, &TAudioFileMerger::taskFinished, this, &TProjectConverter::file_merge_finished);
+	connect(m_merger, &TAudioFileMerger::processingStopped, this, &TProjectConverter::processing_stopped);
 	
 	QDomElement docElem = m_document.documentElement();
 	QDomNode propertiesNode = docElem.firstChildElement("Properties");

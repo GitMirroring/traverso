@@ -77,18 +77,18 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
     m_alsadevices->layout()->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->addWidget(m_alsadevices);
 
-        connect(driverCombo, SIGNAL(currentTextChanged(QString)), this, SLOT(driver_combobox_index_changed(QString)));
+        connect(driverCombo, &QComboBox::currentTextChanged, this, &AudioDriverConfigPage::driver_combobox_index_changed);
     connect(m_alsadevices->periodsCombo, &QComboBox::currentIndexChanged, this, [this]() {
             update_latency_combobox();
         });
-    connect(restartDriverButton, SIGNAL(clicked()), this, SLOT(restart_driver_button_clicked()));
+    connect(restartDriverButton, &QPushButton::clicked, this, &AudioDriverConfigPage::restart_driver_button_clicked);
         connect(rateComboBox, &QComboBox::currentIndexChanged, this, [this]() {
         update_latency_combobox();
     });
-    connect(&audiodevice(), SIGNAL(newDriverSetupMessage()), this, SLOT(new_driver_setup_message()));
+    connect(&audiodevice(), &TAudioDevice::newDriverSetupMessage, this, &AudioDriverConfigPage::new_driver_setup_message);
 
 #if defined (PORTAUDIO_SUPPORT)
-        connect(m_portaudiodrivers->driverCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(portaudio_host_api_combobox_index_changed(int)));
+        connect(m_portaudiodrivers->driverCombo, &QComboBox::currentIndexChanged, this, &AudioDriverConfigPage::portaudio_host_api_combobox_index_changed);
 #endif
     load_config();
 }
@@ -632,17 +632,17 @@ AppearenceConfigPage::AppearenceConfigPage(QWidget * parent)
 
 void AppearenceConfigPage::create_connections()
 {
-        connect(styleCombo, SIGNAL(textActivated(QString)), this, SLOT(style_index_changed(QString)));
-        connect(themeSelecterCombo, SIGNAL(textActivated(QString)), this, SLOT(theme_index_changed(QString)));
-    connect(useStylePalletCheckBox, SIGNAL(toggled(bool)), this, SLOT(use_selected_styles_pallet_checkbox_toggled(bool)));
-    connect(pathSelectButton, SIGNAL(clicked()), this, SLOT(dirselect_button_clicked()));
-    connect(colorAdjustBox, SIGNAL(valueChanged(int)), this, SLOT(color_adjustbox_changed(int)));
-    connect(rectifiedCheckBox, SIGNAL(toggled(bool)), this, SLOT(theme_option_changed()));
-    connect(mergedCheckBox, SIGNAL(toggled(bool)), this, SLOT(theme_option_changed()));
-    connect(dbGridCheckBox, SIGNAL(toggled(bool)), this, SLOT(theme_option_changed()));
-    connect(paintAudioWithOutlineCheckBox, SIGNAL(toggled(bool)), this, SLOT(theme_option_changed()));
-        connect(trackVUOrientationCheckBox, SIGNAL(toggled(bool)), this, SLOT(theme_option_changed()));
-        connect(editThemePushButton, SIGNAL(clicked()), this, SLOT(edit_theme_button_clicked()));
+        connect(styleCombo, &QComboBox::textActivated, this, &AppearenceConfigPage::style_index_changed);
+        connect(themeSelecterCombo, &QComboBox::textActivated, this, &AppearenceConfigPage::theme_index_changed);
+    connect(useStylePalletCheckBox, &QCheckBox::toggled, this, &AppearenceConfigPage::use_selected_styles_pallet_checkbox_toggled);
+    connect(pathSelectButton, &QPushButton::clicked, this, &AppearenceConfigPage::dirselect_button_clicked);
+    connect(colorAdjustBox, &QSpinBox::valueChanged, this, &AppearenceConfigPage::color_adjustbox_changed);
+    connect(rectifiedCheckBox, &QCheckBox::toggled, this, &AppearenceConfigPage::theme_option_changed);
+    connect(mergedCheckBox, &QCheckBox::toggled, this, &AppearenceConfigPage::theme_option_changed);
+    connect(dbGridCheckBox, &QCheckBox::toggled, this, &AppearenceConfigPage::theme_option_changed);
+    connect(paintAudioWithOutlineCheckBox, &QCheckBox::toggled, this, &AppearenceConfigPage::theme_option_changed);
+        connect(trackVUOrientationCheckBox, &QCheckBox::toggled, this, &AppearenceConfigPage::theme_option_changed);
+        connect(editThemePushButton, &QPushButton::clicked, this, &AppearenceConfigPage::edit_theme_button_clicked);
 }
 
 void AppearenceConfigPage::style_index_changed(const QString& text)
@@ -743,7 +743,7 @@ BehaviorConfigPage::BehaviorConfigPage(QWidget * parent)
 {
     setupUi(this);
 
-    connect(&config(), SIGNAL(configChanged()), this, SLOT(update_follow()));
+    connect(&config(), &TConfig::configChanged, this, &BehaviorConfigPage::update_follow);
 
     load_config();
 }
@@ -951,9 +951,8 @@ RecordingConfigPage::RecordingConfigPage(QWidget * parent)
     wavpackCompressionComboBox->addItem("High", "high");
     wavpackCompressionComboBox->addItem("Fast", "fast");
 
-        connect(encodingComboBox, SIGNAL(activated(int)), this, SLOT(encoding_index_changed(int)));
-    connect(useResamplingCheckBox, SIGNAL(stateChanged(int)),
-        this, SLOT(use_onthefly_resampling_checkbox_changed(int)));
+        connect(encodingComboBox, &QComboBox::activated, this, &RecordingConfigPage::encoding_index_changed);
+    connect(useResamplingCheckBox, &QCheckBox::stateChanged, this, &RecordingConfigPage::use_onthefly_resampling_checkbox_changed);
 
     load_config();
 }

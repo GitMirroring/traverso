@@ -45,7 +45,7 @@ CorrelationMeter::CorrelationMeter()
 	
     m_bufferreadouts = 0;
 
-	connect(&audiodevice(), SIGNAL(driverParamsChanged()), this, SLOT(calculate_fract()));
+	connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &CorrelationMeter::calculate_fract);
 }
 
 

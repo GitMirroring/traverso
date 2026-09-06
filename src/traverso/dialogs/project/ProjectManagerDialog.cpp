@@ -67,8 +67,8 @@ ProjectManagerDialog::ProjectManagerDialog( QWidget * parent )
 	
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 
-	connect(treeSheetWidget, SIGNAL(itemClicked(QTreeWidgetItem*,int)), this, SLOT(sheetitem_clicked(QTreeWidgetItem*,int)));
-    connect(sheetsAreTrackFolderCheckBox, SIGNAL(stateChanged(int)), this, SLOT(sheets_are_track_folder_check_box_state_changed(int)));
+	connect(treeSheetWidget, &QTreeWidget::itemClicked, this, &ProjectManagerDialog::sheetitem_clicked);
+    connect(sheetsAreTrackFolderCheckBox, &QCheckBox::stateChanged, this, &ProjectManagerDialog::sheets_are_track_folder_check_box_state_changed);
     connect(&pm(), &TProjectManager::projectLoaded, this, &ProjectManagerDialog::set_project);
 }
 
@@ -82,10 +82,8 @@ void ProjectManagerDialog::set_project(TProject* project)
 	if (m_project) {
         connect(m_project, &TProject::sheetAdded, this, &ProjectManagerDialog::update_sheet_list);
         connect(m_project, &TProject::sheetRemoved, this, &ProjectManagerDialog::update_sheet_list);
-        connect(m_project->get_history_stack(), SIGNAL(redoTextChanged(QString)),
-            this, SLOT(redo_text_changed(QString)));
-        connect(m_project->get_history_stack(), SIGNAL(undoTextChanged(QString)),
-            this, SLOT(undo_text_changed(QString)));
+        connect(m_project->get_history_stack(), &QUndoStack::redoTextChanged, this, &ProjectManagerDialog::redo_text_changed);
+        connect(m_project->get_history_stack(), &QUndoStack::undoTextChanged, this, &ProjectManagerDialog::undo_text_changed);
         setWindowTitle("Manage Project - " + m_project->get_title());
 		descriptionTextEdit->setText(m_project->get_description());
         createdDateLabel->setText("Created on: " + extract_date_time(m_project->get_id()).toString());
