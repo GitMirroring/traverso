@@ -147,7 +147,7 @@ TPanKnobView::TPanKnobView(TViewItem* parent, TTrack* track)
 	: TKnobView(parent)
 	, m_track(track)
 {
-	connect(m_track, SIGNAL(panChanged()), this, SLOT(track_pan_changed()));
+	connect(m_track, &TTrack::panChanged, this, &TPanKnobView::track_pan_changed);
     set_title("PAN");
     track_pan_changed();
 }
@@ -174,7 +174,7 @@ TGainKnobView::TGainKnobView(TViewItem* parent, TTrack* track)
     : TKnobView(parent)
     , m_track(track)
 {
-    connect(m_track, SIGNAL(stateChanged()), this, SLOT(track_gain_changed()));
+    connect(m_track, &TTrack::stateChanged, this, &TGainKnobView::track_gain_changed);
     set_title("GAIN");
     set_min_value(0);
     set_max_value(2);

@@ -60,8 +60,8 @@ TTrackView::TTrackView(TSheetView* sv, TTrack * track)
 
 	m_isMoving = false;
 
-	connect(m_track, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
-	connect(m_track, SIGNAL(automationVisibilityChanged()), this, SLOT(automation_visibility_changed()));
+	connect(m_track, &TTrack::activeContextChanged, this, &TTrackView::active_context_changed);
+	connect(m_track, &TTrack::automationVisibilityChanged, this, &TTrackView::automation_visibility_changed);
 
 	m_primaryLaneView = new TTrackLaneView(this);
 	m_laneViews.append(m_primaryLaneView);

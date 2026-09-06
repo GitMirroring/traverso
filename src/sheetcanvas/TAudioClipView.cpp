@@ -89,18 +89,18 @@ TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioCl
     // So to be sure the CurveNodeViews start offset get updated as well,
     // we call curveviews calculate_bounding_rect() function!
     m_gainCurveView->set_start_offset(m_clip->get_source_start_location());
-    connect(m_gainCurveView, SIGNAL(curveModified()), m_sv, SLOT(stop_follow_play_head()));
-    connect(m_gainCurveView, SIGNAL(curveUpdated(int, int)), this, SLOT(invalidate_tiles_range(int, int)));
+    connect(m_gainCurveView, &TCurveView::curveModified, m_sv, &TSheetView::stop_follow_play_head);
+    connect(m_gainCurveView, &TCurveView::curveUpdated, this, &TAudioClipView::invalidate_tiles_range);
 
-    connect(m_clip, &TAudioClip::muteChanged, this, [this](){update();});
-    connect(m_clip, SIGNAL(muteChanged(bool)), this, SLOT(invalidate_clip_tiles()));
-    connect(m_clip, SIGNAL(edgeMoved(bool)), this, SLOT(invalidate_edge_tiles(bool)));
-    connect(m_clip, &TAudioClip::stateChanged, this, [this](){clip_state_changed();});
-    connect(m_clip, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
+    connect(m_clip, &TAudioClip::muteChanged, this, [this](bool a){(void)a; update();});
+    connect(m_clip, &TAudioClip::muteChanged, this, &TAudioClipView::invalidate_clip_tiles);
+    connect(m_clip, &TAudioClip::edgeMoved, this, &TAudioClipView::invalidate_edge_tiles);
+    connect(m_clip, &TAudioClip::stateChanged, this, &TAudioClipView::clip_state_changed);
+    connect(m_clip, &TAudioClip::activeContextChanged, this, &TAudioClipView::active_context_changed);
     connect(m_clip, &TAudioClip::lockChanged, this, [this](){update();});
     connect(m_clip, &TAudioClip::fadeAdded, this, &TAudioClipView::add_new_fade_curve_view);
     connect(m_clip, &TAudioClip::fadeRemoved, this, &TAudioClipView::remove_fade_curve_view);
-    connect(m_clip->get_location(), SIGNAL(locationChanged()), this, SLOT(position_changed()));
+    connect(m_clip->get_location(), &TLocation::locationChanged, this, &TAudioClipView::position_changed);
 
     if (m_clip->recording_state() == TAudioClip::RECORDING) {
         start_recording();
@@ -371,8 +371,8 @@ void TAudioClipView::draw_tile(QPainter* painter, qreal xstart, int pixelcount)
                 peakDataCount, zoom);
 
             if (availpeaks == TPeak::NO_PEAK_FILE && !m_waitingForPeaks) {
-                connect(peak, SIGNAL(progress(int)), this, SLOT(update_progress_info(int)));
-                connect(peak, SIGNAL(finished()), this, SLOT (peak_creation_finished()));
+                connect(peak, &TPeak::progress, this, &TAudioClipView::update_progress_info);
+                connect(peak, &TPeak::finished, this, &TAudioClipView::peak_creation_finished);
                 m_waitingForPeaks = true;
                 peak->start_peak_loading();
                 return;
@@ -626,13 +626,13 @@ void TAudioClipView::add_new_fade_curve_view( TFadeCurve * fade )
     PENTER;
     TFadeCurveView* view = new TFadeCurveView(m_sv, this, fade);
     m_fadeCurveViews.append(view);
-    connect(view, SIGNAL(fadeModified()), m_sv, SLOT(stop_follow_play_head()));
-    connect(fade, SIGNAL(rangeChanged()), this, SLOT(invalidate_fade_tiles()));
-    connect(fade, SIGNAL(stateChanged()), this, SLOT(invalidate_fade_tiles()));
-    connect(fade, SIGNAL(bendValueChanged()), this, SLOT(invalidate_fade_tiles()));
-    connect(fade, SIGNAL(strengthValueChanged()), this, SLOT(invalidate_fade_tiles()));
-    connect(fade, SIGNAL(modeChanged()), this, SLOT(invalidate_fade_tiles()));
-    connect(fade, SIGNAL(rasterChanged()), this, SLOT(invalidate_fade_tiles()));
+    connect(view, &TFadeCurveView::fadeModified, m_sv, &TSheetView::stop_follow_play_head);
+    connect(fade, &TFadeCurve::rangeChanged, this, &TAudioClipView::invalidate_fade_tiles);
+    connect(fade, &TFadeCurve::stateChanged, this, &TAudioClipView::invalidate_fade_tiles);
+    connect(fade, &TFadeCurve::bendValueChanged, this, &TAudioClipView::invalidate_fade_tiles);
+    connect(fade, &TFadeCurve::strengthValueChanged, this, &TAudioClipView::invalidate_fade_tiles);
+    connect(fade, &TFadeCurve::modeChanged, this, &TAudioClipView::invalidate_fade_tiles);
+    connect(fade, &TFadeCurve::rasterChanged, this, &TAudioClipView::invalidate_fade_tiles);
 }
 
 void TAudioClipView::remove_fade_curve_view( TFadeCurve * fade )
@@ -805,7 +805,7 @@ TCommand * TAudioClipView::select_fade_out_shape( )
 void TAudioClipView::start_recording()
 {
     m_oldRecordingPos = TTimeRef();
-    connect(&m_recordingTimer, SIGNAL(timeout()), this, SLOT(update_recording()));
+    connect(&m_recordingTimer, &QTimer::timeout, this, &TAudioClipView::update_recording);
     m_recordingTimer.start(750);
 }
 

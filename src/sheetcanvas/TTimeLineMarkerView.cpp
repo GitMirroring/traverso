@@ -53,10 +53,10 @@ TTimeLineMarkerView::TTimeLineMarkerView(TTimeLineMarker* marker, TSheetView* sv
     TTimeLineMarkerView::load_theme_data();
 
 
-    connect(m_marker->get_location(), SIGNAL(locationChanged()), this, SLOT(update_position()));
-    connect(m_marker, SIGNAL(descriptionChanged()), this, SLOT(update_drawing()));
-    connect(m_marker, SIGNAL(indexChanged()), this, SLOT(update_drawing()));
-        connect(this, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
+    connect(m_marker->get_location(), &TLocation::locationChanged, this, &TTimeLineMarkerView::update_position);
+    connect(m_marker, &TTimeLineMarker::descriptionChanged, this, &TTimeLineMarkerView::update_drawing);
+    connect(m_marker, &TTimeLineMarker::indexChanged, this, &TTimeLineMarkerView::update_drawing);
+        connect(this, &TTimeLineMarkerView::activeContextChanged, this, &TTimeLineMarkerView::active_context_changed);
 }
 
 void TTimeLineMarkerView::paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget)

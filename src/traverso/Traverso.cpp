@@ -107,7 +107,7 @@ Traverso::Traverso(int &argc, char **argv )
 
     init_sse();
 
-    connect(this, SIGNAL(lastWindowClosed()), &pm(), SLOT(exit()));
+    connect(this, &QApplication::lastWindowClosed, &pm(), &TProjectManager::exit);
 }
 
 Traverso::~Traverso()

@@ -59,8 +59,8 @@ TAudioPluginView::TAudioPluginView(TAudioPluginChainView* parent, TAudioPluginCh
 
     TAudioPluginView::calculate_bounding_rect();
 	
-	connect(m_plugin, SIGNAL(bypassChanged()), this, SLOT(repaint()));
-        connect(m_plugin, SIGNAL(activeContextChanged()), this, SLOT(repaint()));
+	connect(m_plugin, &TAudioPlugin::bypassChanged, this, &TAudioPluginView::repaint);
+        connect(m_plugin, &TAudioPlugin::activeContextChanged, this, &TAudioPluginView::repaint);
 }
 
 TAudioPluginView::~TAudioPluginView( )

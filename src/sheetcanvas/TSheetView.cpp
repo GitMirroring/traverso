@@ -98,19 +98,19 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 
 	if (m_session->is_project_session()) {
 		m_projectMasterOutView = new TBusTrackView(this, pm().get_project()->get_master_out_bus_track());
-        connect(m_projectMasterOutView, SIGNAL(totalTrackHeightChanged()), this, SLOT(layout_tracks()));
+        connect(m_projectMasterOutView, &TBusTrackView::totalTrackHeightChanged, this, &TSheetView::layout_tracks);
 	}
 	if (sheet) {
 		m_sheetMasterOutView = new TBusTrackView(this, m_session->get_master_out_bus_track());
-        connect(m_sheetMasterOutView, SIGNAL(totalTrackHeightChanged()), this, SLOT(layout_tracks()));
+        connect(m_sheetMasterOutView, &TBusTrackView::totalTrackHeightChanged, this, &TSheetView::layout_tracks);
 	}
 
-	connect(m_session, SIGNAL(workingPosChanged()), m_workCursor, SLOT(update_position()));
-	connect(m_session, SIGNAL(transportStarted()), this, SLOT(follow_play_head()));
-	connect(m_session, SIGNAL(transportLocationChanged()), this, SLOT(transport_position_set()));
-	connect(m_session, SIGNAL(workingPosChanged()), this, SLOT(stop_follow_play_head()));
-	connect(m_session, SIGNAL(verticalScrollBarValueChanged()), this, SLOT(session_vertical_scrollbar_position_changed()));
-	connect(m_session, SIGNAL(horizontalScrollBarValueChanged()), this, SLOT(session_horizontal_scrollbar_position_changed()));
+	connect(m_session, &TSession::workingPosChanged, m_workCursor, &TWorkCursorView::update_position);
+	connect(m_session, &TSession::transportStarted, this, &TSheetView::follow_play_head);
+	connect(m_session, &TSession::transportLocationChanged, this, &TSheetView::transport_position_set);
+	connect(m_session, &TSession::workingPosChanged, this, &TSheetView::stop_follow_play_head);
+	connect(m_session, &TSession::verticalScrollBarValueChanged, this, &TSheetView::session_vertical_scrollbar_position_changed);
+	connect(m_session, &TSession::horizontalScrollBarValueChanged, this, &TSheetView::session_horizontal_scrollbar_position_changed);
 
 
 	m_clipsViewPort->scene()->addItem(m_playCursor);
@@ -124,17 +124,17 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 	// Needed for our childs TrackView, AudioClipView, TimeLines MarkerViews etc which are created below.
 	scale_factor_changed();
 
-	connect(m_session, SIGNAL(hzoomChanged()), this, SLOT(scale_factor_changed()));
-	connect(m_session, SIGNAL(tempFollowChanged(bool)), this, SLOT(set_follow_state(bool)));
+	connect(m_session, &TSession::hzoomChanged, this, &TSheetView::scale_factor_changed);
+	connect(m_session, &TSession::tempFollowChanged, this, &TSheetView::set_follow_state);
     connect(m_session, &TSession::trackAdded, this, &TSheetView::add_new_track_view);
     connect(m_session, &TSession::trackRemoved, this, &TSheetView::remove_track_view);
-	connect(m_session, SIGNAL(lastFramePositionChanged()), this, SLOT(update_scrollbars()));
-	connect(m_hScrollBar, SIGNAL(sliderMoved(int)), this, SLOT(stop_follow_play_head()));
-	connect(m_hScrollBar, SIGNAL(actionTriggered(int)), this, SLOT(hscrollbar_action(int)));
-	connect(m_hScrollBar, SIGNAL(valueChanged(int)), this, SLOT(hscrollbar_value_changed(int)));
-	connect(m_vScrollBar, SIGNAL(valueChanged(int)), m_clipsViewPort->verticalScrollBar(), SLOT(setValue(int)));
+	connect(m_session, &TSession::lastFramePositionChanged, this, &TSheetView::update_scrollbars);
+	connect(m_hScrollBar, &QScrollBar::sliderMoved, this, &TSheetView::stop_follow_play_head);
+	connect(m_hScrollBar, &QScrollBar::actionTriggered, this, &TSheetView::hscrollbar_action);
+	connect(m_hScrollBar, &QScrollBar::valueChanged, this, &TSheetView::hscrollbar_value_changed);
+	connect(m_vScrollBar, &QScrollBar::valueChanged, m_clipsViewPort->verticalScrollBar(), &QScrollBar::setValue);
 
-    connect(m_contextPointer, SIGNAL(contextChanged()), this, SLOT(context_changed()));
+    connect(m_contextPointer, &TContextPointer::contextChanged, this, &TSheetView::context_changed);
 
 	// fill the view with trackviews, add_new_trackview()
 	// doesn't yet layout the new tracks.
@@ -376,7 +376,7 @@ void TSheetView::add_new_track_view(TTrack* track)
 	}
 
     if (view) {
-        connect(view, SIGNAL(totalTrackHeightChanged()), this, SLOT(layout_tracks()));
+        connect(view, &TTrackView::totalTrackHeightChanged, this, &TSheetView::layout_tracks);
     }
 
 	layout_tracks();

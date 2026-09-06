@@ -113,14 +113,14 @@ TTrackPanelView::TTrackPanelView(TTrackView* view)
     LED_Y_POS = int(m_trackNameView->pos().y() + m_trackNameView->boundingRect().height()) + PANEL_ITEM_SPACING;
     VUMETER_Y_POS = LED_Y_POS + LED_HEIGHT + PANEL_ITEM_SPACING;
 
-    connect(m_track, SIGNAL(soloChanged(bool)), m_soloLed, SLOT(ison_changed(bool)));
-    connect(m_track, SIGNAL(muteChanged(bool)), m_muteLed, SLOT(ison_changed(bool)));
-    connect(m_track, SIGNAL(preSendChanged(bool)), m_preLedButton, SLOT(ison_changed(bool)));
+    connect(m_track, &TTrack::soloChanged, m_soloLed, &TrackPanelLed::ison_changed);
+    connect(m_track, &TTrack::muteChanged, m_muteLed, &TrackPanelLed::ison_changed);
+    connect(m_track, &TTrack::preSendChanged, m_preLedButton, &TrackPanelLed::ison_changed);
 
-    connect(m_track, SIGNAL(stateChanged()), this, SLOT(update_name()));
-    connect(m_track, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
+    connect(m_track, &TTrack::stateChanged, this, &TTrackPanelView::update_name);
+    connect(m_track, &TTrack::activeContextChanged, this, &TTrackPanelView::active_context_changed);
 
-    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(theme_config_changed()));
+    connect(themer(), &TThemer::themeLoaded, this, &TTrackPanelView::theme_config_changed);
 }
 
 TTrackPanelView::~TTrackPanelView( )
@@ -233,7 +233,7 @@ TAudioTrackPanelView::TAudioTrackPanelView(TAudioTrackView* trackView)
         m_recLed->ison_changed(true);
     }
 
-    connect(m_tv->get_track(), SIGNAL(armedChanged(bool)), m_recLed, SLOT(ison_changed(bool)));
+    connect(m_tv->get_track(), &TAudioTrack::armedChanged, m_recLed, &TrackPanelLed::ison_changed);
 }
 
 TAudioTrackPanelView::~TAudioTrackPanelView( )

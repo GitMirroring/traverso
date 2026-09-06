@@ -70,9 +70,9 @@ TVUMeterView::TVUMeterView(TViewItem* parent, TTrack* track)
     //        ruler = new VUMeterRulerView(this);
     //        ruler->setPos(0, 10);
 
-    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+    connect(themer(), &TThemer::themeLoaded, this, &TVUMeterView::load_theme_data, Qt::QueuedConnection);
     if (m_audioTrack) {
-        connect(m_audioTrack, SIGNAL(armedChanged(bool)), this, SLOT(audiotrack_armed_changed()));
+        connect(m_audioTrack, &TAudioTrack::armedChanged, this, &TVUMeterView::audiotrack_armed_changed);
     }
 }
 
@@ -213,7 +213,7 @@ VUMeterRulerView::VUMeterRulerView(TViewItem* parent)
     m_presetMark.push_back(-70);
 
     VUMeterRulerView::load_theme_data();
-    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+    connect(themer(), &TThemer::themeLoaded, this, &VUMeterRulerView::load_theme_data, Qt::QueuedConnection);
 }
 
 void VUMeterRulerView::paint(QPainter *painter, const QStyleOptionGraphicsItem */*option*/, QWidget */*widget*/)
@@ -312,7 +312,7 @@ VUMeterLevelView::VUMeterLevelView(TViewItem* parent, TVUMonitor* monitor)
         m_peakHistory[i] = 0.0;
     }
 
-    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+    connect(themer(), &TThemer::themeLoaded, this, &VUMeterLevelView::load_theme_data, Qt::QueuedConnection);
     load_theme_data();
 
     TMainWindow::instance()->register_vumeter_level(this);

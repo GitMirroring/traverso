@@ -20,20 +20,20 @@ TPlayHeadView::TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* 
 {
 	m_sv = sv;
 	check_config();
-	connect(&(config()), SIGNAL(configChanged()), this, SLOT(check_config()));
+	connect(&(config()), &TConfig::configChanged, this, &TPlayHeadView::check_config);
 	
 	// TODO: Make duration scale with scalefactor? (nonlinerly?)
 	m_animation.setDuration(ANIME_DURATION);
     m_animation.setEasingCurve(QEasingCurve::InOutQuad);
 	
-	connect(m_session, SIGNAL(transportStarted()), this, SLOT(play_start()));
-	connect(m_session, SIGNAL(transportStopped()), this, SLOT(play_stop()));
+	connect(m_session, &TSession::transportStarted, this, &TPlayHeadView::play_start);
+	connect(m_session, &TSession::transportStopped, this, &TPlayHeadView::play_stop);
 	
-	connect(&m_playTimer, SIGNAL(timeout()), this, SLOT(update_position()));
+	connect(&m_playTimer, &QTimer::timeout, this, &TPlayHeadView::update_position);
 	
-	connect(&m_animation, SIGNAL(frameChanged(int)), this, SLOT(set_animation_value(int)));
-	connect(&m_animation, SIGNAL(finished()), this, SLOT(animation_finished()));
-        connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+	connect(&m_animation, &QTimeLine::frameChanged, this, &TPlayHeadView::set_animation_value);
+	connect(&m_animation, &QTimeLine::finished, this, &TPlayHeadView::animation_finished);
+        connect(themer(), &TThemer::themeLoaded, this, &TPlayHeadView::load_theme_data, Qt::QueuedConnection);
 
     TPlayHeadView::load_theme_data();
 

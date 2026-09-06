@@ -62,11 +62,11 @@ TCurveView::TCurveView(TSheetView* sv, TViewItem *parentViewItem, TCurve* curve)
         add_curvenode_view(node);
     }
 
-    connect(&m_blinkTimer, SIGNAL(timeout()), this, SLOT(update_blink_color()));
+    connect(&m_blinkTimer, &QTimer::timeout, this, &TCurveView::update_blink_color);
     connect(m_curve, &TCurve::nodeAdded, this, &TCurveView::add_curvenode_view);
     connect(m_curve, &TCurve::nodeRemoved, this, &TCurveView::remove_curvenode_view);
-    connect(m_curve, SIGNAL(nodePositionChanged()), this, SLOT(node_moved()));
-    connect(m_curve, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
+    connect(m_curve, &TCurve::nodePositionChanged, this, &TCurveView::node_moved);
+    connect(m_curve, &TCurve::activeContextChanged, this, &TCurveView::active_context_changed);
 
     m_hasMouseTracking = true;
 }

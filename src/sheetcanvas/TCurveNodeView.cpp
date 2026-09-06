@@ -46,7 +46,7 @@ TCurveNodeView::TCurveNodeView( TSheetView * sv, TCurveView* curveview, TCurveNo
     TCurveNodeView::load_theme_data();
     TCurveNodeView::calculate_bounding_rect();
 
-    connect(m_node->m_curve, SIGNAL(nodePositionChanged()), this, SLOT(update_pos()));
+    connect(m_node->m_curve, &TCurve::nodePositionChanged, this, &TCurveNodeView::update_pos);
 }
 
 TCurveNodeView::~ TCurveNodeView( )

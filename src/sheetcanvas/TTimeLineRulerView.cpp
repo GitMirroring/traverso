@@ -64,7 +64,7 @@ TTimeLineRulerView::TTimeLineRulerView(TSheetView* view)
     // Make connections to the 'core'
     connect(m_timeline, &TTimeLineRuler::markerAdded, this, &TTimeLineRulerView::add_new_marker_view);
     connect(m_timeline, &TTimeLineRuler::markerRemoved, this, &TTimeLineRulerView::remove_marker_view);
-    connect(m_timeline, SIGNAL(activeContextChanged()), this, SLOT(active_context_changed()));
+    connect(m_timeline, &TTimeLineRuler::activeContextChanged, this, &TTimeLineRulerView::active_context_changed);
 
     m_hasMouseTracking = true;
 

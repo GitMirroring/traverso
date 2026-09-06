@@ -40,7 +40,7 @@ TCanvasCursor::TCanvasCursor(TSheetView* )
     m_xOffset = m_yOffset = 0.0;
 
     setZValue(20000);
-    connect(&m_timer, SIGNAL(timeout()), this, SLOT(timer_timeout()));
+    connect(&m_timer, &QTimer::timeout, this, &TCanvasCursor::timer_timeout);
 }
 
 TCanvasCursor::~TCanvasCursor( )

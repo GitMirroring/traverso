@@ -166,9 +166,10 @@ TMainWindow::TMainWindow()
     m_trackFinderCompleter.setModel(&m_trackFinderModel);
     m_trackFinderCompleter.setCaseSensitivity(Qt::CaseInsensitive);
     m_trackFinder->setCompleter(&m_trackFinderCompleter);
-    connect(&m_trackFinderCompleter, SIGNAL(activated(QModelIndex)),
-        this, SLOT(track_finder_model_index_changed(QModelIndex)));
-	connect(m_trackFinder, SIGNAL(returnPressed()), this, SLOT(track_finder_return_pressed()));
+	connect(&m_trackFinderCompleter,
+		QOverload<const QModelIndex &>::of(&QCompleter::activated),
+		this, &TMainWindow::track_finder_model_index_changed);
+	connect(m_trackFinder, &QLineEdit::returnPressed, this, &TMainWindow::track_finder_return_pressed);
 
 	m_trackFinderTreeView = new QTreeView;
 	m_trackFinderTreeView->setMinimumWidth(250);
@@ -359,16 +360,16 @@ TMainWindow::TMainWindow()
 
 	// Connections to core:
     connect(&pm(), &TProjectManager::projectLoaded, this, &TMainWindow::set_project);
-	connect(&pm(), SIGNAL(unsupportedProjectDirChangeDetected()), this, SLOT(project_dir_change_detected()));
-	connect(&pm(), SIGNAL(projectLoadFailed(QString,QString)), this, SLOT(project_load_failed(QString,QString)));
-	connect(&pm(), SIGNAL(projectFileVersionMismatch(QString,QString)), this, SLOT(project_file_mismatch(QString,QString)), Qt::QueuedConnection);
+	connect(&pm(), &TProjectManager::unsupportedProjectDirChangeDetected, this, &TMainWindow::project_dir_change_detected);
+	connect(&pm(), &TProjectManager::projectLoadFailed, this, &TMainWindow::project_load_failed);
+	connect(&pm(), &TProjectManager::projectFileVersionMismatch, this, &TMainWindow::project_file_mismatch, Qt::QueuedConnection);
 
 	cpointer().add_contextitem(this);
     cpointer().add_contextitem(&tShortCutManager());
     ied().set_shortcut_manager(&tShortCutManager());
 
-	connect(&config(), SIGNAL(configChanged()), this, SLOT(config_changed()));
-	connect(&config(), SIGNAL(configChanged()), this, SLOT(update_follow_state()));
+	connect(&config(), &TConfig::configChanged, this, &TMainWindow::config_changed);
+	connect(&config(), &TConfig::configChanged, this, &TMainWindow::update_follow_state);
 
     connect(&tShortCutManager(), &TShortCutManager::functionKeysChanged, this, [this]() {
         for (auto menu : std::as_const(m_contextMenus)) {
@@ -416,8 +417,8 @@ void TMainWindow::set_project(TProject* project)
 	ctcache().invalidate_all();
 
 	if ( m_project ) {
-		connect(m_project, SIGNAL(projectLoadFinished()), this, SLOT(project_load_finished()));
-		connect(m_project, SIGNAL(projectLoadStarted()), this, SLOT(project_load_started()));
+		connect(m_project, &TProject::projectLoadFinished, this, &TMainWindow::project_load_finished);
+		connect(m_project, &TProject::projectLoadStarted, this, &TMainWindow::project_load_started);
 
 		setWindowTitle(project->get_title() + " - Traverso");
 		set_project_actions_enabled(true);
@@ -486,12 +487,12 @@ void TMainWindow::add_session(TSession *session)
 	m_sheetWidgets.insert(session, sheetWidget);
 	m_centerAreaWidget->addWidget(sheetWidget);
 
-	connect(session, SIGNAL(transportStopped()), this, SLOT(update_follow_state()));
-	connect(session, SIGNAL(tempFollowChanged(bool)), this, SLOT(update_temp_follow_state(bool)));
+	connect(session, &TSession::transportStopped, this, &TMainWindow::update_follow_state);
+	connect(session, &TSession::tempFollowChanged, this, &TMainWindow::update_temp_follow_state);
 
 	TSheet* sheet = qobject_cast<TSheet*>(session);
 	if (sheet) {
-		connect(session, SIGNAL(snapChanged()), this, SLOT(update_snap_state()));
+		connect(sheet, &TSheet::snapChanged, this, &TMainWindow::update_snap_state);
         connect(session, &TSession::sessionAdded, this, &TMainWindow::add_session);
         connect(session, &TSession::sessionRemoved, this, &TMainWindow::remove_session);
 	}
@@ -754,12 +755,12 @@ void TMainWindow::create_menus( )
 	action = menu->addAction(tr("&New..."));
 	action->setIcon(find_pixmap(":/new"));
 	action->setShortcuts(QKeySequence::New);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(show_newproject_dialog()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_newproject_dialog);
 
 	action = menu->addAction(tr("&Open..."));
 	action->setIcon(QIcon(":/open"));
 	action->setShortcuts(QKeySequence::Open);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(show_welcome_page()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_welcome_page);
 
 	menu->addSeparator();
 
@@ -767,7 +768,7 @@ void TMainWindow::create_menus( )
 	m_projectMenuToolbarActions.append(action);
 	action->setShortcuts(QKeySequence::Save);
 	action->setIcon(QIcon(":/save"));
-	connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(save_project()));
+	connect(action, &QAction::triggered, &pm(), &TProjectManager::save_project);
 
 	menu->addSeparator();
 
@@ -775,7 +776,7 @@ void TMainWindow::create_menus( )
 	m_projectMenuToolbarActions.append(action);
 	action->setShortcuts(QKeySequence::Close);
 	action->setIcon(QIcon(":/exit"));
-	connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(close_current_project()));
+	connect(action, &QAction::triggered, &pm(), &TProjectManager::close_current_project);
 
 	menu->addSeparator();
 
@@ -787,7 +788,7 @@ void TMainWindow::create_menus( )
 	action->setIcon(QIcon(":/projectmanager"));
 	menu->addAction(action);
 	m_projectToolBar->addAction(action);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(show_project_manager_dialog()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_project_manager_dialog);
 
 	action = menu->addAction(tr("&Export..."));
 	m_projectMenuToolbarActions.append(action);
@@ -796,7 +797,7 @@ void TMainWindow::create_menus( )
 	action->setShortcuts(list);
 	action->setIcon(QIcon(":/export"));
 	m_projectToolBar->addAction(action);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(show_export_widget()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_export_widget);
 
 	action = menu->addAction(tr("&CD Writing..."));
 	m_projectMenuToolbarActions.append(action);
@@ -805,7 +806,7 @@ void TMainWindow::create_menus( )
 	action->setShortcuts(list);
 	action->setIcon(QIcon(":/write-cd"));
 	m_projectToolBar->addAction(action);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(show_cd_writing_dialog()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_cd_writing_dialog);
 
 	action = menu->addAction(tr("&Restore Backup..."));
 	m_projectMenuToolbarActions.append(action);
@@ -814,7 +815,7 @@ void TMainWindow::create_menus( )
 	action->setShortcuts(list);
 	action->setIcon(QIcon(":/restore"));
 	m_projectToolBar->addAction(action);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(show_restore_project_backup_dialog()));
+	connect(action, &QAction::triggered, this, QOverload<>::of(&TMainWindow::show_restore_project_backup_dialog));
 
 	menu->addSeparator();
 
@@ -823,7 +824,7 @@ void TMainWindow::create_menus( )
 	list.append(QKeySequence("CTRL+Q"));
 	action->setShortcuts(list);
 	action->setIcon(QIcon(":/exit"));
-    connect(action, SIGNAL(triggered(bool)), &pm(), SLOT(exit()));
+    connect(action, &QAction::triggered, &pm(), &TProjectManager::exit);
 
 
 	menu = m_mainMenuBar->addMenu(tr("&Edit"));
@@ -834,14 +835,14 @@ void TMainWindow::create_menus( )
 	action->setIcon(QIcon(":/undo"));
 	action->setShortcuts(QKeySequence::Undo);
 	m_editToolBar->addAction(action);
-    connect(action, SIGNAL(triggered(bool)), this, SLOT(undo()));
+    connect(action, &QAction::triggered, this, &TMainWindow::undo);
 
 	action = menu->addAction(tr("Redo"));
 	m_projectMenuToolbarActions.append(action);
 	action->setIcon(QIcon(":/redo"));
 	action->setShortcuts(QKeySequence::Redo);
 	m_editToolBar->addAction(action);
-    connect(action, SIGNAL(triggered(bool)), this, SLOT(redo()));
+    connect(action, &QAction::triggered, this, &TMainWindow::redo);
 
 	menu->addSeparator();
 	m_editToolBar->addSeparator();
@@ -850,13 +851,13 @@ void TMainWindow::create_menus( )
 	m_projectMenuToolbarActions.append(action);
 	action->setIcon(QIcon(":/import-audio"));
 	m_editToolBar->addAction(action);
-	connect(action, SIGNAL(triggered()), this, SLOT(import_audio()));
+	connect(action, &QAction::triggered, this, &TMainWindow::import_audio);
 
 	action = menu->addAction(tr("Insert Si&lence..."));
 	m_projectMenuToolbarActions.append(action);
 	action->setIcon(QIcon(":/import-silence"));
 	m_editToolBar->addAction(action);
-    connect(action, SIGNAL(triggered()), this, SLOT(show_insertsilence_dialog()));
+    connect(action, &QAction::triggered, this, [this](bool checked){ (void)checked; this->show_insertsilence_dialog(); });
 
 	menu->addSeparator();
 	m_editToolBar->addSeparator();
@@ -867,7 +868,7 @@ void TMainWindow::create_menus( )
 	m_snapAction->setCheckable(true);
 	m_snapAction->setToolTip(tr("Snap items to edges of other items while dragging."));
 	m_editToolBar->addAction(m_snapAction);
-	connect(m_snapAction, SIGNAL(triggered(bool)), this, SLOT(snap_state_changed(bool)));
+	connect(m_snapAction, &QAction::triggered, this, &TMainWindow::snap_state_changed);
 
 	m_followAction = menu->addAction(tr("S&croll Playback"));
 	m_projectMenuToolbarActions.append(m_followAction);
@@ -875,7 +876,7 @@ void TMainWindow::create_menus( )
 	m_followAction->setCheckable(true);
 	m_followAction->setToolTip(tr("Keep play cursor in view while playing or recording."));
 	m_editToolBar->addAction(m_followAction);
-	connect(m_followAction, SIGNAL(triggered(bool)), this, SLOT(follow_state_changed(bool)));
+	connect(m_followAction, &QAction::triggered, this, &TMainWindow::follow_state_changed);
 
 	menu = m_mainMenuBar->addMenu(tr("&View"));
 	menu->installEventFilter(this);
@@ -887,13 +888,13 @@ void TMainWindow::create_menus( )
 
 	action = menu->addAction(tr("Marker Editor..."));
 	m_projectMenuToolbarActions.append(action);
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(show_marker_dialog()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_marker_dialog);
 
 	action = menu->addAction(tr("Toggle Full Screen"));
-	connect(action, SIGNAL(triggered()), this, SLOT(full_screen()));
+	connect(action, &QAction::triggered, this, &TMainWindow::full_screen);
 
 	action = menu->addAction(tr("Toggle FFT Only"));
-	connect(action, SIGNAL(triggered()), this, SLOT(show_fft_meter_only()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_fft_meter_only);
 
 	menu->addSeparator();
 
@@ -933,13 +934,13 @@ void TMainWindow::create_menus( )
 
 	action = m_encodingMenu->addAction("WAVE");
 	action->setData("wav");
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(change_recording_format_to_wav()));
+	connect(action, &QAction::triggered, this, &TMainWindow::change_recording_format_to_wav);
 	action = m_encodingMenu->addAction("WavPack");
 	action->setData("wavpack");
-    connect(action, SIGNAL(triggered(bool)), this, SLOT(change_recording_format_to_wavpack()));
+	connect(action, &QAction::triggered, this, &TMainWindow::change_recording_format_to_wavpack);
 	action = m_encodingMenu->addAction("WAVE-64");
 	action->setData("w64");
-    connect(action, SIGNAL(triggered(bool)), this, SLOT(change_recording_format_to_wav64()));
+	connect(action, &QAction::triggered, this, &TMainWindow::change_recording_format_to_wav64);
 
     m_resampleQualityMenu = menu->addMenu(tr("Resample &Quality"));
     m_resampleQualityMenu->setToolTipsVisible(true);
@@ -960,24 +961,24 @@ void TMainWindow::create_menus( )
 	menu->addSeparator();
 
 	action = menu->addAction(tr("&Shortcut Configuration"));
-	connect(action, SIGNAL(triggered()), this, SLOT(show_shortcuts_edit_dialog()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_shortcuts_edit_dialog);
 
 	action = menu->addAction(tr("&Preferences..."));
-    connect(action, SIGNAL(triggered(bool)), this, SLOT(show_settings_dialog()));
+	connect(action, &QAction::triggered, this, &TMainWindow::show_settings_dialog);
 
 
 	menu = m_mainMenuBar->addMenu(tr("&Help"));
 	menu->installEventFilter(this);
 
 	action = menu->addAction(tr("&Getting Started"));
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(quick_start()));
+	connect(action, &QAction::triggered, this, &TMainWindow::quick_start);
 
 	action = menu->addAction(tr("&User Manual"));
 	action->setIcon(style()->standardIcon(QStyle::SP_DialogHelpButton));
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(open_help_browser()));
+	connect(action, &QAction::triggered, this, &TMainWindow::open_help_browser);
 
 	action = menu->addAction(tr("&About Traverso"));
-	connect(action, SIGNAL(triggered(bool)), this, SLOT(about_traverso()));
+	connect(action, &QAction::triggered, this, &TMainWindow::about_traverso);
 
     set_project_actions_enabled(false);
 }
@@ -1193,7 +1194,7 @@ void TMainWindow::select_fade_in_shape( )
 
 	if (!menu) {
 		menu = create_fade_selector_menu("fadeInSelector");
-		connect(menu, SIGNAL(triggered(QAction*)), this, SLOT(set_fade_in_shape(QAction*)));
+		connect(menu, &QMenu::triggered, this, &TMainWindow::set_fade_in_shape);
 	}
 
     menu->popup(QCursor::pos());
@@ -1205,7 +1206,7 @@ void TMainWindow::select_fade_out_shape( )
 
 	if (!menu) {
 		menu = create_fade_selector_menu("fadeOutSelector");
-		connect(menu, SIGNAL(triggered(QAction*)), this, SLOT(set_fade_out_shape(QAction*)));
+		connect(menu, &QMenu::triggered, this, &TMainWindow::set_fade_out_shape);
 	}
 
     menu->popup(QCursor::pos());
@@ -1435,9 +1436,9 @@ TCommand * TMainWindow::show_newproject_dialog()
 	if (! m_newProjectDialog ) {
 		m_newProjectDialog = new NewProjectDialog(this);
 		TAudioFileCopyConvert* converter = m_newProjectDialog->get_converter();
-		connect(converter, SIGNAL(taskStarted(QString)), m_progressBar, SLOT(set_label(QString)));
-		connect(converter, SIGNAL(progress(int)), m_progressBar, SLOT(set_progress(int)));
-		connect(m_newProjectDialog, SIGNAL(numberOfFiles(int)), m_progressBar, SLOT(set_num_files(int)));
+		connect(converter, &TAudioFileCopyConvert::taskStarted, m_progressBar, &ProgressToolBar::set_label);
+		connect(converter, &TAudioFileCopyConvert::progress, m_progressBar, &ProgressToolBar::set_progress);
+		connect(m_newProjectDialog, &NewProjectDialog::numberOfFiles, m_progressBar, &ProgressToolBar::set_num_files);
 	}
 	m_newProjectDialog->show();
 	return 0;

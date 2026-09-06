@@ -48,8 +48,8 @@ TAudioPluginChainView::TAudioPluginChainView(TSheetView* sv, TViewItem *parent, 
 
     connect(chain, &TAudioPluginChain::pluginAdded, this, &TAudioPluginChainView::add_plugin);
     connect(chain, &TAudioPluginChain::pluginRemoved, this, &TAudioPluginChainView::remove_plugin);
-    connect(m_sv->get_clips_viewport()->horizontalScrollBar(), SIGNAL(valueChanged(int)),
-            this, SLOT(scrollbar_value_changed(int)));
+    connect(m_sv->get_clips_viewport()->horizontalScrollBar(), &QScrollBar::valueChanged,
+            this, &TAudioPluginChainView::scrollbar_value_changed);
 }
 
 TAudioPluginChainView::~TAudioPluginChainView( )

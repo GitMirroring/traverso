@@ -63,7 +63,7 @@ TAudioTrackView::TAudioTrackView(TSheetView* sv, TAudioTrack * track)
 
     connect(m_track, &TAudioTrack::audioClipAdded, this, &TAudioTrackView::add_new_audioclipview);
     connect(m_track, &TAudioTrack::audioClipRemoved, this, &TAudioTrackView::remove_audioclipview);
-    connect(m_curveView, SIGNAL(curveUpdated(int, int)), this, SLOT(update_clips_in_range(int, int)));
+    connect(m_curveView, &TCurveView::curveUpdated, this, &TAudioTrackView::update_clips_in_range);
 
     for(TAudioClip* clip : m_track->get_audioclips()) {
         add_new_audioclipview(clip);

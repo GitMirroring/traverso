@@ -71,7 +71,7 @@ SheetPanelViewPort::SheetPanelViewPort(QGraphicsScene * scene, TSheetWidget * sw
     // m_mainLayout->addWidget(new TTimeLabel(this, sw->get_session()));
     // setLayout(m_mainLayout);
 
-    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme()));
+    connect(themer(), &TThemer::themeLoaded, this, &SheetPanelViewPort::load_theme);
 }
 
 void SheetPanelViewPort::load_theme()
@@ -132,8 +132,8 @@ TSheetWidget::TSheetWidget(TSession* sheet, QWidget* parent)
         m_zoomSlider->setOrientation(Qt::Horizontal);
         sheet_zoom_level_changed();
 
-        connect(m_zoomSlider, SIGNAL(sliderMoved(int)), this, SLOT(zoom_slider_value_changed(int)));
-        connect(m_session, SIGNAL(hzoomChanged()), this, SLOT(sheet_zoom_level_changed()));
+        connect(m_zoomSlider, &QSlider::sliderMoved, this, &TSheetWidget::zoom_slider_value_changed);
+        connect(m_session, &TSession::hzoomChanged, this, &TSheetWidget::sheet_zoom_level_changed);
 
         zoomLayout->addWidget(zoomLabel);
         zoomLayout->addWidget(m_zoomSlider);
@@ -159,29 +159,29 @@ TSheetWidget::TSheetWidget(TSession* sheet, QWidget* parent)
 	m_sheetPanelVP->set_sheet_view(m_sv);
 	
 	connect(m_clipsViewPort->horizontalScrollBar(), 
-		SIGNAL(valueChanged(int)),
+		&QScrollBar::valueChanged,
 		m_timeLine->horizontalScrollBar(), 
-		SLOT(setValue(int)));
+		&QScrollBar::setValue);
 	
 	connect(m_timeLine->horizontalScrollBar(), 
-		SIGNAL(valueChanged(int)),
+		&QScrollBar::valueChanged,
 		m_clipsViewPort->horizontalScrollBar(), 
-		SLOT(setValue(int)));
+		&QScrollBar::setValue);
 	
 	connect(m_clipsViewPort->verticalScrollBar(), 
-		SIGNAL(valueChanged(int)),
+		&QScrollBar::valueChanged,
 		m_trackPanel->verticalScrollBar(), 
-		SLOT(setValue(int)));
+		&QScrollBar::setValue);
 	
 	connect(m_trackPanel->verticalScrollBar(), 
-		SIGNAL(valueChanged(int)),
+		&QScrollBar::valueChanged,
 		m_clipsViewPort->verticalScrollBar(), 
-		SLOT(setValue(int)));
+		&QScrollBar::setValue);
 	
     m_timeLine->horizontalScrollBar()->setValue(
             m_clipsViewPort->horizontalScrollBar()->value());
 
-    connect(themer(), SIGNAL(themeLoaded()), this, SLOT(load_theme_data()), Qt::QueuedConnection);
+    connect(themer(), &TThemer::themeLoaded, this, &TSheetWidget::load_theme_data, Qt::QueuedConnection);
 	
     setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
 

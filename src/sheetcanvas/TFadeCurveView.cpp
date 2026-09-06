@@ -66,8 +66,8 @@ TFadeCurveView::TFadeCurveView(TSheetView* sv, TAudioClipView* parent, TFadeCurv
 
     setFlags(QGraphicsItem::ItemUsesExtendedStyleOption);
 
-	connect(m_fadeCurve, SIGNAL(stateChanged()), this, SLOT(state_changed()));
-	connect(m_fadeCurve, SIGNAL(rangeChanged()), this, SLOT(state_changed()));
+	connect(m_fadeCurve, &TFadeCurve::stateChanged, this, &TFadeCurveView::state_changed);
+	connect(m_fadeCurve, &TFadeCurve::rangeChanged, this, &TFadeCurveView::state_changed);
 }
 
 
