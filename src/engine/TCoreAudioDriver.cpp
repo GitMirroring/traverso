@@ -200,14 +200,20 @@ TCoreAudioDriver::~TCoreAudioDriver()
 {
     stop();
     std::free(m_inputBuffer);
+    m_inputBuffer = nullptr;
+    std::free(m_processInputBuffer);
+    m_processInputBuffer = nullptr;
     std::free(m_inputList);
+    m_inputList = nullptr;
     if (m_audioUnit) {
         AudioUnitUninitialize(m_audioUnit);
         AudioComponentInstanceDispose(m_audioUnit);
+        m_audioUnit = nullptr;
     }
     if (m_inputAudioUnit) {
         AudioUnitUninitialize(m_inputAudioUnit);
         AudioComponentInstanceDispose(m_inputAudioUnit);
+        m_inputAudioUnit = nullptr;
     }
 }
 
@@ -257,15 +263,32 @@ int TCoreAudioDriver::setup(bool capture, bool playback, const QString& device)
     }
     if (!device.isEmpty() && device != QStringLiteral("none") &&
         device != QStringLiteral("default") && !hasSeparateSelections) {
-        if (device_for_uid(device, &m_deviceId) != noErr ||
-            m_deviceId == kAudioDeviceUnknown) {
+        AudioDeviceID selectedDevice = kAudioDeviceUnknown;
+        if (device_for_uid(device, &selectedDevice) != noErr ||
+            selectedDevice == kAudioDeviceUnknown) {
             return fail_setup(tr("Could not find CoreAudio device %1").arg(device));
         }
+        if (capture && !playback) {
+            m_inputDeviceId = selectedDevice;
+            m_deviceId = selectedDevice;
+        } else if (playback && !capture) {
+            m_deviceId = selectedDevice;
+        } else {
+            m_deviceId = selectedDevice;
+            m_inputDeviceId = selectedDevice;
+        }
+    }
+    if (capture && !playback) {
+        m_deviceId = m_inputDeviceId;
     }
     if (m_deviceId == kAudioDeviceUnknown) {
         return fail_setup(tr("No default CoreAudio device is available"));
     }
-    const bool separateDevices = hasSeparateSelections && m_inputDeviceId != m_deviceId;
+    if (capture && m_inputDeviceId == kAudioDeviceUnknown) {
+        return fail_setup(tr("No default CoreAudio input device is available"));
+    }
+
+    const bool separateDevices = capture && playback && (m_inputDeviceId != m_deviceId);
 
     AudioObjectPropertyAddress rateAddress{kAudioDevicePropertyNominalSampleRate,
                                            kAudioObjectPropertyScopeGlobal,
@@ -283,6 +306,11 @@ int TCoreAudioDriver::setup(bool capture, bool playback, const QString& device)
         }
         m_frameRate = static_cast<nframes_t>(sampleRate);
     }
+    if (separateDevices) {
+        Float64 inSampleRate = m_frameRate;
+        AudioObjectSetPropertyData(m_inputDeviceId, &rateAddress, 0, nullptr,
+                                   sizeof(inSampleRate), &inSampleRate);
+    }
 
     AudioObjectPropertyAddress bufferAddress{kAudioDevicePropertyBufferFrameSize,
                                              kAudioObjectPropertyScopeGlobal,
@@ -297,6 +325,12 @@ int TCoreAudioDriver::setup(bool capture, bool playback, const QString& device)
         return fail_setup(tr("Could not determine the CoreAudio buffer size"), status);
     }
     m_framesPerCycle = bufferSize;
+    if (separateDevices) {
+        UInt32 inBufferSize = m_framesPerCycle;
+        AudioObjectSetPropertyData(m_inputDeviceId, &bufferAddress, 0, nullptr,
+                                   sizeof(inBufferSize), &inBufferSize);
+    }
+
     m_device->set_buffer_size(m_framesPerCycle);
     m_device->set_sample_rate(m_frameRate);
     m_periodTimeInMicroSeconds = static_cast<trav_time_t>(
@@ -313,16 +347,20 @@ int TCoreAudioDriver::setup(bool capture, bool playback, const QString& device)
         return fail_setup(tr("Could not query CoreAudio output channels"));
     }
 
-    if (capture && playback && (inputChannels == 0 || outputChannels == 0) &&
+    if (capture && playback && !separateDevices && (inputChannels == 0 || outputChannels == 0) &&
         (device.isEmpty() || device == QStringLiteral("none") ||
          device == QStringLiteral("default"))) {
-        m_deviceId = duplex_device();
-        if (m_deviceId == kAudioDeviceUnknown) {
-            return fail_setup(tr("No CoreAudio device supports both input and output"));
-        }
-        if (channel_count(m_deviceId, kAudioObjectPropertyScopeInput, &inputChannels) != noErr ||
-            channel_count(m_deviceId, kAudioObjectPropertyScopeOutput, &outputChannels) != noErr) {
-            return fail_setup(tr("Could not query the duplex CoreAudio device"));
+        AudioDeviceID duplexDev = duplex_device();
+        if (duplexDev != kAudioDeviceUnknown) {
+            UInt32 duplexIn = 0, duplexOut = 0;
+            if (channel_count(duplexDev, kAudioObjectPropertyScopeInput, &duplexIn) == noErr &&
+                channel_count(duplexDev, kAudioObjectPropertyScopeOutput, &duplexOut) == noErr &&
+                duplexIn > 0 && duplexOut > 0) {
+                m_deviceId = duplexDev;
+                m_inputDeviceId = duplexDev;
+                inputChannels = duplexIn;
+                outputChannels = duplexOut;
+            }
         }
     }
     m_inputChannels = inputChannels;
@@ -342,36 +380,84 @@ int TCoreAudioDriver::setup(bool capture, bool playback, const QString& device)
         return fail_setup(tr("Could not create the CoreAudio HAL unit"), status);
     }
 
-    UInt32 enabled = capture && !separateDevices ? 1 : 0;
-    status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_EnableIO,
-                                  kAudioUnitScope_Input, 1, &enabled, sizeof(enabled));
-    if (status != noErr) {
-        return fail_setup(tr("Could not enable CoreAudio input"), status);
-    }
-    if (!playback) {
+    UInt32 maximumFrames = m_framesPerCycle;
+    UInt32 enabled = 0;
+
+    if (!playback && capture) {
+        enabled = 1;
+        status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_EnableIO,
+                                      kAudioUnitScope_Input, 1, &enabled, sizeof(enabled));
+        if (status != noErr) {
+            return fail_setup(tr("Could not enable CoreAudio input"), status);
+        }
         enabled = 0;
         status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_EnableIO,
                                       kAudioUnitScope_Output, 0, &enabled, sizeof(enabled));
         if (status != noErr) {
             return fail_setup(tr("Could not disable CoreAudio output"), status);
         }
-    }
-
-    status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_CurrentDevice,
-                                  kAudioUnitScope_Global, 0, &m_deviceId, sizeof(m_deviceId));
-    if (status != noErr) {
-        return fail_setup(tr("Could not select the CoreAudio device"), status);
-    }
-
-    UInt32 maximumFrames = m_framesPerCycle;
-    AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_MaximumFramesPerSlice,
-                          kAudioUnitScope_Global, 0, &maximumFrames, sizeof(maximumFrames));
-    if (capture && !separateDevices) {
+        status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_CurrentDevice,
+                                      kAudioUnitScope_Global, 0, &m_deviceId, sizeof(m_deviceId));
+        if (status != noErr) {
+            return fail_setup(tr("Could not select the CoreAudio device"), status);
+        }
         AudioStreamBasicDescription format = client_format(m_frameRate, m_inputChannels);
         status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
                                       kAudioUnitScope_Output, 1, &format, sizeof(format));
         if (status != noErr) {
             return fail_setup(tr("Could not configure CoreAudio input format"), status);
+        }
+        AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_MaximumFramesPerSlice,
+                             kAudioUnitScope_Global, 0, &maximumFrames, sizeof(maximumFrames));
+
+        AURenderCallbackStruct inputCallback{&TCoreAudioDriver::input_render_callback, this};
+        status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_SetInputCallback,
+                                      kAudioUnitScope_Global, 0, &inputCallback, sizeof(inputCallback));
+        if (status != noErr) {
+            return fail_setup(tr("Could not install the CoreAudio input callback"), status);
+        }
+    } else {
+        enabled = (capture && !separateDevices) ? 1 : 0;
+        status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_EnableIO,
+                                      kAudioUnitScope_Input, 1, &enabled, sizeof(enabled));
+        if (status != noErr) {
+            return fail_setup(tr("Could not enable CoreAudio input"), status);
+        }
+        enabled = 1;
+        status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_EnableIO,
+                                      kAudioUnitScope_Output, 0, &enabled, sizeof(enabled));
+        if (status != noErr) {
+            return fail_setup(tr("Could not enable CoreAudio output"), status);
+        }
+        status = AudioUnitSetProperty(m_audioUnit, kAudioOutputUnitProperty_CurrentDevice,
+                                      kAudioUnitScope_Global, 0, &m_deviceId, sizeof(m_deviceId));
+        if (status != noErr) {
+            return fail_setup(tr("Could not select the CoreAudio device"), status);
+        }
+        AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_MaximumFramesPerSlice,
+                             kAudioUnitScope_Global, 0, &maximumFrames, sizeof(maximumFrames));
+
+        if (capture && !separateDevices) {
+            AudioStreamBasicDescription format = client_format(m_frameRate, m_inputChannels);
+            status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
+                                          kAudioUnitScope_Output, 1, &format, sizeof(format));
+            if (status != noErr) {
+                return fail_setup(tr("Could not configure CoreAudio input format"), status);
+            }
+        }
+
+        AudioStreamBasicDescription format = client_format(m_frameRate, m_outputChannels);
+        status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
+                                      kAudioUnitScope_Input, 0, &format, sizeof(format));
+        if (status != noErr) {
+            return fail_setup(tr("Could not configure CoreAudio output format"), status);
+        }
+
+        AURenderCallbackStruct callback{&TCoreAudioDriver::render_callback, this};
+        status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_SetRenderCallback,
+                                      kAudioUnitScope_Input, 0, &callback, sizeof(callback));
+        if (status != noErr) {
+            return fail_setup(tr("Could not install the CoreAudio render callback"), status);
         }
     }
 
@@ -413,28 +499,14 @@ int TCoreAudioDriver::setup(bool capture, bool playback, const QString& device)
             return fail_setup(tr("Could not configure the CoreAudio input buffer size"), status);
         }
         AURenderCallbackStruct inputCallback{&TCoreAudioDriver::input_render_callback, this};
-        status = AudioUnitSetProperty(m_inputAudioUnit, kAudioUnitProperty_SetRenderCallback,
+        status = AudioUnitSetProperty(m_inputAudioUnit, kAudioOutputUnitProperty_SetInputCallback,
                                       kAudioUnitScope_Global, 0, &inputCallback,
                                       sizeof(inputCallback));
         if (status != noErr) {
             return fail_setup(tr("Could not install the CoreAudio input callback"), status);
         }
     }
-    if (playback) {
-        AudioStreamBasicDescription format = client_format(m_frameRate, m_outputChannels);
-        status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
-                                      kAudioUnitScope_Input, 0, &format, sizeof(format));
-        if (status != noErr) {
-            return fail_setup(tr("Could not configure CoreAudio output format"), status);
-        }
-    }
 
-    AURenderCallbackStruct callback{&TCoreAudioDriver::render_callback, this};
-    status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_SetRenderCallback,
-                                  kAudioUnitScope_Input, 0, &callback, sizeof(callback));
-    if (status != noErr) {
-        return fail_setup(tr("Could not install the CoreAudio render callback"), status);
-    }
     status = AudioUnitInitialize(m_audioUnit);
     if (status != noErr) {
         return fail_setup(tr("Could not initialize the CoreAudio HAL unit"), status);
@@ -446,13 +518,13 @@ int TCoreAudioDriver::setup(bool capture, bool playback, const QString& device)
         }
     }
 
-    const size_t listSize = offsetof(AudioBufferList, mBuffers) + sizeof(AudioBuffer);
-    m_inputList = static_cast<AudioBufferList*>(std::calloc(1, listSize));
-    if (!m_inputList) {
-        return fail_setup(tr("Could not allocate CoreAudio input buffers"));
-    }
-    m_inputList->mNumberBuffers = capture ? 1 : 0;
     if (capture) {
+        const size_t listSize = offsetof(AudioBufferList, mBuffers) + sizeof(AudioBuffer);
+        m_inputList = static_cast<AudioBufferList*>(std::calloc(1, listSize));
+        if (!m_inputList) {
+            return fail_setup(tr("Could not allocate CoreAudio input buffers"));
+        }
+        m_inputList->mNumberBuffers = 1;
         m_inputList->mBuffers[0].mNumberChannels = m_inputChannels;
         m_inputList->mBuffers[0].mDataByteSize =
             m_framesPerCycle * m_inputChannels * sizeof(audio_sample_t);
@@ -462,6 +534,16 @@ int TCoreAudioDriver::setup(bool capture, bool playback, const QString& device)
             return fail_setup(tr("Could not allocate CoreAudio capture storage"));
         }
         m_inputList->mBuffers[0].mData = m_inputBuffer;
+
+        if (separateDevices) {
+            m_processInputBuffer = static_cast<audio_sample_t*>(std::calloc(
+                m_framesPerCycle * m_inputChannels, sizeof(audio_sample_t)));
+            if (!m_processInputBuffer) {
+                return fail_setup(tr("Could not allocate CoreAudio process capture storage"));
+            }
+            m_inputRingBuffer = std::make_unique<RingBufferNPT<audio_sample_t>>(
+                m_framesPerCycle * m_inputChannels * 8);
+        }
     }
 
     for (channel_t index = 0; index < m_inputChannels; ++index) {
@@ -488,11 +570,16 @@ int TCoreAudioDriver::attach()
 
 int TCoreAudioDriver::start()
 {
-    if (!m_audioUnit || AudioOutputUnitStart(m_audioUnit) != noErr) {
-        return -1;
+    if (m_inputRingBuffer) {
+        m_inputRingBuffer->reset();
     }
     if (m_inputAudioUnit && AudioOutputUnitStart(m_inputAudioUnit) != noErr) {
-        AudioOutputUnitStop(m_audioUnit);
+        return -1;
+    }
+    if (m_audioUnit && AudioOutputUnitStart(m_audioUnit) != noErr) {
+        if (m_inputAudioUnit) {
+            AudioOutputUnitStop(m_inputAudioUnit);
+        }
         return -1;
     }
     m_running = true;
@@ -528,7 +615,13 @@ int TCoreAudioDriver::process_callback(AudioUnitRenderActionFlags* flags,
 {
     if (m_capture) {
         if (!m_inputAudioUnit) {
-            m_lastInputRenderStatus = AudioUnitRender(m_audioUnit, flags, timestamp, 1,
+            m_inputList->mNumberBuffers = 1;
+            m_inputList->mBuffers[0].mNumberChannels = m_inputChannels;
+            m_inputList->mBuffers[0].mDataByteSize = nframes * m_inputChannels * sizeof(audio_sample_t);
+            m_inputList->mBuffers[0].mData = m_inputBuffer;
+
+            AudioUnitRenderActionFlags inActionFlags = 0;
+            m_lastInputRenderStatus = AudioUnitRender(m_audioUnit, &inActionFlags, timestamp, 1,
                                                       nframes, m_inputList);
             if (m_lastInputRenderStatus != noErr) {
                 if (m_lastInputRenderStatus != m_reportedInputRenderStatus) {
@@ -539,19 +632,29 @@ int TCoreAudioDriver::process_callback(AudioUnitRenderActionFlags* flags,
                 m_device->xrun();
                 return -1;
             }
-        }
 
-        if (m_inputAudioUnit && !m_inputReady.exchange(false, std::memory_order_acquire)) {
-            for (AudioChannel* channel : m_captureChannels) {
-                channel->silence_buffer();
-            }
-        } else {
             const auto* input = static_cast<const audio_sample_t*>(m_inputList->mBuffers[0].mData);
             for (channel_t channel = 0; channel < m_inputChannels; ++channel) {
                 audio_sample_t* destination = m_captureChannels.at(channel)->get_buffer().get_data(nframes);
                 for (nframes_t frame = 0; frame < nframes; ++frame) {
                     destination[frame] = input[frame * m_inputChannels + channel];
                 }
+                m_captureChannels.at(channel)->process_monitoring();
+            }
+        } else if (m_inputRingBuffer && m_processInputBuffer) {
+            const size_t neededSamples = nframes * m_inputChannels;
+            size_t readSamples = m_inputRingBuffer->read(m_processInputBuffer, neededSamples);
+            if (readSamples < neededSamples) {
+                std::memset(m_processInputBuffer + readSamples, 0,
+                            (neededSamples - readSamples) * sizeof(audio_sample_t));
+            }
+
+            for (channel_t channel = 0; channel < m_inputChannels; ++channel) {
+                audio_sample_t* destination = m_captureChannels.at(channel)->get_buffer().get_data(nframes);
+                for (nframes_t frame = 0; frame < nframes; ++frame) {
+                    destination[frame] = m_processInputBuffer[frame * m_inputChannels + channel];
+                }
+                m_captureChannels.at(channel)->process_monitoring();
             }
         }
     }
@@ -562,12 +665,22 @@ int TCoreAudioDriver::process_callback(AudioUnitRenderActionFlags* flags,
         return -1;
     }
 
-    if (m_playback && output && output->mNumberBuffers == 1 && output->mBuffers[0].mData) {
-        auto* destination = static_cast<audio_sample_t*>(output->mBuffers[0].mData);
-        for (nframes_t frame = 0; frame < nframes; ++frame) {
+    if (m_playback && output) {
+        if (output->mNumberBuffers == 1 && output->mBuffers[0].mData) {
+            auto* destination = static_cast<audio_sample_t*>(output->mBuffers[0].mData);
+            for (nframes_t frame = 0; frame < nframes; ++frame) {
+                for (channel_t channel = 0; channel < m_outputChannels; ++channel) {
+                    destination[frame * m_outputChannels + channel] =
+                        m_playbackChannels.at(channel)->get_buffer().at(frame);
+                }
+            }
+        } else if (output->mNumberBuffers >= m_outputChannels) {
             for (channel_t channel = 0; channel < m_outputChannels; ++channel) {
-                destination[frame * m_outputChannels + channel] =
-                    m_playbackChannels.at(channel)->get_buffer().at(frame);
+                if (output->mBuffers[channel].mData) {
+                    std::memcpy(output->mBuffers[channel].mData,
+                                m_playbackChannels.at(channel)->get_buffer().get_data(nframes),
+                                nframes * sizeof(audio_sample_t));
+                }
             }
         }
     }
@@ -584,8 +697,20 @@ OSStatus TCoreAudioDriver::capture_callback(AudioUnitRenderActionFlags* flags,
                                              const AudioTimeStamp* timestamp,
                                              nframes_t nframes)
 {
-    m_lastInputRenderStatus = AudioUnitRender(m_inputAudioUnit, flags, timestamp, 1,
-                                               nframes, m_inputList);
+    if (!m_capture || !m_inputList || !m_inputBuffer) {
+        return noErr;
+    }
+
+    AudioUnit unit = m_inputAudioUnit ? m_inputAudioUnit : m_audioUnit;
+
+    m_inputList->mNumberBuffers = 1;
+    m_inputList->mBuffers[0].mNumberChannels = m_inputChannels;
+    m_inputList->mBuffers[0].mDataByteSize = nframes * m_inputChannels * sizeof(audio_sample_t);
+    m_inputList->mBuffers[0].mData = m_inputBuffer;
+
+    AudioUnitRenderActionFlags inActionFlags = 0;
+    m_lastInputRenderStatus = AudioUnitRender(unit, &inActionFlags, timestamp, 1,
+                                              nframes, m_inputList);
     if (m_lastInputRenderStatus != noErr) {
         if (m_lastInputRenderStatus != m_reportedInputRenderStatus) {
             std::fprintf(stderr, "TCoreAudioDriver: input AudioUnitRender failed with status %d\n",
@@ -595,7 +720,35 @@ OSStatus TCoreAudioDriver::capture_callback(AudioUnitRenderActionFlags* flags,
         m_device->xrun();
         return m_lastInputRenderStatus;
     }
-    m_inputReady.store(true, std::memory_order_release);
+
+    if (!m_playback) {
+        const auto* input = static_cast<const audio_sample_t*>(m_inputList->mBuffers[0].mData);
+        for (channel_t channel = 0; channel < m_inputChannels; ++channel) {
+            audio_sample_t* destination = m_captureChannels.at(channel)->get_buffer().get_data(nframes);
+            for (nframes_t frame = 0; frame < nframes; ++frame) {
+                destination[frame] = input[frame * m_inputChannels + channel];
+            }
+            m_captureChannels.at(channel)->process_monitoring();
+        }
+
+        m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
+        m_device->set_transport_cycle_start_time(m_runCycleStartTime);
+        if (m_device->run_cycle(nframes, 0) < 0) {
+            return kAudioHardwareUnspecifiedError;
+        }
+        m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
+        m_device->set_transport_cycle_end_time(m_runCycleEndTime);
+        return noErr;
+    }
+
+    if (m_inputRingBuffer) {
+        const size_t samples = nframes * m_inputChannels;
+        if (m_inputRingBuffer->write_space() < samples) {
+            m_inputRingBuffer->increment_read_ptr(samples - m_inputRingBuffer->write_space());
+        }
+        m_inputRingBuffer->write(m_inputBuffer, samples);
+    }
+
     return noErr;
 }
 
@@ -617,6 +770,9 @@ OSStatus TCoreAudioDriver::input_render_callback(void* refCon, AudioUnitRenderAc
 
 QString TCoreAudioDriver::get_device_name()
 {
+    if (m_inputAudioUnit && m_inputDeviceId != m_deviceId) {
+        return QStringLiteral("%1 / %2").arg(device_name(m_inputDeviceId), device_name(m_deviceId));
+    }
     return device_name(m_deviceId);
 }
 

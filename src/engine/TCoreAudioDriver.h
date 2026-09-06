@@ -23,11 +23,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TCOREAUDIODRIVER_H
 
 #include "TAudioDriver.h"
+#include "RingBufferNPT.h"
 
 #include <AudioUnit/AudioUnit.h>
 #include <CoreAudio/CoreAudio.h>
 
-#include <atomic>
+#include <memory>
 
 class TCoreAudioDriver : public TAudioDriver
 {
@@ -56,6 +57,8 @@ private:
     AudioUnit m_inputAudioUnit{};
     AudioBufferList* m_inputList{};
     audio_sample_t* m_inputBuffer{};
+    audio_sample_t* m_processInputBuffer{};
+    std::unique_ptr<RingBufferNPT<audio_sample_t>> m_inputRingBuffer;
     AudioDeviceID m_deviceId{kAudioDeviceUnknown};
     AudioDeviceID m_inputDeviceId{kAudioDeviceUnknown};
     channel_t m_inputChannels{0};
@@ -65,7 +68,6 @@ private:
     bool m_running{false};
     OSStatus m_lastInputRenderStatus{noErr};
     OSStatus m_reportedInputRenderStatus{noErr};
-    std::atomic_bool m_inputReady{false};
 
     int process_callback(AudioUnitRenderActionFlags* flags,
                          const AudioTimeStamp* timestamp,
