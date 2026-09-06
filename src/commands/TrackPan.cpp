@@ -28,6 +28,7 @@
 #include "TContextPointer.h"
 #include "TTrack.h"
 #include "Mixer.h"
+#include "Utils.h"
 #include "TInputEventDispatcher.h"
 
 
@@ -64,7 +65,7 @@ TrackPan::TrackPan(TTrack* track, QVariantList args)
 
 int TrackPan::prepare_actions()
 {
-	if (qFuzzyCompare(m_origPan, m_newPan))
+	if (fuzzy_compare(m_origPan, m_newPan))
 	{
 		// nothing happened
 		return -1;

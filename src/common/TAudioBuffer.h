@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 #include "defines.h"
 #include "Mixer.h"
+#include "Utils.h"
 
 #ifdef USE_MLOCK
 #include <sys/mman.h>
@@ -109,7 +110,7 @@ public:
     }
 
     static void mix_buffers_with_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes, float gain) {
-        if (qFuzzyCompare(gain, 1.0f)) {
+        if (fuzzy_equals_1(gain)) {
             return Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
         }
 

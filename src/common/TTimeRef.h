@@ -2,7 +2,7 @@
 #define TTIMEREF_H
 
 #include <chrono>
-
+#include "Utils.h"
 #include "defines.h"
 #include "qdatetime.h"
 
@@ -157,7 +157,7 @@ public:
     }
 
     friend qreal operator/(const TTimeRef& left, double right) {
-        Q_ASSERT(!qFuzzyCompare(right, 0.0));
+        Q_ASSERT(!fuzzy_equals_0(right));
         return qreal(left.m_universalFrame) / qint64(right);
     }
 

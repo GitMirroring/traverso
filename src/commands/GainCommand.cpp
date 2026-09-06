@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TContextItem.h"
 #include "TAudioProcessingNode.h"
 #include "Mixer.h"
+#include "Utils.h"
 #include "Debugger.h"
 
 /**
@@ -48,7 +49,7 @@ GainCommand::~GainCommand()
 
 int GainCommand::prepare_actions()
 {
-    if (qFuzzyCompare(m_origGain, m_newGain)) {
+    if (fuzzy_compare(m_origGain, m_newGain)) {
         // Nothing happened!
         return -1;
     }
@@ -72,7 +73,7 @@ int GainCommand::do_action()
     // however, do_action() is always called from the TInputEventDispatcher
     // So do not start the animated gain setting since it will start from
     // the m_oldgain value.
-    if (qFuzzyCompare(m_newGain, m_audioProcessingNode->get_gain())) {
+    if (fuzzy_compare(m_newGain, m_audioProcessingNode->get_gain())) {
         return 1;
     }
 

@@ -160,7 +160,7 @@ TSheetView::~TSheetView()
 void TSheetView::scale_factor_changed( )
 {
 	qreal zoom = m_session->get_hzoom();
-    if (qFuzzyCompare(zoom, 0.0)) {
+    if (fuzzy_equals_0(zoom)) {
 //		PERROR("Session %s return 0 hzoom factor!", m_session->get_name().toLatin1().data());
 		// Woopsy, zoom can't be zero, if we allow that, timeref_scalefactor
 		// will be zero too, and we use timeref_scalefactor as a divider so...:

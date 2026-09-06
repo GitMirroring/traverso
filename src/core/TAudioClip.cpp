@@ -437,7 +437,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
         return 0;
     }
 
-    if (m_isMuted || (qFuzzyCompare(get_gain(), 0.0f)) ) {
+    if (m_isMuted || (fuzzy_equals_0(get_gain())) ) {
         return 0;
     }
 
@@ -823,7 +823,7 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
 {
     float target = dB_to_scale_factor (targetdB);
 
-    if (qFuzzyCompare(target, 1.0f)) {
+    if (fuzzy_equals_1(target)) {
         /* do not normalize to precisely 1.0 (0 dBFS), to avoid making it appear
            that we may have clipped.
         */
@@ -832,13 +832,13 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
 
     audio_sample_t maxamp = m_peak->get_max_amplitude(m_sourceStartLocation, m_sourceEndLocation);
 
-    if (qFuzzyCompare(maxamp, 0.0f)) {
+    if (fuzzy_equals_0(maxamp)) {
         PWARN("AudioClip::normalization: max amplitude == 0");
         /* don't even try */
         return get_gain();
     }
 
-    if (qFuzzyCompare(maxamp, target)) {
+    if (fuzzy_compare(maxamp, target)) {
         PWARN("AudioClip::normalization: max amplitude == target amplitude");
         /* we can't do anything useful */
         return get_gain();

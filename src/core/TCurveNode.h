@@ -56,6 +56,8 @@ private:
     double 	m_when;
     double 	m_value;
 
+    void set_when_and_value_internal(double when, double value);
+    
     friend class TCurve;
 };
 

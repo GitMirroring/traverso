@@ -105,7 +105,7 @@ void TBusTrack::set_name( const QString & name )
 
 int TBusTrack::process(TProcessCallBackData &processData)
 {
-    if (m_isMuted || (qFuzzyCompare(get_gain(), 0.0f)) ) {
+    if (m_isMuted || (fuzzy_equals_0(get_gain())) ) {
         return 0;
     }
 

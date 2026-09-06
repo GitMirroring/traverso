@@ -31,10 +31,7 @@ TCurveNode::TCurveNode(TCurve *curve, double when, double value)
     : m_curve(curve)
 {
     coeff[0] = coeff[1] = coeff[2] = coeff[3] = 0.0;
-
-    m_when = when;
-    m_value = value;
-
+    set_when_and_value_internal(when, value);
     next = nullptr;
 }
 
@@ -58,17 +55,21 @@ void TCurveNode::set_relative_when_and_value( double relwhen, double value )
     m_value = value;
 }
 
-void TCurveNode::set_when_and_value(double when, double value)
+void TCurveNode::set_when_and_value_internal(double when, double value)
 {
     Q_ASSERT( ! std::isnan(when));
     Q_ASSERT( ! std::isnan(value));
 
-    if (qFuzzyCompare(m_when, when) && qFuzzyCompare(m_value, value)) {
+    if (fuzzy_compare(m_when, when) && fuzzy_compare(m_value, value)) {
         return;
     }
     m_when = when;
     m_value = value;
+}
 
+void TCurveNode::set_when_and_value(double when, double value)
+{
+    set_when_and_value_internal(when, value);
     emit m_curve->nodePositionChanged();
 }
 //eof
