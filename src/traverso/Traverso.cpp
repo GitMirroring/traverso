@@ -92,8 +92,6 @@ Traverso::Traverso(int &argc, char **argv )
     QCoreApplication::setApplicationName("Traverso");
     QCoreApplication::setOrganizationDomain("traverso-daw.org");
 
-    QGuiApplication::styleHints()->setColorScheme(Qt::ColorScheme::Light);
-
     qRegisterMetaType<TInformUserData>("InfoStruct");
     qRegisterMetaType<TTimeRef>("TTimeRef");
 
