@@ -25,6 +25,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QWidget>
 
 #include "ui_AudioDriverConfigPage.h"
+#if defined (Q_OS_MAC)
+#include "TCoreAudioDriver.h"
+#endif
 #include "ui_KeyboardConfigPage.h"
 #include "ui_BehaviorConfigPage.h"
 #include "ui_RecordingConfigPage.h"
@@ -86,6 +89,10 @@ private:
 	AudioDriverConfigPage* m_driverConfigPage;
 	AlsaDevicesPage* m_alsadevices;
 	PaDriverPage* m_portaudiodrivers;
+#if defined (Q_OS_MAC)
+	QComboBox* m_coreAudioInputDevice;
+	QComboBox* m_coreAudioOutputDevice;
+#endif
 	
 private slots:
 	void update_latency_combobox();
