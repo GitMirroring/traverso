@@ -213,7 +213,7 @@ int TJackDriver::start( )
         return -1;
     }
 
-    emit driverSetupMessage("Jack", tr("Succesfully connected to jack server %1!").arg(jack_get_version_string()), TAudioDevice::DRIVER_SETUP_SUCCESS);
+    emit driverSetupMessage("Jack", tr("Succesfully connected to jack server!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
     m_running = 1;
     return 1;

@@ -212,7 +212,7 @@ TARGET_LINK_LIBRARIES(traverso
 ELSE()
 TARGET_LINK_LIBRARIES(traverso
 	sndfile
-	fftw3-3
+	fftw3
 )
 ENDIF(WIN32)
 
