@@ -712,7 +712,7 @@ void TProject::prepare_audio_device(QDomDocument doc)
 #elif defined (Q_OS_MAC)
             audioDeviceSetup.set_card_device(config().get_property("Hardware", "pahostapi", "coreaudio").toString());
 #elif defined (Q_OS_WIN)
-            audioDeviceSetup.set_card_devce(config().get_property("Hardware", "pahostapi", "wmme").toString());
+            audioDeviceSetup.set_card_device(config().get_property("Hardware", "pahostapi", "wmme").toString());
 #endif
         }
     }
