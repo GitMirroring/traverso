@@ -87,24 +87,22 @@ void MessageWidgetPrivate::paintEvent(QPaintEvent* )
 		return;
 	}
 
-	QPixmap pm;
+    QPixmap pixmap;
+    painter.fillRect(0, 0, width(), height(), themer()->get_system_palette_color(QPalette::Base));
 
 
 	switch(m_infoStruct.type) {
 		case INFO 	:
-			pm = style()->standardIcon(QStyle::SP_MessageBoxInformation).pixmap(16, 16);
-			painter.fillRect(0, 0, width(), height(), QColor("#F4FFF4"));
+            pixmap = style()->standardIcon(QStyle::SP_MessageBoxInformation).pixmap(16, 16);
 			break;
 		case WARNING	:
-			pm = style()->standardIcon(QStyle::SP_MessageBoxWarning).pixmap(16, 16);
-			painter.fillRect(0, 0, width(), height(), QColor("#FDFFD1"));
+            pixmap = style()->standardIcon(QStyle::SP_MessageBoxWarning).pixmap(16, 16);
 			break;
 		case CRITICAL	:
-			pm = style()->standardIcon(QStyle::SP_MessageBoxCritical).pixmap(16, 16);
-			painter.fillRect(0, 0, width(), height(), QColor("#FFC8C8"));
+            pixmap = style()->standardIcon(QStyle::SP_MessageBoxCritical).pixmap(16, 16);
 			break;
 		default		:
-			pm = style()->standardIcon(QStyle::SP_MessageBoxInformation).pixmap(16, 16);
+            pixmap = style()->standardIcon(QStyle::SP_MessageBoxInformation).pixmap(16, 16);
 	}
 
 
@@ -118,8 +116,9 @@ void MessageWidgetPrivate::paintEvent(QPaintEvent* )
 
 	painter.setFont(themer()->get_font("MessageWidget:fontscale:log"));
 	painter.setRenderHint(QPainter::TextAntialiasing);
-	painter.drawText(begin, 16, m_infoStruct.message);
-	painter.drawPixmap(begin - 35, 3, pm);
+    painter.setPen(themer()->get_system_palette_color(QPalette::ButtonText));
+    painter.drawText(begin, 16, m_infoStruct.message);
+    painter.drawPixmap(begin - 35, 3, pixmap);
 }
 
 void MessageWidgetPrivate::resizeEvent(QResizeEvent* )
@@ -179,7 +178,7 @@ void MessageWidgetPrivate::dequeue_messagequeue( )
 void MessageWidgetPrivate::log(TInformUserData infostruct)
 {
 	QString time = "<td width=65>" + QTime::currentTime().toString().append(" :") + " </td>";
-	QString color;
+    QString color;
 	QString iconname;
 	
 	if (infostruct.type == INFO) {
@@ -195,7 +194,7 @@ void MessageWidgetPrivate::log(TInformUserData infostruct)
 
 	
 	QString image = "<td width=20><img src=\"" + iconname +"\"/></td>";
-	QString string = "<table width=100% " + color + " cellspacing=5><tr>" + 
+    QString string = "<table width=100%  cellspacing=5><tr>" +
 			image + time + "<td>" + infostruct.message + "</td></tr></table>";
 	if (m_log) {
 		m_log->append(string);

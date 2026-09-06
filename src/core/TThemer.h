@@ -47,6 +47,7 @@ public:
         void validate_loaded_theme();
 
 	QColor get_color(const QString& name) const;
+        QColor get_system_palette_color(QPalette::ColorRole colorRole) const;
         void set_new_theme_color(const QString& name, const QColor& color);
         QList<QString> get_colors();
 	QFont get_font(const QString& fontname) const;

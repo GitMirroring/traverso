@@ -50,6 +50,9 @@
   <property name="windowTitle">
    <string>Welcome dear User</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
     <widget class="QScrollArea" name="scrollArea">
@@ -94,8 +97,8 @@
          </property>
          <property name="styleSheet">
           <string notr="true">#mainFrame {
-    border-image: url(:/welcomebackground) 4;
     border-width: 4;
+   border-color: Highlighted;
 }
 </string>
          </property>

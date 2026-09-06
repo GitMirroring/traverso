@@ -36,7 +36,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QPainter>
 #include <QLineEdit>
 #include <QByteArray>
-#include <QPalette>
 #include <QPushButton>
 #include <QLabel>
 #include <QHBoxLayout>
@@ -544,16 +543,12 @@ void SystemValueBar::paintEvent(QPaintEvent* )
 	QRect rect = QRect(0, (height() - 15) / 2, width(), 15);
 	painter.drawRect(rect);
 	
-	painter.setBrush(color);
 	painter.setPen(Qt::NoPen);
 	float scalefactor = width() / m_max;
     rect = QRect(1, (height() - 15) / 2 + 1, width() - 2 - (int)(scalefactor* (m_max - value)), 13);
 	painter.drawRect(rect);
 
-    QPalette pal = palette();
-
-    QColor textColor = pal.color(QPalette::ButtonText);
-    painter.setPen(textColor);
+    painter.setPen(color);
 	painter.setFont(themer()->get_font("InfoWidget:fontscale:values"));
 	
 	if (m_introunding) {

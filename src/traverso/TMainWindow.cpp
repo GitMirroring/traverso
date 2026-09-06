@@ -1716,12 +1716,7 @@ TCommand* TMainWindow::show_track_finder()
 		return 0;
 	}
 
-	m_trackFinder->setStyleSheet("color: blue;"
-				 "background-color: yellow;"
-				 "selection-color: yellow;"
-				 "selection-background-color: blue;");
-
-	m_trackFinder->setText("Type to locate");
+    m_trackFinder->setText("Type to locate");
 	m_trackFinder->selectAll();
 
     m_trackFinderModel.clear();
@@ -1786,7 +1781,6 @@ void TMainWindow::track_finder_return_pressed()
 
 void TMainWindow::track_finder_show_initial_text()
 {
-	m_trackFinder->setStyleSheet("color: gray; background-color: white");
 	m_trackFinder->setText(tr("Track Finder"));
 }
 

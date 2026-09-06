@@ -119,7 +119,7 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
                         connect(action, &QAction::triggered, this, &TSessionTabWidget::close_current_project);
                 }
 
-                m_nameLabel->setStyleSheet("color: black; border: none; background-color: none; font-size: 12px;");
+                m_nameLabel->setStyleSheet("font-size: 12px;");
         }
 
         foreach(TSession* session, m_session->get_child_sessions()) {
@@ -144,7 +144,7 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
                 action->setIcon(QIcon(":/exit"));
                 connect(action, &QAction::triggered, this, &TSessionTabWidget::close_action_triggered);
 
-                m_nameLabel->setStyleSheet("color: black; border: none; background-color: none; font-size: 11px;");
+                m_nameLabel->setStyleSheet("font-size: 11px;");
         }
 
 
@@ -260,9 +260,9 @@ void TSessionTabWidget::session_transport_started()
                 QString stylesheet = "color: blue; border: none; margin-left: 0px; background-color: none;";
                 if (session == m_session) {
                         if (!m_session->is_child_session()) {
-                                m_nameLabel->setStyleSheet(stylesheet + " font: bold italic;");
+                                m_nameLabel->setStyleSheet(stylesheet + " font: bold;");
                         } else {
-                                m_nameLabel->setStyleSheet(stylesheet + " font-size: 11px; font: bold italic;");
+                                m_nameLabel->setStyleSheet(stylesheet + " font-size: 11px; font: bold;");
                         }
                 } else {
                         if (!m_session->is_child_session()) {
@@ -323,7 +323,7 @@ void TSessionTabWidget::leaveEvent( QEvent * )
 void TSessionTabWidget::enterEvent(QEnterEvent * /*e*/)
 {
         if (pm().get_project()->get_current_session() == m_session) {
-                m_arrowButton->setStyleSheet("background-color: lightblue; margin: 0; margin-right: 2;");
+            m_arrowButton->setStyleSheet("background-color: Highlighted; margin: 0; margin-right: 2;");
         }
 }
 
@@ -350,7 +350,7 @@ void TSessionTabWidget::project_current_session_changed(TSession *session)
 
         update_arrow_button_shortcut_and_icon();
 
-        QString stylesheet = "color: black; border: none; margin-left: 0px; background-color: none;";
+        QString stylesheet = "border: none; margin-left: 0px; background-color: none;";
         if (session == m_session) {
                 if (!m_session->is_child_session()) {
                         m_nameLabel->setStyleSheet(stylesheet + " font: bold italic;");

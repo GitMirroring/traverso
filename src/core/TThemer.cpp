@@ -375,6 +375,13 @@ QColor TThemer::get_color(const QString& name) const
 	}
 }
 
+QColor TThemer::get_system_palette_color(QPalette::ColorRole colorRole) const
+{
+    QPalette pal = qApp->palette();
+
+    return pal.color(colorRole);
+}
+
 // Returns the brush with the name "name". QPoints "start" and "end" are the
 // start and finalStop positions of linear gradients. If a solid colour is 
 // returned, both points are ignored.
