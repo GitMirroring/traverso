@@ -477,7 +477,7 @@ void CDWritingDialog::read_standard_output()
 				return;
 			}
 #if defined (Q_OS_WIN)
-			if (QString(data).contains(QRegExp("[0-9],[0-9],[0-9]"))) {
+			if (QString::fromUtf8(data).contains(QRegularExpression("[0-9],[0-9],[0-9]"))) {
 #else
 			if (data.contains("/dev/") || data.contains("dev=")) {
 #endif

@@ -194,13 +194,22 @@ TARGET_LINK_LIBRARIES(traverso
 	${VORBIS_ENC_LIB}
 	${FLAC_LIB}
 	# 	rt
-	dl
 )
 
 IF(WIN32)
 TARGET_LINK_LIBRARIES(traverso
-	sndfile-1
-	fftw3-3
+	sndfile
+	fftw3
+	mp3lame
+        brotlidec brotlicommon jbig lerc bz2 lzma deflate zstd tiff
+        flac mpg123 opus samplerate
+        harfbuzz graphite2 rpcrt4
+        winmm
+)
+ADD_CUSTOM_COMMAND(TARGET traverso POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:traverso>
+        $<TARGET_RUNTIME_DLLS:traverso>
+        COMMAND_EXPAND_LISTS
 )
 ELSEIF(APPLE)
 TARGET_LINK_LIBRARIES(traverso
@@ -208,13 +217,15 @@ TARGET_LINK_LIBRARIES(traverso
 	"-framework Accelerate"
 	sndfile
 	fftw3
+	dl
 )
-ELSE()
+ELSE(LINUX)
 TARGET_LINK_LIBRARIES(traverso
 	sndfile
 	fftw3
+	dl
 )
-ENDIF(WIN32)
+ENDIF()
 
 
 IF(HAVE_PORTAUDIO)

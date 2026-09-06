@@ -111,7 +111,7 @@ void FileWidget::dir_up_button_clicked()
     QDir dir(m_fileSystemModel->filePath(m_dirView->rootIndex()));
 	
 #if defined (Q_OS_WIN)
-	if (m_dirModel->filePath(m_dirView->rootIndex()) == "") {
+	if (m_fileSystemModel->filePath(m_dirView->rootIndex()) == "") {
 		return;
 	}
 	QString oldDir = dir.canonicalPath();

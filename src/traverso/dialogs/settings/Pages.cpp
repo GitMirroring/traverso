@@ -429,6 +429,14 @@ void AudioDriverConfigPage::driver_combobox_index_changed(QString driver)
         m_mainLayout->removeWidget(jackGroupBox);
     }
 
+    if (driver == "CoreAudio") {
+        coreAudioDeviceGroupBox->show();
+        m_mainLayout->insertWidget(m_mainLayout->indexOf(driverConfigGroupBox), coreAudioDeviceGroupBox);
+    } else {
+        coreAudioDeviceGroupBox->hide();
+        m_mainLayout->removeWidget(coreAudioDeviceGroupBox);
+    }
+
 #if defined (Q_OS_MAC)
     const bool coreAudio = driver == "CoreAudio";
     coreAudioDeviceGroupBox->setVisible(coreAudio);
