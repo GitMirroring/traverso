@@ -76,7 +76,7 @@ SystemResources::SystemResources(QWidget * parent)
     m_diskReadCpuUsage = new SystemValueBar(this);
     m_diskWriteCpuUsage = new SystemValueBar(this);
     m_icon = new QPushButton(this);
-    m_icon->setIcon(find_pixmap(":/memorysmall"));
+    m_icon->setIcon(TraversoDAW::Utils::find_pixmap(":/memorysmall"));
     m_icon->setFlat(true);
 	m_icon->setMaximumWidth(20);
 	m_icon->setFocusPolicy(Qt::NoFocus);
@@ -282,7 +282,7 @@ HDDSpaceInfo::HDDSpaceInfo(QWidget* parent )
 	: InfoWidget(parent)
 {
 	m_button = new QPushButton;
-	m_button->setIcon(find_pixmap(":/harddrivesmall"));
+    m_button->setIcon(TraversoDAW::Utils::find_pixmap(":/harddrivesmall"));
 	m_button->setFlat(true);
 	m_button->setFocusPolicy(Qt::NoFocus);
 	m_button->setEnabled(false);
@@ -494,7 +494,7 @@ SystemValueBar::SystemValueBar(QWidget * parent)
 
 void SystemValueBar::set_value(float value)
 {
-    if (fuzzy_compare(m_current, value)) {
+    if (TraversoDAW::Float::fuzzy_compare(m_current, value)) {
 		return;
 	}
 	

@@ -60,7 +60,7 @@ void TCurveNode::set_when_and_value_internal(double when, double value)
     Q_ASSERT( ! std::isnan(when));
     Q_ASSERT( ! std::isnan(value));
 
-    if (fuzzy_compare(m_when, when) && fuzzy_compare(m_value, value)) {
+    if (TraversoDAW::Float::fuzzy_compare(m_when, when) && TraversoDAW::Float::fuzzy_compare(m_value, value)) {
         return;
     }
     m_when = when;

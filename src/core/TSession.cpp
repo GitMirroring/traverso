@@ -268,7 +268,7 @@ qreal TSession::get_hzoom() const
 		return m_parentSession->get_hzoom();
 	}
 	int highbit;
-    return nearest_power_of_two(ulong(m_hzoom), highbit);
+    return TraversoDAW::Utils::nearest_power_of_two(ulong(m_hzoom), highbit);
 }
 
 QPoint TSession::get_scrollbar_xy()
@@ -326,7 +326,7 @@ void TSession::set_hzoom( qreal hzoom )
 	qreal old_hzoom = get_hzoom();
 	m_hzoom = hzoom;
 
-    if (!fuzzy_compare(old_hzoom, get_hzoom())) {
+    if (!TraversoDAW::Float::fuzzy_compare(old_hzoom, get_hzoom())) {
 		emit hzoomChanged();
 	}
 }

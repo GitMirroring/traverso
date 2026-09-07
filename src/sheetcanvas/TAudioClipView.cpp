@@ -209,7 +209,7 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
     // Paint a pixmap if the clip is locked
     if (m_clip->is_locked()) {
         int center = (int)(m_clip->get_length() / (2 * m_sv->timeref_scalefactor));
-        painter->drawPixmap(center - 8, m_height - 20, find_pixmap(":/lock"));
+        painter->drawPixmap(center - 8, m_height - 20, TraversoDAW::Utils::find_pixmap(":/lock"));
     }
 
     painter->restore();
@@ -301,7 +301,7 @@ void TAudioClipView::draw_tile(QPainter* painter, qreal xstart, int pixelcount)
         auto fadeIn = m_clip->get_fade_in();
         auto fadeOut = m_clip->get_fade_out();
 
-        if (clipCurve && (!clipCurve->is_trivial() || !fuzzy_equals_1(clipCurve->get_trivial_gain()))) {
+        if (clipCurve && (!clipCurve->is_trivial() || !TraversoDAW::Float::fuzzy_equals_1(clipCurve->get_trivial_gain()))) {
             // apply the clip's gain curve to curveMixdown, if it exists
             hasCurve = true;
             // this is the first gain curve, so just replace the original 1.0 values
@@ -316,7 +316,7 @@ void TAudioClipView::draw_tile(QPainter* painter, qreal xstart, int pixelcount)
                                         curveMixdown, width);
             }
         }
-        if (trackGainCurve && (!trackGainCurve->is_trivial() || !fuzzy_equals_1(trackGainCurve->get_trivial_gain()))) {
+        if (trackGainCurve && (!trackGainCurve->is_trivial() || !TraversoDAW::Float::fuzzy_equals_1(trackGainCurve->get_trivial_gain()))) {
             // apply the cltrack's gain curve to curveMixdown, if it exists
             hasCurve = true;
             TAudioBuffer trackMixdown(width);

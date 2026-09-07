@@ -72,7 +72,7 @@ void TTrack::get_state(QDomDocument& doc, QDomElement& node, bool istemplate)
     if (! istemplate ) {
         node.setAttribute("id", get_id());
     } else {
-        node.setAttribute("id", create_id());
+        node.setAttribute("id", TraversoDAW::Utils::create_id());
     }
     node.setAttribute("name", m_name);
     node.setAttribute("pan", m_pan);

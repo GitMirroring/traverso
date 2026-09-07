@@ -27,12 +27,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class FPU {
   private:
-	enum Flags {
-		HasFlushToZero = 0x1,
-		HasDenormalsAreZero = 0x2,
-		HasSSE = 0x4,
-		HasSSE2 = 0x8
-	};
+    enum Flags {
+        HasFlushToZero = 0x1,
+        HasDenormalsAreZero = 0x2,
+        HasSSE = 0x4,
+        HasSSE2 = 0x8
+    };
 
   public:
 	FPU ();

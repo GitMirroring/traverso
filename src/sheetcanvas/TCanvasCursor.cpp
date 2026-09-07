@@ -134,7 +134,7 @@ void TCanvasCursor::set_cursor_shape(const QString &shape, int alignment)
 
     if (shape.size() > 1)
     {
-        m_pixmap = find_pixmap(shape);
+        m_pixmap = TraversoDAW::Utils::find_pixmap(shape);
         if (m_pixmap.isNull())
         {
             m_shape = "";

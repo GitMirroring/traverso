@@ -210,7 +210,7 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
 
 int TCurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer)
 {
-    if (m_guicurve->get_nodes().size() == 1 && fuzzy_equals_1(m_guicurve->get_nodes().first()->get_value())) {
+    if (m_guicurve->get_nodes().size() == 1 && TraversoDAW::Float::fuzzy_equals_1(m_guicurve->get_nodes().first()->get_value())) {
         return 0;
     }
 

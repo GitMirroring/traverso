@@ -62,8 +62,8 @@ ProjectManagerDialog::ProjectManagerDialog( QWidget * parent )
 	
 	set_project(pm().get_project());
 	
-	undoButton->setIcon(QIcon(find_pixmap(":/undo")));
-	redoButton->setIcon(QIcon(find_pixmap(":/redo")));
+    undoButton->setIcon(QIcon(TraversoDAW::Utils::find_pixmap(":/undo")));
+    redoButton->setIcon(QIcon(TraversoDAW::Utils::find_pixmap(":/redo")));
 	
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 
@@ -86,7 +86,7 @@ void ProjectManagerDialog::set_project(TProject* project)
         connect(m_project->get_history_stack(), &QUndoStack::undoTextChanged, this, &ProjectManagerDialog::undo_text_changed);
         setWindowTitle("Manage Project - " + m_project->get_title());
 		descriptionTextEdit->setText(m_project->get_description());
-        createdDateLabel->setText("Created on: " + extract_date_time(m_project->get_id()).toString());
+        createdDateLabel->setText("Created on: " + TraversoDAW::Utils::extract_date_time(m_project->get_id()).toString());
 		lineEditTitle->setText(m_project->get_title());
 		lineEditId->setText(m_project->get_discid());
 		lineEditUPC->setText(m_project->get_upc_ean());

@@ -603,7 +603,7 @@ int TAlsaDriver::configure_stream(const QString &device_name,
         return -1;
     }
 
-    if (!is_power_of_two(m_framesPerCycle)) {
+    if (!TraversoDAW::Utils::is_power_of_two(m_framesPerCycle)) {
         printf("Traverso: frames must be a power of two (64, 512, 1024, ...)\n");
         return -1;
     }

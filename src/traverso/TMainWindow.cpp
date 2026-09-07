@@ -753,7 +753,7 @@ void TMainWindow::create_menus( )
 	menu->installEventFilter(this);
 
 	action = menu->addAction(tr("&New..."));
-	action->setIcon(find_pixmap(":/new"));
+    action->setIcon(TraversoDAW::Utils::find_pixmap(":/new"));
 	action->setShortcuts(QKeySequence::New);
 	connect(action, &QAction::triggered, this, &TMainWindow::show_newproject_dialog);
 

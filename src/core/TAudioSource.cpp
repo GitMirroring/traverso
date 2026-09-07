@@ -41,7 +41,7 @@ TAudioSource::TAudioSource(QString  dir, const QString& name)
 {
 	PENTERCONS;
 	m_fileName = m_dir + m_name;
-	m_id = create_id();
+    m_id = TraversoDAW::Utils::create_id();
 
     m_rtBufferSlotsQueue = nullptr;
     m_freeBufferSlotsQueue = nullptr;

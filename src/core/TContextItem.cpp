@@ -78,7 +78,7 @@ QUndoGroup* TContextItem::get_undogroup()
 qint64 TContextItem::get_id()
 {
     if (m_id == 0) {
-        m_id = create_id();
+        m_id = TraversoDAW::Utils::create_id();
     }
     return m_id;
 }

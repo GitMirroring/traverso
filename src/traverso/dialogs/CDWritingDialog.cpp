@@ -63,7 +63,7 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	m_writingState = NO_STATE;
 	m_lastSheetExported = -1;
 	
-	refreshButton->setIcon(QIcon(find_pixmap(":/refresh-16")));
+    refreshButton->setIcon(QIcon(TraversoDAW::Utils::find_pixmap(":/refresh-16")));
 	refreshButton->setMaximumHeight(26);
 	refreshButton->setMaximumWidth(30);
 	

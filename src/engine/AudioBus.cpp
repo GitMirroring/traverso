@@ -65,7 +65,7 @@ AudioBus::AudioBus(const TAudioBusConfiguration& config)
 
         // id was never created if it == -1, so create a unique one now!
         if (m_id == -1) {
-                m_id = create_id();
+                m_id = TraversoDAW::Utils::create_id();
         }
 
         m_isInternalBus = config.isInternalBus;

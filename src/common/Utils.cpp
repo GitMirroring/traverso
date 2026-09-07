@@ -32,7 +32,7 @@
 #include <random>
 #include "TTimeRef.h"
 
-qint64 create_id( )
+qint64 TraversoDAW::Utils::create_id( )
 {
 	int r = rand();
 	QDateTime time = QDateTime::currentDateTime();
@@ -44,13 +44,13 @@ qint64 create_id( )
 	return id;
 }
 
-QDateTime extract_date_time(qint64 id)
+QDateTime TraversoDAW::Utils::extract_date_time(qint64 id)
 {
     QDateTime time = QDateTime::fromSecsSinceEpoch(id / 1000000000);
     return time;
 }
 
-QPixmap find_pixmap ( const QString & pixname )
+QPixmap TraversoDAW::Utils::find_pixmap ( const QString & pixname )
 {
 	QPixmap pixmap;
 
@@ -64,7 +64,7 @@ QPixmap find_pixmap ( const QString & pixname )
 }
 
 
-QStringList find_qm_files()
+QStringList TraversoDAW::Utils::find_qm_files()
 {
 	QDir dir(":/translations");
 	QStringList fileNames = dir.entryList(QStringList("*.qm"), QDir::Files, QDir::Name);
@@ -76,7 +76,7 @@ QStringList find_qm_files()
 	return fileNames;
 }
 
-QString language_name_from_qm_file(const QString& lang)
+QString TraversoDAW::Utils::language_name_from_qm_file(const QString& lang)
 {
 	QTranslator translator;
     if (translator.load(lang)) {
@@ -86,7 +86,7 @@ QString language_name_from_qm_file(const QString& lang)
     return QString("Failed to load language name from qm file");
 }
 
-double TUtils::randomNumberBetween(int start, int end)
+double TraversoDAW::Utils::randomNumberBetween(int start, int end)
 {
     std::mt19937_64 rng;
     // initialize the random number generator with time-dependent seed

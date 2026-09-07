@@ -257,7 +257,7 @@ QDomNode TSheet::get_state(QDomDocument doc, bool istemplate)
     if (! istemplate) {
         sheetNode.setAttribute("id", get_id());
     } else {
-        sheetNode.setAttribute("id", create_id());
+        sheetNode.setAttribute("id", TraversoDAW::Utils::create_id());
     }
 
     QDomElement properties = doc.createElement("Properties");

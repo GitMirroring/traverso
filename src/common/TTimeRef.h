@@ -11,7 +11,7 @@
 class TTimeRef {
 
 public:
-    // Universal samplerate for the frequences 22050, 32000, 44100, 88200, 96000 and 192000 Hz
+    // Universal samplerate for the frequences 22050, 8000, 32000, 44100, 48000, 88200, 96000 and 192000 Hz
     static const qint64 UNIVERSAL_SAMPLE_RATE = 28224000;
     static const qint64 ONE_HOUR_UNIVERSAL_SAMPLE_RATE = 101606400000;
     static const qint64 ONE_MINUTE_UNIVERSAL_SAMPLE_RATE = 1693440000;
@@ -157,7 +157,7 @@ public:
     }
 
     friend qreal operator/(const TTimeRef& left, double right) {
-        Q_ASSERT(!fuzzy_equals_0(right));
+        Q_ASSERT(!TraversoDAW::Float::fuzzy_equals_0(right));
         return qreal(left.m_universalFrame) / qint64(right);
     }
 

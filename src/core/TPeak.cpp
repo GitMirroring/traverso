@@ -234,7 +234,7 @@ int TPeak::calculate_peaks(int chan,
     // Macro view mode
     if (framesPerPeak >= 64) {
         int highbit;
-        unsigned long nearestpow2 = nearest_power_of_two(qRound(framesPerPeak), highbit);
+        unsigned long nearestpow2 = TraversoDAW::Utils::nearest_power_of_two(qRound(framesPerPeak), highbit);
         if (nearestpow2 == 0) {
             return NO_PEAKDATA_FOUND;
         }

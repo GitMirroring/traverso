@@ -138,7 +138,7 @@ void TExportSpecification::set_channel_count(uint channelCount)
 void TExportSpecification::set_block_size(uint blockSize)
 {
     Q_ASSERT(blockSize > 0);
-    Q_ASSERT(is_power_of_two(blockSize));
+    Q_ASSERT(TraversoDAW::Utils::is_power_of_two(blockSize));
 
     m_blockSize = blockSize;
     update_renderbuffer_size();

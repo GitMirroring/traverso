@@ -690,8 +690,8 @@ AppearenceConfigPage::AppearenceConfigPage(QWidget * parent)
         m_colorModifierDialog = 0;
 
     languageComboBox->addItem(tr("Default Language"), "");
-    foreach(const QString &lang, find_qm_files()) {
-        languageComboBox->addItem(language_name_from_qm_file(lang), lang);
+    foreach(const QString &lang, TraversoDAW::Utils::find_qm_files()) {
+        languageComboBox->addItem(TraversoDAW::Utils::language_name_from_qm_file(lang), lang);
     }
 
     load_config();

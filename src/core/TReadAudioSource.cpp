@@ -122,7 +122,7 @@ void TReadAudioSource::private_init()
 	m_error = 0;
     m_resampleAudioReader = nullptr;
 
-    m_aboutOneToFourSecondsTime = TTimeRef::UNIVERSAL_SAMPLE_RATE * (TUtils::randomNumberBetween(0, 3) + 1.0);
+    m_aboutOneToFourSecondsTime = TTimeRef::UNIVERSAL_SAMPLE_RATE * (TraversoDAW::Utils::randomNumberBetween(0, 3) + 1.0);
 }
 
 TReadAudioSource::~TReadAudioSource()

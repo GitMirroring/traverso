@@ -47,7 +47,7 @@ AudioChannel::AudioChannel(const QString& name, uint channelNumber, int type, nf
     m_monitoring = true;
     m_latency = 0;
     if (id == 0) {
-        m_id = create_id();
+        m_id = TraversoDAW::Utils::create_id();
     } else {
         m_id = id;
     }

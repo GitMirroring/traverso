@@ -153,7 +153,7 @@ int TCurve::process(
 	if (endlocation > qint64(get_range())) {
         audio_sample_t gain = audio_sample_t((static_cast<TCurveNode*>(m_nodes.last()))->get_value()) * makeupgain;
 
-		if (fuzzy_equals_1(gain)) {
+        if (TraversoDAW::Float::fuzzy_equals_1(gain)) {
 			return 0;
 		}
 
@@ -581,7 +581,7 @@ void TCurve::set_range(double when)
 	
     TCurveNode* lastnode = m_nodes.last();
 	
-    if (fuzzy_compare(lastnode->get_when(), when)) {
+    if (TraversoDAW::Float::fuzzy_compare(lastnode->get_when(), when)) {
 // 		printf("Curve::set_range: new range == current range!\n");
 		return;
 	}
@@ -597,7 +597,7 @@ void TCurve::set_range(double when)
 	
     double factor = when / lastnode->get_when();
 	
-	if (fuzzy_equals_1(factor))
+    if (TraversoDAW::Float::fuzzy_equals_1(factor))
 		return;
 	
 	x_scale (factor);
@@ -641,7 +641,7 @@ TCommand* TCurve::add_node(TCurveNode* node, bool historable)
 	PENTER2;
 
     for(TCurveNode* cn = m_nodes.first(); cn != nullptr; cn = cn->next) {
-        if (fuzzy_compare(node->get_when(), cn->get_when()) && fuzzy_compare(node->get_value(), cn->get_value())) {
+        if (TraversoDAW::Float::fuzzy_compare(node->get_when(), cn->get_when()) && TraversoDAW::Float::fuzzy_compare(node->get_value(), cn->get_value())) {
 			tInformUser().warning(tr("There is allready a node at this exact position, not adding a new node"));
 			delete node;
             node = nullptr;

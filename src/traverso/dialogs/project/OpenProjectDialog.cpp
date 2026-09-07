@@ -137,7 +137,7 @@ void OpenProjectDialog::update_projects_list()
 			QString html = "<html><head></head><body>Project: " + title + "<br /><br />";
 			html += tr("Description:") + "<br />";
 			html += description + "<br /><br />";
-			html += tr("Created on:") + " " + extract_date_time(id).toString() + "<br />";
+            html += tr("Created on:") + " " + TraversoDAW::Utils::extract_date_time(id).toString() + "<br />";
 			html += "</body></html>";
 			item->setToolTip(0, html);
 		}
