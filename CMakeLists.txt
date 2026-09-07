@@ -19,6 +19,7 @@ SET (VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}${VERSION_SUFFIX}
 if(APPLE)
     set(DEFAULT_WANT_ALSA OFF)
     set(DEFAULT_WANT_JACK OFF)
+    set(DEFAULT_WANT_PIPEWIRE OFF)
     set(DEFAULT_WANT_PORTAUDIO OFF)
     set(DEFAULT_WANT_COREAUDIO ON)
     set(DEFAULT_WANT_LV2 ON)
@@ -26,6 +27,7 @@ if(APPLE)
 elseif(WIN32)
     set(DEFAULT_WANT_ALSA OFF)
     set(DEFAULT_WANT_JACK OFF)
+    set(DEFAULT_WANT_PIPEWIRE OFF)
     set(DEFAULT_WANT_PORTAUDIO ON)
     set(DEFAULT_WANT_COREAUDIO OFF)
     set(DEFAULT_WANT_LV2 OFF)
@@ -33,6 +35,7 @@ elseif(WIN32)
 else()
     set(DEFAULT_WANT_ALSA ON)
     set(DEFAULT_WANT_JACK ON)
+    set(DEFAULT_WANT_PIPEWIRE OFF)
     set(DEFAULT_WANT_PORTAUDIO OFF)
     set(DEFAULT_WANT_PULSEAUDIO ON)
     set(DEFAULT_WANT_COREAUDIO OFF)
@@ -70,6 +73,7 @@ elseif(WIN32)
 endif()
 
 option(WANT_JACK "Include JACK Audio Connection Kit support" ${DEFAULT_WANT_JACK})
+option(WANT_PIPEWIRE "Include PipeWire support" ${DEFAULT_WANT_PIPEWIRE})
 option(WANT_ALSA "Include ALSA support" ${DEFAULT_WANT_ALSA})
 option(WANT_PORTAUDIO "Include PortAudio support" ${DEFAULT_WANT_PORTAUDIO})
 option(WANT_PULSEAUDIO "Include PulseAudio support" ${DEFAULT_WANT_PULSEAUDIO})
@@ -433,6 +437,26 @@ IF(UNIX)
                 SET(HAVE_JACK FALSE)
         ENDIF(WANT_JACK)
 
+        IF(WANT_PIPEWIRE)
+                IF(PKG_CONFIG_FOUND)
+                    PKG_CHECK_MODULES(PIPEWIRE libpipewire-0.3)
+                    IF(PIPEWIRE_FOUND)
+                            LIST (APPEND TRAVERSO_DEFINES -DPIPEWIRE_SUPPORT)
+                            MESSAGE("-- PipeWire Library Found OK")
+                            SET(HAVE_PIPEWIRE TRUE)
+                            SET(PIPEWIRE_LIBS ${PIPEWIRE_LIBRARIES})
+                            LIST(APPEND PIPEWIRE_LIB_DIR ${PIPEWIRE_LIBDIR} ${PIPEWIRE_LIBRARY_DIRS})
+                            LIST(APPEND PIPEWIRE_INC_DIR ${PIPEWIRE_INCLUDEDIR} ${PIPEWIRE_INCLUDE_DIRS})
+                            INCLUDE_DIRECTORIES(${PIPEWIRE_INCLUDE_DIRS})
+                    ELSE(PIPEWIRE_FOUND)
+                            MESSAGE(FATAL_ERROR "PipeWire support requested, but libpipewire-0.3 could not be found!\nPlease install libpipewire-0.3 development package, remove CMakeCache.txt and run cmake again")
+                    ENDIF(PIPEWIRE_FOUND)
+                ENDIF(PKG_CONFIG_FOUND)
+        ELSE(WANT_PIPEWIRE)
+                MESSAGE("-- PipeWire support: Disabled")
+                SET(HAVE_PIPEWIRE FALSE)
+        ENDIF(WANT_PIPEWIRE)
+
 
         IF(NOT WANT_DEBUG AND DETECT_HOST_CPU_FEATURES)
 #		Detect the architecture we are compiling on
@@ -639,6 +663,7 @@ Traverso ${VERSION} Configuration Summary:
   Building in mode      : ${CMAKE_BUILD_TYPE}
   ALSA support          : ${HAVE_ALSA}
   Jack support          : ${HAVE_JACK}
+  PipeWire support      : ${HAVE_PIPEWIRE}
   PortAudio support     : ${HAVE_PORTAUDIO}
   CoreAudio support     : ${HAVE_COREAUDIO}
   SLV2 support          : ${SLV2OPTIONS}

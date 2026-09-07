@@ -58,6 +58,10 @@ class TJackDriver;
 class TCoreAudioDriver;
 #endif
 
+#if defined (PIPEWIRE_SUPPORT)
+class TPipeWireDriver;
+#endif
+
 using namespace fastdelegate;
 
 typedef FastDelegate1<nframes_t, int> TAudioDriverReadWriteCallBack;
@@ -163,6 +167,9 @@ private:
     friend class TAudioDeviceThread;
 #if defined (COREAUDIO_SUPPORT)
     friend class TCoreAudioDriver;
+#endif
+#if defined (PIPEWIRE_SUPPORT)
+    friend class TPipeWireDriver;
 #endif
     TRealTimeLinkedList<TAudioDeviceClient*> m_clients;
 

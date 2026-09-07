@@ -165,6 +165,8 @@ void AudioDriverConfigPage::reset_default_config()
 #elif defined (JACK_SUPPORT)
     if (libjack_is_present)
         config().set_property("Hardware", "drivertype", "Jack");
+#elif defined (PIPEWIRE_SUPPORT)
+    config().set_property("Hardware", "drivertype", "PipeWire");
 #else
     config().set_property("Hardware", "drivertype", "Dummy");
 #endif

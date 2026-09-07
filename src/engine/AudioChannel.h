@@ -83,6 +83,7 @@ private:
     friend class TPulseAudioDriver;
     friend class TAudioDriver;
     friend class TCoreAudioDriver;
+    friend class TPipeWireDriver;
 
     void read_from_hardware_port(audio_sample_t* buf, nframes_t nframes);
 

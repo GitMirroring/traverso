@@ -45,6 +45,10 @@ RELAYTOOL_JACK
 #include "TCoreAudioDriver.h"
 #endif
 
+#if defined (PIPEWIRE_SUPPORT)
+#include "TPipeWireDriver.h"
+#endif
+
 
 #include "TAudioDriver.h"
 #include "TAudioDeviceClient.h"
@@ -175,6 +179,10 @@ TAudioDevice::TAudioDevice()
 
 #if defined (COREAUDIO_SUPPORT)
     m_availableDrivers << "CoreAudio";
+#endif
+
+#if defined (PIPEWIRE_SUPPORT)
+    m_availableDrivers << "PipeWire";
 #endif
 
 #if defined (JACK_SUPPORT)
@@ -408,6 +416,21 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
             jackShutDownChecker.start(500);
         }
 #endif
+
+#if defined (PIPEWIRE_SUPPORT)
+        if (ads.get_driver_type() == "PipeWire") {
+            TPipeWireDriver* pwDriver = qobject_cast<TPipeWireDriver*>(m_driver);
+            if (pwDriver) {
+                connect(pwDriver, &TPipeWireDriver::pipewireShutDown, this, [this]() {
+                    printf("pipewire shutdown detected\n");
+                    driver_setup_message("PipeWire", tr("The PipeWire server has been shutdown!"), CRITICAL);
+                    delete m_driver;
+                    m_driver = nullptr;
+                    set_parameters(m_fallBackSetup);
+                }, Qt::QueuedConnection);
+            }
+        }
+#endif
     }
 
     emit started();
@@ -499,6 +522,13 @@ void TAudioDevice::create_driver()
     }
 #endif
 
+#if defined (PIPEWIRE_SUPPORT)
+    if (driverType == "PipeWire") {
+        m_driver = new TPipeWireDriver(this);
+        return;
+    }
+#endif
+
 
     if (driverType == "Dummy") {
         printf("AudioDevice: Creating Dummy Driver...\n");        
@@ -528,6 +558,17 @@ int TAudioDevice::setup_driver()
             }
             return 1;
         }
+    }
+#endif
+
+#if defined (PIPEWIRE_SUPPORT)
+    if (driverType == "PipeWire") {
+        TPipeWireDriver* pwDriver = qobject_cast<TPipeWireDriver*>(m_driver);
+        if (pwDriver && pwDriver->setup(capture, playback, cardDevice) < 0) {
+            driver_setup_message("AudioDevice", tr("Failed to setup the PipeWire Driver"), DRIVER_SETUP_FAILURE);
+            return -1;
+        }
+        return 1;
     }
 #endif
 
@@ -1038,6 +1079,12 @@ TTimeRef TAudioDevice::get_buffer_latency() const
 void TAudioDevice::set_driver_properties(QHash< QString, QVariant > & properties)
 {
     m_driverProperties = properties;
+#if defined (PIPEWIRE_SUPPORT)
+    TPipeWireDriver* pwDriver = qobject_cast<TPipeWireDriver*>(m_driver);
+    if (pwDriver) {
+        pwDriver->update_config();
+    }
+#endif
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
         TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
