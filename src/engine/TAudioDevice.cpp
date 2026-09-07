@@ -42,7 +42,7 @@ RELAYTOOL_JACK
 #endif
 
 #if defined (COREAUDIO_SUPPORT)
-#include "CoreAudioDriver.h"
+#include "TCoreAudioDriver.h"
 #endif
 
 
@@ -337,6 +337,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
     m_ditherShape = ads.get_dither_shape();
     //        if (!(ads.driverType == "Dummy")) {
     m_setup = ads;
+    m_driverType = m_setup.get_driver_type();
     //        }
 
 
@@ -351,7 +352,8 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
             m_driverType = m_setup.get_driver_type();
             m_driver->attach();
         } else {
-            printf("AudioDevice:set_parameters: Failed to setup driver %s, falling back to Dummy Driver\n", QS_C(m_driverType));
+                 printf("AudioDevice:set_parameters: Failed to setup driver %s, falling back to Dummy Driver\n",
+                     QS_C(m_setup.get_driver_type()));
             delete m_driver;
             m_driver = nullptr;
             set_parameters(m_fallBackSetup);
@@ -492,7 +494,7 @@ void TAudioDevice::create_driver()
 
 #if defined (COREAUDIO_SUPPORT)
     if (driverType == "CoreAudio") {
-        m_driver = new CoreAudioDriver(this, m_rate, m_bufferSize);
+        m_driver = new TCoreAudioDriver(this);
         return;
     }
 #endif
@@ -565,9 +567,9 @@ int TAudioDevice::setup_driver()
 
 #if defined (COREAUDIO_SUPPORT)
     if (driverType == "CoreAudio") {
-        CoreAudioDriver* coreAudioDriver = qojbect_cast<CoreAudioDriver*>(m_driver);
-        if (coreAudioDriver && coreAudiodriver->setup(capture, playback, cardDevice) < 0) {
-            message(tr("Audiodevice: Failed to create the CoreAudio Driver"), DRIVER_SETUP_FAILURE);
+        TCoreAudioDriver* coreAudioDriver = dynamic_cast<TCoreAudioDriver*>(m_driver);
+        if (coreAudioDriver && coreAudioDriver->setup(capture, playback, cardDevice) < 0) {
+            driver_setup_message("CoreAudio", tr("Failed to initialize the CoreAudio driver"), DRIVER_SETUP_FAILURE);
             return -1;
         }
         return 1;

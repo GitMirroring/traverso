@@ -55,7 +55,7 @@ class TJackDriver;
 #endif
 
 #if defined (COREAUDIO_SUPPORT)
-class CoreAudioDriver;
+class TCoreAudioDriver;
 #endif
 
 using namespace fastdelegate;
@@ -162,7 +162,7 @@ private:
     friend class TPulseAudioDriver;
     friend class TAudioDeviceThread;
 #if defined (COREAUDIO_SUPPORT)
-    friend class CoreAudioDriver;
+    friend class TCoreAudioDriver;
 #endif
     TRealTimeLinkedList<TAudioDeviceClient*> m_clients;
 

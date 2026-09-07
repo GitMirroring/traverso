@@ -21,6 +21,7 @@
 #include <gdither_types_internal.h>
 #include <gdither.h>
 #include <noise.h>
+#include "defines.h"
 
 /* this monstrosity is necessary to get access to lrintf() and random().
    whoever is writing the glibc headers <cmath> and <cstdlib> should be

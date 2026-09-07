@@ -81,7 +81,7 @@ enum PortFlags {
 };
 
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
 #  include <time.h>
 #ifndef _TIMEVAL_DEFINED /* also in winsock[2].h */
 #define _TIMEVAL_DEFINED
@@ -95,7 +95,7 @@ struct timeval {
 #endif
 
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
 
 #include <windows.h>
 

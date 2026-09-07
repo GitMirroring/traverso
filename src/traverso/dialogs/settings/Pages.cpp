@@ -44,6 +44,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 #include "TShortCutManager.h"
 #include <QDomDocument>
+#include <QUrl>
 
 
 /****************************************/
@@ -77,6 +78,11 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
     m_alsadevices->layout()->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->addWidget(m_alsadevices);
 
+#if defined (Q_OS_MAC)
+    m_coreAudioInputDevice = coreAudioInputDeviceComboBox;
+    m_coreAudioOutputDevice = coreAudioOutputDeviceComboBox;
+#endif
+
         connect(driverCombo, &QComboBox::currentTextChanged, this, &AudioDriverConfigPage::driver_combobox_index_changed);
     connect(m_alsadevices->periodsCombo, &QComboBox::currentIndexChanged, this, [this]() {
             update_latency_combobox();
@@ -90,6 +96,9 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
 #if defined (PORTAUDIO_SUPPORT)
         connect(m_portaudiodrivers->driverCombo, &QComboBox::currentIndexChanged, this, &AudioDriverConfigPage::portaudio_host_api_combobox_index_changed);
 #endif
+
+    update_latency_combobox();
+    
     load_config();
 }
 
@@ -117,6 +126,13 @@ void AudioDriverConfigPage::save_config()
 
     config().set_property("Hardware", "capture", capture);
     config().set_property("Hardware", "playback", playback);
+
+#if defined (Q_OS_MAC)
+    config().set_property("Hardware", "coreaudioinput",
+                          m_coreAudioInputDevice->currentData());
+    config().set_property("Hardware", "coreaudiooutput",
+                          m_coreAudioOutputDevice->currentData());
+#endif
 
 
 #if defined (ALSA_SUPPORT)
@@ -193,6 +209,27 @@ void AudioDriverConfigPage::load_config( )
 
     driver_combobox_index_changed(driverType);
 
+#if defined (Q_OS_MAC)
+    m_coreAudioInputDevice->clear();
+    m_coreAudioOutputDevice->clear();
+    m_coreAudioInputDevice->addItem(tr("System default"), QStringLiteral("default"));
+    m_coreAudioOutputDevice->addItem(tr("System default"), QStringLiteral("default"));
+    for (const QString& device : TCoreAudioDriver::devices_info(true)) {
+        const QStringList fields = device.split(QStringLiteral("###"));
+        m_coreAudioInputDevice->addItem(fields.at(0), fields.at(1));
+    }
+    for (const QString& device : TCoreAudioDriver::devices_info(false)) {
+        const QStringList fields = device.split(QStringLiteral("###"));
+        m_coreAudioOutputDevice->addItem(fields.at(0), fields.at(1));
+    }
+    int coreAudioIndex = m_coreAudioInputDevice->findData(
+        config().get_property("Hardware", "coreaudioinput", "default"));
+    if (coreAudioIndex >= 0) m_coreAudioInputDevice->setCurrentIndex(coreAudioIndex);
+    coreAudioIndex = m_coreAudioOutputDevice->findData(
+        config().get_property("Hardware", "coreaudiooutput", "default"));
+    if (coreAudioIndex >= 0) m_coreAudioOutputDevice->setCurrentIndex(coreAudioIndex);
+#endif
+
     int buffersizeIndex = TAudioDeviceSetup::get_buffer_sizes_list().indexOf(buffersize);
     int samplerateIndex = rateComboBox->findData(samplerate);
 
@@ -209,6 +246,8 @@ void AudioDriverConfigPage::load_config( )
     }
 
     int index;
+    
+    (void)index;
 
 #if defined (ALSA_SUPPORT)
     m_alsadevices->devicesCombo->clear();
@@ -332,6 +371,22 @@ void AudioDriverConfigPage::restart_driver_button_clicked()
     }
 #endif
 
+#if defined (Q_OS_MAC)
+    if (driver == "CoreAudio") {
+        const QString input = m_coreAudioInputDevice->currentData().toString();
+        const QString output = m_coreAudioOutputDevice->currentData().toString();
+        if (duplexComboBox->currentIndex() == 0) {
+            audioDeviceSetup.set_card_device(
+                QString::fromLatin1(QUrl::toPercentEncoding(input)) + "::" +
+                QString::fromLatin1(QUrl::toPercentEncoding(output)));
+        } else if (duplexComboBox->currentIndex() == 1) {
+            audioDeviceSetup.set_card_device(output);
+        } else {
+            audioDeviceSetup.set_card_device(input);
+        }
+    }
+#endif
+
     audioDeviceSetup.set_driver_type(driver);
     audiodevice().set_parameters(audioDeviceSetup);
 
@@ -373,6 +428,19 @@ void AudioDriverConfigPage::driver_combobox_index_changed(QString driver)
         jackGroupBox->hide();
         m_mainLayout->removeWidget(jackGroupBox);
     }
+
+    if (driver == "CoreAudio") {
+        coreAudioDeviceGroupBox->show();
+        m_mainLayout->insertWidget(m_mainLayout->indexOf(driverConfigGroupBox), coreAudioDeviceGroupBox);
+    } else {
+        coreAudioDeviceGroupBox->hide();
+        m_mainLayout->removeWidget(coreAudioDeviceGroupBox);
+    }
+
+#if defined (Q_OS_MAC)
+    const bool coreAudio = driver == "CoreAudio";
+    coreAudioDeviceGroupBox->setVisible(coreAudio);
+#endif
 }
 
 #if defined (PORTAUDIO_SUPPORT)
