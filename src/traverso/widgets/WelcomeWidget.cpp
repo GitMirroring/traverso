@@ -37,7 +37,6 @@ WelcomeWidget::WelcomeWidget(QWidget *parent)
         : QWidget(parent)
 {
         setupUi(this);
-        welcomeTextBrowser->setOpenExternalLinks(true);
 
         update_previous_project_line_edit();
         update_projects_directory_line_edit();
