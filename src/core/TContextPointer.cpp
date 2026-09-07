@@ -242,22 +242,28 @@ void TContextPointer::set_canvas_cursor_text(const QString &text, int mseconds)
     m_viewPort->set_canvas_cursor_text(text, mseconds);
 }
 
-void TContextPointer::set_canvas_cursor_pos(QPointF pos)
-{
+void TContextPointer::set_canvas_cursor_pos(QPointF pos) {
     PENTER;
-    if (!m_viewPort)
-	{
-        PERROR("Setting canvas cursor pos but I have no ViewPort!");
+    if (!m_viewPort) {
+        PERROR( "Setting canvas cursor pos but I have no ViewPort!" );
         return;
-	}
+    }
 
-	if (ied().get_holding_command() && ied().get_holding_command()->wants_cursor_position_to_be_restored())
-	{
-        QCursor::setPos(m_mouseData->jogStartGlobalMousePos);
-	}
+    if (ied().get_holding_command() && ied().get_holding_command()->wants_cursor_position_to_be_restored()) {
+        // Capture the target position for the lambda function
+        QPoint globalPos = m_mouseData->jogStartGlobalMousePos;
+
+        // Defer the cursor relocation to the end of the event loop
+        // This hopefully fixes the issue where the cursor is not reset
+        // to this location on Mac
+        QTimer::singleShot(0, [globalPos]() {
+            QCursor::setPos(globalPos);
+        });
+    }
 
     m_viewPort->set_canvas_cursor_pos(pos);
 }
+
 
 int TContextPointer::mouse_viewport_x() const {
     return m_mouseData->viewPortMousePos.x();

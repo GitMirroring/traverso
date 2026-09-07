@@ -127,14 +127,17 @@ int GainCommand::process_mouse_move(qreal diffY)
 {
     qreal of = 0;
     
-#if defined(Q_OS_MAC) || defined(Q_OS_LINUX)
-    // On Mac (and Linux?), the mouse doesn't snap back to the original position after each jog,
-    // so we need to calculate the gain based on the original gain value, not the new gain value
-    // to avoid the gain integrating the total mouse movement over time, and skyrocketing.
-    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_origGain);
-#else
+// #if defined(Q_OS_MAC) || defined(Q_OS_LINUX)
+//     // On Mac (and Linux?), the mouse doesn't snap back to the original position after each jog,
+//     // so we need to calculate the gain based on the original gain value, not the new gain value
+//     // to avoid the gain integrating the total mouse movement over time, and skyrocketing.
+//     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_origGain);
+// #else
+//     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
+// #endif
+
     audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
-#endif
+
 
     if (dbFactor > -1) {
         of = diffY * 0.05;
