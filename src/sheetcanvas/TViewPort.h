@@ -65,7 +65,6 @@ public :
 
 
 protected:
-    virtual bool event(QEvent *event) override;
     virtual void enterEvent (QEnterEvent * ) override;
     virtual void leaveEvent ( QEvent * ) override;
     virtual void paintEvent( QPaintEvent* e) override;
@@ -73,13 +72,14 @@ protected:
     virtual void mousePressEvent ( QMouseEvent * e ) override;
     virtual void mouseReleaseEvent ( QMouseEvent * e ) override;
     virtual void mouseDoubleClickEvent ( QMouseEvent * e ) override;
-    virtual void wheelEvent ( QWheelEvent* e ) override;
     virtual void keyPressEvent ( QKeyEvent* e) override;
     virtual void keyReleaseEvent ( QKeyEvent* e) override;
     virtual void dragEnterEvent(QDragEnterEvent *event) override;
     virtual void dragMoveEvent(QDragMoveEvent *event) override;
 
 
+    bool event(QEvent *event) override;
+	void wheelEvent (QWheelEvent *event) override;
     void tabletEvent ( QTabletEvent * event ) override;
 
     TSheetView* m_sv;

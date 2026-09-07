@@ -62,40 +62,4 @@ void TTimeLineRulerViewPort::scale_factor_changed()
 	}
 }
 
-
-void TTimeLineRulerViewPort::wheelEvent (QWheelEvent *event)
-{
-  	if (event->angleDelta().x() > 0) {
-  		m_sv->scroll_left_by(event->angleDelta().x());
-  	} else if (event->angleDelta().x() < 0) {
-  		m_sv->scroll_right_by(-event->angleDelta().x());
-  	}
-    if (event->angleDelta().y() > 0) {
-  		m_sv->scroll_up_by(event->angleDelta().y());
-  	} else if (event->angleDelta().y() < 0) {
-  		m_sv->scroll_down_by(-event->angleDelta().y());
-  	}
-}
-
-// Catch native trackpad gestures
-bool TTimeLineRulerViewPort::event(QEvent *event)
-{
-    if (event->type() == QEvent::NativeGesture) {
-        QNativeGestureEvent *gestureEvent = static_cast<QNativeGestureEvent*>(event);
-        if (gestureEvent->gestureType() == Qt::ZoomNativeGesture) {
-            qreal zoomFactor = 2*gestureEvent->value(); 
-
-            if (ied().is_holding_modifier_key(Qt::Key_Shift)) {
-                m_sv->vzoom(1+zoomFactor);
-            }
-            else {
-                m_sv->hzoom(1-zoomFactor);
-            }
-            
-            return true; // Event handled
-        }
-    }
-    return QWidget::event(event);
-}
-
 //eof

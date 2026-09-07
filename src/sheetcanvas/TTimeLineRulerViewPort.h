@@ -41,12 +41,6 @@ public:
 	void scale_factor_changed();
 	TTimeLineRulerView* get_timeline_view() const {return m_timeLineView;}
 	
-
-protected:
-	void wheelEvent (QWheelEvent *event) override;
-    bool event(QEvent *event) override;
-
-
 private:
 	TTimeLineRulerView* 	m_timeLineView;
 };

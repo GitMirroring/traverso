@@ -111,33 +111,6 @@ TViewPort::~TViewPort()
     }
 }
 
-bool TViewPort::event(QEvent * event)
-{
-	// We want Tab events also send to the InputEngine
-	// so treat them as 'normal' key events.
-	if (event->type() == QEvent::KeyPress)
-	{
-		QKeyEvent *ke = static_cast<QKeyEvent *>(event);
-		if (ke->key() == Qt::Key_Tab)
-		{
-			keyPressEvent(ke);
-			return true;
-		}
-	}
-
-	if (event->type() == QEvent::KeyRelease)
-	{
-		QKeyEvent *ke = static_cast<QKeyEvent *>(event);
-		if (ke->key() == Qt::Key_Tab)
-		{
-			keyReleaseEvent(ke);
-			return true;
-		}
-    }
-
-	return QGraphicsView::event(event);
-}
-
 void TViewPort::grab_mouse()
 {
     m_grabMouseGuardTimer.start(m_mouseGrabCheckTime);
@@ -340,12 +313,6 @@ void TViewPort::mouseDoubleClickEvent( QMouseEvent * e )
 	e->accept();
 }
 
-void TViewPort::wheelEvent( QWheelEvent * e )
-{
-	ied().catch_scroll(e);
-	e->accept();
-}
-
 void TViewPort::paintEvent( QPaintEvent* e )
 {
 // 	PWARN("ViewPort::paintEvent()");
@@ -372,4 +339,73 @@ void TViewPort::set_canvas_cursor_text( const QString & text, int mseconds)
 void TViewPort::set_canvas_cursor_pos(QPointF pos, CursorMoveReason reason)
 {
     m_sv->set_canvas_cursor_pos(pos, reason);
+}
+
+void TViewPort::wheelEvent (QWheelEvent *event)
+{
+    bool handled = false;
+
+#if defined(Q_OS_MAC)
+  	if (event->angleDelta().x() > 0) {
+  		m_sv->scroll_left_by(event->angleDelta().x());
+    	handled = true;
+  	} else if (event->angleDelta().x() < 0) {
+  		m_sv->scroll_right_by(-event->angleDelta().x());
+    	handled = true;
+  	}
+    if (event->angleDelta().y() > 0) {
+  		m_sv->scroll_up_by(event->angleDelta().y());
+    	handled = true;
+  	} else if (event->angleDelta().y() < 0) {
+  		m_sv->scroll_down_by(-event->angleDelta().y());
+    	handled = true;
+  	}
+#endif
+
+    if (!handled) {
+        // if not handled by the sheetview, let the input event dispatcher handle it
+        ied().catch_scroll(event);
+    }
+	event->accept();
+}
+
+// Catch native trackpad gestures
+bool TViewPort::event(QEvent *event)
+{
+	// We want Tab events also send to the InputEngine
+	// so treat them as 'normal' key events.
+	if (event->type() == QEvent::KeyPress)
+	{
+		QKeyEvent *ke = static_cast<QKeyEvent *>(event);
+		if (ke->key() == Qt::Key_Tab)
+		{
+			keyPressEvent(ke);
+			return true;
+		}
+	}
+	else if (event->type() == QEvent::KeyRelease)
+	{
+		QKeyEvent *ke = static_cast<QKeyEvent *>(event);
+		if (ke->key() == Qt::Key_Tab)
+		{
+			keyReleaseEvent(ke);
+			return true;
+		}
+    }
+    else if (event->type() == QEvent::NativeGesture) {
+        QNativeGestureEvent *gestureEvent = static_cast<QNativeGestureEvent*>(event);
+        if (gestureEvent->gestureType() == Qt::ZoomNativeGesture) {
+            qreal zoomFactor = 2*gestureEvent->value(); 
+
+            if (ied().is_holding_modifier_key(Qt::Key_Shift)) {
+                m_sv->vzoom(1+zoomFactor);
+            }
+            else {
+                m_sv->hzoom(1-zoomFactor);
+            }
+            
+            return true; // Event handled
+        }
+    }
+	return QGraphicsView::event(event);
 }
