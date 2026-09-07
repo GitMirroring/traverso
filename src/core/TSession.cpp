@@ -326,7 +326,7 @@ void TSession::set_hzoom( qreal hzoom )
 	qreal old_hzoom = get_hzoom();
 	m_hzoom = hzoom;
 
-    if (!TraversoDAW::Float::fuzzy_compare(old_hzoom, get_hzoom())) {
+    if (!TraversoDAW::Float::compare(old_hzoom, get_hzoom())) {
 		emit hzoomChanged();
 	}
 }

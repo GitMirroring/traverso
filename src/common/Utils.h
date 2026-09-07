@@ -18,13 +18,13 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  
 */
+
 #pragma once
+
 #include <QPixmap>
 #include <QDateTime>
 
 #define QS_C(x) x.toUtf8().data()
-
-class QString;
 
 namespace TraversoDAW {
 class Utils
@@ -71,7 +71,7 @@ public:
 
 class Float {
 public:
-     static inline bool fuzzy_compare(float a, float b)
+     static inline bool compare(float a, float b)
     {
         bool az = qFuzzyIsNull(a);
         bool bz = qFuzzyIsNull(b);
@@ -84,7 +84,7 @@ public:
         return qFuzzyCompare(a, b);
     }
 
-    static inline bool fuzzy_compare(double a, double b)
+    static inline bool compare(double a, double b)
     {
         bool az = qFuzzyIsNull(a);
         bool bz = qFuzzyIsNull(b);
@@ -97,22 +97,22 @@ public:
         return qFuzzyCompare(a, b);
     }
 
-    static inline bool fuzzy_equals_1(double a)
+    static inline bool equals_1(double a)
     {
         return qFuzzyCompare(a, 1.0);
     }
 
-    static inline bool fuzzy_equals_1(float a)
+    static inline bool equals_1(float a)
     {
         return qFuzzyCompare(a, 1.0f);
     }
 
-    static inline bool fuzzy_equals_0(double a)
+    static inline bool equals_0(double a)
     {
         return qFuzzyIsNull(a);
     }
 
-    static inline bool fuzzy_equals_0(float a)
+    static inline bool equals_0(float a)
     {
         return qFuzzyIsNull(a);
     }

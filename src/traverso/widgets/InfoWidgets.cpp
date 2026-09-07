@@ -494,7 +494,7 @@ SystemValueBar::SystemValueBar(QWidget * parent)
 
 void SystemValueBar::set_value(float value)
 {
-    if (TraversoDAW::Float::fuzzy_compare(m_current, value)) {
+    if (TraversoDAW::Float::compare(m_current, value)) {
 		return;
 	}
 	

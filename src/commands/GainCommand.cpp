@@ -49,7 +49,7 @@ GainCommand::~GainCommand()
 
 int GainCommand::prepare_actions()
 {
-    if (TraversoDAW::Float::fuzzy_compare(m_origGain, m_newGain)) {
+    if (TraversoDAW::Float::compare(m_origGain, m_newGain)) {
         // Nothing happened!
         return -1;
     }
@@ -73,7 +73,7 @@ int GainCommand::do_action()
     // however, do_action() is always called from the TInputEventDispatcher
     // So do not start the animated gain setting since it will start from
     // the m_oldgain value.
-    if (TraversoDAW::Float::fuzzy_compare(m_newGain, m_audioProcessingNode->get_gain())) {
+    if (TraversoDAW::Float::compare(m_newGain, m_audioProcessingNode->get_gain())) {
         return 1;
     }
 

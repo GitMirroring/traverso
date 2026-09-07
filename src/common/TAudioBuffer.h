@@ -110,7 +110,7 @@ public:
     }
 
     static void mix_buffers_with_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes, float gain) {
-        if (TraversoDAW::Float::fuzzy_equals_1(gain)) {
+        if (TraversoDAW::Float::equals_1(gain)) {
             return Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
         }
 

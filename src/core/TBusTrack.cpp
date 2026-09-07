@@ -105,7 +105,7 @@ void TBusTrack::set_name( const QString & name )
 
 int TBusTrack::process(TProcessCallBackData &processData)
 {
-    if (m_isMuted || (TraversoDAW::Float::fuzzy_equals_0(get_gain())) ) {
+    if (m_isMuted || (TraversoDAW::Float::equals_0(get_gain())) ) {
         return 0;
     }
 

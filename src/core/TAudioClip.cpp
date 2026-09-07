@@ -437,7 +437,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
         return 0;
     }
 
-    if (m_isMuted || (TraversoDAW::Float::fuzzy_equals_0(get_gain())) ) {
+    if (m_isMuted || (TraversoDAW::Float::equals_0(get_gain())) ) {
         return 0;
     }
 
@@ -823,7 +823,7 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
 {
     float target = dB_to_scale_factor (targetdB);
 
-    if (TraversoDAW::Float::fuzzy_equals_1(target)) {
+    if (TraversoDAW::Float::equals_1(target)) {
         /* do not normalize to precisely 1.0 (0 dBFS), to avoid making it appear
            that we may have clipped.
         */
@@ -832,13 +832,13 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
 
     audio_sample_t maxamp = m_peak->get_max_amplitude(m_sourceStartLocation, m_sourceEndLocation);
 
-    if (TraversoDAW::Float::fuzzy_equals_0(maxamp)) {
+    if (TraversoDAW::Float::equals_0(maxamp)) {
         PWARN("AudioClip::normalization: max amplitude == 0");
         /* don't even try */
         return get_gain();
     }
 
-    if (TraversoDAW::Float::fuzzy_compare(maxamp, target)) {
+    if (TraversoDAW::Float::compare(maxamp, target)) {
         PWARN("AudioClip::normalization: max amplitude == target amplitude");
         /* we can't do anything useful */
         return get_gain();

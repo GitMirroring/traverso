@@ -76,7 +76,7 @@ void MoveCurveNode::toggle_vertical_only()
 
 int MoveCurveNode::prepare_actions()
 {
-    if (m_whenDiff.universal_frame() == 0 && TraversoDAW::Float::fuzzy_equals_0(m_valueDiff)) {
+    if (m_whenDiff.universal_frame() == 0 && TraversoDAW::Float::equals_0(m_valueDiff)) {
         return -1;
     }
 

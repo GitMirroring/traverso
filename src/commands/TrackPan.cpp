@@ -65,7 +65,7 @@ TrackPan::TrackPan(TTrack* track, QVariantList args)
 
 int TrackPan::prepare_actions()
 {
-    if (TraversoDAW::Float::fuzzy_compare(m_origPan, m_newPan))
+    if (TraversoDAW::Float::compare(m_origPan, m_newPan))
 	{
 		// nothing happened
 		return -1;
