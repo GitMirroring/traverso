@@ -707,19 +707,26 @@ void TSheetView::set_snap_range(int /*start*/)
     // 			timeref_scalefactor);
 }
 
+TCommand* TSheetView::scroll_right_by(int delta)
+{
+	PENTER3;
+	stop_follow_play_head();
+	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() + delta);
+    return nullptr;
+}
+
+TCommand* TSheetView::scroll_left_by(int delta)
+{
+	PENTER3;
+	stop_follow_play_head();
+	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() - delta);
+    return nullptr;
+}
+
 TCommand* TSheetView::scroll_up_by(int delta)
 {
 	PENTER3;
 	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() - delta);
-
-    return nullptr;
-}
-
-TCommand* TSheetView::scroll_up( )
-{
-	PENTER3;
-	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() - int(m_meanTrackHeight * 0.75));
-
     return nullptr;
 }
 
@@ -730,45 +737,19 @@ TCommand* TSheetView::scroll_down_by(int delta)
     return nullptr;
 }
 
+// scroll_up and scroll_down are still referenced from TraversoCommands::load()
+TCommand* TSheetView::scroll_up( )
+{
+	PENTER3;
+	return scroll_up_by(int(m_meanTrackHeight * 0.75));
+}
+
 TCommand* TSheetView::scroll_down( )
 {
 	PENTER3;
-	set_vscrollbar_value(m_clipsViewPort->verticalScrollBar()->value() + int(m_meanTrackHeight * 0.75));
-    return nullptr;
+	return scroll_down_by(int(m_meanTrackHeight * 0.75));
 }
 
-TCommand* TSheetView::scroll_right_by(int delta)
-{
-	PENTER3;
-	stop_follow_play_head();
-	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() + delta);
-    return nullptr;
-}
-
-TCommand* TSheetView::scroll_right()
-{
-	PENTER3;
-	stop_follow_play_head();
-	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() + 50);
-    return nullptr;
-}
-
-
-TCommand* TSheetView::scroll_left_by(int delta)
-{
-	PENTER3;
-	stop_follow_play_head();
-	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() - delta);
-    return nullptr;
-}
-
-TCommand* TSheetView::scroll_left()
-{
-	PENTER3;
-	stop_follow_play_head();
-	set_hscrollbar_value(m_clipsViewPort->horizontalScrollBar()->value() - 50);
-    return nullptr;
-}
 
 int TSheetView::hscrollbar_value() const
 {
