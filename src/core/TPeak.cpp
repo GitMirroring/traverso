@@ -435,7 +435,6 @@ int TPeak::finish_processing()
 
         data->file.seek(data->headerdata.headerSize);
 
-        // No more "+ 4" guesswork needed; totalBufferSize is now guaranteed to be accurate
         std::vector<peak_data_t> saveBuffer = std::vector<peak_data_t>(totalBufferSize);
 
         int read = data->file.read((char*)saveBuffer.data(), sizeof(peak_data_t) * data->pd->processBufferSize) / sizeof(peak_data_t);
@@ -449,7 +448,7 @@ int TPeak::finish_processing()
         data->headerdata.peakDataSizeForLevel[0] = data->pd->processBufferSize;
         data->headerdata.peakDataOffsets[0] = 0;
 
-        // --- STEP 2: Generate zoom levels without going out-of-bounds ---
+        // --- STEP 2: Generate zoom levels ---
         for (int i = SAVING_ZOOM_FACTOR + 1; i < ZOOM_LEVELS; ++i) {
 
             int prevLevelSize = data->headerdata.peakDataSizeForLevel[i - SAVING_ZOOM_FACTOR - 1];
