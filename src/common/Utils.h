@@ -42,7 +42,8 @@ public:
 
     static QStringList find_qm_files();
     static QString language_name_from_qm_file(const QString& lang);
-
+    
+    static bool can_set_mouse_pos();
 
     static inline int cnt_bits(unsigned long val, int & highbit)
     {

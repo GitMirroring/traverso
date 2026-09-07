@@ -126,14 +126,24 @@ void GainCommand::set_new_gain_numerical_input(float newGain)
 int GainCommand::process_mouse_move(qreal diffY)
 {
     qreal of = 0;
-    
+    audio_sample_t dbFactor;
+
 #if defined(Q_OS_MAC)
-    // On Mac (and some Linux setups?), the mouse doesn't snap back to the original position after each jog,
+    // On MacOS, if the user hasn't given the app accessibility privileges in:
+    // System Setings -> Privacy & Security -> Accessibility -> Allow the applications below to control your computer,
+    // the mouse doesn't snap back to the original position after each jog,
     // so we need to calculate the gain based on the original gain value, not the new gain value
     // to avoid the gain integrating the total mouse movement over time, and skyrocketing.
-    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_origGain);
+    if (TraversoDAW::Utils::can_set_mouse_pos()) {
+        // Is trusted, so mouse position gets reset
+        dbFactor = Mixer::coefficient_to_dB(m_newGain);
+    }
+    else {
+        // Is NOT trusted, so mouse position does not get reset
+        dbFactor = Mixer::coefficient_to_dB(m_origGain);
+    }
 #else
-    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
+    dbFactor = Mixer::coefficient_to_dB(m_newGain);
 #endif
 
 

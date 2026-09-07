@@ -215,6 +215,7 @@ ELSEIF(APPLE)
 TARGET_LINK_LIBRARIES(traverso
 	"-framework CoreFoundation"
 	"-framework Accelerate"
+	"-framework ApplicationServices"
 	sndfile
 	fftw3
 	dl

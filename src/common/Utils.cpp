@@ -32,6 +32,11 @@
 #include <random>
 #include "TTimeRef.h"
 
+#ifdef Q_OS_MAC
+#include <ApplicationServices/ApplicationServices.h>
+#endif
+
+
 qint64 TraversoDAW::Utils::create_id( )
 {
 	int r = rand();
@@ -96,4 +101,30 @@ double TraversoDAW::Utils::randomNumberBetween(int start, int end)
     // initialize a uniform distribution between start and end
     std::uniform_real_distribution<double> unif(start, end);
     return unif(rng);
+}
+
+bool TraversoDAW::Utils::can_set_mouse_pos()
+{
+#ifdef Q_OS_MAC
+    static bool didShowAlert = false;
+
+    // Check if the macOS sandbox/system has trusted this app
+    if (AXIsProcessTrusted()) {
+        return true;
+    } else {
+        // Prompt the user or log that permissions are missing
+        qWarning("Accessibility permissions required to move the mouse position.");
+        
+        if (!didShowAlert) {
+            // Optional: Open the Privacy settings panel automatically
+            CFStringRef keys[] = { kAXTrustedCheckOptionPrompt };
+            CFBooleanRef values[] = { kCFBooleanTrue };
+            CFDictionaryRef options = CFDictionaryCreate(NULL, (const void **)keys, (const void **)values, 1, &kCFCopyStringDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+            AXIsProcessTrustedWithOptions(options);
+            didShowAlert = true;
+        }
+        return false;
+    }
+#endif
+    return true;
 }
