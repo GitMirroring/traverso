@@ -196,6 +196,7 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
             PW_KEY_NODE_DESCRIPTION, "Traverso DAW",
             PW_KEY_NODE_LATENCY, latencyStr.constData(),
             PW_KEY_NODE_RATE, rateStr.constData(),
+            "node.lock-quantum", "true",
             (const char*)nullptr
         );
         if (!m_cardDevice.isEmpty()) {
@@ -557,31 +558,15 @@ void TPipeWireDriver::_on_playback_process(void *data)
         return;
     }
 
-    nframes_t nframes = 0;
-    if (b->requested > 0) {
-        nframes = b->requested;
-    } else if (driver->m_ioPosition && driver->m_ioPosition->clock.duration > 0) {
-        nframes = driver->m_ioPosition->clock.duration;
-    } else {
-        nframes = driver->m_framesPerCycle;
-    }
-
-    uint32_t maxFrames = buf->datas[0].maxsize / (sizeof(float) * channelCount);
-    if (maxFrames > 0 && nframes > maxFrames) {
-        nframes = maxFrames;
-    }
-
-    if (nframes == 0) {
-        pw_stream_queue_buffer(driver->m_playbackStream, b);
-        return;
-    }
+    nframes_t nframes = driver->m_framesPerCycle;
+    uint32_t stride = sizeof(float) * channelCount;
 
     size_t neededSamples = nframes * channelCount;
 
     if (!driver->is_running()) {
         std::memset(dst, 0, neededSamples * sizeof(float));
         buf->datas[0].chunk->offset = 0;
-        buf->datas[0].chunk->stride = sizeof(float) * channelCount;
+        buf->datas[0].chunk->stride = stride;
         buf->datas[0].chunk->size = neededSamples * sizeof(float);
         pw_stream_queue_buffer(driver->m_playbackStream, b);
         return;
@@ -592,23 +577,16 @@ void TPipeWireDriver::_on_playback_process(void *data)
             driver->process_playback_cycle();
         }
         size_t readSamples = driver->m_outputRingBuffer->read(dst, neededSamples);
-        printf("PipeWire playback: requested %zu samples, read %zu samples", neededSamples, readSamples);
         if (readSamples < neededSamples) {
             std::memset(dst + readSamples, 0, (neededSamples - readSamples) * sizeof(float));
-            printf(", zeroed %zu samples", neededSamples - readSamples);
         }
-        printf("\n");
     } else {
         std::memset(dst, 0, neededSamples * sizeof(float));
     }
 
     buf->datas[0].chunk->offset = 0;
-    buf->datas[0].chunk->stride = sizeof(float) * channelCount;
-    buf->datas[0].chunk->size = neededSamples * channelCount * sizeof(float);
-
-    for (int i=0; i<32; i++) printf("%02X ", (uint8_t)(255*((float*)buf->datas[0].data)[i]));
-    printf("\n");
-    // NOTE: This is only ever printing out zeros
+    buf->datas[0].chunk->stride = stride;
+    buf->datas[0].chunk->size = neededSamples * sizeof(float);
 
     pw_stream_queue_buffer(driver->m_playbackStream, b);
 }
