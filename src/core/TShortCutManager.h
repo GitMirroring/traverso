@@ -71,6 +71,7 @@ public:
     void save_shortcut_fuctions(QList<TShortCutFunction*> functions);
     void export_functions();
     void load_shortcuts();
+    void unload_shortcuts();
     void restore_defaults_for_shortcut_function(TShortCutFunction* function);
     void restore_defaults();
 

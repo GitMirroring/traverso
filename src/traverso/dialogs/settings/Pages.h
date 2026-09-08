@@ -161,6 +161,7 @@ public:
 private slots:
 	void on_exportButton_clicked();
 	void on_editKeymapButton_clicked();
+	void keymap_index_changed(int index);
 };
 
 

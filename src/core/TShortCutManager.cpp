@@ -291,19 +291,25 @@ void TShortCutManager::export_functions()
     save_shortcut_fuctions(m_shortCutFunctions.values());
 }
 
+void TShortCutManager::unload_shortcuts()
+{
+    for(TShortCut* shortCut : std::as_const(m_shortcuts))
+    {
+        delete shortCut;
+    }
+	m_shortcuts.clear();
+}
+
 void TShortCutManager::load_shortcuts()
 {
     PENTER;
     PMESG("Registered ShortCut Functions: %lld", m_shortCutFunctions.count() - m_baseShortCutFunctions.count());
 
-    for(TShortCut* shortCut : std::as_const(m_shortcuts))
-    {
-        delete shortCut;
-    }
+    unload_shortcuts();
 
-	m_shortcuts.clear();
+    bool useSimplifiedShortcuts = config().get_property("InputEventDispatcher", "useSimplifiedShortcuts", true).toBool();
 
-	QSettings defaultSettings(":/Traverso/shortcuts.ini", QSettings::IniFormat);
+	QSettings defaultSettings((useSimplifiedShortcuts) ? ":/Traverso/shortcuts-simplified.ini" : ":/Traverso/shortcuts-advanced.ini", QSettings::IniFormat);
 	QSettings userSettings(QSettings::IniFormat, QSettings::UserScope, "Traverso", "Shortcuts");
 	QSettings* settings;
 
