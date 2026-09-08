@@ -307,7 +307,7 @@ void TShortCutManager::load_shortcuts()
 
     unload_shortcuts();
 
-    bool useSimplifiedShortcuts = config().get_property("InputEventDispatcher", "useSimplifiedShortcuts", true).toBool();
+    bool useSimplifiedShortcuts = config().get_property("InputEventDispatcher", "UseSimplifiedShortcuts", true).toBool();
 
 	QSettings defaultSettings((useSimplifiedShortcuts) ? ":/Traverso/shortcuts-simplified.ini" : ":/Traverso/shortcuts-advanced.ini", QSettings::IniFormat);
 	QSettings userSettings(QSettings::IniFormat, QSettings::UserScope, "Traverso", "Shortcuts");
