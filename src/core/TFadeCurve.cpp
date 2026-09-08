@@ -210,6 +210,12 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
         return;
     }
 
+    if (framesToProcess == 0) {
+        // After recording a new clip, and playing it back, an assert in set_data_start_offset was
+        // triggering when framesToProcess was 0, which happened when playing the very end of the clip.
+        return;
+    }
+
     upperRange = fadeLocation + TTimeRef(framesToProcess, outputRate);
 
     get_vector(fadeLocation.universal_frame(), upperRange.universal_frame(), curveBuffer, framesToProcess);

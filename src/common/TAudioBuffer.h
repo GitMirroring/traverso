@@ -127,7 +127,7 @@ public:
     }
 
     void set_data_start_offset(nframes_t offset) {
-        Q_ASSERT(offset <= m_size);
+        Q_ASSERT(offset < m_size);
         m_readOffset = offset;
     }
 
