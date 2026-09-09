@@ -18,6 +18,13 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  */
 
+// TODO:
+// - Output works at different framerates, but capture insists on delivering 48k audio?
+//   (Captured audio stutters.)
+// - On line 137, should we just set rate to 0 and allow the PipeWire internals to choose the rate?  And then set the project rate?
+//   This fixes audio stuttering, but we need to tear down and set back up the buffers with new sizes?  Or just realloc? (If so then also remove the PW_KEY_NODE_FORCE_RATE line.)
+
+
 #include "TPipeWireDriver.h"
 
 #if defined (PIPEWIRE_SUPPORT)
@@ -92,6 +99,7 @@ struct pw_stream* TPipeWireDriver::create_stream(
         PW_KEY_NODE_DESCRIPTION, nodeDescription,
         PW_KEY_NODE_LATENCY, latencyStr.constData(),
         PW_KEY_NODE_RATE, rateStr.constData(),
+        PW_KEY_NODE_FORCE_RATE, rateStr.constData(),
         "node.lock-quantum", "true",
         (const char*)nullptr
     );
@@ -125,7 +133,7 @@ struct pw_stream* TPipeWireDriver::create_stream(
         info.position[0] = SPA_AUDIO_CHANNEL_FL;
         info.position[1] = SPA_AUDIO_CHANNEL_FR;
     }
-    info.rate = 0; // adopt whatever rate PipeWire negotiates (device-native clock, Jack-style)
+    info.rate = m_frameRate;
 
     const struct spa_pod* params[1];
     params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
@@ -256,8 +264,6 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     if (pw_thread_loop_start(m_threadLoop) < 0) {
         return fail_setup(tr("Failed to start PipeWire thread loop"));
     }
-
-    update_config();
 
     emit driverSetupMessage("PipeWire", tr("Successfully connected to PipeWire server!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
@@ -492,11 +498,6 @@ void TPipeWireDriver::stop_free_wheeling()
 {
     m_isFreeWheeling = false;
     m_device->driver_changed_free_wheel_mode();
-}
-
-void TPipeWireDriver::update_config()
-{
-    m_isSlave = m_device->get_driver_property("pipewireslave", false).toBool();
 }
 
 QString TPipeWireDriver::get_device_name()

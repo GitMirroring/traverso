@@ -51,7 +51,6 @@ public:
     QString get_device_longname() override;
 
     bool is_running() const { return m_running.load() == 1; }
-    void update_config();
 
     bool supports_software_channels() override {
         return false;

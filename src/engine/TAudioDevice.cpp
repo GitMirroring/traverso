@@ -1079,12 +1079,6 @@ TTimeRef TAudioDevice::get_buffer_latency() const
 void TAudioDevice::set_driver_properties(QHash< QString, QVariant > & properties)
 {
     m_driverProperties = properties;
-#if defined (PIPEWIRE_SUPPORT)
-    TPipeWireDriver* pwDriver = qobject_cast<TPipeWireDriver*>(m_driver);
-    if (pwDriver) {
-        pwDriver->update_config();
-    }
-#endif
 #if defined (JACK_SUPPORT)
     if (libjack_is_present) {
         TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);

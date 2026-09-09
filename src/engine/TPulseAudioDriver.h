@@ -47,8 +47,6 @@ public:
 	QString get_device_name();
 	QString get_device_longname();
 
-	void update_config();
-
     virtual bool is_realtime_capable() const {
         return false;
     }
