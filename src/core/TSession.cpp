@@ -186,7 +186,6 @@ QList<TTrack*> TSession::get_tracks() const
 	}
 
     if (m_bounceTrack) {
-        m_bounceTrack->set_sort_index(0);
         list.append(m_bounceTrack);
     }
 
@@ -510,6 +509,8 @@ void TSession::private_add_track(TTrack* track)
 void TSession::private_remove_track(TTrack* track)
 {
 	switch (track->get_type()) {
+    case TTrack::BOUNCE:
+		m_bounceTrack = nullptr;
     case TTrack::AUDIO:
         m_rtAudioTracks.remove(qobject_cast<TAudioTrack*>(track));
 		break;
@@ -546,6 +547,8 @@ void TSession::private_track_added(TTrack *track)
 void TSession::private_track_removed(TTrack *track)
 {
 	switch(track->get_type()) {
+    case TTrack::BOUNCE:
+		m_bounceTrack = nullptr;
     case TTrack::AUDIO:
         m_audioTracks.removeAll(qobject_cast<TAudioTrack*>(track));
 		break;

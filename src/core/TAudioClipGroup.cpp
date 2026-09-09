@@ -181,7 +181,7 @@ int TAudioClipGroup::check_valid_track_index_delta(int delta)
         return allowedDeltaMin;
     }
 
-    return 0;
+    return delta;
 }
 
 bool TAudioClipGroup::is_locked() const

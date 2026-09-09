@@ -141,6 +141,7 @@ private:
     QList<TTrackView*>	m_busTrackViews;
     TTrackView*          m_sheetMasterOutView;
     TTrackView*          m_projectMasterOutView;
+    TTrackView*          m_bounceTrackView;
     TWorkCursorView*         m_workCursor;
     TCanvasCursor*      m_canvasCursor;
     QPropertyAnimation* m_canvasCursorMoveAnimation;

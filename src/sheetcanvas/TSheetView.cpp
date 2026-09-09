@@ -80,6 +80,7 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 	m_viewportReady = false;
     m_sheetMasterOutView = nullptr;
     m_projectMasterOutView = nullptr;
+    m_bounceTrackView = nullptr;
     timeref_scalefactor = TTimeRef::UNIVERSAL_SAMPLE_RATE;
     m_hasMouseTracking = true;
     m_contextPointer = &cpointer();
@@ -210,148 +211,102 @@ TTrackView* TSheetView::get_trackview_at_scene_pos( QPointF point )
 }
 
 
+QList<TTrackView*> sorted_by_sort_index(const QList<TTrackView*>& views)
+{
+	QList<TTrackView*> sorted = views;
+	std::sort(sorted.begin(), sorted.end(), [](TTrackView* left, TTrackView* right) {
+		return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
+	});
+	return sorted;
+}
+
+void renumber_track_views(const QList<TTrackView*>& views)
+{
+	for (int i = 0; i < views.size(); ++i) {
+		views.at(i)->get_track()->set_sort_index(i);
+	}
+}
+
 void TSheetView::move_trackview_up(TTrackView *trackView)
 {
-	int index = trackView->get_track()->get_sort_index();
-	if (index == 0 || trackView->get_track() == m_session->get_master_out_bus_track()) {
-		// can't move any further up
-		return;
-	}
+    if (trackView->get_track() == m_session->get_master_out_bus_track()) {
+        return;
+    }
 
     TAudioTrackView* atv = qobject_cast<TAudioTrackView*>(trackView);
-	TBusTrackView* btv = qobject_cast<TBusTrackView*>(trackView);
+    QList<TTrackView*> views = sorted_by_sort_index(atv ? m_audioTrackViews : m_busTrackViews);
 
-	int newindex = index - 1;
+    int current = views.indexOf(trackView);
+    if (current <= 0) {
+        return;
+    }
 
-	if (atv) {
-		for(int i=0; i<m_audioTrackViews.size(); i++) {
-            if (i==newindex) {
-                m_audioTrackViews.at(i)->get_track()->set_sort_index(i+1);
-			}
-		}
-	}
-
-	if (btv) {
-		for(int i=0; i<m_busTrackViews.size(); i++) {
-			if (i==newindex) {
-				m_busTrackViews.at(i)->get_track()->set_sort_index(i+1);
-			}
-		}
-	}
-
-
-	trackView->get_track()->set_sort_index(newindex);
-
-	layout_tracks();
+    views.move(current, current - 1);
+    renumber_track_views(views);
+    layout_tracks();
 }
 
 void TSheetView::move_trackview_down(TTrackView *trackView)
 {
-	int index = trackView->get_track()->get_sort_index();
-	if (index >= m_audioTrackViews.size() || trackView->get_track() == m_session->get_master_out_bus_track()) {
-		// can't move any further down
-		return;
-	}
+    if (trackView->get_track() == m_session->get_master_out_bus_track()) {
+        return;
+    }
 
     TAudioTrackView* atv = qobject_cast<TAudioTrackView*>(trackView);
-	TBusTrackView* btv = qobject_cast<TBusTrackView*>(trackView);
+    QList<TTrackView*> views = sorted_by_sort_index(atv ? m_audioTrackViews : m_busTrackViews);
 
-	int newindex = index + 1;
+    int current = views.indexOf(trackView);
+    if (current < 0 || current == views.size() - 1) {
+        return;
+    }
 
-	if (atv) {
-		for(int i=0; i<m_audioTrackViews.size(); i++) {
-			if (i==newindex) {
-				m_audioTrackViews.at(i)->get_track()->set_sort_index(i-1);
-			}
-		}
-		if (newindex >= m_audioTrackViews.size()) {
-			newindex = m_audioTrackViews.size() - 1;
-		}
-	}
-
-	if (btv) {
-		for(int i=0; i<m_busTrackViews.size(); i++) {
-			if (i==newindex) {
-				m_busTrackViews.at(i)->get_track()->set_sort_index(i-1);
-			}
-		}
-		if (newindex >= m_busTrackViews.size()) {
-			newindex = m_busTrackViews.size() - 1;
-		}
-	}
-
-
-	trackView->get_track()->set_sort_index(newindex);
-
-	layout_tracks();
-
+    views.move(current, current + 1);
+    renumber_track_views(views);
+    layout_tracks();
 }
 
 void TSheetView::to_bottom(TTrackView *trackView)
 {
     TAudioTrackView* atv = qobject_cast<TAudioTrackView*>(trackView);
-	TBusTrackView* btv = qobject_cast<TBusTrackView*>(trackView);
+    QList<TTrackView*> views = sorted_by_sort_index(atv ? m_audioTrackViews : m_busTrackViews);
 
-	if (atv) {
-		QList<TTrackView*> list = m_audioTrackViews;
-		list.removeAll(atv);
-		for(int i=0; i<list.size(); i++) {
-			list.at(i)->get_track()->set_sort_index(i);
-		}
-		atv->get_track()->set_sort_index(list.size());
-	}
+    int current = views.indexOf(trackView);
+    if (current < 0 || current == views.size() - 1) {
+        return;
+    }
 
-	if (btv) {
-		QList<TTrackView*> list = m_busTrackViews;
-		list.removeAll(atv);
-
-		for(int i=0; i<list.size(); i++) {
-			list.at(i)->get_track()->set_sort_index(i);
-		}
-		btv->get_track()->set_sort_index(list.size());
-	}
-
-
-	layout_tracks();
+    views.move(current, views.size() - 1);
+    renumber_track_views(views);
+    layout_tracks();
 }
 
 void TSheetView::to_top(TTrackView *trackView)
 {
-	int index = trackView->get_track()->get_sort_index();
-	if (index == 0) {
-		// it's allready topmost, don't do anything
-		return;
-	}
-
     TAudioTrackView* atv = qobject_cast<TAudioTrackView*>(trackView);
-	TBusTrackView* btv = qobject_cast<TBusTrackView*>(trackView);
+    QList<TTrackView*> views = sorted_by_sort_index(atv ? m_audioTrackViews : m_busTrackViews);
 
-	if (atv) {
-		QList<TTrackView*> list = m_audioTrackViews;
-		list.removeAll(atv);
-		atv->get_track()->set_sort_index(0);
+    int current = views.indexOf(trackView);
+    if (current <= 0) {
+        return;
+    }
 
-		for(int i=0; i<list.size(); i++) {
-			list.at(i)->get_track()->set_sort_index(i + 1);
-		}
-	}
-
-	if (btv) {
-		QList<TTrackView*> list = m_busTrackViews;
-		list.removeAll(atv);
-		btv->get_track()->set_sort_index(0);
-
-		for(int i=0; i<list.size(); i++) {
-			list.at(i)->get_track()->set_sort_index(i + 1);
-		}
-	}
-
-
-	layout_tracks();
+    views.move(current, 0);
+    renumber_track_views(views);
+    layout_tracks();
 }
 
 void TSheetView::add_new_track_view(TTrack* track)
 {
+    if (track->get_type() == TTrack::BOUNCE) {
+        TAudioTrack* bounceTrack = qobject_cast<TAudioTrack*>(track);
+        if (bounceTrack && !m_bounceTrackView) {
+            m_bounceTrackView = new TAudioTrackView(this, bounceTrack);
+            connect(m_bounceTrackView, &TTrackView::totalTrackHeightChanged, this, &TSheetView::layout_tracks);
+        }
+        layout_tracks();
+        return;
+    }
+
     TTrackView* view = nullptr;
 
 	TAudioTrack* audioTrack = qobject_cast<TAudioTrack*>(track);
@@ -384,6 +339,17 @@ void TSheetView::add_new_track_view(TTrack* track)
 
 void TSheetView::remove_track_view(TTrack* track)
 {
+    if (m_bounceTrackView && m_bounceTrackView->get_track() == track) {
+        TTrackPanelView* panel = m_bounceTrackView->get_panel_view();
+        scene()->removeItem(panel);
+        scene()->removeItem(m_bounceTrackView);
+        delete m_bounceTrackView;
+        delete panel;
+        m_bounceTrackView = nullptr;
+        layout_tracks();
+        return;
+    }
+
 	QList<TTrackView*> views;
 	views.append(m_audioTrackViews);
 	views.append(m_busTrackViews);
@@ -536,10 +502,23 @@ void TSheetView::layout_tracks()
 	int verticalposition = m_trackTopIndent;
 	int totalTrackHeightPrimaryLanes = 0;
 
-	QList<TTrackView*> views = get_track_views();
-    std::sort(views.begin(), views.end(), [&](TTrackView* left, TTrackView* right) {
+	QList<TTrackView*> views;
+	if (m_projectMasterOutView) {
+		views.append(m_projectMasterOutView);
+	}
+	if (m_sheetMasterOutView) {
+		views.append(m_sheetMasterOutView);
+	}
+	if (m_bounceTrackView) {
+		views.append(m_bounceTrackView);
+	}
+
+	QList<TTrackView*> sortableViews = m_audioTrackViews;
+	sortableViews.append(m_busTrackViews);
+    std::sort(sortableViews.begin(), sortableViews.end(), [&](TTrackView* left, TTrackView* right) {
         return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
     });
+	views.append(sortableViews);
 
 	for (int i=0; i<views.size(); ++i) {
 		TTrackView* view = views.at(i);
@@ -1261,12 +1240,15 @@ void TSheetView::keyboard_move_canvas_cursor_to_location(const TTimeRef &locatio
 QList<TTrackView*> TSheetView::get_track_views() const
 {
     QList<TTrackView*> views;
-    if (m_sheetMasterOutView) {
-		views.append(m_sheetMasterOutView);
-	}
 	if (m_projectMasterOutView) {
 		views.append(m_projectMasterOutView);
 	}
+    if (m_sheetMasterOutView) {
+		views.append(m_sheetMasterOutView);
+	}
+    if (m_bounceTrackView) {
+        views.append(m_bounceTrackView);
+    }
     views.append(m_audioTrackViews);
     views.append(m_busTrackViews);
 
