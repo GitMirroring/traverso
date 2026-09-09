@@ -19,6 +19,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 
 */
 
+//
+// Open Questions about the current state of Tracks:
+//
+// - Can we add an option to hide Master/Bouce/Bus tracks? (Which combo to hide?)  They take up a lot of space.
+//
+// Bounce tracks
+// - Should Bounce tracks show up at thje bottom, along with Bus tracks?  Should it show up at all?
+// - It's a descendent of AudioTrack, so is it allowed to contain clips?!?
+// - Should it be allowed to have its gain curve adjusted?
+//
+// Ordering Tracks
+// - Moving Track views is still slightly broken.  After adding a new track, indexes are broken / duplicated.
+// - It seems that track view order and track order can conflict?  We should make sure to keep a single source of truth.
+// 
+
 
 #include <QScrollBar>
 #include <QInputDialog>
