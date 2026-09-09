@@ -2,13 +2,19 @@
 
 #include "ResampleAudioReader.h"
 #include "TInformUser.h"
+#include "TProject.h"
+#include "TSheet.h"
+#include "TTimeLineRuler.h"
 #include "Utils.h"
 
 #include <samplerate.h>
 #include <sndfile.h>
 
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
+
 #include "Debugger.h"
-#include "qdir.h"
 
 TExportSpecification::TExportSpecification()
 {
@@ -180,6 +186,11 @@ void TExportSpecification::add_sheet_to_export(TSheet *sheet)
         return;
     }
     m_sheetsToExport.append(sheet);
+}
+
+void TExportSpecification::clear_sheets_to_export()
+{
+    m_sheetsToExport.clear();
 }
 
 void TExportSpecification::set_writer_type(const QString &writerType)
@@ -421,74 +432,64 @@ void TExportSpecification::delete_render_buffer()
     m_renderBufferSize = 0;
 }
 
-int TExportSpecification::create_cdrdao_toc(TExportSpecification* spec)
+int TExportSpecification::create_cdrdao_toc(TProject* project, TExportSpecification* spec)
 {
-    Q_UNUSED(spec);
-    // QList<Sheet* > sheets;
-    // QString filename = spec->get_export_dir();
+    QList<TSheet* > sheets = spec->get_sheets_to_export();
+    if (sheets.isEmpty()) {
+        return -1;
+    }
 
-    // if (spec->allSheets) {
-    //     foreach(Sheet* sheet, m_sheets) {
-    //         sheets.append(sheet);
-    //     }
+    QString filename = spec->get_export_dir();
 
-    //     // filename of the toc file is "project-name.toc"
-    //     filename += get_title() + ".toc";
-    // } else {
-    //     Sheet* sheet = qobject_cast<Sheet*>(get_current_session());
-    //     if (!sheet) {
-    //         return -1;
-    //     }
-    //     sheets.append(sheet);
+    if (sheets.size() > 1) {
+        // filename of the toc file is "project-name.toc"
+        filename += project->get_title() + ".toc";
+    } else {
+        // filename of the toc file is "sheet-name.toc"
+        filename += project->get_title() + ".toc";
+    }
 
-    //     // filename of the toc file is "sheet-name.toc"
-    //     filename += spec->get_export_file_name() + ".toc";
-    // }
+    QString output;
 
-    // QString output;
+    output += "CD_DA\n\n";
+    output += "CD_TEXT {\n";
 
-    // output += "CD_DA\n\n";
-    // output += "CD_TEXT {\n";
+    output += "  LANGUAGE_MAP {\n    0 : EN\n  }\n\n";
 
-    // output += "  LANGUAGE_MAP {\n    0 : EN\n  }\n\n";
+    output += "  LANGUAGE 0 {\n";
+    output += "    TITLE \"" + project->get_title() +  "\"\n";
+    output += "    PERFORMER \"" + project->get_performer() + "\"\n";
+    output += "    DISC_ID \"" + project->get_discid() + "\"\n";
+    output += "    UPC_EAN \"" + project->get_upc_ean() + "\"\n\n";
 
-    // output += "  LANGUAGE 0 {\n";
-    // output += "    TITLE \"" + get_title() +  "\"\n";
-    // output += "    PERFORMER \"" + get_performer() + "\"\n";
-    // output += "    DISC_ID \"" + get_discid() + "\"\n";
-    // output += "    UPC_EAN \"" + get_upc_ean() + "\"\n\n";
-
-    // output += "    ARRANGER \"" + get_arranger() + "\"\n";
-    // output += "    SONGWRITER \"" + get_songwriter() + "\"\n";
-    // output += "    MESSAGE \"" + get_message() + "\"\n";
-    // output += "    GENRE \"" + QString::number(get_genre()) + "\"\n  }\n}\n\n";
+    output += "    ARRANGER \"" + project->get_arranger() + "\"\n";
+    output += "    SONGWRITER \"" + project->get_songwriter() + "\"\n";
+    output += "    MESSAGE \"" + project->get_message() + "\"\n";
+    output += "    GENRE \"" + QString::number(project->get_genre()) + "\"\n  }\n}\n\n";
 
 
-    // bool pregap = true;
+    bool pregap = true;
 
-    // foreach(Sheet* sheet, sheets) {
-    //     // if (sheet->prepare_export(spec) < 0) {
-    //     //     return -1;
-    //     // }
-    //     output += sheet->get_timeline()->get_cdrdao_tracklist(spec, pregap);
-    //     pregap = false; // only add the pregap at the first sheet
-    // }
+    foreach(TSheet* sheet, sheets) {
+        output += sheet->get_timeline_ruler()->get_cdrdao_tracklist(spec, spec->get_export_file_name(), pregap);
+        pregap = false; // only add the pregap at the first sheet
+    }
 
 
-    // if (spec->writeToc) {
-    //     spec->tocFileName = filename;
+    if (spec->writeToc) {
+        spec->tocFileName = filename;
 
-    //     QFile file(filename);
+        QFile file(filename);
 
-    //     if (file.open(QFile::WriteOnly)) {
-    //         printf("Saving cdrdao toc-file to %s\n", QS_C(spec->tocFileName));
-    //         QTextStream out(&file);
-    //         out << output;
-    //         file.close();
-    //     }
-    // }
+        if (file.open(QFile::WriteOnly)) {
+            printf("Saving cdrdao toc-file to %s\n", QS_C(spec->tocFileName));
+            QTextStream out(&file);
+            out << output;
+            file.close();
+        }
+    }
 
-    // spec->cdrdaoToc = output;
+    spec->cdrdaoToc = output;
 
     return 1;
 }

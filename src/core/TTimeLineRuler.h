@@ -59,7 +59,7 @@ public:
 
     QString format_cdtrack_name(TTimeLineMarker *, int);
     QList<TTimeLineMarker *> get_cdtrack_list(TExportSpecification*);
-    QString get_cdrdao_tracklist(TExportSpecification* spec, bool pregap = false);
+    QString get_cdrdao_tracklist(TExportSpecification* spec, QString file_path, bool pregap = false);
 
 private:
     TSession* m_sheet;

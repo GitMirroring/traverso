@@ -130,7 +130,7 @@ QString TTimeRef::timeref_to_ms_3(const TTimeRef& ref)
 QString TTimeRef::timeref_to_cd (const TTimeRef& ref)
 {
     if (ref == TTimeRef::INVALID) {
-        return QString("-- : -- , --");
+        return QString("--:--:--");
     }
 
     qint64 remainder;
@@ -143,7 +143,7 @@ QString TTimeRef::timeref_to_cd (const TTimeRef& ref)
     secs = remainder / TTimeRef::UNIVERSAL_SAMPLE_RATE;
     remainder -= secs * TTimeRef::UNIVERSAL_SAMPLE_RATE;
     frames = remainder * 75 / TTimeRef::UNIVERSAL_SAMPLE_RATE;
-    QString spos("%1:%2,%3");
+    QString spos("%1:%2:%3");
     return spos.arg(mins, 2, 10, QLatin1Char('0')).arg(secs, 2, 10, QLatin1Char('0')).arg(frames, 2, 10, QLatin1Char('0'));
 }
 
