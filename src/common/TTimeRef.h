@@ -21,6 +21,13 @@ public:
     explicit TTimeRef(qint64 position);
     explicit TTimeRef(double position);
     explicit TTimeRef(nframes_t frame, uint rate);
+    // TODO
+    // Upgrade internal data structure for nframes to uint64_t ?
+    // Pipewire is using this type internally to track time
+    // FIXME
+    // m_universalFrame can overflow now easily...
+    explicit TTimeRef(uint64_t frame, uint rate);
+
     explicit TTimeRef(qreal frame, uint rate);
 
     static TTimeRef max_length();

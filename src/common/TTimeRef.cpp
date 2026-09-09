@@ -14,6 +14,13 @@ TTimeRef::TTimeRef(nframes_t frame, uint rate) {
     m_universalFrame = (TTimeRef::UNIVERSAL_SAMPLE_RATE / rate) * frame;
 }
 
+TTimeRef::TTimeRef(uint64_t frame, uint rate) {
+    Q_ASSERT(rate != 0);
+    // FIXME
+    // m_universalFrame is also 64 bit, now it can overflow!
+    m_universalFrame = (TTimeRef::UNIVERSAL_SAMPLE_RATE / rate) * frame;
+}
+
 TTimeRef::TTimeRef(qreal frame, uint rate) {
     m_universalFrame = qint64((qreal(UNIVERSAL_SAMPLE_RATE) / rate) * frame);
 }

@@ -322,7 +322,7 @@ int TPipeWireDriver::stop()
 void TPipeWireDriver::run_engine_cycle(nframes_t nframes)
 {
     if (m_isSlave && m_ioPosition) {
-        m_transportControl.set_location(TTimeRef(static_cast<nframes_t>(m_ioPosition->clock.position), audiodevice().get_sample_rate()));
+        m_transportControl.set_location(TTimeRef(m_ioPosition->clock.position, audiodevice().get_sample_rate()));
         m_transportControl.set_realtime(true);
         m_transportControl.set_slave(true);
         m_device->transport_control(&m_transportControl);
