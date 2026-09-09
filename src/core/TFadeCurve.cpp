@@ -190,24 +190,17 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
 
     nframes_t offset = 0;
 
-    // FIXME: Code below MUST be checked for proper working before release!
-
-    if ( (fadeStartLocation < upperRange) && (endLocation > fadeStartLocation) ) {
-        if (startLocation < fadeStartLocation) {
-            offset = TTimeRef::to_frame(fadeStartLocation - startLocation, outputRate);
-            // FIXME: offset can become negative so this location calculation code
-            // needs review
-            Q_ASSERT(offset <= nframes);
-            fadeLocation = TTimeRef();
-            framesToProcess = framesToProcess - offset;
-        } else {
-            fadeLocation = (startLocation - fadeStartLocation);
-        }
-        if (endLocation < upperRange) {
-            framesToProcess -= TTimeRef::to_frame(upperRange - endLocation, outputRate);
-        }
+    if (startLocation < fadeStartLocation) {
+        offset = TTimeRef::to_frame(fadeStartLocation - startLocation, outputRate);
+        Q_ASSERT(offset <= nframes);
+        fadeLocation = TTimeRef();
+        framesToProcess = framesToProcess - offset;
     } else {
-        return;
+        fadeLocation = (startLocation - fadeStartLocation);
+    }
+
+    if (fadeEndLocation < upperRange) {
+        framesToProcess -= TTimeRef::to_frame(upperRange - fadeEndLocation, outputRate);
     }
 
     if (framesToProcess == 0) {
