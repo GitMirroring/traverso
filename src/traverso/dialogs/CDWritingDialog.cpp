@@ -29,6 +29,7 @@
 #include "TProject.h"
 #include "TProjectManager.h"
 #include "TInformUser.h"
+#include "TSheet.h"
 #include "Utils.h"
 
 
@@ -47,7 +48,7 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	, m_burnprocess(0)
 	, m_exportSpec(0)
 {
-        setupUi(this);
+	setupUi(this);
 
 	stopButton->hide();
 	set_project(pm().get_project());
@@ -74,15 +75,15 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	connect(stopButton, &QPushButton::clicked, this, &CDWritingDialog::stop_burn_process);
 	connect(refreshButton, &QPushButton::clicked, this, &CDWritingDialog::query_devices);
 	connect(cdDiskExportOnlyCheckBox, &QCheckBox::checkStateChanged, this, &CDWritingDialog::export_only_changed);
-		connect(m_exportSpec, &TExportSpecification::exportMessage, this, &CDWritingDialog::set_export_message);
+	connect(m_exportSpec, &TExportSpecification::exportMessage, this, &CDWritingDialog::set_export_message);
 
 	
-	m_wodimAvailable = false;
+	// m_wodimAvailable = false;
 	
 	// A bit lame way to 'detect' if wodim is installed
-	if (QProcess::execute("wodim") != QProcess::FailedToStart) {
-		m_wodimAvailable = true;
-	}
+	// if (QProcess::execute("wodim") != QProcess::FailedToStart) {
+	// 	m_wodimAvailable = true;
+	// }
 	
 	query_devices();
 }
@@ -147,19 +148,20 @@ void CDWritingDialog::query_devices()
 #if defined (Q_OS_WIN)
 	m_burnprocess->start(CDRDAO_BIN, QStringList() << "scanbus");
 #elif defined (Q_OS_MAC)
-	cdDeviceComboBox->clear();
-	cdDeviceComboBox->addItem("IODVDServices");
-	cdDeviceComboBox->addItem("IODVDServices/2");
-	cdDeviceComboBox->addItem("IOCompactDiscServices");
-	cdDeviceComboBox->addItem("IOCompactDiscServices/2");
+	m_burnprocess->start(CDRDAO_BIN, QStringList() << "drive-info");
+	// cdDeviceComboBox->clear();
+	// cdDeviceComboBox->addItem("IODVDServices");
+	// cdDeviceComboBox->addItem("IODVDServices/2");
+	// cdDeviceComboBox->addItem("IOCompactDiscServices");
+	// cdDeviceComboBox->addItem("IOCompactDiscServices/2");
 #else
 	// Detect the available devices with wodim if available,
 	// since it seems to work better then cdrdao
-	if (m_wodimAvailable) {
-		m_burnprocess->start("wodim", QStringList() << "--devices");
-	} else {
+	// if (m_wodimAvailable) {
+	// 	m_burnprocess->start("wodim", QStringList() << "--devices");
+	// } else {
 		m_burnprocess->start(CDRDAO_BIN, QStringList() << "drive-info");
-	}
+	// }
 #endif
 }
 
@@ -201,7 +203,10 @@ void CDWritingDialog::stop_burn_process()
 		m_writingState = ABORT_BURN;
 	}
 	
-	stopButton->setEnabled(false);
+	if (cdDiskExportOnlyCheckBox->isChecked()) {
+		m_writingState = NO_STATE;
+		enable_ui_interaction();
+	}
 }
 
 
@@ -313,8 +318,17 @@ void CDWritingDialog::cd_render()
         // TODO
         // What about offering user option to select samplerate conversion quality?
         m_exportSpec->set_is_cd_export(true);
-		
-        if (m_exportSpec->create_cdrdao_toc(m_exportSpec) < 0) {
+
+        m_exportSpec->clear_sheets_to_export();
+        if (cdAllSheetsButton->isChecked()) {
+            for (TSheet* sheet : m_project->get_sheets()) {
+                m_exportSpec->add_sheet_to_export(sheet);
+            }
+        } else {
+            m_exportSpec->add_sheet_to_export(m_project->get_active_sheet());
+        }
+
+        if (m_exportSpec->create_cdrdao_toc(m_project, m_exportSpec) < 0) {
 			tInformUser().warning(tr("Creating CDROM table of contents failed, unable to write CD"));
 			return;
 		}
@@ -485,21 +499,21 @@ void CDWritingDialog::read_standard_output()
 				QString deviceName = "No Device Available";
 				QString device = "/no/device/detected";
 				
-				if (m_wodimAvailable) {
-					if (strlist.size() > 5) {
-						deviceName = strlist.at(5) + " ";
-						deviceName = deviceName.remove("'");
-					}
-					if (strlist.size() > 7) {
-						deviceName += strlist.at(7) + "  ";
-						deviceName = deviceName.remove("'");
-					}
-					if (strlist.size() > 2) {
-						device = strlist.at(2);
-						device = device.remove("dev=").remove("'");
-						deviceName += "(" + device + ")";
-					}
-				} else {
+				// if (m_wodimAvailable) {
+				// 	if (strlist.size() > 5) {
+				// 		deviceName = strlist.at(5) + " ";
+				// 		deviceName = deviceName.remove("'");
+				// 	}
+				// 	if (strlist.size() > 7) {
+				// 		deviceName += strlist.at(7) + "  ";
+				// 		deviceName = deviceName.remove("'");
+				// 	}
+				// 	if (strlist.size() > 2) {
+				// 		device = strlist.at(2);
+				// 		device = device.remove("dev=").remove("'");
+				// 		deviceName += "(" + device + ")";
+				// 	}
+				// } else {
 					if (strlist.size() > 1) {
 						deviceName = strlist.at(1) + " ";
 					}
@@ -511,7 +525,7 @@ void CDWritingDialog::read_standard_output()
 						device = device.remove(":");
 						deviceName += "(" + device + ")";
 					}
-				}
+				// }
 				cdDeviceComboBox->addItem(deviceName, device);
 			}
 		}
@@ -604,7 +618,7 @@ void CDWritingDialog::read_standard_output()
 
 void CDWritingDialog::closeEvent(QCloseEvent * event)
 {
-	if (m_writingState != NO_STATE) {
+	if (m_writingState != NO_STATE && !cdDiskExportOnlyCheckBox->isChecked()) {
 		event->setAccepted(false);
 		return;
 	}

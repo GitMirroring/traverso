@@ -272,13 +272,13 @@ QList<TTimeLineMarker*> TTimeLineRuler::get_cdtrack_list(TExportSpecification *s
 }
 
 
-QString TTimeLineRuler::get_cdrdao_tracklist(TExportSpecification* spec, bool pregap)
+QString TTimeLineRuler::get_cdrdao_tracklist(TExportSpecification* spec, QString file_path, bool pregap)
 {
         QString output;
 
         QList<TTimeLineMarker*> mlist = get_cdtrack_list(spec);
 
-//	TTimeRef start;
+        TTimeRef start = TTimeRef(0.0);
 
         for(int i = 0; i < mlist.size()-1; ++i) {
 
@@ -305,27 +305,29 @@ QString TTimeLineRuler::get_cdrdao_tracklist(TExportSpecification* spec, bool pr
                 output += "      SONGWRITER \"" + startmarker->get_songwriter() + "\"\n";
                 output += "      MESSAGE \"" + startmarker->get_message() + "\"\n    }\n  }\n";
 
+
                 // add some stuff only required for the first track (e.g. pre-gap)
                 if ((i == 0) && pregap) {
-                        //if (start == 0) {
+                        if (startmarker->get_location()->get_start() == TTimeRef(0.0)) {
                                 // standard pregap, because we have a track marker at the beginning
                                 output += "  PREGAP 00:02:00\n";
-                        //} else {
-                        //	// no track marker at the beginning, thus use the part from 0 to the first
-                        //	// track marker for the pregap
-                        //	output += "  START " + frame_to_cd(start, m_project->get_rate()) + "\n";
-                        //	start = 0;
-                        //}
+                        } else {
+                        	// no track marker at the beginning, thus use the part from 0 to the first
+                        	// track marker for the pregap
+                                output += "  FILE \"" + file_path + "\" " + TTimeRef::timeref_to_cd(start) + 
+                                        " " + TTimeRef::timeref_to_cd(startmarker->get_location()->get_start()) + "\n";
+                        	output += "  START " + TTimeRef::timeref_to_cd(startmarker->get_location()->get_start()) + "\n";
+                                start = startmarker->get_location()->get_start();
+                        }
                 }
 
                 TTimeRef length = TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(endmarker->get_location()->get_start())) - TTimeRef::cd_to_timeref(TTimeRef::timeref_to_cd(startmarker->get_location()->get_start()));
 
-//		QString s_start = TTimeRef::timeref_to_cd(start);
+		QString s_start = TTimeRef::timeref_to_cd(start);
                 QString s_length = TTimeRef::timeref_to_cd(length);
 
-//		output += "  FILE \"" + spec->name + "." + spec->extraFormat["filetype"] + "\" " + s_start + " " + s_length + "\n\n";
-                output += "  FILE \"" + format_cdtrack_name(startmarker, i+1) + "." + spec->extraFormat["filetype"] + "\" 0 " + s_length + "\n\n";
-//		start += length;
+                output += "  FILE \"" + file_path + "\" " + s_start + " " + s_length + "\n\n";
+		start += length;
 
                 // check if the second marker is of type "Endmarker"
                 if (endmarker->get_type() == TTimeLineMarker::ENDMARKER) {

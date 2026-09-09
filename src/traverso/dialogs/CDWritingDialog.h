@@ -35,11 +35,11 @@ class QProcess;
 
 class CDWritingDialog : public QDialog, protected Ui::CDWritingDialog
 {
-        Q_OBJECT
+	Q_OBJECT
 
 public:
-        CDWritingDialog(QWidget* parent = 0);
-        ~CDWritingDialog();
+	CDWritingDialog(QWidget* parent = 0);
+	~CDWritingDialog();
 	
 	void set_was_closed();
 	
@@ -47,11 +47,11 @@ protected:
 	void closeEvent(QCloseEvent* event);
 
 private:
-        TProject* m_project{};
+	TProject* m_project{};
 	QProcess* m_burnprocess;
 	TExportSpecification* 	m_exportSpec;
 	
-        void show_progress_view();
+	void show_progress_view();
 	
 	bool is_safe_to_export();
 	void cd_render();
@@ -66,17 +66,17 @@ private:
 		NO_STATE,
   		RENDER,
   		BURNING,
-    		ABORT_BURN,
+		ABORT_BURN,
   		QUERY_DEVICE,
-    		UNLOCK_DEVICE,
+		UNLOCK_DEVICE,
 		NORMAL_MESSAGE,
-    		ERROR_MESSAGE
+		ERROR_MESSAGE
 	};
 	
 	int m_writingState;
-        qint64 m_lastSheetExported;
+	qint64 m_lastSheetExported;
 	bool m_wasClosed{};
-	bool m_wodimAvailable;
+	// bool m_wodimAvailable;
 	int m_copyNumber{};
 	QString get_device(int index);
 
@@ -91,9 +91,9 @@ private slots:
 	void cdrdao_process_finished(int exitcode, QProcess::ExitStatus exitstatus);
 	void cd_export_finished();
 	void cd_export_progress(int progress);
-        void set_export_message(QString message);
+	void set_export_message(QString message);
 	void query_devices();
-//        void sheet_mode_changed(bool);
+//    void sheet_mode_changed(bool);
 	
 	void reject();
 };

@@ -61,6 +61,7 @@ public:
 
     void add_exported_range(const TTimeRef& time);
     void add_sheet_to_export(TSheet* sheet);
+    void clear_sheets_to_export();
 
     void set_writer_type(const QString& writerType);
     void set_file_format(int fileFormat);
@@ -77,7 +78,7 @@ public:
 
     void print_export_data() const;
 
-    int create_cdrdao_toc(TExportSpecification* spec);
+        int create_cdrdao_toc(TProject* project, TExportSpecification* spec);
     TTimeRef get_cd_totaltime(TExportSpecification*);
 
 
