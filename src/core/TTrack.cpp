@@ -272,7 +272,7 @@ void TTrack::add_input_bus(qint64 busId)
     add_input_bus(bus);
 }
 
-void TTrack::add_post_send(qint64 busId)
+void TTrack::add_post_send(qint64 busId, TProject* project)
 {
     for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
 
@@ -282,7 +282,11 @@ void TTrack::add_post_send(qint64 busId)
         }
     }
 
-    TProject* project = pm().get_project();
+    // Default to pm().get_project() but allow passing in a project during 
+    // project init, while pm().get_project() is not yet set up.
+    if (!project) {
+        project = pm().get_project();
+    }
     AudioBus* bus = project->get_audio_bus(busId);
 
     if (!bus) {

@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class TSend;
 class TVUMonitor;
+class TProject;
 
 class TTrack : public TAudioProcessingNode
 {
@@ -72,7 +73,7 @@ public:
     }
 
     void add_input_bus(const QString& name);
-    void add_post_send(qint64 busId);
+    void add_post_send(qint64 busId, TProject* project = nullptr);
     void add_post_send(AudioBus* bus);
     void add_pre_send(qint64 busId);
     void remove_post_sends(QList<qint64> sendIds);
