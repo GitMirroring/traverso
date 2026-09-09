@@ -28,7 +28,6 @@
 #include "Debugger.h"
 
 #include <cstring>
-#include <cmath>
 #include <cstdlib>
 
 TPipeWireDriver::TPipeWireDriver(TAudioDevice* device)
@@ -170,8 +169,6 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     m_ioPosition = nullptr;
     m_captureFrameLatency = m_playbackFrameLatency = 0;
 
-    m_device->set_buffer_size(m_framesPerCycle);
-    m_device->set_sample_rate(m_frameRate);
     m_periodTimeInMicroSeconds = static_cast<trav_time_t>(
         static_cast<double>(m_framesPerCycle) / m_frameRate * 1000000.0);
 
@@ -199,7 +196,6 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
         return fail_setup(tr("Couldn't create PipeWire thread loop"));
     }
 
-    m_playbackEvents = {};
     m_playbackEvents.version = PW_VERSION_STREAM_EVENTS;
     m_playbackEvents.destroy = _on_playback_destroy;
     m_playbackEvents.state_changed = _on_playback_state_changed;
@@ -207,7 +203,6 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     m_playbackEvents.param_changed = _on_param_changed;
     m_playbackEvents.process = _on_playback_process;
 
-    m_captureEvents = {};
     m_captureEvents.version = PW_VERSION_STREAM_EVENTS;
     m_captureEvents.destroy = _on_capture_destroy;
     m_captureEvents.state_changed = _on_capture_state_changed;
@@ -340,17 +335,6 @@ void TPipeWireDriver::run_engine_cycle(nframes_t nframes)
 
     m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
     m_device->set_transport_cycle_end_time(m_runCycleEndTime);
-
-    trav_time_t cycleDurationNs = m_runCycleEndTime - m_runCycleStartTime;
-    uint32_t rate = audiodevice().get_sample_rate();
-    if (rate > 0 && nframes > 0) {
-        trav_time_t periodTimeNs = static_cast<trav_time_t>((static_cast<double>(nframes) / static_cast<double>(rate)) * 1e9);
-        if (periodTimeNs > 0) {
-            float load = (static_cast<float>(cycleDurationNs) / static_cast<float>(periodTimeNs)) * 100.0f;
-            float prevLoad = m_cpuLoad.load();
-            m_cpuLoad.store(prevLoad * 0.95f + load * 0.05f);
-        }
-    }
 }
 
 void TPipeWireDriver::_on_playback_destroy(void *data)
@@ -508,11 +492,6 @@ void TPipeWireDriver::stop_free_wheeling()
 {
     m_isFreeWheeling = false;
     m_device->driver_changed_free_wheel_mode();
-}
-
-float TPipeWireDriver::get_cpu_load()
-{
-    return m_cpuLoad.load();
 }
 
 void TPipeWireDriver::update_config()

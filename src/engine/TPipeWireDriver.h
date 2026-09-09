@@ -50,8 +50,6 @@ public:
     QString get_device_name() override;
     QString get_device_longname() override;
 
-    float get_cpu_load();
-
     bool is_running() const { return m_running.load() == 1; }
     void update_config();
 
@@ -87,7 +85,6 @@ private:
 
     TTransportControl                   m_transportControl;
     bool                                m_isSlave{false};
-    std::atomic<float>                  m_cpuLoad{0.0f};
 
     void run_engine_cycle(nframes_t nframes);
     void cleanup();
