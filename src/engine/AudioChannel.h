@@ -86,6 +86,7 @@ private:
     friend class TPipeWireDriver;
 
     void read_from_hardware_port(audio_sample_t* buf, nframes_t nframes);
+    void read_from_hardware_port_interleaved(const audio_sample_t* buf, nframes_t nframes, uint channelCount, uint channelNumber);
 
 private slots:
     void private_add_monitor(TVUMonitor* monitor);

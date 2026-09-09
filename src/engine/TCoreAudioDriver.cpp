@@ -637,11 +637,7 @@ int TCoreAudioDriver::process_callback(AudioUnitRenderActionFlags* flags,
 
             const auto* input = static_cast<const audio_sample_t*>(m_inputList->mBuffers[0].mData);
             for (channel_t channel = 0; channel < m_inputChannels; ++channel) {
-                audio_sample_t* destination = m_captureChannels.at(channel)->get_buffer().get_data(nframes);
-                for (nframes_t frame = 0; frame < nframes; ++frame) {
-                    destination[frame] = input[frame * m_inputChannels + channel];
-                }
-                m_captureChannels.at(channel)->process_monitoring();
+                m_captureChannels.at(channel)->read_from_hardware_port_interleaved(input, nframes, m_inputChannels, channel);
             }
         } else if (m_inputRingBuffer && m_processInputBuffer) {
             const size_t neededSamples = nframes * m_inputChannels;
@@ -652,11 +648,7 @@ int TCoreAudioDriver::process_callback(AudioUnitRenderActionFlags* flags,
             }
 
             for (channel_t channel = 0; channel < m_inputChannels; ++channel) {
-                audio_sample_t* destination = m_captureChannels.at(channel)->get_buffer().get_data(nframes);
-                for (nframes_t frame = 0; frame < nframes; ++frame) {
-                    destination[frame] = m_processInputBuffer[frame * m_inputChannels + channel];
-                }
-                m_captureChannels.at(channel)->process_monitoring();
+                m_captureChannels.at(channel)->read_from_hardware_port_interleaved(m_processInputBuffer, nframes, m_inputChannels, channel);
             }
         }
     }
@@ -728,11 +720,7 @@ OSStatus TCoreAudioDriver::capture_callback(AudioUnitRenderActionFlags* flags,
     if (!m_playback) {
         const auto* input = static_cast<const audio_sample_t*>(m_inputList->mBuffers[0].mData);
         for (channel_t channel = 0; channel < m_inputChannels; ++channel) {
-            audio_sample_t* destination = m_captureChannels.at(channel)->get_buffer().get_data(nframes);
-            for (nframes_t frame = 0; frame < nframes; ++frame) {
-                destination[frame] = input[frame * m_inputChannels + channel];
-            }
-            m_captureChannels.at(channel)->process_monitoring();
+            m_captureChannels.at(channel)->read_from_hardware_port_interleaved(input, nframes, m_inputChannels, channel);
         }
 
         m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();

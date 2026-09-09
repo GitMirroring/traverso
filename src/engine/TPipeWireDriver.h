@@ -25,7 +25,6 @@
 
 #include "TAudioDriver.h"
 #include "defines.h"
-#include "RingBufferNPT.h"
 
 #include <pipewire/pipewire.h>
 #include <pipewire/stream.h>
@@ -34,8 +33,6 @@
 
 #include <QObject>
 #include <atomic>
-#include <memory>
-#include <vector>
 
 class TPipeWireDriver : public TAudioDriver
 {
@@ -44,8 +41,6 @@ public:
     explicit TPipeWireDriver(TAudioDevice* device);
     ~TPipeWireDriver() override;
 
-    int _read(nframes_t nframes) override;
-    int _write(nframes_t nframes) override;
     int _run_cycle() override { return 1; }
     int setup(bool capture = true, bool playback = true, const QString& cardDevice = "");
     int attach() override;
@@ -58,9 +53,6 @@ public:
     float get_cpu_load();
 
     bool is_running() const { return m_running.load() == 1; }
-    struct pw_stream* get_playback_stream() const { return m_playbackStream; }
-    struct pw_stream* get_capture_stream() const { return m_captureStream; }
-    bool is_slave() const { return m_isSlave; }
     void update_config();
 
     bool supports_software_channels() override {
@@ -91,19 +83,27 @@ private:
     bool                                m_enableCapture{true};
     bool                                m_enablePlayback{true};
     QString                             m_cardDevice;
-
-    std::unique_ptr<RingBufferNPT<audio_sample_t>> m_inputRingBuffer;
-    std::vector<audio_sample_t>         m_interleavedInputBuffer;
-    std::unique_ptr<RingBufferNPT<audio_sample_t>> m_outputRingBuffer;
-    std::vector<audio_sample_t>         m_interleavedOutputBuffer;
+    bool                                m_pwInitialized{false};
 
     TTransportControl                   m_transportControl;
     bool                                m_isSlave{false};
     std::atomic<float>                  m_cpuLoad{0.0f};
 
-    void process_playback_cycle();
-    void process_capture_cycle();
+    void run_engine_cycle(nframes_t nframes);
+    void cleanup();
     int fail_setup(const QString& message);
+    struct pw_stream* create_stream(
+        const char* streamName,
+        const char* nodeName,
+        const char* nodeDescription,
+        const char* mediaCategory,
+        enum pw_direction direction,
+        uint32_t channelCount,
+        const struct pw_stream_events* events,
+        const QByteArray& latencyStr,
+        const QByteArray& rateStr
+    );
+    void on_stream_state_changed(const char* streamName, enum pw_stream_state oldState, enum pw_stream_state state, const char *error);
 
     static void _on_playback_destroy(void *data);
     static void _on_playback_state_changed(void *data, enum pw_stream_state oldState, enum pw_stream_state state, const char *error);
