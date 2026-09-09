@@ -51,6 +51,7 @@ TPeak::TPeak(TAudioSource* source)
     PENTERCONS;
 
     m_peaksAvailable = m_permanentFailure = m_interuptPeakBuild = false;
+    m_peakBuildRunning = false;
 
     QString sourcename = source->get_name();
     QString path;
@@ -111,6 +112,15 @@ int TPeak::read_header()
     PENTER;
 
     Q_ASSERT(m_source);
+
+    // The peak build thread propels the shared ChannelData::file handles
+    // (open ReadWrite in prepare_processing(), written in process()). While a
+    // build is running, probing the not-yet-complete file from here (GUI
+    // thread) will find no valid header and close() those same file handles,
+    // breaking the build for that channel. Sit it out instead.
+    if (m_peakBuildRunning.load()) {
+        return -1;
+    }
 
     foreach(ChannelData* data, m_channelData) {
 
@@ -773,7 +783,13 @@ TPeakProcessor::~ TPeakProcessor()
 
 void TPeakProcessor::start_task()
 {
+    // Mark the build as running before creating any files, and keep the flag
+    // up until create_from_scratch() has fully finished (and closed) the peak
+    // files. This keeps read_header() on the GUI thread from probing, and
+    // closing, the shared ChannelData::file handles mid-build.
+    m_runningPeak->m_peakBuildRunning.store(true);
     m_runningPeak->create_from_scratch();
+    m_runningPeak->m_peakBuildRunning.store(false);
 
     QMutexLocker locker(&m_mutex);
 
