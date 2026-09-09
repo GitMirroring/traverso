@@ -153,14 +153,21 @@ int TTrack::set_state( const QDomNode & node )
     // add default post send to a Track. In other words, this is very much needed
     // for newly created tracks
     // What about reviewing the whole create_project() and then load_project() scheme?
-    if (m_postSends.isEmpty() && ! m_session->is_project_session()) {
+    if (! m_session->is_project_session()) {
         TProject* project = pm().get_project();
         if (m_session && project) {
+            qint64 sendBusId;
             if (m_name == "Sheet Master") {
-                add_post_send(project->get_master_out_bus_track()->get_id());
+                sendBusId = project->get_master_out_bus_track()->get_id();
             } else {
-                add_post_send(m_session->get_master_out_bus_track()->get_id());
+                sendBusId = m_session->get_master_out_bus_track()->get_id();
+            }
 
+            // Don't gate on isEmpty(): the Sheet Master always has a bounce-input
+            // send (added in TSheet::init()) by the time we get here, so the sends
+            // list is never empty. Check for the specific default routing send instead.
+            if (!has_post_send(sendBusId)) {
+                add_post_send(sendBusId, project);
             }
         }
     }
@@ -501,6 +508,17 @@ QList<TSend* > TTrack::get_pre_sends() const
         sends.append(send);
     }
     return sends;
+}
+
+bool TTrack::has_post_send(qint64 busId) const
+{
+    for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
+        if (send->get_bus_id() == busId) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 TSend* TTrack::get_send(qint64 sendId)

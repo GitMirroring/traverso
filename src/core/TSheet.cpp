@@ -81,18 +81,6 @@ TSheet::TSheet(TProject* project, int numtracks)
 
     init();
 
-    // Route this new Sheet Master to the project's Master Out bus.
-    // Done here, once, at creation: TTrack::set_state()'s fallback only adds
-    // this send when the sends list is empty, but the bounce-input send above
-    // makes that condition never true. Loading a sheet restores the stored
-    // sends instead, so this never duplicates.
-    //
-    // Notes: Is this already done somewhere else?  I can't find it.  Or is it unnecessary for some reason?
-    // This was causing all of the audio drivers to fail to output audio for me on linux builds, and this line fixes that.
-    // I also needed to add the project argument to the add_post_send() function becasue 
-    // that function calls pm().get_project() which is not set up when creating a new project.
-    m_masterOutBusTrack->add_post_send(m_project->get_master_out_bus_track()->get_id(), m_project);
-
     for (int i=1; i <= numtracks; i++) {
         int height = TAudioTrack::INITIAL_HEIGHT;
         QString trackname = QString("Audio Track %1").arg(i);

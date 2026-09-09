@@ -93,6 +93,7 @@ public:
     QList<TSend*> get_post_sends() const;
     QList<TSend*> get_pre_sends() const;
     TSend* get_send(qint64 sendId);
+    bool has_post_send(qint64 busId) const;
     virtual void add_input_bus(AudioBus* bus);
 
 
