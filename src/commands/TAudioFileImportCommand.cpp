@@ -159,7 +159,7 @@ int TAudioFileImportCommand::prepare_actions()
         return 1;
     }
 
-    return -1;
+    return 1;
 }
 
 int TAudioFileImportCommand::do_action()
