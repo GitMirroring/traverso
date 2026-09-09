@@ -345,7 +345,6 @@ void TViewPort::wheelEvent (QWheelEvent *event)
 {
     bool handled = false;
 
-#if defined(Q_OS_MAC)
   	if (event->angleDelta().x() > 0) {
   		m_sv->scroll_left_by(event->angleDelta().x());
     	handled = true;
@@ -360,7 +359,6 @@ void TViewPort::wheelEvent (QWheelEvent *event)
   		m_sv->scroll_down_by(-event->angleDelta().y());
     	handled = true;
   	}
-#endif
 
     if (!handled) {
         // if not handled by the sheetview, let the input event dispatcher handle it
