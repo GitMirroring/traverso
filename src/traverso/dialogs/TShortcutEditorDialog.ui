@@ -15,10 +15,10 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QFrame" name="frame">
+    <widget class="QFrame" name="mainFrame">
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <widget class="QFrame" name="frame">
+       <widget class="QFrame" name="shortcutsFrame">
         <layout class="QHBoxLayout" name="horizontalLayout_4">
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -44,7 +44,7 @@
           </layout>
          </item>
          <item>
-          <widget class="QFrame" name="frame">
+          <widget class="QFrame" name="editorFrame">
            <property name="minimumSize">
             <size>
              <width>220</width>

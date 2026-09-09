@@ -79,10 +79,10 @@ TAudioPlugin* PluginManager::get_plugin(const  QDomNode& node )
 	QString type = e.attribute( "type", "");
 
     TAudioPlugin* plugin = 0;
-        TSession* session = pm().get_project()->get_current_session();
 
     if (type == "LV2Plugin") {
 #if defined (LV2_SUPPORT)
+                TSession* session = pm().get_project()->get_current_session();
                 plugin = new LV2Plugin(session);
 #endif
     }
