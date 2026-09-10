@@ -18,12 +18,6 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  */
 
-// TODO:
-// - Output works at different framerates, but capture insists on delivering 48k audio?
-//   (Captured audio stutters.)
-// - On line 137, should we just set rate to 0 and allow the PipeWire internals to choose the rate?  And then set the project rate?
-//   This fixes audio stuttering, but we need to tear down and set back up the buffers with new sizes?  Or just realloc? (If so then also remove the PW_KEY_NODE_FORCE_RATE line.)
-
 
 #include "TPipeWireDriver.h"
 
@@ -86,10 +80,12 @@ struct pw_stream* TPipeWireDriver::create_stream(
     const char* mediaCategory,
     enum pw_direction direction,
     uint32_t channelCount,
-    const struct pw_stream_events* events,
-    const QByteArray& latencyStr,
-    const QByteArray& rateStr)
+    const struct pw_stream_events* events)
 {
+    QByteArray latencyStr = QString("%1/%2").arg(m_framesPerCycle).arg(m_frameRate).toUtf8();
+    QByteArray quantumStr = QString::number(m_framesPerCycle).toUtf8();
+    QByteArray rateStr = QString("1/%1").arg(m_frameRate).toUtf8();
+
     struct pw_properties* props = pw_properties_new(
         PW_KEY_MEDIA_TYPE, "Audio",
         PW_KEY_MEDIA_CATEGORY, mediaCategory,
@@ -100,7 +96,9 @@ struct pw_stream* TPipeWireDriver::create_stream(
         PW_KEY_NODE_LATENCY, latencyStr.constData(),
         PW_KEY_NODE_RATE, rateStr.constData(),
         PW_KEY_NODE_FORCE_RATE, rateStr.constData(),
-        "node.lock-quantum", "true",
+        PW_KEY_NODE_FORCE_QUANTUM, quantumStr.constData(),
+        PW_KEY_NODE_LOCK_QUANTUM, "true",
+        PW_KEY_NODE_LOCK_RATE, "true",
         (const char*)nullptr
     );
     if (!props) {
@@ -185,6 +183,11 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
             AudioChannel* chan = add_capture_channel(QString("capture_%1").arg(chn + 1));
             chan->set_latency(m_framesPerCycle + m_captureFrameLatency);
         }
+
+        m_captureRingBuffer = std::make_unique<RingBufferNPT<audio_sample_t>>(
+            static_cast<size_t>(m_framesPerCycle) * m_captureChannels.size() * 8);
+        m_captureProcessBuffer = std::make_unique<audio_sample_t[]>(
+            static_cast<size_t>(m_framesPerCycle) * m_captureChannels.size());
     }
 
     if (m_enablePlayback) {
@@ -218,9 +221,6 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     m_captureEvents.param_changed = _on_param_changed;
     m_captureEvents.process = _on_capture_process;
 
-    QByteArray latencyStr = QString("%1/%2").arg(m_framesPerCycle).arg(m_frameRate).toUtf8();
-    QByteArray rateStr = QString("1/%1").arg(m_frameRate).toUtf8();
-
     pw_thread_loop_lock(m_threadLoop);
 
     if (m_enablePlayback) {
@@ -231,9 +231,7 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
             "Playback",
             PW_DIRECTION_OUTPUT,
             static_cast<uint32_t>(m_playbackChannels.size()),
-            &m_playbackEvents,
-            latencyStr,
-            rateStr
+            &m_playbackEvents
         );
         if (!m_playbackStream) {
             pw_thread_loop_unlock(m_threadLoop);
@@ -249,9 +247,7 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
             "Capture",
             PW_DIRECTION_INPUT,
             static_cast<uint32_t>(m_captureChannels.size()),
-            &m_captureEvents,
-            latencyStr,
-            rateStr
+            &m_captureEvents
         );
         if (!m_captureStream) {
             pw_thread_loop_unlock(m_threadLoop);
@@ -286,6 +282,10 @@ int TPipeWireDriver::start()
 
     // silence playback buffers
     TAudioDriver::start();
+
+    if (m_captureRingBuffer) {
+        m_captureRingBuffer->reset();
+    }
 
     m_running.store(1);
 
@@ -343,6 +343,27 @@ void TPipeWireDriver::run_engine_cycle(nframes_t nframes)
     m_device->set_transport_cycle_end_time(m_runCycleEndTime);
 }
 
+// Pull samples as needed from the ring buffer, on the traverso engine's schedule
+void TPipeWireDriver::drain_capture_ringbuffer(nframes_t nframes)
+{
+    const uint channelCount = m_captureChannels.size();
+    if (!channelCount || !m_captureRingBuffer || !m_captureProcessBuffer) {
+        return;
+    }
+
+    const size_t needed = static_cast<size_t>(nframes) * channelCount;
+    const size_t readSamples = m_captureRingBuffer->read(m_captureProcessBuffer.get(), needed);
+    if (readSamples < needed) {
+        std::memset(m_captureProcessBuffer.get() + readSamples, 0,
+                    (needed - readSamples) * sizeof(audio_sample_t));
+    }
+
+    for (uint chan = 0; chan < channelCount; ++chan) {
+        m_captureChannels.at(chan)->read_from_hardware_port_interleaved(
+            m_captureProcessBuffer.get(), nframes, channelCount, chan);
+    }
+}
+
 void TPipeWireDriver::_on_playback_destroy(void *data)
 {
     static_cast<TPipeWireDriver*>(data)->m_playbackStream = nullptr;
@@ -350,7 +371,7 @@ void TPipeWireDriver::_on_playback_destroy(void *data)
 
 void TPipeWireDriver::on_stream_state_changed(const char* streamName, enum pw_stream_state oldState, enum pw_stream_state state, const char *error)
 {
-    printf("PipeWire %s stream state: %s -> %s\n", streamName, pw_stream_state_as_string(oldState), pw_stream_state_as_string(state));
+    // printf("PipeWire %s stream state: %s -> %s\n", streamName, pw_stream_state_as_string(oldState), pw_stream_state_as_string(state));
 
     bool shutdown = false;
     if (state == PW_STREAM_STATE_ERROR) {
@@ -395,6 +416,10 @@ void TPipeWireDriver::_on_playback_process(void *data)
         if (!driver->is_running()) {
             std::memset(dst, 0, sampleCount * sizeof(float));
         } else {
+            if (driver->m_enableCapture) {
+                driver->drain_capture_ringbuffer(nframes);
+            }
+
             driver->run_engine_cycle(nframes);
 
             for (nframes_t frame = 0; frame < nframes; ++frame) {
@@ -428,6 +453,7 @@ void TPipeWireDriver::_on_capture_state_changed(void *data, enum pw_stream_state
     static_cast<TPipeWireDriver*>(data)->on_stream_state_changed("capture", oldState, state, error);
 }
 
+// Called by PipeWire to give us captured samples.  We add them to the ringbuffer.
 void TPipeWireDriver::_on_capture_process(void *data)
 {
     TPipeWireDriver* driver = static_cast<TPipeWireDriver*>(data);
@@ -444,15 +470,21 @@ void TPipeWireDriver::_on_capture_process(void *data)
     float* src = static_cast<float*>(buf->datas[0].data);
     uint channelCount = driver->m_captureChannels.size();
 
-    if (src && channelCount > 0 && driver->is_running()) {
-        nframes_t nframes = driver->m_framesPerCycle;
-
-        for (uint chan = 0; chan < channelCount; ++chan) {
-            driver->m_captureChannels.at(chan)->read_from_hardware_port_interleaved(src, nframes, channelCount, chan);
+    if (src && channelCount > 0 && driver->is_running() && driver->m_captureRingBuffer) {
+        uint32_t actualFrames = driver->m_framesPerCycle;
+        if (buf->datas[0].chunk && buf->datas[0].chunk->size > 0) {
+            actualFrames = buf->datas[0].chunk->size / (sizeof(float) * channelCount);
         }
 
+        const size_t samples = static_cast<size_t>(actualFrames) * channelCount;
+        if (driver->m_captureRingBuffer->write_space() < samples) {
+            driver->m_captureRingBuffer->increment_read_ptr(samples - driver->m_captureRingBuffer->write_space());
+        }
+        driver->m_captureRingBuffer->write(reinterpret_cast<audio_sample_t*>(src), samples);
+
         if (!driver->m_enablePlayback) {
-            driver->run_engine_cycle(nframes);
+            driver->drain_capture_ringbuffer(driver->m_framesPerCycle);
+            driver->run_engine_cycle(driver->m_framesPerCycle);
         }
     }
 
@@ -470,7 +502,7 @@ void TPipeWireDriver::_on_io_changed(void *data, uint32_t id, void *area, uint32
 
 void TPipeWireDriver::_on_param_changed(void *data, uint32_t id, const struct spa_pod *param)
 {
-    TPipeWireDriver* driver = static_cast<TPipeWireDriver*>(data);
+    Q_UNUSED(data);
     if (!param || id != SPA_PARAM_Format) {
         return;
     }
@@ -480,12 +512,7 @@ void TPipeWireDriver::_on_param_changed(void *data, uint32_t id, const struct sp
         return;
     }
 
-    if (info.rate > 0 && info.rate != driver->m_frameRate) {
-        driver->m_frameRate = info.rate;
-        driver->m_device->set_sample_rate(info.rate);
-        driver->m_periodTimeInMicroSeconds = static_cast<trav_time_t>(
-            static_cast<double>(driver->m_framesPerCycle) / info.rate * 1000000.0);
-    }
+    // printf("PipeWire negotiated format: rate=%u channels=%u\n", info.rate, info.channels);
 }
 
 void TPipeWireDriver::start_free_wheeling()
