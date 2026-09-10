@@ -25,6 +25,7 @@
 
 #include "TAudioDriver.h"
 #include "defines.h"
+#include "RingBufferNPT.h"
 
 #include <pipewire/pipewire.h>
 #include <pipewire/stream.h>
@@ -33,6 +34,7 @@
 
 #include <QObject>
 #include <atomic>
+#include <memory>
 
 class TPipeWireDriver : public TAudioDriver
 {
@@ -85,7 +87,11 @@ private:
     TTransportControl                   m_transportControl;
     bool                                m_isSlave{false};
 
+    std::unique_ptr<RingBufferNPT<audio_sample_t>> m_captureRingBuffer;
+    std::unique_ptr<audio_sample_t[]>              m_captureProcessBuffer;
+
     void run_engine_cycle(nframes_t nframes);
+    void drain_capture_ringbuffer(nframes_t nframes);
     void cleanup();
     int fail_setup(const QString& message);
     struct pw_stream* create_stream(
@@ -95,9 +101,7 @@ private:
         const char* mediaCategory,
         enum pw_direction direction,
         uint32_t channelCount,
-        const struct pw_stream_events* events,
-        const QByteArray& latencyStr,
-        const QByteArray& rateStr
+        const struct pw_stream_events* events
     );
     void on_stream_state_changed(const char* streamName, enum pw_stream_state oldState, enum pw_stream_state state, const char *error);
 
