@@ -182,8 +182,12 @@ SET(HAVE_COREAUDIO FALSE)
 SET(HOST_SUPPORTS_SSE FALSE)
 # set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
 
-# SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wall -Wno-unused-local-typedefs ${CXX_FLAGS}")
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wall -Wextra -Wno-unused-local-typedefs -fsanitize=address ${CXX_FLAGS}")
+if(WIN32)
+    SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wall -Wextra -Wno-unused-local-typedefs ${CXX_FLAGS}")
+else()
+    SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb3 -Wall -Wextra -Wno-unused-local-typedefs -fsanitize=address ${CXX_FLAGS}")
+endif()
+
 SET(CMAKE_CXX_FLAGS_RELEASE "-O2 -Wall -Wno-unused-local-typedefs  ${CXX_FLAGS}")
 
 # Detect the flags to be used for large file support
