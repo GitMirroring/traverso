@@ -38,7 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioClip.h"
 #include <Utils.h>
 #include "TCurveView.h"
-
+#include "ClipTileCache.h"
 #include <PluginSelectorDialog.h>
 
 #include <Debugger.h>
@@ -94,6 +94,7 @@ void TAudioTrackView::add_new_audioclipview( TAudioClip * clip )
     PENTER;
     TAudioClipView* clipView = new TAudioClipView(m_sv, this, clip);
     m_clipViews.append(clipView);
+    ctcache().invalidate_clip(clip);
     if (!m_track->show_clip_volume_automation()) {
         clipView->get_gain_curve_view()->set_ignore_context(true);
     }
