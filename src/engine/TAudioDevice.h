@@ -42,9 +42,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioThreadMessageQueue.h"
 #include "defines.h"
 
-#include "FastDelegate.h"
-
-
 class TAudioDeviceThread;
 class TAudioDriver;
 class TAudioDeviceClient;
@@ -62,12 +59,41 @@ class TCoreAudioDriver;
 class TPipeWireDriver;
 #endif
 
-using namespace fastdelegate;
+template <typename Signature>
+class TRealTimeCallBack;
 
-typedef FastDelegate1<nframes_t, int> TAudioDriverReadWriteCallBack;
-typedef FastDelegate1<TProcessCallBackData&, int> TProcessCallBack;
-typedef FastDelegate0<int> RunCycleCallback;
-typedef FastDelegate1<TTransportControl*, int> TransportControlCallback;
+template <typename ReturnType, typename... Args>
+class TRealTimeCallBack<ReturnType(Args...)> {
+public:
+    TRealTimeCallBack() : m_instance(nullptr), m_stub(nullptr) {}
+
+    // Safely binds any member function at compile time
+    template <typename T, ReturnType(T::*Method)(Args...)>
+    static TRealTimeCallBack from_method(T* instance) {
+        TRealTimeCallBack d;
+        d.m_instance = instance;
+        d.m_stub = [](void* obj_ptr, Args... args) -> ReturnType {
+            return (static_cast<T*>(obj_ptr)->*Method)(args...);
+        };
+        return d;
+    }
+
+    // Invocation operator: executes exactly like a raw function pointer
+    ReturnType operator()(Args... args) const {
+        return (*m_stub)(m_instance, args...);
+    }
+
+    explicit operator bool() const { return m_stub != nullptr; }
+
+private:
+    void* m_instance;
+    ReturnType (*m_stub)(void*, Args...);
+};
+
+using TAudioDriverReadWriteCallBack = TRealTimeCallBack<int(nframes_t)>;
+using TProcessCallBack              = TRealTimeCallBack<int(TProcessCallBackData&)>;
+using TRunCycleCallBack             = TRealTimeCallBack<int()>;
+using TTransportControlCallBack      = TRealTimeCallBack<int(TTransportControl*)>;
 
 struct TAudioDriverSetupMessage
 {

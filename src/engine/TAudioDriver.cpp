@@ -33,9 +33,9 @@ TAudioDriver::TAudioDriver(TAudioDevice* device)
     , m_frameRate(0)
     , m_framesPerCycle(0)
 {
-    read = TAudioDriverReadWriteCallBack(this, &TAudioDriver::_read);
-    write = TAudioDriverReadWriteCallBack(this, &TAudioDriver::_write);
-    run_cycle = RunCycleCallback(this, &TAudioDriver::_run_cycle);
+    read = TAudioDriverReadWriteCallBack::from_method<TAudioDriver, &TAudioDriver::_read>(this);
+    write = TAudioDriverReadWriteCallBack::from_method<TAudioDriver, &TAudioDriver::_write>(this);
+    run_cycle = TRunCycleCallBack::from_method<TAudioDriver, &TAudioDriver::_run_cycle>(this);
 
     m_runCycleStartTime = m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
     m_isFreeWheeling = false;
@@ -176,7 +176,7 @@ int TAudioDriver::detach( )
 
 int TAudioDriver::start( )
 {
-    for (auto channel : m_playbackChannels) {
+    for (auto channel : std::as_const(m_playbackChannels)) {
         channel->silence_buffer();
     }
 
@@ -185,7 +185,7 @@ int TAudioDriver::start( )
 
 int TAudioDriver::stop( )
 {
-    for (AudioChannel* chan : m_captureChannels) {
+    for (AudioChannel* chan : std::as_const(m_captureChannels)) {
         chan->silence_buffer();
     }
 

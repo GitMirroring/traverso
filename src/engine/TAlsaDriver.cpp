@@ -57,9 +57,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 TAlsaDriver::TAlsaDriver(TAudioDevice* device)
     : TAudioDriver(device)
 {
-    read = TAudioDriverReadWriteCallBack(this, &TAlsaDriver::_read);
-    write = TAudioDriverReadWriteCallBack(this, &TAlsaDriver::_write);
-    run_cycle = RunCycleCallback(this, &TAlsaDriver::_run_cycle);
+    read = TAudioDriverReadWriteCallBack::from_method<TAlsaDriver, &TAlsaDriver::_read>(this);
+    write = TAudioDriverReadWriteCallBack::from_method<TAlsaDriver, &TAlsaDriver::_write>(this);
+    run_cycle = TRunCycleCallBack::from_method<TAlsaDriver, &TAlsaDriver::_run_cycle>(this);
 }
 
 TAlsaDriver::~TAlsaDriver()

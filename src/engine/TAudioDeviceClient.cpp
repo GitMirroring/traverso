@@ -69,7 +69,7 @@ void TAudioDeviceClient::set_process_callback(const TProcessCallBack& call)
     process = call;
 }
 
-void TAudioDeviceClient::set_transport_control_callback(const TransportControlCallback& callback)
+void TAudioDeviceClient::set_transport_control_callback(const TTransportControlCallBack& callback)
 {
 	transport_control = callback;
 }

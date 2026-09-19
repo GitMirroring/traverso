@@ -172,9 +172,13 @@ void TSheet::init()
     m_changed = m_recording = m_prepareRecording = false;
 
     m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
-    m_audiodeviceClient->set_process_callback( TProcessCallBack(this, &TSheet::process) );
-    m_audiodeviceClient->set_transport_control_callback( TransportControlCallback(this, &TSheet::transport_control) );
-}
+    m_audiodeviceClient->set_process_callback(
+        TProcessCallBack::from_method<TSheet, &TSheet::process>(this)
+        );
+
+    m_audiodeviceClient->set_transport_control_callback(
+        TTransportControlCallBack::from_method<TSheet, &TSheet::transport_control>(this)
+        );}
 
 int TSheet::set_state( const QDomNode & node )
 {

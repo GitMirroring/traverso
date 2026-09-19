@@ -35,9 +35,6 @@ public:
     ~TPortAudioDriver();
 
     int  process_callback (nframes_t nframes);
-    int _read(nframes_t nframes);
-    int _write(nframes_t nframes);
-    int _run_cycle();
     int setup(bool capture=true, bool playback=true, const QString& deviceInfo="alsa::default::default");
     int attach();
     int start();
@@ -56,6 +53,11 @@ public:
     virtual bool is_realtime_capable() const {
         return false;
     }
+
+protected:
+    int _read(nframes_t nframes);
+    int _write(nframes_t nframes);
+    int _run_cycle();
 
 private:
     PaStream* m_paStream;

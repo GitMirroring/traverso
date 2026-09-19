@@ -34,9 +34,9 @@
 TPipeWireDriver::TPipeWireDriver(TAudioDevice* device)
     : TAudioDriver(device)
 {
-    read = TAudioDriverReadWriteCallBack(this, &TPipeWireDriver::_read);
-    write = TAudioDriverReadWriteCallBack(this, &TPipeWireDriver::_write);
-    run_cycle = RunCycleCallback(this, &TPipeWireDriver::_run_cycle);
+    read = TAudioDriverReadWriteCallBack::from_method<TPipeWireDriver, &TPipeWireDriver::_read>(this);
+    write = TAudioDriverReadWriteCallBack::from_method<TPipeWireDriver, &TPipeWireDriver::_write>(this);
+    run_cycle = TRunCycleCallBack::from_method<TPipeWireDriver, &TPipeWireDriver::_run_cycle>(this);
 }
 
 TPipeWireDriver::~TPipeWireDriver()

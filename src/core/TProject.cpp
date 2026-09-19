@@ -93,8 +93,13 @@ TProject::TProject(const QString& title)
     create_history_stack();
 
     m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
-    m_audiodeviceClient->set_process_callback( TProcessCallBack(this, &TProject::process) );
-    m_audiodeviceClient->set_transport_control_callback( TransportControlCallback(this, &TProject::transport_control) );
+    m_audiodeviceClient->set_process_callback(
+        TProcessCallBack::from_method<TProject, &TProject::process>(this)
+        );
+
+    m_audiodeviceClient->set_transport_control_callback(
+        TTransportControlCallBack::from_method<TProject, &TProject::transport_control>(this)
+        );
 
     m_exportSpecification = nullptr;
 

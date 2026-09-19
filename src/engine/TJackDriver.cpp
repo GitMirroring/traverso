@@ -46,9 +46,9 @@
 TJackDriver::TJackDriver(TAudioDevice* device)
     : TAudioDriver(device)
 {
-    read = TAudioDriverReadWriteCallBack(this, &TJackDriver::_read);
-    write = TAudioDriverReadWriteCallBack(this, &TJackDriver::_write);
-    run_cycle = RunCycleCallback(this, &TJackDriver::_run_cycle);
+    read = TAudioDriverReadWriteCallBack::from_method<TJackDriver, &TJackDriver::_read>(this);
+    write = TAudioDriverReadWriteCallBack::from_method<TJackDriver, &TJackDriver::_write>(this);
+    run_cycle = TRunCycleCallBack::from_method<TJackDriver, &TJackDriver::_run_cycle>(this);
 
     m_jackClient = nullptr;
     m_isSlave = false;

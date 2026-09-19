@@ -80,7 +80,7 @@ public:
 
     TAudioDriverReadWriteCallBack read;
     TAudioDriverReadWriteCallBack write;
-    RunCycleCallback run_cycle;
+    TRunCycleCallBack run_cycle;
 
 
 protected:

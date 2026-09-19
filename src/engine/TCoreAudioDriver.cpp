@@ -191,9 +191,9 @@ QString device_uid(AudioDeviceID device)
 TCoreAudioDriver::TCoreAudioDriver(TAudioDevice* device)
     : TAudioDriver(device)
 {
-    read = TAudioDriverReadWriteCallBack(this, &TCoreAudioDriver::_read);
-    write = TAudioDriverReadWriteCallBack(this, &TCoreAudioDriver::_write);
-    run_cycle = RunCycleCallback(this, &TCoreAudioDriver::_run_cycle);
+    read = TAudioDriverReadWriteCallBack::from_method<TCoreAudioDriver, &TCoreAudioDriver::_read>(this);
+    write = TAudioDriverReadWriteCallBack::from_method<TCoreAudioDriver, &TCoreAudioDriver::_write>(this);
+    run_cycle = TRunCycleCallBack::from_method<TCoreAudioDriver, &TCoreAudioDriver::_run_cycle>(this);
 }
 
 TCoreAudioDriver::~TCoreAudioDriver()
