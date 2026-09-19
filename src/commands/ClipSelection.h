@@ -35,7 +35,7 @@ class ClipSelection : public TCommand
         Q_OBJECT
 
 public :
-	ClipSelection(TAudioClip* clip, QVariantList args);
+    ClipSelection(TAudioClip* clip, QVariantList args);
 	ClipSelection(QList<TAudioClip*> clips, TAudioClipManager* manager, const char* slot, const QString& des);
 	~ClipSelection();
 
@@ -43,10 +43,13 @@ public :
     int do_action();
     bool is_hold_command() const {return false;}
 
+private:
+    using TAudioClipManagerMethod = void (TAudioClipManager::*)(TAudioClip*);
 
-private :
+    TAudioClipManagerMethod m_methodPointer{nullptr};
+    QString m_slotName; // Keep this ONLY for the PERROR debug print if needed
+
 	QList<TAudioClip* >	m_clips;
-	const char*		m_slot;
 	TAudioClipManager* 	m_acmanager;
 };
 
