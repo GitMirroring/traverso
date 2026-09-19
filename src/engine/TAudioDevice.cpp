@@ -264,9 +264,9 @@ int TAudioDevice::_run_cycle()
 {
     int result;
     if (running_real_time()) {
-        result = m_driver->_run_cycle();
+        result = m_driver->run_cycle();
     } else {
-        result = m_driver->TAudioDriver::_run_cycle();
+        result = m_driver->TAudioDriver::run_cycle();
     }
 
     return result;
@@ -297,7 +297,7 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
 int TAudioDevice::run_one_cycle( nframes_t nframes, float  )
 {
 
-    if (m_isRealTime && m_driver->_read(nframes) < 0) {
+    if (m_isRealTime && m_driver->read(nframes) < 0) {
         qDebug("driver read failed!");
         return -1;
     }
@@ -310,7 +310,7 @@ int TAudioDevice::run_one_cycle( nframes_t nframes, float  )
         m_processCallBackWaitTime += ringBufferReadTime;
     }
 
-    if (m_isRealTime && m_driver->_write(nframes) < 0) {
+    if (m_isRealTime && m_driver->write(nframes) < 0) {
         qDebug("driver write failed!");
         return -1;
     }

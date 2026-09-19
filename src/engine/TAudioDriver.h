@@ -42,9 +42,6 @@ public:
     TAudioDriver(TAudioDevice* device);
     virtual ~TAudioDriver();
 
-    virtual int _run_cycle();
-    virtual int _read(nframes_t nframes);
-    virtual int _write(nframes_t nframes);
     virtual int _null_cycle(nframes_t nframes);
     virtual int attach();
     virtual int detach();
@@ -101,6 +98,10 @@ protected:
     nframes_t               m_captureFrameLatency{};
     nframes_t               m_playbackFrameLatency{};
     bool                    m_isFreeWheeling;
+
+    virtual int _read(nframes_t nframes);
+    virtual int _write(nframes_t nframes);
+    virtual int _run_cycle();
 
 signals:
     void errorMessage(const QString& message);
