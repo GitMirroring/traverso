@@ -206,16 +206,13 @@ int TPipeWireDriver::attach()
     // int port_flags;
     // port_flags = PortIsOutput|PortIsPhysical|PortIsTerminal;
 
-    AudioChannel* chan;
-
-    m_frameRate = m_device->get_sample_rate();
-    m_framesPerCycle = m_device->get_buffer_size();
-
     m_periodTimeInMicroSeconds = (trav_time_t) floor ((((float) m_framesPerCycle) / m_frameRate) * 1000000.0f);
 
     m_device->set_buffer_size (m_framesPerCycle);
     m_device->set_sample_rate (m_frameRate);
 
+
+    AudioChannel* chan;
 
     // Create 2 capture channels
     for (uint chn=0; chn<2; chn++) {
@@ -277,9 +274,6 @@ int TPipeWireDriver::stop()
 
 int TPipeWireDriver::process_callback()
 {
-    m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
-    m_device->set_transport_cycle_start_time(m_runCycleStartTime);
-
     m_device->run_cycle(m_framesPerCycle, 0.0);
 
     m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
@@ -343,6 +337,9 @@ void TPipeWireDriver::_on_process_capture(void *userdata)
 
 int TPipeWireDriver::process_capture_callback()
 {
+    m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
+    m_device->set_transport_cycle_start_time(m_runCycleStartTime);
+
     struct pw_buffer* b = pw_stream_dequeue_buffer(m_captureStream);
     if (!b) return 0;
 
