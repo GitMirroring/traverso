@@ -29,24 +29,234 @@
 #include "Debugger.h"
 
 #include <cstring>
-#include <cstdlib>
+
 
 TPipeWireDriver::TPipeWireDriver(TAudioDevice* device)
     : TAudioDriver(device)
 {
+    read = TAudioDriverReadWriteCallBack(this, &TPipeWireDriver::_read);
+    write = TAudioDriverReadWriteCallBack(this, &TPipeWireDriver::_write);
+    run_cycle = RunCycleCallback(this, &TPipeWireDriver::_run_cycle);
 }
 
 TPipeWireDriver::~TPipeWireDriver()
 {
-    PENTER;
-    stop();
-    cleanup();
+    PENTERDES;
+
 }
 
-void TPipeWireDriver::cleanup()
+int TPipeWireDriver::setup_failed(const QString& message)
 {
-    if (m_threadLoop) {
-        pw_thread_loop_stop(m_threadLoop);
+    PENTER;
+    emit driverSetupMessage("PipeWire", message, TAudioDevice::DRIVER_SETUP_FAILURE);
+    return -1;
+}
+
+
+int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevice)
+{
+    PENTER;
+
+    m_frameRate = m_device->get_sample_rate();
+    m_framesPerCycle = m_device->get_buffer_size();
+    m_captureFrameLatency = m_playbackFrameLatency = 0;
+
+    // FIXME:
+    uint32_t channels = 2;
+
+    m_periodTimeInMicroSeconds = static_cast<trav_time_t>(
+        static_cast<double>(m_framesPerCycle) / m_frameRate * 1000000.0);
+
+    pw_init(nullptr, nullptr);
+
+    m_pwLoop = pw_loop_new(nullptr);
+
+    if (!m_pwLoop) {
+        return setup_failed(tr("Could not create PipeWire Main Loop"));
+    }
+
+    struct pw_properties *playbackProperties = pw_properties_new(
+        "application.name", "Traverso DAW",
+        "application.icon-name", "Traverso",
+        "media.name", "Traverso Audio Output",
+        "media.type", "Audio",
+        "media.category", "Playback",
+        "media.class", "Stream/Output/Audio",
+        "node.name", "TraversoDAW Playback",
+        "node.description", "Traverso DAW Playback",
+
+        "node.link-group", "Traverso_DSP_Group",
+
+        "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
+        "node.force-rate", std::to_string(m_frameRate).c_str(),
+        "node.lock-quantum", "true",
+        "node.lock-rate", "true",
+        nullptr
+        );
+
+    std::memset(&m_playbackStreamEvents, 0, sizeof(m_playbackStreamEvents));
+    m_playbackStreamEvents.version = PW_VERSION_STREAM_EVENTS;
+    m_playbackStreamEvents.process = &TPipeWireDriver::_on_process_playback;
+    m_playbackStreamEvents.state_changed = &TPipeWireDriver::_on_state_changed;
+
+    m_playbackStream = pw_stream_new_simple(
+        m_pwLoop,
+        "TraversoPlaybackStream",
+        playbackProperties,
+        &m_playbackStreamEvents,
+        this
+        );
+
+    if (!m_playbackStream) {
+        return setup_failed(tr("Could not create PipeWire Playback Stream"));
+    }
+
+    uint8_t paramBuffer[1024];
+    struct spa_pod_builder b = SPA_POD_BUILDER_INIT(paramBuffer, sizeof(paramBuffer));
+    struct spa_audio_info_raw info = {};
+    info.format   = SPA_AUDIO_FORMAT_F32P; // Float 32-bit PLANAR (JACK stijl)
+    info.rate     = m_frameRate;
+    info.channels = channels;
+    info.flags    = 0;
+
+    for (uint32_t i = 0; i < channels; ++i) {
+        info.position[i] = (i == 0) ? SPA_AUDIO_CHANNEL_FL : ((i == 1) ? SPA_AUDIO_CHANNEL_FR : SPA_AUDIO_CHANNEL_UNKNOWN);
+    }
+
+    const struct spa_pod *duplexParameter = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
+    const struct spa_pod *streamParameters[] = { duplexParameter };
+
+    // Verbind de Playback stream met de Graph
+    int res = pw_stream_connect(
+        m_playbackStream,
+        PW_DIRECTION_OUTPUT,
+        PW_ID_ANY,
+        static_cast<enum pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_RT_PROCESS),
+        streamParameters,
+        1
+        );
+
+    if (res < 0) {
+        return setup_failed(tr("Could not connect playback stream to server"));
+    } else {
+        emit driverSetupMessage("PipeWire", tr("Playback Stream connected to server"), TAudioDevice::DRIVER_SETUP_SUCCESS);
+    }
+
+    struct pw_properties *captureProps = pw_properties_new(
+        "application.name", "Traverso DAW",
+        "application.icon-name", "Traverso",
+        "media.name", "Traverso Audio Input",
+        "media.type", "Audio",
+        "media.category", "Capture",
+        "media.class", "Stream/Input/Audio",
+        "node.name", "TraversoDAW Capture",
+        "node.description", "Traverso DAW Input",
+
+        "node.link-group", "Traverso_DSP_Group",
+
+        "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
+        "node.force-rate", std::to_string(m_frameRate).c_str(),
+        "node.lock-quantum", "true",
+        "node.lock-rate", "true",
+        nullptr
+        );
+
+    std::memset(&m_captureStreamEvents, 0, sizeof(m_captureStreamEvents));
+    m_captureStreamEvents.version = PW_VERSION_STREAM_EVENTS;
+
+    m_captureStreamEvents.process = &TPipeWireDriver::_on_process_capture;
+    m_captureStreamEvents.state_changed = &TPipeWireDriver::_on_state_changed;
+
+    m_captureStream = pw_stream_new_simple(
+        m_pwLoop,
+        "TraversoCaptureStream",
+        captureProps,
+        &m_captureStreamEvents,
+        this
+        );
+
+    if (!m_captureStream) {
+        return setup_failed(tr("Could not create PipeWire Capture Stream"));
+    }
+
+    res = pw_stream_connect(
+        m_captureStream,
+        PW_DIRECTION_INPUT,
+        PW_ID_ANY,
+        static_cast<enum pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_RT_PROCESS),
+        streamParameters,
+        1
+        );
+
+    if (res < 0) {
+        return setup_failed(tr("Could not connect capture stream to server"));
+    }
+
+    int pipewire_fd = pw_loop_get_fd(m_pwLoop);
+    m_notifier = new QSocketNotifier(pipewire_fd, QSocketNotifier::Read, this);
+    m_notifier->setEnabled(false);
+
+    connect(m_notifier, &QSocketNotifier::activated, this, &TPipeWireDriver::handle_pipewire_events);
+
+    return 1;
+}
+
+int TPipeWireDriver::attach()
+{
+    // int port_flags;
+    // port_flags = PortIsOutput|PortIsPhysical|PortIsTerminal;
+
+    AudioChannel* chan;
+
+    m_frameRate = m_device->get_sample_rate();
+    m_framesPerCycle = m_device->get_buffer_size();
+
+    m_periodTimeInMicroSeconds = (trav_time_t) floor ((((float) m_framesPerCycle) / m_frameRate) * 1000000.0f);
+
+    m_device->set_buffer_size (m_framesPerCycle);
+    m_device->set_sample_rate (m_frameRate);
+
+
+    // Create 2 capture channels
+    for (uint chn=0; chn<2; chn++) {
+        chan = add_capture_channel(QString("capture_%1").arg(chn+1));
+        chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
+    }
+
+    // Create 2 playback channels
+    for (uint chn=0; chn<2; chn++) {
+        chan = add_playback_channel(QString("playback_%1").arg(chn+1));
+        chan->set_latency( m_framesPerCycle + m_captureFrameLatency );
+    }
+
+    return 1;
+}
+
+int TPipeWireDriver::start()
+{
+    PENTER;
+    Q_ASSERT(m_playbackStream);
+
+
+    if (m_notifier) {
+        m_notifier->setEnabled(true);
+    }
+
+
+    return 1;
+}
+
+int TPipeWireDriver::stop()
+{
+    PENTER;
+
+    if (!m_pwLoop) return 1;
+
+    if (m_notifier) {
+        m_notifier->setEnabled(false);
+        disconnect(m_notifier, &QSocketNotifier::activated, this, &TPipeWireDriver::handle_pipewire_events);
+        m_notifier->deleteLater();
+        m_notifier = nullptr;
     }
     if (m_playbackStream) {
         pw_stream_destroy(m_playbackStream);
@@ -56,475 +266,129 @@ void TPipeWireDriver::cleanup()
         pw_stream_destroy(m_captureStream);
         m_captureStream = nullptr;
     }
-    if (m_threadLoop) {
-        pw_thread_loop_destroy(m_threadLoop);
-        m_threadLoop = nullptr;
+    if (m_pwLoop) {
+        pw_loop_destroy(m_pwLoop);
+        m_pwLoop = nullptr;
     }
-    if (m_pwInitialized) {
-        pw_deinit();
-        m_pwInitialized = false;
-    }
-}
-
-int TPipeWireDriver::fail_setup(const QString& message)
-{
-    cleanup();
-    emit driverSetupMessage("PipeWire", message, TAudioDevice::DRIVER_SETUP_FAILURE);
-    return -1;
-}
-
-struct pw_stream* TPipeWireDriver::create_stream(
-    const char* streamName,
-    const char* nodeName,
-    const char* nodeDescription,
-    const char* mediaCategory,
-    enum pw_direction direction,
-    uint32_t channelCount,
-    const struct pw_stream_events* events)
-{
-    QByteArray latencyStr = QString("%1/%2").arg(m_framesPerCycle).arg(m_frameRate).toUtf8();
-    QByteArray quantumStr = QString::number(m_framesPerCycle).toUtf8();
-    QByteArray rateStr = QString("1/%1").arg(m_frameRate).toUtf8();
-
-    struct pw_properties* props = pw_properties_new(
-        PW_KEY_MEDIA_TYPE, "Audio",
-        PW_KEY_MEDIA_CATEGORY, mediaCategory,
-        PW_KEY_MEDIA_ROLE, "Production",
-        PW_KEY_APP_NAME, "Traverso",
-        PW_KEY_NODE_NAME, nodeName,
-        PW_KEY_NODE_DESCRIPTION, nodeDescription,
-        PW_KEY_NODE_LATENCY, latencyStr.constData(),
-        PW_KEY_NODE_RATE, rateStr.constData(),
-        PW_KEY_NODE_FORCE_RATE, rateStr.constData(),
-        PW_KEY_NODE_FORCE_QUANTUM, quantumStr.constData(),
-        PW_KEY_NODE_LOCK_QUANTUM, "true",
-        PW_KEY_NODE_LOCK_RATE, "true",
-        (const char*)nullptr
-    );
-    if (!props) {
-        return nullptr;
-    }
-
-    if (!m_cardDevice.isEmpty()) {
-        pw_properties_set(props, PW_KEY_TARGET_OBJECT, m_cardDevice.toUtf8().constData());
-    }
-
-    struct pw_stream* stream = pw_stream_new_simple(
-        pw_thread_loop_get_loop(m_threadLoop),
-        streamName,
-        props,
-        events,
-        this
-    );
-    if (!stream) {
-        return nullptr;
-    }
-
-    uint8_t buffer[1024];
-    struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
-    struct spa_audio_info_raw info = {};
-    info.format = SPA_AUDIO_FORMAT_F32;
-    info.channels = channelCount;
-    if (channelCount == 1) {
-        info.position[0] = SPA_AUDIO_CHANNEL_MONO;
-    } else if (channelCount >= 2) {
-        info.position[0] = SPA_AUDIO_CHANNEL_FL;
-        info.position[1] = SPA_AUDIO_CHANNEL_FR;
-    }
-    info.rate = m_frameRate;
-
-    const struct spa_pod* params[1];
-    params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
-
-    enum pw_stream_flags flags = static_cast<enum pw_stream_flags>(
-        PW_STREAM_FLAG_AUTOCONNECT |
-        PW_STREAM_FLAG_MAP_BUFFERS |
-        PW_STREAM_FLAG_RT_PROCESS |
-        PW_STREAM_FLAG_INACTIVE
-    );
-
-    int res = pw_stream_connect(
-        stream,
-        direction,
-        PW_ID_ANY,
-        flags,
-        params,
-        1
-    );
-    if (res < 0) {
-        pw_stream_destroy(stream);
-        return nullptr;
-    }
-
-    return stream;
-}
-
-int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevice)
-{
-    PENTER;
-
-    cleanup();
-
-    m_enableCapture = capture;
-    m_enablePlayback = playback;
-    m_frameRate = m_device->get_sample_rate();
-    m_framesPerCycle = m_device->get_buffer_size();
-    if (m_frameRate == 0) m_frameRate = 48000;
-    if (m_framesPerCycle == 0) m_framesPerCycle = 1024;
-    m_cardDevice = cardDevice;
-    m_ioPosition = nullptr;
-    m_captureFrameLatency = m_playbackFrameLatency = 0;
-
-    m_periodTimeInMicroSeconds = static_cast<trav_time_t>(
-        static_cast<double>(m_framesPerCycle) / m_frameRate * 1000000.0);
-
-    if (m_enableCapture) {
-        for (uint chn = 0; chn < 2; ++chn) {
-            AudioChannel* chan = add_capture_channel(QString("capture_%1").arg(chn + 1));
-            chan->set_latency(m_framesPerCycle + m_captureFrameLatency);
-        }
-
-        m_captureRingBuffer = std::make_unique<RingBufferNPT<audio_sample_t>>(
-            static_cast<size_t>(m_framesPerCycle) * m_captureChannels.size() * 8);
-        m_captureProcessBuffer = std::make_unique<audio_sample_t[]>(
-            static_cast<size_t>(m_framesPerCycle) * m_captureChannels.size());
-    }
-
-    if (m_enablePlayback) {
-        for (uint chn = 0; chn < 2; ++chn) {
-            AudioChannel* chan = add_playback_channel(QString("playback_%1").arg(chn + 1));
-            chan->set_latency(m_framesPerCycle + m_playbackFrameLatency);
-        }
-    }
-
-    printf("Connecting to the PipeWire server...\n");
-
-    pw_init(nullptr, nullptr);
-    m_pwInitialized = true;
-
-    m_threadLoop = pw_thread_loop_new("traverso-pipewire", nullptr);
-    if (!m_threadLoop) {
-        return fail_setup(tr("Couldn't create PipeWire thread loop"));
-    }
-
-    m_playbackEvents.version = PW_VERSION_STREAM_EVENTS;
-    m_playbackEvents.destroy = _on_playback_destroy;
-    m_playbackEvents.state_changed = _on_playback_state_changed;
-    m_playbackEvents.io_changed = _on_io_changed;
-    m_playbackEvents.param_changed = _on_param_changed;
-    m_playbackEvents.process = _on_playback_process;
-
-    m_captureEvents.version = PW_VERSION_STREAM_EVENTS;
-    m_captureEvents.destroy = _on_capture_destroy;
-    m_captureEvents.state_changed = _on_capture_state_changed;
-    m_captureEvents.io_changed = _on_io_changed;
-    m_captureEvents.param_changed = _on_param_changed;
-    m_captureEvents.process = _on_capture_process;
-
-    pw_thread_loop_lock(m_threadLoop);
-
-    if (m_enablePlayback) {
-        m_playbackStream = create_stream(
-            "Traverso Playback",
-            "Traverso",
-            "Traverso DAW",
-            "Playback",
-            PW_DIRECTION_OUTPUT,
-            static_cast<uint32_t>(m_playbackChannels.size()),
-            &m_playbackEvents
-        );
-        if (!m_playbackStream) {
-            pw_thread_loop_unlock(m_threadLoop);
-            return fail_setup(tr("Couldn't create PipeWire playback stream"));
-        }
-    }
-
-    if (m_enableCapture) {
-        m_captureStream = create_stream(
-            "Traverso Capture",
-            "Traverso Capture",
-            "Traverso DAW Capture",
-            "Capture",
-            PW_DIRECTION_INPUT,
-            static_cast<uint32_t>(m_captureChannels.size()),
-            &m_captureEvents
-        );
-        if (!m_captureStream) {
-            pw_thread_loop_unlock(m_threadLoop);
-            return fail_setup(tr("Couldn't create PipeWire capture stream"));
-        }
-    }
-
-    pw_thread_loop_unlock(m_threadLoop);
-
-    if (pw_thread_loop_start(m_threadLoop) < 0) {
-        return fail_setup(tr("Failed to start PipeWire thread loop"));
-    }
-
-    emit driverSetupMessage("PipeWire", tr("Successfully connected to PipeWire server!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
+    pw_deinit();
 
     return 1;
 }
 
-int TPipeWireDriver::attach()
+int TPipeWireDriver::process_callback()
 {
-    m_device->set_buffer_size(m_framesPerCycle);
-    m_device->set_sample_rate(m_frameRate);
-    return 1;
-}
-
-int TPipeWireDriver::start()
-{
-    PENTER;
-    if (!m_threadLoop) {
-        return -1;
-    }
-
-    // silence playback buffers
-    TAudioDriver::start();
-
-    if (m_captureRingBuffer) {
-        m_captureRingBuffer->reset();
-    }
-
-    m_running.store(1);
-
-    pw_thread_loop_lock(m_threadLoop);
-    if (m_playbackStream) {
-        pw_stream_set_active(m_playbackStream, true);
-    }
-    if (m_captureStream) {
-        pw_stream_set_active(m_captureStream, true);
-    }
-    pw_thread_loop_unlock(m_threadLoop);
-
-    emit driverSetupMessage("PipeWire", tr("Successfully connected to PipeWire server!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
-
-    return 1;
-}
-
-int TPipeWireDriver::stop()
-{
-    PENTER;
-    m_running.store(0);
-
-    if (m_threadLoop) {
-        pw_thread_loop_lock(m_threadLoop);
-        if (m_playbackStream) {
-            pw_stream_set_active(m_playbackStream, false);
-        }
-        if (m_captureStream) {
-            pw_stream_set_active(m_captureStream, false);
-        }
-        pw_thread_loop_unlock(m_threadLoop);
-    }
-
-    // silence capture channels
-    TAudioDriver::stop();
-
-    return 1;
-}
-
-void TPipeWireDriver::run_engine_cycle(nframes_t nframes)
-{
-    if (m_isSlave && m_ioPosition) {
-        m_transportControl.set_location(TTimeRef(m_ioPosition->clock.position, audiodevice().get_sample_rate()));
-        m_transportControl.set_realtime(true);
-        m_transportControl.set_slave(true);
-        m_device->transport_control(&m_transportControl);
-    }
-
     m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
     m_device->set_transport_cycle_start_time(m_runCycleStartTime);
 
-    m_device->run_cycle(nframes, 0.0);
+    m_device->run_cycle(m_framesPerCycle, 0.0);
 
     m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
     m_device->set_transport_cycle_end_time(m_runCycleEndTime);
+
+    return 1;
 }
 
-// Pull samples as needed from the ring buffer, on the traverso engine's schedule
-void TPipeWireDriver::drain_capture_ringbuffer(nframes_t nframes)
+int TPipeWireDriver::_read( nframes_t nframes )
 {
-    const uint channelCount = m_captureChannels.size();
-    if (!channelCount || !m_captureRingBuffer || !m_captureProcessBuffer) {
-        return;
-    }
+    // allready got data in _on_process_capture() callback
+    return 1;
+}
 
-    const size_t needed = static_cast<size_t>(nframes) * channelCount;
-    const size_t readSamples = m_captureRingBuffer->read(m_captureProcessBuffer.get(), needed);
-    if (readSamples < needed) {
-        std::memset(m_captureProcessBuffer.get() + readSamples, 0,
-                    (needed - readSamples) * sizeof(audio_sample_t));
-    }
+int TPipeWireDriver::_write( nframes_t nframes )
+{
+    struct pw_buffer* b = pw_stream_dequeue_buffer(m_playbackStream);
+    if (!b) return -1;
+
+    struct spa_buffer* buf = b->buffer;
+    uint channelCount = m_playbackChannels.size();
 
     for (uint chan = 0; chan < channelCount; ++chan) {
-        m_captureChannels.at(chan)->read_from_hardware_port_interleaved(
-            m_captureProcessBuffer.get(), nframes, channelCount, chan);
+        float* dst = static_cast<float*>(buf->datas[chan].data);
+
+        if (dst) {
+            std::memcpy(dst, m_playbackChannels.at(chan)->get_buffer().get_data(0), nframes * sizeof(float));
+        }
+
+        m_playbackChannels.at(chan)->silence_buffer();
+
+        if (buf->datas[chan].chunk) {
+            buf->datas[chan].chunk->offset = 0;
+            buf->datas[chan].chunk->stride = sizeof(float);
+            buf->datas[chan].chunk->size = nframes * sizeof(float);
+        }
     }
+
+    pw_stream_queue_buffer(m_playbackStream, b);
+    return 1;
 }
 
-void TPipeWireDriver::_on_playback_destroy(void *data)
+
+int TPipeWireDriver::_run_cycle()
 {
-    static_cast<TPipeWireDriver*>(data)->m_playbackStream = nullptr;
+    return m_device->run_cycle(m_framesPerCycle, 0);
 }
 
-void TPipeWireDriver::on_stream_state_changed(const char* streamName, enum pw_stream_state oldState, enum pw_stream_state state, const char *error)
+void TPipeWireDriver::_on_process_playback(void *userdata)
 {
-    // printf("PipeWire %s stream state: %s -> %s\n", streamName, pw_stream_state_as_string(oldState), pw_stream_state_as_string(state));
+    TPipeWireDriver* driver  = static_cast<TPipeWireDriver *> (userdata);
 
-    bool shutdown = false;
-    if (state == PW_STREAM_STATE_ERROR) {
-        printf("PipeWire %s stream error: %s\n", streamName, error ? error : "unknown");
-        shutdown = m_running.exchange(2) != 2;
-    } else if (state == PW_STREAM_STATE_UNCONNECTED && m_running.load() == 1) {
-        printf("PipeWire %s stream disconnected\n", streamName);
-        shutdown = m_running.exchange(2) != 2;
-    }
-
-    if (shutdown) {
-        emit pipewireShutDown();
-    }
+    driver->process_callback();
 }
 
-void TPipeWireDriver::_on_playback_state_changed(void *data, enum pw_stream_state oldState, enum pw_stream_state state, const char *error)
+void TPipeWireDriver::_on_process_capture(void *userdata)
 {
-    static_cast<TPipeWireDriver*>(data)->on_stream_state_changed("playback", oldState, state, error);
+    TPipeWireDriver* driver = static_cast<TPipeWireDriver*>(userdata);
+    driver->process_capture_callback();
 }
 
-void TPipeWireDriver::_on_playback_process(void *data)
+int TPipeWireDriver::process_capture_callback()
 {
-    TPipeWireDriver* driver = static_cast<TPipeWireDriver*>(data);
-    if (!driver->m_playbackStream) {
-        return;
-    }
-
-    struct pw_buffer* b = pw_stream_dequeue_buffer(driver->m_playbackStream);
-    if (!b) {
-        return;
-    }
+    struct pw_buffer* b = pw_stream_dequeue_buffer(m_captureStream);
+    if (!b) return 0;
 
     struct spa_buffer* buf = b->buffer;
-    float* dst = static_cast<float*>(buf->datas[0].data);
-    uint channelCount = driver->m_playbackChannels.size();
-    nframes_t nframes = driver->m_framesPerCycle;
+    uint channelCount = m_captureChannels.size();
 
-    if (dst && channelCount > 0) {
-        uint32_t stride = sizeof(float) * channelCount;
-        size_t sampleCount = nframes * channelCount;
-
-        if (!driver->is_running()) {
-            std::memset(dst, 0, sampleCount * sizeof(float));
-        } else {
-            if (driver->m_enableCapture) {
-                driver->drain_capture_ringbuffer(nframes);
-            }
-
-            driver->run_engine_cycle(nframes);
-
-            for (nframes_t frame = 0; frame < nframes; ++frame) {
-                for (uint chan = 0; chan < channelCount; ++chan) {
-                    dst[frame * channelCount + chan] = driver->m_playbackChannels.at(chan)->get_buffer().at(frame);
-                }
-            }
-
-            for (uint chan = 0; chan < channelCount; ++chan) {
-                driver->m_playbackChannels.at(chan)->silence_buffer();
-            }
-        }
-
-        if (buf->datas[0].chunk) {
-            buf->datas[0].chunk->offset = 0;
-            buf->datas[0].chunk->stride = stride;
-            buf->datas[0].chunk->size = sampleCount * sizeof(float);
+    for (uint chan = 0; chan < channelCount; ++chan) {
+        if (chan < buf->n_datas && buf->datas[chan].data) {
+            float* src = static_cast<float*>(buf->datas[chan].data);
+            m_captureChannels.at(chan)->read_from_hardware_port(src, m_framesPerCycle);
         }
     }
 
-    pw_stream_queue_buffer(driver->m_playbackStream, b);
+    pw_stream_queue_buffer(m_captureStream, b);
+    return 1;
 }
 
-void TPipeWireDriver::_on_capture_destroy(void *data)
-{
-    static_cast<TPipeWireDriver*>(data)->m_captureStream = nullptr;
+
+void TPipeWireDriver::_on_state_changed(void *userdata, enum pw_stream_state old_state, enum pw_stream_state state, const char *error) {
+    static_cast<TPipeWireDriver*>(userdata)->handle_state_changed(old_state, state, error);
 }
 
-void TPipeWireDriver::_on_capture_state_changed(void *data, enum pw_stream_state oldState, enum pw_stream_state state, const char *error)
-{
-    static_cast<TPipeWireDriver*>(data)->on_stream_state_changed("capture", oldState, state, error);
-}
 
-// Called by PipeWire to give us captured samples.  We add them to the ringbuffer.
-void TPipeWireDriver::_on_capture_process(void *data)
+void TPipeWireDriver::handle_state_changed(enum pw_stream_state old_state, enum pw_stream_state state, const char *error)
 {
-    TPipeWireDriver* driver = static_cast<TPipeWireDriver*>(data);
-    if (!driver->m_captureStream) {
-        return;
+    PENTER;
+    // emit driverStateChanged(static_cast<int>(state));
+
+    if (state == PW_STREAM_STATE_ERROR && error) {
+        std::cerr << "Stream Error: " << error << std::endl;
     }
-
-    struct pw_buffer* b = pw_stream_dequeue_buffer(driver->m_captureStream);
-    if (!b) {
-        return;
+    if (state == PW_STREAM_STATE_CONNECTING) {
+        std::cerr << "Stream Connecting" << std::endl;
     }
-
-    struct spa_buffer* buf = b->buffer;
-    float* src = static_cast<float*>(buf->datas[0].data);
-    uint channelCount = driver->m_captureChannels.size();
-
-    if (src && channelCount > 0 && driver->is_running() && driver->m_captureRingBuffer) {
-        uint32_t actualFrames = driver->m_framesPerCycle;
-        if (buf->datas[0].chunk && buf->datas[0].chunk->size > 0) {
-            actualFrames = buf->datas[0].chunk->size / (sizeof(float) * channelCount);
-        }
-
-        const size_t samples = static_cast<size_t>(actualFrames) * channelCount;
-        if (driver->m_captureRingBuffer->write_space() < samples) {
-            driver->m_captureRingBuffer->increment_read_ptr(samples - driver->m_captureRingBuffer->write_space());
-        }
-        driver->m_captureRingBuffer->write(reinterpret_cast<audio_sample_t*>(src), samples);
-
-        if (!driver->m_enablePlayback) {
-            driver->drain_capture_ringbuffer(driver->m_framesPerCycle);
-            driver->run_engine_cycle(driver->m_framesPerCycle);
-        }
+    if (state == PW_STREAM_STATE_PAUSED) {
+        std::cerr << "Stream Paused" << std::endl;
     }
-
-    pw_stream_queue_buffer(driver->m_captureStream, b);
-}
-
-void TPipeWireDriver::_on_io_changed(void *data, uint32_t id, void *area, uint32_t size)
-{
-    Q_UNUSED(size);
-    TPipeWireDriver* driver = static_cast<TPipeWireDriver*>(data);
-    if (id == SPA_IO_Position) {
-        driver->m_ioPosition = static_cast<struct spa_io_position*>(area);
+    if (state == PW_STREAM_STATE_STREAMING) {
+        std::cout << "Stream running" << std::endl;
     }
 }
 
-void TPipeWireDriver::_on_param_changed(void *data, uint32_t id, const struct spa_pod *param)
+void TPipeWireDriver::handle_pipewire_events()
 {
-    Q_UNUSED(data);
-    if (!param || id != SPA_PARAM_Format) {
-        return;
-    }
-
-    struct spa_audio_info_raw info = {};
-    if (spa_format_audio_raw_parse(param, &info) < 0) {
-        return;
-    }
-
-    // printf("PipeWire negotiated format: rate=%u channels=%u\n", info.rate, info.channels);
-}
-
-void TPipeWireDriver::start_free_wheeling()
-{
-    m_isFreeWheeling = true;
-    m_device->driver_changed_free_wheel_mode();
-}
-
-void TPipeWireDriver::stop_free_wheeling()
-{
-    m_isFreeWheeling = false;
-    m_device->driver_changed_free_wheel_mode();
+    PENTER;
+    pw_loop_iterate(m_pwLoop, 0);
 }
 
 QString TPipeWireDriver::get_device_name()
