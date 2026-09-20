@@ -49,7 +49,7 @@ public:
 
     int is_valid();
 
-    int start_export(TProject *project);
+    int prepare_export(TProject *project);
 
     void set_recording_state(int recordingState);
     void set_sample_rate(uint sampleRate);

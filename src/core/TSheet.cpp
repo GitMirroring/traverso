@@ -169,7 +169,7 @@ void TSheet::init()
 
     m_resumeTransport = m_readyToRecord = false;
 
-    m_changed = m_recording = m_prepareRecording = false;
+    m_changed = m_isRecording = m_prepareRecording = false;
 
     m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
     m_audiodeviceClient->set_process_callback(
@@ -861,9 +861,9 @@ void TSheet::stop_transport_rolling()
 // RT thread save function
 void TSheet::set_recording(bool recording, bool realtime)
 {
-    m_recording = recording;
+    m_isRecording = recording;
 
-    if (!m_recording) {
+    if (!m_isRecording) {
         m_readyToRecord = false;
         m_prepareRecording = false;
     }
@@ -879,9 +879,10 @@ void TSheet::set_recording(bool recording, bool realtime)
 // NON RT thread save function, should only be called from GUI thread!!
 void TSheet::prepare_recording()
 {
+    PENTER;
     Q_ASSERT(QThread::currentThread() == this->thread());
 
-    if (!m_recording) {
+    if (!is_recording()) {
         return;
     }
 
@@ -889,47 +890,45 @@ void TSheet::prepare_recording()
         return;
     }
 
-
-    CommandGroup* group = new CommandGroup(this, "");
-
+    CommandGroup* commandGroup = new CommandGroup(this, "");
     QList<TAudioTrack*> armedTracks;
+
     if (m_bounceTrack->armed()) {
         armedTracks.append(m_bounceTrack);
-        group->setText(tr("Bouncing"));
+        commandGroup->setText(tr("Bouncing"));
     } else {
         armedTracks = get_armed_tracks();
-        group->setText(tr("Recording to %n Clip(s)", "", m_recordingClips.size()));
     }
 
-    for(TAudioTrack* track : armedTracks) {
+    for(TAudioTrack* track : std::as_const(armedTracks)) {
         TAudioClip* clip = track->init_recording();
-        if (clip) {
-            // For autosave purposes, we connect the recordingfinished
-            // signal to the clip_finished_recording() slot, and add this
-            // clip to our recording clip list.
-            // At the time the cliplist is empty, we're sure the recording
-            // session is finished, at which time an autosave makes sense.
-            connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
-            m_recordingClips.append(clip);
+        if (!clip) {
+            continue;
+        }
 
-            group->add_command(new AddRemoveClip(clip, AddRemoveClip::ADD));
-        }
-    }
-    if (m_bounceTrack->armed()) {
-        armedTracks.append(m_bounceTrack);
-        if (m_recordingClips.size() > 0) {
-            group->setText(tr("Bouncing"));
-        } else {
-            tInformUser().warning(tr("Failed to create Bounce recording source"));
-            group->deleteLater();
-            return;
-        }
-    } else {
-        armedTracks = get_armed_tracks();
-        group->setText(tr("Recording to %n Clip(s)", "", m_recordingClips.size()));
+        // For autosave purposes, we connect the recordingfinished
+        // signal to the clip_finished_recording() slot, and add this
+        // clip to our recording clip list.
+        // At the time the cliplist is empty, we're sure the recording
+        // session is finished, at which time an autosave makes sense.
+        connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
+        m_recordingClips.append(clip);
+
+        commandGroup->add_command(new AddRemoveClip(clip, AddRemoveClip::ADD));
+
     }
 
-    TCommand::process_command(group);
+    if (m_recordingClips.size() == 0) {
+        tInformUser().warning(tr("Failed to create Bounce recording source"));
+        commandGroup->deleteLater();
+        return;
+    }
+
+    if (!m_bounceTrack->armed()) {
+        commandGroup->setText(tr("Recording to %n Clip(s)", "", m_recordingClips.size()));
+    }
+
+    TCommand::process_command(commandGroup);
 
     m_readyToRecord = true;
 }

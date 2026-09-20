@@ -175,7 +175,7 @@ void TDiskIOThread::seek()
     // in the latter case we need to reset rate and buffer sizes.
     if (m_sampleRateChanged) {
         nframes_t bufferSize = audiodevice().get_buffer_size();
-        for (auto source : m_audioSources) {
+        for (auto source : std::as_const(m_audioSources)) {
             source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
             source->prepare_rt_buffers(bufferSize);
         }
@@ -183,7 +183,7 @@ void TDiskIOThread::seek()
         m_fileDecodeBuffer->check_buffers_capacity(bufferSize, 2);
     }
 
-    for(auto source : m_audioSources) {
+    for(auto source : std::as_const(m_audioSources)) {
         source->rb_seek_to_transport_location(m_seekTransportLocation);
     }
 
@@ -227,7 +227,7 @@ bool TDiskIOThread::do_work( )
     }
 
     if (m_resampleQualityChanged) {
-        for (auto source : m_audioSources) {
+        for (auto source : std::as_const(m_audioSources)) {
             source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
         }
         m_resampleQualityChanged = false;
@@ -235,7 +235,7 @@ bool TDiskIOThread::do_work( )
 
     check_for_seek_requested();
 
-    for (const auto source : m_audioSources)
+    for (const auto source : std::as_const(m_audioSources))
     {
         TAudioSourceBufferStatus* status = source->get_buffer_status();
 

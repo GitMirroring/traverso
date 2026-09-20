@@ -112,7 +112,7 @@ public:
 
     bool any_audio_track_armed();
     bool is_changed() const {return m_changed;}
-    bool is_recording() const {return m_recording;}
+    bool is_recording() const {return m_isRecording;}
 
     bool operator<(const TSheet& /*right*/) {
         return true;
@@ -162,7 +162,7 @@ private:
     QString 	m_artists;
     bool 		m_changed{};
     bool		m_resumeTransport{};
-    bool		m_recording;
+    bool		m_isRecording;
     bool		m_prepareRecording{};
     bool		m_readyToRecord{};
 

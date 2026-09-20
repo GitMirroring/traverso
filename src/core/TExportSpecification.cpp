@@ -100,7 +100,7 @@ int TExportSpecification::is_valid()
     return 1;
 }
 
-int TExportSpecification::start_export(TProject* project)
+int TExportSpecification::prepare_export(TProject* project)
 {
     Q_UNUSED(project);
 

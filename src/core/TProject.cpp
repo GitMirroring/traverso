@@ -1165,7 +1165,7 @@ int TProject::export_project()
 {
     PENTER;
 
-    m_exportSpecification->start_export(this);
+    m_exportSpecification->prepare_export(this);
 
     for (TSheet* sheet : m_exportSpecification->get_sheets_to_export()) {
 
