@@ -141,7 +141,7 @@ void TJackDriver::add_channel(AudioChannel* channel)
 
 
     if (is_running()) {
-        tsmp().add_gui_event(this, pcpair, "private_add_port_channel_pair(PortChannelPair*)", "");
+        tsmp().post_gui_event(this, pcpair, "private_add_port_channel_pair(PortChannelPair*)", "");
     } else {
         private_add_port_channel_pair(pcpair);
     }
@@ -173,7 +173,7 @@ void TJackDriver::remove_channel(AudioChannel* channel)
     foreach(PortChannelPair* pcpair, m_outputs) {
 
         if (pcpair->channel == channel) {
-            tsmp().add_gui_event(this, pcpair, "private_remove_port_channel_pair(PortChannelPair*)", "pcpairRemoved(PortChannelPair*)");
+            tsmp().post_gui_event(this, pcpair, "private_remove_port_channel_pair(PortChannelPair*)", "pcpairRemoved(PortChannelPair*)");
             return;
         }
     }
@@ -181,7 +181,7 @@ void TJackDriver::remove_channel(AudioChannel* channel)
     foreach(PortChannelPair* pcpair, m_inputs) {
 
         if (pcpair->channel == channel) {
-            tsmp().add_gui_event(this, pcpair, "private_remove_port_channel_pair(PortChannelPair*)", "pcpairRemoved(PortChannelPair*)");
+            tsmp().post_gui_event(this, pcpair, "private_remove_port_channel_pair(PortChannelPair*)", "pcpairRemoved(PortChannelPair*)");
             return;
         }
     }

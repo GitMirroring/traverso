@@ -102,12 +102,12 @@ void AudioChannel::private_remove_monitor(TVUMonitor *monitor)
 
 void AudioChannel::add_monitor(TVUMonitor *monitor)
 {
-    tsmp().add_gui_event(this, monitor, "private_add_monitor(TVUMonitor*)", "vuMonitorAdded(TVUMonitor*)");
+    tsmp().post_gui_event(this, monitor, "private_add_monitor(TVUMonitor*)", "vuMonitorAdded(TVUMonitor*)");
 }
 
 void AudioChannel::remove_monitor(TVUMonitor *monitor)
 {
-    tsmp().add_gui_event(this, monitor, "private_remove_monitor(TVUMonitor*)", "vuMonitorAdded(TVUMonitor*)");
+    tsmp().post_gui_event(this, monitor, "private_remove_monitor(TVUMonitor*)", "vuMonitorAdded(TVUMonitor*)");
 }
 
 void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes)

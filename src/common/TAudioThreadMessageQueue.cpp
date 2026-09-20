@@ -254,7 +254,7 @@ void TAudioThreadMessageQueue::process_event(const TAudioThreadMessageQueueEvent
 	process_event_signal(event);
 }
 
-void TAudioThreadMessageQueue::add_gui_event(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
+void TAudioThreadMessageQueue::post_gui_event(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
 {
     PENTER;
     TAudioThreadMessageQueueEvent event;

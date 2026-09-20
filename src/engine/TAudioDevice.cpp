@@ -905,7 +905,7 @@ void TAudioDevice::private_remove_client(TAudioDeviceClient* client)
  */
 void TAudioDevice::add_client( TAudioDeviceClient * client )
 {
-    tsmp().add_gui_event(this, client, "private_add_client(TAudioDeviceClient*)", "audioDeviceClientAdded(TAudioDeviceClient*)");
+    tsmp().post_gui_event(this, client, "private_add_client(TAudioDeviceClient*)", "audioDeviceClientAdded(TAudioDeviceClient*)");
 }
 
 /**
@@ -916,7 +916,7 @@ void TAudioDevice::add_client( TAudioDeviceClient * client )
  */
 void TAudioDevice::remove_client( TAudioDeviceClient * client )
 {
-    tsmp().add_gui_event(this, client, "private_remove_client(TAudioDeviceClient*)", "audioDeviceClientRemoved(TAudioDeviceClient*)");
+    tsmp().post_gui_event(this, client, "private_remove_client(TAudioDeviceClient*)", "audioDeviceClientRemoved(TAudioDeviceClient*)");
 }
 
 void TAudioDevice::audiothread_finished()

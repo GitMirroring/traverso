@@ -45,13 +45,13 @@ public:
     void prepare_event(TAudioThreadMessageQueueEvent &event, QObject* caller, void* argument, const char* slotSignature, const char* signalSignature);
 
     void post_gui_event(const TAudioThreadMessageQueueEvent &event);
+    void post_gui_event(QObject* caller, void* arg, const char* slotSignature, const char* signalSignature);
     void post_rt_event(const TAudioThreadMessageQueueEvent& event);
 
     void process_event(const TAudioThreadMessageQueueEvent &event);
     void process_event_slot(const TAudioThreadMessageQueueEvent& event);
     void process_event_signal(const TAudioThreadMessageQueueEvent &event);
 
-    void add_gui_event(QObject* caller, void* arg, const char* slotSignature, const char* signalSignature);
 
 private:
     TAudioThreadMessageQueue();
@@ -76,9 +76,6 @@ private:
 
     void process_posted_gui_events();
     void process_processed_events_by_rt_thread_queue();
-
-signals:
-    void audioThreadEventBufferFull(QString);
 };
 
 // use this function to access the tsmp singleton pointer
