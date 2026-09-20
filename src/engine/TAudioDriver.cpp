@@ -39,6 +39,8 @@ TAudioDriver::TAudioDriver(TAudioDevice* device)
 
     m_runCycleStartTime = m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
     m_isFreeWheeling = false;
+
+    tsmp().prepare_event(m_latencyChangedEvent, this, nullptr, "", "latencyChanged()");
 }
 
 TAudioDriver::~ TAudioDriver( )

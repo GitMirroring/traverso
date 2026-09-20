@@ -80,7 +80,6 @@ private:
     friend class TJackDriver;
     friend class TAlsaDriver;
     friend class TPortAudioDriver;
-    friend class TPulseAudioDriver;
     friend class TAudioDriver;
     friend class TCoreAudioDriver;
     friend class TPipeWireDriver;

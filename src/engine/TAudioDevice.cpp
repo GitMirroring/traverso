@@ -37,10 +37,6 @@ RELAYTOOL_JACK
 #include "TPortAudioDriver.h"
 #endif
 
-#if defined (PULSEAUDIO_SUPPORT)
-#include "TPulseAudioDriver.h"
-#endif
-
 #if defined (COREAUDIO_SUPPORT)
 #include "TCoreAudioDriver.h"
 #endif
@@ -168,10 +164,6 @@ TAudioDevice::TAudioDevice()
 
     m_fallBackSetup.set_driver_type("Dummy");
 
-
-#if defined (PULSEAUDIO_SUPPORT)
-    m_availableDrivers << "PulseAudio";
-#endif
 
 #if defined (ALSA_SUPPORT)
     m_availableDrivers << "ALSA";
@@ -352,6 +344,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
     create_driver();
 
     if (m_driver) {
+        connect(m_driver, &TAudioDriver::latencyChanged, this, &TAudioDevice::latencyChanged);
         connect(m_driver, &TAudioDriver::driverSetupMessage, this,
             [this](const QString& driver, const QString& message, int severity) {
                 driver_setup_message(driver, message, severity);
@@ -453,7 +446,7 @@ void TAudioDevice::set_free_wheeling(bool freeWheeling)
 
 
     // FIXME Freewheeling on current drivers that do not support
-    // freewheeling natively is working somewhat on ALSA and PulseAudio but not PortAudio
+    // freewheeling natively is working somewhat on ALSA but not PortAudio
     if (freeWheeling) {
         m_driver->stop();
     } else {
@@ -506,14 +499,6 @@ void TAudioDevice::create_driver()
         return;
     }
 #endif
-
-#if defined (PULSEAUDIO_SUPPORT)
-    if (driverType == "PulseAudio") {
-        m_driver = new TPulseAudioDriver(this);
-        return;
-    }
-#endif
-
 
 #if defined (COREAUDIO_SUPPORT)
     if (driverType == "CoreAudio") {
@@ -593,18 +578,6 @@ int TAudioDevice::setup_driver()
         return 1;
     }
 #endif
-
-#if defined (PULSEAUDIO_SUPPORT)
-    if (driverType == "PulseAudio") {
-        TPulseAudioDriver* paDriver = qobject_cast<TPulseAudioDriver*>(m_driver);
-        if (paDriver && paDriver->setup(capture, playback, cardDevice) < 0) {
-            driver_setup_message("AudioDevice", tr("Failed to setup the PulseAudio Driver"), DRIVER_SETUP_FAILURE);
-            return -1;
-        }
-        return 1;
-    }
-#endif
-
 
 #if defined (COREAUDIO_SUPPORT)
     if (driverType == "CoreAudio") {
@@ -861,6 +834,7 @@ QString TAudioDevice::get_driver_information() const
         QStringList list = m_setup.get_card_device().split("::");
         return "PortAudio: " + list.at(0);
     }
+
     return m_driverType;
 }
 
@@ -1074,6 +1048,16 @@ TJackDriver* TAudioDevice::slaved_jack_driver()
 TTimeRef TAudioDevice::get_buffer_latency() const
 {
     return TTimeRef{m_bufferSize, m_rate};
+}
+
+QString TAudioDevice::get_driver_latency_in_ms()
+{
+    if(!m_driver) {
+        return QString("xx ms");
+    }
+
+
+    return QString::number( (double(m_driver->get_roundtrip_latency()) / audiodevice().get_sample_rate()) * 1000, 'f', 2 ).append(" ms");
 }
 
 void TAudioDevice::set_driver_properties(QHash< QString, QVariant > & properties)

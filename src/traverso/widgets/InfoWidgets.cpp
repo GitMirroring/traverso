@@ -221,6 +221,7 @@ DriverInfo::DriverInfo( QWidget * parent )
 	
 	connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &DriverInfo::update_driver_info);
 	connect(&audiodevice(), &TAudioDevice::bufferUnderRun, this, &DriverInfo::update_xrun_info);
+    connect(&audiodevice(), &TAudioDevice::latencyChanged, this, &DriverInfo::draw_information);
     connect(m_driver, &QPushButton::clicked, TMainWindow::instance(), &TMainWindow::show_settings_dialog_sound_system_page);
 	
 	update_driver_info();
@@ -235,7 +236,7 @@ void DriverInfo::update_driver_info( )
 void DriverInfo::draw_information( )
 {
     QString text;
-    QString latency = QString::number( (double(audiodevice().get_buffer_size() * 2) / audiodevice().get_sample_rate()) * 1000, 'f', 2 ).append(" ms ");
+    QString latency = audiodevice().get_driver_latency_in_ms();
 
     QByteArray xruns;
     if (xrunCount) {

@@ -272,10 +272,43 @@ int TPipeWireDriver::stop()
     return 1;
 }
 
+// Called in RT thread from PipeWire server
 int TPipeWireDriver::process_callback()
 {
     m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
     m_device->set_transport_cycle_start_time(m_runCycleStartTime);
+
+    int64_t newPlaybackLatency = m_playbackFrameLatency;
+    int64_t newCaptureLatency = m_captureFrameLatency;
+
+    if (m_playbackStream) {
+        struct pw_time playback_time;
+        if (pw_stream_get_time_n(m_playbackStream, &playback_time, sizeof(playback_time)) == 0) {
+            int64_t out_delay = playback_time.delay + playback_time.queued + playback_time.buffered;
+            if (out_delay < 0) {
+                out_delay = playback_time.size;
+            }
+            newPlaybackLatency = out_delay;
+        }
+    }
+
+    if (m_captureStream) {
+        struct pw_time capture_time;
+        if (pw_stream_get_time_n(m_captureStream, &capture_time, sizeof(capture_time)) == 0) {
+            int64_t in_delay = capture_time.delay + capture_time.queued + capture_time.buffered;
+            if (in_delay < 0) {
+                in_delay = capture_time.size;
+            }
+            newCaptureLatency = in_delay;
+        }
+    }
+
+    if (newPlaybackLatency != m_playbackFrameLatency || newCaptureLatency != m_captureFrameLatency) {
+        m_playbackFrameLatency = newPlaybackLatency;
+        m_captureFrameLatency = newCaptureLatency;
+
+        tsmp().post_rt_event(m_latencyChangedEvent);
+    }
 
     m_device->run_cycle(m_framesPerCycle, 0.0);
 
@@ -285,12 +318,14 @@ int TPipeWireDriver::process_callback()
     return 1;
 }
 
+// Called in RT thread from TAudioDevice
 int TPipeWireDriver::_read( nframes_t nframes )
 {
     // allready got data in _on_process_capture() callback
     return 1;
 }
 
+// Called in RT thread from TAudioDevice
 int TPipeWireDriver::_write( nframes_t nframes )
 {
     struct pw_buffer* b = pw_stream_dequeue_buffer(m_playbackStream);
@@ -320,11 +355,13 @@ int TPipeWireDriver::_write( nframes_t nframes )
 }
 
 
+// Called in RT thread
 int TPipeWireDriver::_run_cycle()
 {
     return m_device->run_cycle(m_framesPerCycle, 0);
 }
 
+// Called in RT thread from PipeWire server
 void TPipeWireDriver::_on_process_playback(void *userdata)
 {
     TPipeWireDriver* driver  = static_cast<TPipeWireDriver *> (userdata);
@@ -332,12 +369,14 @@ void TPipeWireDriver::_on_process_playback(void *userdata)
     driver->process_callback();
 }
 
+// Called in RT thread from PipeWire server
 void TPipeWireDriver::_on_process_capture(void *userdata)
 {
     TPipeWireDriver* driver = static_cast<TPipeWireDriver*>(userdata);
     driver->process_capture_callback();
 }
 
+// Called in RT thread from PipeWire server
 int TPipeWireDriver::process_capture_callback()
 {
     struct pw_buffer* b = pw_stream_dequeue_buffer(m_captureStream);
@@ -357,11 +396,9 @@ int TPipeWireDriver::process_capture_callback()
     return 1;
 }
 
-
 void TPipeWireDriver::_on_state_changed(void *userdata, enum pw_stream_state old_state, enum pw_stream_state state, const char *error) {
     static_cast<TPipeWireDriver*>(userdata)->handle_state_changed(old_state, state, error);
 }
-
 
 void TPipeWireDriver::handle_state_changed(enum pw_stream_state old_state, enum pw_stream_state state, const char *error)
 {

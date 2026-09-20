@@ -480,6 +480,11 @@ void AudioDriverConfigPage::update_latency_combobox( )
     latencyComboBox->clear();
     int rate = rateComboBox->currentData().toInt();
 
+    // FIXME
+    // This is only valid for alsa driver, we should get it from the actual
+    // running driver instead to show the _real_ latency instead of a
+    // theoratical one
+    // For now default to 2 since this is most likely close (enough) to the reality
     int periods = m_alsadevices->periodsCombo->currentText().toInt();
     for (uint bufferSize : TAudioDeviceSetup::get_buffer_sizes_list()) {
         QString latency = QString::number( ((float)(bufferSize) / rate) * 1000 * periods, 'f', 2);

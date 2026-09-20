@@ -170,6 +170,7 @@ public:
         return m_bufferSize;
     }
 
+    QString get_driver_latency_in_ms();
 
     void show_descriptors();
     void set_driver_properties(QHash<QString, QVariant>& properties);
@@ -189,7 +190,6 @@ private:
     friend class TAlsaDriver;
     friend class TPortAudioDriver;
     friend class TAudioDriver;
-    friend class TPulseAudioDriver;
     friend class TAudioDeviceThread;
 #if defined (COREAUDIO_SUPPORT)
     friend class TCoreAudioDriver;
@@ -296,6 +296,10 @@ signals:
      *	the TAudioDevice!
 	 */
     void driverParamsChanged();
+
+    // Emitted when the TAudioDriver has changed it's latency for either the playback or capture stream
+    void latencyChanged();
+
 
     /**
 	 *        Connect this signal to any Object who need to be informed about buffer under/overruns

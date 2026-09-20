@@ -78,12 +78,17 @@ public:
         return true;
     }
 
+    int get_roundtrip_latency() const {
+        return m_playbackFrameLatency + m_captureFrameLatency;
+    }
+
     TAudioDriverReadWriteCallBack read;
     TAudioDriverReadWriteCallBack write;
     TRunCycleCallBack run_cycle;
 
 
 protected:
+    TAudioThreadMessageQueueEvent           m_latencyChangedEvent;
     TAudioDevice*            m_device;
     QList<AudioChannel* >   m_captureChannels;
     QList<AudioChannel* >   m_playbackChannels;
@@ -106,8 +111,7 @@ protected:
 signals:
     void errorMessage(const QString& message);
     void driverSetupMessage(QString, QString, int);
-
-
+    void latencyChanged();
 };
 
 
