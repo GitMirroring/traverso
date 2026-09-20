@@ -221,6 +221,8 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
 
     if (res < 0) {
         return setup_failed(tr("Could not connect capture stream to server"));
+    } else {
+        emit driverSetupMessage("PipeWire", tr("Capture Stream connected to server"), TAudioDevice::DRIVER_SETUP_SUCCESS);
     }
 
     int pipewire_fd = pw_loop_get_fd(m_pwLoop);
@@ -432,24 +434,28 @@ void TPipeWireDriver::_on_state_changed(void *userdata, enum pw_stream_state old
     static_cast<TPipeWireDriver*>(userdata)->handle_state_changed(old_state, state, error);
 }
 
+
 void TPipeWireDriver::handle_state_changed(enum pw_stream_state old_state, enum pw_stream_state state, const char *error)
 {
     PENTER;
-    // emit driverStateChanged(static_cast<int>(state));
 
     if (state == PW_STREAM_STATE_ERROR && error) {
-        std::cerr << "Stream Error: " << error << std::endl;
+        emit driverSetupMessage("PipeWire", tr("Stream Error: %1").arg(error), TAudioDevice::DRIVER_SETUP_INFO);
+    }
+    if (state == PW_STREAM_STATE_UNCONNECTED) {
+        emit driverSetupMessage("PipeWire", tr("Stream Unconnected"), TAudioDevice::DRIVER_SETUP_INFO);
     }
     if (state == PW_STREAM_STATE_CONNECTING) {
-        std::cerr << "Stream Connecting" << std::endl;
+        emit driverSetupMessage("PipeWire", tr("Stream Connecting"), TAudioDevice::DRIVER_SETUP_INFO);
     }
     if (state == PW_STREAM_STATE_PAUSED) {
-        std::cerr << "Stream Paused" << std::endl;
+        emit driverSetupMessage("PipeWire", tr("Stream Paused"), TAudioDevice::DRIVER_SETUP_INFO);
     }
     if (state == PW_STREAM_STATE_STREAMING) {
-        std::cout << "Stream running" << std::endl;
+        emit driverSetupMessage("PipeWire", tr("Stream Running"), TAudioDevice::DRIVER_SETUP_INFO);
     }
 }
+
 
 void TPipeWireDriver::handle_pipewire_events()
 {

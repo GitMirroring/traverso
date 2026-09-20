@@ -56,8 +56,7 @@ AudioDriverConfigPage::AudioDriverConfigPage(QWidget *parent)
     : ConfigPage(parent)
 {
     setupUi(this);
-        driverInformationTextEdit->setTextInteractionFlags(Qt::NoTextInteraction);
-        driverInformationTextEdit->hide();
+    driverInformationTextEdit->setTextInteractionFlags(Qt::NoTextInteraction);
 
     m_mainLayout = qobject_cast<QVBoxLayout*>(layout());
 
