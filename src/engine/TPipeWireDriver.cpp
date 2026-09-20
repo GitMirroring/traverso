@@ -274,6 +274,9 @@ int TPipeWireDriver::stop()
 
 int TPipeWireDriver::process_callback()
 {
+    m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
+    m_device->set_transport_cycle_start_time(m_runCycleStartTime);
+
     m_device->run_cycle(m_framesPerCycle, 0.0);
 
     m_runCycleEndTime = TTimeRef::get_nanoseconds_since_epoch();
@@ -337,9 +340,6 @@ void TPipeWireDriver::_on_process_capture(void *userdata)
 
 int TPipeWireDriver::process_capture_callback()
 {
-    m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
-    m_device->set_transport_cycle_start_time(m_runCycleStartTime);
-
     struct pw_buffer* b = pw_stream_dequeue_buffer(m_captureStream);
     if (!b) return 0;
 
