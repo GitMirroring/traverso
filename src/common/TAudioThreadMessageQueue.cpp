@@ -51,7 +51,6 @@ class TAudioThreadMessageQueueThread : public QThread
     }
 };
 
-
 /**
  *
  * @return The TAudioThreadMessageQueue instance.
@@ -64,9 +63,9 @@ TAudioThreadMessageQueue& tsmp()
 
 TAudioThreadMessageQueue::TAudioThreadMessageQueue()
 {
-    m_postedFromGuiThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(16384);
-    m_postedFromRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(65536);
-    m_processedByRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(65536 + 16384);
+    m_postedFromGuiThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(1024);
+    m_postedFromRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(4096);
+    m_processedByRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(4096 + 1024);
 
     m_eventCounter = 0;
     m_retryCount = 0;
@@ -95,9 +94,7 @@ void TAudioThreadMessageQueue::post_gui_event(const TAudioThreadMessageQueueEven
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "TSMP::add_event", "Adding event from other then GUI thread!!");
 
     if (!m_postedFromGuiThreadQueue->try_enqueue(event)) {
-        // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
-        // and the program will potentially stall the GUI thread for some time till the RT thread has processed pending events
-        Q_ASSERT_X(true, "TSMP::post_gui_event", "Could not post gui event to posted from GUI thread queue, this is a problem that needs to be investigated by the developers");
+        // Queue is full, block the thread till there is room in the queue again
         m_postedFromGuiThreadQueue->wait_enqueue(event);
     }
 
@@ -117,10 +114,7 @@ void TAudioThreadMessageQueue::post_rt_event(const TAudioThreadMessageQueueEvent
     Q_ASSERT_X(this->thread() != QThread::currentThread(), "TSMP::post_rt_event", "Adding event from NON-RT Thread!!");
 
     if (!m_postedFromRTThreadQueue->try_enqueue(event)) {
-        // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
-        // and the program will potentially stall the RT thread for some time till the system has processed pending events
-        // this could occur in rare cases when in freewheeling mode and nothing to process in RT Thread
-        Q_ASSERT_X(true, "TSMP::post_rt_event", "Could not post rt event to posted from RT thread queue, this is a problem that needs to be investigated by the developers");
+        // Queue is full, block the thread till there is room in the queue again
         m_postedFromRTThreadQueue->wait_enqueue(event);
     }
 }
@@ -143,10 +137,7 @@ void TAudioThreadMessageQueue::process_posted_gui_events( )
         // into the GUI event loop for the signal to be emitted
         if (event.signalindex >= 0) {
             if (!m_processedByRTThreadQueue->try_enqueue(event)) {
-                // In Debug build do not accept overloads of the event queue, in non-debug mode this assert will do nothing
-                // and the program will potentially stall the RT thread for some time till the system has processed pending events
-                // this could occur in rare cases when in freewheeling mode and nothing to process in RT Thread
-                Q_ASSERT_X(true, "TSMP::process_posted_gui_events", "Could not post RT event to processed by RT thread queue, this is a problem that needs to be investigated by the developers");
+                // Queue is full, block the thread till there is room in the queue again
                 m_processedByRTThreadQueue->wait_enqueue(event);
             }
         } else {

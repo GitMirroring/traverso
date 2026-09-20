@@ -63,18 +63,6 @@ int TAudioDriver::_run_cycle( )
     if (m_device->running_real_time()) {
         trav_time_t sleepTime = (m_periodTimeInMicroSeconds * 1000) - runCycleTime;
         QThread::currentThread()->sleep(std::chrono::nanoseconds (sleepTime));
-    } else
-    {
-        // We're free wheeling
-        // Limit the amount of runcycles to 50.000 per second.
-        // We have to set this limit to not overload the TSMP event queues.
-
-        // 20 microseconds to ryn_cycles() / second == 1.000.000 / 20 = 50.000
-        trav_time_t minimumRunCycleTimeInNanoSeconds = (1000 * 5);
-        if (runCycleTime < minimumRunCycleTimeInNanoSeconds) {
-            sleepTime = minimumRunCycleTimeInNanoSeconds;
-            QThread::currentThread()->sleep(std::chrono::nanoseconds (minimumRunCycleTimeInNanoSeconds));
-        }
     }
 
     m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch() - sleepTime;
