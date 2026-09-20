@@ -34,6 +34,8 @@
 TPipeWireDriver::TPipeWireDriver(TAudioDevice* device)
     : TAudioDriver(device)
 {
+    PENTERCONS;
+
     read = TAudioDriverReadWriteCallBack::from_method<TPipeWireDriver, &TPipeWireDriver::_read>(this);
     write = TAudioDriverReadWriteCallBack::from_method<TPipeWireDriver, &TPipeWireDriver::_write>(this);
     run_cycle = TRunCycleCallBack::from_method<TPipeWireDriver, &TPipeWireDriver::_run_cycle>(this);
@@ -42,6 +44,30 @@ TPipeWireDriver::TPipeWireDriver(TAudioDevice* device)
 TPipeWireDriver::~TPipeWireDriver()
 {
     PENTERDES;
+
+    if (!m_pwLoop) {
+        return ;
+    }
+
+    if (m_notifier) {
+        m_notifier->setEnabled(false);
+        disconnect(m_notifier, &QSocketNotifier::activated, this, &TPipeWireDriver::handle_pipewire_events);
+        m_notifier->deleteLater();
+        m_notifier = nullptr;
+    }
+    if (m_playbackStream) {
+        pw_stream_destroy(m_playbackStream);
+        m_playbackStream = nullptr;
+    }
+    if (m_captureStream) {
+        pw_stream_destroy(m_captureStream);
+        m_captureStream = nullptr;
+    }
+    if (m_pwLoop) {
+        pw_loop_destroy(m_pwLoop);
+        m_pwLoop = nullptr;
+    }
+    pw_deinit();
 
 }
 
@@ -126,12 +152,14 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     const struct spa_pod *duplexParameter = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
     const struct spa_pod *streamParameters[] = { duplexParameter };
 
-    // Verbind de Playback stream met de Graph
     int res = pw_stream_connect(
         m_playbackStream,
         PW_DIRECTION_OUTPUT,
         PW_ID_ANY,
-        static_cast<enum pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_RT_PROCESS),
+        static_cast<enum pw_stream_flags>(
+            PW_STREAM_FLAG_AUTOCONNECT |
+            PW_STREAM_FLAG_RT_PROCESS |
+            PW_STREAM_FLAG_INACTIVE),
         streamParameters,
         1
         );
@@ -183,7 +211,10 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
         m_captureStream,
         PW_DIRECTION_INPUT,
         PW_ID_ANY,
-        static_cast<enum pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_RT_PROCESS),
+        static_cast<enum pw_stream_flags>(
+            PW_STREAM_FLAG_AUTOCONNECT |
+            PW_STREAM_FLAG_RT_PROCESS |
+            PW_STREAM_FLAG_INACTIVE),
         streamParameters,
         1
         );
@@ -203,6 +234,8 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
 
 int TPipeWireDriver::attach()
 {
+    PENTER;
+
     // int port_flags;
     // port_flags = PortIsOutput|PortIsPhysical|PortIsTerminal;
 
@@ -232,42 +265,41 @@ int TPipeWireDriver::attach()
 int TPipeWireDriver::start()
 {
     PENTER;
-    Q_ASSERT(m_playbackStream);
-
 
     if (m_notifier) {
         m_notifier->setEnabled(true);
     }
 
+    if (m_playbackStream) {
+        pw_stream_set_active(m_playbackStream, true);
+    }
+    if (m_captureStream) {
+        pw_stream_set_active(m_captureStream, true);
+    }
+
+    TAudioDriver::start();
 
     return 1;
 }
 
+
 int TPipeWireDriver::stop()
 {
     PENTER;
-
     if (!m_pwLoop) return 1;
+
+    if (m_playbackStream) {
+        pw_stream_set_active(m_playbackStream, false);
+    }
+    if (m_captureStream) {
+        pw_stream_set_active(m_captureStream, false);
+    }
 
     if (m_notifier) {
         m_notifier->setEnabled(false);
-        disconnect(m_notifier, &QSocketNotifier::activated, this, &TPipeWireDriver::handle_pipewire_events);
-        m_notifier->deleteLater();
-        m_notifier = nullptr;
     }
-    if (m_playbackStream) {
-        pw_stream_destroy(m_playbackStream);
-        m_playbackStream = nullptr;
-    }
-    if (m_captureStream) {
-        pw_stream_destroy(m_captureStream);
-        m_captureStream = nullptr;
-    }
-    if (m_pwLoop) {
-        pw_loop_destroy(m_pwLoop);
-        m_pwLoop = nullptr;
-    }
-    pw_deinit();
+
+    TAudioDriver::stop();
 
     return 1;
 }
