@@ -101,42 +101,6 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
         return setup_failed(tr("Could not create PipeWire Main Loop"));
     }
 
-    struct pw_properties *playbackProperties = pw_properties_new(
-        "application.name", "Traverso DAW",
-        "application.icon-name", "Traverso",
-        "media.name", "Traverso Audio Output",
-        "media.type", "Audio",
-        "media.category", "Playback",
-        "media.class", "Stream/Output/Audio",
-        "node.name", "TraversoDAW Playback",
-        "node.description", "Traverso DAW Playback",
-
-        "node.link-group", "Traverso_DSP_Group",
-
-        "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
-        "node.force-rate", std::to_string(m_frameRate).c_str(),
-        "node.lock-quantum", "true",
-        "node.lock-rate", "true",
-        nullptr
-        );
-
-    std::memset(&m_playbackStreamEvents, 0, sizeof(m_playbackStreamEvents));
-    m_playbackStreamEvents.version = PW_VERSION_STREAM_EVENTS;
-    m_playbackStreamEvents.process = &TPipeWireDriver::_on_process_playback;
-    m_playbackStreamEvents.state_changed = &TPipeWireDriver::_on_state_changed;
-
-    m_playbackStream = pw_stream_new_simple(
-        m_pwLoop,
-        "TraversoPlaybackStream",
-        playbackProperties,
-        &m_playbackStreamEvents,
-        this
-        );
-
-    if (!m_playbackStream) {
-        return setup_failed(tr("Could not create PipeWire Playback Stream"));
-    }
-
     uint8_t paramBuffer[1024];
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(paramBuffer, sizeof(paramBuffer));
     struct spa_audio_info_raw info = {};
@@ -152,77 +116,117 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     const struct spa_pod *duplexParameter = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
     const struct spa_pod *streamParameters[] = { duplexParameter };
 
-    int res = pw_stream_connect(
-        m_playbackStream,
-        PW_DIRECTION_OUTPUT,
-        PW_ID_ANY,
-        static_cast<enum pw_stream_flags>(
-            PW_STREAM_FLAG_AUTOCONNECT |
-            PW_STREAM_FLAG_RT_PROCESS |
-            PW_STREAM_FLAG_INACTIVE),
-        streamParameters,
-        1
-        );
+    if (playback) {
+        struct pw_properties *playbackProperties = pw_properties_new(
+            "application.name", "Traverso DAW",
+            "application.icon-name", "Traverso",
+            "media.name", "Traverso Audio Output",
+            "media.type", "Audio",
+            "media.category", "Playback",
+            "media.class", "Stream/Output/Audio",
+            "node.name", "TraversoDAW Playback",
+            "node.description", "Traverso DAW Playback",
 
-    if (res < 0) {
-        return setup_failed(tr("Could not connect playback stream to server"));
-    } else {
-        emit driverSetupMessage("PipeWire", tr("Playback Stream connected to server"), TAudioDevice::DRIVER_SETUP_SUCCESS);
+            "node.link-group", "Traverso_DSP_Group",
+
+            "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
+            "node.force-rate", std::to_string(m_frameRate).c_str(),
+            "node.lock-quantum", "true",
+            "node.lock-rate", "true",
+            nullptr
+            );
+
+        std::memset(&m_playbackStreamEvents, 0, sizeof(m_playbackStreamEvents));
+        m_playbackStreamEvents.version = PW_VERSION_STREAM_EVENTS;
+        m_playbackStreamEvents.process = &TPipeWireDriver::_on_process_playback;
+        m_playbackStreamEvents.state_changed = &TPipeWireDriver::_on_state_changed;
+
+        m_playbackStream = pw_stream_new_simple(
+            m_pwLoop,
+            "TraversoPlaybackStream",
+            playbackProperties,
+            &m_playbackStreamEvents,
+            this
+            );
+
+        if (!m_playbackStream) {
+            return setup_failed(tr("Could not create PipeWire Playback Stream"));
+        }
+
+        int res = pw_stream_connect(
+            m_playbackStream,
+            PW_DIRECTION_OUTPUT,
+            PW_ID_ANY,
+            static_cast<enum pw_stream_flags>(
+                PW_STREAM_FLAG_AUTOCONNECT |
+                PW_STREAM_FLAG_RT_PROCESS |
+                PW_STREAM_FLAG_INACTIVE),
+            streamParameters,
+            1
+            );
+
+        if (res < 0) {
+            return setup_failed(tr("Could not connect Capture stream to server"));
+        } else {
+            emit driverSetupMessage("PipeWire", tr("Playback Stream connected to server"), TAudioDevice::DRIVER_SETUP_SUCCESS);
+        }
     }
 
-    struct pw_properties *captureProps = pw_properties_new(
-        "application.name", "Traverso DAW",
-        "application.icon-name", "Traverso",
-        "media.name", "Traverso Audio Input",
-        "media.type", "Audio",
-        "media.category", "Capture",
-        "media.class", "Stream/Input/Audio",
-        "node.name", "TraversoDAW Capture",
-        "node.description", "Traverso DAW Input",
+    if (capture) {
+        struct pw_properties *captureProps = pw_properties_new(
+            "application.name", "Traverso DAW",
+            "application.icon-name", "Traverso",
+            "media.name", "Traverso Audio Input",
+            "media.type", "Audio",
+            "media.category", "Capture",
+            "media.class", "Stream/Input/Audio",
+            "node.name", "TraversoDAW Capture",
+            "node.description", "Traverso DAW Input",
 
-        "node.link-group", "Traverso_DSP_Group",
+            "node.link-group", "Traverso_DSP_Group",
 
-        "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
-        "node.force-rate", std::to_string(m_frameRate).c_str(),
-        "node.lock-quantum", "true",
-        "node.lock-rate", "true",
-        nullptr
-        );
+            "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
+            "node.force-rate", std::to_string(m_frameRate).c_str(),
+            "node.lock-quantum", "true",
+            "node.lock-rate", "true",
+            nullptr
+            );
 
-    std::memset(&m_captureStreamEvents, 0, sizeof(m_captureStreamEvents));
-    m_captureStreamEvents.version = PW_VERSION_STREAM_EVENTS;
+        std::memset(&m_captureStreamEvents, 0, sizeof(m_captureStreamEvents));
+        m_captureStreamEvents.version = PW_VERSION_STREAM_EVENTS;
 
-    m_captureStreamEvents.process = &TPipeWireDriver::_on_process_capture;
-    m_captureStreamEvents.state_changed = &TPipeWireDriver::_on_state_changed;
+        m_captureStreamEvents.process = &TPipeWireDriver::_on_process_capture;
+        m_captureStreamEvents.state_changed = &TPipeWireDriver::_on_state_changed;
 
-    m_captureStream = pw_stream_new_simple(
-        m_pwLoop,
-        "TraversoCaptureStream",
-        captureProps,
-        &m_captureStreamEvents,
-        this
-        );
+        m_captureStream = pw_stream_new_simple(
+            m_pwLoop,
+            "TraversoCaptureStream",
+            captureProps,
+            &m_captureStreamEvents,
+            this
+            );
 
-    if (!m_captureStream) {
-        return setup_failed(tr("Could not create PipeWire Capture Stream"));
-    }
+        if (!m_captureStream) {
+            return setup_failed(tr("Could not create PipeWire Capture Stream"));
+        }
 
-    res = pw_stream_connect(
-        m_captureStream,
-        PW_DIRECTION_INPUT,
-        PW_ID_ANY,
-        static_cast<enum pw_stream_flags>(
-            PW_STREAM_FLAG_AUTOCONNECT |
-            PW_STREAM_FLAG_RT_PROCESS |
-            PW_STREAM_FLAG_INACTIVE),
-        streamParameters,
-        1
-        );
+        int res = pw_stream_connect(
+            m_captureStream,
+            PW_DIRECTION_INPUT,
+            PW_ID_ANY,
+            static_cast<enum pw_stream_flags>(
+                PW_STREAM_FLAG_AUTOCONNECT |
+                PW_STREAM_FLAG_RT_PROCESS |
+                PW_STREAM_FLAG_INACTIVE),
+            streamParameters,
+            1
+            );
 
-    if (res < 0) {
-        return setup_failed(tr("Could not connect capture stream to server"));
-    } else {
-        emit driverSetupMessage("PipeWire", tr("Capture Stream connected to server"), TAudioDevice::DRIVER_SETUP_SUCCESS);
+        if (res < 0) {
+            return setup_failed(tr("Could not connect capture stream to server"));
+        } else {
+            emit driverSetupMessage("PipeWire", tr("Capture Stream connected to server"), TAudioDevice::DRIVER_SETUP_SUCCESS);
+        }
     }
 
     int pipewire_fd = pw_loop_get_fd(m_pwLoop);
