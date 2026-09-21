@@ -102,18 +102,29 @@ bool WPAudioReader::seek_private(nframes_t frameToSeekTo)
 nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nframes_t frameCount)
 {
     Q_ASSERT(m_wp);
-    TAudioBuffer &readBuffer = fileDecodeBuffer->get_read_buffer();
 
-    nframes_t readFrames = WavpackUnpackSamples(m_wp, (int32_t*)readBuffer.get_data(frameCount * m_channels), frameCount);
+    uint32_t totalSamples = frameCount * m_channels;
+    // WavPack reads in int32_t, fileDecodeBuffer uses float so we need temporary buffer here
+    std::vector<int32_t> unpackBuffer(totalSamples);
 
-    const uint divider = ((uint)1<<(m_bytesPerSample * 8 - 1));
+    nframes_t readFrames = WavpackUnpackSamples(m_wp, unpackBuffer.data(), frameCount);
 
-    // De-interlace
+    if (readFrames == 0) {
+        return 0;
+    }
+
+
+    // calculate divider for normalization for float -1.0 .. 1.0
+    const float divider = static_cast<float>((1ULL << (m_bytesPerSample * 8 - 1)));
+
     if (m_isFloat) {
+        const float* floatSrc = reinterpret_cast<const float*>(unpackBuffer.data());
+
         switch (m_channels) {
         case 1:
         {
-            TAudioBuffer::copy_data(fileDecodeBuffer->get_destination_buffer(0), readBuffer, readFrames);
+            TAudioBuffer &dest = fileDecodeBuffer->get_destination_buffer(0);
+            std::memcpy(dest.get_data(readFrames), floatSrc, readFrames * sizeof(float));
             break;
         }
         case 2:
@@ -122,9 +133,8 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
             TAudioBuffer &right = fileDecodeBuffer->get_destination_buffer(1);
 
             for (nframes_t f = 0; f < readFrames; f++) {
-                uint index = f*2;
-                left[f] = readBuffer[index];
-                right[f] = readBuffer[index + 1];
+                left[f]  = floatSrc[f * 2];
+                right[f] = floatSrc[f * 2 + 1];
             }
             break;
         }
@@ -133,7 +143,7 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
             for (uint channel = 0; channel < m_channels; channel++) {
                 TAudioBuffer &destBuffer = fileDecodeBuffer->get_destination_buffer(channel);
                 for (nframes_t frame = 0; frame < readFrames; frame++) {
-                    destBuffer[frame] = readBuffer[frame * m_channels + channel];
+                    destBuffer[frame] = floatSrc[frame * m_channels + channel];
                 }
             }
         }
@@ -145,7 +155,7 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
         {
             TAudioBuffer &destination = fileDecodeBuffer->get_destination_buffer(0);
             for (nframes_t frame = 0; frame < readFrames; frame++) {
-                destination[frame] = readBuffer[frame] / divider;
+                destination[frame] = static_cast<float>(unpackBuffer[frame]) / divider;
             }
             break;
         }
@@ -155,9 +165,9 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
             TAudioBuffer &right = fileDecodeBuffer->get_destination_buffer(1);
 
             for (nframes_t frame = 0; frame < readFrames; frame++) {
-                uint index = frame*2;
-                left[frame] = readBuffer[index] / divider;
-                right[frame] = readBuffer[index + 1] / divider;
+                uint index = frame * 2;
+                left[frame]  = static_cast<float>(unpackBuffer[index]) / divider;
+                right[frame] = static_cast<float>(unpackBuffer[index + 1]) / divider;
             }
             break;
         }
@@ -165,7 +175,7 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
             for (uint channel = 0; channel < m_channels; channel++) {
                 TAudioBuffer &destBuffer = fileDecodeBuffer->get_destination_buffer(channel);
                 for (nframes_t frame = 0; frame < readFrames; frame++) {
-                    destBuffer[frame] = readBuffer[frame * m_channels + channel] / divider;
+                    destBuffer[frame] = static_cast<float>(unpackBuffer[frame * m_channels + channel]) / divider;
                 }
             }
         }
