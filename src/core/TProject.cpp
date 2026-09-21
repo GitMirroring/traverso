@@ -52,6 +52,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 #include "qapplication.h"
+#include "qthread.h"
 
 #define PROJECT_FILE_VERSION 	3
 #define MASTER_OUT_SOFTWARE_BUS_ID 1
@@ -727,15 +728,47 @@ void TProject::prepare_audio_device(QDomDocument doc)
     audiodevice().set_parameters(audioDeviceSetup);
 }
 
+void TProject::set_project_closed()
+{
+    PENTER;
+    m_projectClosed = true;
+
+    // Closing a project could mean Traverso falls back to the Dummy driver
+    // Loading Dummy driver causes driverParamsChanged to fire but we're closing
+    // so definitely don't want to act on this signal anymore!
+    disconnect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &TProject::audiodevice_params_changed);
+
+    disconnect_from_audio_device();
+}
+
 void TProject::connect_to_audio_device()
 {
+    PENTER;
     audiodevice().add_client(m_audiodeviceClient);
 }
 
+// 'Blocking' call till we are disconnected from the AudioDevice
 int TProject::disconnect_from_audio_device()
 {
     PENTER;
     audiodevice().remove_client(m_audiodeviceClient);
+
+    // Wait maximum 1 second
+    int counter = 200;
+
+    while (m_audiodeviceClient->is_connected() && counter > 0) {
+        QThread::msleep(5);
+        counter--;
+    }
+
+    if (counter == 0) {
+        QMessageBox::critical( nullptr,
+                                 tr("Traverso DAW - Malfunction"),
+                                 tr("Unable to disconnect from Audio Device.\nClosing the application to free the Audio Device"),
+                                 QMessageBox::Ok);
+        qFatal("Could not disconnected AudioDeviceClient from AudioDevice. Closing the application");
+    }
+
     return 1;
 }
 
@@ -1249,6 +1282,7 @@ void TProject::audio_device_removed_client(TAudioDeviceClient *client)
         return;
     }
 
+
     if (m_projectClosed) {
         deleteLater();
     }
@@ -1403,14 +1437,19 @@ TResourcesManager * TProject::get_audiosource_manager( ) const
 
 void TProject::audiodevice_params_changed()
 {
+    PENTER;
     setup_default_hardware_buses();
 
-    foreach(AudioBus* bus, m_hardwareAudioBuses) {
+    for (TSheet* sheet : std::as_const(m_sheets)) {
+        sheet->audiodevice_params_changed();
+    }
+
+    for(AudioBus* bus : std::as_const(m_hardwareAudioBuses)) {
         bus->audiodevice_params_changed();
     }
 
     uint bufferSize = audiodevice().get_buffer_size();
-    foreach(AudioChannel* channel, m_softwareAudioChannels) {
+    for(AudioChannel* channel : std::as_const(m_softwareAudioChannels)) {
         channel->set_buffer_size(bufferSize);
     }
 }

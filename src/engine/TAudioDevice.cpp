@@ -862,6 +862,7 @@ float TAudioDevice::get_cpu_time( )
 void TAudioDevice::private_add_client(TAudioDeviceClient* client)
 {
     m_clients.append(client);
+    client->set_connected(true);
 }
 
 void TAudioDevice::private_remove_client(TAudioDeviceClient* client)
@@ -869,6 +870,8 @@ void TAudioDevice::private_remove_client(TAudioDeviceClient* client)
     PENTER;
     if (!m_clients.remove(client)) {
         printf("AudioDevice:: Client was not in clients list, failed to remove it!\n");
+    } else {
+        client->set_connected(false);
     }
 }
 

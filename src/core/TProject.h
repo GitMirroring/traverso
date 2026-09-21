@@ -213,10 +213,7 @@ private:
 
     void prepare_audio_device(QDomDocument doc);
 
-    void set_project_closed() {
-        m_projectClosed = true;
-        disconnect_from_audio_device();
-    }
+    void set_project_closed();
 
     friend class TProjectManager;
     

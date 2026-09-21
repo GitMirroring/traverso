@@ -78,7 +78,7 @@ private:
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TAudioSource*>>   m_audioSourcesToBeRemoved;
 
     std::atomic<bool>   m_seekRequested;
-    bool                m_stopDiskIOThreadRequested;
+    std::atomic<bool>   m_stopDiskIOThreadRequested;
 
     QList<TAudioSource*>	m_audioSources;
 

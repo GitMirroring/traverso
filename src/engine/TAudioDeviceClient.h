@@ -32,19 +32,23 @@ class AudioBus;
 
 class TAudioDeviceClient : public QObject
 {
-        Q_OBJECT
+    Q_OBJECT
 
 public:
-        TAudioDeviceClient(const QString& name);
-        ~TAudioDeviceClient();
+    TAudioDeviceClient(const QString& name);
+    ~TAudioDeviceClient();
 
-        void set_process_callback(const TProcessCallBack &call);
+    void set_process_callback(const TProcessCallBack &call);
     void set_transport_control_callback(const TTransportControlCallBack& call);
+
+    bool is_connected() {
+        return m_connected.load();
+    }
 
     TProcessCallBack process;
     TTransportControlCallBack transport_control;
-	
-	QString		m_name;
+
+    QString		m_name;
     AudioBus*       masterOutBus{};
 
     bool operator<(const TAudioDeviceClient& /*other*/) {
@@ -53,7 +57,15 @@ public:
 
     TAudioDeviceClient* next = nullptr;
 
+
 private:
+    std::atomic<bool>   m_connected{false};
+
+    void set_connected(bool connected) {
+        m_connected.store(connected);
+    }
+
+    friend class TAudioDevice;
 
 };
 

@@ -146,7 +146,6 @@ void TSheet::init()
     m_timeLineRuler->set_history_stack(get_history_stack());
 
     connect(this, &TSheet::prepareRecording, this, &TSheet::prepare_recording);
-    connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &TSheet::audiodevice_params_changed, Qt::DirectConnection);
     connect(&config(), &TConfig::configChanged, this, &TSheet::config_changed);
 
     TAudioBusConfiguration busConfig;
@@ -586,6 +585,7 @@ void TSheet::resize_buffers(nframes_t size)
 
 void TSheet::audiodevice_params_changed()
 {
+    PENTER;
     resize_buffers(audiodevice().get_buffer_size());
 
     // The samplerate possibly has been changed, this initiates

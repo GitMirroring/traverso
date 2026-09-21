@@ -128,7 +128,7 @@ TDiskIOThread::TDiskIOThread()
     m_resampleDecodeBuffer = std::make_shared<TFileDecodeBuffer>();
 
     m_seekRequested.store(false);
-    m_stopDiskIOThreadRequested = false;
+    m_stopDiskIOThreadRequested.store(false);
     m_outputSampleRate = 0;
     m_sampleRateChanged = false;
     m_resampleQualityChanged = false;
@@ -148,7 +148,10 @@ TDiskIOThread::~TDiskIOThread()
     stop_disk_thread();
 
     // the shared buffers should have only one user by now, that is us, so only 1 user
-    Q_ASSERT(m_fileDecodeBuffer.use_count() == 1);
+    if (m_fileDecodeBuffer.use_count() != 1) {
+        QByteArray errorMsg = "Expected use_count == 1, but got " + QByteArray::number(m_fileDecodeBuffer.use_count());
+        Q_ASSERT_X(false, "FileDecoder", errorMsg.constData());
+    }
     Q_ASSERT(m_resampleDecodeBuffer.use_count() == 1);
 }
 
@@ -198,16 +201,13 @@ bool TDiskIOThread::do_work( )
 {
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::do_work", "NOT running in DiskIO thread");
 
-    if (m_stopDiskIOThreadRequested) {
-        return false;
-    }
-
     nframes_t audioThreadProcessedFrames;
     // Here we wait (block) till at least one of the following has happened:
     // 1: the owner of this DiskIOThread has put at least 1 value via add_processed_audio_thread_frames(nframes_t nframes)
     // usually before or after a process cycle
     // 2: wake_up() has been called by the owner of this object which essentially does the same thing
     m_audioThreadProcessedFramesQueue->wait_dequeue(audioThreadProcessedFrames);
+
 
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
@@ -224,6 +224,10 @@ bool TDiskIOThread::do_work( )
     }
     while (m_audioSourcesToBeRemoved->try_dequeue(source)) {
         private_remove_from_work(source);
+    }
+
+    if (m_stopDiskIOThreadRequested.load()) {
+        return false;
     }
 
     if (m_resampleQualityChanged) {
@@ -356,17 +360,17 @@ void TDiskIOThread::stop_disk_thread( )
     PENTER;
 
     // Stop any processing in do_work()
-    m_stopDiskIOThreadRequested = true;
+    m_stopDiskIOThreadRequested.store(true);
+
     // this function is called from the DiskIO destructor
     // most likely we're waiting on an empty blocking queue so do_work() will never be called
     // so make sure we wake up the thread by adding an item to the queue
     // Since we are disconnected from the audio processing callback it's safe to do so.
-    wakeup();
-    quit();
-    wakeup();
-    if (!wait(500)) {
+    wakeup(); // make do_work() leave the TDiskIOThread::run()
+
+    if (!wait(1000)) { // give time for the TDiskIOThread::run() to actually finish
         terminate();
-        wait(500);
+        wait();
     }
 }
 
