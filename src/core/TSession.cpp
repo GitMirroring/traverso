@@ -486,6 +486,11 @@ TCommand* TSession::remove_track(TTrack* track, bool historable)
         return nullptr;
 	}
 
+    // Bounce Tracks for now are hard coded, do not remove if the user asks
+    if (track->get_type() == TTrack::BOUNCE) {
+        return nullptr;
+    }
+
     return new TAddRemoveCommand(this, track, historable, this,
         "private_remove_track(TTrack*)", "privateTrackRemoved(TTrack*)",
         "private_add_track(TTrack*)", "privateTrackAdded(TTrack*)",
@@ -501,7 +506,10 @@ void TSession::private_add_track(TTrack* track)
     case TTrack::BUS:
         m_rtBusTracks.append(qobject_cast<TBusTrack*>(track));
 		break;
-	default:
+    case TTrack::BOUNCE:
+        // TODO?
+        break;
+    default:
         qFatal("TSession::private_add_track() Unknown Track type, this is a programming error!");
 
 	}
@@ -516,6 +524,9 @@ void TSession::private_remove_track(TTrack* track)
     case TTrack::BUS:
         m_rtBusTracks.remove(qobject_cast<TBusTrack*>(track));
 		break;
+    case TTrack::BOUNCE:
+        //TODO?
+        break;
 	default:
         qFatal("TSession::private_remove_track() Unknown Track type, this is a programming error!");
 	}
