@@ -106,7 +106,7 @@ int main( int argc, char **argv )
 
 	traverso = new Traverso(argc, argv);
 	
-	QTranslator traversoTranslator;
+    QTranslator traversoTranslator;
 	QString systemLanguage = QLocale::system().name();
 	QString userLanguage = config().get_property("Interface", "LanguageFile", "").toString();
     bool translaterLoaded = false;

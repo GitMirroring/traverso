@@ -476,126 +476,131 @@ void TProjectManager::start_incremental_backup(TProject* project)
 
 void TProjectManager::cleanup_backupfiles_for_project(const QString & projectname)
 {
-	if (! project_exists(projectname)) {
-		return;
-	}
-	
-	QString project_dir = config().get_property("Project", "directory", "/directory/unknown").toString();
-	QString project_path = project_dir + "/" + projectname;
-	QString backupdir = project_path + "/projectfilebackup";
-	
-	// Check if the projectfilebackup directory still exist
-	QDir dir(backupdir);
-	// A map to insert files based on their time value,
-	// so it's sorted on date automatically
-	QMap<int, QString> map;
-	QStringList entrylist = dir.entryList(QDir::Files);
-	
-	// If there are more then 1000 saves, remove the last 200!
-	if (entrylist.size() > 1000) {
-		printf("more then thousand backup files, deleting oldest 200\n");
-		
-		int key;
-		foreach (QString file, dir.entryList(QDir::Files)) {
-			key = file.right(10).toUInt();
-			map.insert(key, file);
-		}
-		
-		QList<QString> tobedeleted = map.values();
-		
-		if (tobedeleted.size() < 201) {
-			return;
-		}
+    if (! project_exists(projectname)) {
+        return;
+    }
 
-		for(int i=0; i<200; ++i) {
-			QFile file(backupdir + "/" + tobedeleted.at(i));
-			if ( ! file.remove() ) {
-				printf("Could not remove file %s (Reason: %s)\n", QS_C(tobedeleted.at(i)), QS_C(TFileHelper::fileerror_to_string(file.error())));
-			}
-		}
-	}
+    QString project_dir = config().get_property("Project", "directory", "/directory/unknown").toString();
+    QString project_path = project_dir + "/" + projectname;
+    QString backupdir = project_path + "/projectfilebackup";
+
+    QDir dir(backupdir);
+    QMap<qint64, QString> map;
+    QStringList entrylist = dir.entryList(QDir::Files);
+
+    if (entrylist.size() > 1000) {
+        printf("more then thousand backup files, deleting oldest 200\n");
+
+        foreach (QString file, dir.entryList(QDir::Files)) {
+            int separatorPos = file.lastIndexOf("__");
+            if (separatorPos != -1) {
+                qint64 key = file.mid(separatorPos + 2).toLongLong();
+                map.insert(key, file);
+            }
+        }
+
+        QList<QString> tobedeleted = map.values();
+        if (tobedeleted.size() < 201) {
+            return;
+        }
+
+        for(int i=0; i<200; ++i) {
+            QFile file(backupdir + "/" + tobedeleted.at(i));
+            if ( ! file.remove() ) {
+                printf("Could not remove file %s (Reason: %s)\n", QS_C(tobedeleted.at(i)), QS_C(TFileHelper::fileerror_to_string(file.error())));
+            }
+        }
+    }
 }
 
 
-int TProjectManager::restore_project_from_backup(const QString& projectname, uint restoretime)
+
+int TProjectManager::restore_project_from_backup(const QString& projectname, qint64 restoretime)
 {
-	if (! project_exists(projectname)) {
-		return -1;
-	}
-	QString project_dir = config().get_property("Project", "directory", "/directory/unknown").toString();
-	QString project_path = project_dir + "/" + projectname;
-	QString backupDir = project_path + "/projectfilebackup";
-	
-        if (m_currentProject) {
-                m_currentProject->save();
-		set_current_project(0);
-	}
+    if (! project_exists(projectname)) {
+        return -1;
+    }
+    QString project_dir = config().get_property("Project", "directory", "/directory/unknown").toString();
+    QString project_path = project_dir + "/" + projectname;
+    QString backupDir = project_path + "/projectfilebackup";
 
-	QString fileName = project_path + "/project.tpf";
-	
-	QDir dir(backupDir);
-	QString backupfile;
-	
-	foreach (QString backup, dir.entryList(QDir::Files)) {
-		if (backup.right(10).toUInt() == restoretime) {
-			backupfile = backupDir + "/" + backup;
-			printf("backupfile %s\n", QS_C(backupfile));
-			break;
-		}
-	}
-	
-	QFile reader(backupfile);
-	if (!reader.open(QIODevice::ReadOnly)) {
-		//
-		reader.close();
-		return -1;
-	}
-	
-	
-	QFile writer(fileName);
-	if (!writer.open( QIODevice::WriteOnly | QIODevice::Text) ) {
-//		PERROR("Could not open %s for writing!", QS_C(fileName));
-		writer.close();
-		return -1;
-	}
-	
-	QDataStream dataIn(&reader);
-	QByteArray compByteArray;
-	dataIn >> compByteArray;
-	
-	QByteArray a = qUncompress(compByteArray);
-	QTextStream stream(&writer);
-	stream << a;
-	
-	writer.close();
-	
-	return 1;
+    if (m_currentProject) {
+        m_currentProject->save();
+        set_current_project(0);
+    }
+
+    QString fileName = project_path + "/project.tpf";
+    QDir dir(backupDir);
+    QString backupfile;
+
+    foreach (QString backup, dir.entryList(QDir::Files)) {
+        int separatorPos = backup.lastIndexOf("__");
+        if (separatorPos != -1) {
+            qint64 fileTime = backup.mid(separatorPos + 2).toLongLong();
+            if (fileTime == restoretime) {
+                backupfile = backupDir + "/" + backup;
+                printf("backupfile found: %s\n", QS_C(backupfile));
+                break;
+            }
+        }
+    }
+
+    QFile reader(backupfile);
+    if (!reader.open(QIODevice::ReadOnly)) {
+        reader.close();
+        return -1;
+    }
+
+    QFile writer(fileName);
+    if (!writer.open( QIODevice::WriteOnly | QIODevice::Text) ) {
+        writer.close();
+        return -1;
+    }
+
+    QDataStream dataIn(&reader);
+    QByteArray compByteArray;
+    dataIn >> compByteArray;
+
+    QByteArray a = qUncompress(compByteArray);
+    QTextStream stream(&writer);
+    stream << a;
+
+    writer.close();
+    return 1;
 }
 
-QList< uint > TProjectManager::get_backup_date_times(const QString& projectname)
+
+QList<qint64> TProjectManager::get_backup_date_times(const QString& projectname)
 {
-	if (! project_exists(projectname)) {
-		return QList<uint>();
-	}
-	QString project_dir = config().get_property("Project", "directory", "/directory/unknown").toString();
-	QString backupDir = project_dir + "/" + projectname + "/projectfilebackup";
-	
-	QList<uint> dateList;
-	QDir dir(backupDir);
-	
-	foreach (QString filename, dir.entryList(QDir::Files)) {
-		bool ok;
-		uint date = filename.right(10).toUInt(&ok);
-		if (ok) {
-			dateList.append(date);
-		} else {
-			printf("filename: %s is not backupfile made by Traverso, removing it!\n", QS_C(filename));
-			QFile::remove(backupDir + "/" + filename);
-		}
-	}
+    if (! project_exists(projectname)) {
+        return QList<qint64>();
+    }
+    QString project_dir = config().get_property("Project", "directory", "/directory/unknown").toString();
+    QString backupDir = project_dir + "/" + projectname + "/projectfilebackup";
 
-	return dateList;
+    QList<qint64> dateList;
+    QDir dir(backupDir);
+
+    foreach (QString filename, dir.entryList(QDir::Files)) {
+        bool ok = false;
+        qint64 date = 0;
+
+        int separatorPos = filename.lastIndexOf("__");
+        if (separatorPos != -1) {
+            date = filename.mid(separatorPos + 2).toLongLong(&ok);
+        }
+
+        if (ok) {
+            dateList.append(date);
+        } else {
+            printf("filename: %s is not backupfile made by Traverso, removing it!\n", QS_C(filename));
+            QFile::remove(backupDir + "/" + filename);
+        }
+    }
+
+    return dateList;
 }
+
 
 int TProjectManager::create_projectfilebackup_dir(const QString& rootDir)
 {

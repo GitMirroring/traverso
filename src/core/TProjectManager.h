@@ -58,9 +58,9 @@ public:
     void remove_wrong_project_path(const QString& path);
 
     int rename_project_dir(const QString& olddir, const QString& newdir);
-    int restore_project_from_backup(const QString& projectdir, uint restoretime);
+    int restore_project_from_backup(const QString& projectdir, qint64 restoretime);
 
-    QList<uint> get_backup_date_times(const QString& projectdir);
+    QList<qint64> get_backup_date_times(const QString& projectdir);
     QStringList get_projects_list();
     QString get_projects_directory();
     void start_incremental_backup(TProject* project);
