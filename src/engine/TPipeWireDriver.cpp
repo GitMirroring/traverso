@@ -355,6 +355,10 @@ int TPipeWireDriver::_write( nframes_t nframes )
     struct spa_buffer* buf = b->buffer;
     uint channelCount = m_playbackChannels.size();
 
+    if (buf->n_datas < channelCount) {
+        channelCount = buf->n_datas;
+    }
+
     for (uint chan = 0; chan < channelCount; ++chan) {
         float* dst = static_cast<float*>(buf->datas[chan].data);
 
@@ -362,13 +366,15 @@ int TPipeWireDriver::_write( nframes_t nframes )
             std::memcpy(dst, m_playbackChannels.at(chan)->get_buffer().get_data(0), nframes * sizeof(float));
         }
 
-        m_playbackChannels.at(chan)->silence_buffer();
-
         if (buf->datas[chan].chunk) {
             buf->datas[chan].chunk->offset = 0;
             buf->datas[chan].chunk->stride = sizeof(float);
             buf->datas[chan].chunk->size = nframes * sizeof(float);
         }
+    }
+
+    for (auto channel : std::as_const(m_playbackChannels)) {
+        channel->silence_buffer();
     }
 
     pw_stream_queue_buffer(m_playbackStream, b);
@@ -401,10 +407,14 @@ void TPipeWireDriver::_on_process_capture(void *userdata)
 int TPipeWireDriver::process_capture_callback()
 {
     struct pw_buffer* b = pw_stream_dequeue_buffer(m_captureStream);
-    if (!b) return 0;
+    if (!b) return -1;
 
     struct spa_buffer* buf = b->buffer;
     uint channelCount = m_captureChannels.size();
+
+    if (buf->n_datas < channelCount) {
+        channelCount = buf->n_datas;
+    }
 
     for (uint chan = 0; chan < channelCount; ++chan) {
         if (chan < buf->n_datas && buf->datas[chan].data) {
