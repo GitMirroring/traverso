@@ -28,8 +28,7 @@
 #include "TTimeRef.h"
 #include "Debugger.h"
 
-#include <cstring>
-
+#include <spa/param/audio/format-utils.h>
 
 TPipeWireDriver::TPipeWireDriver(TAudioDevice* device)
     : TAudioDriver(device)
@@ -90,11 +89,7 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     // FIXME:
     uint32_t channels = 2;
 
-    m_periodTimeInMicroSeconds = static_cast<trav_time_t>(
-        static_cast<double>(m_framesPerCycle) / m_frameRate * 1000000.0);
-
     pw_init(nullptr, nullptr);
-
     m_pwLoop = pw_loop_new(nullptr);
 
     if (!m_pwLoop) {
@@ -104,7 +99,7 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     uint8_t paramBuffer[1024];
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(paramBuffer, sizeof(paramBuffer));
     struct spa_audio_info_raw info = {};
-    info.format   = SPA_AUDIO_FORMAT_F32P; // Float 32-bit PLANAR (JACK stijl)
+    info.format   = SPA_AUDIO_FORMAT_F32P; // 32 bit float non-interleaved buffers
     info.rate     = m_frameRate;
     info.channels = channels;
     info.flags    = 0;
@@ -115,26 +110,34 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
 
     const struct spa_pod *duplexParameter = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
     const struct spa_pod *streamParameters[] = { duplexParameter };
+    const enum pw_stream_flags streamFlags = static_cast<enum pw_stream_flags>(
+        PW_STREAM_FLAG_AUTOCONNECT |
+        PW_STREAM_FLAG_RT_PROCESS |
+        PW_STREAM_FLAG_INACTIVE
+        );
+
+    struct pw_properties *baseProps = pw_properties_new(
+        "application.name", "Traverso DAW",
+        "application.icon-name", "Traverso",
+        "media.type", "Audio",
+        "node.link-group", "Traverso_DSP_Group",
+        "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
+        "node.force-rate", std::to_string(m_frameRate).c_str(),
+        "node.lock-quantum", "true",
+        "node.lock-rate", "true",
+        "node.latency", std::string(std::to_string(m_framesPerCycle) + "/" + std::to_string(m_frameRate)).c_str(),
+        "node.rate", std::string("1/" + std::to_string(m_frameRate)).c_str(),
+        nullptr
+        );
 
     if (playback) {
-        struct pw_properties *playbackProperties = pw_properties_new(
-            "application.name", "Traverso DAW",
-            "application.icon-name", "Traverso",
-            "media.name", "Traverso Audio Output",
-            "media.type", "Audio",
-            "media.category", "Playback",
-            "media.class", "Stream/Output/Audio",
-            "node.name", "TraversoDAW Playback",
-            "node.description", "Traverso DAW Playback",
+        struct pw_properties *playbackProperties = pw_properties_copy(baseProps);
+        pw_properties_set(playbackProperties, "media.name", "Traverso Audio Output");
+        pw_properties_set(playbackProperties, "media.category", "Playback");
+        pw_properties_set(playbackProperties, "media.class", "Stream/Output/Audio");
+        pw_properties_set(playbackProperties, "node.name", "TraversoDAW Playback");
+        pw_properties_set(playbackProperties, "node.description", "Traverso DAW Playback");
 
-            "node.link-group", "Traverso_DSP_Group",
-
-            "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
-            "node.force-rate", std::to_string(m_frameRate).c_str(),
-            "node.lock-quantum", "true",
-            "node.lock-rate", "true",
-            nullptr
-            );
 
         std::memset(&m_playbackStreamEvents, 0, sizeof(m_playbackStreamEvents));
         m_playbackStreamEvents.version = PW_VERSION_STREAM_EVENTS;
@@ -157,10 +160,7 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
             m_playbackStream,
             PW_DIRECTION_OUTPUT,
             PW_ID_ANY,
-            static_cast<enum pw_stream_flags>(
-                PW_STREAM_FLAG_AUTOCONNECT |
-                PW_STREAM_FLAG_RT_PROCESS |
-                PW_STREAM_FLAG_INACTIVE),
+            streamFlags,
             streamParameters,
             1
             );
@@ -173,24 +173,13 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     }
 
     if (capture) {
-        struct pw_properties *captureProps = pw_properties_new(
-            "application.name", "Traverso DAW",
-            "application.icon-name", "Traverso",
-            "media.name", "Traverso Audio Input",
-            "media.type", "Audio",
-            "media.category", "Capture",
-            "media.class", "Stream/Input/Audio",
-            "node.name", "TraversoDAW Capture",
-            "node.description", "Traverso DAW Input",
+        struct pw_properties *captureProps = pw_properties_copy(baseProps);
+        pw_properties_set(captureProps, "media.name", "Traverso Audio Input");
+        pw_properties_set(captureProps, "media.category", "Capture");
+        pw_properties_set(captureProps, "media.class", "Stream/Input/Audio");
+        pw_properties_set(captureProps, "node.name", "TraversoDAW Capture");
+        pw_properties_set(captureProps, "node.description", "Traverso DAW Input");
 
-            "node.link-group", "Traverso_DSP_Group",
-
-            "node.force-quantum", std::to_string(m_framesPerCycle).c_str(),
-            "node.force-rate", std::to_string(m_frameRate).c_str(),
-            "node.lock-quantum", "true",
-            "node.lock-rate", "true",
-            nullptr
-            );
 
         std::memset(&m_captureStreamEvents, 0, sizeof(m_captureStreamEvents));
         m_captureStreamEvents.version = PW_VERSION_STREAM_EVENTS;
@@ -214,10 +203,7 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
             m_captureStream,
             PW_DIRECTION_INPUT,
             PW_ID_ANY,
-            static_cast<enum pw_stream_flags>(
-                PW_STREAM_FLAG_AUTOCONNECT |
-                PW_STREAM_FLAG_RT_PROCESS |
-                PW_STREAM_FLAG_INACTIVE),
+            streamFlags,
             streamParameters,
             1
             );
@@ -228,6 +214,8 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
             emit driverSetupMessage("PipeWire", tr("Capture Stream connected to server"), TAudioDevice::DRIVER_SETUP_SUCCESS);
         }
     }
+
+    pw_properties_free(baseProps);
 
     int pipewire_fd = pw_loop_get_fd(m_pwLoop);
     m_notifier = new QSocketNotifier(pipewire_fd, QSocketNotifier::Read, this);
@@ -241,11 +229,6 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
 int TPipeWireDriver::attach()
 {
     PENTER;
-
-    // int port_flags;
-    // port_flags = PortIsOutput|PortIsPhysical|PortIsTerminal;
-
-    m_periodTimeInMicroSeconds = (trav_time_t) floor ((((float) m_framesPerCycle) / m_frameRate) * 1000000.0f);
 
     m_device->set_buffer_size (m_framesPerCycle);
     m_device->set_sample_rate (m_frameRate);

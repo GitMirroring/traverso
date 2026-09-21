@@ -25,10 +25,6 @@
 #include "TAudioDriver.h"
 
 #include <pipewire/pipewire.h>
-#include <pipewire/stream.h>
-#include <pipewire/loop.h>
-#include <spa/param/audio/format-utils.h>
-#include <spa/param/audio/layout.h>
 
 #include <QSocketNotifier>
 
