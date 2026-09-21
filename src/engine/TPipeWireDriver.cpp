@@ -111,6 +111,7 @@ int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevic
     const struct spa_pod *duplexParameter = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info);
     const struct spa_pod *streamParameters[] = { duplexParameter };
     const enum pw_stream_flags streamFlags = static_cast<enum pw_stream_flags>(
+        PW_STREAM_FLAG_MAP_BUFFERS |
         PW_STREAM_FLAG_AUTOCONNECT |
         PW_STREAM_FLAG_RT_PROCESS |
         PW_STREAM_FLAG_INACTIVE
