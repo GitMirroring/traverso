@@ -22,12 +22,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef RESAMPLEAUDIOREADER_H
 #define RESAMPLEAUDIOREADER_H
 
-#include "TAudioBuffer.h"
+#include "TFileDecodeBuffer.h"
 #include <AbstractAudioReader.h>
 #include <samplerate.h>
 
 struct PrivateSRC;
-class TAudioBuffer;
 
 class ResampleAudioReader : public AbstractAudioReader
 {
@@ -37,10 +36,10 @@ public:
     ResampleAudioReader(const QString &filename);
 	~ResampleAudioReader();
 	
-	nframes_t read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count) {
+    nframes_t read_from(TFileDecodeBuffer& buffer, nframes_t start, nframes_t count) {
 		return AbstractAudioReader::read_from(buffer, start, count);
 	}
-	nframes_t read_from(TFileDecodeBuffer* buffer, const TTimeRef& start, nframes_t count) {
+    nframes_t read_from(TFileDecodeBuffer& buffer, const TTimeRef& start, nframes_t count) {
         return AbstractAudioReader::read_from(buffer, TTimeRef::to_frame(start, m_outputSampleRate), count);
 	}
 	QString decoder_type() const {return (m_reader) ? m_reader->decoder_type() : "";}
@@ -51,7 +50,6 @@ public:
 	int get_convertor_type() const {return m_convertorType;}
 	void set_output_rate(uint rate);
     void set_converter_type(int converterType);
-    void set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> buffer);
 
     static int get_default_resample_quality();
     static QString get_convertor_type_name(int convertorType);
@@ -63,8 +61,8 @@ public:
 protected:
 	void reset();
 	
-	bool seek_private(nframes_t start);
-	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount);
+    bool seek_private(nframes_t start) final;
+    nframes_t read_private(TFileDecodeBuffer& buffer, nframes_t frameCount) final;
 	
 	nframes_t resampled_to_file_frame(nframes_t frame);
 	nframes_t file_to_resampled_frame(nframes_t frame);
@@ -80,7 +78,7 @@ protected:
 	
 private:
 	void create_overflow_buffers();
-    std::shared_ptr<TFileDecodeBuffer> m_resampleDecodeBuffer;
+    TFileDecodeBuffer m_resampleDecodeBuffer;
 };
 
 #endif

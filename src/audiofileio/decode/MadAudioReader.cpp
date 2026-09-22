@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QVector>
 
 #include "TFileDecodeBuffer.h"
-#include "Utils.h"
 
 RELAYTOOL_MAD;
 
@@ -458,6 +457,7 @@ class MadAudioReader::MadDecoderPrivate
 {
 public:
     MadDecoderPrivate()
+        : overflowBuffers{TAudioBuffer(1152), TAudioBuffer(1152)}
     {
         outputBuffer = nullptr;
         outputPos = 0;
@@ -465,27 +465,25 @@ public:
         overflowSize = 0;
         overflowStart = 0;
 
-        mad_header_init( &firstHeader );
+        mad_header_init(&firstHeader);
     }
 
     K3bMad* handle{};
-
     QVector<unsigned long long> seekPositions;
-
     bool bOutputFinished{};
 
     TAudioBuffer* outputBuffer;
     nframes_t	outputPos;
     nframes_t	outputSize;
 
-    audio_sample_t** overflowBuffers{};
+    TAudioBuffer overflowBuffers[2];
     nframes_t	overflowSize;
     nframes_t	overflowStart;
 
-    // the first frame header for technical info
     mad_header firstHeader{};
     bool vbr{};
 };
+
 
 
 MadAudioReader::MadAudioReader(const QString& filename)
@@ -519,8 +517,6 @@ MadAudioReader::MadAudioReader(const QString& filename)
     m_fileSampleRate = d->firstHeader.samplerate;
     m_length = TTimeRef(m_fileFrames, m_fileSampleRate);
 
-    d->overflowBuffers = nullptr;
-
     initDecoderInternal();
 }
 
@@ -528,42 +524,14 @@ MadAudioReader::MadAudioReader(const QString& filename)
 MadAudioReader::~MadAudioReader()
 {
     if (d) {
-        d->handle->cleanup();
-        delete d->handle;
-        clear_buffers();
+        if (d->handle) {
+            d->handle->cleanup();
+            d->handle->clearInputBuffer();
+            delete d->handle;
+        }
         delete d;
     }
 }
-
-
-void MadAudioReader::create_buffers()
-{
-    if (!d->overflowBuffers) {
-        d->overflowBuffers = new audio_sample_t*[m_channels];
-        for (int chan = 0; chan < m_channels; chan++) {
-            d->overflowBuffers[chan] = new audio_sample_t[1152];
-        }
-    }
-}
-
-
-void MadAudioReader::clear_buffers()
-{
-    if (d->overflowBuffers) {
-        for (int chan = 0; chan < m_channels; chan++) {
-            delete [] d->overflowBuffers[chan];
-        }
-        delete [] d->overflowBuffers;
-        d->overflowBuffers = nullptr;
-        d->overflowStart = 0;
-        d->overflowSize = 0;
-    }
-
-    if (d && d->handle) {
-        d->handle->clearInputBuffer();
-    }
-}
-
 
 bool MadAudioReader::can_decode(const QString& filename)
 {
@@ -686,15 +654,34 @@ bool MadAudioReader::seek_private(nframes_t start)
         mad_synth_frame( d->handle->madSynth, d->handle->madFrame );
     }
 
+    // Reset overflow flags prior to synthesis warm-up
     d->overflowStart = 0;
     d->overflowSize = 0;
 
-    d->outputBuffer = nullptr; // Null so that we write to overflow
+    // Direct libmad to decode the target frame entirely into the overflow cache
+    d->outputBuffer = nullptr;
     d->outputSize = 0;
     d->outputPos = 0;
+
+    // This populates d->overflowBuffers starting strictly at index 0,
+    // and sets d->overflowSize to exactly 1152.
     createPcmSamples(d->handle->madSynth);
-    d->overflowStart = frameOffset;
-    d->overflowSize = (d->overflowSize > frameOffset) ? (d->overflowSize - frameOffset) : 0;
+
+    // =========================================================================
+    // CORRECTED SEEK OFFSET MATH:
+    // If the seek destination lands in the middle of an MP3 frame, we must
+    // skip the pre-seek samples. We shift the read pointer (overflowStart) to
+    // the frameOffset, and reduce the available size accordingly.
+    // =========================================================================
+    if (frameOffset < d->overflowSize) {
+        d->overflowStart = frameOffset;
+        d->overflowSize -= frameOffset;
+    } else {
+        // Safe fallback if the offset somehow exceeds the decoded frame length
+        d->overflowStart = 0;
+        d->overflowSize = 0;
+    }
+    // =========================================================================
 
     return true;
 }
@@ -764,71 +751,47 @@ unsigned long MadAudioReader::countFrames()
 }
 
 
-nframes_t MadAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t frameCount)
+nframes_t MadAudioReader::read_private(TFileDecodeBuffer& buffer, nframes_t frameCount)
 {
-    TAudioBuffer &readBuffer = buffer->get_read_buffer();
+    TAudioBuffer &readBuffer = buffer.get_read_buffer();
     d->outputBuffer = &readBuffer;
     d->outputSize = frameCount;
     d->outputPos = 0;
 
-    bool bOutputBufferFull = false;
-
-    // Deal with existing overflow
     if (d->overflowSize > 0) {
+        nframes_t framesToCopy = std::min(d->overflowSize, frameCount);
+
+        for (uint chan = 0; chan < m_channels; chan++) {
+            TAudioBuffer &destination = buffer.get_destination_buffer(chan);
+            for (nframes_t frame = 0; frame < framesToCopy; ++frame) {
+                // Direct uitlezen via het pure object!
+                destination[frame] = d->overflowBuffers[chan][d->overflowStart + frame];
+                readBuffer[frame * m_channels + chan] = d->overflowBuffers[chan][d->overflowStart + frame];
+            }
+        }
+
+
+        d->outputPos += framesToCopy;
+
         if (d->overflowSize < frameCount) {
-            //printf("output all %d overflow samples\n", d->overflowSize);
-            for (nframes_t frame = 0; frame < d->overflowSize; ++frame) {
-                for (uint channel = 0; channel < m_channels; ++channel) {
-                    readBuffer[frame * m_channels + channel] =
-                        d->overflowBuffers[channel][d->overflowStart + frame];
-                }
-            }
-            for (int chan = 0; chan < m_channels; chan++) {
-                TAudioBuffer &destination = buffer->get_destination_buffer(chan);
-                for (nframes_t frame = 0; frame < d->overflowSize; ++frame) {
-                    destination[frame] = readBuffer[frame * m_channels + chan];
-                }
-            }
-            d->outputPos += d->overflowSize;
             d->overflowSize = 0;
             d->overflowStart = 0;
-        }
-        else {
-            //printf("output %d overflow frames, returned from overflow\n", frameCount);
-            for (nframes_t frame = 0; frame < frameCount; ++frame) {
-                for (uint channel = 0; channel < m_channels; ++channel) {
-                    readBuffer[frame * m_channels + channel] =
-                        d->overflowBuffers[channel][d->overflowStart + frame];
-                }
-            }
-            for (int chan = 0; chan < m_channels; chan++) {
-                TAudioBuffer &destination = buffer->get_destination_buffer(chan);
-                for (nframes_t frame = 0; frame < frameCount; ++frame) {
-                    destination[frame] = readBuffer[frame * m_channels + chan];
-                }
-            }
+        } else {
             d->overflowSize -= frameCount;
             d->overflowStart += frameCount;
             return frameCount;
         }
     }
 
+    bool bOutputBufferFull = false;
+
     while (!bOutputBufferFull && d->handle->fillStreamBuffer()) {
-        // a mad_synth contains of the data of one mad_frame
-        // one mad_frame represents a mp3-frame which is always 1152 samples
-        // for us that means we need 1152 samples per channel of output buffer
-        // for every frame
         if (d->outputPos >= d->outputSize) {
             bOutputBufferFull = true;
         }
         else if (d->handle->decodeNextFrame()) {
-            //
-            // Once decoded the frame is synthesized to PCM samples. No errors
-            // are reported by mad_synth_frame();
-            //
-            mad_synth_frame( d->handle->madSynth, d->handle->madFrame );
+            mad_synth_frame(d->handle->madSynth, d->handle->madFrame);
 
-            // this fills the output buffer
             if (!createPcmSamples(d->handle->madSynth)) {
                 PERROR("createPcmSamples");
                 return 0;
@@ -840,9 +803,15 @@ nframes_t MadAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t fram
         }
     }
 
-    nframes_t framesWritten = d->outputPos;
+    nframes_t finalFrames = std::min(d->outputPos, frameCount);
+    for (uint chan = 0; chan < m_channels; chan++) {
+        TAudioBuffer &destination = buffer.get_destination_buffer(chan);
+        for (nframes_t frame = 0; frame < finalFrames; ++frame) {
+            destination[frame] = readBuffer[frame * m_channels + chan];
+        }
+    }
 
-    return framesWritten;
+    return finalFrames;
 }
 
 
@@ -850,54 +819,67 @@ bool MadAudioReader::createPcmSamples(mad_synth* synth)
 {
     TAudioBuffer* writeBuffer = d->outputBuffer;
     nframes_t outputOffset = d->outputPos;
-    nframes_t	nframes = synth->pcm.length;
-    bool		overflow = false;
-    nframes_t	i;
-
-    if (!d->overflowBuffers) {
-        create_buffers();
-    }
+    nframes_t nframes = synth->pcm.length;
+    bool overflow = false;
+    nframes_t i;
+    nframes_t overflowIndex = 0;
 
     if (writeBuffer && (m_readPos + d->outputPos + nframes) > m_fileFrames) {
         nframes = m_fileFrames - (m_readPos + outputOffset);
     }
 
-    // now create the output
+    const mad_fixed_t* srcLeft  = synth->pcm.samples[0];
+    const mad_fixed_t* srcRight = (synth->pcm.channels == 2) ? synth->pcm.samples[1] : nullptr;
+
     for (i = 0; i < nframes; i++) {
-        if (overflow == false && d->outputPos + i >= d->outputSize) {
+        if (!overflow && (!writeBuffer || (outputOffset + i >= d->outputSize))) {
             overflow = true;
         }
 
-        /* Left channel */
+        /* Process Left Channel */
         if (overflow) {
-            d->overflowBuffers[0][i] = mad_f_todouble(synth->pcm.samples[0][i]);
-        } else {
-            (*writeBuffer)[(outputOffset + i) * m_channels] = mad_f_todouble(synth->pcm.samples[0][i]);
+            d->overflowBuffers[0][overflowIndex] = mad_f_todouble(srcLeft[i]);
+        } else if (writeBuffer) {
+            (*writeBuffer)[(outputOffset + i) * m_channels] = mad_f_todouble(srcLeft[i]);
         }
 
-        /* Right channel. If the decoded stream is monophonic then no right channel
-        */
-        if (synth->pcm.channels == 2) {
+        /* Process Right Channel */
+        if (srcRight) {
             if (overflow) {
-                d->overflowBuffers[1][i] = mad_f_todouble(synth->pcm.samples[1][i]);
-            } else {
-                (*writeBuffer)[(outputOffset + i) * m_channels + 1] = mad_f_todouble(synth->pcm.samples[1][i]);
+                d->overflowBuffers[1][overflowIndex] = mad_f_todouble(srcRight[i]);
+            } else if (writeBuffer) {
+                if (m_channels == 2) {
+                    (*writeBuffer)[(outputOffset + i) * m_channels + 1] = mad_f_todouble(srcRight[i]);
+                }
             }
         }
-    } // pcm conversion
+        /* Mono-to-Stereo Upmix Fallback */
+        else if (m_channels == 2 && writeBuffer && !overflow) {
+            (*writeBuffer)[(outputOffset + i) * m_channels + 1] = mad_f_todouble(srcLeft[i]);
+        } else if (m_channels == 2 && overflow) {
+            d->overflowBuffers[1][overflowIndex] = mad_f_todouble(srcLeft[i]);
+        }
+
+        if (overflow) {
+            overflowIndex++;
+        }
+    }
 
     if (overflow) {
-        d->overflowSize = i;
+        d->overflowSize = overflowIndex;
         d->overflowStart = 0;
-        d->outputPos += i;
-        //printf("written: %d (overflow: %u)\n",  nframes - d->overflowSize, d->overflowSize);
     }
-    else {
+
+    if (writeBuffer) {
+        if (outputOffset + i > d->outputSize) {
+            d->outputPos = d->outputSize;
+        } else {
+            d->outputPos += i;
+        }
+    } else {
         d->outputPos += i;
-        //printf("written: %d (os=%lu)\n",  i, d->overflowSize);
     }
 
     return true;
 }
-
 

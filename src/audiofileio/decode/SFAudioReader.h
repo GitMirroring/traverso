@@ -38,8 +38,8 @@ public:
 	static bool can_decode(QString filename);
 
 protected:
-	bool seek_private(nframes_t start);
-    nframes_t read_private(TFileDecodeBuffer* fileDecodeBuffer, nframes_t nframes);
+    bool seek_private(nframes_t start) final;
+    nframes_t read_private(TFileDecodeBuffer& fileDecodeBuffer, nframes_t nframes) final;
 	
 	SNDFILE*	m_sf;
 	SF_INFO		m_sfinfo{};

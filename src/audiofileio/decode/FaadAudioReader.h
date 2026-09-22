@@ -31,14 +31,14 @@ public:
 	FaadAudioReader(const QString& filename);
 	~FaadAudioReader() override;
 
-	QString decoder_type() const override { return "faad"; }
-	void clear_buffers() override;
+    QString decoder_type() const final { return "faad"; }
+    void clear_buffers() final;
 
 	static bool can_decode(const QString& filename);
 
 protected:
-	bool seek_private(nframes_t start) override;
-	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount) override;
+    bool seek_private(nframes_t start) final;
+    nframes_t read_private(TFileDecodeBuffer &buffer, nframes_t frameCount) final;
 
 	bool initDecoderInternal();
 

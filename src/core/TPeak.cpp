@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TPeak.h"
 
-#include "AbstractAudioReader.h" // Needed for DecodeBuffer declaration
 #include "TProject.h"
 #include "TProjectManager.h"
 #include "TReadAudioSource.h"
@@ -46,6 +45,78 @@ QHash<int, int> TPeak::chacheIndexLut;
 
 typedef short peak_data_t;
 
+class PeakDataReader
+{
+public:
+    PeakDataReader(ChannelData* data);
+    ~PeakDataReader(){};
+
+    nframes_t read_from(TFileDecodeBuffer &buffer, nframes_t start, nframes_t count);
+
+private:
+    ChannelData* m_d;
+    nframes_t	m_readPos;
+    nframes_t	m_nframes;
+
+    bool seek(nframes_t start);
+    nframes_t read(TFileDecodeBuffer &buffer, nframes_t frameCount);
+};
+
+inline QHash< int, int > * TPeak::cache_index_lut()
+{
+    if(chacheIndexLut.isEmpty()) {
+        calculate_lut_data();
+    }
+    return &chacheIndexLut;
+}
+struct PeakHeaderData {
+    int headerSize;
+    int normValuesDataOffset;
+    int peakDataOffsets[TPeak::ZOOM_LEVELS - TPeak::SAVING_ZOOM_FACTOR + 1];
+    int peakDataSizeForLevel[TPeak::ZOOM_LEVELS - TPeak::SAVING_ZOOM_FACTOR + 1];
+    char label[6];
+    int version[2];
+};
+
+struct ProcessData {
+    ProcessData() {
+        normValue = peakUpperValue = peakLowerValue = 0;
+        processBufferSize = progress = normProcessedFrames = normDataCount = 0;
+        nextDataPointLocation = processRange;
+    }
+
+    audio_sample_t		peakUpperValue;
+    audio_sample_t		peakLowerValue;
+    audio_sample_t		normValue;
+
+    TTimeRef			stepSize;
+    TTimeRef			processRange;
+    TTimeRef			processLocation;
+    TTimeRef			nextDataPointLocation;
+
+    nframes_t		normProcessedFrames;
+
+    int 			progress;
+    int			processBufferSize;
+    int			normDataCount;
+};
+
+struct ChannelData {
+    ChannelData() {
+    }
+    ~ChannelData(){}
+    QString		fileName;
+    QString		normFileName;
+    QFile 		file;
+    QFile		normFile;
+    PeakHeaderData	headerdata;
+    PeakDataReader*	peakreader;
+    ProcessData* 	pd;
+    TFileDecodeBuffer	peakdataDecodeBuffer;
+    QHash<uchar *, QPair<int /*offset*/, int /*handle|len*/> > maps;
+};
+
+
 TPeak::TPeak(TAudioSource* source)
 {
     PENTERCONS;
@@ -64,7 +135,7 @@ TPeak::TPeak(TAudioSource* source)
     }
 
     for (uint chan = 0; chan < source->get_channel_count(); ++ chan) {
-        ChannelData* data = new TPeak::ChannelData;
+        ChannelData* data = new ChannelData;
 
         data->fileName = sourcename + "-ch" + QByteArray::number(chan) + ".peak";
         data->fileName.prepend(path);
@@ -174,7 +245,6 @@ int TPeak::read_header()
         data->file.read((char*)&data->headerdata.headerSize, sizeof(data->headerdata.headerSize));
 
         data->peakreader = new PeakDataReader(data);
-        data->peakdataDecodeBuffer = new TFileDecodeBuffer;
     }
 
     m_peaksAvailable = true;
@@ -285,7 +355,7 @@ int TPeak::calculate_peaks(int chan,
         // 			data->peakdataDecodeBuffer->destination[0][i] = 0;
         // 		}
         //
-        buffer = data->peakdataDecodeBuffer->get_destination_buffer(0).get_data(produced);
+        buffer = data->peakdataDecodeBuffer.get_destination_buffer(0).get_data(produced);
 
         return produced;
 
@@ -310,7 +380,7 @@ int TPeak::calculate_peaks(int chan,
     // MicroView needs a buffer to store the calculated peakdata
     // our decodebuffer's readbuffer is large enough for this purpose
     // and it's no problem to use it at this point in the process chain.
-    float* peakdata = data->peakdataDecodeBuffer->get_read_buffer().get_data(readFrames);
+    float* peakdata = data->peakdataDecodeBuffer.get_read_buffer().get_data(readFrames);
 
     ProcessData pd;
     // the stepSize depends on the real file sample rate, Peak assumes 44100 Hz
@@ -323,7 +393,7 @@ int TPeak::calculate_peaks(int chan,
 
         pd.processLocation += pd.stepSize;
 
-        sample = data->peakdataDecodeBuffer->get_destination_buffer(chan).get_data(readFrames)[i];
+        sample = data->peakdataDecodeBuffer.get_destination_buffer(chan).get_data(readFrames)[i];
 
         pd.normValue = f_max(pd.normValue, fabsf(sample));
 
@@ -401,7 +471,7 @@ int TPeak::prepare_processing(uint rate)
         // Now seek to the start position, so we can write the peakdata to it in the process function
         data->file.seek(data->headerdata.headerSize);
 
-        data->pd = new TPeak::ProcessData;
+        data->pd = new ProcessData;
         data->pd->stepSize = TTimeRef(nframes_t(1), rate);
         data->pd->processRange = TTimeRef(nframes_t(64), 44100);
     }
@@ -629,8 +699,6 @@ int TPeak::create_from_scratch()
     }
 
     TFileDecodeBuffer decodebuffer;
-    std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer;
-    m_source->set_resample_decode_buffer(resampleDecodeBuffer);
 
     do {
         if (m_interuptPeakBuild) {
@@ -638,11 +706,15 @@ int TPeak::create_from_scratch()
             goto out;
         }
 
-        readFrames = m_source->file_read(&decodebuffer, totalReadFrames, bufferSize);
+        readFrames = m_source->file_read(decodebuffer, totalReadFrames, bufferSize);
 
         if (readFrames <= 0) {
             PERROR("readFrames < 0 during peak building");
             break;
+        }
+
+        if (readFrames > bufferSize) {
+            readFrames = bufferSize;
         }
 
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
@@ -702,7 +774,7 @@ audio_sample_t TPeak::get_max_amplitude(const TTimeRef &startlocation, const TTi
         startpos += 1;
         int toRead = (int) ((startpos * NORMALIZE_CHUNK_SIZE) - startframe);
 
-        int read = m_source->file_read(&decodebuffer, startframe, toRead);
+        int read = m_source->file_read(decodebuffer, startframe, toRead);
 
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
             maxamp = decodebuffer.get_destination_buffer(chan).compute_peak(read, maxamp);
@@ -715,7 +787,7 @@ audio_sample_t TPeak::get_max_amplitude(const TTimeRef &startlocation, const TTi
     float f = (float) endframe / NORMALIZE_CHUNK_SIZE;
     int endpos = (int) f;
     int toRead = (int) ((f - (endframe / float(NORMALIZE_CHUNK_SIZE))) * NORMALIZE_CHUNK_SIZE);
-    int read = m_source->file_read(&decodebuffer, endframe - toRead, toRead);
+    int read = m_source->file_read(decodebuffer, endframe - toRead, toRead);
 
     if (read > 0) {
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
@@ -874,7 +946,7 @@ void TPPThread::run()
 
 
 
-PeakDataReader::PeakDataReader(TPeak::ChannelData* data)
+PeakDataReader::PeakDataReader(ChannelData* data)
 {
     m_d = data;
     m_nframes = m_d->file.size();
@@ -882,7 +954,7 @@ PeakDataReader::PeakDataReader(TPeak::ChannelData* data)
 }
 
 
-nframes_t PeakDataReader::read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count)
+nframes_t PeakDataReader::read_from(TFileDecodeBuffer& buffer, nframes_t start, nframes_t count)
 {
     // 	printf("read_from:: before_seek from %d, framepos is %d\n", start, m_readPos);
 
@@ -916,14 +988,14 @@ bool PeakDataReader::seek(nframes_t start)
 }
 
 
-nframes_t PeakDataReader::read(TFileDecodeBuffer* buffer, nframes_t count)
+nframes_t PeakDataReader::read(TFileDecodeBuffer& buffer, nframes_t count)
 {
     if ( ! (count && (m_readPos < m_nframes)) ) {
         return 0;
     }
 
     // Make sure the read buffer is big enough for this read
-    buffer->check_buffers_capacity(count*3, 1);
+    buffer.check_buffers_capacity(count*3, 1);
 
     Q_ASSERT(m_d->file.isOpen());
 
@@ -931,11 +1003,11 @@ nframes_t PeakDataReader::read(TFileDecodeBuffer* buffer, nframes_t count)
     peak_data_t* readbuffer;
 
     qint64 length = sizeof(peak_data_t) * count;
-    framesRead = m_d->file.read(reinterpret_cast<char*>(buffer->get_read_buffer().get_data(length)), length) / qint64(sizeof(peak_data_t));
-    readbuffer = reinterpret_cast<peak_data_t*>(buffer->get_read_buffer().get_data(length));
+    framesRead = m_d->file.read(reinterpret_cast<char*>(buffer.get_read_buffer().get_data(length)), length) / qint64(sizeof(peak_data_t));
+    readbuffer = reinterpret_cast<peak_data_t*>(buffer.get_read_buffer().get_data(length));
 
     for (int f = 0; f < framesRead; f++) {
-        buffer->get_destination_buffer(0).get_data(framesRead)[f] = float(readbuffer[f]);
+        buffer.get_destination_buffer(0).get_data(framesRead)[f] = float(readbuffer[f]);
     }
 
     m_readPos += framesRead;
@@ -967,9 +1039,4 @@ int TPeak::max_zoom_value()
     return 131072;
 }
 
-TPeak::ChannelData::~ ChannelData()
-{
 
-    delete peakdataDecodeBuffer;
-
-}

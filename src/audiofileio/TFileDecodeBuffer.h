@@ -1,6 +1,4 @@
-#ifndef TFILEDECODEBUFFER_H
-#define TFILEDECODEBUFFER_H
-
+#pragma once
 
 #include "TAudioBuffer.h"
 #include "defines.h"
@@ -74,4 +72,3 @@ private:
     uint                    m_readBufferSize;
 };
 
-#endif // TFILEDECODEBUFFER_H

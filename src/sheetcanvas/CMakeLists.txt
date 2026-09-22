@@ -3,6 +3,7 @@ ${CMAKE_SOURCE_DIR}/src/commands
 ${CMAKE_SOURCE_DIR}/src/common
 ${CMAKE_SOURCE_DIR}/src/core
 ${CMAKE_SOURCE_DIR}/src/engine
+${CMAKE_SOURCE_DIR}/src/audiofileio
 ${CMAKE_SOURCE_DIR}/src/plugins
 ${CMAKE_SOURCE_DIR}/src/plugins/native
 ${CMAKE_SOURCE_DIR}/src/plugins/LV2

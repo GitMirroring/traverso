@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Ben Levitt 
+Copyright (C) 2007 Ben Levitt
 
 This file is part of Traverso
 
@@ -105,27 +105,26 @@ private:
 class MadAudioReader : public AbstractAudioReader
 {
 public:
-	MadAudioReader(const QString& filename);
-	~MadAudioReader();
-	
-	QString decoder_type() const {return "mad";}
-	void clear_buffers();
-	
-	static bool can_decode(const QString& filename);
-	
-protected:
-	bool seek_private(nframes_t start);
-	nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount);
-	
-	void create_buffers();
-	bool initDecoderInternal();
-	unsigned long countFrames();
-	bool createPcmSamples(mad_synth* synth);
-	
-	static int	MaxAllowedRecoverableErrors;
+    MadAudioReader(const QString& filename);
+    ~MadAudioReader();
 
-	class MadDecoderPrivate;
-	MadDecoderPrivate* d;
+    QString decoder_type() const { return "mad"; }
+
+    static bool can_decode(const QString& filename);
+
+protected:
+    bool seek_private(nframes_t start) final;
+    nframes_t read_private(TFileDecodeBuffer& buffer, nframes_t frameCount) final;
+
+    bool initDecoderInternal();
+    unsigned long countFrames();
+    bool createPcmSamples(mad_synth* synth);
+
+    static int MaxAllowedRecoverableErrors;
+
+    class MadDecoderPrivate;
+    MadDecoderPrivate* d;
 };
+
 
 #endif

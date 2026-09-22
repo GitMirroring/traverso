@@ -99,7 +99,7 @@ bool WPAudioReader::seek_private(nframes_t frameToSeekTo)
 }
 
 
-nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nframes_t frameCount)
+nframes_t WPAudioReader::read_private(TFileDecodeBuffer& fileDecodeBuffer, nframes_t frameCount)
 {
     Q_ASSERT(m_wp);
 
@@ -123,14 +123,14 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
         switch (m_channels) {
         case 1:
         {
-            TAudioBuffer &dest = fileDecodeBuffer->get_destination_buffer(0);
+            TAudioBuffer &dest = fileDecodeBuffer.get_destination_buffer(0);
             std::memcpy(dest.get_data(readFrames), floatSrc, readFrames * sizeof(float));
             break;
         }
         case 2:
         {
-            TAudioBuffer &left = fileDecodeBuffer->get_destination_buffer(0);
-            TAudioBuffer &right = fileDecodeBuffer->get_destination_buffer(1);
+            TAudioBuffer &left = fileDecodeBuffer.get_destination_buffer(0);
+            TAudioBuffer &right = fileDecodeBuffer.get_destination_buffer(1);
 
             for (nframes_t f = 0; f < readFrames; f++) {
                 left[f]  = floatSrc[f * 2];
@@ -141,7 +141,7 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
         default:
         {
             for (uint channel = 0; channel < m_channels; channel++) {
-                TAudioBuffer &destBuffer = fileDecodeBuffer->get_destination_buffer(channel);
+                TAudioBuffer &destBuffer = fileDecodeBuffer.get_destination_buffer(channel);
                 for (nframes_t frame = 0; frame < readFrames; frame++) {
                     destBuffer[frame] = floatSrc[frame * m_channels + channel];
                 }
@@ -153,7 +153,7 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
         switch (m_channels) {
         case 1:
         {
-            TAudioBuffer &destination = fileDecodeBuffer->get_destination_buffer(0);
+            TAudioBuffer &destination = fileDecodeBuffer.get_destination_buffer(0);
             for (nframes_t frame = 0; frame < readFrames; frame++) {
                 destination[frame] = static_cast<float>(unpackBuffer[frame]) / divider;
             }
@@ -161,8 +161,8 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
         }
         case 2:
         {
-            TAudioBuffer &left = fileDecodeBuffer->get_destination_buffer(0);
-            TAudioBuffer &right = fileDecodeBuffer->get_destination_buffer(1);
+            TAudioBuffer &left = fileDecodeBuffer.get_destination_buffer(0);
+            TAudioBuffer &right = fileDecodeBuffer.get_destination_buffer(1);
 
             for (nframes_t frame = 0; frame < readFrames; frame++) {
                 uint index = frame * 2;
@@ -173,7 +173,7 @@ nframes_t WPAudioReader::read_private(TFileDecodeBuffer* fileDecodeBuffer, nfram
         }
         default:
             for (uint channel = 0; channel < m_channels; channel++) {
-                TAudioBuffer &destBuffer = fileDecodeBuffer->get_destination_buffer(channel);
+                TAudioBuffer &destBuffer = fileDecodeBuffer.get_destination_buffer(channel);
                 for (nframes_t frame = 0; frame < readFrames; frame++) {
                     destBuffer[frame] = static_cast<float>(unpackBuffer[frame * m_channels + channel]) / divider;
                 }

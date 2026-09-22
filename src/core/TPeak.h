@@ -39,8 +39,8 @@ class TReadAudioSource;
 class TAudioSource;
 class TPeak;
 class TPPThread;
-class TFileDecodeBuffer;
 class PeakDataReader;
+struct ChannelData;
 
 class TPeakProcessor : public QObject
 {
@@ -140,54 +140,9 @@ private:
 	std::atomic<bool>	m_peakBuildRunning;
 	static QHash<int, int> chacheIndexLut;
 	
-	struct ProcessData {
-		ProcessData() {
-			normValue = peakUpperValue = peakLowerValue = 0;
-			processBufferSize = progress = normProcessedFrames = normDataCount = 0;
-			nextDataPointLocation = processRange;
-		}
-		
-		audio_sample_t		peakUpperValue;
-		audio_sample_t		peakLowerValue;
-		audio_sample_t		normValue;
-		
-		TTimeRef			stepSize;
-		TTimeRef			processRange;
-		TTimeRef			processLocation;
-		TTimeRef			nextDataPointLocation;
-		
-		nframes_t		normProcessedFrames;
-		
-		int 			progress;
-		int			processBufferSize;
-		int			normDataCount;
-	};
 
-    struct PeakHeaderData {
-        int headerSize;
-        int normValuesDataOffset;
-        int peakDataOffsets[ZOOM_LEVELS - SAVING_ZOOM_FACTOR + 1];
-        int peakDataSizeForLevel[ZOOM_LEVELS - SAVING_ZOOM_FACTOR + 1];
-        char label[6];
-        int version[2];
-    };
 
-	struct ChannelData {
-		ChannelData() {
-			peakdataDecodeBuffer = 0;
-		}
-		~ChannelData();
-		QString		fileName;
-		QString		normFileName;
-		QFile 		file;
-		QFile		normFile;
-		PeakHeaderData	headerdata;
-		PeakDataReader*	peakreader;
-		ProcessData* 	pd;
-		TFileDecodeBuffer*	peakdataDecodeBuffer;
-		QHash<uchar *, QPair<int /*offset*/, int /*handle|len*/> > maps;
-	};
-	
+
 	QList<ChannelData* >	m_channelData;
 	
 	int create_from_scratch();
@@ -203,30 +158,7 @@ signals:
 	void progress(int m_progress);
 };
 
-class PeakDataReader
-{
-public:
-    PeakDataReader(TPeak::ChannelData* data);
-	~PeakDataReader(){};
 
-	nframes_t read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count);
-
-private:
-    TPeak::ChannelData* m_d;
-	nframes_t	m_readPos;
-	nframes_t	m_nframes;
-
-	bool seek(nframes_t start);
-	nframes_t read(TFileDecodeBuffer* buffer, nframes_t frameCount);
-};
-
-inline QHash< int, int > * TPeak::cache_index_lut()
-{
-	if(chacheIndexLut.isEmpty()) {
-		calculate_lut_data();
-	}
-	return &chacheIndexLut;
-}
 
 
 #endif

@@ -24,7 +24,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TAudioSource.h"
 #include "Debugger.h"
-#include "Utils.h"
+
+#include <QtConcurrent>
+#include <QThreadPool>
 
 #include <samplerate.h>
 
@@ -124,9 +126,6 @@ TDiskIOThread::TDiskIOThread()
     m_audioSourcesToBeAdded = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioSource*>>(512);
     m_audioSourcesToBeRemoved = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioSource*>>(512);
 
-    m_fileDecodeBuffer = std::make_shared<TFileDecodeBuffer>();
-    m_resampleDecodeBuffer = std::make_shared<TFileDecodeBuffer>();
-
     m_seekRequested.store(false);
     m_stopDiskIOThreadRequested.store(false);
     m_outputSampleRate = 0;
@@ -138,64 +137,17 @@ TDiskIOThread::TDiskIOThread()
     m_lastCpuReadTime = TTimeRef::get_nanoseconds_since_epoch();
 
     moveToThread(this);
-    start(QThread::HighPriority);
-}
+    start();
 
+    int maxThreads = QThread::idealThreadCount() / 2;
+    QThreadPool::globalInstance()->setMaxThreadCount(maxThreads > 0 ? maxThreads : 1);
+}
 
 TDiskIOThread::~TDiskIOThread()
 {
     PENTERDES;
     stop_disk_thread();
-
-    // the shared buffers should have only one user by now, that is us, so only 1 user
-    if (m_fileDecodeBuffer.use_count() != 1) {
-        QByteArray errorMsg = "Expected use_count == 1, but got " + QByteArray::number(m_fileDecodeBuffer.use_count());
-        Q_ASSERT_X(false, "FileDecoder", errorMsg.constData());
-    }
-    Q_ASSERT(m_resampleDecodeBuffer.use_count() == 1);
 }
-
-
-
-/**
-* 	Seek's all the ReadSources readbuffers to the new position.
-*	Call prepare_seek() first, to interupt do_work() if it was running.
-* 
-*  N.B. this function resets the ReadSource buffers assuming it is the only thread
-*  accessing the buffers. If the audio thread is accessing the buffers at this point
-*  the integrity of the buffers cannot be garuanteed!
-*/
-void TDiskIOThread::seek()
-{
-    PENTER;
-
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::seek", "NOT running in DiskIO thread");
-    Q_ASSERT(m_seekRequested.load() == true);
-
-    printf("DiskIO::seek: Seeking to %s\n", QS_C(TTimeRef::timeref_to_ms_3(m_seekTransportLocation)));
-
-    // A seek event happens for 2 reasons, for transport control and after an audiodevice reconfiguration
-    // in the latter case we need to reset rate and buffer sizes.
-    if (m_sampleRateChanged) {
-        nframes_t bufferSize = audiodevice().get_buffer_size();
-        for (auto source : std::as_const(m_audioSources)) {
-            source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
-            source->prepare_rt_buffers(bufferSize);
-        }
-        m_sampleRateChanged = false;
-        m_fileDecodeBuffer->check_buffers_capacity(bufferSize, 2);
-    }
-
-    for(auto source : std::as_const(m_audioSources)) {
-        source->rb_seek_to_transport_location(m_seekTransportLocation);
-    }
-
-    m_transportLocation = m_seekTransportLocation;
-    m_seekRequested.store(false);
-
-    emit seekFinished();
-}
-
 
 bool TDiskIOThread::do_work( )
 {
@@ -208,11 +160,9 @@ bool TDiskIOThread::do_work( )
     // 2: wake_up() has been called by the owner of this object which essentially does the same thing
     m_audioThreadProcessedFramesQueue->wait_dequeue(audioThreadProcessedFrames);
 
-
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
     nframes_t totalFrames = audioThreadProcessedFrames;
-
     while(m_audioThreadProcessedFramesQueue->try_dequeue(audioThreadProcessedFrames)) {
         totalFrames += audioThreadProcessedFrames;
     }
@@ -237,41 +187,76 @@ bool TDiskIOThread::do_work( )
         m_resampleQualityChanged = false;
     }
 
-    check_for_seek_requested();
+    const bool seekRequested = m_seekRequested.load();
 
-    for (const auto source : std::as_const(m_audioSources))
-    {
-        TAudioSourceBufferStatus* status = source->get_buffer_status();
-
-        if (status->get_fill_status() <= 80 || status->out_of_sync()) {
-
-            if (status->out_of_sync()) {
-                source->rb_seek_to_transport_location(m_transportLocation);
-            }
-            else {
-                source->process_realtime_buffers();
-            }
-
-            if ((status->get_fill_status() < m_bufferFillStatus.load()) && !status->out_of_sync()) {
-                m_bufferFillStatus.store(status->get_fill_status());
+    bool workNeeded = seekRequested;
+    if (!workNeeded) {
+        for (const auto source : std::as_const(m_audioSources)) {
+            TAudioSourceBufferStatus& status = source->get_buffer_status();
+            if (status.out_of_sync() || status.get_fill_status() <= 80) {
+                workNeeded = true;
+                break;
             }
         }
+    }
 
-        check_for_seek_requested();
+    if (!workNeeded) {
+        auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
+        m_doWorktTime.fetch_add(totalTime);
+        return true;
+    }
+
+    const nframes_t bufferSize = seekRequested ? audiodevice().get_buffer_size() : 0;
+    const bool sampleRateChanged = m_sampleRateChanged;
+    const uint outputSampleRate = m_outputSampleRate;
+    const int resampleQuality = m_resampleQuality;
+    const TTimeRef seekTransportLocation = m_seekTransportLocation;
+    const TTimeRef transportLocation = m_transportLocation;
+
+    if (seekRequested) {
+        printf("DiskIO::do_work: Seek requested, starting seek now\n");
+    }
+
+    QtConcurrent::blockingMap(m_audioSources, [this, seekRequested, bufferSize, sampleRateChanged, outputSampleRate, resampleQuality, seekTransportLocation, transportLocation](TAudioSource* source) {
+
+        static thread_local TFileDecodeBuffer threadLocalFileDecodeBuffer;
+
+        if (seekRequested) {
+            if (sampleRateChanged) {
+                source->set_output_rate_and_convertor_type(outputSampleRate, resampleQuality);
+                source->prepare_rt_buffers(bufferSize);
+            }
+            source->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, seekTransportLocation);
+        }
+
+        TAudioSourceBufferStatus& status = source->get_buffer_status();
+
+        if (!seekRequested && status.out_of_sync()) {
+            source->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, transportLocation);
+        }
+        else if (status.get_fill_status() <= 80) {
+            source->process_realtime_buffers(threadLocalFileDecodeBuffer);
+        }
+
+        int currentFillStatus = status.get_fill_status();
+        if (!status.out_of_sync()) {
+            if (currentFillStatus < m_bufferFillStatus.load(std::memory_order_relaxed)) {
+                m_bufferFillStatus.store(currentFillStatus, std::memory_order_relaxed);
+            }
+        }
+     });
+
+    if (seekRequested) {
+        m_sampleRateChanged = false;
+        m_transportLocation = m_seekTransportLocation;
+        m_seekRequested.store(false);
+        emit seekFinished();
     }
 
     auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
     m_doWorktTime.fetch_add(totalTime);
 
     return true;
-}
-
-void TDiskIOThread::check_for_seek_requested()
-{
-    if (m_seekRequested.load()) {
-        printf("DiskIO::do_work: Seek requested, starting seek now\n");
-        seek();
-    }
 }
 
 void TDiskIOThread::add_audio_source(TAudioSource* source)
@@ -285,9 +270,6 @@ void TDiskIOThread::add_audio_source(TAudioSource* source)
     }
 
     source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
-    source->set_file_decode_buffer(m_fileDecodeBuffer);
-    source->set_resample_decode_buffer(m_resampleDecodeBuffer);
-
     source->prepare_rt_buffers(audiodevice().get_buffer_size());
 
     m_audioSourcesToBeAdded->wait_enqueue(source);

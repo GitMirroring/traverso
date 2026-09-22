@@ -39,8 +39,8 @@ public:
     static void print_libwavpack_version();
 
 protected:
-    bool seek_private(nframes_t frameToSeekTo);
-    nframes_t read_private(TFileDecodeBuffer* fileDecodeBuffer, nframes_t frameCount);
+    bool seek_private(nframes_t frameToSeekTo) final;
+    nframes_t read_private(TFileDecodeBuffer& fileDecodeBuffer, nframes_t frameCount) final;
 	
 	WavpackContext*	m_wp;
 	bool		m_isFloat;

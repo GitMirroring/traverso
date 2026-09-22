@@ -48,7 +48,7 @@ public :
     int rb_file_write(TQueueBufferSlot* slot);
 	void process_ringbuffer(audio_sample_t* buffer);
 
-    TAudioSourceBufferStatus* get_buffer_status() final;
+    TAudioSourceBufferStatus& get_buffer_status() final;
 
 	TPeak* get_peak() {return m_peak;}
 
@@ -60,7 +60,8 @@ public :
 	void set_process_peaks(bool process);
     void set_recording(bool rec);
 
-    bool is_recording() const;
+    bool is_recording() const {return m_isRecording;}
+
 
 private:
     std::unique_ptr<AbstractAudioWriter>	m_writer;
@@ -89,27 +90,17 @@ private:
     TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
 
     friend class TDiskIOThread;
-    void process_realtime_buffers() final;
-    void rb_seek_to_transport_location(const TTimeRef &/*transportLocation*/) final {
+    void process_realtime_buffers(TFileDecodeBuffer &fileDecodeBuffer) final;
+    void rb_seek_to_transport_location(TFileDecodeBuffer&, const TTimeRef &/*transportLocation*/) final {
         // WriteSource does not support seeking atm
     }
     void set_output_rate_and_convertor_type(int /*outputRate*/, int /*converterType*/) final {
         // WriteSource does not support rate/convert type change atm
     }
-    void set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> /*resampleDecodeBuffer*/) final {
-        // Writesource does not support DecodeBuffers yet
-    }
-
-
 
 signals:
 	void exportFinished();
 };
-
-inline bool TWriteAudioSource::is_recording( ) const
-{
-	return m_isRecording;
-}
 
 #endif
 

@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define T_AUDIO_SOURCE_H
 
 #include "TAudioSourceBufferStatus.h"
+#include "TFileDecodeBuffer.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -30,7 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QObject>
 
-class TFileDecodeBuffer;
 class TQueueBufferSlot;
 
 /// The base class for AudioSources like ReadSource and WriteSource
@@ -57,7 +57,7 @@ public :
         uint get_channel_count() const {return m_channelCount;}
     uint get_bit_depth() const;
 
-    virtual TAudioSourceBufferStatus* get_buffer_status() = 0;
+    virtual TAudioSourceBufferStatus& get_buffer_status() = 0;
     uint get_output_rate() const {return m_outputRate;}
 
 	
@@ -67,8 +67,6 @@ protected:
     moodycamel::BlockingReaderWriterCircularBuffer<TQueueBufferSlot*> *m_rtBufferSlotsQueue;
     moodycamel::BlockingReaderWriterCircularBuffer<TQueueBufferSlot*> *m_freeBufferSlotsQueue;
     TQueueBufferSlot*    m_lastQueuedRTBufferSlot;
-
-    std::shared_ptr<TFileDecodeBuffer>          m_fileDecodeBuffer;
 
     TTimeRef            m_bufferSlotDuration;
     uint                m_outputRate;
@@ -95,13 +93,9 @@ private:
     friend class TDiskIOThread;
     void prepare_rt_buffers(nframes_t bufferSize);
     void delete_queue_buffers();
-    virtual void process_realtime_buffers() = 0;
-    virtual void rb_seek_to_transport_location(const TTimeRef &transportLocation) = 0;
+    virtual void process_realtime_buffers(TFileDecodeBuffer &fileDecodeBuffer) = 0;
+    virtual void rb_seek_to_transport_location(TFileDecodeBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) = 0;
     virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
-    virtual void set_file_decode_buffer(std::shared_ptr<TFileDecodeBuffer> decodeBuffer) {
-        m_fileDecodeBuffer = decodeBuffer;
-    }
-    virtual void set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer) = 0;
 };
 
 

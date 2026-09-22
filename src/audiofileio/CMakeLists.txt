@@ -1,42 +1,43 @@
 INCLUDE_DIRECTORIES(
-${CMAKE_SOURCE_DIR}/src/audiofileio/decode
-${CMAKE_SOURCE_DIR}/src/audiofileio/encode
-${CMAKE_SOURCE_DIR}/src/core
+        ${CMAKE_SOURCE_DIR}/src/audiofileio/decode
+        ${CMAKE_SOURCE_DIR}/src/audiofileio/encode
+        ${CMAKE_SOURCE_DIR}/src/core
 )
 
 SET(TRAVERSO_AUDIOFILEIO_SOURCES
-decode/AbstractAudioReader.cpp
-decode/SFAudioReader.cpp
-decode/ResampleAudioReader.cpp
-decode/WPAudioReader.cpp
-encode/AbstractAudioWriter.cpp
-encode/SFAudioWriter.cpp
-encode/WPAudioWriter.cpp
-# encode/FlacAudioWriter.cpp
-# encode/VorbisAudioWriter.cpp
+        decode/AbstractAudioReader.cpp
+        decode/SFAudioReader.cpp
+        decode/ResampleAudioReader.cpp
+        decode/WPAudioReader.cpp
+        decode/MadAudioReader.cpp
+        encode/AbstractAudioWriter.cpp
+        encode/SFAudioWriter.cpp
+        encode/WPAudioWriter.cpp
+        # encode/FlacAudioWriter.cpp
+        # encode/VorbisAudioWriter.cpp
 )
 
-# IF(HAVE_MP3_ENCODING)
-# 	SET(TRAVERSO_AUDIOFILEIO_SOURCES
-# 		${TRAVERSO_AUDIOFILEIO_SOURCES}
-# 		encode/LameAudioWriter.cpp
-# 	)
-# ENDIF(HAVE_MP3_ENCODING)
+IF(HAVE_MP3_ENCODING)
+SET(TRAVERSO_AUDIOFILEIO_SOURCES
+        ${TRAVERSO_AUDIOFILEIO_SOURCES}
+        encode/LameAudioWriter.cpp
+)
+ENDIF(HAVE_MP3_ENCODING)
 
 IF(HAVE_M4A_ENCODING)
-        SET(TRAVERSO_AUDIOFILEIO_SOURCES
-                ${TRAVERSO_AUDIOFILEIO_SOURCES}
-                encode/FaacAudioWriter.cpp
-        )
+SET(TRAVERSO_AUDIOFILEIO_SOURCES
+        ${TRAVERSO_AUDIOFILEIO_SOURCES}
+        encode/FaacAudioWriter.cpp
+)
 ENDIF(HAVE_M4A_ENCODING)
 
 IF(HAVE_M4A_DECODING)
-        SET(TRAVERSO_AUDIOFILEIO_SOURCES
-                ${TRAVERSO_AUDIOFILEIO_SOURCES}
-                decode/FaadAudioReader.cpp
+SET(TRAVERSO_AUDIOFILEIO_SOURCES
+        ${TRAVERSO_AUDIOFILEIO_SOURCES}
+        decode/FaadAudioReader.cpp
         decode/minimp4.h
-        )
-    SET(TR)
+)
+SET(TR)
 ENDIF(HAVE_M4A_DECODING)
 
 SET(TRAVERSO_AUDIOFILEIO_LIBRARY "traversoaudiofileio")
@@ -52,5 +53,5 @@ if(HAVE_M4A_ENCODING)
 endif()
 
 IF(USE_PCH)
-    ADD_DEPENDENCIES(traversoaudiofileio precompiled_headers)
+ADD_DEPENDENCIES(traversoaudiofileio precompiled_headers)
 ENDIF(USE_PCH)

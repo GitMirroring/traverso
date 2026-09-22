@@ -32,7 +32,7 @@ class VorbisAudioWriter : public AbstractAudioWriter
 {
 	
 public:
-	VorbisAudioWriter();
+    VorbisAudioWriter(TExportSpecification *spec);
 	~VorbisAudioWriter();
 	
 	bool set_format_attribute(const QString& key, const QString& value);

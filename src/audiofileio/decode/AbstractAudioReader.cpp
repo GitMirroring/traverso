@@ -24,12 +24,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "SFAudioReader.h"
 #include "WPAudioReader.h"
+#include "MadAudioReader.h"
 
 #if defined M4A_DECODE_SUPPORT
 #include "FaadAudioReader.h"
 #endif
 
-#include "Utils.h"
 #include <QString>
 
 RELAYTOOL_FAAD;
@@ -53,7 +53,7 @@ AbstractAudioReader::~AbstractAudioReader()
 
 // Read cnt frames starting at start from the AudioReader, into dst
 // uses seek() and read() from AudioReader subclass
-nframes_t AbstractAudioReader::read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count)
+nframes_t AbstractAudioReader::read_from(TFileDecodeBuffer &buffer, nframes_t start, nframes_t count)
 {
     // 	printf("read_from:: before_seek from %d, framepos is %d\n", start, m_readPos);
 
@@ -103,14 +103,14 @@ bool AbstractAudioReader::seek(nframes_t start)
 }
 
 
-nframes_t AbstractAudioReader::read(TFileDecodeBuffer* buffer, nframes_t count)
+nframes_t AbstractAudioReader::read(TFileDecodeBuffer &buffer, nframes_t count)
 {
     if (count > 0 && m_readPos < m_fileFrames) {
 
         // Make sure the read buffer is big enough for this read
-        buffer->check_buffers_capacity(count, m_channels);
+        buffer.check_buffers_capacity(count, m_channels);
         // and contains only zero's
-        buffer->silence_buffers();
+        buffer.silence_buffers();
 
         // printf("read_from:: after_seek from %d, framepos is %d\n", start, m_readPos);
         nframes_t framesRead = read_private(buffer, count);
@@ -137,6 +137,8 @@ std::unique_ptr<AbstractAudioReader> AbstractAudioReader::create_audio_reader(co
     } else if (FaadAudioReader::can_decode(filename)) {
         newReader = std::unique_ptr<AbstractAudioReader>(new FaadAudioReader(filename));
 #endif
+    } else if (MadAudioReader::can_decode(filename)) {
+        newReader = std::unique_ptr<AbstractAudioReader>(new MadAudioReader(filename));
     } else {
         // Audio Format not supported by sndfile and not a wavpack
         PERROR(QString("File format not supported %1").arg(filename));

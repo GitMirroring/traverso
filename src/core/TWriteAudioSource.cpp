@@ -29,8 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AbstractAudioWriter.h"
 #include "TPeak.h"
 #include "TQueueBufferSlot.h"
-#include "TFileDecodeBuffer.h"
-#include "Utils.h"
 #include "Debugger.h"
 
 #include "gdither.h"
@@ -358,7 +356,7 @@ TQueueBufferSlot* TWriteAudioSource::dequeue_from_free_queue(TProcessCallBackDat
 
 // Called from DiskIO::do_work in DiskAudioThread
 // TODO: make sure this function is thread save
-void TWriteAudioSource::process_realtime_buffers()
+void TWriteAudioSource::process_realtime_buffers(TFileDecodeBuffer &fileDecodeBuffer)
 {
     if(m_exportFinished) {
         // FIXME: can we remove ourselves from DiskIO Thread directly after we've finished recording
@@ -370,8 +368,8 @@ void TWriteAudioSource::process_realtime_buffers()
 
     Q_ASSERT(m_writer);
 
-    m_fileDecodeBuffer->check_buffers_capacity(m_exportSpecification->get_render_buffer_size(), m_channelCount);
-    m_exportSpecification->set_render_buffer(m_fileDecodeBuffer->get_read_buffer().get_data(m_exportSpecification->get_render_buffer_size()));
+    fileDecodeBuffer.check_buffers_capacity(m_exportSpecification->get_render_buffer_size(), m_channelCount);
+    m_exportSpecification->set_render_buffer(fileDecodeBuffer.get_read_buffer().get_data(m_exportSpecification->get_render_buffer_size()));
 
     TQueueBufferSlot* slot = nullptr;
 
@@ -453,7 +451,7 @@ void TWriteAudioSource::set_recording(bool rec )
 	m_isRecording = rec;
 }
 
-TAudioSourceBufferStatus* TWriteAudioSource::get_buffer_status()
+TAudioSourceBufferStatus& TWriteAudioSource::get_buffer_status()
 {
     m_bufferstatus.set_fill_status((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount);
     // FIXME
@@ -463,6 +461,6 @@ TAudioSourceBufferStatus* TWriteAudioSource::get_buffer_status()
         m_bufferstatus.set_fill_status(0);
     }
     m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::IN_SYNC);
-    return &m_bufferstatus;
+    return m_bufferstatus;
 }
 

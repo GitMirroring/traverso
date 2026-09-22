@@ -83,8 +83,8 @@ public:
 };
 
 
-VorbisAudioWriter::VorbisAudioWriter()
- : AbstractAudioWriter()
+VorbisAudioWriter::VorbisAudioWriter(TExportSpecification *spec)
+ : AbstractAudioWriter(spec)
 {
 	d = new Private();
 }

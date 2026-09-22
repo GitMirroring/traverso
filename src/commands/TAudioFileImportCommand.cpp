@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioTrack.h"
 #include "TProject.h"
 #include "TProjectManager.h"
+#include "TReadAudioSource.h"
 #include "TResourcesManager.h"
 #include "Utils.h"
 #include "TMainWindow.h"
@@ -100,7 +101,7 @@ void TAudioFileImportCommand::create_audioclip()
 {
 	Q_ASSERT(m_track);
 	m_clip = resources_manager()->new_audio_clip(m_name);
-    resources_manager()->set_source_for_clip(m_clip, m_readSource);
+    resources_manager()->set_source_for_clip(m_clip, m_readSource->get_id());
 	m_clip->set_sheet(m_track->get_sheet());
 	m_clip->set_track(m_track);
 	

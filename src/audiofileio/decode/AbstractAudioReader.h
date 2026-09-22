@@ -24,10 +24,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TTimeRef.h"
 #include "defines.h"
+#include "TFileDecodeBuffer.h"
 
 #include <QString>
-
-class TFileDecodeBuffer;
 
 class AbstractAudioReader
 {
@@ -42,10 +41,10 @@ public:
     uint get_file_rate();
 	bool eof();
 	nframes_t pos();
-	
-    nframes_t read_from(TFileDecodeBuffer* buffer, nframes_t start, nframes_t count);
+
+    nframes_t read_from(TFileDecodeBuffer &buffer, nframes_t start, nframes_t count);
 	bool seek(nframes_t start);
-    nframes_t read(TFileDecodeBuffer* buffer, nframes_t frameCount);
+    nframes_t read(TFileDecodeBuffer &buffer, nframes_t frameCount);
 	
     bool is_valid() {return (m_channels > 0 && m_fileFrames > 0);}
 	virtual QString decoder_type() const = 0;
@@ -55,7 +54,7 @@ public:
 	
 protected:
 	virtual bool seek_private(nframes_t start) = 0;
-    virtual nframes_t read_private(TFileDecodeBuffer* buffer, nframes_t frameCount) = 0;
+    virtual nframes_t read_private(TFileDecodeBuffer &buffer, nframes_t frameCount) = 0;
 	
 	QString		m_fileName;
 

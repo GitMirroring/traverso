@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef RESOURCES_MANAGER_H
 #define RESOURCES_MANAGER_H
 
+#include "TTimeRef.h"
 #include <QString>
 #include <QHash>
 #include <QList>
@@ -54,10 +55,15 @@ public:
 	TReadAudioSource* get_silent_readsource();
 	TAudioClip* new_audio_clip(const QString& name);
 	TAudioClip* get_clip(qint64 id);
-	
+
+    bool get_source_name(qint64 id, QString& string);
+    bool get_source_short_name(qint64 id, QString& string);
+    bool get_source_file_name(qint64 id, QString& string);
+
 	void mark_clip_removed(TAudioClip* clip);
 	void mark_clip_added(TAudioClip* clip);
-	void set_source_for_clip(TAudioClip* clip, TReadAudioSource* source);
+    void set_source_for_clip(TAudioClip* clip, qint64 id);
+    bool set_file_for_source(const QString& fileName, qint64 id);
 	void destroy_clip(TAudioClip* clip);
 	void remove_source(TReadAudioSource* source);
 	
@@ -65,7 +71,8 @@ public:
 	bool is_source_in_use(qint64 id) const;
 
 	TReadAudioSource* get_readsource(qint64 id);
-	
+
+    TTimeRef get_source_length(qint64 sourceId);
 	
 	QList<TReadAudioSource*> get_all_audio_sources() const;
 	QList<TAudioClip*> get_all_clips() const;

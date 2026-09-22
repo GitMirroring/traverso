@@ -160,7 +160,7 @@ void TClipsViewPort::dropEvent(QDropEvent* event )
 		TReadAudioSource* source = resources_manager()->get_readsource(id);
 		if (source) {
 			clip = resources_manager()->new_audio_clip(source->get_short_name());
-			resources_manager()->set_source_for_clip(clip, source);
+            resources_manager()->set_source_for_clip(clip, source->get_id());
 			clip->set_sheet(m_importTrack->get_sheet());
 			clip->set_track(m_importTrack);
 			clip->set_location_start(startpos);

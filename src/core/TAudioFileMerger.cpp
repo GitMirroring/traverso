@@ -112,8 +112,8 @@ void TAudioFileMerger::process_task(MergeTask task)
 
         spec.silence_render_buffer(nframes);
 		
-        task.readsource0->file_read(&decodebuffer0, spec.get_export_location(), nframes);
-        task.readsource1->file_read(&decodebuffer1, spec.get_export_location(), nframes);
+        task.readsource0->file_read(decodebuffer0, spec.get_export_location(), nframes);
+        task.readsource1->file_read(decodebuffer1, spec.get_export_location(), nframes);
 
         audio_sample_t* destinationLeft = decodebuffer0.get_destination_buffer(0).get_data(nframes);
         audio_sample_t* destinationRight = decodebuffer1.get_destination_buffer(0).get_data(nframes);

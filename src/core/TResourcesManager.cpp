@@ -240,6 +240,16 @@ TReadAudioSource * TResourcesManager::get_readsource(qint64 id)
 	return source;
 }
 
+TTimeRef TResourcesManager::get_source_length(qint64 sourceId)
+{
+    TReadAudioSource* source = get_readsource(sourceId);
+    if (!source) {
+        return TTimeRef();
+    }
+
+    return source->get_length();
+}
+
 
 /**
  * 	Get the TAudioClip with id \a id
@@ -292,6 +302,42 @@ TAudioClip* TResourcesManager::get_clip(qint64 id)
 	data->inUse = true;
 	
 	return clip;
+}
+
+bool TResourcesManager::get_source_name(qint64 id, QString &string)
+{
+    TReadAudioSource* rs = get_readsource(id);
+
+    if (! rs) {
+        return false;
+    }
+
+    string = rs->get_name();
+    return true;
+}
+
+bool TResourcesManager::get_source_short_name(qint64 id, QString &string)
+{
+    TReadAudioSource* rs = get_readsource(id);
+
+    if (! rs) {
+        return false;
+    }
+
+    string = rs->get_short_name();
+    return true;
+}
+
+bool TResourcesManager::get_source_file_name(qint64 id, QString &string)
+{
+    TReadAudioSource* rs = get_readsource(id);
+
+    if (! rs) {
+        return false;
+    }
+
+    string = rs->get_filename();
+    return true;
 }
 
 TAudioClip* TResourcesManager::new_audio_clip(const QString& name)
@@ -386,9 +432,27 @@ bool TResourcesManager::is_source_in_use(qint64 id) const
 	return data->clipCount > 0 ? true : false;
 }
 
-void TResourcesManager::set_source_for_clip(TAudioClip * clip, TReadAudioSource * source)
+void TResourcesManager::set_source_for_clip(TAudioClip * clip, qint64 id)
 {
+    TReadAudioSource* source = get_readsource(id);
+    if (!source) {
+        return;
+    }
 	clip->set_audio_source(source);
+}
+
+bool TResourcesManager::set_file_for_source(const QString &fileName, qint64 id)
+{
+    TReadAudioSource* source = get_readsource(id);
+    if (!source) {
+        return false;
+    }
+
+    if (source->set_file(fileName) < 0) {
+        return false;
+    }
+
+    return true;
 }
 
 TResourcesManager::SourceData::SourceData()

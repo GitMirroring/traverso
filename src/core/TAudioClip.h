@@ -96,7 +96,6 @@ public:
     uint get_bitdepth() const;
     inline qint64 get_readsource_id( ) const {return m_readSourceId;}
     qint64 get_sheet_id() const {return m_sheetId;}
-    TReadAudioSource* get_readsource() const;
     inline TLocation* get_location() const {return m_location;}
 
     TTimeRef get_location_start() const;

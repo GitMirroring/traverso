@@ -96,6 +96,7 @@ ENDIF(UNIX)
 SET(TRAVERSO_CORE_LIBRARY "traversocore")
 
 ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE})
+target_link_libraries(traversocore PRIVATE Qt6::Concurrent)
 
 IF(USE_PCH)
     ADD_DEPENDENCIES(traversocore precompiled_headers)

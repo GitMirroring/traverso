@@ -28,11 +28,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioTrackView.h"
 #include "TFadeCurveView.h"
 #include "TCurveView.h"
+#include "TTrackLaneView.h"
 
 #include "TAudioClip.h"
-#include "TReadAudioSource.h"
 #include "TInputEventDispatcher.h"
-#include "TContextPointer.h"
 #include "TSheet.h"
 #include "TResourcesManager.h"
 #include "TProjectManager.h"
@@ -46,7 +45,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 #include "TAudioPluginChain.h"
 #include "Fade.h"
-#include "TTrackLaneView.h"
 #include "dialogs/AudioClipEditDialog.h"
 #include "ClipTileCache.h"
 
@@ -835,30 +833,36 @@ void TAudioClipView::update_recording()
 
 TCommand * TAudioClipView::set_audio_file()
 {
+    // FIXME this is not working for 2 reasons
+    // 1. clicking on the clip has become another shortcut so this function will never be called
+
     if (!m_clip->is_readsource_invalid()) {
         return ied().failure();
     }
 
-    TReadAudioSource* rs = m_clip->get_readsource();
-    if ( ! rs ) {
+    QString fileName;
+    resources_manager()->get_source_file_name(m_clip->get_readsource_id(), fileName);
+    if ( ! fileName.isEmpty() ) {
         return ied().failure();
     }
 
-    QString filename = QFileDialog::getOpenFileName(TMainWindow::instance(),
+    fileName = QFileDialog::getOpenFileName(TMainWindow::instance(),
                                                     tr("Reset Audio File for Clip: %1").arg(m_clip->get_name()),
-                                                    rs->get_filename(),
-                                        			tr("Audio files (*.wav *.flac *.ogg *.mp3 *.wv *.w64 *.m4a *.aac)"));
+                                                    fileName,
+                                                    tr("Audio files (*.wav *.flac *.ogg *.mp3 *.wv *.w64 *.m4a *.aac)"));
 
-    if (filename.isEmpty()) {
+    if (fileName.isEmpty()) {
         tInformUser().information(tr("No file selected!"));
         return ied().failure();
     }
 
-    if (rs->set_file(filename) < 0) {
+    ;
+
+    if (resources_manager()->set_file_for_source(fileName, m_clip->get_readsource_id())) {
         return ied().failure();
     }
 
-    resources_manager()->set_source_for_clip(m_clip, rs);
+    resources_manager()->set_source_for_clip(m_clip, m_clip->get_readsource_id());
 
 
     // FIXME This is a hack. When a ReadSource didn't have a valid file it wasn't added
@@ -866,7 +870,7 @@ TCommand * TAudioClipView::set_audio_file()
     // but it's not the proper place to do so!!
     m_clip->set_sheet(m_sheet);
 
-    tInformUser().information(tr("Succesfully set AudioClip file to %1").arg(filename));
+    tInformUser().information(tr("Succesfully set AudioClip file to %1").arg(fileName));
 
     return ied().succes();
 }

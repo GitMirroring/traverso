@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class ResampleAudioReader;
 class AudioBus;
-class TFileDecodeBuffer;
 class TLocation;
 
 class TReadAudioSource : public TAudioSource
@@ -58,8 +57,8 @@ public :
 
     nframes_t ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation);
 
-    int file_read(TFileDecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const;
-    int file_read(TFileDecodeBuffer* buffer, nframes_t fileLocation, nframes_t cnt);
+    int file_read(TFileDecodeBuffer &buffer, const TTimeRef& fileLocation, nframes_t cnt) const;
+    int file_read(TFileDecodeBuffer &buffer, nframes_t fileLocation, nframes_t cnt) const;
 
 	int init();
 	int get_error() const {return m_error;}
@@ -72,7 +71,7 @@ public :
     uint get_file_rate() const;
     const TTimeRef& get_length() const {return m_length;}
 
-    TAudioSourceBufferStatus* get_buffer_status() final;
+    TAudioSourceBufferStatus& get_buffer_status() final;
 
     void set_location(TLocation* location);
 
@@ -103,13 +102,9 @@ private:
 
     // re-implemented only to be called by DiskIO
     friend class TDiskIOThread;
-    void process_realtime_buffers() final;
-    void rb_seek_to_transport_location(const TTimeRef &transportLocation) final;
+    void process_realtime_buffers(TFileDecodeBuffer &fileDecodeBuffer) final;
+    void rb_seek_to_transport_location(TFileDecodeBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) final;
     void set_output_rate_and_convertor_type(int outputRate, int converterType) final;
-    // FIXME: Peak processing should move to a DiskIO thread too, for now allow
-    // Peak to call this function too:
-    friend class TPeak;
-    void set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer) final;
 
 signals:
 	void stateChanged();

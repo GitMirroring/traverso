@@ -128,7 +128,7 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
 
         task.spec->silence_render_buffer(nframes);
 
-        task.readsource->file_read(&decodebuffer, task.spec->get_export_location(), nframes);
+        task.readsource->file_read(decodebuffer, task.spec->get_export_location(), nframes);
 			
 		for (uint x = 0; x < nframes; ++x) {
             for (uint y = 0; y < task.spec->get_channel_count(); ++y) {

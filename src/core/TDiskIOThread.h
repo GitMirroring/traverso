@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 #include <QThread>
 
-#include "TFileDecodeBuffer.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -41,8 +40,6 @@ public:
     TDiskIOThread();
     ~TDiskIOThread();
 	
-	static const int writebuffertime = 5;
-
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation = transportLocation;
     }
@@ -90,20 +87,14 @@ private:
     bool                m_resampleQualityChanged;
     bool                m_sampleRateChanged;
 
-    std::shared_ptr<TFileDecodeBuffer>		m_fileDecodeBuffer;
-    std::shared_ptr<TFileDecodeBuffer>		m_resampleDecodeBuffer;
     uint                m_outputSampleRate{};
 
     TTimeRef            m_transportLocation;
     TTimeRef            m_seekTransportLocation;
 	
     void stop_disk_thread();
-    void check_for_seek_requested();
 
 public slots:
-    void seek();
-
-
     void set_output_sample_rate(uint outputSampleRate);
     void set_resample_quality(int quality);
 

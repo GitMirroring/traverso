@@ -186,8 +186,6 @@ int TReadAudioSource::init( )
 	Q_ASSERT(m_refcount);
 	
 	TProject* project = pm().get_project();
-	
-    m_fileDecodeBuffer = nullptr;
     m_active.store(false);
 
 	// Fake the samplerate, until it's set by an AudioReader!
@@ -287,14 +285,14 @@ void TReadAudioSource::set_source_start_location(const TTimeRef &sourceStartLoca
     m_sourceStartLocation = sourceStartLocation;
 }
 
-int TReadAudioSource::file_read(TFileDecodeBuffer* buffer, const TTimeRef& fileLocation, nframes_t cnt) const
+int TReadAudioSource::file_read(TFileDecodeBuffer& buffer, const TTimeRef& fileLocation, nframes_t cnt) const
 {
     Q_ASSERT(m_resampleAudioReader);
     return m_resampleAudioReader->read_from(buffer, fileLocation, cnt);
 }
 
 
-int TReadAudioSource::file_read(TFileDecodeBuffer * buffer, nframes_t fileLocation, nframes_t cnt)
+int TReadAudioSource::file_read(TFileDecodeBuffer& buffer, nframes_t fileLocation, nframes_t cnt) const
 {
     Q_ASSERT(m_resampleAudioReader);
     return m_resampleAudioReader->read_from(buffer, fileLocation, cnt);
@@ -344,7 +342,7 @@ int TReadAudioSource::set_file(const QString & filename)
 }
 
 
-void TReadAudioSource::rb_seek_to_transport_location(const TTimeRef& transportLocation)
+void TReadAudioSource::rb_seek_to_transport_location(TFileDecodeBuffer &fileDecodeBuffer, const TTimeRef& transportLocation)
 {
     Q_ASSERT(m_location);
 
@@ -409,11 +407,11 @@ void TReadAudioSource::rb_seek_to_transport_location(const TTimeRef& transportLo
         // and only read in the amount of frames needed for this buffer slot
         nframes_t toRead = bufferSize - offset;
 
-        m_fileDecodeBuffer->check_buffers_capacity(toRead, m_channelCount);
-        m_fileDecodeBuffer->silence_buffers();
+        fileDecodeBuffer.check_buffers_capacity(toRead, m_channelCount);
+        fileDecodeBuffer.silence_buffers();
 
         // and read in the samples. We have to use the source start location as the start location, see explanation above
-        nframes_t read = file_read(m_fileDecodeBuffer.get(), m_sourceStartLocation, toRead);
+        nframes_t read = file_read(fileDecodeBuffer, m_sourceStartLocation, toRead);
         if (read != toRead) {
             printf("Could not read %d frames, only %d\n", toRead, read);
         }
@@ -426,7 +424,7 @@ void TReadAudioSource::rb_seek_to_transport_location(const TTimeRef& transportLo
 
         for (uint chan=0; chan<m_channelCount; ++chan) {
             // and now write it into the buffer using the offset
-            slot->write_buffer(seekTransportLocation, fileLocation, m_fileDecodeBuffer->get_destination_buffer(chan).get_data(toRead), chan, toRead, offset);
+            slot->write_buffer(seekTransportLocation, fileLocation, fileDecodeBuffer.get_destination_buffer(chan).get_data(toRead), chan, toRead, offset);
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
@@ -443,13 +441,12 @@ void TReadAudioSource::rb_seek_to_transport_location(const TTimeRef& transportLo
     m_lastQueuedRTBufferSlot->set_transport_location(seekTransportLocation);
     m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION);
 
-    process_realtime_buffers();
+    process_realtime_buffers(fileDecodeBuffer);
 }
 
-void TReadAudioSource::process_realtime_buffers()
+void TReadAudioSource::process_realtime_buffers(TFileDecodeBuffer& fileDecodeBuffer)
 {
     Q_ASSERT(m_lastQueuedRTBufferSlot);
-    Q_ASSERT(m_fileDecodeBuffer);
     Q_ASSERT(m_channelCount > 0);
 
     // printf("ReadSource::fill_realtime_buffers\n");
@@ -482,8 +479,8 @@ void TReadAudioSource::process_realtime_buffers()
     // buffers are the wrong size or not created at all.
     // since we want to fill the rt buffer even beyond the file length
     // for now make sure the decode buffers are the correct size
-    m_fileDecodeBuffer->check_buffers_capacity(totalReadSize, m_channelCount);
-    nframes_t read = file_read(m_fileDecodeBuffer.get(), slotFileLocation, totalReadSize);
+    fileDecodeBuffer.check_buffers_capacity(totalReadSize, m_channelCount);
+    nframes_t read = file_read(fileDecodeBuffer, slotFileLocation, totalReadSize);
     nframes_t offset = 0;
     if (read != bufferSize) { // likely end of file
         // printf("ReadSource::fill_realtime_buffers: file_read gave only %d\n", read);
@@ -498,7 +495,7 @@ void TReadAudioSource::process_realtime_buffers()
         }
 
         for (uint chan=0; chan<m_channelCount; ++chan) {
-            slot->write_buffer(transportLocation, slotFileLocation, m_fileDecodeBuffer->get_destination_buffer(chan).get_data(totalReadSize) + offset, chan, bufferSize);
+            slot->write_buffer(transportLocation, slotFileLocation, fileDecodeBuffer.get_destination_buffer(chan).get_data(totalReadSize) + offset, chan, bufferSize);
         }
 
         offset += bufferSize;
@@ -636,7 +633,7 @@ TQueueBufferSlot* TReadAudioSource::dequeue_from_rt_queue(TProcessCallBackData &
 }
 
 
-TAudioSourceBufferStatus* TReadAudioSource::get_buffer_status()
+TAudioSourceBufferStatus& TReadAudioSource::get_buffer_status()
 {
     Q_ASSERT(m_channelCount > 0);
 
@@ -646,7 +643,7 @@ TAudioSourceBufferStatus* TReadAudioSource::get_buffer_status()
         m_bufferstatus.set_fill_status(100 - ((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount));
 	}
 
-    return &m_bufferstatus;
+    return m_bufferstatus;
 }
 
 void TReadAudioSource::set_active(bool active)
@@ -663,13 +660,6 @@ uint TReadAudioSource::get_file_rate() const
 	}
 	
 	return pm().get_project()->get_rate(); 
-}
-
-void TReadAudioSource::set_resample_decode_buffer(std::shared_ptr<TFileDecodeBuffer> resampleDecodeBuffer)
-{
-    Q_ASSERT(m_resampleAudioReader);
-
-    m_resampleAudioReader->set_resample_decode_buffer(resampleDecodeBuffer);
 }
 
 QString TReadAudioSource::get_error_string() const

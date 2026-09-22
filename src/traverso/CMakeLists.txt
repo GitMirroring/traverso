@@ -188,6 +188,7 @@ TARGET_LINK_LIBRARIES(traverso
 	traversocommands
 	samplerate
 	wavpack
+	mad
 	${OGG_LIB}
 	${VORBIS_LIB}
 	${VORBIS_FILE_LIB}

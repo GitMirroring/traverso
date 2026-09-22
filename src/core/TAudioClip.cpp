@@ -554,7 +554,7 @@ int TAudioClip::init_recording()
                 m_sheet->get_audio_sources_dir(),
                 m_name, channelcount, m_sheet->get_id());
 
-    resources_manager()->set_source_for_clip(this, rs);
+    resources_manager()->set_source_for_clip(this, rs->get_id());
 
     QString sourceid = QString::number(rs->get_id());
 
@@ -706,7 +706,7 @@ void TAudioClip::finish_write_source()
 
     m_recordingStatus = NO_RECORDING;
 
-    resources_manager()->set_source_for_clip(this, m_readSource);
+    resources_manager()->set_source_for_clip(this, m_readSource->get_id());
 
     emit recordingFinished(this);
 }
@@ -924,11 +924,6 @@ QDomNode TAudioClip::get_dom_node() const
 bool TAudioClip::has_sheet() const
 {
     return m_sheet != nullptr;
-}
-
-TReadAudioSource * TAudioClip::get_readsource() const
-{
-    return m_readSource;
 }
 
 TTimeRef TAudioClip::get_location_start() const

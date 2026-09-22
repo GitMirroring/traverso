@@ -20,7 +20,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "FaadAudioReader.h"
-#include "Utils.h"
 
 #include <QFile>
 #include <QVector>
@@ -34,10 +33,6 @@ extern "C" {
 }
 
 RELAYTOOL_FAAD;
-
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
-#include "Debugger.h"
 
 static int mp4_read_callback(int64_t offset, void *buffer, size_t size, void *token)
 {
@@ -150,7 +145,7 @@ FaadAudioReader::FaadAudioReader(const QString& filename)
 
 FaadAudioReader::~FaadAudioReader()
 {
-	clear_buffers();
+    FaadAudioReader::clear_buffers();
 	delete d;
 }
 
@@ -502,14 +497,14 @@ bool FaadAudioReader::seek_private(nframes_t start)
 	}
 }
 
-nframes_t FaadAudioReader::read_private(TFileDecodeBuffer* buffer, nframes_t frameCount)
+nframes_t FaadAudioReader::read_private(TFileDecodeBuffer& buffer, nframes_t frameCount)
 {
-	TAudioBuffer &readBuffer = buffer->get_read_buffer();
+    TAudioBuffer &readBuffer = buffer.get_read_buffer();
 	nframes_t outputPos = 0;
 
 	auto copyInterleavedToDestination = [&](nframes_t frames, nframes_t destinationOffset) {
 		for (uint channel = 0; channel < m_channels; ++channel) {
-			TAudioBuffer &destination = buffer->get_destination_buffer(channel);
+            TAudioBuffer &destination = buffer.get_destination_buffer(channel);
 			for (nframes_t frame = 0; frame < frames; ++frame) {
 				destination[destinationOffset + frame] = readBuffer[frame * m_channels + channel];
 			}
