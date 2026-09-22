@@ -114,15 +114,6 @@ int TSend::set_state( const QDomNode & node )
         return 1;
 }
 
-QString TSend::get_name() const
-{
-        if (!m_bus) {
-                return "No Bus??";
-        }
-
-        return m_bus->get_name();
-}
-
 QString TSend::get_from_name() const
 {
         return m_track->get_name();

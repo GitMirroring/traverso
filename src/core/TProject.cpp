@@ -1680,28 +1680,6 @@ TTimeRef TProject::get_transport_location() const
     return m_activeSheet->get_transport_location();
 }
 
-QStringList TProject::get_input_buses_for(TBusTrack *busTrack)
-{
-    QStringList buses;
-
-    QList<TAudioTrack*> audioTracks;
-    foreach(TSheet* sheet, m_sheets) {
-        audioTracks.append(sheet->get_audio_tracks());
-    }
-
-    foreach(TAudioTrack* track, audioTracks) {
-        // FIXME this is a temp fix!
-        QList<TSend*> sends = track->get_post_sends();
-        foreach(TSend* send, sends) {
-            if (send->get_bus_id() == busTrack->get_id()) {
-                buses.append(send->get_name());
-            }
-        }
-    }
-
-    return buses;
-}
-
 TCommand* TProject::remove_child_session()
 {
     PENTER;

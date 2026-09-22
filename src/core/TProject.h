@@ -80,8 +80,6 @@ public :
     TTimeRef get_last_location() const;
     TTimeRef get_transport_location() const;
 
-    QStringList get_input_buses_for(TBusTrack* busTrack);
-
     TResourcesManager* get_audiosource_manager() const;
     QString get_title() const;
     QString get_engineer() const;

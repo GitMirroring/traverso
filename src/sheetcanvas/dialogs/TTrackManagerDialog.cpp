@@ -364,10 +364,11 @@ void TTrackManagerDialog::update_routing_input_output_widget_view()
     QList<TSend*> postSends = m_track->get_post_sends();
     foreach(TSend* send, postSends) {
         QListWidgetItem* item = new QListWidgetItem(routingOutputListWidget);
-        item->setText(send->get_name());
         AudioBus* bus = send->get_bus();
         if (bus && !bus->is_valid()) {
             item->setForeground(QColor(Qt::lightGray));
+        } else {
+            item->setText(bus->get_name());
         }
         item->setData(Qt::UserRole, send->get_id());
     }
@@ -376,10 +377,11 @@ void TTrackManagerDialog::update_routing_input_output_widget_view()
     QList<TSend*> preSends = m_track->get_pre_sends();
     foreach(TSend* send, preSends) {
         QListWidgetItem* item = new QListWidgetItem(preSendsListWidget);
-        item->setText(send->get_name());
         AudioBus* bus = send->get_bus();
         if (bus && !bus->is_valid()) {
             item->setForeground(QColor(Qt::lightGray));
+        } else {
+            item->setText(bus->get_name());
         }
         item->setData(Qt::UserRole, send->get_id());
     }
