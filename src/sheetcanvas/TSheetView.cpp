@@ -536,10 +536,19 @@ void TSheetView::layout_tracks()
 	int verticalposition = m_trackTopIndent;
 	int totalTrackHeightPrimaryLanes = 0;
 
-	QList<TTrackView*> views = get_track_views();
-    std::sort(views.begin(), views.end(), [&](TTrackView* left, TTrackView* right) {
+    std::sort(m_audioTrackViews.begin(), m_audioTrackViews.end(), [&](TTrackView* left, TTrackView* right) {
         return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
     });
+    std::sort(m_busTrackViews.begin(), m_busTrackViews.end(), [&](TTrackView* left, TTrackView* right) {
+        return left->get_track()->get_sort_index() < right->get_track()->get_sort_index();
+    });
+
+    QList<TTrackView*> views = m_audioTrackViews;
+    views.append(m_busTrackViews);
+    if (m_sheetMasterOutView) {
+        views.append(m_sheetMasterOutView);
+    }
+
 
 	for (int i=0; i<views.size(); ++i) {
 		TTrackView* view = views.at(i);

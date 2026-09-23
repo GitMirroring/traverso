@@ -185,10 +185,10 @@ QList<TTrack*> TSession::get_tracks() const
 		list.append(track);
 	}
 
-    if (m_bounceTrack) {
-        m_bounceTrack->set_sort_index(0);
-        list.append(m_bounceTrack);
-    }
+    // if (m_bounceTrack) {
+    //     m_bounceTrack->set_sort_index(0);
+    //     list.append(m_bounceTrack);
+    // }
 
 	return list;
 }

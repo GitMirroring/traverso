@@ -38,10 +38,12 @@ public:
 	void set_color(QColor color) {m_color = color;}
     void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*)
 	{
-		painter->setPen(m_color);
+        painter->save();
+        painter->setPen(m_color);
 		QLineF line(0, 0, 0, m_boundingRect.height());
 		painter->drawLine(line);
-	}
+        painter->restore();
+    }
 	
 private:
 	QColor m_color;

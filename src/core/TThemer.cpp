@@ -521,7 +521,7 @@ void TThemer::load_defaults()
         m_defaultColors.insert("AudioClip:background:selected", p.color(QPalette::Highlight));
         m_defaultColors.insert("AudioClip:background:selected:mousehover", p.color(QPalette::Highlight));
         m_defaultColors.insert("AudioClip:background", p.color(QPalette::Base));
-        m_defaultColors.insert("AudioClip:background:mousehover", p.color(QPalette::Base));
+        m_defaultColors.insert("AudioClip:background:mousehover", p.color(QPalette::Button));
         m_defaultColors.insert("AudioClip:channelseperator", p.color(QPalette::WindowText));
         m_defaultColors.insert("AudioClip:channelseperator:selected", p.color(QPalette::WindowText));
         m_defaultColors.insert("AudioClip:contour", p.color(QPalette::WindowText));
@@ -529,7 +529,7 @@ void TThemer::load_defaults()
         m_defaultColors.insert("AudioClip:clipinfobackground:inactive", p.color(QPalette::AlternateBase));
         m_defaultColors.insert("AudioClip:sampleoverload", QColor(Qt::red));
         m_defaultColors.insert("AudioClip:invalidreadsource", QColor(Qt::red));
-        m_defaultColors.insert("AudioClip:text", QColor(Qt::blue));
+        m_defaultColors.insert("AudioClip:text", QColor(QPalette::ButtonText));
         m_defaultColors.insert("Curve:active", p.color(QPalette::BrightText));
         m_defaultColors.insert("CurveNode:default", p.color(QPalette::BrightText));
         m_defaultColors.insert("CurveNode:blink", p.color(QPalette::BrightText));
@@ -546,6 +546,7 @@ void TThemer::load_defaults()
         m_defaultColors.insert("CorrelationMeter:foreground:side", p.color(QPalette::LinkVisited));
         m_defaultColors.insert("CorrelationMeter:centerline", p.color(QPalette::Highlight));
         m_defaultColors.insert("CorrelationMeter:text", p.color(QPalette::WindowText));
+        m_defaultColors.insert("CorrelationMeter:foreground", p.color(QPalette::Text));
         m_defaultColors.insert("GainSlider:6db", QColor(Qt::red));
         m_defaultColors.insert("GainSlider:0db", QColor(Qt::yellow));
         m_defaultColors.insert("GainSlider:-6db", QColor(Qt::green));
@@ -591,7 +592,7 @@ void TThemer::load_defaults()
         m_defaultColors.insert("Track:cliptopoffset", p.color(QPalette::Dark));
         m_defaultColors.insert("Track:clipbottomoffset", p.color(QPalette::Dark));
         m_defaultColors.insert("Track:background", p.color(QPalette::Base));
-        m_defaultColors.insert("Track:mousehover", p.color((QPalette::Highlight)));
+        m_defaultColors.insert("Track:mousehover", p.color((QPalette::Button)));
         m_defaultColors.insert("Track:laneseperator", p.color((QPalette::Dark)));
         m_defaultColors.insert("TrackPanel:header:background", p.color(QPalette::Base));
         m_defaultColors.insert("TrackPanel:background", p.color(QPalette::Window));
@@ -619,6 +620,9 @@ void TThemer::load_defaults()
         m_defaultColors.insert("Marker:default", QColor(Qt::red));
         m_defaultColors.insert("Marker:blink", p.color(QPalette::Highlight));
         m_defaultColors.insert("Marker:end", QColor(Qt::blue));
+        m_defaultColors.insert("Marker:outline", QColor(QPalette::HighlightedText));
+        m_defaultColors.insert("Marker:line:active", QColor(Qt::lightGray));
+        m_defaultColors.insert("Marker:line:inactive", QColor(Qt::darkGray));
         m_defaultColors.insert("Marker:blinkend", p.color(QPalette::Highlight));
 }
 

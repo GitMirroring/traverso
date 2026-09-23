@@ -94,6 +94,8 @@ public :
     TAudioTrackView* get_audio_trackview_at_scene_pos(QPointF point);
     TTrackView* get_trackview_at_scene_pos(QPointF point);
     QList<TTrackView*> get_track_views() const;
+    QList<TTrackView*> get_audio_track_views() const {return m_audioTrackViews;}
+    QList<TTrackView*> get_bus_track_views() const {return m_busTrackViews;}
     int get_track_height(TTrack* track) const;
     qreal get_mean_track_height() const {return m_meanTrackHeight;}
     static QHash<QString, QString>* cursor_dict();
