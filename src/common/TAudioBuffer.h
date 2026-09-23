@@ -132,6 +132,8 @@ public:
     }
 
 private:
+    static constexpr size_t AUDIO_BUFFER_ALIGNMENT = 64;
+
     friend class TRealTimeAudioBuffer;
     explicit TAudioBuffer(nframes_t size, bool wantsMemLock)
         : m_wantsMemLock(wantsMemLock)
@@ -143,12 +145,12 @@ private:
         Q_ASSERT(!m_buffer);
         Q_ASSERT(m_size == 0);
 
-        m_buffer = new audio_sample_t[size];
+        m_buffer = new (std::align_val_t(AUDIO_BUFFER_ALIGNMENT)) audio_sample_t[size];
         m_size = size;
 
 #ifdef USE_MLOCK
         if (m_wantsMemLock) {
-            if (mlock (m_buffer, size) == -1) {
+            if (mlock (m_buffer, size * sizeof(audio_sample_t)) == -1) {
                 PERROR("Couldn't lock buffer into memory");
             } else {
                 m_memLocked = true;
@@ -158,16 +160,18 @@ private:
     }
 
     void delete_buffer_data() {
+        if (!m_buffer) return;
+
 #ifdef USE_MLOCK
         if (m_memLocked) {
-            if (munlock (m_buffer, m_size) == -1) {
+            if (munlock (m_buffer, m_size * sizeof(audio_sample_t)) == -1) {
                 PERROR("Couldn't unlock buffer from memory");
             }
             m_memLocked = false;
         }
 #endif /* USE_MLOCK */
 
-        delete [] m_buffer;
+        operator delete[](m_buffer, std::align_val_t(AUDIO_BUFFER_ALIGNMENT));
         m_buffer = nullptr;
         m_size = 0;
     }
