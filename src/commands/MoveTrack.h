@@ -23,13 +23,13 @@
 #define MOVETRACK_H
 
 
-#include "TCommand.h"
+#include "TMoveCommand.h"
 
 class TSheetView;
 class TTrack;
 class TTrackView;
 
-class MoveTrack : public TCommand
+class MoveTrack : public TMoveCommand
 {
         Q_OBJECT
 

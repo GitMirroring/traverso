@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "MoveTrack.h"
 
-#include "TClipsViewPort.h"
 #include "TContextPointer.h"
 #include "TSheet.h"
 #include "TSheetView.h"
@@ -32,13 +31,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QMenu>
 
-
-
-
 #include "Debugger.h"
 
 MoveTrack::MoveTrack(TTrackView* view)
-    : TCommand(view->get_related_context_item(), "")
+    : TMoveCommand(view->get_sheetview(), view->get_related_context_item(), "")
     , m_trackView(view)
 {
     m_sv = m_trackView->get_sheetview();
@@ -65,7 +61,6 @@ int MoveTrack::finish_hold()
 
 int MoveTrack::prepare_actions()
 {
-    //        move_to_sheet();
 
     return -1;
 }
