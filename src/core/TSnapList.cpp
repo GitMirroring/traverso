@@ -46,131 +46,136 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 TSnapList::TSnapList(TSession* session)
     : m_session(session)
 {
-	m_isDirty = true;
+    m_isDirty = true;
     m_wasDirty = false;
-	m_rangeStart = TTimeRef();
-	m_rangeEnd = TTimeRef();
-	m_scalefactor = 1;
+    m_rangeStart = TTimeRef();
+    m_rangeEnd = TTimeRef();
+    m_scalefactor = 1;
 }
 
 void TSnapList::mark_dirty()
 {
-// 	printf("mark_dirty()\n");
-	m_isDirty = true;
-	m_wasDirty = true;
+    // 	printf("mark_dirty()\n");
+    m_isDirty = true;
+    m_wasDirty = true;
 }
 
 void TSnapList::update_snaplist()
 {
+    // TODO / FIXME
+    // Moving a clip updates the snaplist for every mouse movement
+    // when that clip changes the length of a Sheet.
+
+    // Nested for loop in this code, check if it can be simplified
+    // to reduce CPU overhead
+
+
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
     m_xposList.clear();
-	m_xposLut.clear();
-	m_xposBool.clear();
-	
-	// collects all clip boundaries and adds them to the snap list
-        QList<TAudioClip* > acList;
-        TSheet* sheet = qobject_cast<TSheet*>(m_session);
-        if (sheet) {
-                acList.append(sheet->get_audioclip_manager()->get_clip_list());
-        }
-	
+    m_xposLut.clear();
+    m_xposBool.clear();
+
+    // collects all clip boundaries and adds them to the snap list
+    QList<TAudioClip* > acList;
+    TSheet* sheet = qobject_cast<TSheet*>(m_session);
+    if (sheet) {
+        acList.append(sheet->get_audioclip_manager()->get_clip_list());
+    }
+
     SLPRINT("acList size is %d\n", acList.size());
 
-	// Be able to snap to trackstart
-        if (m_rangeStart == TTimeRef()) {
-		m_xposList.append(TTimeRef());
-	}
+    // Be able to snap to trackstart
+    if (m_rangeStart == TTimeRef()) {
+        m_xposList.append(TTimeRef());
+    }
 
-	for( int i = 0; i < acList.size(); i++ ) {
+    for( int i = 0; i < acList.size(); i++ ) {
 
-		TAudioClip* clip = acList.at(i);
+        TAudioClip* clip = acList.at(i);
         if ( ! clip->get_location()->is_snappable()) {
-			continue;
-		}
+            continue;
+        }
 
         TTimeRef startlocation = clip->get_location_start();
         TTimeRef endlocation = clip->get_location_end();
 
-		if (startlocation > endlocation) {
-			PERROR("clip xstart > xend, this must be a programming error!");
-			continue;  // something wrong, ignore this clip
-		}
-		if (startlocation >= m_rangeStart && startlocation <= m_rangeEnd) {
-	 		m_xposList.append(startlocation);
-		}
-		if (endlocation >= m_rangeStart && endlocation <= m_rangeEnd) {
-			m_xposList.append(endlocation);
-		}
-	}
+        if (startlocation > endlocation) {
+            PERROR("clip xstart > xend, this must be a programming error!");
+            continue;  // something wrong, ignore this clip
+        }
+        if (startlocation >= m_rangeStart && startlocation <= m_rangeEnd) {
+            m_xposList.append(startlocation);
+        }
+        if (endlocation >= m_rangeStart && endlocation <= m_rangeEnd) {
+            m_xposList.append(endlocation);
+        }
+    }
 
-	// add all on-screen markers
+    // add all on-screen markers
     QList<TTimeLineMarker*> markerList = m_session->get_timeline_ruler()->get_markers();
-	for (int i = 0; i < markerList.size(); ++i) {
+    for (int i = 0; i < markerList.size(); ++i) {
         if (markerList.at(i)->get_location()->is_snappable() && markerList.at(i)->get_location()->get_start() >= m_rangeStart && markerList.at(i)->get_location()->get_start() <= m_rangeEnd) {
             m_xposList.append(markerList.at(i)->get_location()->get_start());
-		}
-	}
+        }
+    }
 
-	// add the working cursor's position
+    // add the working cursor's position
     TTimeRef worklocation = m_session->get_work_location();
-	//printf("worklocation xpos is %d\n",  worklocation / m_scalefactor);
+    //printf("worklocation xpos is %d\n",  worklocation / m_scalefactor);
     if (m_session->get_work_snap()->is_snappable() && worklocation >= m_rangeStart && worklocation <= m_rangeEnd) {
         m_xposList.append(m_session->get_work_location());
-	}
-	
+    }
 
-	// sort the list
+
+    // sort the list
     std::sort(m_xposList.begin(), m_xposList.end(), [](const TTimeRef& left, const TTimeRef& right){
         return left < right;
     });
 
     int range = int((m_rangeEnd - m_rangeStart) / m_scalefactor);
 
-	// create a linear lookup table
-	for (int i = 0; i <= range; ++i) {
-		m_xposLut.push_back(TTimeRef());
-		m_xposBool.push_back(false);
-	}
+    m_xposLut.resize(range + 1, TTimeRef());
+    m_xposBool.resize(range + 1, false);
 
-	TTimeRef lastVal;
-	long lastIndex = -1;
-	// now modify the regions around snap points in the lookup table
-	for (int i = 0; i < m_xposList.size(); i++) {
-		if (lastIndex > -1 && m_xposList.at(i) == lastVal) {
-			continue;  // check for duplicates and skip them
-		}
+    int snaprange = config().get_property("Snap", "range", 10).toInt();
+    TTimeRef lastVal;
+    long lastIndex = -1;
+    // now modify the regions around snap points in the lookup table
+    for (int i = 0; i < m_xposList.size(); i++) {
+        if (lastIndex > -1 && m_xposList.at(i) == lastVal) {
+            continue;  // check for duplicates and skip them
+        }
 
-		// check if neighbouring snap regions overlap.
-		// if yes, reduce snap-range to keep the border in the middle
-		int snaprange = config().get_property("Snap", "range", 10).toInt();
-		int ls = - snaprange;
+        // check if neighbouring snap regions overlap.
+        // if yes, reduce snap-range to keep the border in the middle
+        int ls = - snaprange;
 
-		if (lastIndex > -1) {
-			if ( (m_xposList.at(i) - lastVal) < (2 * snaprange * m_scalefactor) ) {
+        if (lastIndex > -1) {
+            if ( (m_xposList.at(i) - lastVal) < (2 * snaprange * m_scalefactor) ) {
                 ls = - int((m_xposList.at(i) / m_scalefactor - lastVal / m_scalefactor) / 2);
-			}
-		}
+            }
+        }
 
-		for (int j = ls; j <= snaprange; j++) {
+        for (int j = ls; j <= snaprange; j++) {
             int pos = int((m_xposList.at(i) - m_rangeStart) / m_scalefactor + j); // index in the LUT
 
-			if (pos < 0) {
-				continue;
-			}
+            if (pos < 0) {
+                continue;
+            }
 
-			if (pos >= m_xposLut.size()) {
-				break;
-			}
+            if (pos >= m_xposLut.size()) {
+                break;
+            }
 
-			m_xposLut[pos] = m_xposList.at(i);
-			m_xposBool[pos] = true;
-		}
+            m_xposLut[pos] = m_xposList.at(i);
+            m_xposBool[pos] = true;
+        }
 
-		lastVal = m_xposList.at(i);
-		lastIndex = i;
-	}
-	
-	m_isDirty = false;
+        lastVal = m_xposList.at(i);
+        lastIndex = i;
+    }
+
+    m_isDirty = false;
     auto totaltime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
     printf("SnapList::update_snaplist took: %ld\n", totaltime);
 }
@@ -225,47 +230,47 @@ TTimeRef TSnapList::get_snap_value(const TTimeRef& pos, bool& didSnap)
 // returns true if i is inside a snap area, else returns false
 bool TSnapList::is_snap_value(const TTimeRef& pos)
 {
-	if (m_isDirty) {
-		update_snaplist();
-	}
-	
-    int i = int((pos - m_rangeStart) / m_scalefactor);
-	SLPRINT("is_snap_value:: i is %d\n", i);
-	
-	// need to catch values outside the LUT. Return false in that case
-	if (i < 0) {
-		return false;
-	}
+    if (m_isDirty) {
+        update_snaplist();
+    }
 
-	if (i >= m_xposBool.size()) {
-		return false;
-	}
+    int i = int((pos - m_rangeStart) / m_scalefactor);
+    SLPRINT("is_snap_value:: i is %d\n", i);
+
+    // need to catch values outside the LUT. Return false in that case
+    if (i < 0) {
+        return false;
+    }
+
+    if (i >= m_xposBool.size()) {
+        return false;
+    }
 
     SLPRINT("is_snap_value returns, with contains: %d, %d\n", m_xposBool.at(i), m_xposList.contains(pos));
-	return m_xposBool.at(i);
+    return m_xposBool.at(i);
 }
 
 // returns the difference between the unsnapped and snapped location.
 // The return value is negative if the supplied value is < snapped value
 TTimeRef TSnapList::get_snap_diff(const TTimeRef& pos)
 {
-	if (m_isDirty) {
-		update_snaplist();
-	}
-	
+    if (m_isDirty) {
+        update_snaplist();
+    }
+
     int i = int((pos - m_rangeStart) / m_scalefactor);
-	SLPRINT("get_snap_diff:: i is %d\n", i);
-	
-	// need to catch values outside the LUT. Return 0 in that case
-	if (i < 0) {
-        return TTimeRef();
-	}
+    SLPRINT("get_snap_diff:: i is %d\n", i);
 
-	if (i >= m_xposLut.size()) {
+    // need to catch values outside the LUT. Return 0 in that case
+    if (i < 0) {
         return TTimeRef();
-	}
+    }
 
-        SLPRINT("get_snap_diff returns: %s\n", TTimeRef::timeref_to_ms_3(m_xposLut.at(i)).toLatin1().data());
+    if (i >= m_xposLut.size()) {
+        return TTimeRef();
+    }
+
+    SLPRINT("get_snap_diff returns: %s\n", TTimeRef::timeref_to_ms_3(m_xposLut.at(i)).toLatin1().data());
     return (pos - m_xposLut.at(i));
 }
 
@@ -279,31 +284,31 @@ void TSnapList::set_range(const TTimeRef& start, const TTimeRef& end, qint64 sca
 
     m_rangeStart = start;
     m_rangeEnd = end;
-	m_scalefactor = scalefactor;
-	m_isDirty = true;
+    m_scalefactor = scalefactor;
+    m_isDirty = true;
 };
 
 TTimeRef TSnapList::next_snap_pos(const TTimeRef& pos)
 {
-	if (m_isDirty) {
-		update_snaplist();
-	}
+    if (m_isDirty) {
+        update_snaplist();
+    }
 
     int index = int(pos / m_scalefactor);
 
     SLPRINT("next_snap_pos: index %d, m_xposLut size %d\n", index, m_xposLut.size());
 
-	if (pos < TTimeRef()) {
-		PERROR("pos < 0");
-		return TTimeRef();
-	}
+    if (pos < TTimeRef()) {
+        PERROR("pos < 0");
+        return TTimeRef();
+    }
 
     if (index >= m_xposLut.size()) {
         SLPRINT("index > m_xposLut.size() (index is %d)\n", index);
         index = m_xposLut.size() - 1;
     }
 
-	TTimeRef newpos = pos;
+    TTimeRef newpos = pos;
 
     for (int i=index; i<m_xposLut.size(); ++i) {
         TTimeRef snap = m_xposLut.at(i);
@@ -323,41 +328,41 @@ TTimeRef TSnapList::next_snap_pos(const TTimeRef& pos)
 
 TTimeRef TSnapList::prev_snap_pos(const TTimeRef& pos)
 {
-	if (m_isDirty) {
-		update_snaplist();
-	}
-	
-	if (pos < TTimeRef()) {
-		PERROR("pos < 0");
-		return TTimeRef();
-	}
-	
-	if (! m_xposLut.size()) {
-		return pos;
-	}
-	
+    if (m_isDirty) {
+        update_snaplist();
+    }
+
+    if (pos < TTimeRef()) {
+        PERROR("pos < 0");
+        return TTimeRef();
+    }
+
+    if (! m_xposLut.size()) {
+        return pos;
+    }
+
     int index = int(pos / m_scalefactor);
 
     SLPRINT("prev_snap_pos: index %d\n", index);
 
-        if (index >= m_xposLut.size()) {
-		index = m_xposLut.size() - 1;
-	}
-	
-	TTimeRef newpos = pos;
-	
-	do {
-		TTimeRef snap = m_xposLut.at(index);
-		if (snap < pos && snap != TTimeRef()) {
-			newpos = snap;
-			break;
-		}
-		index--;
-	} while (index >= 0);
-	
-	if (index == -1) {
-		return TTimeRef();
-	}
+    if (index >= m_xposLut.size()) {
+        index = m_xposLut.size() - 1;
+    }
+
+    TTimeRef newpos = pos;
+
+    do {
+        TTimeRef snap = m_xposLut.at(index);
+        if (snap < pos && snap != TTimeRef()) {
+            newpos = snap;
+            break;
+        }
+        index--;
+    } while (index >= 0);
+
+    if (index == -1) {
+        return TTimeRef();
+    }
 
     // maybe for later, not sure how to proceed with the SnapList logic
     int closestIndex = closest_xposlist_index_for_location(pos) + 1;
@@ -376,8 +381,8 @@ TTimeRef TSnapList::prev_snap_pos(const TTimeRef& pos)
     } while (closestIndex >= 0);
 
     printf("old way %s, new way %s\n", QS_C(TTimeRef::timeref_to_ms_3(newpos)), QS_C(TTimeRef::timeref_to_ms_3(newWayLocation)));
-	
-	return newpos;
+
+    return newpos;
 }
 
 
@@ -386,46 +391,46 @@ TTimeRef TSnapList::calculate_snap_diff(const TTimeRef &leftlocation, const TTim
     TTimeRef snapStartDiff = TTimeRef();
     TTimeRef snapEndDiff = TTimeRef();
     TTimeRef snapDiff = TTimeRef();
-	
-	// check if there is anything to snap
-	bool start_snapped = false;
-	bool end_snapped = false;
-	if (is_snap_value(leftlocation)) {
-		start_snapped = true;
-	}
-	
-	if (is_snap_value(rightlocation)) {
-		end_snapped = true;
-	}
 
-	if (start_snapped) {
-		snapStartDiff = get_snap_diff(leftlocation);
-		snapDiff = snapStartDiff; // in case both ends snapped, change this value later, else leave it
-	}
+    // check if there is anything to snap
+    bool start_snapped = false;
+    bool end_snapped = false;
+    if (is_snap_value(leftlocation)) {
+        start_snapped = true;
+    }
 
-	if (end_snapped) {
-		snapEndDiff = get_snap_diff(rightlocation); 
-		snapDiff = snapEndDiff; // in case both ends snapped, change this value later, else leave it
-	}
+    if (is_snap_value(rightlocation)) {
+        end_snapped = true;
+    }
 
-	// If both snapped, check which one is closer. Do not apply this check if one of the
-	// ends hasn't snapped, because it's diff value will be 0 by default and will always
-	// be smaller than the actually snapped value.
-	if (start_snapped && end_snapped) {
+    if (start_snapped) {
+        snapStartDiff = get_snap_diff(leftlocation);
+        snapDiff = snapStartDiff; // in case both ends snapped, change this value later, else leave it
+    }
+
+    if (end_snapped) {
+        snapEndDiff = get_snap_diff(rightlocation);
+        snapDiff = snapEndDiff; // in case both ends snapped, change this value later, else leave it
+    }
+
+    // If both snapped, check which one is closer. Do not apply this check if one of the
+    // ends hasn't snapped, because it's diff value will be 0 by default and will always
+    // be smaller than the actually snapped value.
+    if (start_snapped && end_snapped) {
         if (abs(snapEndDiff.universal_frame()) > abs(snapStartDiff.universal_frame()))
-			snapDiff = snapStartDiff;
-		else
-			snapDiff = snapEndDiff;
-	}
-	
+            snapDiff = snapStartDiff;
+        else
+            snapDiff = snapEndDiff;
+    }
+
     return snapDiff;
 }
 
 bool TSnapList::was_dirty()
 {
-	bool ret = m_wasDirty;
-	m_wasDirty = false;
-	return ret;
+    bool ret = m_wasDirty;
+    m_wasDirty = false;
+    return ret;
 }
 
 // TOOD: maybe usefull for later, it's at least fast
