@@ -66,10 +66,6 @@ void TSnapList::update_snaplist()
     // Moving a clip updates the snaplist for every mouse movement
     // when that clip changes the length of a Sheet.
 
-    // Nested for loop in this code, check if it can be simplified
-    // to reduce CPU overhead
-
-
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
     m_xposList.clear();
     m_xposLut.clear();
@@ -138,6 +134,7 @@ void TSnapList::update_snaplist()
     m_xposBool.resize(range + 1, false);
 
     int snaprange = config().get_property("Snap", "range", 10).toInt();
+
     TTimeRef lastVal;
     long lastIndex = -1;
     // now modify the regions around snap points in the lookup table
@@ -156,19 +153,13 @@ void TSnapList::update_snaplist()
             }
         }
 
-        for (int j = ls; j <= snaprange; j++) {
-            int pos = int((m_xposList.at(i) - m_rangeStart) / m_scalefactor + j); // index in the LUT
+        int basePos = int((m_xposList.at(i) - m_rangeStart) / m_scalefactor);
+        int startPos = std::max(0, basePos + ls);
+        int endPos = std::min(range, basePos + snaprange);
 
-            if (pos < 0) {
-                continue;
-            }
-
-            if (pos >= m_xposLut.size()) {
-                break;
-            }
-
-            m_xposLut[pos] = m_xposList.at(i);
-            m_xposBool[pos] = true;
+        if (startPos <= endPos) {
+            std::fill(m_xposLut.begin() + startPos, m_xposLut.begin() + endPos + 1, m_xposList.at(i));
+            std::fill(m_xposBool.begin() + startPos, m_xposBool.begin() + endPos + 1, true);
         }
 
         lastVal = m_xposList.at(i);
