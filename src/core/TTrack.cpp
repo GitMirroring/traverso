@@ -158,16 +158,17 @@ int TTrack::set_state( const QDomNode & node )
         if (m_session && project) {
             qint64 sendBusId;
             if (m_name == "Sheet Master") {
+                printf("Sheet Master getting project bus id\n");
                 sendBusId = project->get_master_out_bus_track()->get_id();
             } else {
                 sendBusId = m_session->get_master_out_bus_track()->get_id();
             }
 
-            // Don't gate on isEmpty(): the Sheet Master always has a bounce-input
-            // send (added in TSheet::init()) by the time we get here, so the sends
-            // list is never empty. Check for the specific default routing send instead.
-            if (!has_post_send(sendBusId)) {
-                add_post_send(sendBusId, project);
+            // Make sure we output always to the most logical bus.
+            // This might conflict with what the user asked for but then
+            // Use MUTE instead :)
+            if (m_postSends.size() == 0) {
+                add_post_send(sendBusId);
             }
         }
     }
@@ -279,7 +280,7 @@ void TTrack::add_input_bus(qint64 busId)
     add_input_bus(bus);
 }
 
-void TTrack::add_post_send(qint64 busId, TProject* project)
+void TTrack::add_post_send(qint64 busId)
 {
     for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
 
@@ -289,11 +290,7 @@ void TTrack::add_post_send(qint64 busId, TProject* project)
         }
     }
 
-    // Default to pm().get_project() but allow passing in a project during 
-    // project init, while pm().get_project() is not yet set up.
-    if (!project) {
-        project = pm().get_project();
-    }
+    TProject* project = pm().get_project();
     AudioBus* bus = project->get_audio_bus(busId);
 
     if (!bus) {

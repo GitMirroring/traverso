@@ -162,7 +162,8 @@ void TSheet::init()
     m_masterOutBusTrack->set_gain(0.5);
 
     m_bounceTrack = new TBounceTrack(this, tr("Bounce"), TTrack::INITIAL_HEIGHT);
-    m_masterOutBusTrack->add_post_send(m_bounceTrack->get_input_bus());
+    // TODO: only on export add and after export remove this post send
+    // m_masterOutBusTrack->add_post_send(m_bounceTrack->get_input_bus());
 
     resize_buffers(audiodevice().get_buffer_size());
 
