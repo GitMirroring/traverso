@@ -18,8 +18,6 @@ ${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Debugger.h
 ${CMAKE_SOURCE_DIR}/src/common/Mixer.cpp
 ${CMAKE_SOURCE_DIR}/src/common/Mixer.h
-${CMAKE_SOURCE_DIR}/src/common/Resampler.cpp
-${CMAKE_SOURCE_DIR}/src/common/Resampler.h
 ${CMAKE_SOURCE_DIR}/src/common/TTimeRef.cpp
 ${CMAKE_SOURCE_DIR}/src/common/TTimeRef.h
 ${CMAKE_SOURCE_DIR}/src/common/TTransportControl.cpp
