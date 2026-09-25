@@ -19,13 +19,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TAUDIOSOURCEBUFFERSTATUS_H
-#define TAUDIOSOURCEBUFFERSTATUS_H
+#ifndef TBUFFEREDAUDIOSTREAMSTATUS_H
+#define TBUFFEREDAUDIOSTREAMSTATUS_H
 
 #include <atomic>
 #include <QString>
 
-class TAudioSourceBufferStatus {
+class TBufferedAudioStreamStatus {
 
 public:
     enum SyncStatus {
@@ -73,4 +73,4 @@ private:
     std::atomic<int>     m_syncStatus;
 };
 
-#endif // TAUDIOSOURCEBUFFERSTATUS_H
+#endif // TBUFFEREDAUDIOSTREAMSTATUS_H

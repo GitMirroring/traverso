@@ -39,7 +39,7 @@ public:
 
 protected:
     bool seek_private(nframes_t start) final;
-    nframes_t read_private(TFileDecodeBuffer& fileDecodeBuffer, nframes_t nframes) final;
+    nframes_t read_private(TFileIOBuffer& fileIOBuffer, nframes_t nframes) final;
 	
 	SNDFILE*	m_sf;
 	SF_INFO		m_sfinfo{};

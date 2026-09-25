@@ -40,7 +40,7 @@ public:
 
 protected:
     bool seek_private(nframes_t frameToSeekTo) final;
-    nframes_t read_private(TFileDecodeBuffer& fileDecodeBuffer, nframes_t frameCount) final;
+    nframes_t read_private(TFileIOBuffer& fileIOBuffer, nframes_t frameCount) final;
 	
 	WavpackContext*	m_wp;
 	bool		m_isFloat;

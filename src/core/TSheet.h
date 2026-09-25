@@ -30,9 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class TProject;
 class TAudioTrack;
-class TAudioSource;
-class TReadAudioSource;
-class TWriteAudioSource;
+class TBufferedAudioStreamReader;
+class TBufferedAudioStreamWriter;
 class TAudioTrack;
 class TAudioClip;
 class TDiskIOThread;
@@ -68,10 +67,10 @@ public:
     int get_audio_track_count() const {return m_audioTracks.size();}
 
     TProject* get_project() const {return m_project;}
-    void add_audio_source_to_diskio(TReadAudioSource *source) const;
-    void remove_audio_source_from_diskio(TReadAudioSource *source) const;
-    void add_audio_source_to_diskio(TWriteAudioSource *source) const;
-    void remove_audio_source_from_diskio(TWriteAudioSource *source) const;
+    void add_audio_source_to_diskio(TBufferedAudioStreamReader *source) const;
+    void remove_audio_source_from_diskio(TBufferedAudioStreamReader *source) const;
+    void add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) const;
+    void remove_audio_source_from_diskio(TBufferedAudioStreamWriter *source) const;
 
     int get_read_diskio_buffers_fill_status();
     int get_write_diskio_buffers_fill_status();

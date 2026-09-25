@@ -3,7 +3,8 @@ Linux build setup:
 sudo apt install cmake pkg-config qt6-base-dev qt6-svg-dev \
 libasound2-dev libjack-dev libpipewire-0.3-dev liblilv-dev \
 libfftw3-dev libsamplerate0-dev libsndfile1-dev libwavpack-dev \
-libflac-dev libogg-dev libvorbis-dev libfaad-dev libfaac-dev
+libflac-dev libogg-dev libvorbis-dev libfaad-dev libfaac-dev \
+libsoxr-dev
 
 # (or similar for rpm/etc.)
 

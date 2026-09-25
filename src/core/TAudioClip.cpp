@@ -22,10 +22,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cfloat>
 
 #include "TContextItem.h"
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 #include "TAudioClip.h"
 #include "TLocation.h"
-#include "TWriteAudioSource.h"
+#include "TBufferedAudioStreamWriter.h"
 #include "TSheet.h"
 #include "TSnapList.h"
 #include "TAudioTrack.h"
@@ -550,7 +550,7 @@ int TAudioClip::init_recording()
     m_isTake = true;
     m_recordingStatus = RECORDING;
 
-    TReadAudioSource* rs = resources_manager()->create_recording_source(
+    TBufferedAudioStreamReader* rs = resources_manager()->create_recording_source(
                 m_sheet->get_audio_sources_dir(),
                 m_name, channelcount, m_sheet->get_id());
 
@@ -562,31 +562,30 @@ int TAudioClip::init_recording()
 
     spec->set_export_dir(m_sheet->get_audio_sources_dir());
 
-    QString recordFormat = config().get_property("Recording", "FileFormat", "wav").toString();
-    if (recordFormat == "wavpack") {
-        spec->set_writer_type("wavpack");
+    QString fileFormat = config().get_property("Recording", "FileFormat", "wav").toString();
+    if (fileFormat == "wavpack") {
+        spec->set_file_format(TraversoDAW::FileFormat::WAVPACK);
         QString compression = config().get_property("Recording", "WavpackCompressionType", "fast").toString();
         QString skipwvx = config().get_property("Recording", "WavpackSkipWVX", "false").toString();
-        spec->extraFormat["quality"] = compression;
-        spec->extraFormat["skip_wvx"] = skipwvx;
+        spec->add_extra_format("quality", compression);
+        spec->add_extra_format("skip_wvx", skipwvx);
     }
-    else if (recordFormat == "w64") {
-        spec->set_file_format(SF_FORMAT_W64);
+    else if (fileFormat == "w64") {
+        spec->set_file_format(TraversoDAW::FileFormat::W64);
     } else {
-        spec->set_file_format(SF_FORMAT_WAV);
+        spec->set_file_format(TraversoDAW::FileFormat::WAV);
     }
 
     spec->set_recording_state(TExportSpecification::RecordingState::RECORDING);
     spec->set_block_size(audiodevice().get_buffer_size());
     spec->set_channel_count(channelcount);
-    // spec->set_render_buffer(bus->get_buffer(0, audiodevice().get_buffer_size()));
     spec->set_sample_rate(audiodevice().get_sample_rate());
     spec->set_export_start_location(TTimeRef());
     spec->set_export_end_location(TTimeRef());
     spec->set_export_file_name(m_name + "-" + sourceid);
 
-    m_writer = new TWriteAudioSource(spec);
-    if (m_writer->prepare_export() == -1) {
+    m_writer = new TBufferedAudioStreamWriter(spec->get_export_dir(), spec->get_export_file_name());
+    if (m_writer->prepare_export(spec) == -1) {
         printf("AudioClip::init_recording(): WriteSource prepare_export() failed\n");
         delete m_writer;
         m_writer = nullptr;
@@ -600,7 +599,7 @@ int TAudioClip::init_recording()
     m_sheet->add_audio_source_to_diskio(m_writer);
 
     // Writers exportFinished() signal comes from DiskIO thread, so we have to connect by Qt::QueuedConnection
-    connect(m_writer, &TWriteAudioSource::exportFinished, this, &TAudioClip::finish_write_source, Qt::QueuedConnection);
+    connect(m_writer, &TBufferedAudioStreamWriter::exportFinished, this, &TAudioClip::finish_write_source, Qt::QueuedConnection);
     connect(m_sheet, &TSheet::transportStopped, this, &TAudioClip::finish_recording);
 
     return 1;
@@ -640,7 +639,7 @@ TAudioClip* TAudioClip::create_copy( )
     return clip;
 }
 
-void TAudioClip::set_audio_source(TReadAudioSource* rs)
+void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
 {
     PENTER;
 

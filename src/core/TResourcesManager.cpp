@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TResourcesManager.h"
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 #include "TInformUser.h"
 #include "TAudioClip.h"
 #include "TProject.h"
@@ -51,10 +51,10 @@ TResourcesManager::~TResourcesManager()
 	PENTERDES;
     for(SourceData* data : std::as_const(m_sources)) {
         if (data->clipCount == 0) {
-            printf("Unused source file: %s\n", QS_C(data->source->get_dir()));
+            printf("Unused source file: %s\n", QS_C(data->stream->get_dir()));
         }
-		if (! data->source->ref()) {
-			delete data->source;
+        if (! data->stream->ref()) {
+            delete data->stream;
 		}
 		delete data;
 	}
@@ -76,7 +76,7 @@ QDomNode TResourcesManager::get_state( QDomDocument doc )
 	QDomElement audioSourcesElement = doc.createElement("AudioSources");
 	
 	foreach(SourceData* data, m_sources) {
-		TReadAudioSource* source = data->source;
+        TBufferedAudioStreamReader* source = data->stream;
 		audioSourcesElement.appendChild(source->get_state(doc));
 	}
 	
@@ -114,13 +114,13 @@ int TResourcesManager::set_state( const QDomNode & node )
 	QDomNode sourcesNode = node.firstChildElement("AudioSources").firstChild();
 	
 	while(!sourcesNode.isNull()) {
-		TReadAudioSource* source = new TReadAudioSource(sourcesNode);
+        TBufferedAudioStreamReader* stream = new TBufferedAudioStreamReader(sourcesNode);
 		SourceData* data = new SourceData();
-		data->source = source;
-		m_sources.insert(source->get_id(), data);
+        data->stream = stream;
+        m_sources.insert(stream->get_id(), data);
 		sourcesNode = sourcesNode.nextSibling();
-		if (source->get_channel_count() == 0) {
-			m_silentReadSource = source;
+        if (stream->get_channel_count() == 0) {
+            m_silentReadSource = stream;
 		}
 	}
 	
@@ -142,38 +142,38 @@ int TResourcesManager::set_state( const QDomNode & node )
 }
 
 
-TReadAudioSource* TResourcesManager::import_source(const QString& dir, const QString& name)
+TBufferedAudioStreamReader* TResourcesManager::import_source(const QString& dir, const QString& name)
 {
 	QString fileName = dir + name;
 	foreach(SourceData* data, m_sources) {
-		if (data->source->get_filename() == fileName) {
-			printf("id is %lld\n", data->source->get_id());
-			return get_readsource(data->source->get_id()); 
+        if (data->stream->get_filename() == fileName) {
+            printf("id is %lld\n", data->stream->get_id());
+            return get_readsource(data->stream->get_id());
 		}
 	}
 	
-	TReadAudioSource* source = new TReadAudioSource(dir, name);
+    TBufferedAudioStreamReader* stream = new TBufferedAudioStreamReader(dir, name);
 	SourceData* data = new SourceData();
-	data->source = source;
-        source->set_created_by_sheet(m_project->get_current_session()->get_id());
+    data->stream = stream;
+        stream->set_created_by_sheet(m_project->get_current_session()->get_id());
 	
-	m_sources.insert(source->get_id(), data);
+    m_sources.insert(stream->get_id(), data);
 	
-	source = get_readsource(source->get_id());
+    stream = get_readsource(stream->get_id());
 	
-	if (source->get_error() < 0) {
-		m_sources.remove(source->get_id());
-		delete source;
+    if (stream->get_error() < 0) {
+        m_sources.remove(stream->get_id());
+        delete stream;
         return nullptr;
 	}
 	
-	emit sourceAdded(source);
+    emit sourceAdded(stream);
 
-	return source;
+    return stream;
 }
 
 
-TReadAudioSource* TResourcesManager::create_recording_source(
+TBufferedAudioStreamReader* TResourcesManager::create_recording_source(
 	const QString& dir,
 	const QString& name,
     uint channelCount,
@@ -181,28 +181,28 @@ TReadAudioSource* TResourcesManager::create_recording_source(
 {
 	PENTER;
 	
-	TReadAudioSource* source = new TReadAudioSource(dir, name, channelCount);
+    TBufferedAudioStreamReader* stream = new TBufferedAudioStreamReader(dir, name, channelCount);
 	SourceData* data = new SourceData();
-	data->source = source;
+    data->stream = stream;
 	
-	source->set_original_bit_depth(audiodevice().get_bit_depth());
-	source->set_created_by_sheet(sheetId);
-	source->ref();
+    stream->set_original_bit_depth(audiodevice().get_bit_depth());
+    stream->set_created_by_sheet(sheetId);
+    stream->ref();
 	
-	m_sources.insert(source->get_id(), data);
+    m_sources.insert(stream->get_id(), data);
 	
-	emit sourceAdded(source);
+    emit sourceAdded(stream);
 	
-	return source;
+    return stream;
 }
 
 
-TReadAudioSource* TResourcesManager::get_silent_readsource()
+TBufferedAudioStreamReader* TResourcesManager::get_silent_readsource()
 {
 	if (!m_silentReadSource) {
-		m_silentReadSource = new TReadAudioSource();
+        m_silentReadSource = new TBufferedAudioStreamReader();
 		SourceData* data = new SourceData();
-		data->source = m_silentReadSource;
+        data->stream = m_silentReadSource;
 		m_sources.insert(m_silentReadSource->get_id(), data);
 		m_silentReadSource->set_created_by_sheet( -1 );
 	}
@@ -213,7 +213,7 @@ TReadAudioSource* TResourcesManager::get_silent_readsource()
 }
 
 
-TReadAudioSource * TResourcesManager::get_readsource(qint64 id)
+TBufferedAudioStreamReader * TResourcesManager::get_readsource(qint64 id)
 {
 	SourceData* data = m_sources.value(id);
 	
@@ -222,7 +222,7 @@ TReadAudioSource * TResourcesManager::get_readsource(qint64 id)
         return nullptr;
 	}
 	
-	TReadAudioSource* source = data->source;
+    TBufferedAudioStreamReader* source = data->stream;
 	
 	// When the AudioSource is "get", do a ref counting.
 	// If the source allready was ref counted, create a deep copy
@@ -242,7 +242,7 @@ TReadAudioSource * TResourcesManager::get_readsource(qint64 id)
 
 TTimeRef TResourcesManager::get_source_length(qint64 sourceId)
 {
-    TReadAudioSource* source = get_readsource(sourceId);
+    TBufferedAudioStreamReader* source = get_readsource(sourceId);
     if (!source) {
         return TTimeRef();
     }
@@ -296,7 +296,7 @@ TAudioClip* TResourcesManager::get_clip(qint64 id)
 		return get_clip(clip->get_id());
 	}
 	
-	TReadAudioSource* source = get_readsource(data->clip->get_readsource_id());
+    TBufferedAudioStreamReader* source = get_readsource(data->clip->get_readsource_id());
 	clip->set_audio_source(source);
 	
 	data->inUse = true;
@@ -306,7 +306,7 @@ TAudioClip* TResourcesManager::get_clip(qint64 id)
 
 bool TResourcesManager::get_source_name(qint64 id, QString &string)
 {
-    TReadAudioSource* rs = get_readsource(id);
+    TBufferedAudioStreamReader* rs = get_readsource(id);
 
     if (! rs) {
         return false;
@@ -318,7 +318,7 @@ bool TResourcesManager::get_source_name(qint64 id, QString &string)
 
 bool TResourcesManager::get_source_short_name(qint64 id, QString &string)
 {
-    TReadAudioSource* rs = get_readsource(id);
+    TBufferedAudioStreamReader* rs = get_readsource(id);
 
     if (! rs) {
         return false;
@@ -330,7 +330,7 @@ bool TResourcesManager::get_source_short_name(qint64 id, QString &string)
 
 bool TResourcesManager::get_source_file_name(qint64 id, QString &string)
 {
-    TReadAudioSource* rs = get_readsource(id);
+    TBufferedAudioStreamReader* rs = get_readsource(id);
 
     if (! rs) {
         return false;
@@ -350,11 +350,11 @@ TAudioClip* TResourcesManager::new_audio_clip(const QString& name)
 	return get_clip(clip->get_id());
 }
 
-QList<TReadAudioSource*> TResourcesManager::get_all_audio_sources( ) const
+QList<TBufferedAudioStreamReader*> TResourcesManager::get_all_audio_sources( ) const
 {
-	QList< TReadAudioSource * > list;
+    QList< TBufferedAudioStreamReader * > list;
 	foreach(SourceData* data, m_sources) {
-		list.append(data->source);
+        list.append(data->stream);
 	}
 	if (m_silentReadSource) {
 		list.removeAll(m_silentReadSource);
@@ -434,7 +434,7 @@ bool TResourcesManager::is_source_in_use(qint64 id) const
 
 void TResourcesManager::set_source_for_clip(TAudioClip * clip, qint64 id)
 {
-    TReadAudioSource* source = get_readsource(id);
+    TBufferedAudioStreamReader* source = get_readsource(id);
     if (!source) {
         return;
     }
@@ -443,12 +443,12 @@ void TResourcesManager::set_source_for_clip(TAudioClip * clip, qint64 id)
 
 bool TResourcesManager::set_file_for_source(const QString &fileName, qint64 id)
 {
-    TReadAudioSource* source = get_readsource(id);
-    if (!source) {
+    TBufferedAudioStreamReader* stream = get_readsource(id);
+    if (!stream) {
         return false;
     }
 
-    if (source->set_file(fileName) < 0) {
+    if (stream->set_file(fileName) < 0) {
         return false;
     }
 
@@ -457,7 +457,7 @@ bool TResourcesManager::set_file_for_source(const QString &fileName, qint64 id)
 
 TResourcesManager::SourceData::SourceData()
 {
-    source = nullptr;
+    stream = nullptr;
 	clipCount = 0;
 }
 
@@ -482,7 +482,7 @@ void TResourcesManager::destroy_clip(TAudioClip * clip)
 	
 }
 
-void TResourcesManager::remove_source(TReadAudioSource * source)
+void TResourcesManager::remove_source(TBufferedAudioStreamReader * source)
 {
 	SourceData* data = m_sources.value(source->get_id());
 	if (!data) {

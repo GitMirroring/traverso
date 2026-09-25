@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioTrack.h"
 #include "TProject.h"
 #include "TProjectManager.h"
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 #include "TResourcesManager.h"
 #include "TSheetWidget.h"
 #include "TSheetView.h"
@@ -157,7 +157,7 @@ void TClipsViewPort::dropEvent(QDropEvent* event )
 			group->add_command(arc);
 			continue;
 		}
-		TReadAudioSource* source = resources_manager()->get_readsource(id);
+		TBufferedAudioStreamReader* source = resources_manager()->get_readsource(id);
 		if (source) {
 			clip = resources_manager()->new_audio_clip(source->get_short_name());
             resources_manager()->set_source_for_clip(clip, source->get_id());

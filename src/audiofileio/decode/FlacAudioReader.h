@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define FLACAUDIOREADER_H
 
 #include "AbstractAudioReader.h"
-#include "TFileDecodeBuffer.h"
+#include "TFileIoBuffer.h"
 
 
 class FlacPrivate;

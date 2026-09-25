@@ -33,8 +33,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 class TSheet;
-class TReadAudioSource;
-class TWriteAudioSource;
+class TBufferedAudioStreamReader;
+class TBufferedAudioStreamWriter;
 class TAudioTrack;
 class TPeak;
 class AudioBus;
@@ -58,7 +58,7 @@ public:
         FINISHING_RECORDING
     };
 
-    void set_audio_source(TReadAudioSource* source);
+    void set_audio_source(TBufferedAudioStreamReader* source);
     int init_recording();
     int process(TProcessCallBackData &processData);
 
@@ -129,8 +129,8 @@ private:
     TRealTimeLinkedList<TFadeCurve*>	m_fades;
     TSheet*          m_sheet;
     TAudioTrack* 	m_track;
-    TReadAudioSource*		m_readSource;
-    TWriteAudioSource*	m_writer;
+    TBufferedAudioStreamReader*		m_readSource;
+    TBufferedAudioStreamWriter*	m_writer;
     TPeak* 			m_peak;
     TFadeCurve*		m_fadeIn;
     TFadeCurve*		m_fadeOut;

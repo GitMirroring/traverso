@@ -102,7 +102,7 @@ void ExportDialog::on_startButton_clicked( )
     });
 
 	// clear extraformats, it might be different now from previous runs!
-    exportSpecification->extraFormat.clear();
+    exportSpecification->clear_extra_formats();
 	
     m_formatOptionsWidget->get_format_options(exportSpecification);
 	

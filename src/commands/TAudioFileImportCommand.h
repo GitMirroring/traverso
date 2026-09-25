@@ -30,7 +30,7 @@
 class QString;
 class TAudioClip;
 class TAudioTrack;
-class TReadAudioSource;
+class TBufferedAudioStreamReader;
 
 class TAudioFileImportCommand : public TCommand
 {
@@ -52,12 +52,12 @@ public :
     void set_import_location(const TTimeRef& location);
     void set_length(const TTimeRef& length);
     void set_silent(bool silent);
-    TReadAudioSource* readsource() {return m_readSource;}
+    TBufferedAudioStreamReader* readsource() {return m_readSource;}
 
 private :
     TAudioTrack*     m_track;
     TAudioClip*      m_clip;
-    TReadAudioSource* 	m_readSource;
+    TBufferedAudioStreamReader* 	m_readSource;
     QString         m_fileName;
     QString         m_name;
     TTimeRef		m_initialLength;

@@ -22,27 +22,25 @@ TExportSpecification::TExportSpecification()
     m_channelCount = 0;
     m_blockSize = 1024;
 
-    m_writerType = "sndfile";
-    m_fileFormat = SF_FORMAT_WAV;
+    m_writerType = TraversoDAW::WriterType::SNDFILE;
+    m_fileFormat = TraversoDAW::FileFormat::WAV;
     m_sampleRateConversionQuality = SRC_SINC_MEDIUM_QUALITY;
 
     m_exportStartLocation = TTimeRef::INVALID;
     m_exportEndLocation = TTimeRef::INVALID;
     m_exportLocation = TTimeRef();
 
-    m_renderBuffer = nullptr;
-    m_setRenderBuffer = nullptr;
-
     m_progress = 0;
 
     m_ditherType = GDitherShaped;
-    set_data_format(SF_FORMAT_FLOAT);
+
+    set_data_format(TraversoDAW::DataFormat::FLOAT);
 
     m_cancelExportRequested = false;
-    // This state is the default and used for
-    // to for conversion/copying of audio files
+
+    // This state is the default and used for conversion/copying of audio files.
     // Set to RecordingState::RECORDING to use this ExportSpecification
-    // to record an audio file for an AudioClip
+    // to record an audio file for an AudioClip.
     m_recordingState = RecordingState::NOT_RECORDING;
     m_exportDir = "";
     m_exportFileName = "";
@@ -50,9 +48,9 @@ TExportSpecification::TExportSpecification()
     m_isCdExport = false;
 }
 
+
 TExportSpecification::~TExportSpecification()
 {
-    delete_render_buffer();
 }
 
 int TExportSpecification::is_valid()
@@ -72,18 +70,8 @@ int TExportSpecification::is_valid()
         return -1;
     }
 
-    // if (get_export_length() == TTimeRef()) {
-    //     info().warning(tr("No audio to export! (Is everything muted?)"));
-    //     return -1;
-    // }
-
     if (get_export_start_location() > get_export_end_location()) {
         tInformUser().warning(tr("Export start frame starts beyond export end frame!!"));
-        return -1;
-    }
-
-    if (! m_renderBuffer ) {
-        printf("ExportSpecification: No mixdown buffer created!!\n");
         return -1;
     }
 
@@ -94,6 +82,10 @@ int TExportSpecification::is_valid()
 
     if (m_exportFileName.isEmpty()) {
         printf("ExportSpecification: No name configured!\n");
+        return -1;
+    }
+    if (m_fileFormat == TraversoDAW::FileFormat::UNKNOWN) {
+        printf("ExportSpecification: No File Format set\n");
         return -1;
     }
 
@@ -122,37 +114,26 @@ int TExportSpecification::prepare_export(TProject* project)
 void TExportSpecification::set_recording_state(int recordingState)
 {
     PMESG("Setting Recording State to %d", recordingState);
-
     m_recordingState = recordingState;
 }
 
 void TExportSpecification::set_sample_rate(uint sampleRate)
 {
     Q_ASSERT(sampleRate != 0);
-
     m_sampleRate = sampleRate;
 }
 
 void TExportSpecification::set_channel_count(uint channelCount)
 {
     Q_ASSERT(channelCount != 0);
-
     m_channelCount = channelCount;
-    update_renderbuffer_size();
 }
 
 void TExportSpecification::set_block_size(uint blockSize)
 {
     Q_ASSERT(blockSize > 0);
     Q_ASSERT(TraversoDAW::Utils::is_power_of_two(blockSize));
-
     m_blockSize = blockSize;
-    update_renderbuffer_size();
-}
-
-void TExportSpecification::set_render_buffer(audio_sample_t *renderBuffer)
-{
-    m_setRenderBuffer = renderBuffer;
 }
 
 void TExportSpecification::set_export_start_location(const TTimeRef &startLocation)
@@ -193,102 +174,126 @@ void TExportSpecification::clear_sheets_to_export()
     m_sheetsToExport.clear();
 }
 
-void TExportSpecification::set_writer_type(const QString &writerType)
+void TExportSpecification::set_file_format(TraversoDAW::FileFormat fileFormat)
 {
-    Q_ASSERT(writerType == "sndfile" || writerType == "wavpack" || writerType == "m4a");
-
-    m_writerType = writerType;
-}
-
-void TExportSpecification::set_file_format(int fileFormat)
-{
-    Q_ASSERT(fileFormat == SF_FORMAT_WAV
-             || fileFormat == SF_FORMAT_AIFF
-             || fileFormat == SF_FORMAT_W64
-             || fileFormat ==SF_FORMAT_FLAC
-             || fileFormat == SF_FORMAT_OGG
-             || fileFormat == SF_FORMAT_MPEG);
     m_fileFormat = fileFormat;
-    PMESG("Setting file format to %s", QS_C(get_file_extension()));
+
+    switch (m_fileFormat) {
+    case TraversoDAW::FileFormat::WAVPACK:
+        m_writerType = TraversoDAW::WriterType::WAVPACK;
+        // WavPack natively encapsulates floating point streams, enforce it as default
+        set_data_format(TraversoDAW::DataFormat::FLOAT);
+        break;
+
+    case TraversoDAW::FileFormat::WAV:
+    case TraversoDAW::FileFormat::AIFF:
+    case TraversoDAW::FileFormat::W64:
+    case TraversoDAW::FileFormat::FLAC:
+    case TraversoDAW::FileFormat::OGG:
+    case TraversoDAW::FileFormat::MP3:
+    case TraversoDAW::FileFormat::RAW:
+    default:
+        m_writerType = TraversoDAW::WriterType::SNDFILE;
+        break;
+    }
+
+    PMESG("TExportSpecification: FileFormat updated, automatically synced WriterType to %s",
+          QS_C(writer_type_to_string(m_writerType)));
 }
 
 QString TExportSpecification::get_file_extension() const
 {
-    switch(m_fileFormat)
-    {
-    case SF_FORMAT_WAV: return ".wav";
-    case SF_FORMAT_AIFF: return ".aiff";
-    case SF_FORMAT_W64: return ".w64";
-    case SF_FORMAT_FLAC: return ".flac";
-    case SF_FORMAT_OGG: return ".ogg";
-    case SF_FORMAT_MPEG: return ".mp3";
-    // case SF_FORMAT_WAVPACK: return ".wv"; // libsndfile does not support wavpack (yet?)
-    default: PERROR("File format not supported");
+    switch (m_fileFormat) {
+    case TraversoDAW::FileFormat::WAV:      return ".wav";
+    case TraversoDAW::FileFormat::AIFF:     return ".aiff";
+    case TraversoDAW::FileFormat::W64:      return ".w64";
+    case TraversoDAW::FileFormat::FLAC:     return ".flac";
+    case TraversoDAW::FileFormat::OGG:      return ".ogg";
+    case TraversoDAW::FileFormat::MP3:      return ".mp3";
+    case TraversoDAW::FileFormat::WAVPACK:  return ".wv";
+    default:                                return ".raw";
     }
-
-    return ".raw";
 }
 
-QString TExportSpecification::format_to_string(int format)
+void TExportSpecification::set_data_format(TraversoDAW::DataFormat format)
 {
-    switch (format) {
-    case SF_BITRATE_MODE_CONSTANT: return "cbr";
-    case SF_BITRATE_MODE_AVERAGE: return "abr";
-    case SF_BITRATE_MODE_VARIABLE: return "vbr";
-    default: return "Unknown Format";
-    }
-
-    return "Unknown Format";
-}
-
-// returns the libsndfile format flag or -1 for unknown
-int TExportSpecification::string_to_format(const QString &option)
-{
-    if (option == "cbr") {
-        return SF_BITRATE_MODE_CONSTANT;
-    }
-    if (option == "abr") {
-        return SF_BITRATE_MODE_AVERAGE;
-    }
-    if (option == "vbr") {
-        return SF_BITRATE_MODE_VARIABLE;
-    }
-
-    return -1;
-}
-
-void TExportSpecification::set_data_format(int format)
-{
-    Q_ASSERT(format == SF_FORMAT_FLOAT
-             || format == SF_FORMAT_PCM_S8
-             || format == SF_FORMAT_PCM_16
-             || format ==SF_FORMAT_PCM_24
-             || format == SF_FORMAT_PCM_32);
-
     m_dataFormat = format;
 
     switch (m_dataFormat) {
-    case SF_FORMAT_PCM_S8:
+    case TraversoDAW::DataFormat::PCM_S8:
         m_sampleBytes = 1;
         break;
-
-    case SF_FORMAT_PCM_16:
+    case TraversoDAW::DataFormat::PCM_16:
         m_sampleBytes = 2;
         break;
-
-    case SF_FORMAT_PCM_24:
-    case SF_FORMAT_PCM_32:
-        m_sampleBytes = 4;
+    case TraversoDAW::DataFormat::PCM_24:
+        m_sampleBytes = 3;
         break;
-
-    default:
-        m_sampleBytes = 0; // float format
+    case TraversoDAW::DataFormat::PCM_32:
+    case TraversoDAW::DataFormat::FLOAT:
+        m_sampleBytes = 4;
         break;
     }
 }
 
+int TExportSpecification::get_bit_depth() const
+{
+    switch (m_dataFormat) {
+    case TraversoDAW::DataFormat::FLOAT:  return 32;
+    case TraversoDAW::DataFormat::PCM_S8: return 8;
+    case TraversoDAW::DataFormat::PCM_16: return 16;
+    case TraversoDAW::DataFormat::PCM_24: return 24;
+    case TraversoDAW::DataFormat::PCM_32: return 32;
+    }
+    return 32;
+}
+
+QString TExportSpecification::format_to_string(TraversoDAW::BitrateMode format)
+{
+    switch (format) {
+    case TraversoDAW::BitrateMode::CONSTANT:
+        return QStringLiteral("cbr");
+    case TraversoDAW::BitrateMode::AVERAGE:
+        return QStringLiteral("abr");
+    case TraversoDAW::BitrateMode::VARIABLE:
+        return QStringLiteral("vbr");
+    case TraversoDAW::BitrateMode::UNKNOWN:
+    default:
+        return QStringLiteral("Unknown Format");
+    }
+}
+
+QString TExportSpecification::writer_type_to_string(TraversoDAW::WriterType writerType)
+{
+    switch (writerType) {
+    case TraversoDAW::WriterType::SNDFILE:
+        return QStringLiteral("sndfile");
+    case TraversoDAW::WriterType::WAVPACK:
+        return QStringLiteral("wavpack");
+    case TraversoDAW::WriterType::M4A:
+        return QStringLiteral("m4a");
+    default:
+        return QStringLiteral("unknown");
+    }
+}
+
+TraversoDAW::BitrateMode TExportSpecification::string_to_format(const QString &option)
+{
+    if (option == QStringLiteral("cbr")) {
+        return TraversoDAW::BitrateMode::CONSTANT;
+    }
+    if (option == QStringLiteral("abr")) {
+        return TraversoDAW::BitrateMode::AVERAGE;
+    }
+    if (option == QStringLiteral("vbr")) {
+        return TraversoDAW::BitrateMode::VARIABLE;
+    }
+
+    return TraversoDAW::BitrateMode::UNKNOWN;
+}
+
 void TExportSpecification::set_sample_rate_conversion_quality(int quality)
-{    
+{
     Q_ASSERT(ResampleAudioReader::get_convertor_types().contains(quality));
     m_sampleRateConversionQuality = quality;
 }
@@ -331,40 +336,13 @@ void TExportSpecification::print_export_data() const
     PMESG("Sample Rate %d", m_sampleRate);
     PMESG("Channel Count %d", m_channelCount);
     PMESG("Block Size %d", m_blockSize);
-    PMESG("Writer Type %s", QS_C(m_writerType));
+    PMESG("Writer Type %s", QS_C(writer_type_to_string(m_writerType)));
     PMESG("Is CD Export %s", m_isCdExport ? "Yes" : "No");
     PMESG("Export Directory %s", QS_C(m_exportDir));
     PMESG("Export File Name %s", QS_C(m_exportFileName));
-
     PMESG("Progress %d", m_progress);
-
 }
 
-audio_sample_t *TExportSpecification::get_render_buffer() const
-{
-    if (m_setRenderBuffer) {
-        return m_setRenderBuffer;
-    }
-
-    return m_renderBuffer;
-}
-
-int TExportSpecification::get_bit_depth() const
-{
-    switch(m_dataFormat)
-    {
-    case SF_FORMAT_FLOAT: return 32;
-    case SF_FORMAT_PCM_S8: return 8;
-    case SF_FORMAT_PCM_16: return 16;
-    case SF_FORMAT_PCM_24: return 24;
-    case SF_FORMAT_PCM_32: return 32;
-    default:
-    // this cannot be possible
-        printf("Impossible situation in TExportSpecification::get_bit_depth, m_dataFormat contains an unknown format");
-    }
-
-    return 32;
-}
 
 TTimeRef TExportSpecification::get_export_length() const
 {
@@ -376,15 +354,15 @@ GDitherSize TExportSpecification::get_dither_size() const
     GDitherSize ditherSize;
 
     switch (get_data_format()) {
-    case SF_FORMAT_PCM_S8:
+    case TraversoDAW::DataFormat::PCM_S8:
         ditherSize = GDither8bit;
         break;
 
-    case SF_FORMAT_PCM_16:
+    case TraversoDAW::DataFormat::PCM_16:
         ditherSize = GDither16bit;
         break;
 
-    case SF_FORMAT_PCM_24:
+    case TraversoDAW::DataFormat::PCM_24:
         ditherSize = GDither32bit;
         break;
 
@@ -392,44 +370,34 @@ GDitherSize TExportSpecification::get_dither_size() const
         ditherSize = GDitherFloat;
         break;
     }
-
     return ditherSize;
 }
+
+void TExportSpecification::add_extra_format(const QString& key, const QString& value)
+{
+    Q_ASSERT(!key.isEmpty());
+    m_extraFormat[key] = value;
+}
+
+QString TExportSpecification::get_extra_format(const QString& key, const QString& defaultValue) const
+{
+    return m_extraFormat.value(key, defaultValue);
+}
+
+bool TExportSpecification::has_extra_format(const QString& key) const
+{
+    return m_extraFormat.contains(key);
+}
+
+void TExportSpecification::clear_extra_formats()
+{
+    m_extraFormat.clear();
+}
+
 
 nframes_t TExportSpecification::get_remaining_export_frames() const
 {
     return TTimeRef::to_frame(m_exportEndLocation - m_exportLocation, m_sampleRate);
-}
-
-void TExportSpecification::update_renderbuffer_size()
-{
-    delete_render_buffer();
-
-    if (m_channelCount == 0) {
-        PMESG("TExportSpecification::update_renderbuffer_size(): channel count == 0, not allocating new render buffer");
-        // no channel count set, no need to allocate render buffer
-        return;
-    }
-
-    Q_ASSERT(m_blockSize > 0);
-    Q_ASSERT(m_channelCount > 0);
-
-    m_renderBufferSize = m_blockSize * m_channelCount;
-    m_renderBuffer = new audio_sample_t[m_renderBufferSize];
-
-    PMESG("TExportSpecification::update_renderbuffer_size(): Allocated renderbuffer of size %d", m_renderBufferSize);
-}
-
-void TExportSpecification::delete_render_buffer()
-{
-    if (!m_renderBuffer) {
-        return;
-    }
-
-    PMESG("TExportSpecification::update_renderbuffer_size(): Deleting render buffer");
-    delete [] m_renderBuffer;
-    m_renderBuffer = nullptr;
-    m_renderBufferSize = 0;
 }
 
 int TExportSpecification::create_cdrdao_toc(TProject* project, TExportSpecification* spec)

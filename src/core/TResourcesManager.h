@@ -30,8 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QObject>
 
 
-class TAudioSource;
-class TReadAudioSource;
+class TBufferedAudioStream;
+class TBufferedAudioStreamReader;
 class TAudioClip;
 class TProject;
 
@@ -46,13 +46,13 @@ public:
 	int set_state( const QDomNode& node );
 	QDomNode get_state(QDomDocument doc);
 	
-	TReadAudioSource* create_recording_source(const QString& dir,
+	TBufferedAudioStreamReader* create_recording_source(const QString& dir,
 				const QString& name,
 				uint channelCount,
 				qint64 sheetId);
 	
-	TReadAudioSource* import_source(const QString& dir, const QString& name);
-	TReadAudioSource* get_silent_readsource();
+	TBufferedAudioStreamReader* import_source(const QString& dir, const QString& name);
+	TBufferedAudioStreamReader* get_silent_readsource();
 	TAudioClip* new_audio_clip(const QString& name);
 	TAudioClip* get_clip(qint64 id);
 
@@ -65,16 +65,16 @@ public:
     void set_source_for_clip(TAudioClip* clip, qint64 id);
     bool set_file_for_source(const QString& fileName, qint64 id);
 	void destroy_clip(TAudioClip* clip);
-	void remove_source(TReadAudioSource* source);
+	void remove_source(TBufferedAudioStreamReader* source);
 	
 	bool is_clip_in_use(qint64) const;
 	bool is_source_in_use(qint64 id) const;
 
-	TReadAudioSource* get_readsource(qint64 id);
+	TBufferedAudioStreamReader* get_readsource(qint64 id);
 
     TTimeRef get_source_length(qint64 sourceId);
 	
-	QList<TReadAudioSource*> get_all_audio_sources() const;
+	QList<TBufferedAudioStreamReader*> get_all_audio_sources() const;
 	QList<TAudioClip*> get_all_clips() const;
 
 
@@ -89,22 +89,22 @@ private:
 	
 	struct SourceData {
 		SourceData();
-		TReadAudioSource* source;
+		TBufferedAudioStreamReader* stream;
 		int clipCount;
 	};
 	
 	TProject* m_project;
 	QHash<qint64, SourceData* >	m_sources;
 	QHash<qint64, ClipData* >	m_clips;
-	TReadAudioSource*			m_silentReadSource;
+	TBufferedAudioStreamReader*			m_silentReadSource;
 	
 	
 signals:
 	void stateRestored();
 	void clipRemoved(TAudioClip* clip);
 	void clipAdded(TAudioClip* clip);
-	void sourceAdded(TReadAudioSource* source);
-	void sourceRemoved(TReadAudioSource* source);
+	void sourceAdded(TBufferedAudioStreamReader* source);
+	void sourceRemoved(TBufferedAudioStreamReader* source);
 };
 
 

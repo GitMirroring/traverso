@@ -42,8 +42,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioClip.h"
 #include "TExportSpecification.h"
 #include "TDiskIOThread.h"
-#include "TReadAudioSource.h"
-#include "TWriteAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
+#include "TBufferedAudioStreamWriter.h"
 #include "TAudioClipManager.h"
 #include "TAudioThreadMessageQueue.h"
 #include "TSnapList.h"
@@ -178,7 +178,8 @@ void TSheet::init()
 
     m_audiodeviceClient->set_transport_control_callback(
         TTransportControlCallBack::from_method<TSheet, &TSheet::transport_control>(this)
-        );}
+        );
+}
 
 int TSheet::set_state( const QDomNode & node )
 {
@@ -611,7 +612,7 @@ QString TSheet::get_audio_sources_dir() const
         return m_project->get_audiosources_dir();
     }
 
-    return m_audioSourcesDir + "/";
+    return m_audioSourcesDir;
 }
 
 void TSheet::set_audio_sources_dir(const QString &dir)
@@ -987,20 +988,20 @@ TAudioTrack * TSheet::get_audio_track_for_index(int index)
     return nullptr;
 }
 
-void TSheet::add_audio_source_to_diskio(TReadAudioSource *source) const {
-    m_readDiskIO->add_audio_source(source);
+void TSheet::add_audio_source_to_diskio(TBufferedAudioStreamReader *source) const {
+    m_readDiskIO->add_buffered_audio_stream(source);
 }
 
-void TSheet::remove_audio_source_from_diskio(TReadAudioSource *source) const {
-    m_readDiskIO->remove_audio_source(source);
+void TSheet::remove_audio_source_from_diskio(TBufferedAudioStreamReader *source) const {
+    m_readDiskIO->remove_buffered_audio_stream(source);
 }
 
-void TSheet::add_audio_source_to_diskio(TWriteAudioSource *source) const {
-    m_writeDiskIO->add_audio_source(source);
+void TSheet::add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) const {
+    m_writeDiskIO->add_buffered_audio_stream(source);
 }
 
-void TSheet::remove_audio_source_from_diskio(TWriteAudioSource *source) const {
-    m_writeDiskIO->remove_audio_source(source);
+void TSheet::remove_audio_source_from_diskio(TBufferedAudioStreamWriter *source) const {
+    m_writeDiskIO->remove_buffered_audio_stream(source);
 }
 
 int TSheet::get_read_diskio_buffers_fill_status()

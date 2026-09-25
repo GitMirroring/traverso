@@ -23,10 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TProject.h"
 #include "TProjectManager.h"
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 #include "TResourcesManager.h"
 #include "TAudioBuffer.h"
-#include "TFileDecodeBuffer.h"
+#include "TFileIOBuffer.h"
 #include "Utils.h"
 #include "defines.h"
 #include "Mixer.h"
@@ -51,7 +51,7 @@ public:
     PeakDataReader(ChannelData* data);
     ~PeakDataReader(){};
 
-    nframes_t read_from(TFileDecodeBuffer &buffer, nframes_t start, nframes_t count);
+    nframes_t read_from(TFileIOBuffer &buffer, nframes_t start, nframes_t count);
 
 private:
     ChannelData* m_d;
@@ -59,7 +59,7 @@ private:
     nframes_t	m_nframes;
 
     bool seek(nframes_t start);
-    nframes_t read(TFileDecodeBuffer &buffer, nframes_t frameCount);
+    nframes_t read(TFileIOBuffer &buffer, nframes_t frameCount);
 };
 
 inline QHash< int, int > * TPeak::cache_index_lut()
@@ -112,12 +112,12 @@ struct ChannelData {
     PeakHeaderData	headerdata;
     PeakDataReader*	peakreader;
     ProcessData* 	pd;
-    TFileDecodeBuffer	peakdataDecodeBuffer;
+    TFileIOBuffer	peakdataDecodeBuffer;
     QHash<uchar *, QPair<int /*offset*/, int /*handle|len*/> > maps;
 };
 
 
-TPeak::TPeak(TAudioSource* source)
+TPeak::TPeak(TBufferedAudioStream* source)
 {
     PENTERCONS;
 
@@ -145,7 +145,7 @@ TPeak::TPeak(TAudioSource* source)
         m_channelData.append(data);
     }
 
-    TReadAudioSource* rs = qobject_cast<TReadAudioSource*>(source);
+    TBufferedAudioStreamReader* rs = qobject_cast<TBufferedAudioStreamReader*>(source);
 
     if (rs) {
         // This Peak object was created by AudioClip, meant for reading peak data
@@ -355,7 +355,7 @@ int TPeak::calculate_peaks(int chan,
         // 			data->peakdataDecodeBuffer->destination[0][i] = 0;
         // 		}
         //
-        buffer = data->peakdataDecodeBuffer.get_destination_buffer(0).get_data(produced);
+        buffer = data->peakdataDecodeBuffer.get_channel_buffer(0).get_data(produced);
 
         return produced;
 
@@ -380,7 +380,7 @@ int TPeak::calculate_peaks(int chan,
     // MicroView needs a buffer to store the calculated peakdata
     // our decodebuffer's readbuffer is large enough for this purpose
     // and it's no problem to use it at this point in the process chain.
-    float* peakdata = data->peakdataDecodeBuffer.get_read_buffer().get_data(readFrames);
+    float* peakdata = data->peakdataDecodeBuffer.get_file_io_interleaved_buffer().get_data(readFrames);
 
     ProcessData pd;
     // the stepSize depends on the real file sample rate, Peak assumes 44100 Hz
@@ -393,7 +393,7 @@ int TPeak::calculate_peaks(int chan,
 
         pd.processLocation += pd.stepSize;
 
-        sample = data->peakdataDecodeBuffer.get_destination_buffer(chan).get_data(readFrames)[i];
+        sample = data->peakdataDecodeBuffer.get_channel_buffer(chan).get_data(readFrames)[i];
 
         pd.normValue = f_max(pd.normValue, fabsf(sample));
 
@@ -698,7 +698,7 @@ int TPeak::create_from_scratch()
         }
     }
 
-    TFileDecodeBuffer decodebuffer;
+    TFileIOBuffer decodebuffer;
 
     do {
         if (m_interuptPeakBuild) {
@@ -718,7 +718,7 @@ int TPeak::create_from_scratch()
         }
 
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
-            process(chan, decodebuffer.get_destination_buffer(chan).get_data(readFrames), readFrames);
+            process(chan, decodebuffer.get_channel_buffer(chan).get_data(readFrames), readFrames);
         }
 
         totalReadFrames += readFrames;
@@ -767,7 +767,7 @@ audio_sample_t TPeak::get_max_amplitude(const TTimeRef &startlocation, const TTi
     TAudioBuffer audioReadBuffer(buffersize);
 
     audio_sample_t maxamp = 0;
-    TFileDecodeBuffer decodebuffer;
+    TFileIOBuffer decodebuffer;
     // Read in the part not fully occupied by a cached normalize value
     // at the left hand part and run compute_peak on it.
     if (startframe != 0) {
@@ -777,7 +777,7 @@ audio_sample_t TPeak::get_max_amplitude(const TTimeRef &startlocation, const TTi
         int read = m_source->file_read(decodebuffer, startframe, toRead);
 
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
-            maxamp = decodebuffer.get_destination_buffer(chan).compute_peak(read, maxamp);
+            maxamp = decodebuffer.get_channel_buffer(chan).compute_peak(read, maxamp);
         }
     }
 
@@ -791,7 +791,7 @@ audio_sample_t TPeak::get_max_amplitude(const TTimeRef &startlocation, const TTi
 
     if (read > 0) {
         for (uint chan = 0; chan < m_source->get_channel_count(); ++ chan) {
-            maxamp = decodebuffer.get_destination_buffer(chan).compute_peak(read, maxamp);
+            maxamp = decodebuffer.get_channel_buffer(chan).compute_peak(read, maxamp);
         }
     }
 
@@ -954,7 +954,7 @@ PeakDataReader::PeakDataReader(ChannelData* data)
 }
 
 
-nframes_t PeakDataReader::read_from(TFileDecodeBuffer& buffer, nframes_t start, nframes_t count)
+nframes_t PeakDataReader::read_from(TFileIOBuffer& buffer, nframes_t start, nframes_t count)
 {
     // 	printf("read_from:: before_seek from %d, framepos is %d\n", start, m_readPos);
 
@@ -988,14 +988,14 @@ bool PeakDataReader::seek(nframes_t start)
 }
 
 
-nframes_t PeakDataReader::read(TFileDecodeBuffer& buffer, nframes_t count)
+nframes_t PeakDataReader::read(TFileIOBuffer& buffer, nframes_t count)
 {
     if ( ! (count && (m_readPos < m_nframes)) ) {
         return 0;
     }
 
     // Make sure the read buffer is big enough for this read
-    buffer.check_buffers_capacity(count*3, 1);
+    buffer.check_capacity(count*3, 1);
 
     Q_ASSERT(m_d->file.isOpen());
 
@@ -1003,11 +1003,11 @@ nframes_t PeakDataReader::read(TFileDecodeBuffer& buffer, nframes_t count)
     peak_data_t* readbuffer;
 
     qint64 length = sizeof(peak_data_t) * count;
-    framesRead = m_d->file.read(reinterpret_cast<char*>(buffer.get_read_buffer().get_data(length)), length) / qint64(sizeof(peak_data_t));
-    readbuffer = reinterpret_cast<peak_data_t*>(buffer.get_read_buffer().get_data(length));
+    framesRead = m_d->file.read(reinterpret_cast<char*>(buffer.get_file_io_interleaved_buffer().get_data(length)), length) / qint64(sizeof(peak_data_t));
+    readbuffer = reinterpret_cast<peak_data_t*>(buffer.get_file_io_interleaved_buffer().get_data(length));
 
     for (int f = 0; f < framesRead; f++) {
-        buffer.get_destination_buffer(0).get_data(framesRead)[f] = float(readbuffer[f]);
+        buffer.get_channel_buffer(0).get_data(framesRead)[f] = float(readbuffer[f]);
     }
 
     m_readPos += framesRead;

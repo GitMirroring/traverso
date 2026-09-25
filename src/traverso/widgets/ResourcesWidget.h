@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 class TProject;
 class TSheet;
 class TAudioClip;
-class TReadAudioSource;
+class TBufferedAudioStreamReader;
 class SourceTreeItem;
 class QShowEvent;
 class QListView;
@@ -80,12 +80,12 @@ class SourceTreeItem : public QObject, public QTreeWidgetItem
 	Q_OBJECT
 	
 public:
-	SourceTreeItem(QTreeWidget* parent, TReadAudioSource* source);
+	SourceTreeItem(QTreeWidget* parent, TBufferedAudioStreamReader* source);
 
 	void apply_filter(TSheet* sheet);
 
 private:
-	TReadAudioSource* m_source;
+	TBufferedAudioStreamReader* m_source;
 	
 public slots:
 	void source_state_changed();
@@ -127,8 +127,8 @@ private slots:
 	
 	void add_clip(TAudioClip* clip);
 	void remove_clip(TAudioClip* clip);
-	void add_source(TReadAudioSource* source);
-	void remove_source(TReadAudioSource* source);
+	void add_source(TBufferedAudioStreamReader* source);
+	void remove_source(TBufferedAudioStreamReader* source);
 };
 
 

@@ -22,8 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef T_AUDIO_SOURCE_H
 #define T_AUDIO_SOURCE_H
 
-#include "TAudioSourceBufferStatus.h"
-#include "TFileDecodeBuffer.h"
+#include "TBufferedAudioStreamStatus.h"
+#include "TFileIOBuffer.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -34,35 +34,35 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 class TQueueBufferSlot;
 
 /// The base class for AudioSources like ReadSource and WriteSource
-class TAudioSource : public QObject
+class TBufferedAudioStream : public QObject
 {
     Q_OBJECT
 
 public :
-    TAudioSource();
-    TAudioSource(QString  dir, const QString& name);
-        virtual ~TAudioSource();
-	
-	void set_name(const QString& name);
-	void set_dir(const QString& name);
-	void set_original_bit_depth(uint bitDepth);
-	void set_created_by_sheet(qint64 id);
-	QString get_filename() const;
-	QString get_dir() const;
-	QString get_name() const;
-	QString get_short_name() const;
-        qint64 get_id() const {return m_id;}
-	qint64 get_orig_sheet_id() const {return m_origSheetId;}
+    TBufferedAudioStream();
+    TBufferedAudioStream(QString  dir, const QString& name);
+    virtual ~TBufferedAudioStream();
+
+    void set_name(const QString& name);
+    void set_dir(const QString& name);
+    void set_original_bit_depth(uint bitDepth);
+    void set_created_by_sheet(qint64 id);
+    QString get_filename() const;
+    QString get_dir() const;
+    QString get_name() const;
+    QString get_short_name() const;
+    qint64 get_id() const {return m_id;}
+    qint64 get_orig_sheet_id() const {return m_origSheetId;}
     uint get_sample_rate() const;
-        uint get_channel_count() const {return m_channelCount;}
+    uint get_channel_count() const {return m_channelCount;}
     uint get_bit_depth() const;
 
-    virtual TAudioSourceBufferStatus& get_buffer_status() = 0;
+    virtual TBufferedAudioStreamStatus& get_buffer_status() = 0;
     uint get_output_rate() const {return m_outputRate;}
 
-	
+
 protected:
-    TAudioSourceBufferStatus		m_bufferstatus;
+    TBufferedAudioStreamStatus		m_bufferstatus;
 
     moodycamel::BlockingReaderWriterCircularBuffer<TQueueBufferSlot*> *m_rtBufferSlotsQueue;
     moodycamel::BlockingReaderWriterCircularBuffer<TQueueBufferSlot*> *m_freeBufferSlotsQueue;
@@ -74,12 +74,12 @@ protected:
 
     uint		m_channelCount;
     qint64		m_origSheetId{};
-	QString 	m_dir;
-	qint64		m_id{};
-	QString 	m_name;
-	QString		m_shortName;
+    QString 	m_dir;
+    qint64		m_id{};
+    QString 	m_name;
+    QString		m_shortName;
     uint		m_origBitDepth{};
-	QString		m_fileName;
+    QString		m_fileName;
     // FIMXE : use output rate instead ?
     uint 		m_rate{};
     int         m_wasRecording;
@@ -93,8 +93,8 @@ private:
     friend class TDiskIOThread;
     void prepare_rt_buffers(nframes_t bufferSize);
     void delete_queue_buffers();
-    virtual void process_realtime_buffers(TFileDecodeBuffer &fileDecodeBuffer) = 0;
-    virtual void rb_seek_to_transport_location(TFileDecodeBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) = 0;
+    virtual void process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer) = 0;
+    virtual void rb_seek_to_transport_location(TFileIOBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) = 0;
     virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
 };
 

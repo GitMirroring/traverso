@@ -497,14 +497,14 @@ bool FaadAudioReader::seek_private(nframes_t start)
 	}
 }
 
-nframes_t FaadAudioReader::read_private(TFileDecodeBuffer& buffer, nframes_t frameCount)
+nframes_t FaadAudioReader::read_private(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
-    TAudioBuffer &readBuffer = buffer.get_read_buffer();
+    TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
 	nframes_t outputPos = 0;
 
 	auto copyInterleavedToDestination = [&](nframes_t frames, nframes_t destinationOffset) {
 		for (uint channel = 0; channel < m_channels; ++channel) {
-            TAudioBuffer &destination = buffer.get_destination_buffer(channel);
+            TAudioBuffer &destination = fileIOBuffer.get_channel_buffer(channel);
 			for (nframes_t frame = 0; frame < frames; ++frame) {
 				destination[destinationOffset + frame] = readBuffer[frame * m_channels + channel];
 			}

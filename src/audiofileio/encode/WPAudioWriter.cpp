@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Ben Levitt 
+Copyright (C) 2007 - 2026 Ben Levitt, Remon Sijrier
 
 This file is part of Traverso
 
@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QString>
 #include "TExportSpecification.h"
 #include "Utils.h"
-#include <cstdio>
+#include "Debugger.h"
 
 WPAudioWriter::WPAudioWriter(TExportSpecification* spec)
     : AbstractAudioWriter(spec)
@@ -112,7 +112,7 @@ bool WPAudioWriter::open_private()
     int bitDepth = m_exportSpecification->get_bit_depth();
     m_config.bytes_per_sample = bitDepth/8;
     m_config.bits_per_sample = bitDepth;
-    if (m_exportSpecification->get_data_format() == SF_FORMAT_FLOAT) {
+    if (m_exportSpecification->get_data_format() == TraversoDAW::DataFormat::FLOAT) {
         m_config.float_norm_exp = 127; // config->float_norm_exp,  select floating-point data (127 for +/-1.0)
     }
     m_config.channel_mask = (m_exportSpecification->get_channel_count() == 2) ? 3 : 4; // Microsoft standard (mono = 4, stereo = 3)
@@ -199,41 +199,75 @@ bool WPAudioWriter::rewrite_first_block()
 
 nframes_t WPAudioWriter::write_private(void* buffer, nframes_t frameCount)
 {
-	// FIXME:
-	// Instead of this block, add an option to gdither to leave each
-	// 8bit or 16bit sample in a 0-padded, int32_t
-	// 
-    if (m_exportSpecification->get_data_format() > 1 && m_exportSpecification->get_data_format() < 24) { // Not float, or 32bit int, or 24bit int
-		if (frameCount > m_tmpBufferSize) {
+    Q_ASSERT(m_exportSpecification);
+    Q_ASSERT(buffer);
+
+    uint channels = m_exportSpecification->get_channel_count();
+    nframes_t totalSamples = frameCount * channels;
+    TraversoDAW::DataFormat dataFormat = m_exportSpecification->get_data_format();
+
+    // =========================================================================
+    // CASE 1: Fixed Integer Bit-Depths (8-bit, 16-bit, 24-bit PCM inputs)
+    // WavpackPackSamples requires all samples to be aligned inside an int32_t array.
+    // =========================================================================
+    if (dataFormat == TraversoDAW::DataFormat::PCM_S8 ||
+        dataFormat == TraversoDAW::DataFormat::PCM_16 ||
+        dataFormat == TraversoDAW::DataFormat::PCM_24)
+    {
+        // Dynamically resize our safe, pre-allocated internal integer scratch pad
+        if (totalSamples > m_tmpBufferSize) {
             if (m_tmp_buffer) {
                 delete [] m_tmp_buffer;
-			}
-            m_tmp_buffer = new int32_t[frameCount * m_exportSpecification->get_channel_count()];
-			m_tmpBufferSize = frameCount;
-		}
-        for (nframes_t s = 0; s < frameCount * m_exportSpecification->get_channel_count(); s++) {
-            switch (m_exportSpecification->get_data_format()) {
-                case SF_FORMAT_PCM_S8:
-                    m_tmp_buffer[s] = ((int8_t*)buffer)[s];
-					break;
-				case 16:
-                    m_tmp_buffer[s] = ((int16_t*)buffer)[s];
-					break;
-				default:
-					// Less than 24 bit, but not 8 or 16 ?  This won't end well...
-					break;
-			}
-		}
+            }
+            m_tmp_buffer = new int32_t[totalSamples];
+            m_tmpBufferSize = totalSamples;
+        }
+
+        // Perform type-safe bit-extension up to 32-bit integer scale boundaries
+        for (nframes_t s = 0; s < totalSamples; s++) {
+            switch (dataFormat) {
+            case TraversoDAW::DataFormat::PCM_S8:
+                m_tmp_buffer[s] = static_cast<int32_t>(static_cast<int8_t*>(buffer)[s]);
+                break;
+
+            case TraversoDAW::DataFormat::PCM_16:
+                // FIXED: Compile-time constant enum comparison resolves the legacy 'case 16' bug
+                m_tmp_buffer[s] = static_cast<int32_t>(static_cast<int16_t*>(buffer)[s]);
+                break;
+
+            case TraversoDAW::DataFormat::PCM_24:
+            {
+                // Safely extract 3-byte packed PCM24 samples into standard 32-bit containers
+                uint8_t* pcm24Ptr = static_cast<uint8_t*>(buffer) + (3 * s);
+                int32_t val = (pcm24Ptr[0] << 8) | (pcm24Ptr[1] << 16) | (pcm24Ptr[2] << 24);
+                m_tmp_buffer[s] = val >> 8; // Preserve original sign bit extension
+            }
+            break;
+
+            default:
+                m_tmp_buffer[s] = 0;
+                break;
+            }
+        }
+
+        // Push the aligned int32_t block to the WavPack compression engine
         if (WavpackPackSamples(m_wp, m_tmp_buffer, frameCount) == false) {
-			return 0;
-		}
-		return frameCount;
-	}
-	
-	if (WavpackPackSamples(m_wp, (int32_t *)buffer, frameCount) == false) {
-		return 0;
-	}
-	return frameCount;
+            PERROR("WPAudioWriter: WavpackPackSamples failed encoding integer block");
+            return 0;
+        }
+        return frameCount;
+    }
+
+    // =========================================================================
+    // CASE 2: Native 32-bit Inputs (PCM_32 Integers or Standard FLOAT streams)
+    // Audio data already occupies 4-byte boundaries, pass directly to compression
+    // =========================================================================
+    if (WavpackPackSamples(m_wp, static_cast<int32_t*>(buffer), frameCount) == false) {
+        PERROR("WPAudioWriter: WavpackPackSamples failed encoding raw 32-bit block");
+        return 0;
+    }
+
+    return frameCount;
 }
 
 

@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "cameron/readerwritercircularbuffer.h"
 
-class TAudioSource;
+class TBufferedAudioStream;
 
 class TDiskIOThread : public QThread
 {
@@ -49,8 +49,8 @@ public:
         m_seekRequested.store(true);
     }
 
-    void add_audio_source(TAudioSource* source);
-    void remove_audio_source(TAudioSource* source);
+    void add_buffered_audio_stream(TBufferedAudioStream* bufferedAudioStream);
+    void remove_buffered_audio_stream(TBufferedAudioStream* bufferedAudioStream);
 
     bool get_cpu_time(float &time);
     int get_buffers_fill_status();
@@ -71,13 +71,13 @@ protected:
 
 private:
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>      m_audioThreadProcessedFramesQueue;
-    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TAudioSource*>>   m_audioSourcesToBeAdded;
-    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TAudioSource*>>   m_audioSourcesToBeRemoved;
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>   m_streamsToBeAdded;
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>   m_streamsToBeRemoved;
 
     std::atomic<bool>   m_seekRequested;
     std::atomic<bool>   m_stopDiskIOThreadRequested;
 
-    QList<TAudioSource*>	m_audioSources;
+    QList<TBufferedAudioStream*>	m_bufferedAudioStreams;
 
     std::atomic<int>    m_bufferFillStatus;
     std::atomic<trav_time_t> m_doWorktTime;
@@ -101,8 +101,8 @@ public slots:
 private slots:
     bool do_work();
 
-    void private_add_to_work(TAudioSource* source);
-    void private_remove_from_work(TAudioSource* source);
+    void private_add_to_work(TBufferedAudioStream* bufferedAudioStream);
+    void private_remove_from_work(TBufferedAudioStream* bufferedAudioStream);
 
 signals:
 	void seekFinished();

@@ -114,7 +114,7 @@ public:
 
 protected:
     bool seek_private(nframes_t start) final;
-    nframes_t read_private(TFileDecodeBuffer& buffer, nframes_t frameCount) final;
+    nframes_t read_private(TFileIOBuffer& fileIOBuffer, nframes_t frameCount) final;
 
     bool initDecoderInternal();
     unsigned long countFrames();

@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QString>
 #include <QVector>
 
-#include "TFileDecodeBuffer.h"
+#include "TFileIOBuffer.h"
 
 RELAYTOOL_MAD;
 
@@ -751,9 +751,9 @@ unsigned long MadAudioReader::countFrames()
 }
 
 
-nframes_t MadAudioReader::read_private(TFileDecodeBuffer& buffer, nframes_t frameCount)
+nframes_t MadAudioReader::read_private(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
-    TAudioBuffer &readBuffer = buffer.get_read_buffer();
+    TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
     d->outputBuffer = &readBuffer;
     d->outputSize = frameCount;
     d->outputPos = 0;
@@ -762,7 +762,7 @@ nframes_t MadAudioReader::read_private(TFileDecodeBuffer& buffer, nframes_t fram
         nframes_t framesToCopy = std::min(d->overflowSize, frameCount);
 
         for (uint chan = 0; chan < m_channels; chan++) {
-            TAudioBuffer &destination = buffer.get_destination_buffer(chan);
+            TAudioBuffer &destination = fileIOBuffer.get_channel_buffer(chan);
             for (nframes_t frame = 0; frame < framesToCopy; ++frame) {
                 // Direct uitlezen via het pure object!
                 destination[frame] = d->overflowBuffers[chan][d->overflowStart + frame];
@@ -805,7 +805,7 @@ nframes_t MadAudioReader::read_private(TFileDecodeBuffer& buffer, nframes_t fram
 
     nframes_t finalFrames = std::min(d->outputPos, frameCount);
     for (uint chan = 0; chan < m_channels; chan++) {
-        TAudioBuffer &destination = buffer.get_destination_buffer(chan);
+        TAudioBuffer &destination = fileIOBuffer.get_channel_buffer(chan);
         for (nframes_t frame = 0; frame < finalFrames; ++frame) {
             destination[frame] = readBuffer[frame * m_channels + chan];
         }

@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define FAADAUDIOREADER_H
 
 #include "AbstractAudioReader.h"
-#include "TFileDecodeBuffer.h"
+#include "TFileIOBuffer.h"
 
 class FaadAudioReader : public AbstractAudioReader
 {
@@ -38,7 +38,7 @@ public:
 
 protected:
     bool seek_private(nframes_t start) final;
-    nframes_t read_private(TFileDecodeBuffer &buffer, nframes_t frameCount) final;
+    nframes_t read_private(TFileIOBuffer &fileIOBuffer, nframes_t frameCount) final;
 
 	bool initDecoderInternal();
 

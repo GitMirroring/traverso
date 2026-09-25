@@ -54,7 +54,7 @@
 #include <CommandGroup.h>
 #include "TAudioFileImportCommand.h"
 #include "TAudioFileCopyConvert.h"
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 
 #include "widgets/ExportFormatOptionsWidget.h"
 
@@ -303,7 +303,7 @@ void NewProjectDialog::copy_files()
 		// TODO: offer file format conversion while copying: format options widget not there yet.
 //		m_formatOptionsWidget->get_format_options(m_exportSpec);
 
-		TReadAudioSource* readsource = resources_manager()->import_source(list.at(n).absolutePath() + "/", list.at(n).fileName());
+		TBufferedAudioStreamReader* readsource = resources_manager()->import_source(list.at(n).absolutePath() + "/", list.at(n).fileName());
 
 		if (readsource) {
 			m_converter->enqueue_task(readsource, m_exportSpec, destination, list.at(n).fileName(), n, trackNameList.at(n));

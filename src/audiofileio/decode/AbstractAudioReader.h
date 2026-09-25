@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Ben Levitt 
+Copyright (C) 2007 - 2026 Ben Levitt, Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,12 +19,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef ABSTRACTAUDIOREADER_H
-#define ABSTRACTAUDIOREADER_H
+#pragma once
 
 #include "TTimeRef.h"
 #include "defines.h"
-#include "TFileDecodeBuffer.h"
+#include "TFileIOBuffer.h"
 
 #include <QString>
 
@@ -42,9 +41,9 @@ public:
 	bool eof();
 	nframes_t pos();
 
-    nframes_t read_from(TFileDecodeBuffer &buffer, nframes_t start, nframes_t count);
+    nframes_t read_from(TFileIOBuffer &fileIOBuffer, nframes_t start, nframes_t count);
 	bool seek(nframes_t start);
-    nframes_t read(TFileDecodeBuffer &buffer, nframes_t frameCount);
+    nframes_t read(TFileIOBuffer &buffer, nframes_t frameCount);
 	
     bool is_valid() {return (m_channels > 0 && m_fileFrames > 0);}
 	virtual QString decoder_type() const = 0;
@@ -54,7 +53,7 @@ public:
 	
 protected:
 	virtual bool seek_private(nframes_t start) = 0;
-    virtual nframes_t read_private(TFileDecodeBuffer &buffer, nframes_t frameCount) = 0;
+    virtual nframes_t read_private(TFileIOBuffer &buffer, nframes_t frameCount) = 0;
 	
 	QString		m_fileName;
 
@@ -65,4 +64,3 @@ protected:
     uint		m_fileSampleRate;
 };
 
-#endif

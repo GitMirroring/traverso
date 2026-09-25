@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QQueue>
 #include <QMutex>
 
-class TReadAudioSource;
+class TBufferedAudioStreamReader;
 
 class TAudioFileMerger : public QThread
 {
@@ -37,7 +37,7 @@ public:
 		exec();
 	}
 	
-	void enqueue_task(TReadAudioSource* source0, TReadAudioSource* source2, const QString& dir, const QString& outfilename);
+	void enqueue_task(TBufferedAudioStreamReader* source0, TBufferedAudioStreamReader* source2, const QString& dir, const QString& outfilename);
 	void stop_merging();
 
 		
@@ -48,8 +48,8 @@ private:
 	struct MergeTask {
 		QString outFileName;
 		QString dir;
-		TReadAudioSource* readsource0;
-		TReadAudioSource* readsource1;
+		TBufferedAudioStreamReader* readsource0;
+		TBufferedAudioStreamReader* readsource1;
 	};
 	
 	QQueue<MergeTask> m_tasks;

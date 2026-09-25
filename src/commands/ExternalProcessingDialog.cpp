@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TResourcesManager.h>
 #include <Utils.h>
 #include "TMainWindow.h"
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 
 #include <QFile>
 #include <QCompleter>
@@ -201,7 +201,7 @@ void ExternalProcessingDialog::process_finished(int exitcode, QProcess::ExitStat
 	// print anything on command line we didn't catch
 	printf("output: \n %s", QS_C(result));
 		
-	TReadAudioSource* source = resources_manager()->import_source(dir, m_filename);
+	TBufferedAudioStreamReader* source = resources_manager()->import_source(dir, m_filename);
 	if (!source) {
 		printf("ResourcesManager didn't return a ReadSource, most likely sox didn't understand your command\n");
 		return rejected();

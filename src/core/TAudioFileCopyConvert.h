@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QQueue>
 #include <QMutex>
 
-class TReadAudioSource;
+class TBufferedAudioStreamReader;
 class TExportSpecification;
 
 class TAudioFileCopyConvert : public QThread
@@ -38,7 +38,7 @@ public:
 		exec();
 	}
 	
-	void enqueue_task(TReadAudioSource* source, TExportSpecification* spec, const QString& dir, const QString& outfilename, int tracknumber, const QString& trackname);
+	void enqueue_task(TBufferedAudioStreamReader* source, TExportSpecification* spec, const QString& dir, const QString& outfilename, int tracknumber, const QString& trackname);
 	void stop_merging();
 
 		
@@ -52,7 +52,7 @@ private:
 		QString extension;
 		int tracknumber;
 		QString trackname;
-		TReadAudioSource* readsource;
+		TBufferedAudioStreamReader* readsource;
 		TExportSpecification* spec;
 	};
 	

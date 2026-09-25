@@ -103,21 +103,20 @@ nframes_t AbstractAudioWriter::write(void* buffer, nframes_t count)
 	return 0;
 }
 
-
-// Static method used by other classes to get an AudioWriter for the correct file type
-std::unique_ptr<AbstractAudioWriter> AbstractAudioWriter::create_audio_writer(TExportSpecification *spec)
+std::unique_ptr<AbstractAudioWriter> AbstractAudioWriter::create_audio_writer(TExportSpecification* spec)
 {
-    if (spec->get_writer_type() == "sndfile") {
-        return std::unique_ptr<AbstractAudioWriter>(new SFAudioWriter(spec));
-	}
-    else if (libwavpack_is_present && spec->get_writer_type() == "wavpack") {
-        return std::unique_ptr<AbstractAudioWriter>(new WPAudioWriter(spec));
-	}
-#if defined M4A_ENCODE_SUPPORT
-    else if (libfaac_is_present && spec->get_writer_type() == "faac") {
-        return std::unique_ptr<AbstractAudioWriter>(new FaacAudioWriter(spec));
-	}
-#endif
-	
-    return nullptr;
+    Q_ASSERT(spec);
+
+    switch (spec->get_writer_type()) {
+    case TraversoDAW::WriterType::WAVPACK:
+        return std::make_unique<WPAudioWriter>(spec);
+
+    case TraversoDAW::WriterType::M4A:
+        return std::make_unique<FaacAudioWriter>(spec);
+
+    case TraversoDAW::WriterType::SNDFILE:
+    default:
+        // Default master wrapper routing directly to standard libsndfile structures
+        return std::make_unique<SFAudioWriter>(spec);
+    }
 }

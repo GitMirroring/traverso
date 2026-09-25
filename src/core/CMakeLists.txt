@@ -31,8 +31,8 @@ TAudioClipManager.cpp TAudioClipManager.h
 TAudioFileCopyConvert.cpp TAudioFileCopyConvert.h
 TAudioFileMerger.cpp TAudioFileMerger.h
 TAudioTrack.cpp TAudioTrack.h
-TAudioSource.cpp TAudioSource.h
-TAudioSourceBufferStatus.h TAudioSourceBufferStatus.h
+TBufferedAudioStream.cpp TBufferedAudioStream.h
+TBufferedAudioStreamStatus.h TBufferedAudioStreamStatus.h
 TQueueBufferSlot.h
 TViewPortInterface.h
 TCommand.cpp TCommand.h
@@ -52,14 +52,14 @@ TPeak.cpp TPeak.h
 TProject.cpp TProject.h
 TProjectManager.cpp TProjectManager.h
 TAudioProcessingNode.cpp TAudioProcessingNode.h
-TReadAudioSource.cpp TReadAudioSource.h
+TBufferedAudioStreamReader.cpp TBufferedAudioStreamReader.h
 TResourcesManager.cpp TResourcesManager.h
 TBusTrack.cpp TBusTrack.h
 TSend.cpp TSend.h
 TSession.cpp TSession.h
 TSheet.cpp TSheet.h
 TTrack.cpp TTrack.h
-TWriteAudioSource.cpp TWriteAudioSource.h
+TBufferedAudioStreamWriter.cpp TBufferedAudioStreamWriter.h
 gdither.cpp gdither.h
 TSnapList.cpp TSnapList.h
 TLocation.cpp TLocation.h
@@ -95,7 +95,8 @@ ENDIF(UNIX)
 
 SET(TRAVERSO_CORE_LIBRARY "traversocore")
 
-ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE})
+ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE}
+	TAudioResampler.h TAudioResampler.cpp)
 target_link_libraries(traversocore PRIVATE Qt6::Concurrent)
 
 IF(USE_PCH)

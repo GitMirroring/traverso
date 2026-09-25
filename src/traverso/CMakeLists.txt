@@ -187,6 +187,7 @@ TARGET_LINK_LIBRARIES(traverso
 	tcp_traversocommands
 	traversocommands
 	samplerate
+	soxr
 	wavpack
 	mad
 	${OGG_LIB}
@@ -203,7 +204,7 @@ TARGET_LINK_LIBRARIES(traverso
 	fftw3
 	mp3lame
         brotlidec brotlicommon jbig lerc bz2 lzma deflate zstd tiff
-        flac mpg123 opus samplerate
+	flac mpg123 opus samplerate soxr
         harfbuzz graphite2 rpcrt4
         winmm
 )

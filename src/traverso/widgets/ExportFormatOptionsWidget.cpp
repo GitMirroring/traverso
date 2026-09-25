@@ -38,12 +38,12 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	(void)libfaac_is_present;
 	setupUi(this);
 
-    dataFormatComboBox->addItem("8 bit", SF_FORMAT_PCM_S8);
-    dataFormatComboBox->addItem("16 bit", SF_FORMAT_PCM_16);
-    dataFormatComboBox->addItem("24 bit", SF_FORMAT_PCM_24);
-    dataFormatComboBox->addItem("32 bit", SF_FORMAT_PCM_32);
-    dataFormatComboBox->addItem("32 bit FLOAT", SF_FORMAT_FLOAT);
-	
+    dataFormatComboBox->addItem(tr("8 bit PCM"),   QVariant::fromValue(TraversoDAW::DataFormat::PCM_S8));
+    dataFormatComboBox->addItem(tr("16 bit PCM"),  QVariant::fromValue(TraversoDAW::DataFormat::PCM_16));
+    dataFormatComboBox->addItem(tr("24 bit PCM"),  QVariant::fromValue(TraversoDAW::DataFormat::PCM_24));
+    dataFormatComboBox->addItem(tr("32 bit PCM"),  QVariant::fromValue(TraversoDAW::DataFormat::PCM_32));
+    dataFormatComboBox->addItem(tr("32 bit Float"), QVariant::fromValue(TraversoDAW::DataFormat::FLOAT));
+
 	channelComboBox->addItem("Mono", 1);
 	channelComboBox->addItem("Stereo", 2);
 
@@ -197,7 +197,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	resampleQualityComboBox->setCurrentIndex(index >= 0 ? index : 1);
 
     bool ok;
-    int bitDepth = config().get_property("ExportFormatOptionsWidget", "fileFormatComboBox", SF_FORMAT_PCM_16).toInt(&ok);
+    int bitDepth = config().get_property("ExportFormatOptionsWidget", "fileFormatComboBox", QVariant::fromValue(TraversoDAW::DataFormat::PCM_16)).toInt(&ok);
     if (ok) {
         index = dataFormatComboBox->findData(bitDepth);
         dataFormatComboBox->setCurrentIndex(index >= 0 ? index : 0);
@@ -260,7 +260,7 @@ void ExportFormatOptionsWidget::audio_type_changed(int index)
 	}
 	
 	if (newType == "mp3" || newType == "ogg" || newType == "flac" || newType == "m4a") {
-        dataFormatComboBox->setCurrentIndex(dataFormatComboBox->findData(SF_FORMAT_PCM_16));
+        dataFormatComboBox->setCurrentIndex(dataFormatComboBox->findData(QVariant::fromValue(TraversoDAW::DataFormat::PCM_16)));
         dataFormatComboBox->setDisabled(true);
 	}
 	else {
@@ -311,51 +311,65 @@ void ExportFormatOptionsWidget::ogg_method_changed(int index)
 	}
 }
 
-void ExportFormatOptionsWidget::get_format_options(TExportSpecification * spec)
+void ExportFormatOptionsWidget::get_format_options(TExportSpecification* spec)
 {
-	QString audioType = audioTypeComboBox->itemData(audioTypeComboBox->currentIndex()).toString();
-	if (audioType == "wav") {
-        spec->set_file_format(SF_FORMAT_WAV);
-	}
-	else if (audioType == "aiff") {
-        spec->set_file_format(SF_FORMAT_AIFF);
-    }
-	else if (audioType == "flac") {
-        spec->set_file_format(SF_FORMAT_FLAC);
-    }
-	else if (audioType == "wavpack") {
-        spec->set_writer_type("wavpack");
-		spec->extraFormat["quality"] = wavpackCompressionComboBox->itemData(wavpackCompressionComboBox->currentIndex()).toString();
-		spec->extraFormat["skip_wvx"] = skipWVXCheckBox->isChecked() ? "true" : "false";
-	}
-	else if (audioType == "mp3") {
-        spec->set_file_format(SF_FORMAT_MPEG);
-        spec->extraFormat["method"] = mp3MethodComboBox->itemData(mp3MethodComboBox->currentIndex()).toString();
-		spec->extraFormat["minBitrate"] = mp3MinBitrateComboBox->itemData(mp3MinBitrateComboBox->currentIndex()).toString();
-		spec->extraFormat["maxBitrate"] = mp3MaxBitrateComboBox->itemData(mp3MaxBitrateComboBox->currentIndex()).toString();
-		spec->extraFormat["quality"] = QString::number(mp3QualitySlider->value());
-	}
-	else if (audioType == "m4a") {
-        spec->set_writer_type("m4a");
-		spec->extraFormat["bitrate"] = m4aBitrateComboBox->itemData(m4aBitrateComboBox->currentIndex()).toString();
-	}
-	else if (audioType == "ogg") {
-        spec->set_file_format(SF_FORMAT_OGG);
-        spec->extraFormat["mode"] = oggMethodComboBox->itemData(oggMethodComboBox->currentIndex()).toString();
-        if (spec->extraFormat["mode"] == "cbr") {
-			spec->extraFormat["bitrateNominal"] = oggBitrateComboBox->itemData(oggBitrateComboBox->currentIndex()).toString();
-			spec->extraFormat["bitrateUpper"] = oggBitrateComboBox->itemData(oggBitrateComboBox->currentIndex()).toString();
-		}
-		else {
-			spec->extraFormat["vbrQuality"] = QString::number(oggQualitySlider->value());
-		}
-	}
+    Q_ASSERT(spec);
 
-    spec->set_data_format(dataFormatComboBox->itemData(dataFormatComboBox->currentIndex()).toInt());
+    QVariant audioTypeData = audioTypeComboBox->itemData(audioTypeComboBox->currentIndex());
+    TraversoDAW::FileFormat fileFormat = TraversoDAW::FileFormat::RAW;
+
+    if (audioTypeData.isValid()) {
+        fileFormat = qvariant_cast<TraversoDAW::FileFormat>(audioTypeData);
+    }
+
+    spec->set_file_format(fileFormat);
+
+    spec->clear_extra_formats();
+
+    switch (fileFormat) {
+    case TraversoDAW::FileFormat::WAV:
+    case TraversoDAW::FileFormat::AIFF:
+    case TraversoDAW::FileFormat::W64:
+    case TraversoDAW::FileFormat::FLAC:
+    case TraversoDAW::FileFormat::WAVPACK:
+        spec->add_extra_format(QStringLiteral("quality"), wavpackCompressionComboBox->itemData(wavpackCompressionComboBox->currentIndex()).toString());
+        spec->add_extra_format(QStringLiteral("skip_wvx"), skipWVXCheckBox->isChecked() ? QStringLiteral("true") : QStringLiteral("false"));
+        break;
+
+    case TraversoDAW::FileFormat::MP3:
+        spec->add_extra_format(QStringLiteral("method"), mp3MethodComboBox->itemData(mp3MethodComboBox->currentIndex()).toString());
+        spec->add_extra_format(QStringLiteral("minBitrate"), mp3MinBitrateComboBox->itemData(mp3MinBitrateComboBox->currentIndex()).toString());
+        spec->add_extra_format(QStringLiteral("maxBitrate"), mp3MaxBitrateComboBox->itemData(mp3MaxBitrateComboBox->currentIndex()).toString());
+        spec->add_extra_format(QStringLiteral("quality"), QString::number(mp3QualitySlider->value()));
+        break;
+
+    case TraversoDAW::FileFormat::OGG:
+    {
+        QString oggMode = oggMethodComboBox->itemData(oggMethodComboBox->currentIndex()).toString();
+        spec->add_extra_format(QStringLiteral("mode"), oggMode);
+
+        if (oggMode == QStringLiteral("cbr")) {
+            spec->add_extra_format(QStringLiteral("bitrateNominal"), oggBitrateComboBox->itemData(oggBitrateComboBox->currentIndex()).toString());
+            spec->add_extra_format(QStringLiteral("bitrateUpper"), oggBitrateComboBox->itemData(oggBitrateComboBox->currentIndex()).toString());
+        } else {
+            spec->add_extra_format(QStringLiteral("vbrQuality"), QString::number(oggQualitySlider->value()));
+        }
+    }
+    break;
+
+    default:
+        break;
+    }
+
+    QVariant dataFormatData = dataFormatComboBox->itemData(dataFormatComboBox->currentIndex());
+    if (dataFormatData.isValid()) {
+        spec->set_data_format(qvariant_cast<TraversoDAW::DataFormat>(dataFormatData));
+    }
+
     spec->set_channel_count(channelComboBox->itemData(channelComboBox->currentIndex()).toUInt());
     spec->set_sample_rate(sampleRateComboBox->itemData(sampleRateComboBox->currentIndex()).toUInt());
     spec->set_sample_rate_conversion_quality(resampleQualityComboBox->itemData(resampleQualityComboBox->currentIndex()).toInt());
 
-	//TODO Make a ComboBox for this one too!
+    // TODO Make a ComboBox for this one too!
     spec->set_dither_type(GDitherTri);
 }

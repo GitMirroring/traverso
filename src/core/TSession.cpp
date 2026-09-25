@@ -124,10 +124,11 @@ int TSession::set_state( const QDomNode & node )
 
         TTrack* track = m_parentSession->get_track(id);
 		if (track) {
+            TCommand* cmd = add_track(track);
             // add_track(track) should not return a TCommand object
             // but directly add track and return nullptr, this is by design
-            Q_ASSERT(add_track(track) == nullptr);
-			set_track_height(track->get_id(), e.attribute("height", "90").toInt());
+            Q_ASSERT(!cmd);
+            set_track_height(track->get_id(), e.attribute("height", "90").toInt());
 		}
 
 		trackNode = trackNode.nextSibling();

@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2006-2024 Remon Sijrier
+Copyright (C) 2006-2026 Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,10 +19,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TREADAUDIOSOURCE_H
-#define TREADAUDIOSOURCE_H
+#pragma once
 
-#include "TAudioSource.h"
+#include "TBufferedAudioStream.h"
 #include "TProcessCallBackData.h"
 
 #include <QDomDocument>
@@ -32,16 +31,16 @@ class ResampleAudioReader;
 class AudioBus;
 class TLocation;
 
-class TReadAudioSource : public TAudioSource
+class TBufferedAudioStreamReader : public TBufferedAudioStream
 {
 	Q_OBJECT
 
 public :
-    TReadAudioSource(const QDomNode &node);
-    TReadAudioSource(const QString& dir, const QString& name);
-    TReadAudioSource(const QString& dir, const QString& name, uint channelCount);
-    TReadAudioSource();  // For creating a 0-channel, silent TReadAudioSource
-    ~TReadAudioSource();
+    TBufferedAudioStreamReader(const QDomNode &node);
+    TBufferedAudioStreamReader(const QString& dir, const QString& name);
+    TBufferedAudioStreamReader(const QString& dir, const QString& name, uint channelCount);
+    TBufferedAudioStreamReader();  // For creating a 0-channel, silent TBufferedAudioStreamReader
+    ~TBufferedAudioStreamReader();
 	
 	enum ReadSourceError {
         COULD_NOT_OPEN_FILE = -1,
@@ -50,15 +49,15 @@ public :
         FILE_DOES_NOT_EXIST = -4
     };
 	
-    TReadAudioSource* deep_copy();
+    TBufferedAudioStreamReader* deep_copy();
 	
 	int set_state( const QDomNode& node );
 	QDomNode get_state(QDomDocument doc);
 
     nframes_t ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation);
 
-    int file_read(TFileDecodeBuffer &buffer, const TTimeRef& fileLocation, nframes_t cnt) const;
-    int file_read(TFileDecodeBuffer &buffer, nframes_t fileLocation, nframes_t cnt) const;
+    int file_read(TFileIOBuffer &buffer, const TTimeRef& fileLocation, nframes_t cnt) const;
+    int file_read(TFileIOBuffer &buffer, nframes_t fileLocation, nframes_t cnt) const;
 
 	int init();
 	int get_error() const {return m_error;}
@@ -71,7 +70,7 @@ public :
     uint get_file_rate() const;
     const TTimeRef& get_length() const {return m_length;}
 
-    TAudioSourceBufferStatus& get_buffer_status() final;
+    TBufferedAudioStreamStatus& get_buffer_status() final;
 
     void set_location(TLocation* location);
 
@@ -102,12 +101,11 @@ private:
 
     // re-implemented only to be called by DiskIO
     friend class TDiskIOThread;
-    void process_realtime_buffers(TFileDecodeBuffer &fileDecodeBuffer) final;
-    void rb_seek_to_transport_location(TFileDecodeBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) final;
+    void process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer) final;
+    void rb_seek_to_transport_location(TFileIOBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) final;
     void set_output_rate_and_convertor_type(int outputRate, int converterType) final;
 
 signals:
 	void stateChanged();
 };
 
-#endif

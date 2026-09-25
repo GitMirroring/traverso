@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Ben Levitt 
+Copyright (C) 2006-2026 Ben Levitt, Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,66 +19,71 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef RESAMPLEAUDIOREADER_H
-#define RESAMPLEAUDIOREADER_H
+#pragma once
 
-#include "TFileDecodeBuffer.h"
-#include <AbstractAudioReader.h>
+#include "TFileIOBuffer.h"
+#include "AbstractAudioReader.h"
+#include <memory>
 #include <samplerate.h>
+#include <vector>
 
-struct PrivateSRC;
+class TAudioResampler;
 
 class ResampleAudioReader : public AbstractAudioReader
 {
-
 public:
-
     ResampleAudioReader(const QString &filename);
-	~ResampleAudioReader();
-	
-    nframes_t read_from(TFileDecodeBuffer& buffer, nframes_t start, nframes_t count) {
-		return AbstractAudioReader::read_from(buffer, start, count);
-	}
-    nframes_t read_from(TFileDecodeBuffer& buffer, const TTimeRef& start, nframes_t count) {
+    ~ResampleAudioReader();
+
+    nframes_t read_from(TFileIOBuffer& buffer, nframes_t start, nframes_t count) {
+        return AbstractAudioReader::read_from(buffer, start, count);
+    }
+    nframes_t read_from(TFileIOBuffer& buffer, const TTimeRef& start, nframes_t count) {
         return AbstractAudioReader::read_from(buffer, TTimeRef::to_frame(start, m_outputSampleRate), count);
-	}
-	QString decoder_type() const {return (m_reader) ? m_reader->decoder_type() : "";}
-	void clear_buffers();
-	
-	uint get_output_rate();
-	uint get_file_rate();
-	int get_convertor_type() const {return m_convertorType;}
-	void set_output_rate(uint rate);
+    }
+
+    QString decoder_type() const { return (m_reader) ? m_reader->decoder_type() : ""; }
+    void clear_buffers();
+
+    uint get_output_rate() { return m_outputSampleRate; }
+    uint get_file_rate() { return m_reader->get_file_rate(); }
+    int get_convertor_type() const { return m_convertorType; }
+    void set_output_rate(uint rate);
     void set_converter_type(int converterType);
 
-    static int get_default_resample_quality();
-    static QString get_convertor_type_name(int convertorType);
-    static QString get_convertor_type_description(int convertorType);
+    static int get_default_resample_quality() { return SRC_SINC_FASTEST; }
+    static QString get_convertor_type_name(int convertorType)
+    {
+        return QString(src_get_name(convertorType));
+    }
+    static QString get_convertor_type_description(int convertorType)
+    {
+        return QString(src_get_description(convertorType));
+    }
     static QList<int> get_convertor_types()  {
         return {SRC_SINC_BEST_QUALITY, SRC_SINC_MEDIUM_QUALITY, SRC_SINC_FASTEST, SRC_ZERO_ORDER_HOLD, SRC_LINEAR};
     }
 
 protected:
-	void reset();
-	
+    void reset();
     bool seek_private(nframes_t start) final;
-    nframes_t read_private(TFileDecodeBuffer& buffer, nframes_t frameCount) final;
-	
-	nframes_t resampled_to_file_frame(nframes_t frame);
-	nframes_t file_to_resampled_frame(nframes_t frame);
-	
-    std::unique_ptr<AbstractAudioReader>	m_reader;
-    std::unique_ptr<PrivateSRC>             m_privateSRC;
-    std::vector<std::unique_ptr<TRealTimeAudioBuffer>> m_overflowBuffers;
-    long                    m_overflowUsed;
+    nframes_t read_private(TFileIOBuffer& buffer, nframes_t frameCount) final;
+
+    nframes_t resampled_to_file_frame(nframes_t frame) {
+        return TTimeRef::to_frame(TTimeRef(frame, m_outputSampleRate), m_fileSampleRate);
+    }
+    nframes_t file_to_resampled_frame(nframes_t frame) {
+        return TTimeRef::to_frame(TTimeRef(frame, m_fileSampleRate), m_outputSampleRate);
+    }
+
+    std::unique_ptr<AbstractAudioReader>            m_reader;
+    std::vector<std::unique_ptr<TAudioResampler>>   m_resamplers;
+
     uint                    m_outputSampleRate;
     int                     m_convertorType;
     bool                    m_isResampleAvailable;
-    nframes_t               m_readExtraFrames{};
-	
+
 private:
-	void create_overflow_buffers();
-    TFileDecodeBuffer m_resampleDecodeBuffer;
+    TFileIOBuffer m_resampleDecodeBuffer;
 };
 
-#endif

@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TDiskIOThread.h"
 
 #include "TAudioDevice.h"
-#include "TAudioSource.h"
+#include "TBufferedAudioStream.h"
 #include "Debugger.h"
 
 #include <QtConcurrent>
@@ -76,11 +76,11 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 #endif // endif Q_OS_LINUX
 
 /** \class TDiskIOThread
- *	\brief handles all the read's and write's of AudioSources
+ *	\brief handles all the read's and write's of TBufferedAudioStreams
  *
  *	Each Sheet class has it's own TDiskIOThread instance (one for Reading one for Writing)
- * 	The TDiskIOThread manages all the AudioSources related to a Sheet, and makes sure the RingBuffers
- * 	from the AudioSources are processed in time. (It at least tries very hard)
+ * 	The TDiskIOThread manages all the TBufferedAudioStream related to a Sheet, and makes sure the RingBuffers
+ * 	from the TBufferedAudioStream are processed in time. (It at least tries very hard)
  */
 
 
@@ -123,8 +123,8 @@ void TDiskIOThread::run()
 TDiskIOThread::TDiskIOThread()
 {
     m_audioThreadProcessedFramesQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>(64);
-    m_audioSourcesToBeAdded = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioSource*>>(512);
-    m_audioSourcesToBeRemoved = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioSource*>>(512);
+    m_streamsToBeAdded = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>(512);
+    m_streamsToBeRemoved = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>(512);
 
     m_seekRequested.store(false);
     m_stopDiskIOThreadRequested.store(false);
@@ -168,12 +168,12 @@ bool TDiskIOThread::do_work( )
     }
     Q_UNUSED(totalFrames);
 
-    TAudioSource* source;
-    while (m_audioSourcesToBeAdded->try_dequeue(source)) {
-        private_add_to_work(source);
+    TBufferedAudioStream* stream;
+    while (m_streamsToBeAdded->try_dequeue(stream)) {
+        private_add_to_work(stream);
     }
-    while (m_audioSourcesToBeRemoved->try_dequeue(source)) {
-        private_remove_from_work(source);
+    while (m_streamsToBeRemoved->try_dequeue(stream)) {
+        private_remove_from_work(stream);
     }
 
     if (m_stopDiskIOThreadRequested.load()) {
@@ -181,8 +181,8 @@ bool TDiskIOThread::do_work( )
     }
 
     if (m_resampleQualityChanged) {
-        for (auto source : std::as_const(m_audioSources)) {
-            source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
+        for (auto stream : std::as_const(m_bufferedAudioStreams)) {
+            stream->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
         }
         m_resampleQualityChanged = false;
     }
@@ -191,8 +191,8 @@ bool TDiskIOThread::do_work( )
 
     bool workNeeded = seekRequested;
     if (!workNeeded) {
-        for (const auto source : std::as_const(m_audioSources)) {
-            TAudioSourceBufferStatus& status = source->get_buffer_status();
+        for (auto stream : std::as_const(m_bufferedAudioStreams)) {
+            TBufferedAudioStreamStatus& status = stream->get_buffer_status();
             if (status.out_of_sync() || status.get_fill_status() <= 80) {
                 workNeeded = true;
                 break;
@@ -217,25 +217,25 @@ bool TDiskIOThread::do_work( )
         printf("DiskIO::do_work: Seek requested, starting seek now\n");
     }
 
-    QtConcurrent::blockingMap(m_audioSources, [this, seekRequested, bufferSize, sampleRateChanged, outputSampleRate, resampleQuality, seekTransportLocation, transportLocation](TAudioSource* source) {
+    QtConcurrent::blockingMap(m_bufferedAudioStreams, [this, seekRequested, bufferSize, sampleRateChanged, outputSampleRate, resampleQuality, seekTransportLocation, transportLocation](TBufferedAudioStream* stream) {
 
-        static thread_local TFileDecodeBuffer threadLocalFileDecodeBuffer;
+        static thread_local TFileIOBuffer threadLocalFileDecodeBuffer;
 
         if (seekRequested) {
             if (sampleRateChanged) {
-                source->set_output_rate_and_convertor_type(outputSampleRate, resampleQuality);
-                source->prepare_rt_buffers(bufferSize);
+                stream->set_output_rate_and_convertor_type(outputSampleRate, resampleQuality);
+                stream->prepare_rt_buffers(bufferSize);
             }
-            source->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, seekTransportLocation);
+            stream->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, seekTransportLocation);
         }
 
-        TAudioSourceBufferStatus& status = source->get_buffer_status();
+        TBufferedAudioStreamStatus& status = stream->get_buffer_status();
 
         if (!seekRequested && status.out_of_sync()) {
-            source->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, transportLocation);
+            stream->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, transportLocation);
         }
         else if (status.get_fill_status() <= 80) {
-            source->process_realtime_buffers(threadLocalFileDecodeBuffer);
+            stream->process_realtime_buffers(threadLocalFileDecodeBuffer);
         }
 
         int currentFillStatus = status.get_fill_status();
@@ -259,51 +259,51 @@ bool TDiskIOThread::do_work( )
     return true;
 }
 
-void TDiskIOThread::add_audio_source(TAudioSource* source)
+void TDiskIOThread::add_buffered_audio_stream(TBufferedAudioStream* bufferedAudioStream)
 {
     PENTER2;
 
-    Q_ASSERT(source);
-    if (source->get_channel_count() == 0) {
-        PMESG("TDiskIOThread::add_audio_source: source has no channels, not adding it to queue");
+    Q_ASSERT(bufferedAudioStream);
+    if (bufferedAudioStream->get_channel_count() == 0) {
+        PMESG("TDiskIOThread::add_buffered_audio_stream: Buffered Audio Stream has no channels, not adding it to queue");
         return;
     }
 
-    source->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
-    source->prepare_rt_buffers(audiodevice().get_buffer_size());
+    bufferedAudioStream->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
+    bufferedAudioStream->prepare_rt_buffers(audiodevice().get_buffer_size());
 
-    m_audioSourcesToBeAdded->wait_enqueue(source);
+    m_streamsToBeAdded->wait_enqueue(bufferedAudioStream);
 }
 
-void TDiskIOThread::private_add_to_work(TAudioSource *source)
+void TDiskIOThread::private_add_to_work(TBufferedAudioStream *bufferedAudioStream)
 {
     PENTER2;
     Q_ASSERT(this->thread() == QThread::currentThread());
-    Q_ASSERT(!m_audioSources.contains(source));
+    Q_ASSERT(!m_bufferedAudioStreams.contains(bufferedAudioStream));
 
-    m_audioSources.append(source);
+    m_bufferedAudioStreams.append(bufferedAudioStream);
 }
 
-void TDiskIOThread::remove_audio_source(TAudioSource *source)
+void TDiskIOThread::remove_buffered_audio_stream(TBufferedAudioStream *bufferedAudioStream)
 {
     PENTER2;
 
-    m_audioSourcesToBeRemoved->wait_enqueue(source);
+    m_streamsToBeRemoved->wait_enqueue(bufferedAudioStream);
 }
 
-void TDiskIOThread::private_remove_from_work(TAudioSource *source)
+void TDiskIOThread::private_remove_from_work(TBufferedAudioStream *bufferedAudioStream)
 {
     PENTER2;
 
     Q_ASSERT(this->thread() == QThread::currentThread());
-    m_audioSources.removeAll(source);
+    m_bufferedAudioStreams.removeAll(bufferedAudioStream);
 
     // FIXME
-    // Review the deletion of AudioSources and non-active AudioSources that should only
+    // Review the deletion of TBufferedAudioStreams and non-active TBufferedAudioStreams that should only
     // be removed from DiskIO but not deleted.
-    source->m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
-    source->delete_queue_buffers();
-    delete source;
+    bufferedAudioStream->m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
+    bufferedAudioStream->delete_queue_buffers();
+    delete bufferedAudioStream;
 }
 
 /**

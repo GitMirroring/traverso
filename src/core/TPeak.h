@@ -35,8 +35,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 #include "defines.h"
 
-class TReadAudioSource;
-class TAudioSource;
+class TBufferedAudioStreamReader;
+class TBufferedAudioStream;
 class TPeak;
 class TPPThread;
 class PeakDataReader;
@@ -110,7 +110,7 @@ public:
     };
 
 
-    explicit TPeak(TAudioSource* source);
+    explicit TPeak(TBufferedAudioStream* source);
     ~TPeak();
 
 	enum { 	NO_PEAKDATA_FOUND = -1,
@@ -133,7 +133,7 @@ public:
 	static int max_zoom_value();
 
 private:
-	TReadAudioSource* 	m_source;
+    TBufferedAudioStreamReader* 	m_source;
 	bool 		m_peaksAvailable;
 	bool		m_permanentFailure;
 	bool		m_interuptPeakBuild;

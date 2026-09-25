@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioTrack.h"
 #include "TProject.h"
 #include "TProjectManager.h"
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 #include "TResourcesManager.h"
 #include "Utils.h"
 #include "TMainWindow.h"

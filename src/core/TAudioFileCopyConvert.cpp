@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Remon Sijrier 
+Copyright (C) 2007-2026 Remon Sijrier
 
 This file is part of Traverso
 
@@ -25,158 +25,131 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QFileInfo>
 
 #include "TExportSpecification.h"
-#include "AbstractAudioReader.h"
 #include "TProjectManager.h"
+#include "TQueueBufferSlot.h"
 #include "TResourcesManager.h"
-#include "TReadAudioSource.h"
-#include "TFileDecodeBuffer.h"
-#include "TWriteAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
+#include "TFileIOBuffer.h"
+#include "TBufferedAudioStreamWriter.h"
 #include "TPeak.h"
 #include "defines.h"
 
 TAudioFileCopyConvert::TAudioFileCopyConvert()
 {
-	m_stopProcessing = false;
-	moveToThread(this);
-	start();
-	connect(this, &TAudioFileCopyConvert::dequeueTask, this, &TAudioFileCopyConvert::dequeue_tasks, Qt::QueuedConnection);
+    m_stopProcessing = false;
+    moveToThread(this);
+    start();
+    connect(this, &TAudioFileCopyConvert::dequeueTask, this, &TAudioFileCopyConvert::dequeue_tasks, Qt::QueuedConnection);
 }
 
-/**
- *	Queues the ReadSource source to be copied. This function will take ownership of the ReadSource
-	and takes care of 'deleting' it once the copy is finished!!
-
- * @param source 
- * @param dir 
- * @param outfilename 
- * @param tracknumber 
- * @param trackname
- */
-void TAudioFileCopyConvert::enqueue_task(TReadAudioSource * source,
-	TExportSpecification* spec,
-	const QString& dir,
-	const QString& outfilename,
-	int tracknumber,
-	const QString& trackname)
+void TAudioFileCopyConvert::enqueue_task(TBufferedAudioStreamReader * source,
+                                         TExportSpecification* spec,
+                                         const QString& dir,
+                                         const QString& outfilename,
+                                         int tracknumber,
+                                         const QString& trackname)
 {
-	QFileInfo fi(outfilename);
+    QFileInfo fi(outfilename);
 
-	CopyTask task;
-	task.readsource = source;
-	task.outFileName = fi.completeBaseName();
-	task.extension = fi.suffix();
-	task.tracknumber = tracknumber;
-	task.trackname = trackname;
-	task.dir = dir;
-	task.spec = spec;
-	
-	m_mutex.lock();
-	m_tasks.enqueue(task);
-	m_mutex.unlock();
-	
-	emit dequeueTask();
+    CopyTask task;
+    task.readsource = source;
+    task.outFileName = fi.completeBaseName();
+    task.extension = fi.suffix();
+    task.tracknumber = tracknumber;
+    task.trackname = trackname;
+    task.dir = dir;
+    task.spec = spec;
+
+    m_mutex.lock();
+    m_tasks.enqueue(task);
+    m_mutex.unlock();
+
+    emit dequeueTask();
 }
 
 void TAudioFileCopyConvert::dequeue_tasks()
 {
-	m_mutex.lock();
-	if (m_tasks.size()) {
-		CopyTask task = m_tasks.dequeue();
-		m_mutex.unlock();
-		process_task(task);
-		return;
-	}
-	m_mutex.unlock();
+    m_mutex.lock();
+    if (m_tasks.size()) {
+        CopyTask task = m_tasks.dequeue();
+        m_mutex.unlock();
+        process_task(task);
+        return;
+    }
+    m_mutex.unlock();
 }
 
 void TAudioFileCopyConvert::process_task(CopyTask task)
 {
-	emit taskStarted(task.readsource->get_name());
+    emit taskStarted(task.readsource->get_name());
 
-	TFileDecodeBuffer decodebuffer;
+    TFileIOBuffer fileIOBuffer;
 
     task.spec->set_export_start_location(TTimeRef());
     task.spec->set_export_end_location(task.readsource->get_length());
 
     task.spec->set_export_dir(task.dir);
-	task.spec->extraFormat["filetype"] = "wav";
+    task.spec->set_file_format(TraversoDAW::FileFormat::WAV);
     task.spec->set_channel_count(task.readsource->get_channel_count());
     task.spec->set_sample_rate(task.readsource->get_sample_rate());
     task.spec->set_export_file_name(task.outFileName);
-	
-	TWriteAudioSource* writesource = new TWriteAudioSource(task.spec);
-	bool failedToPrepareWritesource = false;
 
-	if (writesource->prepare_export() == -1) {
-		failedToPrepareWritesource = true;
-		goto out;
-	}
-	// Enable on the fly generation of peak data to speedup conversion 
-	// (no need to re-read all the audio files to generate peaks)
-	writesource->set_process_peaks(true);
-	
-	do {
-		// if the user asked to stop processing, jump out of this 
-		// loop, and cleanup any resources in use.
-		if (m_stopProcessing) {
-			goto out;
-		}
-			
+    TBufferedAudioStreamWriter* writesource = new TBufferedAudioStreamWriter(task.spec->get_export_dir(), task.spec->get_export_file_name());
+    bool failedToPrepareWritesource = false;
+
+    if (writesource->prepare_export(task.spec) == -1) {
+        failedToPrepareWritesource = true;
+        goto out;
+    }
+
+    writesource->set_process_peaks(true);
+
+    do {
+        if (m_stopProcessing) {
+            goto out;
+        }
+
         nframes_t diff = task.spec->get_remaining_export_frames();
         nframes_t this_nframes = std::min(diff, task.spec->get_block_size());
-		nframes_t nframes = this_nframes;
+        nframes_t nframes = this_nframes;
 
-        task.spec->silence_render_buffer(nframes);
+        fileIOBuffer.check_capacity(nframes * task.spec->get_channel_count(), task.spec->get_channel_count());
 
-        task.readsource->file_read(decodebuffer, task.spec->get_export_location(), nframes);
-			
-		for (uint x = 0; x < nframes; ++x) {
-            for (uint y = 0; y < task.spec->get_channel_count(); ++y) {
-                task.spec->get_render_buffer()[y + x*task.spec->get_channel_count()] = decodebuffer.get_destination_buffer(y).get_data(nframes)[x];
-			}
-		}
-		
-		// due the fact peak generating does _not_ happen in writesource->process
-		// but in a function used by DiskIO, we have to hack the peak processing 
-		// in here.
-        for (uint y = 0; y < task.spec->get_channel_count(); ++y) {
-            writesource->get_peak()->process(y, decodebuffer.get_destination_buffer(y).get_data(nframes), nframes);
-		}
-		
-		// Process the data, and write to disk
-        // FIXME
-        // Shouldn't we use the actual read frames count instead of block size?
-        // The end of the file will be most likely not a multiple of block size.
-        writesource->process(task.spec->get_block_size());
-		
+        task.readsource->file_read(fileIOBuffer, task.spec->get_export_location(), nframes);
+
+        TQueueBufferSlot virtualSlot(nframes, task.spec->get_channel_count(), 0);
+
+        for (uint chan = 0; chan < task.spec->get_channel_count(); ++chan) {
+            float* channelDataPtr = fileIOBuffer.get_channel_buffer(chan).get_data(nframes);
+            virtualSlot.write_buffer(TTimeRef(), TTimeRef(), channelDataPtr, chan, nframes);
+        }
+
+        writesource->rb_file_write(&virtualSlot, fileIOBuffer);
+
         task.spec->add_exported_range(TTimeRef(nframes, task.readsource->get_sample_rate()));
 
     } while (task.spec->get_remaining_export_frames() > 0);
 
-	
-	out:
-	if (!failedToPrepareWritesource) {
-		writesource->finish_export();
-	}
-	delete writesource;
+out:
+    if (!failedToPrepareWritesource) {
+        writesource->finish_export();
+    }
+    delete writesource;
     writesource = nullptr;
-	resources_manager()->remove_source(task.readsource);
-	
-	//  The user asked to stop processing, exit the event loop
-	// and signal we're done.
-	if (m_stopProcessing) {
-		exit(0);
-		wait(1000);
-		m_tasks.clear();
-		emit processingStopped();
-		return;
-	}
-	
-	emit taskFinished(task.dir + "/" + task.outFileName + ".wav", task.tracknumber, task.trackname);
+    resources_manager()->remove_source(task.readsource);
+
+    if (m_stopProcessing) {
+        exit(0);
+        wait(1000);
+        m_tasks.clear();
+        emit processingStopped();
+        return;
+    }
+
+    emit taskFinished(task.dir + "/" + task.outFileName + ".wav", task.tracknumber, task.trackname);
 }
 
 void TAudioFileCopyConvert::stop_merging()
 {
-	m_stopProcessing = true;
+    m_stopProcessing = true;
 }
-

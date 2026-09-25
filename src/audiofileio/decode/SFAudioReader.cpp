@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "SFAudioReader.h"
 #include <QString>
 
-#include "TFileDecodeBuffer.h"
+#include "TFileIOBuffer.h"
 #include "Utils.h"
 
 
@@ -113,11 +113,11 @@ bool SFAudioReader::seek_private(nframes_t start)
 }
 
 
-nframes_t SFAudioReader::read_private(TFileDecodeBuffer& fileDecodeBuffer, nframes_t nframes)
+nframes_t SFAudioReader::read_private(TFileIOBuffer& fileIOBuffer, nframes_t nframes)
 {
     Q_ASSERT(m_sf);
 
-    TAudioBuffer &readBuffer = fileDecodeBuffer.get_read_buffer();
+    TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
 
     nframes_t readFrames = sf_readf_float(m_sf, readBuffer.get_data(nframes * m_channels), nframes);
 
@@ -127,13 +127,13 @@ nframes_t SFAudioReader::read_private(TFileDecodeBuffer& fileDecodeBuffer, nfram
         return readFrames;
     case 1:
     {
-        TAudioBuffer::copy_data(fileDecodeBuffer.get_destination_buffer(0), readBuffer, readFrames);
+        TAudioBuffer::copy_data(fileIOBuffer.get_channel_buffer(0), readBuffer, readFrames);
         break;
     }
     case 2:
     {
-        audio_sample_t* left = fileDecodeBuffer.get_destination_buffer(0).get_data(readFrames);
-        audio_sample_t* right = fileDecodeBuffer.get_destination_buffer(1).get_data(readFrames);
+        audio_sample_t* left = fileIOBuffer.get_channel_buffer(0).get_data(readFrames);
+        audio_sample_t* right = fileIOBuffer.get_channel_buffer(1).get_data(readFrames);
         for (nframes_t frame = 0; frame < readFrames; frame++) {
             int index = frame*2;
             left[frame] = readBuffer[index];
@@ -144,7 +144,7 @@ nframes_t SFAudioReader::read_private(TFileDecodeBuffer& fileDecodeBuffer, nfram
     default:
     {
         for (uint channel = 0; channel < m_channels; channel++) {
-            TAudioBuffer &destBuffer = fileDecodeBuffer.get_destination_buffer(channel);
+            TAudioBuffer &destBuffer = fileIOBuffer.get_channel_buffer(channel);
             for (nframes_t frame = 0; frame < readFrames; frame++) {
                 destBuffer[frame] = readBuffer[frame * m_channels + channel];
             }

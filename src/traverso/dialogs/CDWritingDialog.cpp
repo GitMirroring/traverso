@@ -311,7 +311,7 @@ void CDWritingDialog::cd_render()
 	
     if (true) {
 
-        m_exportSpec->set_data_format(SF_FORMAT_PCM_16);
+        m_exportSpec->set_data_format(TraversoDAW::DataFormat::PCM_16);
         m_exportSpec->set_channel_count(2);
 		m_exportSpec->writeToc = true;
         m_exportSpec->set_dither_type(GDitherTri);

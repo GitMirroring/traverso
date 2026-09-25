@@ -26,7 +26,7 @@
 
 #include "FileHelpers.h"
 #include "TAudioFileMerger.h"
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 #include "Utils.h"
 #include "defines.h"
 
@@ -135,8 +135,8 @@ int TProjectConverter::start_conversion_from_version_2_to_3()
 		bool wasrecording = readsourceelement.attribute("wasrecording", 0).toInt();
 
 		if (filecount == 2 && channelcount == 2 && dir == (m_rootdir + "/audiosources/")) {
-			TReadAudioSource* readsource0 = new TReadAudioSource(dir, name + "-ch0.wav");
-			TReadAudioSource* readsource1 = new TReadAudioSource(dir, name + "-ch1.wav");
+			TBufferedAudioStreamReader* readsource0 = new TBufferedAudioStreamReader(dir, name + "-ch0.wav");
+			TBufferedAudioStreamReader* readsource1 = new TBufferedAudioStreamReader(dir, name + "-ch1.wav");
 			readsource0->ref();
 			readsource0->init();
 			readsource1->ref();
@@ -175,7 +175,7 @@ int TProjectConverter::start_conversion_from_version_2_to_3()
 		nframes_t length = clipelement.attribute( "length", "0" ).toUInt();
 		nframes_t sourceStartFrame = clipelement.attribute( "sourcestart", "" ).toUInt();
 		nframes_t trackStart = clipelement.attribute( "trackstart", "" ).toUInt();
-		TReadAudioSource* source = m_readsources.value(readsourceid);
+		TBufferedAudioStreamReader* source = m_readsources.value(readsourceid);
 		int rate = projectrate;
 		if (source) {
 			rate = source->get_sample_rate();
@@ -339,7 +339,7 @@ void TProjectConverter::file_merge_finished(QString file)
 
 void TProjectConverter::finish_2_3_conversion()
 {
-	foreach(TReadAudioSource* source, m_readsources) {
+	foreach(TBufferedAudioStreamReader* source, m_readsources) {
 		delete source;
 	}
 	

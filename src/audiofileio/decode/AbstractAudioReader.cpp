@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2007 Ben Levitt
+Copyright (C) 2007 - 2026 Ben Levitt, Remon Sijrier
 
 This file is part of Traverso
 
@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "AbstractAudioReader.h"
-#include "TFileDecodeBuffer.h"
+#include "TFileIOBuffer.h"
 
 #include "SFAudioReader.h"
 #include "WPAudioReader.h"
@@ -53,7 +53,7 @@ AbstractAudioReader::~AbstractAudioReader()
 
 // Read cnt frames starting at start from the AudioReader, into dst
 // uses seek() and read() from AudioReader subclass
-nframes_t AbstractAudioReader::read_from(TFileDecodeBuffer &buffer, nframes_t start, nframes_t count)
+nframes_t AbstractAudioReader::read_from(TFileIOBuffer &fileIOBuffer, nframes_t start, nframes_t count)
 {
     // 	printf("read_from:: before_seek from %d, framepos is %d\n", start, m_readPos);
 
@@ -61,7 +61,7 @@ nframes_t AbstractAudioReader::read_from(TFileDecodeBuffer &buffer, nframes_t st
         return 0;
     }
 
-    return read(buffer, count);
+    return read(fileIOBuffer, count);
 }
 
 
@@ -103,12 +103,12 @@ bool AbstractAudioReader::seek(nframes_t start)
 }
 
 
-nframes_t AbstractAudioReader::read(TFileDecodeBuffer &buffer, nframes_t count)
+nframes_t AbstractAudioReader::read(TFileIOBuffer &buffer, nframes_t count)
 {
     if (count > 0 && m_readPos < m_fileFrames) {
 
         // Make sure the read buffer is big enough for this read
-        buffer.check_buffers_capacity(count, m_channels);
+        buffer.check_capacity(count, m_channels);
         // and contains only zero's
         buffer.silence_buffers();
 

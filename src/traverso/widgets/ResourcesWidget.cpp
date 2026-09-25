@@ -25,8 +25,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TProject.h>
 #include <TSheet.h>
 #include <TResourcesManager.h>
-#include <TAudioSource.h>
-#include <TReadAudioSource.h>
+#include <TBufferedAudioStream.h>
+#include <TBufferedAudioStreamReader.h>
 #include <TAudioClip.h>
 #include <Utils.h>
 #include <TThemer.h>
@@ -227,7 +227,7 @@ void ResourcesWidget::project_load_finished()
     connect(rsmanager, &TResourcesManager::sourceAdded, this, &ResourcesWidget::add_source);
     connect(rsmanager, &TResourcesManager::sourceRemoved, this, &ResourcesWidget::remove_source);
 	
-	foreach(TReadAudioSource* rs, resources_manager()->get_all_audio_sources()) {
+	foreach(TBufferedAudioStreamReader* rs, resources_manager()->get_all_audio_sources()) {
 		add_source(rs);
 	}
 	
@@ -341,7 +341,7 @@ void ResourcesWidget::remove_clip(TAudioClip * clip)
 	update_clip_state(clip);
 }
 
-void ResourcesWidget::add_source(TReadAudioSource * source)
+void ResourcesWidget::add_source(TBufferedAudioStreamReader * source)
 {
 	SourceTreeItem* item = m_sourceindices.value(source->get_id());
 	
@@ -356,7 +356,7 @@ void ResourcesWidget::add_source(TReadAudioSource * source)
 	item->source_state_changed();
 }
 
-void ResourcesWidget::remove_source(TReadAudioSource * source)
+void ResourcesWidget::remove_source(TBufferedAudioStreamReader * source)
 {
 	SourceTreeItem* item = m_sourceindices.value(source->get_id());
 
@@ -432,11 +432,11 @@ void ClipTreeItem::apply_filter(TSheet * sheet)
 
 
 
-SourceTreeItem::SourceTreeItem(QTreeWidget* parent, TReadAudioSource * source)
+SourceTreeItem::SourceTreeItem(QTreeWidget* parent, TBufferedAudioStreamReader * source)
 	: QTreeWidgetItem(parent)
 	, m_source(source)
 {
-	connect(m_source, &TReadAudioSource::stateChanged, this, &SourceTreeItem::source_state_changed);
+	connect(m_source, &TBufferedAudioStreamReader::stateChanged, this, &SourceTreeItem::source_state_changed);
 }
 
 void SourceTreeItem::apply_filter(TSheet * sheet)

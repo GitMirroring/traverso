@@ -52,11 +52,40 @@ public:
             return;
         }
 
-        delete_buffer_data();
+        // Cache old buffer state variables before making changes
+        audio_sample_t* oldBuffer = m_buffer;
+        nframes_t oldSize = m_size;
+        bool oldMemLocked = m_memLocked;
 
+        // Reset state for new allocation block
+        m_buffer = nullptr;
+        m_size = 0;
+        m_memLocked = false;
+
+        // Allocate the new memory block with correct size and alignment
         allocate_buffer_data(size);
 
+        // Clear out the newly allocated block to prevent noise
         silence_data();
+
+        // Migrate historical audio samples / leftovers if old data is valid
+        if (oldBuffer && oldSize > 0) {
+            nframes_t framesToCopy = std::min(oldSize, size);
+            std::memcpy(m_buffer, oldBuffer, framesToCopy * sizeof(audio_sample_t));
+
+#ifdef USE_MLOCK
+            if (oldMemLocked) {
+                munlock(oldBuffer, oldSize * sizeof(audio_sample_t));
+            }
+#endif /* USE_MLOCK */
+
+            operator delete[](oldBuffer, std::align_val_t(AUDIO_BUFFER_ALIGNMENT));
+        }
+
+        // Clamp the active read/write offset to avoid out-of-bounds pointer leaks
+        if (m_readOffset >= m_size) {
+            m_readOffset = 0;
+        }
     }
 
     // Silence whole buffer with zero's, read offset is discarded

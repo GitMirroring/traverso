@@ -19,13 +19,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TReadAudioSource.h"
+#include "TBufferedAudioStreamReader.h"
 #include "ResampleAudioReader.h"
 
 #include "TProjectManager.h"
 #include "TProject.h"
 #include "AudioBus.h"
-#include "TFileDecodeBuffer.h"
+#include "TFileIOBuffer.h"
 #include "TLocation.h"
 #include "TQueueBufferSlot.h"
 #include "Utils.h"
@@ -38,196 +38,196 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 /**
  *	\class ReadSource
-	\brief A class for (buffered) reading of audio files.
+    \brief A class for (buffered) reading of audio files.
  */
 
 
 // #define PRINT_BUFFER_STATUS
 
 // This constructor is called for existing (recorded/imported) audio sources
-TReadAudioSource::TReadAudioSource(const QDomNode& node)
-	: TAudioSource()
+TBufferedAudioStreamReader::TBufferedAudioStreamReader(const QDomNode& node)
+    : TBufferedAudioStream()
 {
-	
-	set_state(node);
-	
-	private_init();
-	
-	TProject* project = pm().get_project();
-	
-	// FIXME The check below no longer makes sense!!!!!
-	// Check if the audiofile exists in our project audiosources dir
-	// and give it priority over the dir as given by the project.tpf file
-	// This makes it possible to move project directories without Traverso being
-	// unable to find it's audiosources!
-	if ( QFile::exists(project->get_root_dir() + "/audiosources/" + m_name) || 
-	     QFile::exists(project->get_root_dir() + "/audiosources/" + m_name + "-ch0.wav") ) {
-		set_dir(project->get_root_dir() + "/audiosources/");
-	}
-	
-	m_silent = (m_channelCount == 0);
-}	
+
+    set_state(node);
+
+    private_init();
+
+    TProject* project = pm().get_project();
+
+    // FIXME The check below no longer makes sense!!!!!
+    // Check if the audiofile exists in our project audiosources dir
+    // and give it priority over the dir as given by the project.tpf file
+    // This makes it possible to move project directories without Traverso being
+    // unable to find it's audiosources!
+    if ( QFile::exists(project->get_root_dir() + "/audiosources/" + m_name) ||
+         QFile::exists(project->get_root_dir() + "/audiosources/" + m_name + "-ch0.wav") ) {
+        set_dir(project->get_root_dir() + "/audiosources/");
+    }
+
+    m_silent = (m_channelCount == 0);
+}
 
 // constructor for file import
-TReadAudioSource::TReadAudioSource(const QString& dir, const QString& name)
-	: TAudioSource(dir, name)
+TBufferedAudioStreamReader::TBufferedAudioStreamReader(const QString& dir, const QString& name)
+    : TBufferedAudioStream(dir, name)
 {
-	private_init();
-	
+    private_init();
+
     std::unique_ptr<AbstractAudioReader> reader = AbstractAudioReader::create_audio_reader(m_fileName);
 
-	if (reader) {
-		m_channelCount = reader->get_num_channels();
-	} else {
-		m_channelCount = 0;
-	}
+    if (reader) {
+        m_channelCount = reader->get_num_channels();
+    } else {
+        m_channelCount = 0;
+    }
 
-	m_silent = false;
+    m_silent = false;
 }
 
 
 // Constructor for recorded audio.
-TReadAudioSource::TReadAudioSource(const QString& dir, const QString& name, uint channelCount)
-	: TAudioSource(dir, name)
+TBufferedAudioStreamReader::TBufferedAudioStreamReader(const QString& dir, const QString& name, uint channelCount)
+    : TBufferedAudioStream(dir, name)
 {
-	private_init();
-	
-	m_channelCount = channelCount;
-	m_silent = false;
-	m_name = name  + "-" + QString::number(m_id);
-	m_fileName = m_dir + m_name;
-	m_rate = pm().get_project()->get_rate();
-	m_wasRecording = true;
-	m_shortName = m_name.left(m_name.length() - 20);
+    private_init();
+
+    m_channelCount = channelCount;
+    m_silent = false;
+    m_name = name  + "-" + QString::number(m_id);
+    m_fileName = m_dir + m_name;
+    m_rate = pm().get_project()->get_rate();
+    m_wasRecording = true;
+    m_shortName = m_name.left(m_name.length() - 20);
 }
 
 
 // Constructor for silent clips
-TReadAudioSource::TReadAudioSource()
-	: TAudioSource("", tr("Silence"))
+TBufferedAudioStreamReader::TBufferedAudioStreamReader()
+    : TBufferedAudioStream("", tr("Silence"))
 {
-	private_init();
-	
-	m_channelCount = 0;
-	m_silent = true;
+    private_init();
+
+    m_channelCount = 0;
+    m_silent = true;
 }
 
 
-void TReadAudioSource::private_init()
+void TBufferedAudioStreamReader::private_init()
 {
     m_location = nullptr;
     m_sourceStartLocation = TTimeRef();
 
     m_refcount = 0;
-	m_error = 0;
+    m_error = 0;
     m_resampleAudioReader = nullptr;
 
     m_aboutOneToFourSecondsTime = TTimeRef::UNIVERSAL_SAMPLE_RATE * (TraversoDAW::Utils::randomNumberBetween(0, 3) + 1.0);
 }
 
-TReadAudioSource::~TReadAudioSource()
+TBufferedAudioStreamReader::~TBufferedAudioStreamReader()
 {
-	PENTERDES;
-	
+    PENTERDES;
+
     if (m_resampleAudioReader) {
         delete m_resampleAudioReader;
     }
 }
 
-QDomNode TReadAudioSource::get_state( QDomDocument doc )
+QDomNode TBufferedAudioStreamReader::get_state( QDomDocument doc )
 {
-	QDomElement node = doc.createElement("Source");
-	node.setAttribute("channelcount", m_channelCount);
-	node.setAttribute("origsheetid", m_origSheetId);
-	node.setAttribute("dir", m_dir);
-	node.setAttribute("id", m_id);
+    QDomElement node = doc.createElement("Source");
+    node.setAttribute("channelcount", m_channelCount);
+    node.setAttribute("origsheetid", m_origSheetId);
+    node.setAttribute("dir", m_dir);
+    node.setAttribute("id", m_id);
         node.setAttribute("name", m_name);
-	node.setAttribute("origbitdepth", m_origBitDepth);
-	node.setAttribute("wasrecording", m_wasRecording);
-	node.setAttribute("length", m_length.universal_frame());
-	node.setAttribute("rate", m_rate);
+    node.setAttribute("origbitdepth", m_origBitDepth);
+    node.setAttribute("wasrecording", m_wasRecording);
+    node.setAttribute("length", m_length.universal_frame());
+    node.setAttribute("rate", m_rate);
 
-	return node;
+    return node;
 }
 
 
-int TReadAudioSource::set_state( const QDomNode & node )
+int TBufferedAudioStreamReader::set_state( const QDomNode & node )
 {
-	PENTER;
-	
-	QDomElement e = node.toElement();
+    PENTER;
+
+    QDomElement e = node.toElement();
     m_channelCount = e.attribute("channelcount", "0").toUInt();
-	m_origSheetId = e.attribute("origsheetid", "0").toLongLong();
-	set_dir( e.attribute("dir", "" ));
-	m_id = e.attribute("id", "").toLongLong();
-	m_rate = m_outputRate = e.attribute("rate", "0").toUInt();
-	bool ok;
-	m_length = TTimeRef(e.attribute("length", "0").toLongLong(&ok));
+    m_origSheetId = e.attribute("origsheetid", "0").toLongLong();
+    set_dir( e.attribute("dir", "" ));
+    m_id = e.attribute("id", "").toLongLong();
+    m_rate = m_outputRate = e.attribute("rate", "0").toUInt();
+    bool ok;
+    m_length = TTimeRef(e.attribute("length", "0").toLongLong(&ok));
     m_origBitDepth = e.attribute("origbitdepth", "0").toUInt();
-	m_wasRecording = e.attribute("wasrecording", "0").toInt();
-	
-	// For older project files, this should properly detect if the 
-	// audio source was a recording or not., in fact this should suffice
-	// and the flag wasrecording would be unneeded, but oh well....
-	if (m_origSheetId != 0) {
-		m_wasRecording = true;
-	}
-	
-	set_name( e.attribute("name", "No name supplied?" ));
-	
-	return 1;
+    m_wasRecording = e.attribute("wasrecording", "0").toInt();
+
+    // For older project files, this should properly detect if the
+    // audio source was a recording or not., in fact this should suffice
+    // and the flag wasrecording would be unneeded, but oh well....
+    if (m_origSheetId != 0) {
+        m_wasRecording = true;
+    }
+
+    set_name( e.attribute("name", "No name supplied?" ));
+
+    return 1;
 }
 
 
-int TReadAudioSource::init( )
+int TBufferedAudioStreamReader::init( )
 {
-	PENTER;
-	
-	Q_ASSERT(m_refcount);
-	
-	TProject* project = pm().get_project();
+    PENTER;
+
+    Q_ASSERT(m_refcount);
+
+    TProject* project = pm().get_project();
     m_active.store(false);
 
-	// Fake the samplerate, until it's set by an AudioReader!
-	if (project) {
-		m_rate = m_outputRate = project->get_rate();
-	} else {
-		m_rate = 44100;
-	}
-	
-	if (m_silent) {
+    // Fake the samplerate, until it's set by an AudioReader!
+    if (project) {
+        m_rate = m_outputRate = project->get_rate();
+    } else {
+        m_rate = 44100;
+    }
+
+    if (m_silent) {
         m_length = TTimeRef::max_length();
-		m_channelCount = 0;
-		m_origBitDepth = 16;
+        m_channelCount = 0;
+        m_origBitDepth = 16;
         m_bufferstatus.set_fill_status(100);
-        m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::IN_SYNC);
-		return 1;
-	}
-	
-	if (m_channelCount == 0) {
-		PERROR("ReadSource channel count is 0");
-		return (m_error = INVALID_CHANNEL_COUNT);
-	}
-	
-	if ( ! QFile::exists(m_fileName)) {
-		return (m_error = FILE_DOES_NOT_EXIST);
-	}
+        m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::IN_SYNC);
+        return 1;
+    }
+
+    if (m_channelCount == 0) {
+        PERROR("ReadSource channel count is 0");
+        return (m_error = INVALID_CHANNEL_COUNT);
+    }
+
+    if ( ! QFile::exists(m_fileName)) {
+        return (m_error = FILE_DOES_NOT_EXIST);
+    }
 
     m_resampleAudioReader = new ResampleAudioReader(m_fileName);
-	
+
     if (!m_resampleAudioReader->is_valid()) {
 //		PERROR("ReadSource:: audio reader is not valid! (reader channel count: %d, nframes: %d", m_audioReader->get_num_channels(), m_audioReader->get_nframes());
         delete m_resampleAudioReader;
         m_resampleAudioReader = nullptr;
-		return (m_error = COULD_NOT_OPEN_FILE);
-	}
-	
+        return (m_error = COULD_NOT_OPEN_FILE);
+    }
+
     int converterType = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
     set_output_rate_and_convertor_type(m_resampleAudioReader->get_file_rate(), converterType);
-	
+
     m_channelCount = m_resampleAudioReader->get_num_channels();
-	
-	// @Ben: I thought we support any channel count now ??
+
+    // @Ben: I thought we support any channel count now ??
        // if (m_channelCount > 2) {
        //  PERROR(QString("ReadAudioSource: file contains %1 channels; only 2 channels are supported").arg(m_channelCount));
        //         delete m_resampleAudioReader;
@@ -235,124 +235,124 @@ int TReadAudioSource::init( )
        //         return (m_error = INVALID_CHANNEL_COUNT);
        // }
 
-	// Never reached, it's allready checked in AbstractAudioReader::is_valid() which was allready called!
-	if (m_channelCount == 0) {
+    // Never reached, it's allready checked in AbstractAudioReader::is_valid() which was allready called!
+    if (m_channelCount == 0) {
 //		PERROR("ReadAudioSource: not a valid channel count: %d", m_channelCount);
         delete m_resampleAudioReader;
         m_resampleAudioReader = nullptr;
-		return (m_error = ZERO_CHANNELS);
-	}
-	
+        return (m_error = ZERO_CHANNELS);
+    }
+
     m_rate = m_resampleAudioReader->get_file_rate();
     m_length = m_resampleAudioReader->get_length();
-	
-	return 1;
+
+    return 1;
 }
 
 
-void TReadAudioSource::set_output_rate_and_convertor_type(int outputRate, int converterType)
+void TBufferedAudioStreamReader::set_output_rate_and_convertor_type(int outputRate, int converterType)
 {
     Q_ASSERT(outputRate > 0);
     Q_ASSERT_X(m_resampleAudioReader, "ReadSource::set_output_rate_and_convertor_type", "No Resample Audio Reader");
 
-	bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
-	if (useResampling) {
+    bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
+    if (useResampling) {
         m_resampleAudioReader->set_output_rate(outputRate);
-	} else {
+    } else {
         m_resampleAudioReader->set_output_rate(m_resampleAudioReader->get_file_rate());
-	}
+    }
 
     m_resampleAudioReader->set_converter_type(converterType);
 
     m_outputRate = outputRate;
-	
-	// The length could have become slightly smaller/larger due
-	// rounding issues involved with converting to one samplerate to another.
-	// Should be at the order of one - two samples at most, but for reading purposes we 
-	// need sample accurate information!
+
+    // The length could have become slightly smaller/larger due
+    // rounding issues involved with converting to one samplerate to another.
+    // Should be at the order of one - two samples at most, but for reading purposes we
+    // need sample accurate information!
     m_length = m_resampleAudioReader->get_length();
 }
 
-void TReadAudioSource::set_location(TLocation* location)
+void TBufferedAudioStreamReader::set_location(TLocation* location)
 {
     Q_ASSERT(location);
     m_location = location;
 }
 
-void TReadAudioSource::set_source_start_location(const TTimeRef &sourceStartLocation)
+void TBufferedAudioStreamReader::set_source_start_location(const TTimeRef &sourceStartLocation)
 {
     // printf("ReadSource::set_source_start_location: %s\n", QS_C(TTimeRef::timeref_to_ms_3(sourceStartLocation)));
     m_sourceStartLocation = sourceStartLocation;
 }
 
-int TReadAudioSource::file_read(TFileDecodeBuffer& buffer, const TTimeRef& fileLocation, nframes_t cnt) const
+int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, const TTimeRef& fileLocation, nframes_t cnt) const
 {
     Q_ASSERT(m_resampleAudioReader);
     return m_resampleAudioReader->read_from(buffer, fileLocation, cnt);
 }
 
 
-int TReadAudioSource::file_read(TFileDecodeBuffer& buffer, nframes_t fileLocation, nframes_t cnt) const
+int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, nframes_t fileLocation, nframes_t cnt) const
 {
     Q_ASSERT(m_resampleAudioReader);
     return m_resampleAudioReader->read_from(buffer, fileLocation, cnt);
 }
 
 
-TReadAudioSource * TReadAudioSource::deep_copy( )
+TBufferedAudioStreamReader * TBufferedAudioStreamReader::deep_copy( )
 {
-	PENTER;
-	
-	QDomDocument doc("ReadSource");
-	QDomNode rsnode = get_state(doc);
-	TReadAudioSource* source = new TReadAudioSource(rsnode);
-	return source;
+    PENTER;
+
+    QDomDocument doc("ReadSource");
+    QDomNode rsnode = get_state(doc);
+    TBufferedAudioStreamReader* source = new TBufferedAudioStreamReader(rsnode);
+    return source;
 }
 
-nframes_t TReadAudioSource::get_nframes( ) const
+nframes_t TBufferedAudioStreamReader::get_nframes( ) const
 {
     if (!m_resampleAudioReader) {
-		return 0;
-	}
+        return 0;
+    }
     return m_resampleAudioReader->get_nframes();
 }
 
-int TReadAudioSource::set_file(const QString & filename)
+int TBufferedAudioStreamReader::set_file(const QString & filename)
 {
-	PENTER;
+    PENTER;
 
-	m_error = 0;
-	
-	int splitpoint = filename.lastIndexOf("/") + 1;
-	int length = filename.length();
-	
-	QString dir = filename.left(splitpoint - 1) + "/";
-	QString name = filename.right(length - splitpoint);
-		
-	set_dir(dir);
-	set_name(name);
-	
-	if (init() < 0) {
-		return -1;
-	}
-	
-	emit stateChanged();
-	
-	return 1;
+    m_error = 0;
+
+    int splitpoint = filename.lastIndexOf("/") + 1;
+    int length = filename.length();
+
+    QString dir = filename.left(splitpoint - 1) + "/";
+    QString name = filename.right(length - splitpoint);
+
+    set_dir(dir);
+    set_name(name);
+
+    if (init() < 0) {
+        return -1;
+    }
+
+    emit stateChanged();
+
+    return 1;
 }
 
 
-void TReadAudioSource::rb_seek_to_transport_location(TFileDecodeBuffer &fileDecodeBuffer, const TTimeRef& transportLocation)
+void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fileDecodeBuffer, const TTimeRef& transportLocation)
 {
     Q_ASSERT(m_location);
 
-    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
+    m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
 
     // If the transport location lies (much) in front of our start location
     // or after our end location no need to fill the buffers
     if ((transportLocation + m_aboutOneToFourSecondsTime) < m_location->get_start() ||
         transportLocation > m_location->get_end()) {
-        m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::OUT_OF_SYNC);
+        m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
         return;
     }
 
@@ -407,7 +407,7 @@ void TReadAudioSource::rb_seek_to_transport_location(TFileDecodeBuffer &fileDeco
         // and only read in the amount of frames needed for this buffer slot
         nframes_t toRead = bufferSize - offset;
 
-        fileDecodeBuffer.check_buffers_capacity(toRead, m_channelCount);
+        fileDecodeBuffer.check_capacity(toRead, m_channelCount);
         fileDecodeBuffer.silence_buffers();
 
         // and read in the samples. We have to use the source start location as the start location, see explanation above
@@ -418,18 +418,18 @@ void TReadAudioSource::rb_seek_to_transport_location(TFileDecodeBuffer &fileDeco
 
         if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
             printf("ReadSource::rb_seek_to_transport_location:: try dequeue failed");
-            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
+            m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
             return;
         }
 
         for (uint chan=0; chan<m_channelCount; ++chan) {
             // and now write it into the buffer using the offset
-            slot->write_buffer(seekTransportLocation, fileLocation, fileDecodeBuffer.get_destination_buffer(chan).get_data(toRead), chan, toRead, offset);
+            slot->write_buffer(seekTransportLocation, fileLocation, fileDecodeBuffer.get_channel_buffer(chan).get_data(toRead), chan, toRead, offset);
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
             printf("ReadSource::fill_realtime_buffers: try enqueue failed");
-            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
+            m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
             return;
         }
 
@@ -439,12 +439,12 @@ void TReadAudioSource::rb_seek_to_transport_location(TFileDecodeBuffer &fileDeco
 
     m_lastQueuedRTBufferSlot->set_file_location(fileLocation);
     m_lastQueuedRTBufferSlot->set_transport_location(seekTransportLocation);
-    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION);
+    m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::QUEUE_SEEKED_TO_NEW_LOCATION);
 
     process_realtime_buffers(fileDecodeBuffer);
 }
 
-void TReadAudioSource::process_realtime_buffers(TFileDecodeBuffer& fileDecodeBuffer)
+void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDecodeBuffer)
 {
     Q_ASSERT(m_lastQueuedRTBufferSlot);
     Q_ASSERT(m_channelCount > 0);
@@ -466,7 +466,7 @@ void TReadAudioSource::process_realtime_buffers(TFileDecodeBuffer& fileDecodeBuf
     // read to the m_lastQueuedRTBufferSlot->get_transport_location(); since we set that
     // value to the seek transport location
     size_t slotsToFill = freeSlots;
-    if (m_bufferstatus.get_sync_status() == TAudioSourceBufferStatus::QUEUE_SEEKED_TO_NEW_LOCATION) {
+    if (m_bufferstatus.get_sync_status() == TBufferedAudioStreamStatus::QUEUE_SEEKED_TO_NEW_LOCATION) {
         slotsToFill = int(0.7 * m_slotcount);
     } else {
         slotFileLocation += m_bufferSlotDuration;
@@ -479,7 +479,7 @@ void TReadAudioSource::process_realtime_buffers(TFileDecodeBuffer& fileDecodeBuf
     // buffers are the wrong size or not created at all.
     // since we want to fill the rt buffer even beyond the file length
     // for now make sure the decode buffers are the correct size
-    fileDecodeBuffer.check_buffers_capacity(totalReadSize, m_channelCount);
+    fileDecodeBuffer.check_capacity(totalReadSize, m_channelCount);
     nframes_t read = file_read(fileDecodeBuffer, slotFileLocation, totalReadSize);
     nframes_t offset = 0;
     if (read != bufferSize) { // likely end of file
@@ -490,19 +490,19 @@ void TReadAudioSource::process_realtime_buffers(TFileDecodeBuffer& fileDecodeBuf
     {
         if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
             PERROR("ReadSource::fill_realtime_buffers: try dequeue failed");
-            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
+            m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
             return;
         }
 
         for (uint chan=0; chan<m_channelCount; ++chan) {
-            slot->write_buffer(transportLocation, slotFileLocation, fileDecodeBuffer.get_destination_buffer(chan).get_data(totalReadSize) + offset, chan, bufferSize);
+            slot->write_buffer(transportLocation, slotFileLocation, fileDecodeBuffer.get_channel_buffer(chan).get_data(totalReadSize) + offset, chan, bufferSize);
         }
 
         offset += bufferSize;
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
             PERROR("ReadSource::fill_realtime_buffers: try enqueue failed");
-            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
+            m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
             return;
         }
 
@@ -515,11 +515,11 @@ void TReadAudioSource::process_realtime_buffers(TFileDecodeBuffer& fileDecodeBuf
     m_lastQueuedRTBufferSlot = slot;
     Q_ASSERT(m_lastQueuedRTBufferSlot);
 
-    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::IN_SYNC);
+    m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::IN_SYNC);
 }
 
 
-nframes_t TReadAudioSource::ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation)
+nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation)
 {
     if (m_bufferstatus.out_of_sync()) {
         if (processData.get_is_real_time()) {
@@ -561,8 +561,8 @@ nframes_t TReadAudioSource::ringbuffer_read(TProcessCallBackData &processData, c
 
     while ((slot = dequeue_from_rt_queue(processData)))
     {
-        Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
-        Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+        Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
+        Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
         Q_ASSERT(slot);
 
         TTimeRef slotFileLocation = slot->get_file_location();
@@ -591,7 +591,7 @@ nframes_t TReadAudioSource::ringbuffer_read(TProcessCallBackData &processData, c
                    QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)),
                    QS_C(TTimeRef::timeref_to_ms_3(lastAvailableSlotFileLocation)));
 
-            m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::OUT_OF_SYNC);
+            m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
             read = 0;
             m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
@@ -609,10 +609,10 @@ nframes_t TReadAudioSource::ringbuffer_read(TProcessCallBackData &processData, c
     return read;
 }
 
-TQueueBufferSlot* TReadAudioSource::dequeue_from_rt_queue(TProcessCallBackData &processData)
+TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessCallBackData &processData)
 {
-    Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
-    Q_ASSERT(m_bufferstatus.get_sync_status() != TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+    Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
+    Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
     Q_ASSERT(is_active()); // A non active read source won't process it's buffer queues so we can't ever enter this function in this state
 
     TQueueBufferSlot* slot = nullptr;
@@ -633,7 +633,7 @@ TQueueBufferSlot* TReadAudioSource::dequeue_from_rt_queue(TProcessCallBackData &
 }
 
 
-TAudioSourceBufferStatus& TReadAudioSource::get_buffer_status()
+TBufferedAudioStreamStatus& TBufferedAudioStreamReader::get_buffer_status()
 {
     Q_ASSERT(m_channelCount > 0);
 
@@ -646,23 +646,23 @@ TAudioSourceBufferStatus& TReadAudioSource::get_buffer_status()
     return m_bufferstatus;
 }
 
-void TReadAudioSource::set_active(bool active)
+void TBufferedAudioStreamReader::set_active(bool active)
 {
     m_active.store(active);
 }
 
-uint TReadAudioSource::get_file_rate() const
+uint TBufferedAudioStreamReader::get_file_rate() const
 {
     if (m_resampleAudioReader) {
         return m_resampleAudioReader->get_file_rate();
-	} else {
-		PERROR("ReadSource::get_file_rate(), but no audioreader available!!");
-	}
-	
-	return pm().get_project()->get_rate(); 
+    } else {
+        PERROR("ReadSource::get_file_rate(), but no audioreader available!!");
+    }
+
+    return pm().get_project()->get_rate();
 }
 
-QString TReadAudioSource::get_error_string() const
+QString TBufferedAudioStreamReader::get_error_string() const
 {
 	switch(m_error) {
 		case COULD_NOT_OPEN_FILE: return tr("Could not open file");

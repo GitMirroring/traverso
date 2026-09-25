@@ -28,7 +28,7 @@
 #include <QHash>
 
 class TAudioFileMerger;
-class TReadAudioSource;
+class TBufferedAudioStreamReader;
 
 class TProjectConverter : public QObject
 {
@@ -43,7 +43,7 @@ public:
 	QString get_conversion_description();
 
 private:
-    QMultiHash<qint64, TReadAudioSource*> m_readsources;
+    QMultiHash<qint64, TBufferedAudioStreamReader*> m_readsources;
 	TAudioFileMerger* m_merger;
 	int m_filesToMerge;
 	int m_filesMerged;

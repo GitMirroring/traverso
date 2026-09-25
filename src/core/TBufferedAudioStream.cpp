@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#include "TAudioSource.h"
+#include "TBufferedAudioStream.h"
 
 #include <utility>
 #include "TSheet.h"
@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 // This constructor is called at file import or recording
-TAudioSource::TAudioSource(QString  dir, const QString& name)
+TBufferedAudioStream::TBufferedAudioStream(QString  dir, const QString& name)
 	: m_dir(std::move(dir))
 	, m_name(name)
 	, m_shortName(name)
@@ -45,13 +45,13 @@ TAudioSource::TAudioSource(QString  dir, const QString& name)
 
     m_rtBufferSlotsQueue = nullptr;
     m_freeBufferSlotsQueue = nullptr;
-    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::OUT_OF_SYNC);
+    m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
 
 }
 
 
 // This constructor is called for existing (recorded/imported) audio sources
-TAudioSource::TAudioSource()
+TBufferedAudioStream::TBufferedAudioStream()
 	: m_dir("")
 	, m_name("")
 	, m_fileName("")
@@ -59,17 +59,17 @@ TAudioSource::TAudioSource()
 {
     m_rtBufferSlotsQueue = nullptr;
     m_freeBufferSlotsQueue = nullptr;
-    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::OUT_OF_SYNC);
+    m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
 
 }
 
 
-TAudioSource::~TAudioSource()
+TBufferedAudioStream::~TBufferedAudioStream()
 {
 	PENTERDES;
 }
 
-void TAudioSource::prepare_rt_buffers(nframes_t bufferSize)
+void TBufferedAudioStream::prepare_rt_buffers(nframes_t bufferSize)
 {
     Q_ASSERT(m_outputRate > 0);
 
@@ -87,7 +87,7 @@ void TAudioSource::prepare_rt_buffers(nframes_t bufferSize)
         }
     }
 
-    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+    m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
 
     delete_queue_buffers();
 
@@ -110,15 +110,15 @@ void TAudioSource::prepare_rt_buffers(nframes_t bufferSize)
     // We have to assign m_lastQueuedRTBufferSlot to an existing slot
     m_lastQueuedRTBufferSlot = slot;
 
-    m_bufferstatus.set_sync_status(TAudioSourceBufferStatus::SyncStatus::OUT_OF_SYNC);
+    m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
 
     // printf("AudioSource::::prepare_rt_buffers: freeBufferSlotsQueue slot count %zu\n", m_freeBufferSlotsQueue->size_approx());
     // printf("AudioSource::::prepare_rt_buffers: rtBufferSlotsQueue slot count %zu\n", m_rtBufferSlotsQueue->size_approx());
 }
 
-void TAudioSource::delete_queue_buffers()
+void TBufferedAudioStream::delete_queue_buffers()
 {
-    Q_ASSERT(m_bufferstatus.get_sync_status() == TAudioSourceBufferStatus::QUEUE_ABOUT_TO_BE_DELETED);
+    Q_ASSERT(m_bufferstatus.get_sync_status() == TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
 
     TQueueBufferSlot* slot;
 
@@ -145,7 +145,7 @@ void TAudioSource::delete_queue_buffers()
 
 
 
-void TAudioSource::set_name(const QString& name)
+void TBufferedAudioStream::set_name(const QString& name)
 {
 	m_name = name;
 	if (m_wasRecording) {
@@ -157,49 +157,49 @@ void TAudioSource::set_name(const QString& name)
 }
 
 
-void TAudioSource::set_dir(const QString& dir)
+void TBufferedAudioStream::set_dir(const QString& dir)
 {
 	m_dir = dir;
 	m_fileName = m_dir + m_name;
 }
 
 
-uint TAudioSource::get_sample_rate( ) const
+uint TBufferedAudioStream::get_sample_rate( ) const
 {
 	return m_rate;
 }
 
-void TAudioSource::set_original_bit_depth( uint bitDepth )
+void TBufferedAudioStream::set_original_bit_depth( uint bitDepth )
 {
 	m_origBitDepth = bitDepth;
 }
 
-void TAudioSource::set_created_by_sheet(qint64 id)
+void TBufferedAudioStream::set_created_by_sheet(qint64 id)
 {
 	m_origSheetId = id;
 }
 
-QString TAudioSource::get_filename( ) const
+QString TBufferedAudioStream::get_filename( ) const
 {
 	return m_fileName;
 }
 
-QString TAudioSource::get_dir( ) const
+QString TBufferedAudioStream::get_dir( ) const
 {
 	return m_dir;
 }
 
-QString TAudioSource::get_name( ) const
+QString TBufferedAudioStream::get_name( ) const
 {
 	return m_name;
 }
 
-uint TAudioSource::get_bit_depth( ) const
+uint TBufferedAudioStream::get_bit_depth( ) const
 {
 	return m_origBitDepth;
 }
 
-QString TAudioSource::get_short_name() const
+QString TBufferedAudioStream::get_short_name() const
 {
 	return m_shortName;
 }
