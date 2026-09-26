@@ -1,4 +1,7 @@
-SET(TRAVERSO_GUI_SOURCES
+# Define the graphical user interface source files for the main application executable.
+# Traverso.cpp is explicitly added here to ensure its member functions (such as shutdown
+# and create_interface) are compiled and linked into the final binary.
+set(TRAVERSO_GUI_SOURCES
     ${CMAKE_SOURCE_DIR}/src/common/fpu.cc
     Main.cpp
     TMainWindow.cpp
@@ -40,37 +43,40 @@ SET(TRAVERSO_GUI_SOURCES
     widgets/TContextHelpWidget.cpp
 )
 
-QT6_ADD_RESOURCES(TRAVERSO_RESOURCES ../../resources/traverso.qrc)
-
-ADD_EXECUTABLE(traverso
+# Define the primary application executable target and embed the Qt resource files
+add_executable(traverso
     ${TRAVERSO_GUI_SOURCES}
-    ${TRAVERSO_RESOURCES}
+    ../../resources/traverso.qrc
 )
 
+# Inherit global compiler configurations, flags, and C++17 standards
+target_link_libraries(traverso PRIVATE traverso_compiler_settings)
+
+# Configure compiler include path mappings for the local directory scope
 target_include_directories(traverso PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-TARGET_LINK_LIBRARIES(traverso
+# Link internal static sub-libraries and fundamental application dependencies
+target_link_libraries(traverso
     PRIVATE
         traversocore
         traversoaudiobackend
         traversoaudiofileio
         traversoplugins
-        tcp_traversocommands
         traversocommands
+        tcp_traversocommands
         traversosheetcanvas
         Qt6::Widgets
         Qt6::Xml
 )
 
-
-IF(WIN32)
+# System-level dependencies required for building on particular OS environments
+if(WIN32)
     target_link_libraries(traverso PRIVATE mp3lame brotlidec brotlicommon jbig lerc bz2 lzma deflate zstd tiff mpg123 opus winmm)
-ELSEIF(APPLE)
+elseif(APPLE)
     target_link_libraries(traverso PRIVATE "-framework CoreFoundation" "-framework Accelerate" "-framework ApplicationServices" dl)
-ELSE()
+else()
     target_link_libraries(traverso PRIVATE dl)
-ENDIF()
+endif()
 
-SET(EXE_NAME "traverso${TAG_VERSION}")
-INSTALL(TARGETS traverso RUNTIME DESTINATION bin)
-
+# Installation target rule definitions
+install(TARGETS traverso RUNTIME DESTINATION bin)

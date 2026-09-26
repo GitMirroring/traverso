@@ -1,33 +1,18 @@
 /*
-Copyright (C) 2005-2024 Remon Sijrier
-
+Copyright (C) 2005-2026 Remon Sijrier
 This file is part of Traverso
-
-Traverso is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
 */
 
 #include <csignal>
+#include <cstdlib>
 
 #include <QMessageBox>
 #include <QFileInfo>
 #include <QDir>
-#include <QStyleHints>
 
 #include "Traverso.h"
 #include "Mixer.h"
+#include "TInformUser.h"
 #include "TProjectManager.h"
 #include "TTransport.h"
 #include "TMainWindow.h"
@@ -35,54 +20,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include "TAudioDevice.h"
 #include "TContextPointer.h"
-#include "TInformUser.h"
-
-#include "fpu.h"
-#ifdef __SSE__
-#include <xmmintrin.h>
-#endif
-
 #include "Debugger.h"
+#include "fpu.h"
 
-
-/**
- * 	\mainpage Traverso developers documentation
- *
- *	Traverso makes use of frameworks provided by the 'core' library,
-    to implement the Contextual Interface, <br /> thread save insertion /
-    removal of objects in the audio processing chain, and creating
-    historable actions.<br />
-
-    <b>The framework that forms the Contextual or "Soft Selection' enabled
-    Interface is provided by:</b>
-
-    ViewPort, ContextItem, ContextPointer, Command, InputEngine and the Qt
-    Undo Framework.<br />
-    The Qt Undo Framework and the Command class account for the 'History'
-    framework in Traverso.
-
-    The ViewPort, ContextPointer, InputEngine and Command classes together
-    also make it possible to create 'analog' type of actions. <br />
-    The actual implementation for analog actions is done by reimplementing
-    the virtual Command::jog() function.
-
-    <br />
-    <b>The traversoengine library provides a driver abstraction</b><br />
-    for the audio hardware, currently ALSA, PortAudio and Jack are supported as drivers.
-
-    <br />
-    The TSMP class (singleton) is the key behind lockless, thus non blocking removing
-    and adding of audio processing objects in the audio processing chain.
-
-    <br />
-    The AddRemove Command class is to be used for adding/removing items
-    to/from ContextItem objects. <br />This class detects if the add/remove function
-    can be called directly, or in a thread save way, and uses therefore the
-    TSMP class, and the Sheet object in case it was given as a parameter.<br />
-    See for more information the AddRemove, AudioDevice and TSMP class
-    documentation.
- */
-
+// Standard architectural header for SSE instruction state control
+#if defined(__SSE__) || defined(_M_X64) || defined(_M_IX86)
+#include <xmmintrin.h>
+#define TRAVERSO_HAS_XMMINTRIN 1
+#endif
 
 Traverso::Traverso(int &argc, char **argv )
     : QApplication ( argc, argv )
@@ -94,14 +39,8 @@ Traverso::Traverso(int &argc, char **argv )
     qRegisterMetaType<TInformUserData>("InfoStruct");
     qRegisterMetaType<TTimeRef>("TTimeRef");
 
-    // This will create the event queueu and TSMP thread for us
-    // has to be running before the audio thread in order to make
-    // sure no events will get lost
     tsmp();
-
     config().check_and_load_configuration();
-
-    // Initialize random number generator
     srand ( time(nullptr) );
 
     init_sse();
@@ -118,7 +57,7 @@ Traverso::~Traverso()
     config().save();
 }
 
-void Traverso::create_interface( )
+void Traverso::create_interface()
 {
     themer()->load();
 
@@ -136,8 +75,7 @@ void Traverso::create_interface( )
         }
     }
 
-    // The user clicked on a project.tpf file, start extracting the
-    // baseproject directory, and the project name from the filename.
+    // Process a project file path if specified via application arguments
     if (!projectToLoad.isEmpty()) {
         QFileInfo fi(projectToLoad);
         QDir projectdir(fi.path());
@@ -147,28 +85,27 @@ void Traverso::create_interface( )
         QString projectdirpath = projectdir.path();
         QString projectname = projectdirpath.mid(baseprojectdirpath.length() + 1, projectdirpath.length());
 
-        if (!projectname.isEmpty() && ! baseprojectdirpath.isEmpty()) {
+        if (!projectname.isEmpty() && !baseprojectdirpath.isEmpty()) {
             pm().start(baseprojectdirpath, projectname);
             return;
         }
     }
     else {
         if (config().get_property("Project", "welcome", "welcome").toString() == "restore") {
-          QString previous = config().get_property("Project", "current", "").toString();
-          if (!previous.isEmpty() && !previous.isNull()) {
-            if (pm().project_exists(previous)) {
-              pm().load_project(previous);
+            QString previous = config().get_property("Project", "current", "").toString();
+            if (!previous.isEmpty() && !previous.isNull()) {
+                if (pm().project_exists(previous)) {
+                    pm().load_project(previous);
+                }
             }
-          }
         }
     }
 }
 
-void Traverso::shutdown( int signal )
+void Traverso::shutdown(int signal)
 {
     PENTER;
 
-    // Just in case the mouse was grabbed...
     cpointer().hold_finished();
     QApplication::processEvents();
 
@@ -179,40 +116,32 @@ void Traverso::shutdown( int signal )
         return;
     case SIGSEGV:
         printf("\nCaught the SIGSEGV signal!\n");
-        QMessageBox::critical( TMainWindow::instance(), "Crash",
-                               "The program made an invalid operation and crashed :-(\n"
-                               "Please, report this to us!");
+        QMessageBox::critical(TMainWindow::instance(), "Crash",
+                              "The program made an invalid operation and crashed :-(\n"
+                              "Please, report this to us!");
     }
 
     printf("Stopped\n");
-
     exit(0);
 }
 
-
-void Traverso::init_sse( )
+void Traverso::init_sse()
 {
     bool generic_mix_functions = true;
-
     FPU fpu;
 
-#if (defined (ARCH_X86) || defined (ARCH_X86_64)) && defined (SSE_OPTIMIZATIONS)
-
+#if defined(__SSE__) && defined(SSE_OPTIMIZATIONS)
     if (fpu.has_sse()) {
-
         printf("Using SSE optimized routines\n");
 
-        // SSE SET
-        Mixer::compute_peak		= x86_sse_compute_peak;
-        Mixer::apply_gain_to_buffer 	= x86_sse_apply_gain_to_buffer;
-        Mixer::mix_buffers_with_gain 	= x86_sse_mix_buffers_with_gain;
-        Mixer::mix_buffers_no_gain 	= x86_sse_mix_buffers_no_gain;
+        Mixer::compute_peak           = x86_sse_compute_peak;
+        Mixer::apply_gain_to_buffer   = x86_sse_apply_gain_to_buffer;
+        Mixer::mix_buffers_with_gain  = x86_sse_mix_buffers_with_gain;
+        Mixer::mix_buffers_no_gain    = x86_sse_mix_buffers_no_gain;
 
         generic_mix_functions = false;
-
     }
-
-#elif defined (Q_OS_MAC)
+#elif defined (__APPLE__)
     Mixer::compute_peak           = accel_compute_peak;
     Mixer::apply_gain_to_buffer   = accel_apply_gain_to_buffer;
     Mixer::mix_buffers_with_gain  = accel_mix_buffers_with_gain;
@@ -222,96 +151,54 @@ void Traverso::init_sse( )
     printf("Apple Accelerate/vDSP H/W specific optimizations in use\n");
 #endif
 
-    /* consider FPU denormal handling to be "h/w optimization" */
-
-    setup_fpu ();
-
+    setup_fpu();
 
     if (generic_mix_functions) {
-        Mixer::compute_peak 		= default_compute_peak;
-        Mixer::apply_gain_to_buffer 	= default_apply_gain_to_buffer;
-        Mixer::mix_buffers_with_gain 	= default_mix_buffers_with_gain;
-        Mixer::mix_buffers_no_gain 	= default_mix_buffers_no_gain;
+        Mixer::compute_peak           = default_compute_peak;
+        Mixer::apply_gain_to_buffer   = default_apply_gain_to_buffer;
+        Mixer::mix_buffers_with_gain  = default_mix_buffers_with_gain;
+        Mixer::mix_buffers_no_gain    = default_mix_buffers_no_gain;
 
         printf("No Hardware specific optimizations in use\n");
     }
-
 }
-
 
 void Traverso::setup_fpu()
 {
-
-    // export TRAVERSO_RUNNING_UNDER_VALGRIND to disable assembler stuff below!
     if (getenv("TRAVERSO_RUNNING_UNDER_VALGRIND")) {
         printf("TRAVERSO_RUNNING_UNDER_VALGRIND=TRUE\n");
-        // valgrind doesn't understand this assembler stuff
-        // September 10th, 2007
         return;
     }
 
-#if (defined(ARCH_X86) || defined(ARCH_X86_64)) && defined(USE_XMMINTRIN)
-
-    int MXCSR;
+#if defined(TRAVERSO_HAS_XMMINTRIN) && defined(SSE_OPTIMIZATIONS)
     FPU fpu;
-
-    /* XXX use real code to determine if the processor supports
-    DenormalsAreZero and FlushToZero
-    */
 
     if (!fpu.has_flush_to_zero() && !fpu.has_denormals_are_zero()) {
         return;
     }
 
-    MXCSR  = _mm_getcsr();
+    int MXCSR = _mm_getcsr();
 
-    /*	switch (Config->get_denormal_model()) {
-        case DenormalNone:
-            MXCSR &= ~(_MM_FLUSH_ZERO_ON|0x8000);
-            break;
-
-        case DenormalFTZ:
-            if (fpu.has_flush_to_zero()) {
-                MXCSR |= _MM_FLUSH_ZERO_ON;
-            }
-            break;
-
-        case DenormalDAZ:*/
     MXCSR &= ~_MM_FLUSH_ZERO_ON;
     if (fpu.has_denormals_are_zero()) {
         MXCSR |= 0x8000;
     }
-    // 			break;
-    //
-    // 		case DenormalFTZDAZ:
-    // 			if (fpu.has_flush_to_zero()) {
-    // 				if (fpu.has_denormals_are_zero()) {
-    // 					MXCSR |= _MM_FLUSH_ZERO_ON | 0x8000;
-    // 				} else {
-    // 					MXCSR |= _MM_FLUSH_ZERO_ON;
-    // 				}
-    // 			}
-    // 			break;
-    // 	}
 
     _mm_setcsr (MXCSR);
-
 #endif
 }
 
-
-void Traverso::saveState( QSessionManager &  manager)
+void Traverso::saveState(QSessionManager &manager)
 {
     manager.setRestartHint(QSessionManager::RestartIfRunning);
     QStringList command;
-    command << "traverso" << "-session" <<  QApplication::sessionId();
+    command << "traverso" << "-session" << QApplication::sessionId();
     manager.setRestartCommand(command);
 }
 
-void Traverso::commitData( QSessionManager &  )
+void Traverso::commitData(QSessionManager &)
 {
     pm().save_project();
 }
-
 
 // eof

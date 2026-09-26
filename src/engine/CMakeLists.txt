@@ -1,4 +1,5 @@
-SET(TRAVERSO_ENGINE_SOURCES
+# Accumulate implementation file lists handling physical audio transport processes
+set(TRAVERSO_ENGINE_SOURCES
     AudioBus.cpp
     AudioChannel.cpp
     TAudioDeviceSetup.cpp
@@ -12,9 +13,11 @@ SET(TRAVERSO_ENGINE_SOURCES
     memops.cpp
 )
 
-SET(TRAVERSO_ENGINE_LIBRARY "traversoaudiobackend")
-ADD_LIBRARY(${TRAVERSO_ENGINE_LIBRARY} STATIC ${TRAVERSO_ENGINE_SOURCES})
+# Define the driver abstraction and sound routing engine library
+add_library(traversoaudiobackend STATIC ${TRAVERSO_ENGINE_SOURCES})
+target_link_libraries(traversoaudiobackend PRIVATE traverso_compiler_settings)
 
+# Expose internal directories and cross-module entry mappings
 target_include_directories(traversoaudiobackend
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -22,6 +25,7 @@ target_include_directories(traversoaudiobackend
         ${CMAKE_SOURCE_DIR}/src/common
 )
 
+# Establish required upstream structural linkages
 target_link_libraries(traversoaudiobackend
     PUBLIC
         Qt6::Core
@@ -31,27 +35,28 @@ target_link_libraries(traversoaudiobackend
         traversocore
 )
 
-IF(ALSA_FOUND)
+# Process platform drivers contextually based on package scanning outcomes
+if(TARGET PkgConfig::ALSA)
     target_sources(traversoaudiobackend PRIVATE TAlsaDriver.cpp)
     target_link_libraries(traversoaudiobackend PUBLIC PkgConfig::ALSA)
-ENDIF()
+endif()
 
-IF(JACK_FOUND)
+if(TARGET PkgConfig::JACK)
     target_sources(traversoaudiobackend PRIVATE TJackDriver.cpp)
     target_link_libraries(traversoaudiobackend PUBLIC PkgConfig::JACK)
-ENDIF()
+endif()
 
-IF(PIPEWIRE_FOUND)
+if(TARGET PkgConfig::PIPEWIRE)
     target_sources(traversoaudiobackend PRIVATE TPipeWireDriver.cpp)
     target_link_libraries(traversoaudiobackend PUBLIC PkgConfig::PIPEWIRE)
-ENDIF()
+endif()
 
-IF(PORTAUDIO_FOUND)
+if(TARGET PkgConfig::PORTAUDIO)
     target_sources(traversoaudiobackend PRIVATE TPortAudioDriver.cpp)
     target_link_libraries(traversoaudiobackend PUBLIC PkgConfig::PORTAUDIO)
-ENDIF()
+endif()
 
-IF(WANT_COREAUDIO AND APPLE)
+if(WANT_COREAUDIO AND APPLE)
     target_sources(traversoaudiobackend PRIVATE TCoreAudioDriver.cpp)
     target_link_libraries(traversoaudiobackend PUBLIC "-framework CoreAudio" "-framework AudioToolbox")
-ENDIF()
+endif()

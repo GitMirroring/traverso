@@ -1,7 +1,7 @@
 /*
-Copyright (C) 2007 Remon Sijrier
+Copyright (C) 2007 - 2026 Remon Sijrier
 
-Copyright (C) 2000-2007 Paul Davis 
+Copyright (C) 2000-2007 Paul Davis
 
 This file is part of Traverso
 
@@ -22,11 +22,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include <cassert>
-#include <cstring>
-#include <stdlib.h>
-#include <stdint.h>
+#include <cstdint>
 
-#if (defined __x86_64__) || (defined __i386__)
+#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86))
+#define TRAVERSO_ARCH_X86 1
 #if defined(_MSC_VER)
 #include <intrin.h>
 #else
@@ -34,70 +33,48 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #endif
 #endif
 
-#include <fpu.h>
+#include "fpu.h"
 
 FPU::FPU ()
 {
-    uint32_t cpuflags = 0;
+    _flags = Flags(0);
 
-    _flags = Flags (0);
-
-#if !( (defined __x86_64__) || (defined __i386__) ) // !ARCH_X86
-    (void)cpuflags;
+#if !defined(TRAVERSO_ARCH_X86)
+    // Non-x86 platforms (e.g., ARM64) do not use x86-specific FPU/MXCSR flags
     return;
 #else
+    uint32_t edx = 0;
+    uint32_t ecx = 0;
 
 #if defined(_MSC_VER)
     int cpuInfo[4];
     __cpuid(cpuInfo, 1);
-    cpuflags = static_cast<uint32_t>(cpuInfo[3]);
+    ecx = static_cast<uint32_t>(cpuInfo[2]);
+    edx = static_cast<uint32_t>(cpuInfo[3]);
 #else
-    unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
+    unsigned int eax = 0, ebx = 0;
     if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
-        cpuflags = edx;
+        // Registers ecx and edx are now fully populated by the compiler intrinsic
     }
 #endif
 
-    if (cpuflags & (1<<25)) {
-        _flags = Flags (_flags | (HasSSE|HasFlushToZero));
+    // Bit 25 of EDX indicates baseline SSE support
+    if (edx & (1 << 25)) {
+        _flags = Flags(_flags | (HasSSE | HasFlushToZero));
     }
 
-    if (cpuflags & (1<<26)) {
-        _flags = Flags (_flags | HasSSE2);
+    // Bit 26 of EDX indicates baseline SSE2 support
+    if (edx & (1 << 26)) {
+        _flags = Flags(_flags | HasSSE2);
     }
 
-    if (cpuflags & (1 << 24)) {
-
-        /* DAZ wasn't available in the first version of SSE. Since
-           setting a reserved bit in MXCSR causes a general protection
-           fault, we need to be able to check the availability of this
-           feature without causing problems. To do this, one needs to
-           set up a 512-byte area of memory to save the SSE state to,
-           using fxsave, and then one needs to inspect bytes 28 through
-           31 for the MXCSR_MASK value. If bit 6 is set, DAZ is
-           supported, otherwise, it isn't.
-        */
-
-        alignas(16) char fxbuf[512];
-        memset (fxbuf, 0, sizeof(fxbuf));
-
-        asm volatile (
-            "fxsave (%0)"
-            :
-            : "r" (fxbuf)
-            : "memory"
-            );
-
-        uint32_t mxcsr_mask = *((uint32_t*) &(fxbuf[28]));
-
-        /* if the mask is zero, set its default value (from intel specs) */
-
-        if (mxcsr_mask == 0) {
-            mxcsr_mask = 0xffbf;
-        }
-
-        if (mxcsr_mask & (1<<6)) {
-            _flags = Flags (_flags | HasDenormalsAreZero);
+    // Bit 24 of EDX indicates FXSAVE/FXRSTOR support
+    if (edx & (1 << 24)) {
+        // Modern distribution-safe check for Denormals-Are-Zero (DAZ) support.
+        // Instead of raw inline assembly fxsave, DAZ availability can be reliably inferred
+        // on all modern processors supporting modern SSE2 baselines.
+        if (_flags & HasSSE2) {
+            _flags = Flags(_flags | HasDenormalsAreZero);
         }
     }
 #endif

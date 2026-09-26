@@ -1,4 +1,5 @@
-SET(TRAVERSO_SHEETCANVAS_SOURCES
+# Track visual design resources mapping spatial representation tracking tools
+set(TRAVERSO_SHEETCANVAS_SOURCES
     TAudioClipView.cpp
     TAudioTrackView.cpp
     TClipsViewPort.cpp
@@ -32,9 +33,11 @@ SET(TRAVERSO_SHEETCANVAS_SOURCES
     ClipTileCache.cpp
 )
 
-SET(TRAVERSO_SHEETCANVAS_LIBRARY "traversosheetcanvas")
-ADD_LIBRARY(${TRAVERSO_SHEETCANVAS_LIBRARY} STATIC ${TRAVERSO_SHEETCANVAS_SOURCES})
+# Define the dynamic timeline canvas representation pipeline structure
+add_library(traversosheetcanvas STATIC ${TRAVERSO_SHEETCANVAS_SOURCES})
+target_link_libraries(traversosheetcanvas PRIVATE traverso_compiler_settings)
 
+# Declare comprehensive inclusion references traversing the workspace architecture
 target_include_directories(traversosheetcanvas
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -50,12 +53,12 @@ target_include_directories(traversosheetcanvas
         ${CMAKE_SOURCE_DIR}/src/engine
 )
 
+# Connect supporting interface drawing mechanics to the canvas engine
 target_link_libraries(traversosheetcanvas
     PUBLIC
-    Qt6::Widgets
-    Qt6::Gui
-    Qt6::Xml
-    Qt6::Core
-    Qt6::Concurrent
+        Qt6::Widgets
+        Qt6::Gui
+        Qt6::Xml
+        Qt6::Core
+        Qt6::Concurrent
 )
-

@@ -1,20 +1,24 @@
-ENABLE_LANGUAGE(ASM)
+# Enable the hardware-level assembly compilation layer
+enable_language(ASM)
 
-SET(CORE_ASM_SOURCE "")
-IF(HOST_SUPPORTS_SSE)
-    IF(IS_ARCH_X86)
-        SET(CORE_ASM_SOURCE ${CMAKE_SOURCE_DIR}/src/common/sse_functions.S)
-    ENDIF()
-    IF(IS_ARCH_X86_64)
-        SET(CORE_ASM_SOURCE ${CMAKE_SOURCE_DIR}/src/common/sse_functions_64bit.S)
-    ENDIF()
-ENDIF()
+# Track relevant low-level optimization resource modules based on CPU indicators
+set(CORE_ASM_SOURCE "")
+if(WANT_SSE)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(CORE_ASM_SOURCE ${CMAKE_SOURCE_DIR}/src/common/sse_functions_64bit.S)
+    else()
+        set(CORE_ASM_SOURCE ${CMAKE_SOURCE_DIR}/src/common/sse_functions.S)
+    endif()
+endif()
 
-IF(CORE_ASM_SOURCE)
-    SET_SOURCE_FILES_PROPERTIES(${CORE_ASM_SOURCE} PROPERTIES LANGUAGE ASM)
-ENDIF()
+if(CORE_ASM_SOURCE)
+    set_source_files_properties(${CORE_ASM_SOURCE} PROPERTIES LANGUAGE ASM)
+endif()
 
-ADD_LIBRARY(traversocore STATIC
+# Define the central data structures and engine synchronization library.
+# TCommandPlugin.h is explicitly included in the sources list to force
+# Qt's AUTOMOC to parse its meta-object macros and generate the required vtable symbols.
+add_library(traversocore STATIC
     ${CMAKE_SOURCE_DIR}/src/common/Utils.cpp
     ${CMAKE_SOURCE_DIR}/src/common/TAudioThreadMessageQueue.cpp
     ${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
@@ -69,6 +73,10 @@ ADD_LIBRARY(traversocore STATIC
     ${CORE_ASM_SOURCE}
 )
 
+# Bind structural build directives and environmental variables
+target_link_libraries(traversocore PRIVATE traverso_compiler_settings)
+
+# Configure systemic directory mappings for internal header parsing structures
 target_include_directories(traversocore
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -82,6 +90,7 @@ target_include_directories(traversocore
         ${CMAKE_SOURCE_DIR}/src/plugins/native
 )
 
+# Connect user-interface frameworks and resampler packages to the target
 target_link_libraries(traversocore
     PUBLIC
         Qt6::Widgets

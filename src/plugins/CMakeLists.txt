@@ -1,4 +1,5 @@
-SET(TRAVERSO_PLUGINS_SOURCES
+# Accumulate module files related to signal processing extensions and analytics
+set(TRAVERSO_PLUGINS_SOURCES
     TAudioPluginChain.cpp
     TAudioPlugin.cpp
     PluginManager.cpp
@@ -13,9 +14,11 @@ SET(TRAVERSO_PLUGINS_SOURCES
     TAudioPluginOutputPort.cpp
 )
 
-SET(TRAVERSO_PLUGINS_LIBRARY "traversoplugins")
-ADD_LIBRARY(${TRAVERSO_PLUGINS_LIBRARY} STATIC ${TRAVERSO_PLUGINS_SOURCES})
+# Define the management framework for application processing effects
+add_library(traversoplugins STATIC ${TRAVERSO_PLUGINS_SOURCES})
+target_link_libraries(traversoplugins PRIVATE traverso_compiler_settings)
 
+# Configure scoped parameter visibility profiles across system subdirectories
 target_include_directories(traversoplugins
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/native
@@ -28,6 +31,7 @@ target_include_directories(traversoplugins
         ${CMAKE_SOURCE_DIR}/src/commands
 )
 
+# Map foundational transformation structures and metadata toolsets
 target_link_libraries(traversoplugins
     PUBLIC
         Qt6::Widgets
@@ -35,11 +39,8 @@ target_link_libraries(traversoplugins
         PkgConfig::FFTW3
 )
 
-IF(LIBLILV_FOUND)
+# Inject standard multi-channel system extensions if package targets resolve positively
+if(TARGET PkgConfig::LIBLILV)
     target_sources(traversoplugins PRIVATE LV2/LV2Plugin.cpp)
     target_link_libraries(traversoplugins PUBLIC PkgConfig::LIBLILV)
-ENDIF()
-
-IF(USE_INTERNAL_SLV2_LIB)
-    target_include_directories(traversoplugins PRIVATE ${CMAKE_SOURCE_DIR}/src/3rdparty/slv2)
-ENDIF()
+endif()

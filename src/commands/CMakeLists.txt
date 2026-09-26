@@ -1,4 +1,5 @@
-SET(TRAVERSO_COMMANDS_SOURCES
+# Define the static library that handles application command logic and event processing
+add_library(traversocommands STATIC
     ArrowKeyBrowser.cpp
     AudioClipExternalProcessing.cpp
     TAddRemoveCommand.cpp
@@ -29,8 +30,10 @@ SET(TRAVERSO_COMMANDS_SOURCES
     TMoveCommand.cpp
 )
 
-ADD_LIBRARY(traversocommands STATIC ${TRAVERSO_COMMANDS_SOURCES})
+# Inherit unified build parameters and standard configurations
+target_link_libraries(traversocommands PRIVATE traverso_compiler_settings)
 
+# Configure include directory scopes for internal compilation and linking targets
 target_include_directories(traversocommands
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -42,6 +45,7 @@ target_include_directories(traversocommands
         ${CMAKE_SOURCE_DIR}/src/audiofileio
 )
 
+# Link essential runtime libraries and external application frameworks
 target_link_libraries(traversocommands
     PUBLIC
         Qt6::Core
@@ -51,5 +55,5 @@ target_link_libraries(traversocommands
         Qt6::Gui
 )
 
-ADD_SUBDIRECTORY(plugins)
+add_subdirectory(plugins)
 
