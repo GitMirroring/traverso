@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2005-2024 Remon Sijrier
+Copyright (C) 2005-2026 Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef T_AUDIO_SOURCE_H
-#define T_AUDIO_SOURCE_H
+#pragma once
 
 #include "TBufferedAudioStreamStatus.h"
 #include "TFileIOBuffer.h"
@@ -98,5 +97,3 @@ private:
     virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
 };
 
-
-#endif

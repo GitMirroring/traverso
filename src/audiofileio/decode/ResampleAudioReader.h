@@ -29,11 +29,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class TAudioResampler;
 
-class ResampleAudioReader : public AbstractAudioReader
+class TResampleAudioReader : public AbstractAudioReader
 {
 public:
-    ResampleAudioReader(const QString &filename);
-    ~ResampleAudioReader();
+    TResampleAudioReader(const QString &filename);
+    ~TResampleAudioReader();
 
     nframes_t read_from(TFileIOBuffer& buffer, nframes_t start, nframes_t count) {
         return AbstractAudioReader::read_from(buffer, start, count);

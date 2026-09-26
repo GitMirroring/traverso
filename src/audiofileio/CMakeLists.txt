@@ -7,12 +7,14 @@ INCLUDE_DIRECTORIES(
 SET(TRAVERSO_AUDIOFILEIO_SOURCES
         decode/AbstractAudioReader.cpp
         decode/SFAudioReader.cpp
-        decode/ResampleAudioReader.cpp
+        decode/TResampleAudioReader.cpp
         decode/WPAudioReader.cpp
         decode/MadAudioReader.cpp
         encode/AbstractAudioWriter.cpp
         encode/SFAudioWriter.cpp
         encode/WPAudioWriter.cpp
+        encode/TResampleAudioWriter.h
+        encode/TResampleAudioWriter.cpp
         # encode/FlacAudioWriter.cpp
         # encode/VorbisAudioWriter.cpp
 )

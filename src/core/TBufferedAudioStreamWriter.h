@@ -16,27 +16,19 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
 */
 
-#ifndef TBUFFEREDAUDIOSTREAMWRITER_H
-#define TBUFFEREDAUDIOSTREAMWRITER_H
+#pragma once
 
 #include "TBufferedAudioStream.h"
 #include "TProcessCallBackData.h"
-#include "gdither_types.h"
-#include "TAudioBuffer.h"
-#include <memory>
-#include <vector>
 
 class TExportSpecification;
 class TPeak;
-class AbstractAudioWriter;
+class TResampleAudioWriter;
 class AudioBus;
-class TAudioResampler;
 class TFileIOBuffer;
 
-/// TBufferedAudioStreamWriter is an TBufferedAudioStream used for writing (recording, rendering) purposes
 class TBufferedAudioStreamWriter : public TBufferedAudioStream
 {
     Q_OBJECT
@@ -46,12 +38,10 @@ public :
     ~TBufferedAudioStreamWriter();
 
     nframes_t ringbuffer_write(TProcessCallBackData &processData);
-
     int rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer);
 
     TBufferedAudioStreamStatus& get_buffer_status() final;
-
-    TPeak* get_peak() {return m_peak;}
+    TPeak* get_peak() { return m_peak; }
 
     int prepare_export(TExportSpecification* specification);
     int finish_export();
@@ -59,25 +49,16 @@ public :
     void set_process_peaks(bool process);
     void set_recording(bool rec);
 
-    bool is_recording() const {return m_isRecording;}
+    bool is_recording() const { return m_isRecording; }
 
 private:
-    std::unique_ptr<AbstractAudioWriter>            m_writer;
+    std::unique_ptr<TResampleAudioWriter>           m_resampleWriter;
     TPeak*                                          m_peak;
-    TraversoDAW::DataFormat                 m_dataFormat;
 
-    uint32_t        m_sampleBytes;
     nframes_t       m_sampleRate;
-
-    GDither         m_dither;
-
     bool            m_processPeaks;
     bool            m_isRecording;
     bool            m_exportFinished{false};
-
-    // Correct Symmetric Placement: Mono resamplers live directly inside the source
-    std::vector<std::unique_ptr<TAudioResampler>>   m_exportResamplers;
-    TRealTimeAudioBuffer                            m_resampleOutputBuffer;
 
     TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
 
@@ -89,5 +70,3 @@ private:
 signals:
     void exportFinished();
 };
-
-#endif

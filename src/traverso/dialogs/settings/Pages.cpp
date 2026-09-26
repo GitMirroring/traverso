@@ -1075,7 +1075,7 @@ void RecordingConfigPage::load_config()
         wavpackCompressionComboBox->setCurrentIndex(2);
     }
 
-    int index = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
+    int index = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
     ontheflyResampleComboBox->setCurrentIndex(index);
 
     index = config().get_property("Conversion", "ExportResamplingConverterType", 1).toInt();
@@ -1096,7 +1096,7 @@ void RecordingConfigPage::save_config()
 void RecordingConfigPage::reset_default_config()
 {
     config().set_property("Conversion", "DynamicResampling", true);
-    config().set_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality());
+    config().set_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality());
     config().set_property("Conversion", "ExportResamplingConverterType", 1);
     config().set_property("Recording", "FileFormat", "wav");
     config().set_property("Recording", "WavpackCompressionType", "fast");

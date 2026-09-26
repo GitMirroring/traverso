@@ -52,13 +52,13 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
         sampleRateComboBox->addItem(local.toString(sampleRate), sampleRate);
     }
 
-    for (int convertorType : ResampleAudioReader::get_convertor_types()) {
-        resampleQualityComboBox->addItem(ResampleAudioReader::get_convertor_type_name(convertorType), convertorType);
+    for (int convertorType : TResampleAudioReader::get_convertor_types()) {
+        resampleQualityComboBox->addItem(TResampleAudioReader::get_convertor_type_name(convertorType), convertorType);
     }
 
     resampleQualityComboBox->setToolTipDuration(4000);
     connect(resampleQualityComboBox, &QComboBox::currentIndexChanged, this, [this]() {
-        resampleQualityComboBox->setToolTip(ResampleAudioReader::get_convertor_type_description(resampleQualityComboBox->currentIndex()));
+        resampleQualityComboBox->setToolTip(TResampleAudioReader::get_convertor_type_description(resampleQualityComboBox->currentIndex()));
     });
 
 	audioTypeComboBox->addItem("WAV", "wav");

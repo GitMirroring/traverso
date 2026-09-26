@@ -213,7 +213,7 @@ int TBufferedAudioStreamReader::init( )
         return (m_error = FILE_DOES_NOT_EXIST);
     }
 
-    m_resampleAudioReader = new ResampleAudioReader(m_fileName);
+    m_resampleAudioReader = new TResampleAudioReader(m_fileName);
 
     if (!m_resampleAudioReader->is_valid()) {
 //		PERROR("ReadSource:: audio reader is not valid! (reader channel count: %d, nframes: %d", m_audioReader->get_num_channels(), m_audioReader->get_nframes());
@@ -222,7 +222,7 @@ int TBufferedAudioStreamReader::init( )
         return (m_error = COULD_NOT_OPEN_FILE);
     }
 
-    int converterType = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
+    int converterType = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
     set_output_rate_and_convertor_type(m_resampleAudioReader->get_file_rate(), converterType);
 
     m_channelCount = m_resampleAudioReader->get_num_channels();

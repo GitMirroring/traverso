@@ -131,7 +131,7 @@ void TSheet::init()
     set_transport_locate_requested_state(false);
     set_transport_stop_requested_state(false);
 
-    int converter_type = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
+    int converter_type = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
     m_readDiskIO = new TDiskIOThread();
     m_readDiskIO->set_output_sample_rate(audiodevice().get_sample_rate());
     m_readDiskIO->set_resample_quality(converter_type);
@@ -965,7 +965,7 @@ void TSheet::set_transport_location(TTimeRef location)
 
 void TSheet::config_changed()
 {
-    int quality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
+    int quality = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
     if (m_readDiskIO->get_resample_quality() != quality) {
         m_readDiskIO->set_resample_quality(quality);
     }

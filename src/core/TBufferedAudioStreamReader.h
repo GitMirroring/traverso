@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomDocument>
 
 
-class ResampleAudioReader;
+class TResampleAudioReader;
 class AudioBus;
 class TLocation;
 
@@ -78,7 +78,7 @@ public :
 	
 	
 private:
-    ResampleAudioReader*        m_resampleAudioReader;
+    TResampleAudioReader*        m_resampleAudioReader;
     TLocation*                  m_location;
 
     int                 m_refcount;

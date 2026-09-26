@@ -945,10 +945,10 @@ void TMainWindow::create_menus( )
     m_resampleQualityMenu = menu->addMenu(tr("Resample &Quality"));
     m_resampleQualityMenu->setToolTipsVisible(true);
 
-    for (int convertorType : ResampleAudioReader::get_convertor_types()) {
-        action = m_resampleQualityMenu->addAction(ResampleAudioReader::get_convertor_type_name(convertorType));
+    for (int convertorType : TResampleAudioReader::get_convertor_types()) {
+        action = m_resampleQualityMenu->addAction(TResampleAudioReader::get_convertor_type_name(convertorType));
         action->setData(convertorType);
-        action->setToolTip(ResampleAudioReader::get_convertor_type_description(convertorType));
+        action->setToolTip(TResampleAudioReader::get_convertor_type_description(convertorType));
         connect(action, &QAction::triggered, this, [this, action, convertorType]() {
             config().set_property("Conversion", "RTResamplingConverterType", convertorType);
             save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
@@ -1265,7 +1265,7 @@ void TMainWindow::config_changed()
 		}
 	}
 
-    int quality = config().get_property("Conversion", "RTResamplingConverterType", ResampleAudioReader::get_default_resample_quality()).toInt();
+    int quality = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
 	actions = m_resampleQualityMenu->actions();
 
 	bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();

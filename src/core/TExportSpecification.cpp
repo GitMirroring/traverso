@@ -294,7 +294,7 @@ TraversoDAW::BitrateMode TExportSpecification::string_to_format(const QString &o
 
 void TExportSpecification::set_sample_rate_conversion_quality(int quality)
 {
-    Q_ASSERT(ResampleAudioReader::get_convertor_types().contains(quality));
+    Q_ASSERT(TResampleAudioReader::get_convertor_types().contains(quality));
     m_sampleRateConversionQuality = quality;
 }
 

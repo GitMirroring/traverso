@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 #include <samplerate.h>
 
-ResampleAudioReader::ResampleAudioReader(const QString& filename)
+TResampleAudioReader::TResampleAudioReader(const QString& filename)
     : AbstractAudioReader(filename)
 {
     m_reader = AbstractAudioReader::create_audio_reader(filename);
@@ -45,25 +45,25 @@ ResampleAudioReader::ResampleAudioReader(const QString& filename)
     m_convertorType = -1;
 }
 
-ResampleAudioReader::~ResampleAudioReader()
+TResampleAudioReader::~TResampleAudioReader()
 {
 }
 
-void ResampleAudioReader::clear_buffers()
+void TResampleAudioReader::clear_buffers()
 {
     if (m_reader) {
         m_reader->clear_buffers();
     }
 }
 
-void ResampleAudioReader::reset()
+void TResampleAudioReader::reset()
 {
     for (const auto& resampler : m_resamplers) {
             resampler->reset();
     }
 }
 
-void ResampleAudioReader::set_converter_type(int converterType)
+void TResampleAudioReader::set_converter_type(int converterType)
 {
     PENTER;
 
@@ -87,7 +87,7 @@ void ResampleAudioReader::set_converter_type(int converterType)
     seek_private(pos());
 }
 
-void ResampleAudioReader::set_output_rate(uint rate)
+void TResampleAudioReader::set_output_rate(uint rate)
 {
     if (!m_reader) return;
     if (m_outputSampleRate == rate) return;
@@ -104,7 +104,7 @@ void ResampleAudioReader::set_output_rate(uint rate)
     reset();
 }
 
-bool ResampleAudioReader::seek_private(nframes_t start)
+bool TResampleAudioReader::seek_private(nframes_t start)
 {
     Q_ASSERT(m_reader);
     if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
@@ -114,7 +114,7 @@ bool ResampleAudioReader::seek_private(nframes_t start)
     return m_reader->seek(resampled_to_file_frame(start));
 }
 
-nframes_t ResampleAudioReader::read_private(TFileIOBuffer& buffer, nframes_t frameCount)
+nframes_t TResampleAudioReader::read_private(TFileIOBuffer& buffer, nframes_t frameCount)
 {
     Q_ASSERT(m_reader);
 

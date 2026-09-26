@@ -16,35 +16,27 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
 */
 
 #include "TBufferedAudioStreamWriter.h"
 #include "TExportSpecification.h"
 #include "AudioBus.h"
 #include "TAudioDevice.h"
-#include "AbstractAudioWriter.h"
+#include "TResampleAudioWriter.h"
 #include "TPeak.h"
 #include "TQueueBufferSlot.h"
-#include "Debugger.h"
-#include "TAudioResampler.h"
 #include "TFileIOBuffer.h"
-#include "gdither.h"
-#include <cmath>
-#include <climits>
+#include "Debugger.h"
 
 TBufferedAudioStreamWriter::TBufferedAudioStreamWriter(const QString& exportDir, const QString &exportFileName)
     : TBufferedAudioStream(exportDir, exportFileName)
-    , m_resampleOutputBuffer(1)
 {
-    m_writer = nullptr;
+    m_resampleWriter = nullptr;
     m_peak = nullptr;
     m_channelCount = 0;
     m_isRecording = false;
-    m_dither = nullptr;
-    m_dataFormat = TraversoDAW::DataFormat::FLOAT;
-    m_sampleBytes = 0;
     m_sampleRate = 0;
+    m_processPeaks = false;
 }
 
 TBufferedAudioStreamWriter::~TBufferedAudioStreamWriter()
@@ -55,6 +47,27 @@ TBufferedAudioStreamWriter::~TBufferedAudioStreamWriter()
     }
 }
 
+int TBufferedAudioStreamWriter::prepare_export(TExportSpecification *specification)
+{
+    PENTER;
+    Q_ASSERT(specification->is_valid() == 1);
+
+    m_outputRate = specification->get_sample_rate();
+    m_channelCount = specification->get_channel_count();
+    m_sampleRate = audiodevice().get_sample_rate();
+
+    set_name(get_name() + specification->get_file_extension());
+    specification->print_export_data();
+
+    m_resampleWriter = std::make_unique<TResampleAudioWriter>(specification);
+    if (!m_resampleWriter->open(m_fileName, m_sampleRate)) {
+        PERROR("Write Source failed to open via TResampleAudioWriter");
+        return -1;
+    }
+
+    return 0;
+}
+
 int TBufferedAudioStreamWriter::finish_export()
 {
     PENTER;
@@ -63,16 +76,9 @@ int TBufferedAudioStreamWriter::finish_export()
         PERROR("WriteSource::finish_export : peak->finish_processing() failed!");
     }
 
-    if (m_writer) {
-        m_writer->close();
-        m_writer.reset();
-    }
-
-    m_exportResamplers.clear();
-
-    if (m_dither) {
-        gdither_free(m_dither);
-        m_dither = nullptr;
+    if (m_resampleWriter) {
+        m_resampleWriter->close();
+        m_resampleWriter.reset();
     }
 
     m_exportFinished = true;
@@ -81,68 +87,13 @@ int TBufferedAudioStreamWriter::finish_export()
     return 1;
 }
 
-int TBufferedAudioStreamWriter::prepare_export(TExportSpecification *specification)
-{
-    PENTER;
-    Q_ASSERT(specification->is_valid() == 1);
-
-    // FIXME Currently m_outputRae and m_sampleRate
-    // and TexportSpecification is unclear and hard coded rn
-
-    m_outputRate = specification->get_sample_rate();
-    m_channelCount = specification->get_channel_count();
-    m_sampleBytes = specification->get_sample_bytes();
-    m_dataFormat = specification->get_data_format();
-    m_sampleRate = audiodevice().get_sample_rate();
-
-    set_name(get_name() + specification->get_file_extension());
-
-    specification->print_export_data();
-
-    m_writer = AbstractAudioWriter::create_audio_writer(specification);
-    if (!m_writer->open(m_fileName)) {
-        PERROR("Write Source failed to open");
-        return -1;
-    }
-
-    m_exportResamplers.clear();
-
-    if (m_outputRate != m_sampleRate) {
-        double ratio = double(m_outputRate) / m_sampleRate;
-        // FIXME: Make backend user configurable
-        TAudioResampler::BackendType backend = TAudioResampler::BackendType::LIBSOXR;
-        int quality = specification->get_sample_rate_conversion_quality();
-
-        for (uint c = 0; c < m_channelCount; ++c) {
-            m_exportResamplers.push_back(std::make_unique<TAudioResampler>(
-                backend, ratio, quality, specification->get_block_size()
-                ));
-        }
-
-        nframes_t maxOutFramesPerChannel = nframes_t(specification->get_block_size() * ratio) + 64;
-        m_resampleOutputBuffer.resize(maxOutFramesPerChannel * m_channelCount);
-    }
-
-    if (m_dataFormat != TraversoDAW::DataFormat::FLOAT) {
-        m_dither = gdither_new(specification->get_dither_type(), m_channelCount, specification->get_dither_size(), specification->get_bit_depth());
-    } else {
-        m_dither = nullptr;
-    }
-
-    return 0;
-}
-
 int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer)
 {
-    nframes_t writtenFrames = 0;
-    uint chan;
     nframes_t nframes = slot->get_buffer_size();
 
-    nframes_t requiredInputSamples = nframes * m_channelCount;
+    fileIOBuffer.check_capacity(nframes * m_channelCount, m_channelCount);
 
-    fileIOBuffer.check_capacity(requiredInputSamples, m_channelCount);
-
-    for (chan = 0; chan < m_channelCount; ++chan) {
+    for (uint chan = 0; chan < m_channelCount; ++chan) {
         TAudioBuffer& targetChannelBuffer = fileIOBuffer.get_channel_buffer(chan);
         slot->read_buffer(targetChannelBuffer, chan, nframes);
 
@@ -151,108 +102,14 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
         }
     }
 
-    nframes_t targetFrames = nframes;
-    float* interleavedFloatBuffer = nullptr;
+    nframes_t writtenFrames = m_resampleWriter->write_planar(fileIOBuffer, nframes);
 
-    if (!m_exportResamplers.empty()) {
-        double ratio = double(m_outputRate) / m_sampleRate;
-        nframes_t maxExpectedOutFrames = nframes_t(nframes * ratio);
-        nframes_t requiredInterleavedSamples = maxExpectedOutFrames * m_channelCount;
-
-        fileIOBuffer.check_capacity(requiredInterleavedSamples, m_channelCount);
-        interleavedFloatBuffer = fileIOBuffer.get_file_io_interleaved_buffer().get_data(requiredInterleavedSamples);
-
-        nframes_t maxOutFramesPerChannel = m_resampleOutputBuffer.get_size() / m_channelCount;
-        float* baseResamplePtr = m_resampleOutputBuffer.get_data(m_resampleOutputBuffer.get_size());
-
-        for (chan = 0; chan < m_channelCount; ++chan) {
-            float* inputMonoData = fileIOBuffer.get_channel_buffer(chan).get_data(nframes);
-            float* outputMonoTarget = baseResamplePtr + (chan * maxOutFramesPerChannel);
-
-            targetFrames = m_exportResamplers[chan]->process(
-                inputMonoData, nframes, outputMonoTarget, maxOutFramesPerChannel, false
-                );
-        }
-
-        if (targetFrames > 0) {
-            for (chan = 0; chan < m_channelCount; chan++) {
-                float* monoChannelBase = baseResamplePtr + (chan * maxOutFramesPerChannel);
-                for (uint f = 0; f < targetFrames; f++) {
-                    interleavedFloatBuffer[f * m_channelCount + chan] = monoChannelBase[f];
-                }
-            }
-        }
-    } else {
-        nframes_t requiredInterleavedSamples = nframes * m_channelCount;
-        fileIOBuffer.check_capacity(requiredInterleavedSamples, m_channelCount);
-        interleavedFloatBuffer = fileIOBuffer.get_file_io_interleaved_buffer().get_data(requiredInterleavedSamples);
-
-        for (chan = 0; chan < m_channelCount; chan++) {
-            auto readBuffer = fileIOBuffer.get_channel_buffer(chan).get_data(nframes);
-            for (uint f = 0; f < nframes; f++) {
-                interleavedFloatBuffer[f * m_channelCount + chan] = readBuffer[f];
-            }
-        }
-    }
-
-    if (targetFrames == 0) {
+    if (writtenFrames != nframes) {
+        PERROR(QString("Export write failure! Requested: %1, Written: %2").arg(nframes).arg(writtenFrames));
         return 0;
     }
 
-    nframes_t finalInterleavedSamples = targetFrames * m_channelCount;
-
-    if (m_sampleBytes > 0) {
-        fileIOBuffer.check_packed_byte_capacity(finalInterleavedSamples * m_sampleBytes);
-    }
-
-    void* packedOutputBuffer = fileIOBuffer.get_packed_byte_buffer();
-
-    switch (m_dataFormat) {
-    case TraversoDAW::DataFormat::PCM_S8:
-    case TraversoDAW::DataFormat::PCM_16:
-    case TraversoDAW::DataFormat::PCM_24:
-        Q_ASSERT(m_dither);
-        Q_ASSERT(packedOutputBuffer);
-        for (uint chn = 0; chn < m_channelCount; ++chn) {
-            gdither_runf(m_dither, chn, targetFrames, interleavedFloatBuffer, packedOutputBuffer);
-        }
-        writtenFrames = m_writer->write(packedOutputBuffer, targetFrames);
-        break;
-
-    case TraversoDAW::DataFormat::PCM_32:
-    {
-        Q_ASSERT(packedOutputBuffer);
-        int32_t* ob = static_cast<int32_t*>(packedOutputBuffer);
-        const double int_max = double(INT_MAX);
-        const double int_min = double(INT_MIN);
-
-        for (uint chn = 0; chn < m_channelCount; ++chn) {
-            for (nframes_t x = 0; x < targetFrames; ++x) {
-                uint i = chn + (x * m_channelCount);
-
-                if (interleavedFloatBuffer[i] > 1.0f) {
-                    ob[i] = INT_MAX;
-                } else if (interleavedFloatBuffer[i] < -1.0f) {
-                    ob[i] = INT_MIN;
-                } else {
-                    if (interleavedFloatBuffer[i] >= 0.0f) {
-                        ob[i] = lrintf(int_max * interleavedFloatBuffer[i]);
-                    } else {
-                        ob[i] = -lrintf(int_min * interleavedFloatBuffer[i]);
-                    }
-                }
-            }
-        }
-    }
-        writtenFrames = m_writer->write(packedOutputBuffer, targetFrames);
-        break;
-
-    default: // TraversoDAW::DataFormat::FLOAT
-        writtenFrames = m_writer->write(interleavedFloatBuffer, targetFrames);
-        break;
-    }
-
-    return (writtenFrames == targetFrames) ? nframes : 0;
+    return nframes;
 }
 
 nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessCallBackData &processData)
@@ -260,19 +117,14 @@ nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessCallBackData &pro
     Q_ASSERT(m_rtBufferSlotsQueue);
     Q_ASSERT(m_freeBufferSlotsQueue);
 
-
     nframes_t nframes = processData.get_nframes_to_process();
     AudioBus* bus = processData.get_ringbuffer_write_bus();
     Q_ASSERT(bus);
     Q_ASSERT(bus->get_channel_count() == m_channelCount);
 
-    TQueueBufferSlot* slot = nullptr;
-
-    if ((slot = dequeue_from_free_queue(processData)) )
-    {
-        Q_ASSERT(slot);
-
-        for (uint chan=0; chan < m_channelCount; ++chan) {
+    TQueueBufferSlot* slot = dequeue_from_free_queue(processData);
+    if (slot) {
+        for (uint chan = 0; chan < m_channelCount; ++chan) {
             slot->write_buffer(processData.get_start_location(), TTimeRef(), bus->get_buffer(chan).get_data(nframes), chan, nframes);
         }
 
@@ -292,8 +144,7 @@ TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessCa
     TQueueBufferSlot* slot = nullptr;
 
     if (processData.get_is_real_time()) {
-        if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
-        }
+        m_freeBufferSlotsQueue->try_dequeue(slot);
     } else {
         auto startTime = TTimeRef::get_nanoseconds_since_epoch();
         m_freeBufferSlotsQueue->wait_dequeue(slot);
@@ -303,16 +154,16 @@ TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessCa
     return slot;
 }
 
-void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer)
+void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileIOBuffer)
 {
     if (m_exportFinished) {
         return;
     }
-    Q_ASSERT(m_writer);
+    Q_ASSERT(m_resampleWriter);
 
     TQueueBufferSlot* slot = nullptr;
     while (m_rtBufferSlotsQueue->try_dequeue(slot)) {
-        rb_file_write(slot, fileDecodeBuffer);
+        rb_file_write(slot, fileIOBuffer);
         m_freeBufferSlotsQueue->try_enqueue(slot);
     }
 
@@ -321,7 +172,7 @@ void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileDec
     }
 }
 
-void TBufferedAudioStreamWriter::set_process_peaks( bool process )
+void TBufferedAudioStreamWriter::set_process_peaks(bool process)
 {
     m_processPeaks = process;
 
@@ -330,7 +181,6 @@ void TBufferedAudioStreamWriter::set_process_peaks( bool process )
     }
 
     Q_ASSERT(!m_peak);
-
     m_peak = new TPeak(this);
 
     if (m_peak->prepare_processing(audiodevice().get_sample_rate()) < 0) {
@@ -338,26 +188,21 @@ void TBufferedAudioStreamWriter::set_process_peaks( bool process )
         m_processPeaks = false;
         delete m_peak;
         m_peak = nullptr;
-
-        return;
     }
 }
 
-void TBufferedAudioStreamWriter::set_recording(bool rec )
+void TBufferedAudioStreamWriter::set_recording(bool rec)
 {
     m_isRecording = rec;
 }
 
 TBufferedAudioStreamStatus& TBufferedAudioStreamWriter::get_buffer_status()
 {
-   m_bufferstatus.set_fill_status((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount);
-    // FIXME
-    // Ugly hack to let DiskIO keep calling process_realtime_buffers()
-    // which will then call finish_export()
+    m_bufferstatus.set_fill_status((m_freeBufferSlotsQueue->size_approx() * 100) / m_slotcount);
+
     if (!m_isRecording) {
         m_bufferstatus.set_fill_status(0);
     }
     m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::IN_SYNC);
     return m_bufferstatus;
 }
-
