@@ -56,14 +56,9 @@ public:
 	TAudioClip* new_audio_clip(const QString& name);
 	TAudioClip* get_clip(qint64 id);
 
-    bool get_source_name(qint64 id, QString& string);
-    bool get_source_short_name(qint64 id, QString& string);
-    bool get_source_file_name(qint64 id, QString& string);
-
 	void mark_clip_removed(TAudioClip* clip);
 	void mark_clip_added(TAudioClip* clip);
-    void set_source_for_clip(TAudioClip* clip, qint64 id);
-    bool set_file_for_source(const QString& fileName, qint64 id);
+    void set_source_for_clip(TAudioClip* clip, TBufferedAudioStreamReader *source);
 	void destroy_clip(TAudioClip* clip);
 	void remove_source(TBufferedAudioStreamReader* source);
 	
@@ -71,8 +66,6 @@ public:
 	bool is_source_in_use(qint64 id) const;
 
 	TBufferedAudioStreamReader* get_readsource(qint64 id);
-
-    TTimeRef get_source_length(qint64 sourceId);
 	
 	QList<TBufferedAudioStreamReader*> get_all_audio_sources() const;
 	QList<TAudioClip*> get_all_clips() const;

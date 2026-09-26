@@ -74,19 +74,20 @@ void ExternalProcessingDialog::prepare_for_external_processing()
 		statusText->setText(tr("You have to supply an argument before starting the external process!"));
 		return;
 	}
-	    
-    bool result = false;
-    qint64 id = m_acep->m_clip->get_readsource_id();
 
-    result = resources_manager()->get_source_name(id, m_filename);
-    if (!result) {
-        statusText->setText(tr("No Resource Found to work with"));
+    TBufferedAudioStreamReader* audioStreamReader = resources_manager()->get_readsource(m_acep->m_clip->get_readsource_id());
+
+    //This should NOT be possible, but just in case....
+    if (! audioStreamReader) {
+        qDebug("ExternalProcessing:: resources manager did NOT return a resource for the to be processed audioclip (%lld) !!!!\n", m_acep->m_clip->get_id());
         return;
     }
-    resources_manager()->get_source_short_name(id, m_newClipName);
-    m_newClipName.remove(".wav") + "-" + m_commandargs.simplified();
-    resources_manager()->get_source_file_name(id, m_infilename);
-	
+
+    m_filename = audioStreamReader->get_name();
+    m_newClipName= audioStreamReader->get_short_name().remove(".wav") + "-" + m_commandargs.simplified();
+
+    m_infilename = audioStreamReader->get_filename();
+
 	// remove the extension and any dots that might confuse the external program, append the 
 	// new name and again the extension.
 	m_outfilename = pm().get_project()->get_audiosources_dir() + 
@@ -208,7 +209,7 @@ void ExternalProcessingDialog::process_finished(int exitcode, QProcess::ExitStat
 	}
 		
 	m_acep->m_resultingclip = resources_manager()->new_audio_clip(m_newClipName);
-    resources_manager()->set_source_for_clip(m_acep->m_resultingclip, source->get_id());
+    resources_manager()->set_source_for_clip(m_acep->m_resultingclip, source);
 	// Clips live at project level, we have to set its Sheet, Track and ReadSource explicitely!!
 	m_acep->m_resultingclip->set_sheet(m_acep->m_clip->get_sheet());
 	m_acep->m_resultingclip->set_track(m_acep->m_clip->get_track());

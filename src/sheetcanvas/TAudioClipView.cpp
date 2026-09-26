@@ -835,42 +835,43 @@ TCommand * TAudioClipView::set_audio_file()
 {
     // FIXME this is not working for 2 reasons
     // 1. clicking on the clip has become another shortcut so this function will never be called
+    // 2. get_source_file_name(id, Qstring) and similar added functions broke ResourcesManager
 
     if (!m_clip->is_readsource_invalid()) {
         return ied().failure();
     }
 
-    QString fileName;
-    resources_manager()->get_source_file_name(m_clip->get_readsource_id(), fileName);
-    if ( ! fileName.isEmpty() ) {
-        return ied().failure();
-    }
+    // QString fileName;
+    // resources_manager()->get_source_file_name(m_clip->get_readsource_id(), fileName);
+    // if ( ! fileName.isEmpty() ) {
+    //     return ied().failure();
+    // }
 
-    fileName = QFileDialog::getOpenFileName(TMainWindow::instance(),
-                                                    tr("Reset Audio File for Clip: %1").arg(m_clip->get_name()),
-                                                    fileName,
-                                                    tr("Audio files (*.wav *.flac *.ogg *.mp3 *.wv *.w64 *.m4a *.aac)"));
+    // fileName = QFileDialog::getOpenFileName(TMainWindow::instance(),
+    //                                                 tr("Reset Audio File for Clip: %1").arg(m_clip->get_name()),
+    //                                                 fileName,
+    //                                                 tr("Audio files (*.wav *.flac *.ogg *.mp3 *.wv *.w64 *.m4a *.aac)"));
 
-    if (fileName.isEmpty()) {
-        tInformUser().information(tr("No file selected!"));
-        return ied().failure();
-    }
+    // if (fileName.isEmpty()) {
+    //     tInformUser().information(tr("No file selected!"));
+    //     return ied().failure();
+    // }
 
-    ;
+    // ;
 
-    if (resources_manager()->set_file_for_source(fileName, m_clip->get_readsource_id())) {
-        return ied().failure();
-    }
+    // if (resources_manager()->set_file_for_source(fileName, m_clip->get_readsource_id())) {
+    //     return ied().failure();
+    // }
 
-    resources_manager()->set_source_for_clip(m_clip, m_clip->get_readsource_id());
+    // resources_manager()->set_source_for_clip(m_clip, m_clip->get_readsource_id());
 
 
-    // FIXME This is a hack. When a ReadSource didn't have a valid file it wasn't added
-    // to DiskIO in AudioClip::set_sheet(). So when resetting the audiofile this solves it,
-    // but it's not the proper place to do so!!
-    m_clip->set_sheet(m_sheet);
+    // // FIXME This is a hack. When a ReadSource didn't have a valid file it wasn't added
+    // // to DiskIO in AudioClip::set_sheet(). So when resetting the audiofile this solves it,
+    // // but it's not the proper place to do so!!
+    // m_clip->set_sheet(m_sheet);
 
-    tInformUser().information(tr("Succesfully set AudioClip file to %1").arg(fileName));
+    // tInformUser().information(tr("Succesfully set AudioClip file to %1").arg(fileName));
 
     return ied().succes();
 }

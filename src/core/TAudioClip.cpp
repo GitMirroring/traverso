@@ -554,7 +554,7 @@ int TAudioClip::init_recording()
                 m_sheet->get_audio_sources_dir(),
                 m_name, channelcount, m_sheet->get_id());
 
-    resources_manager()->set_source_for_clip(this, rs->get_id());
+    resources_manager()->set_source_for_clip(this, rs);
 
     QString sourceid = QString::number(rs->get_id());
 
@@ -705,7 +705,7 @@ void TAudioClip::finish_write_source()
 
     m_recordingStatus = NO_RECORDING;
 
-    resources_manager()->set_source_for_clip(this, m_readSource->get_id());
+    resources_manager()->set_source_for_clip(this, m_readSource);
 
     emit recordingFinished(this);
 }

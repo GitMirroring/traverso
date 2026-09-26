@@ -101,7 +101,7 @@ void TAudioFileImportCommand::create_audioclip()
 {
 	Q_ASSERT(m_track);
 	m_clip = resources_manager()->new_audio_clip(m_name);
-    resources_manager()->set_source_for_clip(m_clip, m_readSource->get_id());
+    resources_manager()->set_source_for_clip(m_clip, m_readSource);
 	m_clip->set_sheet(m_track->get_sheet());
 	m_clip->set_track(m_track);
 	

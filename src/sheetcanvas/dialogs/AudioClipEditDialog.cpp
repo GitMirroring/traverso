@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioClipEditDialog.h"
 
 #include "TAudioClip.h"
+#include "TBufferedAudioStreamReader.h"
 #include "TFadeCurve.h"
 #include "TProjectManager.h"
 #include "TResourcesManager.h"
@@ -120,10 +121,8 @@ void AudioClipEditDialog::clip_state_changed()
 	}
 	
     clipGainSpinBox->setValue(Mixer::coefficient_to_dB(m_clip->get_gain()));
-    QString fileName;
-    resources_manager()->get_source_file_name(m_clip->get_readsource_id(), fileName);
-    sourceLineEdit->setText(fileName);
-    sourceLineEdit->setToolTip(fileName);
+    sourceLineEdit->setText(m_clip->get_readsource()->get_filename());
+    sourceLineEdit->setToolTip(m_clip->get_readsource()->get_filename());
     sampleRateLable->setText(QString::number(m_clip->get_rate() / 1000.0, 'f', 1) + " KHz");
 }
 
