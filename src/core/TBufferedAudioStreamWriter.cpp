@@ -86,11 +86,14 @@ int TBufferedAudioStreamWriter::prepare_export(TExportSpecification *specificati
     PENTER;
     Q_ASSERT(specification->is_valid() == 1);
 
-    m_outputRate = audiodevice().get_sample_rate();
+    // FIXME Currently m_outputRae and m_sampleRate
+    // and TexportSpecification is unclear and hard coded rn
+
+    m_outputRate = specification->get_sample_rate();
     m_channelCount = specification->get_channel_count();
     m_sampleBytes = specification->get_sample_bytes();
     m_dataFormat = specification->get_data_format();
-    m_sampleRate = specification->get_sample_rate();
+    m_sampleRate = audiodevice().get_sample_rate();
 
     set_name(get_name() + specification->get_file_extension());
 
@@ -105,7 +108,8 @@ int TBufferedAudioStreamWriter::prepare_export(TExportSpecification *specificati
     m_exportResamplers.clear();
 
     if (m_outputRate != m_sampleRate) {
-        double ratio = double(m_sampleRate) / m_outputRate;
+        double ratio = double(m_outputRate) / m_sampleRate;
+        // FIXME: Make backend user configurable
         TAudioResampler::BackendType backend = TAudioResampler::BackendType::LIBSOXR;
         int quality = specification->get_sample_rate_conversion_quality();
 
