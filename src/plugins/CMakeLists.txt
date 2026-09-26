@@ -43,7 +43,3 @@ ENDIF()
 IF(USE_INTERNAL_SLV2_LIB)
     target_include_directories(traversoplugins PRIVATE ${CMAKE_SOURCE_DIR}/src/3rdparty/slv2)
 ENDIF()
-
-IF(USE_PCH)
-    target_precompile_headers(traversoplugins REUSE_FROM traversocore)
-ENDIF()

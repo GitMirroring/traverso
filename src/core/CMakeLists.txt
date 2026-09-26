@@ -83,16 +83,11 @@ target_include_directories(traversocore
 )
 
 target_link_libraries(traversocore
-    PRIVATE
-        Qt6::Concurrent
     PUBLIC
         Qt6::Widgets
         Qt6::Gui
         Qt6::Xml
         Qt6::Core
+        Qt6::Concurrent
         PkgConfig::SOXR
 )
-
-IF(USE_PCH)
-    target_precompile_headers(traversocore PUBLIC ${CMAKE_SOURCE_DIR}/src/traverso/precompile.h)
-ENDIF()

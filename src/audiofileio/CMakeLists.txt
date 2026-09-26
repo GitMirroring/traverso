@@ -56,6 +56,3 @@ if(SOXR_FOUND)
     target_compile_definitions(traversoaudiofileio PUBLIC HAVE_SOXR)
 endif()
 
-IF(USE_PCH)
-    target_precompile_headers(traversoaudiofileio REUSE_FROM traversocore)
-ENDIF()

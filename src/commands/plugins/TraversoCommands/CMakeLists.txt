@@ -29,7 +29,3 @@ target_link_libraries(tcp_traversocommands
         Qt6::Xml
         Qt6::Core
 )
-
-IF(USE_PCH)
-    target_precompile_headers(tcp_traversocommands REUSE_FROM traversocore)
-ENDIF()

@@ -47,7 +47,6 @@ option(WANT_COREAUDIO "Include CoreAudio support (macOS)" ${DEFAULT_WANT_COREAUD
 option(WANT_LV2 "Include LV2 Plugin support" ${DEFAULT_WANT_LV2})
 option(WANT_M4A_DECODE "Include M4A/AAC decoding support (faad2)" ON)
 option(WANT_M4A_ENCODE "Include M4A/AAC encoding support (faac)" ON)
-option(WANT_PCH "Use precompiled headers" OFF)
 OPTION(WANT_DEBUG "Debug build" ON)
 OPTION(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug ouput on the command line" ON)
 OPTION(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)

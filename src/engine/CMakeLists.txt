@@ -24,10 +24,10 @@ target_include_directories(traversoaudiobackend
 
 target_link_libraries(traversoaudiobackend
     PUBLIC
-        PkgConfig::SNDFILE
-    PRIVATE
         Qt6::Core
         Qt6::Gui
+        PkgConfig::SNDFILE
+    PRIVATE
         traversocore
 )
 
@@ -54,8 +54,4 @@ ENDIF()
 IF(WANT_COREAUDIO AND APPLE)
     target_sources(traversoaudiobackend PRIVATE TCoreAudioDriver.cpp)
     target_link_libraries(traversoaudiobackend PUBLIC "-framework CoreAudio" "-framework AudioToolbox")
-ENDIF()
-
-IF(USE_PCH)
-    target_precompile_headers(traversoaudiobackend REUSE_FROM traversocore)
 ENDIF()

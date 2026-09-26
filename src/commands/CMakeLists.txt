@@ -53,6 +53,3 @@ target_link_libraries(traversocommands
 
 ADD_SUBDIRECTORY(plugins)
 
-IF(USE_PCH)
-    target_precompile_headers(traversocommands REUSE_FROM traversocore)
-ENDIF()

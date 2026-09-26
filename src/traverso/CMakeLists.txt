@@ -49,10 +49,6 @@ ADD_EXECUTABLE(traverso
 
 target_include_directories(traverso PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-IF(USE_PCH)
-    target_precompile_headers(traverso REUSE_FROM traversocore)
-ENDIF()
-
 TARGET_LINK_LIBRARIES(traverso
     PRIVATE
         traversocore
@@ -77,3 +73,4 @@ ENDIF()
 
 SET(EXE_NAME "traverso${TAG_VERSION}")
 INSTALL(TARGETS traverso RUNTIME DESTINATION bin)
+

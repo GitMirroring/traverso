@@ -52,12 +52,10 @@ target_include_directories(traversosheetcanvas
 
 target_link_libraries(traversosheetcanvas
     PUBLIC
-        Qt6::Xml
-    PRIVATE
-        Qt6::Widgets
-        Qt6::Gui
+    Qt6::Widgets
+    Qt6::Gui
+    Qt6::Xml
+    Qt6::Core
+    Qt6::Concurrent
 )
 
-IF(USE_PCH)
-    target_precompile_headers(traversosheetcanvas REUSE_FROM traversocore)
-ENDIF()
