@@ -24,8 +24,11 @@ Makefile
 /bin
 /lib
 /build
+/debian
 Traverso.app
 *.[oa]
+/.qtcreator
+CMakeLists.txt.user
 
 /src/traverso/qrc_traverso.cxx
 qrc_*
@@ -33,3 +36,4 @@ moc_*.cxx
 ui_*.h
 *autogen*
 *.depends
+*.user
