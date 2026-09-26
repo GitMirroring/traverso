@@ -13,10 +13,7 @@ SET(TRAVERSO_AUDIOFILEIO_SOURCES
         encode/AbstractAudioWriter.cpp
         encode/SFAudioWriter.cpp
         encode/WPAudioWriter.cpp
-        encode/TResampleAudioWriter.h
         encode/TResampleAudioWriter.cpp
-        # encode/FlacAudioWriter.cpp
-        # encode/VorbisAudioWriter.cpp
 )
 
 IF(HAVE_MP3_ENCODING)
@@ -39,15 +36,10 @@ SET(TRAVERSO_AUDIOFILEIO_SOURCES
         decode/FaadAudioReader.cpp
         decode/minimp4.h
 )
-SET(TR)
 ENDIF(HAVE_M4A_DECODING)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SOXR REQUIRED IMPORTED_TARGET soxr)
 
 
 SET(TRAVERSO_AUDIOFILEIO_LIBRARY "traversoaudiofileio")
-
 ADD_LIBRARY(${TRAVERSO_AUDIOFILEIO_LIBRARY} STATIC ${TRAVERSO_AUDIOFILEIO_SOURCES})
 
 if(HAVE_M4A_DECODING)
