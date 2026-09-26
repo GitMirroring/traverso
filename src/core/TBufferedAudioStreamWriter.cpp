@@ -155,8 +155,8 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
     float* interleavedFloatBuffer = nullptr;
 
     if (!m_exportResamplers.empty()) {
-        double ratio = double(m_sampleRate) / m_outputRate;
-        nframes_t maxExpectedOutFrames = nframes_t(nframes * ratio) + 64;
+        double ratio = double(m_outputRate) / m_sampleRate;
+        nframes_t maxExpectedOutFrames = nframes_t(nframes * ratio);
         nframes_t requiredInterleavedSamples = maxExpectedOutFrames * m_channelCount;
 
         fileIOBuffer.check_capacity(requiredInterleavedSamples, m_channelCount);
