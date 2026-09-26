@@ -1,4 +1,3 @@
-# Accumulate module files related to signal processing extensions and analytics
 set(TRAVERSO_PLUGINS_SOURCES
     TAudioPluginChain.cpp
     TAudioPlugin.cpp
@@ -13,18 +12,17 @@ set(TRAVERSO_PLUGINS_SOURCES
     TAudioPluginInputPort.cpp
     TAudioPluginOutputPort.cpp
 )
-
 # Define the management framework for application processing effects
 add_library(traversoplugins STATIC ${TRAVERSO_PLUGINS_SOURCES})
 target_link_libraries(traversoplugins PRIVATE traverso_compiler_settings)
 
 # Configure scoped parameter visibility profiles across system subdirectories
+# Public scopes allow components like dialogs/ to locate internal plugin headers
 target_include_directories(traversoplugins
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/native
-        ${CMAKE_CURRENT_SOURCE_DIR}/LV2
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/native
+        ${CMAKE_CURRENT_SOURCE_DIR}/LV2
         ${CMAKE_SOURCE_DIR}/src/core
         ${CMAKE_SOURCE_DIR}/src/common
         ${CMAKE_SOURCE_DIR}/src/engine

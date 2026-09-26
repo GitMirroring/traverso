@@ -2,13 +2,37 @@ Source: traverso
 Section: sound
 Priority: optional
 Maintainer: Nicola Doebelin <nicola@doebelin.org>
-Build-Depends: debhelper (>= 4.0.0), libqt4-dev (>= 4.2.3), libsndfile1-dev, libsamplerate0-dev, libjack0.100.0-dev, libasound2-dev, fftw3-dev (>= 3.1), librdf0-dev (>= 1.0.4), libmad0-dev, libvorbis-dev, libflac++-dev, libwavpack-dev
-Standards-Version: 3.6.2
+Build-Depends: debhelper-compat (= 13),
+               cmake,
+               pkg-config,
+               qt6-base-dev,
+               qt6-declarative-dev,
+               libqt6core6,
+               libqt6widgets6,
+               libqt6xml6,
+               libsoxr-dev,
+               libsndfile1-dev (>= 1.1.0),
+               libwavpack-dev (>= 5.6.0),
+               libfftw3-dev (>= 3.0.0),
+               libsamplerate0-dev,
+               libmad0-dev,
+               libfaad-dev,
+               libfaac-dev,
+               libasound2-dev (>= 1.0.0),
+               libjack-jackd2-dev (>= 0.100),
+               libpipewire-0.3-dev,
+               libportaudio2,
+               portaudio19-dev,
+               lilv-utils,
+               liblilv-dev (>= 0.4.4)
+Standards-Version: 4.6.2
+Homepage: https://traverso-daw.org
 
 Package: traverso
 Architecture: any
-Depends: ${shlibs:Depends}, cdrdao, sox
-Description: A multitrack audio recorder/editor
- Traverso is a multitrack audio recorder and editor
- with a very clean and intuative interface which supports
- ALSA and Jack as the sound driver.
+Depends: ${shlibs:Depends}, ${misc:Depends}, cdrdao, sox
+Description: Modern multitrack audio recorder and editor
+ Traverso is a multitrack audio recorder and editor with a clean,
+ high-performance interface. It features full support for modern
+ audio infrastructures like PipeWire, JACK, ALSA, and PortAudio,
+ alongside dynamic LV2 plugin hosting and high-quality resampling.

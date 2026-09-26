@@ -1,6 +1,4 @@
 # Define the graphical user interface source files for the main application executable.
-# Traverso.cpp is explicitly added here to ensure its member functions (such as shutdown
-# and create_interface) are compiled and linked into the final binary.
 set(TRAVERSO_GUI_SOURCES
     ${CMAKE_SOURCE_DIR}/src/common/fpu.cc
     Main.cpp
@@ -78,5 +76,5 @@ else()
     target_link_libraries(traverso PRIVATE dl)
 endif()
 
-# Installation target rule definitions
-install(TARGETS traverso RUNTIME DESTINATION bin)
+# Installation target rule utilizing standard GNU directory variables
+install(TARGETS traverso RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

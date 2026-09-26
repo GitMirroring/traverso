@@ -10,6 +10,12 @@ project(traverso
 set(VERSION_SUFFIX "-git-01-11-2010")
 set(TRAVERSO_FULL_VERSION "${PROJECT_VERSION}${VERSION_SUFFIX}")
 
+# Include GNU standard installation directories for distribution layout compliance
+include(GNUInstallDirs)
+
+# Allow CMake to look inside the local 'cmake' directory for custom modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 # ---------------------------------------------------------------------------
 # Platform-Specific Audio Backend Defaults
 # ---------------------------------------------------------------------------
@@ -31,7 +37,7 @@ elseif(WIN32)
     set(DEFAULT_WANT_COREAUDIO OFF)
     set(DEFAULT_WANT_LV2 OFF)
     set(DEFAULT_WANT_SSE OFF)
-else() # Linux / Unix
+else() # Linux / Unix distributions
     set(DEFAULT_WANT_ALSA ON)
     set(DEFAULT_WANT_JACK ON)
     set(DEFAULT_WANT_PIPEWIRE ON)
@@ -52,18 +58,17 @@ option(WANT_COREAUDIO "Include CoreAudio support (macOS)" ${DEFAULT_WANT_COREAUD
 option(WANT_LV2 "Include LV2 Plugin support" ${DEFAULT_WANT_LV2})
 option(WANT_M4A_DECODE "Include M4A/AAC decoding support (faad2)" ON)
 option(WANT_M4A_ENCODE "Include M4A/AAC encoding support (faac)" ON)
-option(WANT_DEBUG "Debug build" ON)
+option(WANT_DEBUG "Debug build" OFF) # Production packages default to system flags
 option(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug output on the command line" ON)
 option(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)
 option(WANT_THREAD_CHECK "Enable runtime thread checks for debugging" OFF)
 option(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu" OFF)
 option(WANT_SSE "Use SSE instruction set optimizations" ${DEFAULT_WANT_SSE})
+option(ENABLE_ASAN "Enable AddressSanitizer for memory debugging (Development only)" OFF)
 
 # ---------------------------------------------------------------------------
 # Centralized Interface Target Configuration
 # ---------------------------------------------------------------------------
-# This interface target holds compiler settings, flags, and macro definitions
-# to be inherited by all targets within the project subdirectories.
 add_library(traverso_compiler_settings INTERFACE)
 
 # Enforce the C++17 standard for all consumers
@@ -83,8 +88,13 @@ endif()
 # Platform-Specific Paths and Flags
 # ---------------------------------------------------------------------------
 if(APPLE)
-    target_include_directories(traverso_compiler_settings INTERFACE "/opt/homebrew/include")
-    target_link_directories(traverso_compiler_settings INTERFACE "/opt/homebrew/lib")
+    if(EXISTS "/opt/homebrew")
+        target_include_directories(traverso_compiler_settings INTERFACE "/opt/homebrew/include")
+        target_link_directories(traverso_compiler_settings INTERFACE "/opt/homebrew/lib")
+    elseif(EXISTS "/usr/local/include")
+        target_include_directories(traverso_compiler_settings INTERFACE "/usr/local/include")
+        target_link_directories(traverso_compiler_settings INTERFACE "/usr/local/lib")
+    endif()
 elseif(WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.lib")
     set(BUILD_SHARED_LIBS OFF)
@@ -95,9 +105,8 @@ elseif(WIN32)
 endif()
 
 # ---------------------------------------------------------------------------
-# Compiler and Linker Flags via Generator Expressions
+# Compiler and Linker Flags
 # ---------------------------------------------------------------------------
-# Query the system configuration tool for Large File Support flags
 find_program(GETCONF_EXECUTABLE getconf)
 if(GETCONF_EXECUTABLE)
     execute_process(
@@ -107,29 +116,15 @@ if(GETCONF_EXECUTABLE)
     )
 endif()
 
-# Define profile-specific options for both Windows and Posix environments.
-# For non-Windows Debug builds, AddressSanitizer (-fsanitize=address) is enabled.
-# The Release profile appends standard diagnostics while preserving downstream package management flags.
-if(WIN32)
-    target_compile_options(traverso_compiler_settings INTERFACE
-        $<$<CONFIG:Debug>:-O0 -ggdb3 -Wall -Wextra -Wno-unused-local-typedefs ${LFS_FLAGS}>
-        $<$<CONFIG:Release>:-O2 -Wall -Wno-unused-local-typedefs ${LFS_FLAGS}>
-    )
-else()
-    # Compilation flags for Linux/macOS
-    target_compile_options(traverso_compiler_settings INTERFACE
-        $<$<CONFIG:Debug>:-O0 -ggdb3 -Wall -Wextra -Wno-unused-local-typedefs -fsanitize=address ${LFS_FLAGS}>
-        $<$<CONFIG:Release>:-Wall -Wextra -Wno-unused-local-typedefs ${LFS_FLAGS}>
-    )
+target_compile_options(traverso_compiler_settings INTERFACE -Wall -Wextra -Wno-unused-local-typedefs ${LFS_FLAGS})
 
-    # Linker flags for Linux/macOS to resolve ASan library symbols
-    target_link_options(traverso_compiler_settings INTERFACE
-        $<$<CONFIG:Debug>:-fsanitize=address>
-    )
+if(ENABLE_ASAN)
+    target_compile_options(traverso_compiler_settings INTERFACE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(traverso_compiler_settings INTERFACE -fsanitize=address)
 endif()
 
 # ---------------------------------------------------------------------------
-# Distribution-Compliant Hardware Architecture Probing
+# Hardware Architecture Probing
 # ---------------------------------------------------------------------------
 include(TestBigEndian)
 test_big_endian(WORDS_BIGENDIAN)
@@ -145,13 +140,10 @@ if(HAVE_MLOCK)
     target_compile_definitions(traverso_compiler_settings INTERFACE USE_MLOCK)
 endif()
 
-# Architecture evaluation compatible with build daemons and cross-compilation environments
 if(UNIX AND WANT_SSE)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|amd64|AMD64)")
-        # x86_64 target guarantees SSE/SSE2 support on distribution environments
+    if(CMAKE_CXX_LIBRARY_ARCHITECTURE MATCHES "(x86_64|amd64)")
         target_compile_definitions(traverso_compiler_settings INTERFACE SSE_OPTIMIZATIONS USE_X86_64_ASM ARCH_X86_64)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(i.86|x86)")
-        # 32-bit x86 target requires verification to respect baseline standards
+    elseif(CMAKE_CXX_LIBRARY_ARCHITECTURE MATCHES "(i386|i686|x86)")
         include(CheckCXXSourceCompiles)
 
         set(SAFE_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
@@ -175,79 +167,9 @@ if(UNIX AND WANT_SSE)
 endif()
 
 # ---------------------------------------------------------------------------
-# Dependency Resolution via PkgConfig and Native Modules
+# Load External Dependencies (Segment 2)
 # ---------------------------------------------------------------------------
-find_package(PkgConfig REQUIRED)
-
-# Locate mandatory core dependencies and generate modern imported targets
-pkg_check_modules(SOXR REQUIRED IMPORTED_TARGET soxr)
-pkg_check_modules(SNDFILE REQUIRED IMPORTED_TARGET sndfile>=1.1.0)
-pkg_check_modules(WAVPACK REQUIRED IMPORTED_TARGET wavpack>=5.6.0)
-pkg_check_modules(FFTW3 REQUIRED IMPORTED_TARGET fftw3>=3.0.0)
-
-# Locate mandatory audio decoders and processing libraries via pkg-config
-pkg_check_modules(SAMPLERATE REQUIRED IMPORTED_TARGET samplerate)
-pkg_check_modules(MAD REQUIRED IMPORTED_TARGET mad)
-
-# Locate optional decoders and encoders
-if(WANT_M4A_DECODE)
-    pkg_check_modules(FAAD2 IMPORTED_TARGET faad2)
-    if(FAAD2_FOUND)
-        target_compile_definitions(traverso_compiler_settings INTERFACE M4A_DECODE_SUPPORT)
-    endif()
-endif()
-
-if(WANT_M4A_ENCODE)
-    pkg_check_modules(FAAC IMPORTED_TARGET faac)
-    if(FAAC_FOUND)
-        target_compile_definitions(traverso_compiler_settings INTERFACE M4A_ENCODE_SUPPORT)
-    endif()
-endif()
-
-# Locate optional hardware backends and plugin formats
-if(UNIX AND WANT_ALSA)
-    pkg_check_modules(ALSA IMPORTED_TARGET alsa>=1.0.0)
-    if(ALSA_FOUND)
-        target_compile_definitions(traverso_compiler_settings INTERFACE ALSA_SUPPORT)
-    endif()
-endif()
-
-if(UNIX AND WANT_JACK)
-    pkg_check_modules(JACK IMPORTED_TARGET jack>=0.100)
-    if(JACK_FOUND)
-        target_compile_definitions(traverso_compiler_settings INTERFACE JACK_SUPPORT)
-    endif()
-endif()
-
-if(UNIX AND WANT_PIPEWIRE)
-    pkg_check_modules(PIPEWIRE IMPORTED_TARGET libpipewire-0.3)
-    if(PIPEWIRE_FOUND)
-        target_compile_definitions(traverso_compiler_settings INTERFACE PIPEWIRE_SUPPORT)
-    endif()
-endif()
-
-if(WANT_PORTAUDIO)
-    pkg_check_modules(PORTAUDIO IMPORTED_TARGET portaudio-2.0>=19)
-    if(PORTAUDIO_FOUND)
-        target_compile_definitions(traverso_compiler_settings INTERFACE PORTAUDIO_SUPPORT)
-    endif()
-endif()
-
-if(WANT_LV2)
-    pkg_check_modules(LIBLILV IMPORTED_TARGET lilv-0>=0.4.4)
-    if(LIBLILV_FOUND)
-        target_compile_definitions(traverso_compiler_settings INTERFACE LV2_SUPPORT)
-    endif()
-endif()
-
-# Locate the required Qt6 framework components
-find_package(Qt6 COMPONENTS Core Widgets Xml Concurrent REQUIRED)
-
-# ---------------------------------------------------------------------------
-# Output Directives and Subdirectory Delegation
-# ---------------------------------------------------------------------------
-set(CMAKE_EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/lib)
+include(Dependencies)
 
 # Enable automatic compilation handling for Qt MOC, UIC, and RCC files
 set(CMAKE_AUTOMOC ON)
