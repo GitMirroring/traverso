@@ -21,15 +21,14 @@
  
 #include "TAudioClipManager.h"
 
+#include "ClipSelection.h"
 #include "TSheet.h"
 #include "TAudioClip.h"
 #include "TResourcesManager.h"
 #include "TProjectManager.h"
-#include "commands.h"
 #include "TSnapList.h"
-#include "Utils.h"
-#include "Debugger.h"
 #include "TLocation.h"
+#include "Debugger.h"
 
 TAudioClipManager::TAudioClipManager( TSheet* sheet )
 	: TContextItem(sheet)

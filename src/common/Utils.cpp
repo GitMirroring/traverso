@@ -24,11 +24,9 @@
 #include <QString>
 #include <QStringList>
 #include <QDateTime>
-#include <QPixmapCache>
 #include <QChar>
 #include <QTranslator>
 #include <QDir>
-#include <cmath>
 #include <random>
 #include "TTimeRef.h"
 
@@ -55,18 +53,7 @@ QDateTime TraversoDAW::Utils::extract_date_time(qint64 id)
     return time;
 }
 
-QPixmap TraversoDAW::Utils::find_pixmap ( const QString & pixname )
-{
-	QPixmap pixmap;
 
-    if ( ! QPixmapCache::find( pixname, &pixmap ) )
-	{
-		pixmap = QPixmap ( pixname );
-		QPixmapCache::insert ( pixname, pixmap );
-	}
-
-	return pixmap;
-}
 
 
 QStringList TraversoDAW::Utils::find_qm_files()

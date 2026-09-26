@@ -1,48 +1,49 @@
-INCLUDE_DIRECTORIES(
-${CMAKE_SOURCE_DIR}/src/common
-${CMAKE_SOURCE_DIR}/src/core
-${CMAKE_SOURCE_DIR}/src/engine
-${CMAKE_SOURCE_DIR}/src/commands
-${CMAKE_SOURCE_DIR}/src/plugins/native
-${CMAKE_SOURCE_DIR}/src/plugins/LV2
-)
-
-IF(USE_INTERNAL_SLV2_LIB)
-	INCLUDE_DIRECTORIES(
-	${CMAKE_SOURCE_DIR}/src/3rdparty/slv2
-	)
-ENDIF(USE_INTERNAL_SLV2_LIB)
-
 SET(TRAVERSO_PLUGINS_SOURCES
-	TAudioPluginChain.cpp TAudioPluginChain.h
-TAudioPlugin.cpp TAudioPlugin.h
-PluginManager.cpp PluginManager.h
-TAudioPluginSliderWidget.cpp TAudioPluginSliderWidget.h
-native/CorrelationMeter.cpp
-native/SpectralMeter.cpp
-native/GainEnvelope.cpp
-TAudioPluginPropertiesDialog.cpp TAudioPluginPropertiesDialog.h
+    TAudioPluginChain.cpp
+    TAudioPlugin.cpp
+    PluginManager.cpp
+    TAudioPluginSliderWidget.cpp
+    native/CorrelationMeter.cpp
+    native/SpectralMeter.cpp
+    native/GainEnvelope.cpp
+    TAudioPluginPropertiesDialog.cpp
+    TAudioPluginPort.cpp
+    TAudioPluginControlPort.cpp
+    TAudioPluginInputPort.cpp
+    TAudioPluginOutputPort.cpp
 )
-
-IF(HAVE_LILV)
-	SET(TRAVERSO_PLUGINS_SOURCES
-	${TRAVERSO_PLUGINS_SOURCES}
-	LV2/LV2Plugin.cpp
-	)
-	SET(TRAVERSO_PLUGINS_MOC_CLASSES
-	LV2/LV2Plugin.h
-	)
-ENDIF(HAVE_LILV)
 
 SET(TRAVERSO_PLUGINS_LIBRARY "traversoplugins")
+ADD_LIBRARY(${TRAVERSO_PLUGINS_LIBRARY} STATIC ${TRAVERSO_PLUGINS_SOURCES})
 
+target_include_directories(traversoplugins
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/native
+        ${CMAKE_CURRENT_SOURCE_DIR}/LV2
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src/core
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_SOURCE_DIR}/src/engine
+        ${CMAKE_SOURCE_DIR}/src/commands
+)
 
-ADD_LIBRARY(${TRAVERSO_PLUGINS_LIBRARY} STATIC ${TRAVERSO_PLUGINS_SOURCES}
-	TAudioPluginPort.h TAudioPluginPort.cpp
-	TAudioPluginControlPort.h TAudioPluginControlPort.cpp
-	TAudioPluginInputPort.h TAudioPluginInputPort.cpp
-	TAudioPluginOutputPort.h TAudioPluginOutputPort.cpp)
+target_link_libraries(traversoplugins
+    PUBLIC
+        Qt6::Widgets
+        Qt6::Xml
+        PkgConfig::FFTW3
+)
+
+IF(LIBLILV_FOUND)
+    target_sources(traversoplugins PRIVATE LV2/LV2Plugin.cpp)
+    target_link_libraries(traversoplugins PUBLIC PkgConfig::LIBLILV)
+ENDIF()
+
+IF(USE_INTERNAL_SLV2_LIB)
+    target_include_directories(traversoplugins PRIVATE ${CMAKE_SOURCE_DIR}/src/3rdparty/slv2)
+ENDIF()
 
 IF(USE_PCH)
-    ADD_DEPENDENCIES(traversoplugins precompiled_headers)
-ENDIF(USE_PCH)
+    target_precompile_headers(traversoplugins REUSE_FROM traversocore)
+ENDIF()

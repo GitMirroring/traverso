@@ -76,7 +76,7 @@ SystemResources::SystemResources(QWidget * parent)
     m_diskReadCpuUsage = new SystemValueBar(this);
     m_diskWriteCpuUsage = new SystemValueBar(this);
     m_icon = new QPushButton(this);
-    m_icon->setIcon(TraversoDAW::Utils::find_pixmap(":/memorysmall"));
+    m_icon->setIcon(TMainWindow::find_pixmap(":/memorysmall"));
     m_icon->setFlat(true);
 	m_icon->setMaximumWidth(20);
 	m_icon->setFocusPolicy(Qt::NoFocus);
@@ -283,7 +283,7 @@ HDDSpaceInfo::HDDSpaceInfo(QWidget* parent )
 	: InfoWidget(parent)
 {
 	m_button = new QPushButton;
-    m_button->setIcon(TraversoDAW::Utils::find_pixmap(":/harddrivesmall"));
+    m_button->setIcon(TMainWindow::find_pixmap(":/harddrivesmall"));
 	m_button->setFlat(true);
 	m_button->setFocusPolicy(Qt::NoFocus);
 	m_button->setEnabled(false);

@@ -1,103 +1,98 @@
-INCLUDE_DIRECTORIES(
-${CMAKE_SOURCE_DIR}/src/audiofileio/decode
-${CMAKE_SOURCE_DIR}/src/audiofileio/encode
-${CMAKE_SOURCE_DIR}/src/audiofileio
-${CMAKE_SOURCE_DIR}/src/commands
-${CMAKE_SOURCE_DIR}/src/common
-${CMAKE_SOURCE_DIR}/src/engine
-${CMAKE_SOURCE_DIR}/src/plugins
-${CMAKE_SOURCE_DIR}/src/plugins/native
+ENABLE_LANGUAGE(ASM)
+
+SET(CORE_ASM_SOURCE "")
+IF(HOST_SUPPORTS_SSE)
+    IF(IS_ARCH_X86)
+        SET(CORE_ASM_SOURCE ${CMAKE_SOURCE_DIR}/src/common/sse_functions.S)
+    ENDIF()
+    IF(IS_ARCH_X86_64)
+        SET(CORE_ASM_SOURCE ${CMAKE_SOURCE_DIR}/src/common/sse_functions_64bit.S)
+    ENDIF()
+ENDIF()
+
+IF(CORE_ASM_SOURCE)
+    SET_SOURCE_FILES_PROPERTIES(${CORE_ASM_SOURCE} PROPERTIES LANGUAGE ASM)
+ENDIF()
+
+ADD_LIBRARY(traversocore STATIC
+    ${CMAKE_SOURCE_DIR}/src/common/Utils.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/TAudioThreadMessageQueue.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/Mixer.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/TTimeRef.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/TTransportControl.cpp
+    TAudioClip.cpp
+    TAudioClipGroup.cpp
+    TAudioClipManager.cpp
+    TAudioFileCopyConvert.cpp
+    TAudioFileMerger.cpp
+    TAudioTrack.cpp
+    TBufferedAudioStream.cpp
+    TCommand.cpp
+    TConfig.cpp
+    TShortCutManager.cpp
+    TContextPointer.cpp
+    TContextItem.cpp
+    TCurve.cpp
+    TCurveNode.cpp
+    TDiskIOThread.cpp
+    TFadeCurve.cpp
+    FileHelpers.cpp
+    TInformUser.cpp
+    TInputEventDispatcher.cpp
+    TPeak.cpp
+    TProject.cpp
+    TProjectManager.cpp
+    TAudioProcessingNode.cpp
+    TBufferedAudioStreamReader.cpp
+    TResourcesManager.cpp
+    TBusTrack.cpp
+    TSend.cpp
+    TSession.cpp
+    TSheet.cpp
+    TTrack.cpp
+    TBufferedAudioStreamWriter.cpp
+    gdither.cpp
+    TSnapList.cpp
+    TLocation.cpp
+    TTimeLineRuler.cpp
+    TTimeLineMarker.cpp
+    TThemer.cpp
+    TProjectConverter.cpp
+    TGlobalContext.cpp
+    TTransport.cpp
+    TShortCutFunction.cpp
+    TShortCut.cpp
+    TExportSpecification.cpp
+    TAudioResampler.cpp
+    TCommandPlugin.h
+    ${CORE_ASM_SOURCE}
 )
 
-SET(TRAVERSO_CORE_SOURCES
-${CMAKE_SOURCE_DIR}/src/common/Utils.cpp
-${CMAKE_SOURCE_DIR}/src/common/Utils.h
-${CMAKE_SOURCE_DIR}/src/common/TAudioThreadMessageQueue.cpp
-${CMAKE_SOURCE_DIR}/src/common/TAudioThreadMessageQueue.h
-${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
-${CMAKE_SOURCE_DIR}/src/common/Debugger.h
-${CMAKE_SOURCE_DIR}/src/common/Mixer.cpp
-${CMAKE_SOURCE_DIR}/src/common/Mixer.h
-${CMAKE_SOURCE_DIR}/src/common/TTimeRef.cpp
-${CMAKE_SOURCE_DIR}/src/common/TTimeRef.h
-${CMAKE_SOURCE_DIR}/src/common/TTransportControl.cpp
-${CMAKE_SOURCE_DIR}/src/common/TTransportControl.h
-
-TAudioClip.cpp TAudioClip.h
-TAudioClipGroup.cpp TAudioClipGroup.h
-TAudioClipManager.cpp TAudioClipManager.h
-TAudioFileCopyConvert.cpp TAudioFileCopyConvert.h
-TAudioFileMerger.cpp TAudioFileMerger.h
-TAudioTrack.cpp TAudioTrack.h
-TBufferedAudioStream.cpp TBufferedAudioStream.h
-TBufferedAudioStreamStatus.h TBufferedAudioStreamStatus.h
-TQueueBufferSlot.h
-TViewPortInterface.h
-TCommand.cpp TCommand.h
-TConfig.cpp TConfig.h
-TShortCutManager.cpp TShortCutManager.h
-TContextPointer.cpp TContextPointer.h
-TContextItem.cpp TContextItem.h
-TCurve.cpp TCurve.h
-TCurveNode.cpp TCurveNode.h
-TCommandPlugin.h
-TDiskIOThread.cpp TDiskIOThread.h
-TFadeCurve.cpp TFadeCurve.h
-FileHelpers.cpp FileHelpers.h
-TInformUser.cpp TInformUser.h
-TInputEventDispatcher.cpp TInputEventDispatcher.h
-TPeak.cpp TPeak.h
-TProject.cpp TProject.h
-TProjectManager.cpp TProjectManager.h
-TAudioProcessingNode.cpp TAudioProcessingNode.h
-TBufferedAudioStreamReader.cpp TBufferedAudioStreamReader.h
-TResourcesManager.cpp TResourcesManager.h
-TBusTrack.cpp TBusTrack.h
-TSend.cpp TSend.h
-TSession.cpp TSession.h
-TSheet.cpp TSheet.h
-TTrack.cpp TTrack.h
-TBufferedAudioStreamWriter.cpp TBufferedAudioStreamWriter.h
-gdither.cpp gdither.h
-TSnapList.cpp TSnapList.h
-TLocation.cpp TLocation.h
-TTimeLineRuler.cpp TTimeLineRuler.h
-TTimeLineMarker.cpp TTimeLineMarker.h
-TThemer.cpp TThemer.h
-TProjectConverter.cpp TProjectConverter.h
-TGlobalContext.cpp TGlobalContext.h
-TTransport.cpp TTransport.h
-TShortCutFunction.h TShortCutFunction.cpp
-TShortCut.h TShortCut.cpp
-TExportSpecification.h TExportSpecification.cpp
-TAudioClipAddRemoveSpec.h
+target_include_directories(traversocore
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src/audiofileio
+        ${CMAKE_SOURCE_DIR}/src/audiofileio/decode
+        ${CMAKE_SOURCE_DIR}/src/audiofileio/encode
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_SOURCE_DIR}/src/commands
+        ${CMAKE_SOURCE_DIR}/src/engine
+        ${CMAKE_SOURCE_DIR}/src/plugins
+        ${CMAKE_SOURCE_DIR}/src/plugins/native
 )
 
-IF(UNIX)
-	IF(HOST_SUPPORTS_SSE)
-		IF(IS_ARCH_X86)
-			SET(ASM_FILE ${CMAKE_SOURCE_DIR}/src/common/sse_functions.S)
-		ENDIF(IS_ARCH_X86)
-		IF(IS_ARCH_X86_64)
-			SET(ASM_FILE ${CMAKE_SOURCE_DIR}/src/common/sse_functions_64bit.S)
-		ENDIF(IS_ARCH_X86_64)
-		
-		add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sse_functions.o
-			COMMAND as ${ASM_FILE} -o ${CMAKE_CURRENT_BINARY_DIR}/sse_functions.o
-			DEPENDS ${ASM_FILE}
-		)
-		SET(SSE_OBJECT_FILE ${CMAKE_CURRENT_BINARY_DIR}/sse_functions.o)
-	ENDIF(HOST_SUPPORTS_SSE)
-ENDIF(UNIX)
-
-
-SET(TRAVERSO_CORE_LIBRARY "traversocore")
-
-ADD_LIBRARY(${TRAVERSO_CORE_LIBRARY} STATIC ${TRAVERSO_CORE_SOURCES} ${SSE_OBJECT_FILE}
-	TAudioResampler.h TAudioResampler.cpp)
-target_link_libraries(traversocore PRIVATE Qt6::Concurrent)
-target_link_libraries(traversocore PUBLIC PkgConfig::SOXR)
+target_link_libraries(traversocore
+    PRIVATE
+        Qt6::Concurrent
+    PUBLIC
+        Qt6::Widgets
+        Qt6::Gui
+        Qt6::Xml
+        Qt6::Core
+        PkgConfig::SOXR
+)
 
 IF(USE_PCH)
-    ADD_DEPENDENCIES(traversocore precompiled_headers)
-ENDIF(USE_PCH)
+    target_precompile_headers(traversocore PUBLIC ${CMAKE_SOURCE_DIR}/src/traverso/precompile.h)
+ENDIF()

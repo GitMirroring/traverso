@@ -19,8 +19,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "../config.h"
-
 #include "TMainWindow.h"
 
 
@@ -753,7 +751,7 @@ void TMainWindow::create_menus( )
 	menu->installEventFilter(this);
 
 	action = menu->addAction(tr("&New..."));
-    action->setIcon(TraversoDAW::Utils::find_pixmap(":/new"));
+    action->setIcon(TMainWindow::find_pixmap(":/new"));
 	action->setShortcuts(QKeySequence::New);
 	connect(action, &QAction::triggered, this, &TMainWindow::show_newproject_dialog);
 
@@ -1162,6 +1160,19 @@ QMenu* TMainWindow::create_context_menu(QObject* item, QList<TShortCutFunction* 
 	}
 
 	return menu;
+}
+
+QPixmap TMainWindow::find_pixmap(const QString &pixname)
+{
+    QPixmap pixmap;
+
+    if ( ! QPixmapCache::find( pixname, &pixmap ) )
+    {
+        pixmap = QPixmap ( pixname );
+        QPixmapCache::insert ( pixname, pixmap );
+    }
+
+    return pixmap;
 }
 
 void TMainWindow::add_function_to_menu(TShortCutFunction *function, QMenu *menu)
@@ -1861,5 +1872,4 @@ TCommand* TMainWindow::redo()
     TContextItem::get_undogroup()->redo();
     return 0;
 }
-
 

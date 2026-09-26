@@ -1,99 +1,61 @@
-INCLUDE_DIRECTORIES(
-  ${QT_QTGUI_INCLUDE_DIR}
-)
-
-SET(TRAVERSO_ENGINE_MOC_CLASSES
-AudioBus.h
-AudioChannel.h
-AudioDevice.h
-AudioDeviceThread.h
-TAudioDeviceClient.h
-)
-
 SET(TRAVERSO_ENGINE_SOURCES
-AudioBus.cpp
-AudioChannel.cpp
-TAudioDeviceSetup.h TAudioDeviceSetup.cpp
-TAudioDevice.cpp
-TAudioDeviceThread.cpp
-TAudioDeviceClient.cpp
-TAudioDriver.cpp
-TAudioBusConfiguration.h TAudioBusConfiguration.cpp
-TAudioChannelConfiguration.h TAudioChannelConfiguration.cpp
-TVUMonitor.h TVUMonitor.cpp
-memops.cpp
+    AudioBus.cpp
+    AudioChannel.cpp
+    TAudioDeviceSetup.cpp
+    TAudioDevice.cpp
+    TAudioDeviceThread.cpp
+    TAudioDeviceClient.cpp
+    TAudioDriver.cpp
+    TAudioBusConfiguration.cpp
+    TAudioChannelConfiguration.cpp
+    TVUMonitor.cpp
+    memops.cpp
 )
-
-IF(HAVE_ALSA)
-	SET(TRAVERSO_ENGINE_SOURCES
-		TAlsaDriver.cpp
-	${TRAVERSO_ENGINE_SOURCES}
-	)
-        SET(TRAVERSO_ENGINE_MOC_CLASSES
-		TAlsaDriver.h
-        ${TRAVERSO_ENGINE_MOC_CLASSES}
-        )
-ENDIF(HAVE_ALSA)
-
-IF(HAVE_JACK)
-	SET(TRAVERSO_ENGINE_SOURCES
-		TJackDriver.cpp
-	${TRAVERSO_ENGINE_SOURCES}
-	)
-	SET(TRAVERSO_ENGINE_MOC_CLASSES
-		TJackDriver.h
-	${TRAVERSO_ENGINE_MOC_CLASSES}
-	)
-ENDIF(HAVE_JACK)
-
-IF(HAVE_PORTAUDIO)
-	SET(TRAVERSO_ENGINE_SOURCES
-		TPortAudioDriver.cpp
-	${TRAVERSO_ENGINE_SOURCES}
-	)
-        SET(TRAVERSO_ENGINE_MOC_CLASSES
-		TPortAudioDriver.h
-        ${TRAVERSO_ENGINE_MOC_CLASSES}
-        )
-ENDIF(HAVE_PORTAUDIO)
-
-IF(HAVE_PIPEWIRE)
-	INCLUDE_DIRECTORIES(${PIPEWIRE_INCLUDE_DIRS})
-	SET(TRAVERSO_ENGINE_SOURCES
-		TPipeWireDriver.cpp
-	${TRAVERSO_ENGINE_SOURCES}
-	)
-	SET(TRAVERSO_ENGINE_MOC_CLASSES
-		TPipeWireDriver.h
-	${TRAVERSO_ENGINE_MOC_CLASSES}
-	)
-ENDIF(HAVE_PIPEWIRE)
-
-
-IF(HAVE_COREAUDIO)
-	SET(TRAVERSO_ENGINE_SOURCES
-	TCoreAudioDriver.cpp
-	${TRAVERSO_ENGINE_SOURCES}
-	)
-	SET(TRAVERSO_ENGINE_MOC_CLASSES
-	TCoreAudioDriver.h
-	${TRAVERSO_ENGINE_MOC_CLASSES}
-	)
-ENDIF(HAVE_COREAUDIO)
-
 
 SET(TRAVERSO_ENGINE_LIBRARY "traversoaudiobackend")
+ADD_LIBRARY(${TRAVERSO_ENGINE_LIBRARY} STATIC ${TRAVERSO_ENGINE_SOURCES})
 
-ADD_LIBRARY(${TRAVERSO_ENGINE_LIBRARY} STATIC ${TRAVERSO_ENGINE_SOURCES} ${TRAVERSO_ENGINE_MOC_SOURCES}
+target_include_directories(traversoaudiobackend
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src/core
+        ${CMAKE_SOURCE_DIR}/src/common
 )
 
-IF(HAVE_COREAUDIO AND APPLE)
-	TARGET_LINK_LIBRARIES(${TRAVERSO_ENGINE_LIBRARY} PUBLIC
-		"-framework CoreAudio"
-		"-framework AudioToolbox"
-	)
-ENDIF(HAVE_COREAUDIO AND APPLE)
+target_link_libraries(traversoaudiobackend
+    PUBLIC
+        PkgConfig::SNDFILE
+    PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        traversocore
+)
+
+IF(ALSA_FOUND)
+    target_sources(traversoaudiobackend PRIVATE TAlsaDriver.cpp)
+    target_link_libraries(traversoaudiobackend PUBLIC PkgConfig::ALSA)
+ENDIF()
+
+IF(JACK_FOUND)
+    target_sources(traversoaudiobackend PRIVATE TJackDriver.cpp)
+    target_link_libraries(traversoaudiobackend PUBLIC PkgConfig::JACK)
+ENDIF()
+
+IF(PIPEWIRE_FOUND)
+    target_sources(traversoaudiobackend PRIVATE TPipeWireDriver.cpp)
+    target_link_libraries(traversoaudiobackend PUBLIC PkgConfig::PIPEWIRE)
+ENDIF()
+
+IF(PORTAUDIO_FOUND)
+    target_sources(traversoaudiobackend PRIVATE TPortAudioDriver.cpp)
+    target_link_libraries(traversoaudiobackend PUBLIC PkgConfig::PORTAUDIO)
+ENDIF()
+
+IF(WANT_COREAUDIO AND APPLE)
+    target_sources(traversoaudiobackend PRIVATE TCoreAudioDriver.cpp)
+    target_link_libraries(traversoaudiobackend PUBLIC "-framework CoreAudio" "-framework AudioToolbox")
+ENDIF()
 
 IF(USE_PCH)
-    ADD_DEPENDENCIES(traversoaudiobackend precompiled_headers)
-ENDIF(USE_PCH)
+    target_precompile_headers(traversoaudiobackend REUSE_FROM traversocore)
+ENDIF()

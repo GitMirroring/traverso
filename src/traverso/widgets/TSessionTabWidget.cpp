@@ -97,17 +97,17 @@ TSessionTabWidget::TSessionTabWidget(QToolBar* toolBar, TSession *session)
                 }
 
                 action = m_arrowButtonMenu->addAction(tr("New Track / Bus..."));
-                action->setIcon(TraversoDAW::Utils::find_pixmap(":/new"));
+                action->setIcon(TMainWindow::find_pixmap(":/new"));
                 connect(action, &QAction::triggered, this, &TSessionTabWidget::add_track_action_triggered);
 
                 if (m_session->is_project_session()) {
                         action = m_arrowButtonMenu->addAction(tr("New Sheet..."));
-                        action->setIcon(TraversoDAW::Utils::find_pixmap(":/new"));
+                        action->setIcon(TMainWindow::find_pixmap(":/new"));
                         connect(action, &QAction::triggered, TMainWindow::instance(), &TMainWindow::show_newsheet_dialog);
                 }
 
                 action = m_arrowButtonMenu->addAction(tr("New WorkSpace..."));
-                action->setIcon(TraversoDAW::Utils::find_pixmap(":/new"));
+                action->setIcon(TMainWindow::find_pixmap(":/new"));
                 connect(action, &QAction::triggered, this, &TSessionTabWidget::add_new_work_space_action_triggered);
 
                 if (m_session->is_project_session()) {

@@ -207,7 +207,7 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
     // Paint a pixmap if the clip is locked
     if (m_clip->is_locked()) {
         int center = (int)(m_clip->get_length() / (2 * m_sv->timeref_scalefactor));
-        painter->drawPixmap(center - 8, m_height - 20, TraversoDAW::Utils::find_pixmap(":/lock"));
+        painter->drawPixmap(center - 8, m_height - 20, TMainWindow::find_pixmap(":/lock"));
     }
 
     painter->restore();

@@ -26,6 +26,7 @@
 
 #include "TExportSpecification.h"
 #include "TConfig.h"
+#include "TMainWindow.h"
 #include "TProject.h"
 #include "TProjectManager.h"
 #include "TInformUser.h"
@@ -64,7 +65,7 @@ CDWritingDialog::CDWritingDialog( QWidget * parent )
 	m_writingState = NO_STATE;
 	m_lastSheetExported = -1;
 	
-    refreshButton->setIcon(QIcon(TraversoDAW::Utils::find_pixmap(":/refresh-16")));
+    refreshButton->setIcon(QIcon(TMainWindow::find_pixmap(":/refresh-16")));
 	refreshButton->setMaximumHeight(26);
 	refreshButton->setMaximumWidth(30);
 	

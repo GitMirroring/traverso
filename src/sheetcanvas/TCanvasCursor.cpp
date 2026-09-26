@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TCanvasCursor.h"
 
+#include "TMainWindow.h"
 #include "TSheetView.h"
 #include "TClipsViewPort.h"
 #include "TPositionIndicator.h"
@@ -134,7 +135,7 @@ void TCanvasCursor::set_cursor_shape(const QString &shape, int alignment)
 
     if (shape.size() > 1)
     {
-        m_pixmap = TraversoDAW::Utils::find_pixmap(shape);
+        m_pixmap = TMainWindow::find_pixmap(shape);
         if (m_pixmap.isNull())
         {
             m_shape = "";

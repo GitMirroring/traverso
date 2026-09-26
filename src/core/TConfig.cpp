@@ -20,9 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TConfig.h"
-#include "../config.h"
 #include "TAudioDevice.h"
-#include "Utils.h"
 #include "TShortCutManager.h"
 #include "../commands/plugins/TraversoCommands/TraversoCommands.h"
 

@@ -21,7 +21,6 @@
 
 #pragma once
 
-#include <QPixmap>
 #include <QDateTime>
 
 #define QS_C(x) x.toUtf8().data()
@@ -65,9 +64,6 @@ public:
         }
         return val;
     }
-
-    static QPixmap find_pixmap(const QString& pixname);
-
 };
 
 class Float {

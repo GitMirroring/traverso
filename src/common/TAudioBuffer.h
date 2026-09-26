@@ -55,7 +55,9 @@ public:
         // Cache old buffer state variables before making changes
         audio_sample_t* oldBuffer = m_buffer;
         nframes_t oldSize = m_size;
+#ifdef USE_MLOCK
         bool oldMemLocked = m_memLocked;
+#endif /* USE_MLOCK */
 
         // Reset state for new allocation block
         m_buffer = nullptr;

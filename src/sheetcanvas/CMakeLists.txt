@@ -1,57 +1,63 @@
-INCLUDE_DIRECTORIES(
-${CMAKE_SOURCE_DIR}/src/commands
-${CMAKE_SOURCE_DIR}/src/common
-${CMAKE_SOURCE_DIR}/src/core
-${CMAKE_SOURCE_DIR}/src/engine
-${CMAKE_SOURCE_DIR}/src/audiofileio
-${CMAKE_SOURCE_DIR}/src/plugins
-${CMAKE_SOURCE_DIR}/src/plugins/native
-${CMAKE_SOURCE_DIR}/src/plugins/LV2
-${CMAKE_SOURCE_DIR}/src/traverso
-${CMAKE_SOURCE_DIR}/src/traverso/dialogs
-)
-
 SET(TRAVERSO_SHEETCANVAS_SOURCES
-TAudioClipView.cpp TAudioClipView.h
-TAudioTrackView.cpp TAudioTrackView.h
-TClipsViewPort.cpp TClipsViewPort.h
-TWorkCursorView.cpp TWorkCursorView.h
-TPlayHeadView.h TPlayHeadView.cpp
-TCurveNodeView.cpp TCurveNodeView.h
-TCurveView.cpp TCurveView.h
-TFadeCurveView.cpp TFadeCurveView.h
-TTimeLineMarkerView.cpp TTimeLineMarkerView.h
-TLineView.cpp TLineView.h
-TAudioPluginChainView.cpp TAudioPluginChainView.h
-TAudioPluginView.cpp TAudioPluginView.h
-TPositionIndicator.cpp TPositionIndicator.h
-TTrackView.cpp TTrackView.h
-TTrackLaneView.cpp TTrackLaneView.h
-TSheetView.cpp TSheetView.h
-TSheetWidget.cpp TSheetWidget.h
-TBusTrackView.cpp TBusTrackView.h
-TTimeLineRulerView.cpp TTimeLineRulerView.h
-TTimeLineRulerViewPort.cpp TTimeLineRulerViewPort.h
-TTrackPanelView.cpp TTrackPanelView.h
-TTrackPanelViewPort.cpp TTrackPanelViewPort.h
-TViewItem.cpp TViewItem.h
-TViewPort.cpp TViewPort.h
-dialogs/AudioClipEditDialog.cpp dialogs/AudioClipEditDialog.h
-dialogs/TTrackManagerDialog.cpp dialogs/TTrackManagerDialog.h
-TVUMeterView.cpp TVUMeterView.h
-TCanvasCursor.cpp TCanvasCursor.h
-TKnobView.cpp TKnobView.h
-TTextView.cpp TTextView.h
-ClipTileCache.cpp ClipTileCache.h
+    TAudioClipView.cpp
+    TAudioTrackView.cpp
+    TClipsViewPort.cpp
+    TWorkCursorView.cpp
+    TPlayHeadView.cpp
+    TCurveNodeView.cpp
+    TCurveView.cpp
+    TFadeCurveView.cpp
+    TTimeLineMarkerView.cpp
+    TLineView.cpp
+    TAudioPluginChainView.cpp
+    TAudioPluginView.cpp
+    TPositionIndicator.cpp
+    TTrackView.cpp
+    TTrackLaneView.cpp
+    TSheetView.cpp
+    TSheetWidget.cpp
+    TBusTrackView.cpp
+    TTimeLineRulerView.cpp
+    TTimeLineRulerViewPort.cpp
+    TTrackPanelView.cpp
+    TTrackPanelViewPort.cpp
+    TViewItem.cpp
+    TViewPort.cpp
+    dialogs/AudioClipEditDialog.cpp
+    dialogs/TTrackManagerDialog.cpp
+    TVUMeterView.cpp
+    TCanvasCursor.cpp
+    TKnobView.cpp
+    TTextView.cpp
+    ClipTileCache.cpp
 )
-
 
 SET(TRAVERSO_SHEETCANVAS_LIBRARY "traversosheetcanvas")
+ADD_LIBRARY(${TRAVERSO_SHEETCANVAS_LIBRARY} STATIC ${TRAVERSO_SHEETCANVAS_SOURCES})
 
-ADD_LIBRARY(${TRAVERSO_SHEETCANVAS_LIBRARY} STATIC 
-	${TRAVERSO_SHEETCANVAS_SOURCES}
+target_include_directories(traversosheetcanvas
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/dialogs
+        ${CMAKE_SOURCE_DIR}/src/traverso
+        ${CMAKE_SOURCE_DIR}/src/traverso/dialogs
+        ${CMAKE_SOURCE_DIR}/src/core
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_SOURCE_DIR}/src/plugins
+        ${CMAKE_SOURCE_DIR}/src/plugins/native
+        ${CMAKE_SOURCE_DIR}/src/commands
+        ${CMAKE_SOURCE_DIR}/src/audiofileio
+        ${CMAKE_SOURCE_DIR}/src/engine
+)
+
+target_link_libraries(traversosheetcanvas
+    PUBLIC
+        Qt6::Xml
+    PRIVATE
+        Qt6::Widgets
+        Qt6::Gui
 )
 
 IF(USE_PCH)
-    ADD_DEPENDENCIES(traversosheetcanvas precompiled_headers)
-ENDIF(USE_PCH)
+    target_precompile_headers(traversosheetcanvas REUSE_FROM traversocore)
+ENDIF()

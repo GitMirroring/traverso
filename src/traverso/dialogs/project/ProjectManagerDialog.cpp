@@ -62,8 +62,8 @@ ProjectManagerDialog::ProjectManagerDialog( QWidget * parent )
 	
 	set_project(pm().get_project());
 	
-    undoButton->setIcon(QIcon(TraversoDAW::Utils::find_pixmap(":/undo")));
-    redoButton->setIcon(QIcon(TraversoDAW::Utils::find_pixmap(":/redo")));
+    undoButton->setIcon(QIcon(TMainWindow::find_pixmap(":/undo")));
+    redoButton->setIcon(QIcon(TMainWindow::find_pixmap(":/redo")));
 	
 	buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
 

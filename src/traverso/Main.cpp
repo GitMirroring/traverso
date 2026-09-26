@@ -34,8 +34,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 #include "Debugger.h"
 
-#include "../config.h"
-
 Traverso* traverso;
 
 int signalcount = 0;
@@ -93,11 +91,11 @@ int main( int argc, char **argv )
 				return 0;
 			}
 			if (strcmp(argv[i],"-v")==0) {
-				printf("Traverso %s\n", VERSION);
+                printf("Traverso %s\n", VERSION);
 				return 0;
 			}
 			if (strcmp(argv[i],"--show-compile-options")==0) {
-				printf("Traverso compile options: %s\n", TRAVERSO_DEFINES);
+                // printf("Traverso compile options: %s\n", TRAVERSO_DEFINES);
 				return 0;
 			}
 		}

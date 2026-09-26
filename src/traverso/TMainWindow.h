@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QGridLayout>
 #include <qcompleter.h>
 #include <qstandarditemmodel.h>
+#include <QPixmapCache>
 
 class TSheet;
 class TSession;
@@ -114,6 +115,8 @@ public :
     QLineEdit* get_track_finder() const {return m_trackFinder;}
     QMenu* create_context_menu(QObject* item, QList<TShortCutFunction* >* list = 0);
     TSheetWidget* getCurrentSheetWidget() const {return m_currentSheetWidget;}
+
+    static QPixmap find_pixmap(const QString& pixname);
 
 protected:
     void timerEvent(QTimerEvent *event);
