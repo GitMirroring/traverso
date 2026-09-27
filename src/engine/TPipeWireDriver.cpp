@@ -78,7 +78,7 @@ int TPipeWireDriver::setup_failed(const QString& message)
 }
 
 
-int TPipeWireDriver::setup(bool capture, bool playback, const QString& cardDevice)
+int TPipeWireDriver::setup(bool capture, bool playback, const QString& /*cardDevice*/)
 {
     PENTER;
 
@@ -341,7 +341,7 @@ int TPipeWireDriver::process_callback()
 }
 
 // Called in RT thread from TAudioDevice
-int TPipeWireDriver::_read( nframes_t nframes )
+int TPipeWireDriver::_read( nframes_t /*nframes*/ )
 {
     // allready got data in _on_process_capture() callback
     return 1;
@@ -433,7 +433,7 @@ void TPipeWireDriver::_on_state_changed(void *userdata, enum pw_stream_state old
 }
 
 
-void TPipeWireDriver::handle_state_changed(enum pw_stream_state old_state, enum pw_stream_state state, const char *error)
+void TPipeWireDriver::handle_state_changed(enum pw_stream_state /*old_state*/, enum pw_stream_state state, const char *error)
 {
     PENTER;
 
