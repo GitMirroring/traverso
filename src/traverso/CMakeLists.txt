@@ -53,7 +53,7 @@ target_link_libraries(traverso PRIVATE traverso_compiler_settings)
 # Configure compiler include path mappings for the local directory scope
 target_include_directories(traverso PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Link internal static sub-libraries and fundamental application dependencies
+# Link internal static sub-libraries and fundamental application dependencies smoothly
 target_link_libraries(traverso
     PRIVATE
         traversocore
@@ -78,3 +78,26 @@ endif()
 
 # Installation target rule utilizing standard GNU directory variables
 install(TARGETS traverso RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# ---------------------------------------------------------------------------
+# Desktop Integration & Desktop Menu Icons
+# ---------------------------------------------------------------------------
+
+# Target the resources directory relative to the current directory scope to ensure clean resolution
+set(RESOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../resources")
+
+# Install the upstream application menu entry file to the correct system location
+install(FILES ${RESOURCE_DIR}/traverso.desktop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)
+
+# Install standard application icons across core resolution profiles
+install(FILES ${RESOURCE_DIR}/images/icons/64x64/traverso.png
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/64x64/apps
+)
+install(FILES ${RESOURCE_DIR}/images/icons/32x32/traverso.png
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/32x32/apps
+)
+install(FILES ${RESOURCE_DIR}/images/icons/16x16/traverso.png
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/16x16/apps
+)

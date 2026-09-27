@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "WPAudioWriter.h"
 #include <QString>
 
-#if defined M4A_ENCODE_SUPPORT
+#ifdef M4A_ENCODE_SUPPORT
 #include "FaacAudioWriter.h"
 #endif
 

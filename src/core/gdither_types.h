@@ -15,16 +15,21 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  *
- *  $Id: gdither_types.h,v 1.1 2006/04/20 14:51:39 r_sijrier Exp $
+ *  $Id: gdither_types_internal.h,v 1.1 2006/04/20 14:51:39 r_sijrier Exp $
  */
 
-#ifndef GDITHER_TYPES_H
-#define GDITHER_TYPES_H
+#pragma once
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#define GDITHER_SH_BUF_SIZE 8
+#define GDITHER_SH_BUF_MASK 7
+
+/* this must agree with whats in gdither_types.h */
 typedef enum {
     GDitherNone = 0,
     GDitherRect,
@@ -40,10 +45,29 @@ typedef enum {
     GDitherDouble = 54
 } GDitherSize;
 
-typedef void *GDither;
+typedef struct {
+    uint32_t phase;
+    float buffer[GDITHER_SH_BUF_SIZE];
+} GDitherShapedState;
+
+typedef struct GDither_s {
+    GDitherType type;
+    uint32_t channels;
+    uint32_t bit_depth;
+    uint32_t dither_depth;
+    float scale;
+    uint32_t post_scale;
+    float post_scale_fp;
+    float bias;
+
+    int   clamp_u;
+
+    int   clamp_l;
+    float *tri_state;
+    GDitherShapedState *shaped_state;
+} *GDither;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif

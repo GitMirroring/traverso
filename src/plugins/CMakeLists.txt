@@ -32,6 +32,7 @@ target_include_directories(traversoplugins
 # Map foundational transformation structures and metadata toolsets
 target_link_libraries(traversoplugins
     PUBLIC
+        Qt6::Core
         Qt6::Widgets
         Qt6::Xml
         PkgConfig::FFTW3

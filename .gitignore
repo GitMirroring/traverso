@@ -27,8 +27,11 @@ Makefile
 /debian
 Traverso.app
 *.[oa]
-/.qtcreator
-CMakeLists.txt.user
+
+# Ignore Qt Creator project settings and local state files
+.qtcreator/
+*.qtcreator.user*
+
 
 /src/traverso/qrc_traverso.cxx
 qrc_*

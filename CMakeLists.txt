@@ -17,7 +17,7 @@ include(GNUInstallDirs)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # ---------------------------------------------------------------------------
-# Platform-Specific Audio Backend Defaults
+# 1. Platform-Specific Audio Backend Defaults
 # ---------------------------------------------------------------------------
 if(APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "Minimum macOS version" FORCE)
@@ -48,7 +48,7 @@ else() # Linux / Unix distributions
 endif()
 
 # ---------------------------------------------------------------------------
-# User Build Options
+# 2. User Build Options (MUST BE DEFINED BEFORE LOADING DEPENDENCIES)
 # ---------------------------------------------------------------------------
 option(WANT_JACK "Include JACK Audio Connection Kit support" ${DEFAULT_WANT_JACK})
 option(WANT_PIPEWIRE "Include PipeWire support" ${DEFAULT_WANT_PIPEWIRE})
@@ -58,23 +58,30 @@ option(WANT_COREAUDIO "Include CoreAudio support (macOS)" ${DEFAULT_WANT_COREAUD
 option(WANT_LV2 "Include LV2 Plugin support" ${DEFAULT_WANT_LV2})
 option(WANT_M4A_DECODE "Include M4A/AAC decoding support (faad2)" ON)
 option(WANT_M4A_ENCODE "Include M4A/AAC encoding support (faac)" ON)
-option(WANT_DEBUG "Debug build" OFF) # Production packages default to system flags
-option(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug output on the command line" ON)
+option(WANT_DEBUG "Debug build" OFF)
 option(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)
 option(WANT_THREAD_CHECK "Enable runtime thread checks for debugging" OFF)
 option(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu" OFF)
 option(WANT_SSE "Use SSE instruction set optimizations" ${DEFAULT_WANT_SSE})
 option(ENABLE_ASAN "Enable AddressSanitizer for memory debugging (Development only)" OFF)
 
+# Determine the dynamic default state for the command-line debugger capability
+if(CMAKE_BUILD_TYPE MATCHES "[Dd]ebug" OR WANT_DEBUG)
+    set(DEFAULT_TRAVERSO_DEBUG ON)
+else()
+    set(DEFAULT_TRAVERSO_DEBUG OFF)
+endif()
+
+option(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug output on the command line" ${DEFAULT_TRAVERSO_DEBUG})
+
 # ---------------------------------------------------------------------------
-# Centralized Interface Target Configuration
+# 3. Centralized Interface Target Configuration (MUST BE BEFORE DEPENDENCIES)
 # ---------------------------------------------------------------------------
+# Create the target first so that Dependencies.cmake can bind macros to it
 add_library(traverso_compiler_settings INTERFACE)
 
-# Enforce the C++17 standard for all consumers
 target_compile_features(traverso_compiler_settings INTERFACE cxx_std_17)
 
-# Apply global preprocessor definitions
 target_compile_definitions(traverso_compiler_settings INTERFACE
     STATIC_BUILD
     VERSION="${TRAVERSO_FULL_VERSION}"
@@ -85,7 +92,13 @@ if(WANT_TRAVERSO_DEBUG)
 endif()
 
 # ---------------------------------------------------------------------------
-# Platform-Specific Paths and Flags
+# 4. Load External Dependencies (NOW IN THE PERFECT SWEET SPOT)
+# ---------------------------------------------------------------------------
+# Options exist, compiler target exists, and it runs BEFORE add_subdirectory()
+include(Dependencies)
+
+# ---------------------------------------------------------------------------
+# 5. Platform-Specific Paths and Flags
 # ---------------------------------------------------------------------------
 if(APPLE)
     if(EXISTS "/opt/homebrew")
@@ -105,7 +118,7 @@ elseif(WIN32)
 endif()
 
 # ---------------------------------------------------------------------------
-# Compiler and Linker Flags
+# 6. Compiler and Linker Flags
 # ---------------------------------------------------------------------------
 find_program(GETCONF_EXECUTABLE getconf)
 if(GETCONF_EXECUTABLE)
@@ -124,7 +137,7 @@ if(ENABLE_ASAN)
 endif()
 
 # ---------------------------------------------------------------------------
-# Hardware Architecture Probing
+# 7. Hardware Architecture Probing
 # ---------------------------------------------------------------------------
 include(TestBigEndian)
 test_big_endian(WORDS_BIGENDIAN)
@@ -167,11 +180,8 @@ if(UNIX AND WANT_SSE)
 endif()
 
 # ---------------------------------------------------------------------------
-# Load External Dependencies (Segment 2)
+# 8. Automatic Compilation Handling and Delegation
 # ---------------------------------------------------------------------------
-include(Dependencies)
-
-# Enable automatic compilation handling for Qt MOC, UIC, and RCC files
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)

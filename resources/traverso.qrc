@@ -41,9 +41,9 @@
         <file alias="seekleft">images/icons/media-seek-backward.png</file>
         <file alias="seekright">images/icons/media-seek-forward.png</file>
         <file alias="record">images/icons/media-record.png</file>
-        <file alias="projectmanagement">images/icons/32X32/projects.png</file>
-        <file alias="sheetmanagement">images/icons/32X32/sheets.png</file>
-        <file alias="audiosourcesmanagement">images/icons/32X32/audiosources.png</file>
+        <file alias="projectmanagement">images/icons/32x32/projects.png</file>
+        <file alias="sheetmanagement">images/icons/32x32/sheets.png</file>
+        <file alias="audiosourcesmanagement">images/icons/32x32/audiosources.png</file>
         <file alias="exit">images/icons/application-exit.png</file>
         <file alias="undo">images/icons/edit-undo.png</file>
         <file alias="redo">images/icons/edit-redo.png</file>
@@ -78,6 +78,6 @@
         <file>translations/traverso_ru.qm</file>
         <file>translations/traverso_it.qm</file>
         <file alias="project_conversion_description_2_3">projectconversion/2_to_3.html</file>
-        <file alias="newlogosvg">images/newlogo.svg</file>
+        <file alias="traverso-logo">images/traverso-logo.svg</file>
     </qresource>
 </RCC>

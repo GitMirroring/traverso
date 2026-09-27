@@ -102,7 +102,7 @@ public:
         PENTER;
         Q_ASSERT(m_metaMethod.isValid());
         TCommand* command = nullptr;
-        bool result = m_metaMethod.invoke(object, Qt::DirectConnection, Q_RETURN_ARG(TCommand*, command));
+        [[maybe_unused]] bool result = m_metaMethod.invoke(object, Qt::DirectConnection, Q_RETURN_ARG(TCommand*, command));
         PMESG((result ? "TShortCutFunction::dispatch_with_command_return: SUCCES invoking %s::%s" : "TShortCutFunction::dispatch_with_command_return: FAILED invoking %s::%s"), m_metaObject->className(), m_metaMethod.methodSignature().constData());
         return command;
     }
@@ -110,7 +110,7 @@ public:
         PENTER;
         Q_ASSERT(m_metaMethod.isValid());
         Q_ASSERT(m_metaObject);
-        bool result = m_metaMethod.invoke(object, Qt::DirectConnection);
+        [[maybe_unused]] bool result = m_metaMethod.invoke(object, Qt::DirectConnection);
         PMESG((result ? "TShortCutFunction::dispatch: SUCCESS invoking %s::%s" : "TShortCutFunction::dispatch: FAILED invoking %s::%s"), m_metaObject->className(), m_metaMethod.methodSignature().constData());
         return result;
     }

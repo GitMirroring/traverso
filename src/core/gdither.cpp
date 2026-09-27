@@ -18,10 +18,9 @@
  *  $Id: gdither.cpp,v 1.4 2009/03/14 14:13:46 r_sijrier Exp $
  */
 
-#include <gdither_types_internal.h>
+#include <gdither_types.h>
 #include <gdither.h>
 #include <noise.h>
-#include "defines.h"
 
 /* this monstrosity is necessary to get access to lrintf() and random().
    whoever is writing the glibc headers <cmath> and <cstdlib> should be
@@ -97,7 +96,7 @@ GDither gdither_new(GDitherType type, uint32_t channels,
 	break;
     case GDither16bit:
 	/* Signed 16 bit */
-	s->bias = 0.0f;
+    s->bias = 0.0f;
 	s->clamp_u = 32767;
 	s->clamp_l = -32768;
 	break;
