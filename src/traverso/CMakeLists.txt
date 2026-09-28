@@ -69,7 +69,7 @@ target_link_libraries(traverso
 
 # System-level dependencies required for building on particular OS environments
 if(WIN32)
-    target_link_libraries(traverso PRIVATE mp3lame brotlidec brotlicommon jbig lerc bz2 lzma deflate zstd tiff mpg123 opus winmm)
+    target_link_libraries(traverso PRIVATE mp3lame brotlidec brotlicommon jbig lerc bz2 lzma deflate zstd tiff mpg123 opus winmm soxr samplerate)
 elseif(APPLE)
     target_link_libraries(traverso PRIVATE "-framework CoreFoundation" "-framework Accelerate" "-framework ApplicationServices" dl)
 else()

@@ -113,7 +113,10 @@ elseif(WIN32)
     set(BUILD_SHARED_LIBS OFF)
 
     target_compile_definitions(traverso_compiler_settings INTERFACE MPG123_STATIC OPT_STATIC)
-    target_link_options(traverso_compiler_settings INTERFACE "LINKER:-static" "LINKER:-static-libgcc" "LINKER:-static-libstdc++")
+    # -static-libgcc / -static-libstdc++ are GCC *driver* options, not linker
+    # options: they must NOT be given the LINKER: prefix (which would forward
+    # them to ld via -Wl, and make ld try to parse them as grouped short flags).
+    target_link_options(traverso_compiler_settings INTERFACE "LINKER:-static" "-static-libgcc" "-static-libstdc++")
     list(PREPEND CMAKE_PREFIX_PATH "C:/msys64/ucrt64/qt6-static/")
 endif()
 
