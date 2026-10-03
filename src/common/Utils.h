@@ -1,31 +1,34 @@
 /*
     Copyright (C) 2005-2026 Remon Sijrier
- 
+
     This file is part of Traverso
- 
+
     Traverso is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
- 
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
- 
+
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
- 
+
 */
 
 #pragma once
 
 #include <QDateTime>
+#include <QStringList>
+#include <cmath>
 
 #define QS_C(x) x.toUtf8().data()
 
 namespace TraversoDAW {
+
 class Utils
 {
 public:
@@ -36,12 +39,9 @@ public:
     }
 
     static QDateTime extract_date_time(qint64 id);
-
     static qint64 create_id();
-
     static QStringList find_qm_files();
     static QString language_name_from_qm_file(const QString& lang);
-    
     static bool can_set_mouse_pos();
 
     static inline int cnt_bits(unsigned long val, int & highbit)
@@ -68,53 +68,41 @@ public:
 
 class Float {
 public:
-     static inline bool compare(float a, float b)
+    static constexpr float  RT_EPSILON_F = 0.000001f;
+    static constexpr double RT_EPSILON_D = 0.0000000000001;
+
+    /**
+     * @brief Real-time safe single-precision float comparison.
+     */
+    static inline bool compare(float a, float b)
     {
-        bool az = qFuzzyIsNull(a);
-        bool bz = qFuzzyIsNull(b);
-        if (az && bz) {
-            return true;
-        }
-        if (az || bz) {
-            return false;
-        }
-        return qFuzzyCompare(a, b);
+        return std::fabs(a - b) <= RT_EPSILON_F;
     }
 
     static inline bool compare(double a, double b)
     {
-        bool az = qFuzzyIsNull(a);
-        bool bz = qFuzzyIsNull(b);
-        if (az && bz) {
-            return true;
-        }
-        if (az || bz) {
-            return false;
-        }
-        return qFuzzyCompare(a, b);
-    }
-
-    static inline bool equals_1(double a)
-    {
-        return qFuzzyCompare(a, 1.0);
+        return std::fabs(a - b) <= RT_EPSILON_D;
     }
 
     static inline bool equals_1(float a)
     {
-        return qFuzzyCompare(a, 1.0f);
+        return std::fabs(a - 1.0f) <= RT_EPSILON_F;
     }
 
-    static inline bool equals_0(double a)
+    static inline bool equals_1(double a)
     {
-        return qFuzzyIsNull(a);
+        return std::fabs(a - 1.0) <= RT_EPSILON_D;
     }
 
     static inline bool equals_0(float a)
     {
-        return qFuzzyIsNull(a);
+        return std::fabs(a) <= RT_EPSILON_F;
     }
 
+    static inline bool equals_0(double a)
+    {
+        return std::fabs(a) <= RT_EPSILON_D;
+    }
 };
 
-}
-
+} // namespace TraversoDAW
