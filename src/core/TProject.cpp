@@ -1097,32 +1097,38 @@ bool TProject::has_changed()
     return false;
 }
 
-
 TCommand* TProject::add_sheet(TSheet* sheet, bool historable)
 {
     PENTER;
 
-    TAddRemoveCommand* cmd;
-    cmd = new TAddRemoveCommand(this, sheet, historable, nullptr,
-                        "private_add_sheet(TSheet*)", "privateSheetAdded(TSheet*)",
-                        "private_remove_sheet(TSheet*)", "privateSheetRemoved(TSheet*)",
-                        tr("Sheet %1 added").arg(sheet->get_name()));
-
-    return cmd;
+    return new TAddRemoveCommand(
+        this,                                                 // 1. parent (TContextItem*)
+        sheet,                                                // 2. item (TContextItem* via TSheet)
+        historable,                                           // 3. bool historable
+        static_cast<TSession*>(sheet),                        // 4. TSession* sheet context
+        [this, sheet]() { private_add_sheet(sheet); },       // 5. doMethod closure
+        [this, sheet]() { emit privateSheetAdded(sheet); },   // 6. doSignal closure
+        [this, sheet]() { private_remove_sheet(sheet); },    // 7. undoMethod closure
+        [this, sheet]() { emit privateSheetRemoved(sheet); }, // 8. undoSignal closure
+        tr("Sheet %1 added").arg(sheet->get_name())          // 9. description string
+        );
 }
-
 
 TCommand* TProject::remove_sheet(TSheet* sheet, bool historable)
 {
-    TAddRemoveCommand* cmd;
-    cmd = new TAddRemoveCommand(this, sheet, historable, nullptr,
-                        "private_remove_sheet(TSheet*)", "privateSheetRemoved(TSheet*)",
-                        "private_add_sheet(TSheet*)", "privateSheetAdded(TSheet*)",
-                        tr("Remove Sheet %1").arg(sheet->get_name()));
-
-
-    return cmd;
+    return new TAddRemoveCommand(
+        this,
+        sheet,
+        historable,
+        static_cast<TSession*>(sheet),
+        [this, sheet]() { private_remove_sheet(sheet); },
+        [this, sheet]() { emit privateSheetRemoved(sheet); },
+        [this, sheet]() { private_add_sheet(sheet); },
+        [this, sheet]() { emit privateSheetAdded(sheet); },
+        tr("Remove Sheet %1").arg(sheet->get_name())
+        );
 }
+
 
 
 TSheet* TProject::get_sheet(qint64 id) const

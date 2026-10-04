@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2006-2019 Remon Sijrier
+Copyright (C) 2006-2026 Remon Sijrier
 
 This file is part of Traverso
 
@@ -16,75 +16,101 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
-$Id: TSMP.h,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 */
 
-#ifndef T_AUDIO_THREAD_MESSAGE_QUEUE_H
-#define T_AUDIO_THREAD_MESSAGE_QUEUE_H
+#pragma once
 
 #include <QObject>
-
+#include <QThread>
+#include <memory>
+#include <functional>
+#include <type_traits>
 #include "cameron/readerwritercircularbuffer.h"
 
-class TAudioThreadMessageQueueThread;
-
 struct TAudioThreadMessageQueueEvent {
-    QObject* 	caller;
-    void*		argument;
-    int         slotindex;
-    int         signalindex;
+    std::move_only_function<void()> rtMethodExecutor{nullptr};
+    std::move_only_function<void()> guiSignalExecutor{nullptr};
 };
 
+class TAudioThreadMessageQueueThread : public QThread
+{
+protected:
+    void run() override;
+};
 
 class TAudioThreadMessageQueue : public QObject
 {
     Q_OBJECT
 
 public:
-    void prepare_event(TAudioThreadMessageQueueEvent &event, QObject* caller, void* argument, const char* slotSignature, const char* signalSignature);
+    /**
+     * @brief Pure C++23 Task Dispatcher.
+     *        Statically vefifies that lambda captures fit within real-time limits (64 bytes)
+     *        and are trivially copyable to prevent heap allocation inside the audio thread.
+     */
+    template<typename RTTask, typename GuiSignal = std::nullptr_t>
+    void post_rt_task(RTTask&& rtTask, GuiSignal&& guiSignal = nullptr)
+    {
+        using DecayedRTTask = std::decay_t<RTTask>;
+        using DecayedGuiSignal = std::decay_t<GuiSignal>;
+        using TargetType = std::move_only_function<void()>;
 
-    void post_gui_event(const TAudioThreadMessageQueueEvent &event);
-    void post_gui_event(QObject* caller, void* arg, const char* slotSignature, const char* signalSignature);
-    void post_rt_event(const TAudioThreadMessageQueueEvent& event);
+        // 1. Real-Time Security Assertions for the Audio Thread
+        if constexpr (!std::is_same_v<DecayedRTTask, TargetType>) {
+            static_assert(sizeof(DecayedRTTask) <= 64,
+                          "CRITICAL C++23 ERROR: Lambda closure exceeds the 64-byte real-time stack limit!");
+            static_assert(std::is_trivially_copyable_v<DecayedRTTask>,
+                          "CRITICAL C++23 ERROR: Lambda contains non-trivial captures which violates lock-free safety!");
+        }
 
-    void process_event(const TAudioThreadMessageQueueEvent &event);
-    void process_event_slot(const TAudioThreadMessageQueueEvent& event);
-    void process_event_signal(const TAudioThreadMessageQueueEvent &event);
+        // 2. Security Assertions for the GUI Return Signal
+        if constexpr (!std::is_same_v<DecayedGuiSignal, TargetType> && !std::is_same_v<DecayedGuiSignal, std::nullptr_t>) {
+            static_assert(sizeof(DecayedGuiSignal) <= 64,
+                          "CRITICAL C++23 ERROR: GUI Signal lambda exceeds 64 bytes!");
+            static_assert(std::is_trivially_copyable_v<DecayedGuiSignal>,
+                          "CRITICAL C++23 ERROR: GUI Signal lambda contains non-trivial captures!");
+        }
 
+        TAudioThreadMessageQueueEvent event{};
+        event.rtMethodExecutor = std::forward<RTTask>(rtTask);
+        event.guiSignalExecutor = std::forward<GuiSignal>(guiSignal);
+        post_gui_event(std::move(event));
+    }
+
+    void post_gui_event(TAudioThreadMessageQueueEvent &&event);
+    void post_rt_event(TAudioThreadMessageQueueEvent &&event);
+    void process_posted_gui_events();
+    void process_processed_events_by_rt_thread_queue();
 
 private:
     TAudioThreadMessageQueue();
-    ~TAudioThreadMessageQueue();
-    TAudioThreadMessageQueue(const TAudioThreadMessageQueue&);
+    ~TAudioThreadMessageQueue() override;
+    TAudioThreadMessageQueue(const TAudioThreadMessageQueue&) = delete;
 
-    // allow this function to create one instance
     friend TAudioThreadMessageQueue& tsmp();
-
-    // The AudioDevice instance is the _only_ one who
-    // is allowed to call process_events_slot() !!
     friend class TAudioDevice;
     friend class TAudioThreadMessageQueueThread;
 
-    moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>*   m_postedFromGuiThreadQueue;
-    moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>*   m_postedFromRTThreadQueue;
-    moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>*   m_processedByRTThreadQueue;
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>> m_postedFromGuiThreadQueue;
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>> m_postedFromRTThreadQueue;
+    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>> m_processedByRTThreadQueue;
 
+    TAudioThreadMessageQueueThread* m_TAudioThreadMessageQueueThread;
     int             m_eventCounter;
     int             m_retryCount;
-    TAudioThreadMessageQueueThread* m_TAudioThreadMessageQueueThread;
+    std::atomic<bool> m_running{true};
+    std::atomic<int>  m_droppedRtEvents{0};
 
-    void process_posted_gui_events();
-    void process_processed_events_by_rt_thread_queue();
+public slots:
+    void trigger_batch_start() { emit batchTransactionStarted(); }
+    void trigger_batch_finish() { emit batchTransactionFinished(); }
+
+signals:
+    void batchTransactionStarted();
+    void batchTransactionFinished();
+    void audioDriverStalled();
+    void audioDriverFatal();
+    void queueOverflowDetected();
 };
 
-// use this function to access the tsmp singleton pointer
 TAudioThreadMessageQueue& tsmp();
-
-#endif
-
-
-//eof
-
-
-

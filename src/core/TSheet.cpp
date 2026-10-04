@@ -121,12 +121,6 @@ void TSheet::init()
 
     QObject::tr("TSheet");
 
-    tsmp().prepare_event(m_transportStartedEvent, this, nullptr, "", "transportStarted()");
-    tsmp().prepare_event(m_transportStoppedEvent, this, nullptr, "", "transportStopped()");
-    tsmp().prepare_event(m_transportLocationChangedEvent, this, nullptr, "", "transportLocationChanged()");
-    tsmp().prepare_event(m_prepareRecordingEvent, this, nullptr, "", "prepareRecording()");
-    tsmp().prepare_event(m_recordingStateChangedEvent, this, nullptr, "", "recordingStateChanged()");
-
     set_transport_seeking_state(false);
     set_transport_locate_requested_state(false);
     set_transport_stop_requested_state(false);
@@ -385,12 +379,7 @@ void TSheet::set_artists(const QString& pArtists)
 
 void TSheet::set_gain(float gain)
 {
-    if (gain < 0.0f) {
-        gain = 0.0;
-    }
-    if (gain > 2.0f) {
-        gain = 2.0;
-    }
+    gain = Mixer::clamp_gain(gain);
 
     m_masterOutBusTrack->set_gain(gain);
 
@@ -526,7 +515,10 @@ int TSheet::process(TProcessCallBackData &processData)
     if (transport_stop_requested()) {
         set_transport_rolling_state(false);
         set_transport_stop_requested_state(false);
-        tsmp().post_rt_event(m_transportStoppedEvent);
+        tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+            .rtMethodExecutor = nullptr,
+            .guiSignalExecutor = [this]() { emit transportStopped(); }
+        });
 
         return 0;
     }
@@ -544,7 +536,11 @@ int TSheet::process(TProcessCallBackData &processData)
     // update the transport location
     m_transportLocation.add_frames(nframes, audiodevice().get_sample_rate());
     m_readDiskIO->set_transport_location(m_transportLocation);
-    tsmp().post_rt_event(m_transportLocationChangedEvent);
+
+    tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+        .rtMethodExecutor = nullptr,
+        .guiSignalExecutor = [this]() { emit transportLocationChanged(); }
+    });
 
     if (!processResult) {
         return 0;
@@ -751,7 +747,10 @@ int TSheet::transport_control(TTransportControl *transportControl)
                 // RT thread save signal!
                 Q_ASSERT(transportControl->is_realtime());
                 Q_ASSERT(this->thread() != QThread::currentThread());
-                tsmp().post_rt_event(m_prepareRecordingEvent);
+                tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+                    .rtMethodExecutor = nullptr,
+                    .guiSignalExecutor = [this]() { emit prepareRecording(); }
+                });
                 printf("Sheet::transport_control: Transport Starting: posting 'prepareRecording()' signal to TSMP\n");
                 return false;
             }
@@ -845,7 +844,10 @@ void TSheet::start_transport_rolling(bool realtime)
     set_transport_rolling_state(true);
 
     if (realtime) {
-        tsmp().post_rt_event(m_transportStartedEvent);
+        tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+            .rtMethodExecutor = nullptr,
+            .guiSignalExecutor = [this]() { emit transportStarted(); }
+        });
     } else {
         emit transportStarted();
     }
@@ -871,7 +873,10 @@ void TSheet::set_recording(bool recording, bool realtime)
     }
 
     if (realtime) {
-        tsmp().post_rt_event(m_recordingStateChangedEvent);
+        tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+            .rtMethodExecutor = nullptr,
+            .guiSignalExecutor = [this]() { emit recordingStateChanged(); }
+        });
     } else {
         emit recordingStateChanged();
     }

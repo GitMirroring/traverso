@@ -190,11 +190,6 @@ TAudioDevice::TAudioDevice()
 
     m_availableDrivers << "Dummy";
 
-    tsmp().prepare_event(m_bufferUnderRunEvent, this, nullptr, "", "bufferUnderRun()");
-    tsmp().prepare_event(m_xrunStormDetectedEvent, this, nullptr, "", "xrunStormDetected()");
-    tsmp().prepare_event(m_finishedOneProcessCycleEvent, this, nullptr, "", "finishedOneProcessCycle()");
-
-
     connect(this, &TAudioDevice::xrunStormDetected, this, &TAudioDevice::switch_to_null_driver);
     connect(&m_xrunResetTimer, &QTimer::timeout, this, &TAudioDevice::reset_xrun_counter);
 
@@ -281,7 +276,10 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
     }
 
     tsmp().process_posted_gui_events();
-    tsmp().post_rt_event(m_finishedOneProcessCycleEvent);
+    tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+        .rtMethodExecutor = nullptr,
+        .guiSignalExecutor = [this]() { emit finishedOneProcessCycle(); }
+    });
 
     return 1;
 }
@@ -875,26 +873,24 @@ void TAudioDevice::private_remove_client(TAudioDeviceClient* client)
     }
 }
 
-/**
- * Adds the client into the audio processing chain in a Thread Save way
-
- * WARNING: This function assumes the Clients callback function is set to an existing objects function!
- */
 void TAudioDevice::add_client( TAudioDeviceClient * client )
 {
-    tsmp().post_gui_event(this, client, "private_add_client(TAudioDeviceClient*)", "audioDeviceClientAdded(TAudioDeviceClient*)");
+    // Pack into a single execution frame using the lock-free pipeline
+    tsmp().post_rt_task(
+        [this, client]() { private_add_client(client); },
+        [this, client]() { emit audioDeviceClientAdded(client); }
+        );
 }
 
-/**
- * Removes the client into the audio processing chain in a Thread save way
- *
- * The clientRemoved(Client* client); signal will be emited after succesfull removal
- * from within the GUI Thread!
- */
 void TAudioDevice::remove_client( TAudioDeviceClient * client )
 {
-    tsmp().post_gui_event(this, client, "private_remove_client(TAudioDeviceClient*)", "audioDeviceClientRemoved(TAudioDeviceClient*)");
+    // Pack into a single execution frame using the lock-free pipeline
+    tsmp().post_rt_task(
+        [this, client]() { private_remove_client(client); },
+        [this, client]() { emit audioDeviceClientRemoved(client); }
+        );
 }
+
 
 void TAudioDevice::audiothread_finished()
 {
@@ -909,11 +905,17 @@ void TAudioDevice::audiothread_finished()
 
 void TAudioDevice::xrun( )
 {
-    tsmp().post_rt_event(m_bufferUnderRunEvent);
+    tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+        .rtMethodExecutor = nullptr,
+        .guiSignalExecutor = [this]() { emit bufferUnderRun(); }
+    });
 
     m_xrunCount++;
     if (m_xrunCount > 30) {
-        tsmp().post_rt_event(m_xrunStormDetectedEvent);
+        tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+            .rtMethodExecutor = nullptr,
+            .guiSignalExecutor = [this]() { emit xrunStormDetected(); }
+        });
         m_driver->stop();
         m_runAudioThread.store(false);
     }

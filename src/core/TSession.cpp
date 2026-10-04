@@ -465,38 +465,50 @@ TCommand* TSession::start_transport()
     return nullptr;
 }
 
-
 TCommand* TSession::add_track(TTrack* track, bool historable)
 {
-	if (is_child_session()) {
-		set_track_height(track->get_id(), m_parentSession->get_track_height(track->get_id()));
-		private_track_added(track);
+    if (is_child_session()) {
+        set_track_height(track->get_id(), m_parentSession->get_track_height(track->get_id()));
+        private_track_added(track);
         return nullptr;
-	}
+    }
 
-	return new TAddRemoveCommand(this, track, historable, this,
-        "private_add_track(TTrack*)", "privateTrackAdded(TTrack*)",
-        "private_remove_track(TTrack*)", "privateTrackRemoved(TTrack*)",
-        tr("Added %1: %2").arg(track->metaObject()->className(), track->get_name()));
+    return new TAddRemoveCommand(
+        this,                                                 // 1. parent (TContextItem*)
+        track,                                                // 2. item (TContextItem* via TTrack)
+        historable,                                           // 3. bool historable
+        this,                                                 // 4. TSession* sheet context (self)
+        [this, track]() { private_add_track(track); },       // 5. doMethod closure
+        [this, track]() { emit privateTrackAdded(track); },   // 6. doSignal closure
+        [this, track]() { private_remove_track(track); },    // 7. undoMethod closure
+        [this, track]() { emit privateTrackRemoved(track); }, // 8. undoSignal closure
+        tr("Added %1: %2").arg(track->metaObject()->className(), track->get_name()) // 9. description
+        );
 }
-
 
 TCommand* TSession::remove_track(TTrack* track, bool historable)
 {
-	if (m_parentSession) {
+    if (m_parentSession) {
         private_track_removed(track);
         return nullptr;
-	}
+    }
 
     // Bounce Tracks for now are hard coded, do not remove if the user asks
     if (track->get_type() == TTrack::BOUNCE) {
         return nullptr;
     }
 
-    return new TAddRemoveCommand(this, track, historable, this,
-        "private_remove_track(TTrack*)", "privateTrackRemoved(TTrack*)",
-        "private_add_track(TTrack*)", "privateTrackAdded(TTrack*)",
-        tr("Removed %1: %2").arg(track->metaObject()->className(), track->get_name()));
+    return new TAddRemoveCommand(
+        this,
+        track,
+        historable,
+        this,
+        [this, track]() { private_remove_track(track); },
+        [this, track]() { emit privateTrackRemoved(track); },
+        [this, track]() { private_add_track(track); },
+        [this, track]() { emit privateTrackAdded(track); },
+        tr("Removed %1: %2").arg(track->metaObject()->className(), track->get_name())
+        );
 }
 
 void TSession::private_add_track(TTrack* track)

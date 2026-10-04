@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProcessCallBackData.h"
 #include "TSession.h"
 #include <QDomNode>
-#include "TAudioThreadMessageQueue.h"
 #include "defines.h"
 
 class TProject;
@@ -129,11 +128,6 @@ private:
     TDiskIOThread*             m_writeDiskIO;
     TAudioClipManager*	m_audioClipManager{};
     QString             m_audioSourcesDir;
-    TAudioThreadMessageQueueEvent           m_transportStoppedEvent;
-    TAudioThreadMessageQueueEvent           m_transportLocationChangedEvent;
-    TAudioThreadMessageQueueEvent           m_transportStartedEvent;
-    TAudioThreadMessageQueueEvent           m_prepareRecordingEvent;
-    TAudioThreadMessageQueueEvent           m_recordingStateChangedEvent;
 
     std::atomic<bool>   m_isSeeking;
     std::atomic<bool>   m_transportLocateRequested;

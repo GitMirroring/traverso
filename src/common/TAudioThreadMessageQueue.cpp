@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2006 - 2024 Remon Sijrier
+Copyright (C) 2006-2026 Remon Sijrier
 
 This file is part of Traverso
 
@@ -16,129 +16,149 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
-$Id: TSMP.cpp,v 1.4 2008/02/11 10:11:52 r_sijrier Exp $
 */
 
 #include "TAudioThreadMessageQueue.h"
-
 #include "TAudioDevice.h"
-#include "Debugger.h"
 #include "TAudioDeviceSetup.h"
-
-#include <QMetaMethod>
 #include <QMessageBox>
 #include <QCoreApplication>
-#include <QThread>
-#include <unistd.h>
-
 
 /**
- * 	\class TSMP
- * 	\brief TSMP (Thread Save Message Postinge) is a singleton class to call
- *		functions (both signals and slots) in a thread save way without
- *		using any mutual exclusion primitives (mutex)
- *
+ * @brief Continuous background execution loop for processing thread-safe events.
+ *        Monitors the active state lifecycle flag to gracefully break execution.
  */
-
-class TAudioThreadMessageQueueThread : public QThread
+void TAudioThreadMessageQueueThread::run()
 {
-    void run() {
-        while(true) {
-            // printf("calling TSMP process_TSMP_signals\n");
-            tsmp().process_processed_events_by_rt_thread_queue();
-        }
+    while (tsmp().m_running) {
+        tsmp().process_processed_events_by_rt_thread_queue();
     }
-};
+}
 
 /**
- *
- * @return The TAudioThreadMessageQueue instance.
+ * @brief Thread-safe Meyer's Singleton accessor for global queue coordination.
  */
 TAudioThreadMessageQueue& tsmp()
 {
     static TAudioThreadMessageQueue ThreadSaveAddRemove;
-	return ThreadSaveAddRemove;
+    return ThreadSaveAddRemove;
 }
 
+/**
+ * @brief Constructor managing lock-free circular buffer initialization
+ *        and critical cross-thread error signaling pathways.
+ */
 TAudioThreadMessageQueue::TAudioThreadMessageQueue()
 {
-    m_postedFromGuiThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(1024);
-    m_postedFromRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(4096);
-    m_processedByRTThreadQueue = new moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>(4096 + 1024);
-
+    m_running = true;
     m_eventCounter = 0;
     m_retryCount = 0;
+    m_droppedRtEvents = 0; // Initialize the atomic overflow tracker
 
+    // Allocate fixed-capacity lock-free queues via automatic memory wrappers.
+    // These allocations occur strictly during initialization, ensuring zero heap activity at runtime.
+    m_postedFromGuiThreadQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>>(1024);
+    m_postedFromRTThreadQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>>(4096);
+    m_processedByRTThreadQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>>(5120);
+
+    // Bind thread-safety notifications to GUI slots using standard QueuedConnections
+    connect(this, &TAudioThreadMessageQueue::audioDriverStalled, this, []() {
+        if (audiodevice().get_driver_type() != "Dummy") {
+            QMessageBox::critical(nullptr, tr("Traverso - Malfunction!"),
+                                  tr("The Audiodriver Thread seems to be stalled/stopped..."), QMessageBox::Ok);
+            TAudioDeviceSetup audioDeviceSetup;
+            audioDeviceSetup.set_driver_type("Dummy");
+            audiodevice().set_parameters(audioDeviceSetup);
+        }
+    }, Qt::QueuedConnection);
+
+    connect(this, &TAudioThreadMessageQueue::audioDriverFatal, this, []() {
+        QMessageBox::critical(nullptr, tr("Traverso - Fatal!"),
+                              tr("The Null AudioDriver stalled too, exiting application!"), QMessageBox::Ok);
+        QCoreApplication::exit(-1);
+    }, Qt::QueuedConnection);
+
+    // Asynchronously notify the system when the lock-free queues encounter pressure
+    connect(this, &TAudioThreadMessageQueue::queueOverflowDetected, this, []() {
+        qCritical("CRITICAL: Real-time message queue overflowed! Events dropped to preserve audio stream integrity.");
+    }, Qt::QueuedConnection);
+
+    // Bootstrapping the companion background thread for GUI signaling tasks
     m_TAudioThreadMessageQueueThread = new TAudioThreadMessageQueueThread;
     m_TAudioThreadMessageQueueThread->start();
     m_TAudioThreadMessageQueueThread->moveToThread(m_TAudioThreadMessageQueueThread);
 }
 
-TAudioThreadMessageQueue::~ TAudioThreadMessageQueue( )
+/**
+ * @brief Destructor orchestrating deadlock-free lifecycle termination
+ *        by awaking the blocking thread with a dummy payload.
+ */
+TAudioThreadMessageQueue::~TAudioThreadMessageQueue()
 {
+    printf("TAudioThreadMessageQueue dropped real time events: %d\n", m_droppedRtEvents.load());
+
+    m_running = false;
+
+    // Dispatch a hollow dummy payload to immediately break the blocking wait_dequeue state
+    TAudioThreadMessageQueueEvent dummyEvent{};
+    m_postedFromRTThreadQueue->try_enqueue(std::move(dummyEvent));
+
+    // Wait until the thread breaks its loop execution flow and release handles safely
+    m_TAudioThreadMessageQueueThread->quit();
+    m_TAudioThreadMessageQueueThread->wait();
+    delete m_TAudioThreadMessageQueueThread;
 }
 
-
 /**
- * 	Use this function to add events to the event queue when 
- * 	called from the GUI thread.
- *
- *  Blocks (buzy waits) if the event buffer is full
- *
- *	Note: This function should be called ONLY from the GUI thread! 
- * @param event  The event to add to the event queue
+ * @brief Enqueues a structured transaction payload originating from the primary GUI thread context.
+ *        Safe to block since it executes inside the non-real-time user interface context.
  */
-void TAudioThreadMessageQueue::post_gui_event(const TAudioThreadMessageQueueEvent &event )
+void TAudioThreadMessageQueue::post_gui_event(TAudioThreadMessageQueueEvent &&event)
 {
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "TSMP::add_event", "Adding event from other then GUI thread!!");
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "TSMP::post_gui_event", "Adding event from other than GUI thread!!");
 
-    if (!m_postedFromGuiThreadQueue->try_enqueue(event)) {
-        // Queue is full, block the thread till there is room in the queue again
-        m_postedFromGuiThreadQueue->wait_enqueue(event);
+    if (!m_postedFromGuiThreadQueue->try_enqueue(std::move(event))) {
+        m_postedFromGuiThreadQueue->wait_enqueue(std::move(event));
     }
-
     m_eventCounter++;
 }
 
 /**
- * 	Use this function to add events to the event queue when
- * 	called from the audio processing (real time) thread
- *
- *	Note: This function should be called ONLY from the realtime audio thread
- *
- * @param event The event to add to the event queue
+ * @brief Enqueues feedback indicators or execution callbacks originating from the RT audio context.
+ *        Guarantees strict non-blocking behavior to prevent priority inversion glitches.
  */
-void TAudioThreadMessageQueue::post_rt_event(const TAudioThreadMessageQueueEvent &event )
+void TAudioThreadMessageQueue::post_rt_event(TAudioThreadMessageQueueEvent &&event)
 {
     Q_ASSERT_X(this->thread() != QThread::currentThread(), "TSMP::post_rt_event", "Adding event from NON-RT Thread!!");
 
-    if (!m_postedFromRTThreadQueue->try_enqueue(event)) {
-        // Queue is full, block the thread till there is room in the queue again
-        m_postedFromRTThreadQueue->wait_enqueue(event);
+    // Real-time Safety: Never fall back to wait_enqueue. If the queue is entirely full,
+    // drop the execution signal to maintain audio integrity and record the failure via an atomic counter.
+    if (!m_postedFromRTThreadQueue->try_enqueue(std::move(event))) {
+        m_droppedRtEvents.fetch_add(1, std::memory_order_relaxed);
     }
 }
 
-
-//
-//  Function called in RealTime AudioThread processing path
-//
-void TAudioThreadMessageQueue::process_posted_gui_events( )
+/**
+ * @brief Flushes tasks dispatched by the GUI layer. Executed entirely inside the RT processing context.
+ *        Guarantees immediate zero-heap cleanup of task structures right after execution.
+ */
+void TAudioThreadMessageQueue::process_posted_gui_events()
 {
-   TAudioThreadMessageQueueEvent event;
+    TAudioThreadMessageQueueEvent event;
 
     while (m_postedFromGuiThreadQueue->try_dequeue(event)) {
-        process_event_slot(event);
-        // printf("Processed %s slot: %s, signal: %s\n", event.caller->metaObject()->className(),
-        //        (event.slotindex >= 0) ? event.caller->metaObject()->method(event.slotindex).methodSignature().data() : "no_slot_supplied",
-        //        (event.signalindex >= 0) ? event.caller->metaObject()->method(event.signalindex).methodSignature().data() : "so_signal_supplied");
+        if (event.rtMethodExecutor) {
+            event.rtMethodExecutor();
+            // Real-time Safety: Erase closures immediately to clean up stack space inside the cycle loop
+            event.rtMethodExecutor = nullptr;
+        }
 
-        // The gui event wants to emit a signal so we move the event back
-        // into the GUI event loop for the signal to be emitted
-        if (event.signalindex >= 0) {
-            if (!m_processedByRTThreadQueue->try_enqueue(event)) {
-                // Queue is full, block the thread till there is room in the queue again
-                m_processedByRTThreadQueue->wait_enqueue(event);
+        if (event.guiSignalExecutor) {
+            // Real-time Safety: Utilize strict non-blocking try-semantics. Dropping an overflowing
+            // callback event prevents kernel locks from disrupting the audio streaming deadline.
+            if (!m_processedByRTThreadQueue->try_enqueue(std::move(event))) {
+                m_droppedRtEvents.fetch_add(1, std::memory_order_relaxed);
+                --m_eventCounter; // Compensate transaction counter to prevent structural watch-dog deadlocks
             }
         } else {
             --m_eventCounter;
@@ -146,133 +166,59 @@ void TAudioThreadMessageQueue::process_posted_gui_events( )
     }
 }
 
-// Called by TSMPThread which is allowed to block on the wait_dequeue()
-void TAudioThreadMessageQueue::process_processed_events_by_rt_thread_queue( )
+/**
+ * @brief Processes feedback and event loops inside the decoupled signaling background thread.
+ *        Maintains optimal zero-CPU usage via blocking semantics, but respects immediate exit signals.
+ */
+void TAudioThreadMessageQueue::process_processed_events_by_rt_thread_queue()
 {
-    Q_ASSERT_X(m_TAudioThreadMessageQueueThread->thread() == QThread::currentThread(), "TSMP::process_processed_events_by_rt_thread_queue", "Runs in wrong trhead");
+    Q_ASSERT_X(m_TAudioThreadMessageQueueThread->thread() == QThread::currentThread(),
+               "TSMP::process_processed_events_by_rt_thread_queue", "Runs in wrong thread");
 
     TAudioThreadMessageQueueEvent event;
 
-    while(m_processedByRTThreadQueue->try_dequeue(event)) {
-        process_event_signal(event);
+    // 1. Process asynchronous processing signals finalized by the RT engine
+    while (m_processedByRTThreadQueue->try_dequeue(event)) {
+        if (event.guiSignalExecutor) {
+            event.guiSignalExecutor();
+        }
     }
 
-    while(m_postedFromRTThreadQueue->try_dequeue(event)) {
-        process_event_signal(event);
+    // 2. Clear out immediate state feedback metrics
+    while (m_postedFromRTThreadQueue->try_dequeue(event)) {
+        if (event.guiSignalExecutor) {
+            event.guiSignalExecutor();
+        }
     }
 
-    // Block the TSMPThread until new events are posted to the m_postedFromRTThreadQueue
-    // This will happen every run_cycle from AudioDevice
+    // 3. Fall back to high-efficiency hardware sleep mode until awakened by another transaction cycle
     m_postedFromRTThreadQueue->wait_dequeue(event);
-    process_event_signal(event);
 
+    // Asynchronously evaluate if the real-time loop registered any dropped transactions
+    if (m_droppedRtEvents.load(std::memory_order_relaxed) > 0) {
+        m_droppedRtEvents.store(0, std::memory_order_relaxed);
+        emit queueOverflowDetected();
+    }
+
+    // Execute callback patterns strictly when operating active run states
+    if (m_running && event.guiSignalExecutor) {
+        event.guiSignalExecutor();
+    }
 
     --m_eventCounter;
     m_retryCount++;
-	
-    if (m_retryCount > 200)
-	{
-		if (audiodevice().get_driver_type() != "Dummy") {
-            QMessageBox::critical( nullptr,
-				tr("Traverso - Malfunction!"), 
-				tr("The Audiodriver Thread seems to be stalled/stopped, but Traverso didn't ask for it!\n"
-				"This effectively makes Traverso unusable, since it relies heavily on the AudioDriver Thread\n"
-				"To ensure proper operation, Traverso will fallback to the 'Dummy'.\n"
-                "Potential issues why this can show up are: \n\n"
-				"* You're not running with real time privileges! Please make sure this is setup properly.\n\n"
-				"* The audio chipset isn't supported (completely), you probably have to turn off some of it's features.\n"
-				"\nFor more information, see the Help file, section: \n\n AudioDriver: 'Thread stalled error'\n\n"),
-                QMessageBox::Ok);
-            TAudioDeviceSetup audioDeviceSetup;
-            audioDeviceSetup.set_driver_type("Dummy");
-            audiodevice().set_parameters(audioDeviceSetup);
-			m_retryCount = 0;
-		} else {
-            QMessageBox::critical( nullptr,
-				tr("Traverso - Fatal!"), 
-				tr("The Null AudioDriver stalled too, exiting application!"),
-                QMessageBox::Ok);
-			QCoreApplication::exit(-1);
-		}
-	}
-	
-	if (m_eventCounter <= 0) {
-		m_retryCount = 0;
-	}
-}
 
+    // Integrated engine health checking watchdog mechanism
+    if (m_retryCount > 200) {
+        m_retryCount = 0;
+        if (audiodevice().get_driver_type() != "Dummy") {
+            emit audioDriverStalled();
+        } else {
+            emit audioDriverFatal();
+        }
+    }
 
-/**
-*	This function can be used to process the events 'slot' part.
-*	Usefull when you have a TAudioThreadMessageQueue event, but don't want/need to use TSMP
-*	to call the events slot in a thread save way
-*
-* @param event The TSMPEvent to be processed
-*/
-void TAudioThreadMessageQueue::process_event_slot(const TAudioThreadMessageQueueEvent& event )
-{
-    Q_ASSERT(event.slotindex >= 0);
-
-    void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&event.argument)) };
-
-    if ( ! (event.caller->qt_metacall(QMetaObject::InvokeMetaMethod, event.slotindex, _a) < 0) ) {
-        qDebug("TSMP::process_event_slot failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.slotindex).methodSignature().data());
+    if (m_eventCounter <= 0) {
+        m_retryCount = 0;
     }
 }
-
-/**
-*	This function can be used to process the events 'signal' part.
-*	Usefull when you have a TAudioThreadMessageQueue event, but don't want/need to use TSMP
-*	to call the events signal in a thread save way
-*
-* @param event The TSMPEvent to be processed
-*/
-void TAudioThreadMessageQueue::process_event_signal(const TAudioThreadMessageQueueEvent & event )
-{
-    Q_ASSERT(event.signalindex >= 0);
-
-    void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&event.argument))};
-
-    if ( ! (event.caller->qt_metacall(QMetaObject::InvokeMetaMethod, event.signalindex, _a) < 0) ) {
-            qDebug("TSMP::process_event_signal failed (%s::%s)", event.caller->metaObject()->className(), event.caller->metaObject()->method(event.signalindex).methodSignature().data());
-    }
-}
-
-/**
-*	Convenience function. Calls both process_event_slot() and process_event_signal()
-*
-*	\sa process_event_slot() \sa process_event_signal()
-*
-*	Note: This function doesn't provide the thread safetyness you get with
-*		the add_event() function!
-*
-* @param event The TSMPEvent to be processed
-*/
-void TAudioThreadMessageQueue::process_event(const TAudioThreadMessageQueueEvent & event )
-{
-	process_event_slot(event);
-	process_event_signal(event);
-}
-
-void TAudioThreadMessageQueue::post_gui_event(QObject *caller, void *arg, const char *slotSignature, const char *signalSignature)
-{
-    PENTER;
-    TAudioThreadMessageQueueEvent event;
-    prepare_event(event, caller, arg, slotSignature, signalSignature);
-    post_gui_event(event);
-}
-
-/**
- */
-void TAudioThreadMessageQueue::prepare_event(TAudioThreadMessageQueueEvent &event, QObject* caller, void* argument, const char* slotSignature, const char* signalSignature )
-{
-    PENTER3;
-    event.caller = caller;
-    event.argument = argument;
-
-    event.slotindex = caller->metaObject()->indexOfMethod(slotSignature);
-    event.signalindex = caller->metaObject()->indexOfMethod(signalSignature);
-}
-
-//eof
-

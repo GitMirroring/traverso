@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAddRemoveCommand.h"
 #include "AudioChannel.h"
 #include "TAudioPluginChain.h"
+#include "TAudioThreadMessageQueue.h"
 #include "TSheet.h"
 #include "TProjectManager.h"
 #include "TProject.h"
@@ -256,7 +257,10 @@ int TTrack::get_sort_index( ) const
 void TTrack::add_input_bus(AudioBus *bus)
 {
     if (m_session && m_session->is_transport_rolling()) {
-        tsmp().post_gui_event(this, bus, "private_add_input_bus(AudioBus*)", "routingConfigurationChanged()");
+        tsmp().post_rt_task(
+            [this, bus]() { private_add_input_bus(bus); },
+            [this]() { emit routingConfigurationChanged(); }
+            );
     } else {
         private_add_input_bus(bus);
         emit routingConfigurationChanged();
@@ -266,12 +270,16 @@ void TTrack::add_input_bus(AudioBus *bus)
 void TTrack::remove_input_bus(AudioBus *bus)
 {
     if (m_session && m_session->is_transport_rolling()) {
-        tsmp().post_gui_event(this, bus, "private_remove_input_bus(AudioBus*)", "routingConfigurationChanged()");
+        tsmp().post_rt_task(
+            [this, bus]() { private_remove_input_bus(bus); },
+            [this]() { emit routingConfigurationChanged(); }
+            );
     } else {
         private_remove_input_bus(bus);
         emit routingConfigurationChanged();
     }
 }
+
 
 void TTrack::add_input_bus(qint64 busId)
 {
@@ -307,7 +315,13 @@ void TTrack::add_post_send(AudioBus *bus)
     postSend->set_type(TSend::POSTSEND);
 
     if (!m_session || (m_session && m_session->is_transport_rolling())) {
-        tsmp().post_gui_event(this, postSend, "private_add_post_send(TSend*)", "routingConfigurationChanged()");
+        // 1. Audio thread executes the bound private_add_post_send(postSend) lambda.
+        // 2. GUI thread automatically triggers the routing changed signal asynchronously afterwards.
+        tsmp().post_rt_task(
+            [this, postSend]() { private_add_post_send(postSend); },
+            [this]() { emit routingConfigurationChanged(); }
+            );
+
     } else {
         private_add_post_send(postSend);
         emit routingConfigurationChanged();
@@ -336,7 +350,10 @@ void TTrack::add_pre_send(qint64 busId)
     preSend->set_type(TSend::PRESEND);
 
     if (!m_session || (m_session && m_session->is_transport_rolling())) {
-        tsmp().post_gui_event(this, preSend, "private_add_pre_send(TSend*)", "routingConfigurationChanged()");
+        tsmp().post_rt_task(
+            [this, preSend]() { private_add_pre_send(preSend); },
+            [this]() { emit routingConfigurationChanged(); }
+            );
     } else {
         private_add_pre_send(preSend);
         emit routingConfigurationChanged();
@@ -364,7 +381,13 @@ void TTrack::remove_post_sends(QList<qint64> sendIds)
 void TTrack::remove_post_send(TSend *send)
 {
     if (!m_session || (m_session && m_session->is_transport_rolling())) {
-        tsmp().post_gui_event(this, send, "private_remove_post_send(TSend*)", "routingConfigurationChanged()");
+        // 1. Audio thread executes the bound private_remove_post_send(send) lambda.
+        // 2. GUI thread automatically triggers the routing changed signal asynchronously afterwards.
+        tsmp().post_rt_task(
+            [this, send]() { private_remove_post_send(send); },
+            [this]() { emit routingConfigurationChanged(); }
+            );
+
     } else {
         private_remove_post_send(send);
         emit routingConfigurationChanged();
@@ -392,7 +415,13 @@ void TTrack::remove_pre_sends(QList<qint64> sendIds)
 
     for(TSend* send : sendsToBeRemoved) {
         if (!m_session || (m_session && m_session->is_transport_rolling())) {
-            tsmp().post_gui_event(this, send, "private_remove_pre_send(TSend*)", "routingConfigurationChanged()");
+            // 1. Audio thread executes the bound private_remove_pre_send(send) lambda.
+            // 2. GUI thread automatically triggers the routing changed signal asynchronously afterwards.
+            tsmp().post_rt_task(
+                [this, send]() { private_remove_pre_send(send); },
+                [this]() { emit routingConfigurationChanged(); }
+                );
+
         } else {
             private_remove_pre_send(send);
             emit routingConfigurationChanged();

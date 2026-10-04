@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomElement>
 #include <QDomNode>
 
+#include "TAudioThreadMessageQueue.h"
 #include "TSheet.h"
 #include "TAudioClip.h"
 #include "TAudioClipManager.h"
@@ -430,35 +431,61 @@ TAudioClip *TAudioTrack::get_clip_at_location(const TTimeRef &location) const
     return nullptr;
 }
 
-
+/**
+ * @brief Safely removes an audio clip from the track processing configuration.
+ *        Binds the real-time processing slots and GUI signaling paths at compile-time.
+ */
 TCommand* TAudioTrack::remove_clip(const TAudioClipAddRemoveSpec &spec)
 {
     PENTER;
-    if (! spec.is_move()) {
+    if (!spec.is_move()) {
         m_sheet->get_audioclip_manager()->remove_clip(spec.get_clip());
     }
 
     spec.get_clip()->removed_from_track();
 
-    return new TAddRemoveCommand(this, spec.get_clip(), spec.is_historabel(), m_sheet,
-                         "private_remove_clip(TAudioClip*)", "privateAudioClipRemoved(TAudioClip*)",
-                         "private_add_clip(TAudioClip*)", "privateAudioClipAdded(TAudioClip*)",
-                         tr("Remove Clip"));
+    TAudioClip* clip = spec.get_clip();
+
+    return new TAddRemoveCommand(
+        this,                                                 // 1. parent (TContextItem*)
+        clip,                                                 // 2. item (TContextItem* via TAudioClip)
+        spec.is_historabel(),                                 // 3. bool historable
+        m_sheet,                                              // 4. TSession* sheet context
+        [this, clip]() { private_remove_clip(clip); },       // 5. doMethod closure
+        [this, clip]() { emit audioClipRemoved(clip); },      // 6. doSignal closure
+        [this, clip]() { private_add_clip(clip); },          // 7. undoMethod closure
+        [this, clip]() { emit audioClipAdded(clip); },        // 8. undoSignal closure
+        tr("Remove Clip")                                     // 9. description string at the very end
+        );
 }
 
-
+/**
+ * @brief Safely appends an audio clip to the track processing configuration.
+ *        Constructed using type-erase closures to bypass template signature limitations.
+ */
 TCommand* TAudioTrack::add_clip(const TAudioClipAddRemoveSpec &spec)
 {
     PENTER;
     spec.get_clip()->set_track(this);
-    if (! spec.is_move()) {
+    if (!spec.is_move()) {
         m_sheet->get_audioclip_manager()->add_clip(spec.get_clip());
     }
-    return new TAddRemoveCommand(this, spec.get_clip(), spec.is_historabel(), m_sheet,
-                         "private_add_clip(TAudioClip*)", "privateAudioClipAdded(TAudioClip*)",
-                         "private_remove_clip(TAudioClip*)", "privateAudioClipRemoved(TAudioClip*)",
-                         tr("Add Clip"));
+
+    TAudioClip* clip = spec.get_clip();
+
+    return new TAddRemoveCommand(
+        this,
+        clip,
+        spec.is_historabel(),
+        m_sheet,
+        [this, clip]() { private_add_clip(clip); },
+        [this, clip]() { emit audioClipAdded(clip); },
+        [this, clip]() { private_remove_clip(clip); },
+        [this, clip]() { emit audioClipRemoved(clip); },
+        tr("Add Clip")
+        );
 }
+
 
 void TAudioTrack::private_add_clip(TAudioClip* clip)
 {
@@ -485,18 +512,27 @@ void TAudioTrack::private_audioclip_removed(TAudioClip* clip)
     emit audioClipRemoved(clip);
 }
 
+/**
+ * @brief GUI event captured when a clip is dragged, dispatching a safe re-sort task downstream.
+ *        Utilises stateless lambda template compilation to guarantee zero heap allocations.
+ */
 void TAudioTrack::clip_position_changed(TAudioClip * clip)
 {
+    // 1. Sort the visual representation context array immediately inside the GUI thread
     std::sort(m_guiAudioClips.begin(), m_guiAudioClips.end(), [&](TAudioClip* left, TAudioClip* right) {
         return left->get_location_start() < right->get_location_start();
     });
 
+    // 2. Stream the event safely downstream to the real-time audio processing thread
     if (m_sheet && m_sheet->is_transport_rolling()) {
-        tsmp().post_gui_event(this, clip, "private_clip_position_changed(TAudioClip*)", "");
+        tsmp().post_rt_task([this, clip]() { private_clip_position_changed(clip); });
+
     } else {
+        // If the audio transport is stopped, bypass the thread queue and re-sort local configurations
         private_clip_position_changed(clip);
     }
 }
+
 
 void TAudioTrack::private_clip_position_changed(TAudioClip *clip)
 {

@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cfloat>
 
+#include "TAudioThreadMessageQueue.h"
 #include "TContextItem.h"
 #include "TBufferedAudioStreamReader.h"
 #include "TAudioClip.h"
@@ -72,7 +73,6 @@ TAudioClip::TAudioClip(const QString& name)
     m_fadeIn = nullptr;
     m_fadeOut = nullptr;
     m_fader->automate_port(0, true);
-    m_maxGainAmplification = dB_to_scale_factor(24);
     m_location = new TLocation(this);
 
     // read in the configuration from the global configuration settings.
@@ -912,7 +912,11 @@ void TAudioClip::create_fade(int fadeType)
     fadeCurve->set_history_stack(get_history_stack());
     fadeCurve->set_parent_location(m_location);
 
-    tsmp().post_gui_event(this, fadeCurve, "private_add_fade(TFadeCurve*)", "fadeAdded(TFadeCurve*)");
+    tsmp().post_rt_task(
+        [this, fadeCurve]() { private_add_fade(fadeCurve); }, // 1. Real-time audio loop processing task
+        [this, fadeCurve]() { emit fadeAdded(fadeCurve); }    // 2. Main GUI thread return signaling notification
+        );
+
 }
 
 QDomNode TAudioClip::get_dom_node() const

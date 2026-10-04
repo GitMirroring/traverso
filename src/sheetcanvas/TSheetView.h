@@ -117,9 +117,10 @@ public :
     void set_hscrollbar_value(int value);
     void set_vscrollbar_value(int value);
 
-    void set_cursor_shape(const QString& shape, int alignment);
+    void set_canvas_cursor_type(TContextPointer::CursorType cursorShape);
     void set_edit_cursor_text(const QString& text, int mseconds=-1);
     void set_canvas_cursor_pos(QPointF pos, TViewPortInterface::CursorMoveReason reason);
+    void set_canvas_cursor_data(const QVariant& data);
     void mouse_hover_move_event();
 
 
@@ -154,6 +155,7 @@ private:
     QScrollBar*         m_hScrollBar;
     bool                m_actOnPlayHead;
     bool                m_viewportReady;
+    bool                m_addRemoveBatchActive{false};
 
     static QHash<QString, QString> m_cursorsDict;
 

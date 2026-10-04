@@ -20,6 +20,7 @@
 
 
 #include "TPipeWireDriver.h"
+#include "TAudioThreadMessageQueue.h"
 
 #if defined (PIPEWIRE_SUPPORT)
 
@@ -329,7 +330,10 @@ int TPipeWireDriver::process_callback()
         m_playbackFrameLatency = newPlaybackLatency;
         m_captureFrameLatency = newCaptureLatency;
 
-        tsmp().post_rt_event(m_latencyChangedEvent);
+        tsmp().post_rt_event(TAudioThreadMessageQueueEvent{
+            .rtMethodExecutor = nullptr,
+            .guiSignalExecutor = [this]() { emit latencyChanged(); }
+        });
     }
 
     m_device->run_cycle(m_framesPerCycle, 0.0);

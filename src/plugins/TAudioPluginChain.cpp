@@ -96,32 +96,43 @@ int TAudioPluginChain::set_state( const QDomNode & node )
 	return 1;
 }
 
-
 TCommand* TAudioPluginChain::add_plugin(TAudioPlugin * plugin, bool historable)
 {
     plugin->set_history_stack(get_history_stack());
 
-    return new TAddRemoveCommand( this, plugin, historable, m_session,
-                          "private_add_plugin(TAudioPlugin*)", "privatePluginAdded(TAudioPlugin*)",
-                          "private_remove_plugin(TAudioPlugin*)", "privatePluginRemoved(TAudioPlugin*)",
-                          tr("Add Plugin (%1)").arg(plugin->get_name()));
+    return new TAddRemoveCommand(
+        this,                                                    // 1. parent (TContextItem*)
+        plugin,                                                  // 2. item (TContextItem* via TAudioPlugin)
+        historable,                                              // 3. bool historable
+        m_session,                                               // 4. TSession* sheet context
+        [this, plugin]() { private_add_plugin(plugin); },        // 5. doMethod closure
+        [this, plugin]() { emit privatePluginAdded(plugin); },    // 6. doSignal closure
+        [this, plugin]() { private_remove_plugin(plugin); },     // 7. undoMethod closure
+        [this, plugin]() { emit privatePluginRemoved(plugin); },  // 8. undoSignal closure
+        tr("Add Plugin (%1)").arg(plugin->get_name())            // 9. description
+        );
 }
-
 
 TCommand* TAudioPluginChain::remove_plugin(TAudioPlugin* plugin, bool historable)
 {
     if (plugin == m_fader) {
-        // do not remove fader we always have one
+        // Guard check protecting the main channel strip fader envelope topology
         tInformUser().information(tr("Gain Envelope (Fader) is not removable"));
         return ied().failure();
     }
 
-    return new TAddRemoveCommand( this, plugin, historable, m_session,
-                          "private_remove_plugin(TAudioPlugin*)", "privatePluginRemoved(TAudioPlugin*)",
-                          "private_add_plugin(TAudioPlugin*)", "privatePluginAdded(TAudioPlugin*)",
-                          tr("Remove Plugin (%1)").arg(plugin->get_name()));
+    return new TAddRemoveCommand(
+        this,
+        plugin,
+        historable,
+        m_session,
+        [this, plugin]() { private_remove_plugin(plugin); },
+        [this, plugin]() { emit privatePluginRemoved(plugin); },
+        [this, plugin]() { private_add_plugin(plugin); },
+        [this, plugin]() { emit privatePluginAdded(plugin); },
+        tr("Remove Plugin (%1)").arg(plugin->get_name())
+        );
 }
-
 
 void TAudioPluginChain::private_add_plugin( TAudioPlugin * plugin )
 {

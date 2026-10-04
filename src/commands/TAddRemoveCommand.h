@@ -1,84 +1,57 @@
 /*
-    Copyright (C) 2005-2006 Remon Sijrier
-
+    Copyright (C) 2005-2026 Remon Sijrier
     This file is part of Traverso
-
-    Traverso is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
-    $Id: AddRemove.h,v 1.3 2008/01/21 16:22:11 r_sijrier Exp $
 */
 
-#ifndef ADD_ITEM_COMMAND_H
-#define ADD_ITEM_COMMAND_H
+#pragma once
 
 #include "TCommand.h"
-#include "TAudioThreadMessageQueue.h"
+#include <functional>
 
-class TContextItem;
 class TSession;
+class TContextItem;
 
 class TAddRemoveCommand : public TCommand
 {
     Q_OBJECT
 
-public :
-    TAddRemoveCommand(TContextItem* parent, TContextItem* item, const QString& des);
+public:
     TAddRemoveCommand(TContextItem* parent,
-			void*  arg,
-            bool historable,
-            TSession* sheet,
-			const char* doActionSlot,
-			const char* doSignal,
-			const char* undoActionSlot,
-			const char* undoSignal,
-			const QString& des);
-    TAddRemoveCommand(TContextItem* parent,
-			TContextItem*  item,
-            bool historable,
-            TSession* sheet,
-			const char* doActionSlot,
-			const char* doSignal,
-			const char* undoActionSlot,
-			const char* undoSignal,
-			const QString& des);
-    ~TAddRemoveCommand();
+                      void* arg,
+                      bool historable,
+                      TSession* sheet,
+                      std::move_only_function<void()>&& doMethod,   std::move_only_function<void()>&& doSignal,
+                      std::move_only_function<void()>&& undoMethod, std::move_only_function<void()>&& undoSignal,
+                      const QString& des);
 
-	bool is_hold_command() const {return false;}
-	int prepare_actions();
-	int do_action();
-	int undo_action();
+    TAddRemoveCommand(TContextItem* parent,
+                      TContextItem* item,
+                      bool historable,
+                      TSession* sheet,
+                      std::move_only_function<void()>&& doMethod,   std::move_only_function<void()>&& doSignal,
+                      std::move_only_function<void()>&& undoMethod, std::move_only_function<void()>&& undoSignal,
+                      const QString& des);
+
+    virtual ~TAddRemoveCommand() override = default;
+
+    bool is_hold_command() const override { return false; }
+    int prepare_actions() override { return 1; }
+
+    int do_action() override;
+    int undo_action() override;
 
     void set_instantanious(bool instant);
 
+private:
+    int un_redo_action(std::move_only_function<void()>& method, std::move_only_function<void()>& signal);
 
-private :
-	TContextItem*	m_parentItem;
-	void* 		m_arg;
-    TAudioThreadMessageQueueEvent	m_doActionEvent;
-    TAudioThreadMessageQueueEvent	m_undoActionEvent;
-	TSession*	m_sheet;
-
-	const char*	m_doActionSlot;
-	const char*	m_undoActionSlot;
-	const char*	m_doSignal;
-	const char*	m_undoSignal;
-	bool		m_instantanious;
-
-    int un_redo_action(TCommand::ActionType actionType);
+    TContextItem*                   m_parentItem{nullptr};
+    void*                           m_arg{nullptr};
+    TSession*                       m_sheet{nullptr};
+    std::move_only_function<void()> m_doMethod;
+    std::move_only_function<void()> m_undoMethod;
+    std::move_only_function<void()> m_doSignal;
+    std::move_only_function<void()> m_undoSignal;
+    bool                            m_instantanious{false};
 };
-
-#endif
-
 

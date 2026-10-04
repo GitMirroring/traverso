@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include <QScrollBar>
 #include <QInputDialog>
 
+#include "TAudioThreadMessageQueue.h"
 #include "TConfig.h"
 #include "TCurve.h"
 #include "TInputEventDispatcher.h"
@@ -112,6 +113,15 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 	connect(m_session, &TSession::verticalScrollBarValueChanged, this, &TSheetView::session_vertical_scrollbar_position_changed);
 	connect(m_session, &TSession::horizontalScrollBarValueChanged, this, &TSheetView::session_horizontal_scrollbar_position_changed);
 
+    connect(&tsmp(), &TAudioThreadMessageQueue::batchTransactionStarted, this, [this]() {
+        m_addRemoveBatchActive = true;
+    });
+
+    connect(&tsmp(), &TAudioThreadMessageQueue::batchTransactionFinished, this, [this]() {
+        m_addRemoveBatchActive = false;
+
+        m_contextPointer->request_viewport_to_detect_items_below_cursor();
+    });
 
 	m_clipsViewPort->scene()->addItem(m_playCursor);
 	m_clipsViewPort->scene()->addItem(m_workCursor);
@@ -1300,10 +1310,15 @@ TCommand* TSheetView::edit_properties()
 	return nullptr;
 }
 
-void TSheetView::set_cursor_shape(const QString& shape, int alignment)
+void TSheetView::set_canvas_cursor_type(TContextPointer::CursorType cursorType)
 {
-    m_canvasCursor->set_cursor_shape(shape, alignment);
+    if (m_addRemoveBatchActive) {
+        qDebug() << "surpressing canvas cursor type changes during batch processing";
+        return;
+    }
+    m_canvasCursor->set_canvas_cursor_type(cursorType);
 }
+
 
 void TSheetView::set_edit_cursor_text(const QString &text, int mseconds)
 {
@@ -1318,6 +1333,13 @@ void TSheetView::set_canvas_cursor_pos(QPointF pos,  TViewPortInterface::CursorM
         m_canvasCursor->set_pos(pos);
     }
 }
+
+void TSheetView::set_canvas_cursor_data(const QVariant& data)
+{
+    // Pass the variant directly down to the graphics scene item
+    m_canvasCursor->set_cursor_data(data);
+}
+
 
 void TSheetView::do_keyboard_canvas_cursor_move(const QPointF &position)
 {
@@ -1352,28 +1374,29 @@ void TSheetView::mouse_hover_move_event()
 
 void TSheetView::context_changed()
 {
-	if (!m_clipsViewPort->isVisible())
-	{
-		return;
-	}
-
-	ItemBrowserData data;
-	collect_item_browser_data(data);
+    if (!m_clipsViewPort->isVisible()) {
+        return;
+    }
 
     QList<TContextItem*> items = m_contextPointer->get_active_context_items();
 
-    if (!items.isEmpty()) {
-        foreach(TContextItem * item, items) {
-            QString cursorShape = cursor_dict()->value(item->metaObject()->className(), "");
-            if (!cursorShape.isEmpty()) {
-                m_contextPointer->set_canvas_cursor_shape(cursorShape, Qt::AlignTop | Qt::AlignHCenter);
-                break;
-            }
-        }
-    } else {
-    	// PERROR("cpointer returned empty context item list")
+    if (items.isEmpty()) {
+        m_canvasCursor->set_canvas_cursor_type(TContextPointer::CursorType::Default);
+        m_canvasCursor->set_cursor_data(QVariant());
+        return;
     }
+
+    TContextItem* primaryContextItem = items.first();
+    if (!primaryContextItem) {
+        return;
+    }
+
+    QChar overlayLetter = QString(primaryContextItem->metaObject()->className()).at(1);//  primaryContextItem->get_context_char();
+
+    m_canvasCursor->set_canvas_cursor_type(TContextPointer::CursorType::Default);
+    m_canvasCursor->set_cursor_data(QVariant::fromValue(overlayLetter));
 }
+
 
 void TSheetView::calculate_cursor_dict()
 {

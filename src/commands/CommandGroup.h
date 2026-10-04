@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2005-2006 Remon Sijrier
+    Copyright (C) 2005-2026 Remon Sijrier
 
     This file is part of Traverso
 
@@ -20,12 +20,10 @@
     $Id: CommandGroup.h,v 1.4 2007/04/17 19:56:45 r_sijrier Exp $
 */
 
-#ifndef COMMAND_GROUP_H
-#define COMMAND_GROUP_H
+#pragma once
 
 #include "TCommand.h"
 
-#include <QList>
 
 class CommandGroup : public TCommand
 {
@@ -36,21 +34,17 @@ public :
 	}
 	~CommandGroup();
 
-	bool is_hold_command() const {return false;}
-	int prepare_actions();
-	int do_action();
-	int undo_action();
+    bool is_hold_command() const override  {return false;}
+    int prepare_actions() override;
+    int do_action() override;
+    int undo_action() override;
 
 	void add_command(TCommand* cmd) {
 		Q_ASSERT(cmd);
-		m_commands.append(cmd);
+        m_commands.push_back(cmd);
 	}
+
 private :
-	QList<TCommand* >	m_commands;
+    std::vector<TCommand* >	m_commands;
 
 };
-
-#endif
-
-
-

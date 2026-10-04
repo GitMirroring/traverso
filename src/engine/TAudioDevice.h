@@ -39,7 +39,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 #include "TTransportControl.h"
 #include "TProcessCallBackData.h"
-#include "TAudioThreadMessageQueue.h"
 #include "defines.h"
 
 class TAudioDeviceThread;
@@ -206,10 +205,6 @@ private:
     TAudioDeviceSetup   m_fallBackSetup;
     TAudioDriver* 		m_driver;
     TAudioDeviceThread* 	m_audioThread;
-
-    TAudioThreadMessageQueueEvent           m_bufferUnderRunEvent;
-    TAudioThreadMessageQueueEvent           m_xrunStormDetectedEvent;
-    TAudioThreadMessageQueueEvent           m_finishedOneProcessCycleEvent;
 
     QList<AudioChannel* >               m_audioChannels;
     QList<TAudioBusConfiguration>       m_busConfigs;

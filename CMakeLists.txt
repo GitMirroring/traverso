@@ -80,7 +80,7 @@ option(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug output on the command lin
 # Create the target first so that Dependencies.cmake can bind macros to it
 add_library(traverso_compiler_settings INTERFACE)
 
-target_compile_features(traverso_compiler_settings INTERFACE cxx_std_17)
+target_compile_features(traverso_compiler_settings INTERFACE cxx_std_23)
 
 target_compile_definitions(traverso_compiler_settings INTERFACE
     STATIC_BUILD

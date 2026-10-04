@@ -88,7 +88,6 @@ public:
 
 
 protected:
-    TAudioThreadMessageQueueEvent           m_latencyChangedEvent;
     TAudioDevice*            m_device;
     QList<AudioChannel* >   m_captureChannels;
     QList<AudioChannel* >   m_playbackChannels;
