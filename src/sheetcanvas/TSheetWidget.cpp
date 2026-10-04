@@ -94,7 +94,7 @@ TTimeLabel::TTimeLabel(QWidget* parent, TSession *session)
 
     setText(TTimeRef::timeref_to_ms_2(m_session->get_transport_location()));
 
-    connect(m_session, &TSession::transportLocationChanged, this, [=]() {
+    connect(m_session, &TSession::transportLocationChanged, this, [this]() {
         setText(TTimeRef::timeref_to_ms_2(m_session->get_transport_location()));
     });
 }
