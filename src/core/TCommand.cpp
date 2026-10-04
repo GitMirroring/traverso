@@ -265,13 +265,13 @@ void TCommand::process_collected_number(const QString & collected)
 void TCommand::set_cursor_shape( int useX, int useY )
 {
 	if (useX && useY) {
-         m_contextPointer->set_canvas_cursor_shape(":/cursorHoldLrud");
-	} else if (useX) {
-        m_contextPointer->set_canvas_cursor_shape(":/cursorHoldLr");
+        m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::HoldOmni);
+    } else if (useX) {
+        m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::HoldLeftRight);
 	} else if (useY) {
-        m_contextPointer->set_canvas_cursor_shape(":/cursorHoldUd");
+        m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::HoldUpDown);
 	} else{
-        m_contextPointer->set_canvas_cursor_shape(":/cursorFloat");
+        m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::Default);
 	}
 	
 }

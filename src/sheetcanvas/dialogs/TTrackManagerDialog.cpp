@@ -31,7 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioPluginChain.h"
 #include "TSheet.h"
 #include "TBusTrack.h"
-#include "Utils.h"
 #include "TSend.h"
 #include "TThemer.h"
 #include "TMainWindow.h"
@@ -583,8 +582,8 @@ void TTrackManagerDialog::on_monitorButton_clicked()
 
 void TTrackManagerDialog::update_track_status_buttons(bool)
 {
-    QPalette defaultPalette = TMainWindow::instance()->palette();
-    QPalette highlightedPalette = TMainWindow::instance()->palette();
+    QPalette defaultPalette = QApplication::style()->standardPalette();
+    QPalette highlightedPalette = QApplication::style()->standardPalette();
 
     if (m_track->is_muted()) {
         highlightedPalette.setColor(QPalette::Button, themer()->get_color("TrackPanel:muteled"));

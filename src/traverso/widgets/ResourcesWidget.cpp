@@ -46,8 +46,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 FileWidget::FileWidget(QWidget *parent)
     : QWidget(parent)
 {
-    QPalette palette;
-    palette.setColor(QPalette::AlternateBase, themer()->get_color("ResourcesBin:alternaterowcolor"));
+    // QPalette palette;
+    // palette.setColor(QPalette::AlternateBase, themer()->get_color("ResourcesBin:alternaterowcolor"));
 
     m_fileSystemModel = new QFileSystemModel;
     m_fileSystemModel->setFilter(QDir::Dirs | QDir::Files | QDir::NoDot);
@@ -57,7 +57,7 @@ FileWidget::FileWidget(QWidget *parent)
     m_dirView->setDropIndicatorShown(true);
     m_dirView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_dirView->setAlternatingRowColors(true);
-    m_dirView->setPalette(palette);
+    // m_dirView->setPalette(palette);
     m_fileSystemModel->sort(QDir::DirsFirst | QDir::Name | QDir::IgnoreCase);
 
     m_box = new QComboBox(this);
@@ -154,9 +154,9 @@ ResourcesWidget::ResourcesWidget(QWidget * parent)
 
     setupUi(this);
 
-    QPalette palette;
-    palette.setColor(QPalette::AlternateBase, themer()->get_color("ResourcesBin:alternaterowcolor"));
-    sourcesTreeWidget->setPalette(palette);
+    // QPalette palette;
+    // palette.setColor(QPalette::AlternateBase, themer()->get_color("ResourcesBin:alternaterowcolor"));
+    // sourcesTreeWidget->setPalette(palette);
     sourcesTreeWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
     sourcesTreeWidget->setAlternatingRowColors(true);
     sourcesTreeWidget->setDragEnabled(true);

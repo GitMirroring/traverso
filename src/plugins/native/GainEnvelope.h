@@ -43,7 +43,7 @@ public:
     void process_gain(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels);
 
     void set_session(TSession* session);
-    void set_gain(float gain) {m_gain = gain;}
+    void set_gain(float gain);
 
     float get_gain() const {return m_gain;}
     TCurve* get_curve();

@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2010 Remon Sijrier
+Copyright (C) 2010-2026 Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,50 +19,39 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TEDITCURSOR_H
-#define TEDITCURSOR_H
+#pragma once
 
 #include "TViewItem.h"
-
+#include "TContextPointer.h"
 #include <QTimer>
+#include <QVariant>
+#include <QString>
 
 class TSheetView;
 class TPositionIndicator;
+class TCursorRenderer;
 
+/**
+ * @class TCanvasCursor
+ * @brief Coordinates the visual composition, bounding geometry changes, and active strategy routing of the canvas editing cursor.
+ */
 class TCanvasCursor : public TViewItem
 {
     Q_OBJECT
     Q_PROPERTY(QPointF position READ get_pos WRITE set_pos)
 
 public:
-    TCanvasCursor(TSheetView* );
-    ~TCanvasCursor();
+    explicit TCanvasCursor(TSheetView* sheetView);
+    virtual ~TCanvasCursor() override;
 
-    enum {
-        First,
-        Second
-    };
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-
-    void set_text(const QString& first, int mseconds=-1);
-    void set_cursor_shape(const QString& shape, int alignment);
-
-private:
-    TPositionIndicator*      m_positionIndicator;
-
-    QString         m_shape;
-    qreal			m_xOffset;
-    qreal			m_yOffset;
-    QPixmap			m_pixmap;
-    QString			m_primaryText;
-    QTimer			m_timer;
-
-    void create_cursor_pixmap(const QString& shape);
-    void update_textitem_pos();
+    void set_text(const QString& text, int mseconds = -1);
+    void set_canvas_cursor_type(TContextPointer::CursorType cursorType);
+    void set_cursor_data(const QVariant& data);
 
 public slots:
-    QPointF get_pos() const {return pos();}
+    QPointF get_pos() const { return pos(); }
     void set_pos(const QPointF& position) {
         setPos(position);
         update_textitem_pos();
@@ -70,6 +59,16 @@ public slots:
 
 private slots:
     void timer_timeout();
-};
 
-#endif // TEDITCURSOR_H
+private:
+    void update_textitem_pos();
+    void calculate_bounding_rect() override;
+
+    TContextPointer::CursorType      m_cursorType{TContextPointer::CursorType::Default};
+    QString                          m_primaryText;
+    QTimer                           m_timer;
+    QVariant                         m_liveData;
+
+    TPositionIndicator*              m_positionIndicator;
+    std::unique_ptr<TCursorRenderer> m_renderer;
+};

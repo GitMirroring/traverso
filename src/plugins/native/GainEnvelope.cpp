@@ -28,54 +28,54 @@ GainEnvelope::GainEnvelope(TSession* session)
         : TAudioPlugin(session)
 {
     m_gain = 1.0f;
-	TAudioPluginControlPort* port = new TAudioPluginControlPort(this, 0, 1.0);
-	port->set_index(0);
-	m_controlPorts.append(port);
+    TAudioPluginControlPort* port = new TAudioPluginControlPort(this, 0, 1.0);
+    port->set_index(0);
+    m_controlPorts.append(port);
         if (session) {
                 set_session(session);
-	}
+    }
 }
 
 QDomNode GainEnvelope::get_state(QDomDocument doc)
 {
-	QDomElement node = TAudioPlugin::get_state(doc).toElement();
-	node.setAttribute("type", "GainEnvelope");
-	node.setAttribute("gain", m_gain);
-	
-	return node;
+    QDomElement node = TAudioPlugin::get_state(doc).toElement();
+    node.setAttribute("type", "GainEnvelope");
+    node.setAttribute("gain", m_gain);
+
+    return node;
 }
 
 int GainEnvelope::set_state(const QDomNode & node)
 {
-	foreach(TAudioPluginControlPort* port, m_controlPorts) {
-		delete port;
-	}
-	m_controlPorts.clear();
-	
-	TAudioPlugin::set_state(node);
-	
-	QDomElement controlPortsNode = node.firstChildElement("ControlPorts");
-	if (!controlPortsNode.isNull()) {
-		QDomNode portNode = controlPortsNode.firstChild();
-		
-		while (!portNode.isNull()) {
-			
-			TAudioPluginControlPort* port = new TAudioPluginControlPort(this, portNode);
-			m_controlPorts.append(port);
-			
-			portNode = portNode.nextSibling();
-		}
-	}
-	
-	QDomElement e = node.toElement();
-	m_gain = e.attribute("gain", "1.0").toFloat();
-	
-	return 1;
+    foreach(TAudioPluginControlPort* port, m_controlPorts) {
+        delete port;
+    }
+    m_controlPorts.clear();
+
+    TAudioPlugin::set_state(node);
+
+    QDomElement controlPortsNode = node.firstChildElement("ControlPorts");
+    if (!controlPortsNode.isNull()) {
+        QDomNode portNode = controlPortsNode.firstChild();
+
+        while (!portNode.isNull()) {
+
+            TAudioPluginControlPort* port = new TAudioPluginControlPort(this, portNode);
+            m_controlPorts.append(port);
+
+            portNode = portNode.nextSibling();
+        }
+    }
+
+    QDomElement e = node.toElement();
+    m_gain = e.attribute("gain", "1.0").toFloat();
+
+    return 1;
 }
 
 QString GainEnvelope::get_name()
 {
-	return "Gain Envelope";
+    return "Gain Envelope";
 }
 
 void GainEnvelope::set_session(TSession * session)
@@ -83,9 +83,14 @@ void GainEnvelope::set_session(TSession * session)
     m_session = session;
     set_history_stack(m_session->get_history_stack());
 
-	if (get_curve()) {
+    if (get_curve()) {
                 get_curve()->set_sheet(session);
-	}
+    }
+}
+
+void GainEnvelope::set_gain(float gain) {
+    m_gain = Mixer::clamp_gain(gain);
+
 }
 
 void GainEnvelope::process(AudioBus * bus, nframes_t nframes)

@@ -105,8 +105,14 @@ void TBusTrack::set_name( const QString & name )
 
 int TBusTrack::process(TProcessCallBackData &processData)
 {
-    if (m_isMuted || (TraversoDAW::Float::equals_0(get_gain())) ) {
-        return 0;
+    // Real-time Accumulation Protection: If the bus is muted or resting at absolute silence,
+    // we MUST evacuate the streaming buffers to prevent scaling explosions from incoming track sends.
+    if (m_isMuted || (TraversoDAW::Float::equals_0(get_gain()))) {
+        if (m_processBus) {
+            // Instantly wipe the shared summing bus clean for this hardware block duration
+            m_processBus->silence_buffers();
+        }
+        return 0; // Terminate early safely; buffer is clear and zeroed
     }
 
     nframes_t nframes = processData.get_nframes_to_process();

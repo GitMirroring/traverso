@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2019-2024 Remon Sijrier
+Copyright (C) 2019-2026 Remon Sijrier
 
 This file is part of Traverso
 
@@ -18,16 +18,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
-#include "TGainGroupCommand.h"
-
-#include "GainCommand.h"
+#include "TFaderGroupCommand.h"
+#include "TFaderCommand.h"
 #include "Mixer.h"
-#include "Utils.h"
 #include "TAudioProcessingNode.h"
 #include "Debugger.h"
 #include "TContextPointer.h"
 
-TGainGroupCommand::TGainGroupCommand(TContextItem *context)
+TFaderGroupCommand::TFaderGroupCommand(TContextItem *context)
     : TCommand (context)
     , m_contextItem(context)
     , m_primaryGainOnly(false)
@@ -39,88 +37,102 @@ TGainGroupCommand::TGainGroupCommand(TContextItem *context)
     setText("Gain: " + node->get_name());
 }
 
-TGainGroupCommand::~ TGainGroupCommand()
+TFaderGroupCommand::~TFaderGroupCommand()
 {
     PENTERDES;
 }
 
-void TGainGroupCommand::set_cursor_shape(int useX, int useY)
+void TFaderGroupCommand::set_cursor_shape(int useX, int useY)
 {
     Q_UNUSED(useX);
     Q_UNUSED(useY);
-
-    m_contextPointer->set_canvas_cursor_shape(":/cursorGain");
+    m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::GainFader);
 }
 
-
-int TGainGroupCommand::begin_hold()
+int TFaderGroupCommand::begin_hold()
 {
     m_origPos = m_contextPointer->scene_pos();
 
-    m_contextPointer->set_canvas_cursor_text(get_db_string_from_object());
+    TAudioProcessingNode* node = qobject_cast<TAudioProcessingNode*>(m_contextItem);
+    if (node) {
+        float absoluteDb = Mixer::coefficient_to_dB(node->get_gain());
+        m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(absoluteDb));
+    }
+
     return 1;
 }
 
-int TGainGroupCommand::finish_hold()
+int TFaderGroupCommand::finish_hold()
 {
+    if (!m_pendingNumericalValue.isEmpty()) {
+        bool ok;
+        double dbValue = m_pendingNumericalValue.toDouble(&ok);
+        if (ok) {
+            float validatedDb = static_cast<float>(dbValue);
+            float targetGain = (validatedDb <= -120.0f) ? 0.0f : dB_to_scale_factor(validatedDb);
+
+            if (m_primaryGainOnly) {
+                m_gainCommands.at(0)->set_new_gain(targetGain);
+            } else {
+                for (auto const &gain : m_gainCommands) {
+                    gain->set_new_gain(targetGain);
+                }
+            }
+        }
+        m_pendingNumericalValue.clear();
+    }
     return 1;
 }
 
-void TGainGroupCommand::cancel_action()
+
+void TFaderGroupCommand::cancel_action()
 {
     PENTER;
+    m_pendingNumericalValue.clear();
     for (auto const &gain : m_gainCommands) {
         gain->cancel_action();
     }
 }
 
-void TGainGroupCommand::process_collected_number(const QString &collected)
+void TFaderGroupCommand::process_collected_number(const QString &collected)
 {
-    Q_ASSERT(m_gainCommands.size() > 0);
+    Q_ASSERT(!m_gainCommands.empty());
+    m_pendingNumericalValue = collected;
 
-    if (collected.size() == 0) {
-        m_contextPointer->set_canvas_cursor_text(" dB");
+    if (collected.isEmpty()) {
+        TAudioProcessingNode* node = qobject_cast<TAudioProcessingNode*>(m_contextItem);
+        if (node) {
+            m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(Mixer::coefficient_to_dB(node->get_gain())));
+        }
         return;
     }
 
     bool ok;
     audio_sample_t dbFactor = audio_sample_t(collected.toDouble(&ok));
+    QString displayString;
+
+    // Process typed characters sequentially into formatted dB readout arrays
     if (!ok) {
-        if (collected.contains(".") || collected.contains("-")) {
-            QString s = collected;
-            s.append(" dB");
-            m_contextPointer->set_canvas_cursor_text(s);
+        if (collected.contains(QStringLiteral(".")) || collected.contains(QStringLiteral("-"))) {
+            displayString = collected + QStringLiteral(" dB");
+        } else {
+            displayString = collected;
         }
-        return;
-    }
-
-    int rightfromdot = 0;
-    if (collected.contains(".")) {
-        rightfromdot = collected.size() - collected.lastIndexOf(".") - 1;
-    }
-
-    float newGain = dB_to_scale_factor(dbFactor);
-
-    // Update the vieport's hold cursor with the _actuall_ gain value!
-    if(rightfromdot) {
-        m_contextPointer->set_canvas_cursor_text(QByteArray::number(double(dbFactor), 'f', rightfromdot).append(" dB"));
     } else {
-        m_contextPointer->set_canvas_cursor_text(QByteArray::number(double(dbFactor)).append(" dB"));
-    }
-
-    if (m_primaryGainOnly) {
-        m_gainCommands.at(0)->set_new_gain(newGain);
-    } else {
-        for (auto const &gain : m_gainCommands) {
-            gain->set_new_gain_numerical_input(newGain);
+        int rightfromdot = 0;
+        if (collected.contains(QStringLiteral("."))) {
+            rightfromdot = collected.size() - collected.lastIndexOf(QStringLiteral(".")) - 1;
         }
+        displayString = rightfromdot ? QByteArray::number(double(dbFactor), 'f', rightfromdot).append(" dB")
+                                     : QByteArray::number(double(dbFactor)).append(" dB");
     }
+
+    m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(displayString));
 }
 
-int TGainGroupCommand::jog()
+int TFaderGroupCommand::jog()
 {
-    Q_ASSERT(m_gainCommands.size() > 0);
-
+    Q_ASSERT(!m_gainCommands.empty());
     qreal diff = m_origPos.y() - m_contextPointer->scene_y();
 
     if (m_primaryGainOnly) {
@@ -133,33 +145,31 @@ int TGainGroupCommand::jog()
 
     m_contextPointer->set_canvas_cursor_pos(m_origPos);
 
-    // Update the vieport's hold cursor!
-    m_contextPointer->set_canvas_cursor_text(get_db_string_from_object());
+    TAudioProcessingNode* node = qobject_cast<TAudioProcessingNode*>(m_contextItem);
+    if (node) {
+        m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(Mixer::coefficient_to_dB(node->get_gain())));
+    }
 
     return 1;
 }
 
-
-int TGainGroupCommand::prepare_actions()
+int TFaderGroupCommand::prepare_actions()
 {
-    if (m_gainCommands.size() == 0) {
+    if (m_gainCommands.empty()) {
         return -1;
     }
 
     for (auto const &gain : m_gainCommands) {
         if (gain->prepare_actions() == -1) {
-            printf("one of the commands in the group failed prepare_actions\n");
             return -1;
         }
     }
-
     return 1;
 }
 
-int TGainGroupCommand::do_action()
+int TFaderGroupCommand::do_action()
 {
-    Q_ASSERT(m_gainCommands.size() > 0);
-
+    Q_ASSERT(!m_gainCommands.empty());
     if (m_primaryGainOnly) {
         m_gainCommands.at(0)->do_action();
     } else {
@@ -167,14 +177,12 @@ int TGainGroupCommand::do_action()
             gain->do_action();
         }
     }
-
     return 1;
 }
 
-int TGainGroupCommand::undo_action()
+int TFaderGroupCommand::undo_action()
 {
-    Q_ASSERT(m_gainCommands.size() > 0);
-
+    Q_ASSERT(!m_gainCommands.empty());
     if (m_primaryGainOnly) {
         m_gainCommands.at(0)->undo_action();
     } else {
@@ -182,34 +190,18 @@ int TGainGroupCommand::undo_action()
             gain->undo_action();
         }
     }
-
     return 1;
 }
 
-void TGainGroupCommand::add_audio_processing_node(TAudioProcessingNode* audioProcessingNode, const QVariantList& args)
+void TFaderGroupCommand::add_audio_processing_node(TAudioProcessingNode* audioProcessingNode, const QVariantList& args)
 {
     Q_ASSERT(audioProcessingNode);
-
-    m_gainCommands.push_back(std::make_unique<GainCommand>(audioProcessingNode, args));
+    m_gainCommands.push_back(std::make_unique<TFaderCommand>(audioProcessingNode, args));
 }
 
-QString TGainGroupCommand::get_db_string_from_object()
+void TFaderGroupCommand::increase_gain()
 {
-    QString dbString;
-
-    if ( ! QMetaObject::invokeMethod(m_contextItem, "get_gain_db_string",
-                                   Qt::DirectConnection,
-                                   Q_RETURN_ARG(QString, dbString)) ) {
-        PWARN("Gain::get_gain_from_object QMetaObject::invokeMethod failed");
-    }
-
-    return dbString;
-}
-
-
-void TGainGroupCommand::increase_gain(  )
-{
-    Q_ASSERT(m_gainCommands.size() > 0);
+    Q_ASSERT(!m_gainCommands.empty());
 
     if (m_primaryGainOnly) {
         m_gainCommands.at(0)->increase_gain();
@@ -219,13 +211,16 @@ void TGainGroupCommand::increase_gain(  )
         }
     }
 
-    // Update the vieport's hold cursor with the _actuall_ gain value!
-    m_contextPointer->set_canvas_cursor_text(get_db_string_from_object());
+    TAudioProcessingNode* node = qobject_cast<TAudioProcessingNode*>(m_contextItem);
+    if (node) {
+        float absoluteDb = Mixer::coefficient_to_dB(node->get_gain());
+        m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(static_cast<float>(absoluteDb)));
+    }
 }
 
-void TGainGroupCommand::decrease_gain()
+void TFaderGroupCommand::decrease_gain()
 {
-    Q_ASSERT(m_gainCommands.size() > 0);
+    Q_ASSERT(!m_gainCommands.empty());
 
     if (m_primaryGainOnly) {
         m_gainCommands.at(0)->decrease_gain();
@@ -235,34 +230,32 @@ void TGainGroupCommand::decrease_gain()
         }
     }
 
-    // Update the vieport's hold cursor with the _actuall_ gain value!
-    m_contextPointer->set_canvas_cursor_text(get_db_string_from_object());
+    TAudioProcessingNode* node = qobject_cast<TAudioProcessingNode*>(m_contextItem);
+    if (node) {
+        m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(Mixer::coefficient_to_dB(node->get_gain())));
+    }
 }
 
-void TGainGroupCommand::reset_gain()
+void TFaderGroupCommand::reset_gain()
 {
     for (auto const &gain : m_gainCommands) {
         gain->set_new_gain(1.0f);
     }
-
     m_contextPointer->set_canvas_cursor_text("0.0 dB");
+    m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(0.0f));
 }
 
-void TGainGroupCommand::toggle_primary_gain_only()
+void TFaderGroupCommand::toggle_primary_gain_only()
 {
     if (m_gainCommands.size() == 1) {
         m_contextPointer->set_canvas_cursor_text(tr("Clip is not part of a selection..."), 2000);
         return;
     }
-
     m_primaryGainOnly = !m_primaryGainOnly;
     m_contextPointer->set_canvas_cursor_text(m_primaryGainOnly ? tr("To Selection: Off") : tr("To Selection: On"));
 }
 
-void TGainGroupCommand::numerical_input()
+void TFaderGroupCommand::numerical_input()
 {
     m_contextPointer->set_canvas_cursor_text(tr("Use numerical keys to set gain dB value..."), 2000);
 }
-
-// eof
-

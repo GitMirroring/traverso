@@ -38,10 +38,6 @@ public:
 
         TSession* get_session() const {return m_session;}
 
-protected:
-        void leaveEvent( QEvent* );
-        void enterEvent( QEnterEvent* );
-
 private:
         TSession*       m_session;
         QWidget*        m_mainWidget;

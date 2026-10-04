@@ -144,7 +144,7 @@ void NewTrackDialog::create_track()
         }
 
         QString styleSheet = "color: darkGreen; background: lightGreen; padding: 5px; border: solid 1px;";
-        informationLabel->setStyleSheet(styleSheet);
+        // informationLabel->setStyleSheet(styleSheet);
         informationLabel->setText(tr("Created new Track '%1'' in Sheet '%2'").arg(track->get_name(), session->get_name()));
 
         m_timer.start(2000);
@@ -272,6 +272,6 @@ void NewTrackDialog::close_clicked()
 void NewTrackDialog::reset_information_label()
 {
         QString styleSheet = "color: black;";
-        informationLabel->setStyleSheet(styleSheet);
+        // informationLabel->setStyleSheet(styleSheet);
         informationLabel->setText(tr("Fill in Track name, and hit enter to add new Track"));
 }

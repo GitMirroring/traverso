@@ -46,7 +46,9 @@ public :
     // Set functions
     void set_canvas_cursor_text(const QString& text, int mseconds=-1) override;
     void set_canvas_cursor_pos(QPointF pos, CursorMoveReason reason) override;
-    void set_canvas_cursor_shape(const QString& shape, int alignment=Qt::AlignCenter) override;
+    void set_canvas_cursor_type(TContextPointer::CursorType) override;
+    void set_canvas_cursor_data(const QVariant& data) override;
+
     virtual void set_sheetview(TSheetView* view) {m_sv = view;}
 
     inline QPointF map_to_scene(const QPoint& pos) const override {

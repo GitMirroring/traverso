@@ -449,16 +449,16 @@ void CDWritingDialog::cd_export_progress(int progress)
 void CDWritingDialog::update_cdburn_status(const QString& message, int type)
 {
 	if (type == NORMAL_MESSAGE) {
-		QPalette palette;
-		palette.setColor(QPalette::WindowText, QColor(Qt::black));
-		cdExportInformationLabel->setPalette(palette);
+        // QPalette palette;
+        // palette.setColor(QPalette::WindowText, QColor(Qt::black));
+        // cdExportInformationLabel->setPalette(palette);
 		cdExportInformationLabel->setText(message);
 	}
 	
 	if (type == ERROR_MESSAGE) {
-		QPalette palette;
-		palette.setColor(QPalette::WindowText, QColor(Qt::red));
-		cdExportInformationLabel->setPalette(palette);
+        // QPalette palette;
+        // palette.setColor(QPalette::WindowText, QColor(Qt::red));
+        // cdExportInformationLabel->setPalette(palette);
 		cdExportInformationLabel->setText(message);
 	}
 }

@@ -72,41 +72,66 @@ int TTimeLineRuler::set_state(const QDomNode & node)
 	return 1;
 }
 
-TCommand * TTimeLineRuler::add_marker(TTimeLineMarker* marker, bool historable)
+/**
+ * @brief Appends a new timeline navigation marker to the ruler topology.
+ *        Executes instantaneously inside the GUI thread context.
+ */
+/**
+ * @brief Appends a new timeline navigation marker to the ruler topology.
+ *        Constructed using type-erased closures to execute safely within the command framework.
+ */
+TCommand* TTimeLineRuler::add_marker(TTimeLineMarker* marker, bool historable)
 {
     connect(marker->get_location(), &TLocation::locationChanged, this, &TTimeLineRuler::marker_position_changed);
-	
-	TAddRemoveCommand* cmd;
-	cmd = new TAddRemoveCommand(this, marker, historable, m_sheet,
-        "private_add_marker(TTimeLineMarker*)", "markerAdded(TTimeLineMarker*)",
-        "private_remove_marker(TTimeLineMarker*)", "markerRemoved(TTimeLineMarker*)",
-  		tr("Add Marker"));
-	
-	// Bypass the real time thread save logic in TSMP, since a Marker doesn't have YET
-	// anything to do with audio processing routines.
-	// WARNING: this should change as soon as Markers modify anything related to audio 
-	// processing objects!!!!!!
-	cmd->set_instantanious(true);
 
-	return cmd;
+    // 100% CORRECT CLOSURE ROUTING:
+    // Matches Constructor 2 (parent, item, historable, sheet, lambdas..., description)
+    // Passes marker as the second parameter to guarantee proper GUI focus list extraction.
+    TAddRemoveCommand* cmd = new TAddRemoveCommand(
+        this,                                               // 1. parent (TContextItem*)
+        marker,                                             // 2. item (TContextItem* via TTimeLineMarker)
+        historable,                                         // 3. bool historable
+        m_sheet,                                            // 4. TSession* sheet context
+        [this, marker]() { private_add_marker(marker); },   // 5. doMethod closure
+        [this, marker]() { emit markerAdded(marker); },      // 6. doSignal closure
+        [this, marker]() { private_remove_marker(marker); },// 7. undoMethod closure
+        [this, marker]() { emit markerRemoved(marker); },    // 8. undoSignal closure
+        tr("Add Marker")                                    // 9. description string at the very end
+        );
+
+    // Bypass the real-time thread-safe logic in TSMP, since a Marker doesn't have YET
+    // anything to do with real-time audio processing DSP routines.
+    cmd->set_instantanious(true);
+
+    return cmd;
 }
 
+/**
+ * @brief Safely extracts and removes a timeline navigation marker from the ruler topology.
+ */
 TCommand* TTimeLineRuler::remove_marker(TTimeLineMarker* marker, bool historable)
 {
-    TAddRemoveCommand* cmd;
-	cmd = new TAddRemoveCommand(this, marker, historable, m_sheet,
-        "private_remove_marker(TTimeLineMarker*)", "markerRemoved(TTimeLineMarker*)",
-        "private_add_marker(TTimeLineMarker*)", "markerAdded(TTimeLineMarker*)",
-  		tr("Remove Marker"));
-	
-	// Bypass the real time thread save logic in TSMP, since a Marker doesn't have YET
-	// anything to do with audio processing routines.
-	// WARNING: this should change as soon as Markers modify anything related to audio 
-	// processing objects!!!!!!
-	cmd->set_instantanious(true);
+    // 100% CORRECT CLOSURE ROUTING: Symmetric configuration mapping for marker removal
+    TAddRemoveCommand* cmd = new TAddRemoveCommand(
+        this,
+        marker,
+        historable,
+        m_sheet,
+        [this, marker]() { private_remove_marker(marker); },
+        [this, marker]() { emit markerRemoved(marker); },
+        [this, marker]() { private_add_marker(marker); },
+        [this, marker]() { emit markerAdded(marker); },
+        tr("Remove Marker")
+        );
 
-	return cmd;
+    // Bypass the real-time thread-safe logic in TSMP, since a Marker doesn't have YET
+    // anything to do with real-time audio processing DSP routines.
+    cmd->set_instantanious(true);
+
+    return cmd;
 }
+
+
 
 void TTimeLineRuler::private_add_marker(TTimeLineMarker * marker)
 {

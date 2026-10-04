@@ -210,6 +210,7 @@ public slots :
     void set_fade_in_shape(QAction* action);
     void set_fade_out_shape(QAction* action);
     void config_changed();
+    void apply_theme();
     void import_audio();
     void show_restore_project_backup_dialog();
     void change_recording_format_to_wav();

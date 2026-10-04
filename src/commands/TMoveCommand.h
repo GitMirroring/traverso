@@ -1,79 +1,61 @@
 /*
-    Copyright (C) 2010-2019 Remon Sijrier
-
+    Copyright (C) 2010-2026 Remon Sijrier
     This file is part of Traverso
-
-    Traverso is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
 */
 
-#ifndef MOVE_COMMAND_H
-#define MOVE_COMMAND_H
+#pragma once
 
 #include "TCommand.h"
-
 #include <QEasingCurve>
 #include <QTimer>
+#include <memory> // Added for std::unique_ptr memory management
 
 class TSheetView;
 
+/**
+ * @class TMoveCommand
+ * @brief Base class for handling interactive jog, shuttle, and structural coordinate translations across the timeline.
+ */
 class TMoveCommand : public TCommand
 {
     Q_OBJECT
 
-public :
-    TMoveCommand (TSheetView* sv, TContextItem* item, const QString& description);
-    virtual ~TMoveCommand ();
+public:
+    TMoveCommand(TSheetView* sv, TContextItem* item, const QString& description);
+    virtual ~TMoveCommand() override;
 
-    int begin_hold();
-    int finish_hold();
-    void cancel_action();
-    int jog();
-    void process_collected_number(const QString & collected);
-    // By default finish the hold command for this class at key release
-    // and let classes that derive from this one decide for themselves by
-    // re-implementing this function
-    // bool supportsEnterFinishesHold() const {return false;}
+    // Fixed virtual signatures with explicit compiler override protections
+    int begin_hold() override;
+    int finish_hold() override;
+    void cancel_action() override;
+    int jog() override;
+    void process_collected_number(const QString& collected) override;
 
 protected:
-    void start_shuttle(bool drag=false);
+    void start_shuttle(bool drag = false);
     void stop_shuttle();
     void update_shuttle_factor();
     void set_shuttle_factor_values(int x, int y);
 
     struct Data {
-        TSheetView*      sv;
-        QTimer			shuttleTimer;
-        QEasingCurve    shuttleCurve;
-        bool			dragShuttle{};
-        int             shuttleXfactor{};
-        int             shuttleYfactor{};
-        int             speed;
-        bool            doSnap;
+        TSheetView*  sv{nullptr};
+        QTimer       shuttleTimer;
+        QEasingCurve shuttleCurve;
+        bool         dragShuttle{false};
+        int          shuttleXfactor{0};
+        int          shuttleYfactor{0};
+        int          speed{1};
+        bool         doSnap{false};
     };
 
-    Data* d;
+    std::unique_ptr<Data> d;
 
 private:
-    void cleanup_and_free_data();
-
     enum ShuttleDirection {
-        LEFT = -1,
-        RIGHT = 1,
-        UP = 1,
-        DOWN = -1
+        LEFT  = -1,
+        RIGHT =  1,
+        UP    =  1,
+        DOWN  = -1
     };
 
 public slots:
@@ -82,10 +64,6 @@ public slots:
     void toggle_snap_on_off();
     void numerical_input();
 
-    // Move up/down/left/right moves scrollbars by pagestep
-    // as a default. Reimplement those function if different
-    // behavior is needed (Qt slots behave like virtual functions
-    // and can be reimplemented in derived classes)
     virtual void move_up();
     virtual void move_down();
     virtual void move_left();
@@ -93,8 +71,5 @@ public slots:
 
 private slots:
     void update_shuttle();
-
-
 };
 
-#endif // MOVECOMMAND_H

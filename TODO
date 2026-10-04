@@ -6,6 +6,7 @@ Export Rework:
 * AudioClip/ReadSource: deal with audioclips that do not start at intervals of audiodevice buffer size
 * Finish export using Bounce Track
 * Update Preferences -> Playback resample -> dropdown box gives old resample values and they are wrong
+* Added markers are not added to snaplist
 
 * Changing states (like mute, solo etc) on TAudioProcessingNode objects currently is done in the GUI thread
   these states are then checked by the audio thread, but this can cause race conditions (obviously)

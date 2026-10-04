@@ -1,27 +1,9 @@
 /*
-    Copyright (C) 2010 Remon Sijrier
-
+    Copyright (C) 2010-2026 Remon Sijrier
     This file is part of Traverso
-
-    Traverso is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
 */
 
-
 #include "MoveCurveNode.h"
-
 #include "TCurve.h"
 #include "TCurveView.h"
 #include "TCurveNode.h"
@@ -30,24 +12,24 @@
 #include "TContextPointer.h"
 
 MoveCurveNode::MoveCurveNode(TCurve* curve,
-	QList<TCurveNode*> nodes,
-	float height,
-	qint64 scalefactor,
-	TTimeRef minWhenDiff,
-	TTimeRef maxWhenDiff,
-	double	minValueDiff,
-	double	maxValueDiff,
-	const QString& des)
+                             QList<TCurveNode*> nodes,
+                             float height,
+                             qint64 scalefactor,
+                             TTimeRef minWhenDiff,
+                             TTimeRef maxWhenDiff,
+                             double	minValueDiff,
+                             double	maxValueDiff,
+                             const QString& des)
     : TMoveCommand(nullptr, curve, des)
-    , mcnd(new MoveCurveNode::MoveCurveNodeData)
+    , mcnd(std::make_unique<MoveCurveNodeData>())
 {
-	foreach(TCurveNode* node, nodes) {
-		CurveNodeData curveData{};
-		curveData.node = node;
-		curveData.origValue = node->get_value();
-		curveData.origWhen = node->get_when();
-		m_nodeDatas.append(curveData);
-	}
+    for (TCurveNode* node : nodes) {
+        CurveNodeData curveData{};
+        curveData.node = node;
+        curveData.origValue = node->get_value();
+        curveData.origWhen = node->get_when();
+        m_nodeDatas.push_back(curveData);
+    }
 
     mcnd->height = height;
     mcnd->minWhenDiff = minWhenDiff;
@@ -62,16 +44,14 @@ MoveCurveNode::MoveCurveNode(TCurve* curve,
 
 void MoveCurveNode::toggle_vertical_only()
 {
-    mcnd->verticalOnly = !mcnd->verticalOnly;
-    if (mcnd->verticalOnly)
-	{
-		m_contextPointer->set_canvas_cursor_text(tr("Vertical On"), 1000);
+    Q_ASSERT(mcnd != nullptr);
 
-	}
-	else
-	{
-		m_contextPointer->set_canvas_cursor_text(tr("Vertical Off"), 1000);
-	}
+    mcnd->verticalOnly = !mcnd->verticalOnly;
+    if (mcnd->verticalOnly) {
+        m_contextPointer->set_canvas_cursor_text(tr("Vertical On"), 1000);
+    } else {
+        m_contextPointer->set_canvas_cursor_text(tr("Vertical Off"), 1000);
+    }
 }
 
 int MoveCurveNode::prepare_actions()
@@ -79,132 +59,134 @@ int MoveCurveNode::prepare_actions()
     if (m_whenDiff.universal_frame() == 0 && TraversoDAW::Float::equals_0(m_valueDiff)) {
         return -1;
     }
-
     return 1;
 }
 
 int MoveCurveNode::finish_hold()
 {
-        delete mcnd;
-    mcnd = nullptr;
-        return 1;
+    // EFFICIENT MEMORY RELEASE: The active drag window is closed.
+    // Release temporary data before storing this on the history stack.
+    mcnd.reset();
+    return 1;
 }
 
 void MoveCurveNode::cancel_action()
 {
-        delete mcnd;
-    mcnd = nullptr;
-        undo_action();
+    mcnd.reset();
+    undo_action();
 }
 
 int MoveCurveNode::begin_hold()
 {
+    Q_ASSERT(mcnd != nullptr);
+
     mcnd->mousepos = QPoint(m_contextPointer->on_first_input_event_x(), m_contextPointer->on_first_input_event_y());
     check_and_apply_when_and_value_diffs();
     return 1;
 }
 
-
 int MoveCurveNode::do_action()
 {
-	foreach(const CurveNodeData& nodeData, m_nodeDatas) {
-		nodeData.node->set_when_and_value(nodeData.origWhen + m_whenDiff.universal_frame(), nodeData.origValue + m_valueDiff);
-	}
-
-        return 1;
+    for (const CurveNodeData& nodeData : m_nodeDatas) {
+        nodeData.node->set_when_and_value(nodeData.origWhen + m_whenDiff.universal_frame(), nodeData.origValue + m_valueDiff);
+    }
+    return 1;
 }
 
 int MoveCurveNode::undo_action()
 {
-	foreach(const CurveNodeData& nodeData, m_nodeDatas) {
-		nodeData.node->set_when_and_value(nodeData.origWhen, nodeData.origValue);
-	}
-
+    for (const CurveNodeData& nodeData : m_nodeDatas) {
+        nodeData.node->set_when_and_value(nodeData.origWhen, nodeData.origValue);
+    }
     return 1;
 }
 
 void MoveCurveNode::move_up()
 {
+    Q_ASSERT(mcnd != nullptr);
     m_valueDiff += d->speed / mcnd->height;
-
-	check_and_apply_when_and_value_diffs();
+    check_and_apply_when_and_value_diffs();
 }
 
 void MoveCurveNode::move_down()
 {
+    Q_ASSERT(mcnd != nullptr);
     m_valueDiff -= d->speed / mcnd->height;
-
-	check_and_apply_when_and_value_diffs();
+    check_and_apply_when_and_value_diffs();
 }
 
 void MoveCurveNode::move_left()
 {
+    Q_ASSERT(mcnd != nullptr);
     m_whenDiff -= mcnd->scalefactor * d->speed;
-
-	check_and_apply_when_and_value_diffs();
+    check_and_apply_when_and_value_diffs();
 }
 
 void MoveCurveNode::move_right()
 {
+    Q_ASSERT(mcnd != nullptr);
     m_whenDiff += mcnd->scalefactor * d->speed;
-
-	check_and_apply_when_and_value_diffs();
+    check_and_apply_when_and_value_diffs();
 }
 
 void MoveCurveNode::set_cursor_shape(int useX, int useY)
 {
     Q_UNUSED(useX);
     Q_UNUSED(useY);
-//        m_contextPointer->setCursor(":/cursorHoldLrud");
+
+    // 1. Schakel direct over naar de dedicated automation-cursor
+    m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::AutomationNode);
+
+    // 2. Haal de startwaarde op en voeg direct de [DRAG] vlag toe!
+    // Hierdoor transformeren de streepjes direct in pijltjes zodra je de Hold-toets indrukt.
+    if (m_nodeDatas.size() == 1) {
+        float dbFactor = Mixer::coefficient_to_dB(m_nodeDatas.at(0).origValue + m_valueDiff);
+        m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QString("[DRAG]%1 dB").arg(dbFactor, 0, 'f', 1)));
+    } else {
+        m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("[DRAG]Multiple Nodes")));
+    }
 }
 
 int MoveCurveNode::jog()
 {
-	QPoint mousepos = m_contextPointer->mouse_viewport_pos();
+    Q_ASSERT(mcnd != nullptr);
 
-	int dx, dy;
-    dx = mousepos.x() - mcnd->mousepos.x();
-    dy = mousepos.y() - mcnd->mousepos.y();
+    QPoint mousepos = m_contextPointer->mouse_viewport_pos();
+
+    int dx = mousepos.x() - mcnd->mousepos.x();
+    int dy = mousepos.y() - mcnd->mousepos.y();
 
     mcnd->mousepos = mousepos;
 
     m_whenDiff += dx * mcnd->scalefactor;
     m_valueDiff -= dy / mcnd->height;
 
-	return check_and_apply_when_and_value_diffs();
+    return check_and_apply_when_and_value_diffs();
 }
 
 int MoveCurveNode::check_and_apply_when_and_value_diffs()
 {
+    Q_ASSERT(mcnd != nullptr);
+
     if (mcnd->verticalOnly) {
-		m_whenDiff = TTimeRef();
-	}
+        m_whenDiff = TTimeRef();
+    }
 
-    if (m_whenDiff > mcnd->maxWhenDiff) {
-        m_whenDiff = mcnd->maxWhenDiff;
-	}
+    if (m_whenDiff > mcnd->maxWhenDiff)  m_whenDiff = mcnd->maxWhenDiff;
+    if (m_whenDiff < mcnd->minWhenDiff)  m_whenDiff = mcnd->minWhenDiff;
+    if (m_valueDiff > mcnd->maxValueDiff) m_valueDiff = mcnd->maxValueDiff;
+    if (m_valueDiff < mcnd->minValueDiff) m_valueDiff = mcnd->minValueDiff;
 
-    if (m_whenDiff < mcnd->minWhenDiff) {
-        m_whenDiff = mcnd->minWhenDiff;
-	}
+    if (m_nodeDatas.size() == 1) {
+        float dbFactor = Mixer::coefficient_to_dB(m_nodeDatas.at(0).origValue + m_valueDiff);
 
-    if (m_valueDiff > mcnd->maxValueDiff) {
-        m_valueDiff = mcnd->maxValueDiff;
-	}
-
-    if (m_valueDiff < mcnd->minValueDiff) {
-        m_valueDiff = mcnd->minValueDiff;
-	}
-
-        // NOTE: this obviously only makes sense when the Node == GainEnvelope Node
-        // Use a delegate (or something similar) in the future that set's the correct value.
-	if (m_nodeDatas.size() == 1) {
-		float dbFactor = Mixer::coefficient_to_dB(m_nodeDatas.first().origValue + m_valueDiff);
-        m_contextPointer->set_canvas_cursor_text(QByteArray::number(dbFactor, 'f', 1).append(" dB"));
-	}
+        // Append the [DRAG] token prefix to signal the crosshair to morph into directional arrows
+        if (dbFactor <= Mixer::min_fader_dB()) {
+            m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("[DRAG]-inf dB")));
+        } else {
+            m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QString("[DRAG]%1 dB").arg(dbFactor, 0, 'f', 1)));
+        }
+    }
 
     return do_action();
 }
-
-
-

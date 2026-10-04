@@ -1,0 +1,11 @@
+[Icon Theme]
+Name=icons
+Comment=Traverso Native Theme-Aware SVG Icons
+Directories=scalable/actions
+
+[scalable/actions]
+Size=22
+MinSize=16
+MaxSize=512
+Type=Scalable
+Context=Actions

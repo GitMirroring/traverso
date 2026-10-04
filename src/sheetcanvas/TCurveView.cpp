@@ -219,18 +219,27 @@ int TCurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &b
     return 1;
 }
 
+/**
+ * @brief GUI slot triggered when a new core curve node keyframe has been added down the pipeline.
+ *        Instantiates the matching graphical presentation view layer dynamically.
+ */
 void TCurveView::add_curvenode_view(TCurveNode* node)
 {
+    // Create the lightweight visual node element within the canvas scene context
     TCurveNodeView* nodeview = new TCurveNodeView(m_sv, this, node, m_guicurve);
     m_nodeViews.append(nodeview);
 
-
+    // ARCHITECTURALLY PURE CAST:
+    // Because TCurve::add_node returns a polymorphic command context loop,
+    // we cast cleanly to TAddRemoveCommandBase* without exposing template details!
     TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(nodeview, false));
     if (cmd) {
+        // Execute the initialization step instantly local to the current UI thread context scope
         cmd->set_instantanious(true);
         TCommand::process_command(cmd);
 
-        std::sort(m_nodeViews.begin(), m_nodeViews.end(), [&](TCurveNodeView* left, TCurveNodeView* right){
+        // Maintain strict chronological sorting across our visual presentation components
+        std::sort(m_nodeViews.begin(), m_nodeViews.end(), [](TCurveNodeView* left, TCurveNodeView* right){
             return left->get_when() < right->get_when();
         });
 
@@ -239,22 +248,31 @@ void TCurveView::add_curvenode_view(TCurveNode* node)
     }
 }
 
+/**
+ * @brief GUI slot triggered when an existing core curve node keyframe is removed from the timeline data.
+ *        Safely extracts and destroys the corresponding graphical element from the active canvas view.
+ */
 void TCurveView::remove_curvenode_view(TCurveNode* node)
 {
-    for(TCurveNodeView* nodeview : m_nodeViews) {
+    for (TCurveNodeView* nodeview : m_nodeViews) {
         if (nodeview->get_curve_node() == node) {
             m_nodeViews.removeAll(nodeview);
+
+            // Sync soft-selection cursor properties if the discarded item was currently highlighted
             if (nodeview == m_blinkingNode) {
                 m_blinkingNode = nullptr;
                 update_softselected_node(cpointer().scene_pos());
             }
+
             TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->remove_node(nodeview, false));
             if (cmd) {
                 cmd->set_instantanious(true);
                 TCommand::process_command(cmd);
 
+                // Cleanly purge the visual representation layout straight out of the graphics viewport
                 scene()->removeItem(nodeview);
                 delete nodeview;
+
                 update();
                 emit curveUpdated(0, int(m_boundingRect.width()));
                 return;
@@ -301,11 +319,22 @@ void TCurveView::mouse_hover_move_event()
     update_softselected_node(cpointer().scene_pos());
 
     if (m_blinkingNode) {
-        QString shape = m_sv->cursor_dict()->value("CurveNodeView", "");
-        cpointer().set_canvas_cursor_shape(shape, Qt::AlignTop | Qt::AlignHCenter);
+        // 1. Instantly display our modern vectorized smart cursor during soft-selection hover
+        cpointer().set_canvas_cursor_type(TContextPointer::CursorType::AutomationNode);
+
+        // 2. Fetch the target node's actual current layout coefficient factor
+        float currentVal = m_blinkingNode->get_curve_node()->get_value();
+        float dbFactor = Mixer::coefficient_to_dB(currentVal);
+
+        // 3. Render real-time feedback inside the LCD box during hover state
+        if (dbFactor <= Mixer::min_fader_dB()) {
+            cpointer().set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("-inf dB")));
+        } else {
+            cpointer().set_canvas_cursor_data(QVariant::fromValue(QString("%1 dB").arg(dbFactor, 0, 'f', 1)));
+        }
     } else {
-        QString shape = m_sv->cursor_dict()->value("CurveView", "");
-        cpointer().set_canvas_cursor_shape(shape, Qt::AlignTop | Qt::AlignHCenter);
+        // Fall back cleanly to the OS default arrow cursor once the mouse exits the node's magnetic zone
+        cpointer().set_canvas_cursor_type(TContextPointer::CursorType::Default);
     }
 }
 

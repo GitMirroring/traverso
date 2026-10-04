@@ -1,21 +1,6 @@
 /*
     Copyright (C) 2005-2026 Remon Sijrier
     This file is part of Traverso
-
-    Traverso is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
 */
 
 #ifndef TRAVERSO_MIXER_H
@@ -23,6 +8,7 @@
 
 #include "defines.h"
 #include <cmath>
+#include <algorithm>
 
 static inline float f_max(float x, float a)
 {
@@ -43,11 +29,9 @@ void  default_apply_gain_to_buffer      (audio_sample_t*  buf, nframes_t nframes
 void  default_mix_buffers_with_gain     (audio_sample_t*  dst, const audio_sample_t*  src, nframes_t nframes, float gain);
 void  default_mix_buffers_no_gain       (audio_sample_t*  dst, const audio_sample_t*  src, nframes_t nframes);
 
-// Use compiler-provided SIMD flags for safe architecture matching
 #if defined(__SSE__) && defined(SSE_OPTIMIZATIONS)
 extern "C"
 {
-/* Hardware-accelerated assembly vector functions */
 float x86_sse_compute_peak          (const audio_sample_t*  buf, nframes_t nsamples, float current);
 void  x86_sse_apply_gain_to_buffer   (audio_sample_t*  buf, nframes_t nframes, float gain);
 void  x86_sse_mix_buffers_with_gain  (audio_sample_t*  dst, const audio_sample_t*  src, nframes_t nframes, float gain);
@@ -75,12 +59,45 @@ public:
     static mix_buffers_with_gain_t   mix_buffers_with_gain;
     static mix_buffers_no_gain_t     mix_buffers_no_gain;
 
+    // --- CENTRALIZED FADER CONSTANTS AND BOUNDARIES ---
+    static inline float min_fader_dB()   { return -120.0f; } // Audio engine mathematical floor
+    static inline float max_fader_dB()   { return 12.0f; }   // Audio engine mathematical ceiling
+    static inline float min_fader_gain() { return 0.000001f; } // Threshold for absolute silence (-120 dB)
+    static inline float max_fader_gain() { return 3.981072f; }  // Scale factor for +12 dB
+
+    /**
+     * @brief Maps a decibel value safely within the professional fader boundaries.
+     */
+    static inline float clamp_dB(float dB)
+    {
+        return std::clamp(dB, min_fader_dB(), max_fader_dB());
+    }
+
+    /**
+     * @brief Clamps a linear gain coefficient safely within the professional fader boundaries.
+     */
+    static inline float clamp_gain(float gain)
+    {
+        if (gain < min_fader_gain()) return 0.0f;
+        if (gain > max_fader_gain()) return max_fader_gain();
+        return gain;
+    }
+
     static inline float coefficient_to_dB (float coeff)
     {
-        if (coeff < 0.000001f)
-            return (-120.0f);
+        if (coeff < min_fader_gain()) return min_fader_dB();
         return 20.0f * log10 (coeff);
     }
+
+    /**
+     * @brief Maps a decibel value to a standardized 0.0 - 1.0 fader position.
+     */
+    static float db_to_fader_position(float dB);
+
+    /**
+     * @brief Maps a standardized 0.0 - 1.0 fader travel position back to a linear audio gain multiplier coefficient.
+     */
+    static float fader_position_to_gain(float position);
 };
 
 #endif

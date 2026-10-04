@@ -113,14 +113,14 @@ void SettingsDialog::createIcons()
     appearanceButton->setSizeHint(QSize(100, 50));
 
     QListWidgetItem* driverButton = new QListWidgetItem(contentsWidget);
-	driverButton->setIcon(QIcon(":/audiocard"));
+    driverButton->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::AudioCard, QIcon(QStringLiteral("ui/icons/scalable/devices/audio-card.svg"))));
 	driverButton->setText(tr("Sound System"));
 	driverButton->setTextAlignment(Qt::AlignHCenter);
 	driverButton->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     driverButton->setSizeHint(QSize(100, 50));
 
     QListWidgetItem* diskioButton = new QListWidgetItem(contentsWidget);
-    diskioButton->setIcon(QIcon(":/audiosettings"));
+    diskioButton->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSaveAs, QIcon(QStringLiteral("ui/icons/scalable/devices/audio-card.svg"))));
     diskioButton->setText(tr("Audio Options"));
     diskioButton->setTextAlignment(Qt::AlignHCenter);
     diskioButton->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);

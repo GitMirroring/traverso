@@ -176,8 +176,8 @@ TGainKnobView::TGainKnobView(TViewItem* parent, TTrack* track)
 {
     connect(m_track, &TTrack::stateChanged, this, &TGainKnobView::track_gain_changed);
     set_title("GAIN");
-    set_min_value(0);
-    set_max_value(2);
+    set_min_value(Mixer::min_fader_gain());
+    set_max_value(Mixer::max_fader_gain());
     track_gain_changed();
 }
 

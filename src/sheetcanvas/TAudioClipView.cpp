@@ -207,7 +207,8 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
     // Paint a pixmap if the clip is locked
     if (m_clip->is_locked()) {
         int center = (int)(m_clip->get_length() / (2 * m_sv->timeref_scalefactor));
-        painter->drawPixmap(center - 8, m_height - 20, TMainWindow::find_pixmap(":/lock"));
+        painter->setOpacity(0.4);
+        painter->drawPixmap(center - 8,(m_height / 2), QIcon::fromTheme(QIcon::ThemeIcon::SecurityLow).pixmap(m_height / 5, m_height / 5));
     }
 
     painter->restore();

@@ -742,11 +742,11 @@ void AppearenceConfigPage::theme_index_changed(const QString & theme)
 
 void AppearenceConfigPage::use_selected_styles_pallet_checkbox_toggled(bool checked)
 {
-    if (checked) {
-        QApplication::setPalette(QApplication::style()->standardPalette());
-    } else {
-        QApplication::setPalette(themer()->system_palette());
-    }
+    // if (checked) {
+    //     QApplication::setPalette(QApplication::style()->standardPalette());
+    // } else {
+    //     QApplication::setPalette(themer()->system_palette());
+    // }
 }
 
 void AppearenceConfigPage::color_adjustbox_changed(int value)

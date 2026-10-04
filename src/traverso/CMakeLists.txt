@@ -65,6 +65,7 @@ target_link_libraries(traverso
         traversosheetcanvas
         Qt6::Widgets
         Qt6::Xml
+        Qt6::Svg
 )
 
 # System-level dependencies required for building on particular OS environments

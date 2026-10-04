@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 
 #include "TTimeRef.h"
+#include "TContextPointer.h"
 
 class TContextItem;
 
@@ -50,9 +51,10 @@ public:
 
     virtual QPointF map_to_scene(const QPoint& pos) const = 0;
     virtual QPoint map_to_global(const QPoint& pos) const = 0;
-    virtual void set_canvas_cursor_shape(const QString& shape, int alignment=Qt::AlignCenter) = 0;
+    virtual void set_canvas_cursor_type(TContextPointer::CursorType) = 0;
     virtual void set_canvas_cursor_text(const QString& text, int mseconds) = 0;
     virtual void set_canvas_cursor_pos(QPointF pos, CursorMoveReason reason = UNDEFINED) = 0;
+    virtual void set_canvas_cursor_data(const QVariant& data) = 0;
     virtual void detect_items_below_cursor() = 0;
 
     virtual void grab_mouse() = 0;

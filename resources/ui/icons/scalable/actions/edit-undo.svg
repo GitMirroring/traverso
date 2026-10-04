@@ -1,0 +1,15 @@
+<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="22" height="22">
+    <defs>
+        <style id="current-color-scheme" type="text/css">
+            .ColorScheme-Text { color: #C59000; }
+            .ColorScheme-Highlight { color: #FF3300; }
+        </style>
+        <linearGradient id="traversoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="currentColor" class="ColorScheme-Text"/>
+            <stop offset="100%" stop-color="currentColor" class="ColorScheme-Highlight"/>
+        </linearGradient>
+    </defs>
+    <g id="edit-undo-layer">
+        <path fill="url(#traversoGradient)" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+    </g>
+</svg>

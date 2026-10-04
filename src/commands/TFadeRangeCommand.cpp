@@ -218,7 +218,7 @@ void TFadeRangeCommand::update_canvas_cursor_text()
         location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeInNewRange)) + "  |  " + TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
     }
 
-    m_contextPointer->set_canvas_cursor_text(location);
+    m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(location));
 }
 
 

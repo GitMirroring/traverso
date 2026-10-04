@@ -34,7 +34,18 @@ set(TRAVERSO_SHEETCANVAS_SOURCES
 )
 
 # Define the dynamic timeline canvas representation pipeline structure
-add_library(traversosheetcanvas STATIC ${TRAVERSO_SHEETCANVAS_SOURCES})
+add_library(traversosheetcanvas STATIC ${TRAVERSO_SHEETCANVAS_SOURCES}
+    TCursorRenderer.h TCursorRenderer.cpp
+    TFaderCursorRenderer.h TFaderCursorRenderer.cpp
+    TDefaultCursorRenderer.h TDefaultCursorRenderer.cpp
+    TPanningCursorRenderer.h TPanningCursorRenderer.cpp
+    TChannelStripCursorRenderer.h TChannelStripCursorRenderer.cpp
+    TFaderTrack.h TFaderTrack.cpp
+    TBaseCursorRenderer.h
+    TZoomCursorRenderer.h TZoomCursorRenderer.cpp
+    THoldCursorRenderer.h THoldCursorRenderer.cpp
+    TAutomationCursorRenderer.h TAutomationCursorRenderer.cpp
+)
 target_link_libraries(traversosheetcanvas PRIVATE traverso_compiler_settings)
 
 # Declare comprehensive inclusion references traversing the workspace architecture

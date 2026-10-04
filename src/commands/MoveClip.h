@@ -35,7 +35,7 @@ class TSession;
 class TAudioTrack;
 class TSheetView;
 class TViewItem;
-class Zoom;
+class TZoomCommand;
 
 typedef struct {
 	TTimeLineMarker*	marker;
@@ -85,7 +85,7 @@ private :
         qreal 		sceneXStartPos;
         int 		pointedTrackIndex;
 		bool		verticalOnly;
-		Zoom*		zoom;
+		TZoomCommand*		zoom;
         TTimeRef     relativeWorkCursorPos;
 	};
 	

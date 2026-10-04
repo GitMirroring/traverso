@@ -6,23 +6,12 @@
         <file alias="cursorHoldLrud">images/cursorHoldLrud.xpm</file>
         <file alias="cursorHoldLr">images/cursorHoldLr.xpm</file>
         <file alias="cursorHoldUd">images/cursorHoldUd.xpm</file>
-        <file alias="cursorGain">images/cursorGain.xpm</file>
         <file alias="lock">images/lock.png</file>
         <file alias="traverso">images/traverso.xpm</file>
         <file alias="windowicon">images/traverso.xpm</file>
         <file alias="Traverso/shortcuts-simplified.ini">shortcuts-simplified.ini</file>
         <file alias="Traverso/shortcuts-advanced.ini">shortcuts-advanced.ini</file>
         <file alias="fadeshapes">fadeshapes.xml</file>
-        <file alias="themes/Traverso Light">themes/traversolight.xml</file>
-        <file alias="themes/Ubuntu">themes/ubuntu.xml</file>
-        <file alias="themes/Medium Contrast">themes/medium-contrast.xml</file>
-        <file alias="themes/System Palette">themes/system-palette.xml</file>
-        <file alias="themes/Gradients">themes/gradients.xml</file>
-        <file alias="themes/Oop">themes/oop.xml</file>
-        <file alias="themes/Parchment">themes/parchment.xml</file>
-        <file alias="themes/Cherry Blossom">themes/CherryBlossom.xml</file>
-        <file alias="bus_in">images/bus-in.xpm</file>
-        <file alias="bus_out">images/bus-out.xpm</file>
         <file alias="audiocard">images/soundcard.png</file>
         <file alias="keyboard">images/keyboard.png</file>
         <file alias="cpu">images/cpu.png</file>
@@ -68,7 +57,6 @@
         <file alias="down">images/icons/arrow-down.png</file>
         <file alias="add">images/icons/list-add.png</file>
         <file alias="remove">images/icons/list-remove.png</file>
-        <file alias="welcomebackground">images/background_center_frame.png</file>
         <file>translations/traverso_nl.qm</file>
         <file>translations/traverso_de.qm</file>
         <file>translations/traverso_fr.qm</file>
@@ -78,6 +66,14 @@
         <file>translations/traverso_ru.qm</file>
         <file>translations/traverso_it.qm</file>
         <file alias="project_conversion_description_2_3">projectconversion/2_to_3.html</file>
-        <file alias="traverso-logo">images/traverso.svg</file>
+    </qresource>
+    <qresource prefix="/ui">
+        <file alias="palettes/traversodark.xml">ui/palettes/dark.xml</file>
+        <file alias="palettes/traversolight.xml">ui/palettes/light.xml</file>
+        <file alias="icons/index.theme">ui/icons/index.theme</file>
+        <file alias="icons/scalable/apps/app-logo.svg">ui/icons/scalable/apps/app-logo.svg</file>
+        <file alias="cursor-gain">ui/icons/scalable/actions/cursor-gain.svg</file>
+        <file alias="icons/scalable/actions/snap-magnet.svg">ui/icons/scalable/actions/snap-magnet.svg</file>
+        <file alias="icons/scalable/devices/audio-card.svg">ui/icons/scalable/devices/audio-card.svg</file>
     </qresource>
 </RCC>

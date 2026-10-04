@@ -141,11 +141,5 @@ void TSend::set_pan(float pan)
 
 void TSend::set_gain(float gain)
 {
-        if (gain < 0.0) {
-                gain = 0.0;
-        }
-        if (gain > 2.0) {
-                gain = 2.0;
-        }
-        m_gain = gain;
+    m_gain = Mixer::clamp_gain(gain);
 }

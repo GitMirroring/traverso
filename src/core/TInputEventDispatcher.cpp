@@ -291,7 +291,6 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
                     } else {
                         keyString = QKeySequence(shortCut->get_key_value()).toString();
                     }
-                    m_contextPointer->set_canvas_cursor_text(tr("Press %1 or Enter to accept, Esc to cancel, Q for more").arg(keyString));
                 }
 
                 return 1;
@@ -700,6 +699,8 @@ void TInputEventDispatcher::finish_hold()
     }
 
     reset();
+
+    m_contextPointer->request_viewport_to_detect_items_below_cursor();
 }
 
 void TInputEventDispatcher::clear_hold_modifier_keys()

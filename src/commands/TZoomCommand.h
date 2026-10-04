@@ -1,72 +1,58 @@
 /*
-    Copyright (C) 2005-2006 Remon Sijrier 
- 
+    Copyright (C) 2005-2026 Remon Sijrier
     This file is part of Traverso
- 
-    Traverso is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
- 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
- 
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
- 
-    $Id: Zoom.h,v 1.7 2008/01/22 20:47:16 r_sijrier Exp $
 */
 
-#ifndef ZOOM_H
-#define ZOOM_H
+#pragma once
 
 #include "TCommand.h"
-
 #include <QVariantList>
 #include <QPointF>
+#include <QPoint>
 
 class TSheetView;
 class TTrackView;
-class QPoint;
 
-class Zoom : public TCommand
+/**
+ * @class TZoomCommand
+ * @brief Manages interactive timeline zooming, track height scaling, and viewport jog operations.
+ * @note Modernized to leverage dynamic vector-based canvas cursors with real-time feedback data.
+ */
+class TZoomCommand : public TCommand
 {
     Q_OBJECT
 
-public :
-    Zoom(TSheetView* sv, const QVariantList &args);
-    ~Zoom() {}
+public:
+    TZoomCommand(TSheetView* sv, const QVariantList &args);
+    virtual ~TZoomCommand() override = default;
 
-    int begin_hold();
-    int finish_hold();
-    int prepare_actions();
-    int do_action();
-    int undo_action();
+    int begin_hold() override;
+    int finish_hold() override;
+    int prepare_actions() override;
+    int do_action() override;
+    int undo_action() override;
 
-    int jog();
+    int jog() override;
 
-    void set_cursor_shape(int useX, int useY);
-    void process_collected_number(const QString & collected);
-    bool supportsEnterFinishesHold() const {return false;}
+    void set_cursor_shape(int useX, int useY) override;
+    void process_collected_number(const QString &collected) override;
+    bool supportsEnterFinishesHold() const override { return false; }
 
-private :
-    int m_horizontalJogZoomLastX{};
-    int m_verticalJogZoomLastY{};
-    int m_trackHeight;
-    bool m_jogVertical;
-    bool m_jogHorizontal;
-    qreal m_xScalefactor;
-    qreal m_yScalefactor;
-    QPoint	m_mousePos;
-    QPointF	m_origPos;
+private:
+    int m_horizontalJogZoomLastX{0};
+    int m_verticalJogZoomLastY{0};
+    int m_trackHeight{0};
+    bool m_jogVertical{false};
+    bool m_jogHorizontal{false};
+    qreal m_xScalefactor{1.0};
+    qreal m_yScalefactor{0.0};
+    QPoint m_mousePos;
+    QPointF m_origPos;
 
     int collected_number_to_track_height(const QString& collected) const;
 
-    TSheetView* m_sv;
-    TTrackView* m_tv;
+    TSheetView* m_sv{nullptr};
+    TTrackView* m_tv{nullptr};
 
 public slots:
     void vzoom_in();
@@ -79,6 +65,4 @@ public slots:
     void toggle_expand_all_tracks();
     void numerical_input();
 };
-
-#endif
 

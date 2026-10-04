@@ -404,10 +404,10 @@ void HDDSpaceInfo::update_status( )
 		TTimeRef time(availabletime);
 		text = TTimeRef::timeref_to_hms(time);
 		if (text < "00:30:00") {
-			QPalette pal;
-			pal.setColor(QPalette::ButtonText, QColor(Qt::red));
-			m_button->setPalette(pal);
-		}
+            // QPalette pal;
+            // pal.setColor(QPalette::ButtonText, QColor(Qt::red));
+            // m_button->setPalette(pal);
+        }
 	} else {
 		if (space > 9216) {
 			text.setNum((space/1024), 'f', 2);
@@ -530,16 +530,17 @@ void SystemValueBar::paintEvent(QPaintEvent* )
 
 	QPainter painter(this);
 	painter.setRenderHints(QPainter::Antialiasing);
+
 	
-	QColor color = QColor(227, 254, 227);
+    QColor color = themer()->get_system_palette_color(QPalette::WindowText);
 	
-	for (int i=0; i<m_rangecolors.size(); ++i) {
-		RangeColor range = m_rangecolors.at(i);
-        if (value <= range.x1 && value >= range.x0) {
-			color = range.color;
-			break;
-		}
-	}
+    // for (int i=0; i<m_rangecolors.size(); ++i) {
+    // 	RangeColor range = m_rangecolors.at(i);
+ //        if (value <= range.x1 && value >= range.x0) {
+    // 		color = range.color;
+    // 		break;
+    // 	}
+    // }
 	
 	QRect rect = QRect(0, (height() - 15) / 2, width(), 15);
 	painter.drawRect(rect);
@@ -590,10 +591,10 @@ ProgressToolBar::ProgressToolBar(QWidget* parent)
 	filecount = 1;
 	filenum = 1;
 
-	QString style = "QProgressBar {border: 2px solid grey;border-radius: 5px; height: 10px; width 300px; text-align: center;}" 
-"QProgressBar::chunk {background-color: qlineargradient(x1: 0, y1: 0, x2: 1.0, y2: 1.0,stop: 0 white, stop: 1 navy);}";
+// 	QString style = "QProgressBar {border: 2px solid grey;border-radius: 5px; height: 10px; width 300px; text-align: center;}"
+// "QProgressBar::chunk {background-color: qlineargradient(x1: 0, y1: 0, x2: 1.0, y2: 1.0,stop: 0 white, stop: 1 navy);}";
 
-        m_progressBar->setStyleSheet(style);
+        // m_progressBar->setStyleSheet(style);
 }
 
 ProgressToolBar::~ProgressToolBar()

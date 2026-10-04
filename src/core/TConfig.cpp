@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TShortCutManager.h"
 #include "../commands/plugins/TraversoCommands/TraversoCommands.h"
+#include "TThemer.h"
 
 #include <QSettings>
 #include <QString>
@@ -57,6 +58,9 @@ void TConfig::load_configuration()
     m_commands = new TraversoCommands();
     tShortCutManager().register_command_plugin(m_commands, "TraversoCommands");
     tShortCutManager().load_shortcuts();
+
+    // Themer constructor will set Qt Application Global theme settings
+    themer();
 }
 
 void TConfig::reset_settings( )

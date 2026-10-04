@@ -36,55 +36,52 @@ class QFileSystemWatcher;
 
 class TThemer : public QObject
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
-        void save();
-        void load();
-        
-        void set_path_and_theme(const QString& path, const QString& theme);
-	void use_builtin_theme(const QString& theme);
-	void set_color_adjust_value(int value);
-        void validate_loaded_theme();
+    void save();
+    void load();
 
-	QColor get_color(const QString& name) const;
-        QColor get_system_palette_color(QPalette::ColorRole colorRole) const;
-        void set_new_theme_color(const QString& name, const QColor& color);
-        QList<QString> get_colors();
-	QFont get_font(const QString& fontname) const;
-	QVariant get_property(const QString& propertyname, const QVariant& defaultValue=0) const;
-	QPalette system_palette() const {return m_systempallete;}
-	QStringList get_builtin_themes();
-	QBrush get_brush(const QString& name, QPoint start = QPoint(0,0), QPoint stop = QPoint(0,0)) const;
-	QLinearGradient get_gradient(const QString& name) const;
-	
+    void set_path_and_theme(const QString& path, const QString& theme);
+    void use_builtin_theme(const QString& theme);
+    void set_color_adjust_value(int value);
+    void validate_loaded_theme();
+
+    QColor get_color(const QString& name) const;
+    QColor get_system_palette_color(QPalette::ColorRole colorRole) const;
+    void set_new_theme_color(const QString& name, const QColor& color);
+    QList<QString> get_colors();
+    QFont get_font(const QString& fontname) const;
+    QVariant get_property(const QString& propertyname, const QVariant& defaultValue=0) const;
+    QStringList get_builtin_themes();
+    QBrush get_brush(const QString& name, QPoint start = QPoint(0,0), QPoint stop = QPoint(0,0)) const;
+    QLinearGradient get_gradient(const QString& name) const;
+
     static TThemer* instance();
-	
+
 private:
-        TThemer();
+    TThemer();
 
-        void load_defaults();
+    void load_defaults();
 
-        QHash<QString, QColor>	 m_colors;
-        QHash<QString, QColor>	 m_defaultColors;
-        QHash<QString, QLinearGradient> m_gradients;
-	QHash<QString, QVariant> m_properties;
-	QHash<QString, QFont>	m_fonts;
-	QFileSystemWatcher*	m_watcher;
-        QString			m_themefile;
-	int			m_coloradjust;
-	QPalette 		m_systempallete;
-	QString			m_currentTheme;
+    QHash<QString, QColor>	 m_colors;
+    QHash<QString, QColor>	 m_defaultColors;
+    QHash<QString, QLinearGradient> m_gradients;
+    QHash<QString, QVariant> m_properties;
+    QHash<QString, QFont>	m_fonts;
+    QString			m_themefile;
+    int			m_coloradjust;
+    QString			m_currentTheme;
 
-	QColor get_default_color(const QString& name);
+    QColor get_default_color(const QString& name);
 
     static TThemer* m_instance;
-        
-       
+
+
 private slots:
-	void reload_on_themefile_change(const QString&);
-	
+    void reload_on_themefile_change(const QString&);
+
 signals:
-	void themeLoaded();
+    void themeLoaded();
 };
 
 // use this function to get the Colormanager object

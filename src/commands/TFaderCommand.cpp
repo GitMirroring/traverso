@@ -1,26 +1,9 @@
 /*
-Copyright (C) 2010-2019 Remon Sijrier
-
-This file is part of Traverso
-
-Traverso is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
+    Copyright (C) 2010-2026 Remon Sijrier
+    This file is part of Traverso
 */
 
-#include "GainCommand.h"
-
+#include "TFaderCommand.h"
 #include "TContextItem.h"
 #include "TAudioProcessingNode.h"
 #include "Mixer.h"
@@ -28,133 +11,131 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 /**
- *	\class GainCommand
-    \brief Change (jog) the GainCommand of an TAudioProcessingNode, or set to a pre-defined value
-
-    \sa TraversoCommands
+ * @class TFaderCommand
+ * @brief Manages the execution, tracking, and high-performance manipulation of an audio node's gain multiplier.
  */
 
-
-GainCommand::GainCommand(TAudioProcessingNode* context, const QVariantList& /*args*/)
+TFaderCommand::TFaderCommand(TAudioProcessingNode* context, const QVariantList& /*args*/)
     : TCommand(context, "")
     , m_audioProcessingNode(context)
 {
     m_newGain = m_origGain = m_audioProcessingNode->get_gain();
+
+    float currentDb = Mixer::coefficient_to_dB(m_newGain);
+    m_faderPosition = Mixer::db_to_fader_position(currentDb);
 }
 
-GainCommand::~GainCommand()
+TFaderCommand::~TFaderCommand()
 {
     PENTERDES;
 }
 
-int GainCommand::prepare_actions()
+int TFaderCommand::prepare_actions()
 {
     if (TraversoDAW::Float::compare(m_origGain, m_newGain)) {
-        // Nothing happened!
         return -1;
     }
     return 1;
 }
 
-void GainCommand::apply_new_gain_to_object(float newGain)
+void TFaderCommand::apply_new_gain_to_object(float newGain)
 {
-    m_newGain = newGain;
+    // Validate and secure value distribution natively via the centralized single source of truth
+    m_newGain = Mixer::clamp_gain(newGain);
     m_audioProcessingNode->set_gain(m_newGain);
-    // the gainobject is able to refuse the new value, so we set our
-    // newGain value to the value the gainobject internally decided to go for
+
+    // Read back final engine state and seamlessly synchronize UI fader positioning tracking variables
     m_newGain = m_audioProcessingNode->get_gain();
+    float acceptedDb = Mixer::coefficient_to_dB(m_newGain);
+    m_faderPosition = Mixer::db_to_fader_position(acceptedDb);
 }
 
-int GainCommand::do_action()
+int TFaderCommand::do_action()
 {
     PENTER;
-
-    // We already set the new gain value during process_mouse_move()
-    // however, do_action() is always called from the TInputEventDispatcher
-    // So do not start the animated gain setting since it will start from
-    // the m_oldgain value.
     if (TraversoDAW::Float::compare(m_newGain, m_audioProcessingNode->get_gain())) {
         return 1;
     }
-
-    // so this will only be reached after an undo/redo sequence
     m_audioProcessingNode->set_gain_animated(m_newGain);
-
-
     return 1;
 }
 
-int GainCommand::undo_action()
+int TFaderCommand::undo_action()
 {
     PENTER;
-
     m_audioProcessingNode->set_gain_animated(m_origGain);
+
+    float undoneDb = Mixer::coefficient_to_dB(m_origGain);
+    m_faderPosition = Mixer::db_to_fader_position(undoneDb);
 
     return 1;
 }
 
-void GainCommand::cancel_action()
+void TFaderCommand::cancel_action()
 {
     undo_action();
 }
 
-void GainCommand::increase_gain(  )
+void TFaderCommand::increase_gain()
 {
-    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
-    dbFactor += 0.2f;
-    apply_new_gain_to_object(dB_to_scale_factor(dbFactor));
+    // Incremental step change mimicking keyboard command shift interactions
+    m_faderPosition = std::clamp(m_faderPosition + 0.015f, 0.0f, 1.0f);
+
+    m_newGain = Mixer::fader_position_to_gain(m_faderPosition);
+    m_audioProcessingNode->set_gain(m_newGain);
+    m_newGain = m_audioProcessingNode->get_gain();
 }
 
-void GainCommand::decrease_gain()
+void TFaderCommand::decrease_gain()
 {
-    audio_sample_t dbFactor = Mixer::coefficient_to_dB(m_newGain);
-    dbFactor -= 0.2f;
-    apply_new_gain_to_object(dB_to_scale_factor(dbFactor));
+    // Decremental step change mimicking keyboard command shift interactions
+    m_faderPosition = std::clamp(m_faderPosition - 0.015f, 0.0f, 1.0f);
+
+    m_newGain = Mixer::fader_position_to_gain(m_faderPosition);
+    m_audioProcessingNode->set_gain(m_newGain);
+    m_newGain = m_audioProcessingNode->get_gain();
 }
 
-void GainCommand::set_new_gain(float newGain)
+void TFaderCommand::set_new_gain(float newGain)
 {
-    m_newGain = newGain;
+    apply_new_gain_to_object(newGain);
     do_action();
 }
 
-void GainCommand::set_new_gain_numerical_input(float newGain)
+void TFaderCommand::set_new_gain_numerical_input(float newGain)
 {
-    m_newGain = newGain;
+    apply_new_gain_to_object(newGain);
 }
 
-int GainCommand::process_mouse_move(qreal diffY)
+int TFaderCommand::process_mouse_move(qreal diffY)
 {
-    qreal of = 0;
-    audio_sample_t dbFactor;
-
 #if defined(Q_OS_MAC)
-    // On MacOS, if the user hasn't given the app accessibility privileges in:
-    // System Setings -> Privacy & Security -> Accessibility -> Allow the applications below to control your computer,
-    // the mouse doesn't snap back to the original position after each jog,
-    // so we need to calculate the gain based on the original gain value, not the new gain value
-    // to avoid the gain integrating the total mouse movement over time, and skyrocketing.
-    if (TraversoDAW::Utils::can_set_mouse_pos()) {
-        // Is trusted, so mouse position gets reset
-        dbFactor = Mixer::coefficient_to_dB(m_newGain);
+    if (!TraversoDAW::Utils::can_set_mouse_pos()) {
+        // Evaluate condition against an absolute linear silence coefficient baseline to bypass layout jump errors
+        if (m_origGain == 0.0f) {
+            m_faderPosition = 0.0f;
+        } else {
+            float currentDb = Mixer::coefficient_to_dB(m_origGain);
+            m_faderPosition = Mixer::db_to_fader_position(currentDb);
+        }
     }
-    else {
-        // Is NOT trusted, so mouse position does not get reset
-        dbFactor = Mixer::coefficient_to_dB(m_origGain);
-    }
-#else
-    dbFactor = Mixer::coefficient_to_dB(m_newGain);
 #endif
 
+    // User-ergonomic mouse sensitivity mapping definition constant (independent from layout bounds)
+    static const qreal MOUSE_TRAVEL_RANGE_IN_PIXELS = 500.0;
 
-    if (dbFactor > -1) {
-        of = diffY * 0.05;
-    }
-    if (dbFactor <= -1) {
-        of = diffY * ((1 - double(dB_to_scale_factor(dbFactor))) / 3);
-    }
+    // 1. Accumulate input pixel offsets linearly into the native layout coordinate environment
+    qreal delta = diffY / MOUSE_TRAVEL_RANGE_IN_PIXELS;
 
-    apply_new_gain_to_object(dB_to_scale_factor(dbFactor + float(of)));
+    // Explicitly clamp the intermediate positioning logic to native float thresholds during hardware updates
+    m_faderPosition = static_cast<float>(std::clamp(m_faderPosition + delta, 0.0, 1.0));
+
+    // 2. Decode the linear tracking boundaries cleanly into downstream processing parameters
+    float targetGain = Mixer::fader_position_to_gain(m_faderPosition);
+
+    // 3. Directly push the validated configuration parameters seamlessly to the audio rendering layers
+    m_newGain = targetGain;
+    m_audioProcessingNode->set_gain(m_newGain);
 
     return 1;
 }

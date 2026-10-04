@@ -29,12 +29,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TFadeCurveView.h>
 #include <TPeak.h>
 #include <TSheet.h>
-#include "TSnapList.h"
-#include "TProject.h"
 #include "TProjectManager.h"
 #include "TInputEventDispatcher.h"
 #include "Debugger.h"
-#include "TLocation.h"
 
 static const float CURSOR_SPEED		= 75.0;
 static const float RASTER_SIZE		= 0.05;
@@ -110,7 +107,7 @@ void FadeBend::set_cursor_shape(int useX, int useY)
 	Q_UNUSED(useX);
 	Q_UNUSED(useY);
 	
-	m_contextPointer->set_canvas_cursor_shape(":/cursorHoldUd");
+    m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::HoldUpDown);
 }
 
 int FadeBend::jog()
@@ -128,7 +125,7 @@ int FadeBend::jog()
 
 	oldValue = m_fade->get_bend_factor();
 	newBend = oldValue;
-	m_contextPointer->set_canvas_cursor_text(QByteArray::number(newBend, 'f', 2));
+    m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QByteArray::number(newBend, 'f', 2)));
 	
 	origY = m_contextPointer->mouse_viewport_y();
 	
@@ -201,7 +198,7 @@ void FadeStrength::set_cursor_shape(int useX, int useY)
 	Q_UNUSED(useX);
 	Q_UNUSED(useY);
 	
-	m_contextPointer->set_canvas_cursor_shape(":/cursorHoldUd");
+    m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::HoldUpDown);
 }
 
 int FadeStrength::jog()
@@ -221,8 +218,7 @@ int FadeStrength::jog()
 	
 	oldValue = m_fade->get_strength_factor();
 	newStrength = oldValue;
-	m_contextPointer->set_canvas_cursor_text(QByteArray::number(newStrength, 'f', 2));
-
+    m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QByteArray::number(newStrength, 'f', 2)));
 	origY = m_contextPointer->mouse_viewport_y();
 
 	return 1;

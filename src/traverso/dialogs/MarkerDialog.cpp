@@ -435,24 +435,32 @@ void MarkerDialog::pemph_all()
 		m->set_preemphasis(checkBoxPreEmph->isChecked());
 	}
 }
-
+/**
+ * @brief GUI context slot triggering the removal of the currently selected timeline marker.
+ *        Casts polymorphically via the clean TAddRemoveCommandBase interface to apply the command.
+ */
 void MarkerDialog::remove_marker()
 {
-	if (!m_marker) {
-		return;
-	}
-	
-	if (m_marker->get_type() == TTimeLineMarker::ENDMARKER) {
-		tInformUser().information(tr("It's not possible to remove the endmarker!!"));
-		return;
-	}
+    if (!m_marker) {
+        return;
+    }
 
-        TTimeLineRuler* tl = m_session->get_timeline_ruler();
-		
-	TAddRemoveCommand *ar = (TAddRemoveCommand*) tl->remove_marker(m_marker);
-	TCommand::process_command(ar);
-	update_marker_treeview();
+    if (m_marker->get_type() == TTimeLineMarker::ENDMARKER) {
+        tInformUser().information(tr("It's not possible to remove the endmarker!!"));
+        return;
+    }
+
+    TTimeLineRuler* tl = m_session->get_timeline_ruler();
+
+    auto* ar = tl->remove_marker(m_marker);
+
+    if (ar) {
+        TCommand::process_command(ar);
+    }
+
+    update_marker_treeview();
 }
+
 
 void MarkerDialog::export_toc()
 {

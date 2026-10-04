@@ -87,10 +87,10 @@ TTimeLabel::TTimeLabel(QWidget* parent, TSession *session)
     setMaximumWidth(120);
     setMinimumHeight(22);
     setFocusPolicy(Qt::NoFocus);
-    setStyleSheet(  "color: darkorange;"
-                  "background-color: black;"
-                  "font: 17px;"
-                  "border-radius: 5px;");
+    // setStyleSheet(  "color: darkorange;"
+    //               "background-color: black;"
+    //               "font: 17px;"
+    //               "border-radius: 5px;");
 
     setText(TTimeRef::timeref_to_ms_2(m_session->get_transport_location()));
 

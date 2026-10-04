@@ -65,4 +65,4 @@ if(WANT_LV2)
 endif()
 
 # Locate the required Qt6 framework components
-find_package(Qt6 COMPONENTS Core Widgets Xml Concurrent REQUIRED)
+find_package(Qt6 COMPONENTS Core Widgets Xml Concurrent Svg REQUIRED)

@@ -35,6 +35,19 @@ class TContextPointer : public QObject
     Q_OBJECT
 
 public:
+
+    enum class CursorType {
+        Default,
+        GainFader,
+        Panning,
+        AutomationNode,
+        ZoomHorizontal,
+        ZoomVertical,
+        HoldLeftRight,
+        HoldUpDown,
+        HoldOmni
+    };
+
     /**
      * 	Returns the current ViewPort's mouse x coordinate
 
@@ -126,9 +139,11 @@ public:
     }
 
     void set_current_viewport(TViewPortInterface* vp);
-    void set_canvas_cursor_shape(const QString& cursor, int alignment=Qt::AlignCenter);
+    void set_canvas_cursor_type(CursorType cursorType);
     void set_canvas_cursor_text(const QString& text, int mseconds=-1);
     void set_canvas_cursor_pos(QPointF mouse_viewport_pos);
+    void set_canvas_cursor_data(const QVariant& data);
+
 
     QList<QObject* > get_context_items();
     QList<TContextItem*> get_active_context_items() const {return m_activeContextItems;}

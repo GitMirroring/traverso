@@ -157,10 +157,14 @@ void TContextPointer::hold_start()
         m_viewPort->grab_mouse();
     }
     m_mouseData->jogStartGlobalMousePos = QCursor::pos();
+
+    QGuiApplication::setOverrideCursor(Qt::BlankCursor);
 }
 
 void TContextPointer::hold_finished()
 {
+    QGuiApplication::restoreOverrideCursor();
+
     if (m_viewPort) {
         m_viewPort->release_mouse();
         emit contextChanged();
@@ -221,15 +225,13 @@ void TContextPointer::set_current_viewport(TViewPortInterface *vp)
 	}
 }
 
-void TContextPointer::set_canvas_cursor_shape(const QString &cursor, int alignment)
+void TContextPointer::set_canvas_cursor_type(CursorType cursorType)
 {
-    if (!m_viewPort)
-	{
-        PERROR("Setting canvas cursor shape but I have no ViewPort!");
+    if (!m_viewPort) {
         return;
-	}
+    }
 
-    m_viewPort->set_canvas_cursor_shape(cursor, alignment);
+    m_viewPort->set_canvas_cursor_type(cursorType);
 }
 
 void TContextPointer::set_canvas_cursor_text(const QString &text, int mseconds)
@@ -264,6 +266,12 @@ void TContextPointer::set_canvas_cursor_pos(QPointF pos) {
     m_viewPort->set_canvas_cursor_pos(pos);
 }
 
+void TContextPointer::set_canvas_cursor_data(const QVariant& data)
+{
+    if (m_viewPort) {
+        m_viewPort->set_canvas_cursor_data(data);
+    }
+}
 
 int TContextPointer::mouse_viewport_x() const {
     return m_mouseData->viewPortMousePos.x();

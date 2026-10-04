@@ -9,9 +9,11 @@ This file is part of Traverso
 #include <QMessageBox>
 #include <QFileInfo>
 #include <QDir>
+#include <QStyleFactory>
 
 #include "Traverso.h"
 #include "Mixer.h"
+#include "TAudioThreadMessageQueue.h"
 #include "TInformUser.h"
 #include "TProjectManager.h"
 #include "TTransport.h"
@@ -23,7 +25,6 @@ This file is part of Traverso
 #include "Debugger.h"
 #include "fpu.h"
 
-// Standard architectural header for SSE instruction state control
 #if defined(__SSE__) || defined(_M_X64) || defined(_M_IX86)
 #include <xmmintrin.h>
 #define TRAVERSO_HAS_XMMINTRIN 1
@@ -34,7 +35,7 @@ Traverso::Traverso(int &argc, char **argv )
 {
     QCoreApplication::setOrganizationName("Traverso");
     QCoreApplication::setApplicationName("Traverso");
-    QCoreApplication::setOrganizationDomain("traverso-daw.org");
+    QCoreApplication::setOrganizationDomain("traversodaw.com");
 
     qRegisterMetaType<TInformUserData>("InfoStruct");
     qRegisterMetaType<TTimeRef>("TTimeRef");
@@ -75,7 +76,6 @@ void Traverso::create_interface()
         }
     }
 
-    // Process a project file path if specified via application arguments
     if (!projectToLoad.isEmpty()) {
         QFileInfo fi(projectToLoad);
         QDir projectdir(fi.path());
@@ -200,5 +200,3 @@ void Traverso::commitData(QSessionManager &)
 {
     pm().save_project();
 }
-
-// eof

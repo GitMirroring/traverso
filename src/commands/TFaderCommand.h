@@ -27,13 +27,13 @@
 class TContextItem;
 class TAudioProcessingNode;
 
-class GainCommand : public TCommand
+class TFaderCommand : public TCommand
 {
     Q_OBJECT
 
 public :
-    GainCommand(TAudioProcessingNode *context, const QVariantList& args);
-    ~GainCommand();
+    TFaderCommand(TAudioProcessingNode *context, const QVariantList& args);
+    ~TFaderCommand();
 
     int prepare_actions();
     int do_action();
@@ -50,6 +50,7 @@ private :
     TAudioProcessingNode*        m_audioProcessingNode;
     float 		m_origGain;
     float 		m_newGain;
+    float       m_faderPosition; // Keeps track of the continuous normalized fader position (0.0 to 1.0)
 
     void apply_new_gain_to_object(float newGain);
 };

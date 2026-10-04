@@ -196,7 +196,7 @@ void TViewPort::detect_items_below_cursor()
         }
     } else {
         // If no item is below the mouse, default to default cursor
-        set_canvas_cursor_shape(":/cursorFloat", Qt::AlignTop | Qt::AlignHCenter);
+        cpointer().set_canvas_cursor_type(TContextPointer::CursorType::Default);
     }
 
     // printf("setting active context items for detect items below cursor %lld", activeContextItems.size());
@@ -319,11 +319,22 @@ void TViewPort::paintEvent( QPaintEvent* e )
 	QGraphicsView::paintEvent(e);
 }
 
-void TViewPort::set_canvas_cursor_shape(const QString &shape, int alignment)
+void TViewPort::set_canvas_cursor_type(TContextPointer::CursorType cursorType)
 {
-    if (m_sv) {
-        m_sv->set_cursor_shape(shape, alignment);
+    if (!m_sv) {
+        return;
     }
+
+    m_sv->set_canvas_cursor_type(cursorType);
+}
+
+void TViewPort::set_canvas_cursor_data(const QVariant &data)
+{
+    if (!m_sv) {
+        return;
+    }
+
+    m_sv->set_canvas_cursor_data(data);
 }
 
 void TViewPort::set_canvas_cursor_text( const QString & text, int mseconds)

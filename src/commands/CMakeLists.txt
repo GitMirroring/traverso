@@ -8,8 +8,8 @@ add_library(traversocommands STATIC
     Crop.cpp
     ExternalProcessingDialog.cpp
     Fade.cpp
-    GainCommand.cpp
-    TGainGroupCommand.cpp
+    TFaderCommand.cpp
+    TFaderGroupCommand.cpp
     TAudioFileImportCommand.cpp
     TFadeRangeCommand.cpp
     MoveClip.cpp
@@ -22,7 +22,7 @@ add_library(traversocommands STATIC
     TSplitAudioClipCommand.cpp
     TAudioClipDualTrimCommand.cpp
     TrackPan.cpp
-    Zoom.cpp
+    TZoomCommand.cpp
     ArmTracks.cpp
     PlayHeadMove.cpp
     WorkCursorMove.cpp

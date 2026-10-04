@@ -1,22 +1,6 @@
 /*
-Copyright (C) 2010 Remon Sijrier
-
-This file is part of Traverso
-
-Traverso is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
-
+    Copyright (C) 2010 - 2026 Remon Sijrier
+    This file is part of Traverso
 */
 
 #ifndef T_AUDIO_PROCESSING_NODE_H
@@ -36,12 +20,10 @@ class TAudioPluginChain;
 class TSession;
 class GainEnvelope;
 
-
 class TAudioProcessingNode : public TContextItem
 {
     Q_OBJECT
     Q_PROPERTY(float gain READ get_gain WRITE set_gain NOTIFY gainChanged)
-
 
 public:
     TAudioProcessingNode (TSession* session=0);
@@ -56,11 +38,12 @@ public:
     float get_pan() const {return m_pan;}
 
     void set_muted(bool muted);
+    void set_muted_by_solo(bool mutedBySolo); // Tracks external solo constraints
     virtual void set_name(const QString& name);
     void set_pan(float pan);
 
     bool is_muted() const {return m_isMuted;}
-
+    bool is_muted_by_solo() const {return m_mutedBySolo;}
 
 protected:
     TSession*       m_session;
@@ -68,15 +51,15 @@ protected:
     GainEnvelope*   m_fader;
     TAudioPluginChain*    m_pluginChain;
     QString         m_name;
-    audio_sample_t  m_maxGainAmplification;
     bool            m_isMuted;
+    bool            m_mutedBySolo; // Stores the solo grouping isolation state
     float           m_pan;
 
 private:
     QPointer<QPropertyAnimation>  m_gainAnimation;
-
-
     float m_gain;
+
+    void update_operational_gain(); // Consolidated execution pipeline mapping calculations
 
 public slots:
     float get_gain();
@@ -90,9 +73,9 @@ signals:
     void audibleStateChanged();
     void stateChanged();
     void muteChanged(bool isMuted);
+    void soloMuteChanged(bool isMutedBySolo);
     void panChanged();
     void gainChanged();
 };
-
 
 #endif

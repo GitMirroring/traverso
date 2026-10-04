@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheetView.h"
 #include "TAudioTrackView.h"
 #include "TAudioClipView.h"
-#include "Zoom.h"
+#include "TZoomCommand.h"
 #include "Debugger.h"
 
 /**
@@ -434,17 +434,17 @@ void MoveClip::move_right()
     do_move();
 }
 
+// FIXME: dead code
 void MoveClip::start_zoom()
 {
     if (!m_d->zoom) {
-        m_d->zoom = new Zoom(d->sv, QList<QVariant>() << "HJogZoom" << "1.2" << "0.2");
+        m_d->zoom = new TZoomCommand(d->sv, QList<QVariant>() << "HJogZoom" << "1.2" << "0.2");
         m_d->zoom->begin_hold();
-        m_contextPointer->set_canvas_cursor_shape(":/cursorZoomHorizontal");
+        m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::ZoomHorizontal);
         // FIXME, should no longer be handled from inherited class
 //        stop_shuttle();
     } else {
-        m_contextPointer->set_canvas_cursor_shape(":/cursorHoldLrud");
-        // FIXME, should no longer be handled from inherited class
+        m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::ZoomHorizontal);        // FIXME, should no longer be handled from inherited class
 //        start_shuttle(true);
         delete m_d->zoom;
         m_d->zoom = 0;

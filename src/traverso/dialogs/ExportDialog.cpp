@@ -91,10 +91,10 @@ void ExportDialog::on_startButton_clicked( )
     auto exportSpecification = m_project->get_export_specification();
 	
 	connect(m_project, &TProject::exportFinished, this, &ExportDialog::render_finished);
-    connect(exportSpecification, &TExportSpecification::exportMessage, this, [=](const QString& exportMessage) {
+    connect(exportSpecification, &TExportSpecification::exportMessage, this, [this](const QString& exportMessage) {
         exportMessagesLabel->setText(exportMessage);
     });
-    connect(exportSpecification, &TExportSpecification::progressChanged, this, [=] (int progress) {
+    connect(exportSpecification, &TExportSpecification::progressChanged, this, [this] (int progress) {
         progressBar->setValue(progress);
     });
     connect(cancelExportButton, &QPushButton::clicked, this, [=]() {

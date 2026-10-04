@@ -47,7 +47,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TVUMeterView.h"
 #include "libtraversosheetcanvas.h"
 #include "commands.h"
-#include <cfloat>
 #include "TMainWindow.h"
 #include "TTransport.h"
 #include "widgets/SpectralMeterView.h"
@@ -101,12 +100,12 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_meta_object(&TFadeCurveView::staticMetaObject,       tr("Fade In/Out"));
     m->add_meta_object(&TMainWindow::staticMetaObject,          tr("Global"));
     m->add_meta_object(&TProjectManager::staticMetaObject,      tr("Project Manager"));
-    m->add_meta_object(&TGainGroupCommand::staticMetaObject,    tr("Gain"));
+    m->add_meta_object(&TFaderGroupCommand::staticMetaObject,   tr("Gain"));
     m->add_meta_object(&MoveTrack::staticMetaObject,            tr("Move Track"));
     m->add_meta_object(&MoveClip::staticMetaObject,             tr("Move Clip"));
     m->add_meta_object(&MovePlugin::staticMetaObject,           tr("Move Plugin"));
     m->add_meta_object(&MoveCurveNode::staticMetaObject,        tr("Move Node"));
-    m->add_meta_object(&Zoom::staticMetaObject,                 tr("Zoom"));
+    m->add_meta_object(&TZoomCommand::staticMetaObject,                 tr("Zoom"));
     m->add_meta_object(&TrackPan::staticMetaObject,             tr("Track Pan"));
     m->add_meta_object(&MoveMarker::staticMetaObject,           tr("Move Marker"));
     m->add_meta_object(&WorkCursorMove::staticMetaObject,       tr("Move Work Cursor"));
@@ -278,11 +277,11 @@ void TraversoCommands::load(TShortCutManager* m)
 
     m->add_function(&TFadeRangeCommand::staticMetaObject, &TResetBase::staticMetaObject, "FadeResetLength",         "reset_length()");
 
-    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Increase"),   "GainIncrease",                 "increase_gain()");
-    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Decrease"),   "GainDecrease",                 "decrease_gain()");
-    m->add_function(&TGainGroupCommand::staticMetaObject, tr("Input dB value"), "GainNumericalInput",       "numerical_input()");
-    m->add_function(&TGainGroupCommand::staticMetaObject, tr("To Selection: On/Off"), "GainToggleSelection",    "toggle_primary_gain_only()");
-    m->add_function(&TGainGroupCommand::staticMetaObject, &TResetBase::staticMetaObject, "GainReset",       "reset_gain()");
+    m->add_function(&TFaderGroupCommand::staticMetaObject, tr("Increase"),   "GainIncrease",                 "increase_gain()");
+    m->add_function(&TFaderGroupCommand::staticMetaObject, tr("Decrease"),   "GainDecrease",                 "decrease_gain()");
+    m->add_function(&TFaderGroupCommand::staticMetaObject, tr("Input dB value"), "GainNumericalInput",       "numerical_input()");
+    m->add_function(&TFaderGroupCommand::staticMetaObject, tr("To Selection: On/Off"), "GainToggleSelection",    "toggle_primary_gain_only()");
+    m->add_function(&TFaderGroupCommand::staticMetaObject, &TResetBase::staticMetaObject, "GainReset",       "reset_gain()");
 
     m->add_function(&TMainWindow::staticMetaObject, tr("Context Menu"),         "ShowContextMenu",          "show_context_menu()");
     m->add_function(&TMainWindow::staticMetaObject, tr("New Track Dialog"),     "ShowNewTrackDialog",       "show_newtrack_dialog()");
@@ -358,13 +357,13 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function(&WorkCursorMove::staticMetaObject, tr("To Playhead"),   "WorkCursorMoveToPlayhead",     "move_to_play_cursor()");
     m->add_function(&WorkCursorMove::staticMetaObject, tr("To Start"),      "WorkCursorMoveToStart",        "move_to_start()");
 
-    m->add_function(&Zoom::staticMetaObject,        tr("In"),               "ZoomIn",                       "hzoom_in()");
-    m->add_function(&Zoom::staticMetaObject,        tr("Out"),              "ZoomOut",                      "hzoom_out()");
-    m->add_function(&Zoom::staticMetaObject,        tr("Track Vertical Zoom In"),   "ZoomTrackVerticalIn",  "track_vzoom_in()");
-    m->add_function(&Zoom::staticMetaObject,        tr("Track Vertical Zoom Out"),  "ZoomTrackVerticalOut", "track_vzoom_out()");
-    m->add_function(&Zoom::staticMetaObject,        tr("Track Height"),             "ZoomNumericalInput",   "numerical_input()");
-    m->add_function(&Zoom::staticMetaObject,        tr("Expand/Collapse Tracks"),   "ZoomToggleExpandAllTracks", "toggle_expand_all_tracks()");
-    m->add_function(&Zoom::staticMetaObject, &TToggleVerticalBase::staticMetaObject, "ZoomToggleVerticalHorizontal", "toggle_vertical_horizontal_jog_zoom()");
+    m->add_function(&TZoomCommand::staticMetaObject,        tr("In"),               "ZoomIn",                       "hzoom_in()");
+    m->add_function(&TZoomCommand::staticMetaObject,        tr("Out"),              "ZoomOut",                      "hzoom_out()");
+    m->add_function(&TZoomCommand::staticMetaObject,        tr("Track Vertical Zoom In"),   "ZoomTrackVerticalIn",  "track_vzoom_in()");
+    m->add_function(&TZoomCommand::staticMetaObject,        tr("Track Vertical Zoom Out"),  "ZoomTrackVerticalOut", "track_vzoom_out()");
+    m->add_function(&TZoomCommand::staticMetaObject,        tr("Track Height"),             "ZoomNumericalInput",   "numerical_input()");
+    m->add_function(&TZoomCommand::staticMetaObject,        tr("Expand/Collapse Tracks"),   "ZoomToggleExpandAllTracks", "toggle_expand_all_tracks()");
+    m->add_function(&TZoomCommand::staticMetaObject, &TToggleVerticalBase::staticMetaObject, "ZoomToggleVerticalHorizontal", "toggle_vertical_horizontal_jog_zoom()");
 }
 
 
@@ -476,7 +475,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
             return nullptr;
         }
 
-        auto group = new TGainGroupCommand(contextItem);
+        auto group = new TFaderGroupCommand(contextItem);
 
         TAudioClip* clip = qobject_cast<TAudioClip*>(contextItem);
         if (clip && clip->is_selected()) {
@@ -700,7 +699,7 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     {
         TSheetView* sheetView = qobject_cast<TSheetView*>(obj);
         Q_ASSERT(sheetView);
-        return new Zoom(sheetView, arguments);
+        return new TZoomCommand(sheetView, arguments);
     }
 
     case WorkCursorMoveCommand:

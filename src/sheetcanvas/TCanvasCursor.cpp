@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2010 Remon Sijrier
+Copyright (C) 2010-2026 Remon Sijrier
 
 This file is part of Traverso
 
@@ -19,90 +19,83 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-
 #include "TCanvasCursor.h"
-
-#include "TMainWindow.h"
-#include "TSheetView.h"
-#include "TClipsViewPort.h"
 #include "TPositionIndicator.h"
-#include "TContextPointer.h"
-
-#include "Debugger.h"
+#include "TCursorRenderer.h"
+#include "TViewPort.h"
 
 TCanvasCursor::TCanvasCursor(TSheetView* )
     : TViewItem(nullptr)
+    , m_renderer(std::make_unique<TCursorRenderer>())
 {
     m_positionIndicator = new TPositionIndicator(this);
     m_positionIndicator->hide();
 
     set_ignore_context(true);
-    m_shape = "";
-    m_xOffset = m_yOffset = 0.0;
-
     setZValue(20000);
+
     connect(&m_timer, &QTimer::timeout, this, &TCanvasCursor::timer_timeout);
 }
 
-TCanvasCursor::~TCanvasCursor( )
+TCanvasCursor::~TCanvasCursor() {}
+
+void TCanvasCursor::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*)
 {
+    m_renderer->render(painter, m_liveData);
 }
 
-void TCanvasCursor::paint( QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget )
+void TCanvasCursor::calculate_bounding_rect()
 {
-    Q_UNUSED(widget);
-    Q_UNUSED(option);
+    if (!m_renderer) return;
 
-    painter->drawPixmap(int(-m_xOffset), int(-m_yOffset), m_pixmap);
+    QRectF targetBounds = m_renderer->get_active_bounding_rect();
+    if (m_boundingRect == targetBounds) {
+        return;
+    }
+
+    prepareGeometryChange();
+    m_boundingRect = targetBounds;
 }
 
-void TCanvasCursor::create_cursor_pixmap(const QString &shape)
+void TCanvasCursor::set_canvas_cursor_type(TContextPointer::CursorType cursorType)
 {
-    int width = 13;
-    int height = 20;
-    int bottom = height + height / 2 - 2;
-    m_pixmap = QPixmap(width + 2, bottom);
-    m_pixmap.fill(Qt::transparent);
-    QPainter painter(&m_pixmap);
-    QPainterPath path;
+    if (m_cursorType == cursorType && m_cursorType != TContextPointer::CursorType::Default) {
+        return;
+    }
 
-    qreal halfWidth = width / 2;
-    QPointF endPoint(halfWidth + 1, 1);
-    QPointF c1(1, height);
-    QPointF c2(width + 1, height);
-    path.moveTo(endPoint);
-    path.quadTo(QPointF(-1, height * 0.75), c1);
-    path.quadTo(QPointF(halfWidth + 1, bottom), c2);
-    path.quadTo(QPointF(width + 3, height * 0.75), endPoint);
-    QLinearGradient gradient;
-    int graycolor = 180;
-    int transparanty = 230;
-    QColor gray(graycolor, graycolor, graycolor, transparanty);
-    QColor black(0, 0, 0, transparanty);
-    gradient.setColorAt(0.0, gray);
-    gradient.setColorAt(1.0, black);
-    gradient.setStart(0, 0);
-    gradient.setFinalStop(0, -height);
-    gradient.setSpread(QGradient::ReflectSpread);
+    m_cursorType = cursorType;
 
-    painter.setBrush(gradient);
-    int white = 230;
-    painter.setPen(QColor(white, white, white));
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.drawPath(path);
-    QColor color (Qt::yellow);
-    painter.setPen(color);
-    QFont font;
-    font.setPointSizeF(8);
-    font.setKerning(false);
-    painter.setFont(font);
-    QRectF textRect(0, 11, width + 2, height - 11);
-    painter.drawText(textRect, Qt::AlignCenter, shape);
+    if (m_cursorType == TContextPointer::CursorType::Default) {
+        m_liveData = QVariant();
+    }
+
+    m_renderer->update_strategy(m_cursorType);
+
+    prepareGeometryChange();
+    calculate_bounding_rect();
+    update();
+    update_textitem_pos();
 }
 
-void TCanvasCursor::set_text(const QString & first, int mseconds)
+void TCanvasCursor::set_cursor_data(const QVariant& data)
 {
-    m_primaryText = first;
+    if (m_liveData == data) {
+        return;
+    }
+
+    m_liveData = data;
+    update();
+}
+
+void TCanvasCursor::set_text(const QString & text, int mseconds)
+{
+    m_primaryText = text;
+
+    if (m_cursorType == TContextPointer::CursorType::GainFader ||
+        m_cursorType == TContextPointer::CursorType::Panning) {
+        m_positionIndicator->hide();
+        return; // Fail early to suppress external text items from painting
+    }
 
     if (m_timer.isActive()) {
         m_timer.stop();
@@ -116,89 +109,38 @@ void TCanvasCursor::set_text(const QString & first, int mseconds)
     m_positionIndicator->set_text(m_primaryText);
     update_textitem_pos();
     m_positionIndicator->show();
-    if (mseconds > 0){
+
+    if (mseconds > 0) {
         m_timer.start(mseconds);
     }
-}
-
-
-void TCanvasCursor::set_cursor_shape(const QString &shape, int alignment)
-{
-    PENTER;
-
-    if (m_shape == shape) {
-        return;
-    }
-
-    m_shape = shape;
-    m_xOffset = m_yOffset = 0;
-
-    if (shape.size() > 1)
-    {
-        m_pixmap = TMainWindow::find_pixmap(shape);
-        if (m_pixmap.isNull())
-        {
-            m_shape = "";
-        }
-    }
-
-    if (shape.size() <= 1)
-    {
-        create_cursor_pixmap(shape);
-        set_text("");
-    }
-
-    if (alignment & Qt::AlignTop)
-    {
-        m_yOffset = 0;
-    }
-
-    if (alignment & Qt::AlignHCenter)
-    {
-        m_xOffset = qreal(m_pixmap.width()) / 2;
-    }
-
-    if (alignment & Qt::AlignVCenter)
-    {
-        m_yOffset = qreal(m_pixmap.height() / 2);
-    }
-
-    prepareGeometryChange();
-    m_boundingRect = QRect(-m_pixmap.width(), -m_pixmap.height(), 2 * m_pixmap.width(), 2*m_pixmap.height());
-
-    update_textitem_pos();
 }
 
 void TCanvasCursor::update_textitem_pos()
 {
     TViewPort* vp = static_cast<TViewPort*>(cpointer().get_viewport());
-    if (!vp || !m_positionIndicator->isVisible())
-    {
+    if (!vp || !m_positionIndicator->isVisible()) {
         return;
     }
 
-    qreal textItemX = 25;
+    // Default positioning rules for floating alphanumeric tool labels
+    qreal textItemX = 25.0;
     int textItemY = 25;
 
     QPointF textPos(textItemX, textItemY);
-
-    qreal xRightTextItem = vp->mapFromScene(scenePos()).x()  + m_positionIndicator->boundingRect().width() + textItemX;
+    qreal xRightTextItem = vp->mapFromScene(scenePos()).x() + m_positionIndicator->boundingRect().width() + textItemX;
     qreal xLeftTextItem = vp->mapFromScene(scenePos()).x() + textItemX;
-
     int viewPortWidth = vp->width();
 
-    if (xLeftTextItem < 0)
-    {
+    // Bound checking constraints to prevent indicator clipping against view boundaries
+    if (xLeftTextItem < 0) {
         textItemX = mapFromScene(vp->mapToScene(0, int(m_positionIndicator->scenePos().y()))).x();
     }
 
-    if (xRightTextItem > viewPortWidth)
-    {
-        textItemX = mapFromScene(vp->mapToScene(viewPortWidth - int(m_positionIndicator->boundingRect().width()),int(m_positionIndicator->scenePos().y()))).x();
+    if (xRightTextItem > viewPortWidth) {
+        textItemX = mapFromScene(vp->mapToScene(viewPortWidth - int(m_positionIndicator->boundingRect().width()), int(m_positionIndicator->scenePos().y()))).x();
     }
 
     textPos.setX(textItemX);
-
     m_positionIndicator->setPos(textPos);
 }
 

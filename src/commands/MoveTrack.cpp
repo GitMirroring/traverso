@@ -119,7 +119,7 @@ void MoveTrack::move_down()
 void MoveTrack::set_cursor_shape(int /*useX*/, int useY)
 {
     if (useY) {
-        m_contextPointer->set_canvas_cursor_shape(":/cursorHoldUd");
+        m_contextPointer->set_canvas_cursor_type(TContextPointer::CursorType::HoldUpDown);
     }
 }
 

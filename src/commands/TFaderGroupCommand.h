@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 - 2024 Remon Sijrier
+    Copyright (C) 2019 - 2026 Remon Sijrier
 
     This file is part of Traverso
 
@@ -18,48 +18,51 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
-#ifndef T_GAIN_GROUP_COMMAND_H
-#define T_GAIN_GROUP_COMMAND_H
+#pragma once
 
 #include "TCommand.h"
-#include <QPoint>
+#include <QPointF>
+#include <QString>
+#include <vector>
 
-class GainCommand;
+class TFaderCommand;
 class TAudioProcessingNode;
 
-class TGainGroupCommand : public TCommand
+/**
+ * @class TFaderGroupCommand
+ * @brief Multi-channel group controller responsible for orchestrating individual gain commands and handling alphanumeric inputs safely.
+ */
+class TFaderGroupCommand : public TCommand
 {
     Q_OBJECT
 
-public :
-    TGainGroupCommand(TContextItem* context);
-    ~TGainGroupCommand();
+public:
+    TFaderGroupCommand(TContextItem* context);
+    virtual ~TFaderGroupCommand() override;
 
-    int begin_hold();
-    int finish_hold();
-    void cancel_action();
-    void process_collected_number(const QString & collected);
-    void set_cursor_shape(int useX, int useY);
+    int begin_hold() override;
+    int finish_hold() override;
+    void cancel_action() override;
+    void process_collected_number(const QString & collected) override;
+    void set_cursor_shape(int useX, int useY) override;
 
-    int jog();
+    int jog() override;
 
-    bool is_hold_command() const {return true;}
-    int prepare_actions();
-    int do_action();
-    int undo_action();
+    bool is_hold_command() const override { return true; }
+    int prepare_actions() override;
+    int do_action() override;
+    int undo_action() override;
 
-    bool wants_cursor_position_to_be_restored() const {return true;}
+    bool wants_cursor_position_to_be_restored() const override { return true; }
 
     void add_audio_processing_node(TAudioProcessingNode *audioProcessingNode, const QVariantList& args);
 
 private:
-    std::vector<std::unique_ptr<GainCommand> >	m_gainCommands;
-    QPointF         m_origPos;
-    TContextItem*    m_contextItem;
-    bool            m_primaryGainOnly;
-
-    QString get_db_string_from_object();
-
+    std::vector<std::unique_ptr<TFaderCommand>> m_gainCommands; // Fixed unique_ptr copy-on-write crash by migration to std::vector
+    QPointF                                   m_origPos;
+    TContextItem*                             m_contextItem;
+    bool                                      m_primaryGainOnly;
+    QString                                   m_pendingNumericalValue; // Safely buffers user keystrokes during text processing
 
 public slots:
     void increase_gain();
@@ -68,8 +71,4 @@ public slots:
     void toggle_primary_gain_only();
     void numerical_input();
 };
-
-#endif
-
-
 

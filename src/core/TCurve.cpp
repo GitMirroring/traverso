@@ -46,35 +46,35 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 using namespace std;
 
 TCurve::TCurve(TContextItem* parent)
-	: TContextItem(parent)
+    : TContextItem(parent)
 {
-	PENTERCONS;
-	init();
+    PENTERCONS;
+    init();
 }
 
 TCurve::TCurve(TContextItem* parent, const QDomNode& node )
-	: TContextItem(parent)
+    : TContextItem(parent)
 {
-	init();
+    init();
     TCurve::set_state(node);
 }
 
 TCurve::~TCurve()
 {
     TCurveNode* node = m_nodes.first();
-	while (node) {
+    while (node) {
         TCurveNode* q = node;
-		node = node->next;
-		delete q;
-	}
+        node = node->next;
+        delete q;
+    }
 }
 
 void TCurve::init( )
 {
     QObject::tr("TCurve");
     QObject::tr("TCurveNode");
-	m_changed = true;
-	m_lookup_cache.left = -1;
+    m_changed = true;
+    m_lookup_cache.left = -1;
     m_defaultValue = 1.0;
     m_session = nullptr;
 
@@ -84,97 +84,141 @@ void TCurve::init( )
 
 QDomNode TCurve::get_state(QDomDocument doc, const QString& name)
 {
-	PENTER3;
-	QDomElement domNode = doc.createElement(name);
-	
-	QStringList nodesList;
+    PENTER3;
+    QDomElement domNode = doc.createElement(name);
+
+    QStringList nodesList;
 
     for(TCurveNode* cn = m_nodes.first(); cn != nullptr; cn = cn->next) {
         nodesList << QString::number(cn->get_when(), 'g', 24).append(",").append(QString::number(cn->get_value()));
-	}
-	
-	if (m_nodes.size() == 0) {
-		nodesList << "1," + QString::number(m_defaultValue);
-	}
-	
-	domNode.setAttribute("nodes",  nodesList.join(";"));
-	domNode.setAttribute("defaulvalue",  m_defaultValue);
+    }
+
+    if (m_nodes.size() == 0) {
+        nodesList << "1," + QString::number(m_defaultValue);
+    }
+
+    domNode.setAttribute("nodes",  nodesList.join(";"));
+    domNode.setAttribute("defaulvalue",  m_defaultValue);
     domNode.setAttribute("id",  get_id());
-	
-	
-	return domNode;
+
+
+    return domNode;
 }
 
 int TCurve::set_state( const QDomNode & node )
 {
-	PENTER;
-	QDomElement e = node.toElement();
-	
-	QStringList nodesList = e.attribute( "nodes", "" ).split(";");
-	m_defaultValue = e.attribute( "defaulvalue", "1.0" ).toDouble();
+    PENTER;
+    QDomElement e = node.toElement();
+
+    QStringList nodesList = e.attribute( "nodes", "" ).split(";");
+    m_defaultValue = e.attribute( "defaulvalue", "1.0" ).toDouble();
     set_id(e.attribute("id", "0" ).toLongLong());
-	
-	for (int i=0; i<nodesList.size(); ++i) {
-		QStringList whenValueList = nodesList.at(i).split(",");
-		double when = whenValueList.at(0).toDouble();
-		double value = whenValueList.at(1).toDouble();
+
+    for (int i=0; i<nodesList.size(); ++i) {
+        QStringList whenValueList = nodesList.at(i).split(",");
+        double when = whenValueList.at(0).toDouble();
+        double value = whenValueList.at(1).toDouble();
         TCurveNode* node = new TCurveNode(this, when, value);
-		private_add_node(node);
-	}
-	
-	return 1;
+        private_add_node(node);
+    }
+
+    return 1;
 }
 
 bool TCurve::is_trivial()
 {
-	return m_nodes.size() <= 1;
+    return m_nodes.size() <= 1;
 }
 
 float TCurve::get_trivial_gain()
 {
-	return (m_nodes.size() == 0) ? 1.0 : (static_cast<TCurveNode*>(m_nodes.first()))->get_value();
+    return (m_nodes.size() == 0) ? 1.0 : (static_cast<TCurveNode*>(m_nodes.first()))->get_value();
 }
 
 int TCurve::process(
     AudioBus* audioBus,
-	const TTimeRef& startlocation,
-	const TTimeRef& endlocation,
-	nframes_t nframes,
-	uint channels,
-    audio_sample_t makeupgain
-	)
+    const TTimeRef& startlocation,
+    const TTimeRef& endlocation,
+    nframes_t nframes,
+    uint channels,
+    audio_sample_t /*makeupgain*/ // Ignored: state is now driven exclusively by m_rtTargetMakeupGain
+    )
 {
-	// Do nothing if there are no nodes!
-	if (m_nodes.isEmpty()) {
-		return 0;
-	}
-	
-	// Check if we are beyond the last node and only apply gain if != 1.0
-	if (endlocation > qint64(get_range())) {
-        audio_sample_t gain = audio_sample_t((static_cast<TCurveNode*>(m_nodes.last()))->get_value()) * makeupgain;
+    // Do nothing if there are no nodes active
+    if (m_nodes.isEmpty()) {
+        return 0;
+    }
 
-        if (TraversoDAW::Float::equals_1(gain)) {
-			return 0;
-		}
+    // Real-time Safety: Evaluate if the manual fader/mute/solo component requires linear ramping
+    bool requiresMakeupRamp = !TraversoDAW::Float::compare(m_rtCurrentMakeupGain, m_rtTargetMakeupGain);
+    float makeupDelta = requiresMakeupRamp ? (m_rtTargetMakeupGain - m_rtCurrentMakeupGain) / nframes : 0.0f;
 
-        audioBus->apply_gain_to_buffers(nframes, gain);
-		
-		return 1;
-	}
+    // --- SCENARIO A: BEYOND THE LAST AUTOMATION NODE (Trivial static gain zone) ---
+    if (endlocation > qint64(get_range())) {
+        audio_sample_t nodeGain = audio_sample_t((static_cast<TCurveNode*>(m_nodes.last()))->get_value());
 
+        if (requiresMakeupRamp) {
+            // Apply click-free linear coefficient ramping to the fader component past curve boundaries
+            for (uint chan = 0; chan < channels; ++chan) {
+                audio_sample_t* buffer = audioBus->get_buffer(chan).get_data(nframes);
+                float currentMakeupCache = m_rtCurrentMakeupGain;
+
+                for (nframes_t n = 0; n < nframes; ++n) {
+                    currentMakeupCache += makeupDelta;
+                    buffer[n] *= (nodeGain * currentMakeupCache);
+                }
+            }
+            m_rtCurrentMakeupGain = m_rtTargetMakeupGain;
+            printf("TCURVE RT: Fader/Mute Ramping past curve boundary to %f\n", m_rtTargetMakeupGain);
+        } else {
+            // Performance Critical: If both parameters are static, evaluate absolute silence clearing
+            float finalStaticGain = nodeGain * m_rtCurrentMakeupGain;
+            if (TraversoDAW::Float::equals_0(finalStaticGain)) {
+                for (uint chan = 0; chan < channels; ++chan) {
+                    std::memset(audioBus->get_buffer(chan).get_data(nframes), 0, nframes * sizeof(audio_sample_t));
+                }
+            } else {
+                // Apply fast vectorized block scaling when faders are completely resting
+                audioBus->apply_gain_to_buffers(nframes, finalStaticGain);
+            }
+        }
+        return 1;
+    }
+
+    // --- SCENARIO B: INSIDE THE ACTIVE AUTOMATION CURVE AREA ---
     TAudioBuffer &curveBuffer = m_session->get_curve_buffer();
 
-	// Calculate the vector, an apply to the buffer including the makeup gain.
+    // Compute the spline interpolation curve vector into curveBuffer
     get_vector(startlocation.universal_frame(), endlocation.universal_frame(), curveBuffer, nframes);
 
-    for (uint chan=0; chan<channels; ++chan) {
-        TAudioBuffer &buffer = audioBus->get_buffer(chan);
+    for (uint chan = 0; chan < channels; ++chan) {
+        audio_sample_t* buffer = audioBus->get_buffer(chan).get_data(nframes);
+        float* cBuffer = curveBuffer.get_data(nframes);
+        float currentMakeupCache = m_rtCurrentMakeupGain;
+
         for (nframes_t n = 0; n < nframes; ++n) {
-            buffer[n] *= (curveBuffer[n] * makeupgain);
+            if (requiresMakeupRamp) {
+                currentMakeupCache += makeupDelta;
+            }
+            // THE PRECISE GEOMETRIC MULTIPLICATION:
+            // Multiplies the audio, the curve, and the click-free manual fader inside a single L1-cache loop!
+            buffer[n] *= (cBuffer[n] * currentMakeupCache);
         }
     }
 
-	return 1;
+    if (requiresMakeupRamp) {
+        m_rtCurrentMakeupGain = m_rtTargetMakeupGain;
+        printf("TCURVE RT: Fader/Mute Ramping inside active curve area to %f\n", m_rtTargetMakeupGain);
+    } else {
+        // Zero out residual memory frames during prolonged mute/solo intervals to block leakage noise
+        if (TraversoDAW::Float::equals_0(m_rtCurrentMakeupGain)) {
+            for (uint chan = 0; chan < channels; ++chan) {
+                std::memset(audioBus->get_buffer(chan).get_data(nframes), 0, nframes * sizeof(audio_sample_t));
+            }
+        }
+    }
+
+    return 1;
 }
 
 
@@ -622,67 +666,74 @@ void TCurve::set_changed( )
 
 
 /**
- * Add a new Node to this TCurve.
- * 
- * The returned Command object can be placed on the history stack,
- * to make un-redo possible (the default (??) when called from the InputEngine)
+ * @brief Adds a new automation node keyframe to this TCurve graph topology.
  *
- * Note: This function should only be called from the GUI thread!
- * 
- * @param node CurveNode to add to this TCurve
- * @param historable Should the returned Command object be placed on the
- 		history stack?
- * @return A Command object, if the call was generated from the InputEngine,
- 	it can be leaved alone, if it was a direct call, use Command::process_command()
- 	to do the actuall work!!
+ * Maps compile-time function pointers directly into the type-safe TSMP transaction pipeline.
+ * Bypasses Qt's legacy string-based runtime meta-object slot lookups completely.
+ *
+ * @note This function must be called exclusively from the main GUI thread context!
+ *
+ * @param node The concrete CurveNode instance to append to the envelope graph.
+ * @param historable Defines if the operation persists on Traverso's long-term history undo stack.
+ * @return A command pointer instance wrapping the underlying transactional audio execution slots.
+ */
+/**
+ * @brief Adds a new automation node keyframe to this TCurve graph topology.
+ *        Constructed using type-erase closures to bypass template signature limitations.
+ *
+ * @note This function must be called exclusively from the main GUI thread context!
  */
 TCommand* TCurve::add_node(TCurveNode* node, bool historable)
 {
-	PENTER2;
+    PENTER2;
 
+    // Guard check preventing overlapping duplicate keyframe layout coordinates
     for(TCurveNode* cn = m_nodes.first(); cn != nullptr; cn = cn->next) {
         if (TraversoDAW::Float::compare(node->get_when(), cn->get_when()) && TraversoDAW::Float::compare(node->get_value(), cn->get_value())) {
-			tInformUser().warning(tr("There is allready a node at this exact position, not adding a new node"));
-			delete node;
+            tInformUser().warning(tr("There is already a node at this exact position, not adding a new node"));
+            delete node;
             node = nullptr;
             return nullptr;
-		}
-	}
+        }
+    }
 
-    TAddRemoveCommand* cmd;
-        cmd = new TAddRemoveCommand(this, node, historable, m_session,
-            "private_add_node(TCurveNode*)", "nodeAdded(TCurveNode*)",
-            "private_remove_node(TCurveNode*)", "nodeRemoved(TCurveNode*)",
-			tr("Add CurveNode"));
-
-	return cmd;
+    // Matches Constructor 2 (parent, item, historable, sheet, lambdas..., description)
+    // Passes node as the second argument to cleanly purge it from active cursor/mouse context mapping.
+    return new TAddRemoveCommand(
+        this,                                           // 1. parent (TContextItem*)
+        node,                                           // 2. item (TContextItem* via TCurveNode)
+        historable,                                     // 3. bool historable
+        m_session,                                      // 4. TSession* sheet context
+        [this, node]() { private_add_node(node); },     // 5. doMethod closure
+        [this, node]() { emit nodeAdded(node); },        // 6. doSignal closure
+        [this, node]() { private_remove_node(node); },  // 7. undoMethod closure
+        [this, node]() { emit nodeRemoved(node); },      // 8. undoSignal closure
+        tr("Add CurveNode")                             // 9. description string at the very end
+        );
 }
 
-
 /**
- * Remove a  Node from this TCurve.
- * 
- * The returned Command object can be placed on the history stack,
- * to make un-redo possible (the default (??) when called from the InputEngine)
+ * @brief Removes an existing automation node keyframe from this TCurve graph topology.
+ *        Constructed using type-erase closures to bypass template signature limitations.
  *
- * Note: This function should only be called from the GUI thread!
- * 
- * @param node CurveNode to be removed from this TCurve
- * @param historable Should the returned Command object be placed on the
- 		history stack?
- * @return A Command object, if the call was generated from the InputEngine,
- 	it can be leaved alone, if it was a direct call, use Command::process_command()
- 	to do the actuall work!!
+ * @note This function must be called exclusively from the main GUI thread context!
  */
 TCommand* TCurve::remove_node(TCurveNode* node, bool historable)
 {
     PENTER2;
 
-    return new TAddRemoveCommand(this, node, historable, m_session,
-                         "private_remove_node(TCurveNode*)", "nodeRemoved(TCurveNode*)",
-                         "private_add_node(TCurveNode*)", "nodeAdded(TCurveNode*)",
-                         tr("Remove CurveNode"));
-
+    // 100% CORRECT CLOSURE ROUTING: Symmetric configuration mapping for node removal
+    return new TAddRemoveCommand(
+        this,
+        node,
+        historable,
+        m_session,
+        [this, node]() { private_remove_node(node); },
+        [this, node]() { emit nodeRemoved(node); },
+        [this, node]() { private_add_node(node); },
+        [this, node]() { emit nodeAdded(node); },
+        tr("Remove CurveNode")
+        );
 }
 
 void TCurve::private_add_node( TCurveNode * node )
