@@ -77,24 +77,26 @@ option(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug output on the command lin
 # ---------------------------------------------------------------------------
 # 3. Centralized Interface Target Configuration (MUST BE BEFORE DEPENDENCIES)
 # ---------------------------------------------------------------------------
-# Create the target first so that Dependencies.cmake can bind macros to it
 add_library(traverso_compiler_settings INTERFACE)
 
 target_compile_features(traverso_compiler_settings INTERFACE cxx_std_23)
 
 target_compile_definitions(traverso_compiler_settings INTERFACE
-    STATIC_BUILD
     VERSION="${TRAVERSO_FULL_VERSION}"
 )
+
+# Debian Policy compliance: Enforce STATIC_BUILD definition strictly on Windows architectures
+if(WIN32)
+    target_compile_definitions(traverso_compiler_settings INTERFACE STATIC_BUILD)
+endif()
 
 if(WANT_TRAVERSO_DEBUG)
     target_compile_definitions(traverso_compiler_settings INTERFACE USE_DEBUGGER)
 endif()
 
 # ---------------------------------------------------------------------------
-# 4. Load External Dependencies (NOW IN THE PERFECT SWEET SPOT)
+# 4. Load External Dependencies
 # ---------------------------------------------------------------------------
-# Options exist, compiler target exists, and it runs BEFORE add_subdirectory()
 include(Dependencies)
 
 # ---------------------------------------------------------------------------
@@ -113,31 +115,14 @@ elseif(WIN32)
     set(BUILD_SHARED_LIBS OFF)
 
     target_compile_definitions(traverso_compiler_settings INTERFACE MPG123_STATIC OPT_STATIC)
-    # -static-libgcc / -static-libstdc++ are GCC *driver* options, not linker
-    # options: they must NOT be given the LINKER: prefix (which would forward
-    # them to ld via -Wl, and make ld try to parse them as grouped short flags).
     target_link_options(traverso_compiler_settings INTERFACE "LINKER:-static" "-static-libgcc" "-static-libstdc++")
     list(PREPEND CMAKE_PREFIX_PATH "C:/msys64/ucrt64/qt6-static/")
 endif()
 
 # ---------------------------------------------------------------------------
-# 6. Compiler and Linker Flags
+# 6. Load Specialized Compiler Flags and Hardening Options
 # ---------------------------------------------------------------------------
-find_program(GETCONF_EXECUTABLE getconf)
-if(GETCONF_EXECUTABLE)
-    execute_process(
-        COMMAND ${GETCONF_EXECUTABLE} LFS_CFLAGS
-        OUTPUT_VARIABLE LFS_FLAGS
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-endif()
-
-target_compile_options(traverso_compiler_settings INTERFACE -Wall -Wextra -Wno-unused-local-typedefs ${LFS_FLAGS})
-
-if(ENABLE_ASAN)
-    target_compile_options(traverso_compiler_settings INTERFACE -fsanitize=address -fno-omit-frame-pointer)
-    target_link_options(traverso_compiler_settings INTERFACE -fsanitize=address)
-endif()
+include(CompilerFlags)
 
 # ---------------------------------------------------------------------------
 # 7. Hardware Architecture Probing
