@@ -57,6 +57,11 @@ if(WANT_PORTAUDIO)
     endif()
 endif()
 
+# CoreAudio is a native macOS system framework, so no pkg-config probe is required
+if(APPLE AND WANT_COREAUDIO)
+    target_compile_definitions(traverso_compiler_settings INTERFACE COREAUDIO_SUPPORT)
+endif()
+
 if(WANT_LV2)
     pkg_check_modules(LIBLILV IMPORTED_TARGET lilv-0>=0.4.4)
     if(LIBLILV_FOUND)
