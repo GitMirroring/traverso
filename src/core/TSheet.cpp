@@ -921,8 +921,11 @@ void TSheet::prepare_recording()
         connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
         m_recordingClips.append(clip);
 
-        commandGroup->add_command(new AddRemoveClip(clip, AddRemoveClip::ADD));
-
+        TAudioClipAddRemoveSpec spec;
+        spec.set_clip(clip);
+        spec.set_is_historable(true);
+        spec.set_is_move(false);
+        commandGroup->add_command(clip->get_track()->add_clip(spec));
     }
 
     if (m_recordingClips.size() == 0) {

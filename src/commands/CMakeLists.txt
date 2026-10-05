@@ -26,7 +26,6 @@ add_library(traversocommands STATIC
     ArmTracks.cpp
     PlayHeadMove.cpp
     WorkCursorMove.cpp
-    RemoveClip.cpp
     TMoveCommand.cpp
 )
 

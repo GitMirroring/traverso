@@ -68,10 +68,15 @@ public :
     virtual bool supportsEnterFinishesHold() const {return true;}
     virtual bool wants_cursor_position_to_be_restored() const {return false;}
 
-    void undo() {undo_action();}
-    void redo() {do_action();}
+    /**
+     * @brief Core overrides required by Qt's QUndoCommand framework.
+     *        Enforces strict compile-time virtual table binding for LTO release builds.
+     */
+    void undo() override { undo_action(); }
+    void redo() override { do_action(); }
 
     void set_valid(bool valid);
+
     void set_do_not_push_to_historystack();
     void set_context_pointer(TContextPointer* contextPointer) {
         m_contextPointer = contextPointer;

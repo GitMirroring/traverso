@@ -551,8 +551,25 @@ TCommand* TraversoCommands::create(QObject* obj, const QString& commandName, QVa
     case RemoveClipCommand:
     {
         TAudioClip* audioClip = qobject_cast<TAudioClip*>(obj);
+        CommandGroup* group = new CommandGroup(audioClip->get_sheet(), tr("Remove Clip"));
         Q_ASSERT(audioClip);
-        return new AddRemoveClip(audioClip, AddRemoveClip::REMOVE);
+        QList<TAudioClip*> selectedClips;
+        if (audioClip->is_selected()) {
+             audioClip->get_sheet()->get_audioclip_manager()->get_selected_clips(selectedClips);
+            group->setText(tr("Remove Selected Clips"));
+        } else {
+            selectedClips.append(audioClip);
+        }
+
+        for(TAudioClip* clip : std::as_const(selectedClips)) {
+            TAudioClipAddRemoveSpec spec;
+            spec.set_clip(clip);
+            spec.set_is_historable(false);
+            spec.set_is_move(false);
+            group->add_command(clip->get_track()->remove_clip(spec));
+        }
+
+        return group;
     }
 
     case RemoveTrackCommand:

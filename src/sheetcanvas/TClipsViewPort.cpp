@@ -35,8 +35,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioFileImportCommand.h"
 #include "TInputEventDispatcher.h"
 #include "CommandGroup.h"
-#include "RemoveClip.h"
-
 
 #include <QScrollBar>
 #include <QSet>
@@ -153,9 +151,12 @@ void TClipsViewPort::dropEvent(QDropEvent* event )
 			}
             clip->set_location_start(startpos);
             startpos = clip->get_location_end();
-			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
-			group->add_command(arc);
-			continue;
+            TAudioClipAddRemoveSpec spec;
+            spec.set_clip(clip);
+            spec.set_is_historable(true);
+            spec.set_is_move(false);
+            group->add_command(clip->get_track()->add_clip(spec));
+            continue;
 		}
 		TBufferedAudioStreamReader* source = resources_manager()->get_readsource(id);
 		if (source) {
@@ -165,9 +166,12 @@ void TClipsViewPort::dropEvent(QDropEvent* event )
 			clip->set_track(m_importTrack);
 			clip->set_location_start(startpos);
             startpos = clip->get_location_end();
-			AddRemoveClip* arc = new AddRemoveClip(clip, AddRemoveClip::ADD);
-			group->add_command(arc);
-		}
+            TAudioClipAddRemoveSpec spec;
+            spec.set_clip(clip);
+            spec.set_is_historable(true);
+            spec.set_is_move(false);
+            group->add_command(clip->get_track()->add_clip(spec));
+        }
 	}
 	
 	bool firstItem = true;
