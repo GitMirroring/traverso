@@ -1,6 +1,7 @@
 /*
     Copyright (C) 2005-2026 Remon Sijrier
     This file is part of Traverso
+    Fully modernized to pure C++23 using persistent factory closures.
 */
 
 #include "TAddRemoveCommand.h"
@@ -9,14 +10,13 @@
 #include "TContextPointer.h"
 #include "TSession.h"
 
-// --- IMPLEMENTATION CONSTRUCTOR 1 (GENERIC PAYLOAD) ---
 TAddRemoveCommand::TAddRemoveCommand(
     TContextItem* parent,
     void* arg,
     bool historable,
     TSession* sheet,
-    std::move_only_function<void()>&& doMethod,   std::move_only_function<void()>&& doSignal,
-    std::move_only_function<void()>&& undoMethod, std::move_only_function<void()>&& undoSignal,
+    std::function<void()> doMethod,   std::function<void()> doSignal,
+    std::function<void()> undoMethod, std::function<void()> undoSignal,
     const QString& des)
     : TCommand(parent, des)
     , m_parentItem(parent)
@@ -33,14 +33,13 @@ TAddRemoveCommand::TAddRemoveCommand(
     }
 }
 
-// --- IMPLEMENTATION CONSTRUCTOR 2 (CONTEXT VISUAL ITEM) ---
 TAddRemoveCommand::TAddRemoveCommand(
     TContextItem* parent,
     TContextItem* item,
     bool historable,
     TSession* sheet,
-    std::move_only_function<void()>&& doMethod,   std::move_only_function<void()>&& doSignal,
-    std::move_only_function<void()>&& undoMethod, std::move_only_function<void()>&& undoSignal,
+    std::function<void()> doMethod,   std::function<void()> doSignal,
+    std::function<void()> undoMethod, std::function<void()> undoSignal,
     const QString& des)
     : TCommand(parent, des)
     , m_parentItem(parent)
@@ -56,8 +55,6 @@ TAddRemoveCommand::TAddRemoveCommand(
         set_do_not_push_to_historystack();
     }
 
-    // Context cleanup:
-    // Safely removes the disappearing item from active cursor/mouse context mapping grids.
     if (item && item->has_active_context()) {
         cpointer().remove_from_active_context_list(item);
     }
@@ -78,11 +75,7 @@ void TAddRemoveCommand::set_instantanious(bool instant)
     m_instantanious = instant;
 }
 
-/**
- * @brief MASTER ROUTER: Evaluates the session transport state to dictate execution paths.
- *        Guarantees low-overhead synchronous execution when the audio engine transport is stopped.
- */
-int TAddRemoveCommand::un_redo_action(std::move_only_function<void()>& method, std::move_only_function<void()>& signal)
+int TAddRemoveCommand::un_redo_action(const std::function<void()>& method, const std::function<void()>& signal)
 {
     bool executeSynchrone = m_instantanious;
 
@@ -96,8 +89,18 @@ int TAddRemoveCommand::un_redo_action(std::move_only_function<void()>& method, s
         return 1;
     }
 
-    tsmp().post_rt_task(std::move(method), std::move(signal));
+    if (&method == &m_doMethod) {
+        tsmp().post_rt_task(
+            [this]() { if (m_doMethod) m_doMethod(); },
+            [this]() { if (m_doSignal) m_doSignal(); }
+            );
+    } else {
+        tsmp().post_rt_task(
+            [this]() { if (m_undoMethod) m_undoMethod(); },
+            [this]() { if (m_undoSignal) m_undoSignal(); }
+            );
+    }
+
 
     return 1;
 }
-
