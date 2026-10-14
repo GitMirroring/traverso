@@ -24,7 +24,6 @@ $Id: FadeCurveView.cpp,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 
 #include <QPainter>
 
-#include "TCurveNode.h"
 #include "TFadeCurve.h"
 #include "TAudioClipView.h"
 #include "TSheetView.h"
@@ -32,7 +31,6 @@ $Id: FadeCurveView.cpp,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 #include <TThemer.h>
 #include <Fade.h>
 #include "TInputEventDispatcher.h"
-#include <TAddRemoveCommand.h>
 
 #include <TSheet.h>
 #include <Utils.h>
@@ -50,17 +48,8 @@ TFadeCurveView::TFadeCurveView(TSheetView* sv, TAudioClipView* parent, TFadeCurv
     m_sv = sv;
     m_audioClip = parent->get_clip();
     m_holdactive = false;
-    m_guicurve = new TCurve(nullptr);
-    m_guicurve->set_sheet(m_sv->get_sheet());
 
     Q_ASSERT(m_fadeCurve);
-
-    for(TCurveNode* node = m_fadeCurve->get_nodes().first(); node != nullptr; node = node->next) {
-        TCurveNode* guinode = new TCurveNode(m_guicurve, node->get_when() / m_sv->timeref_scalefactor, node->get_value());
-        TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(guinode, false));
-        cmd->set_instantanious(true);
-        TCommand::process_command(cmd);
-    }
 
     TFadeCurveView::load_theme_data();
 
@@ -74,7 +63,6 @@ TFadeCurveView::TFadeCurveView(TSheetView* sv, TAudioClipView* parent, TFadeCurv
 TFadeCurveView::~ TFadeCurveView( )
 {
     PENTERDES;
-    delete m_guicurve;
 }
 
 
@@ -100,11 +88,15 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     qreal height = m_boundingRect.height();
     TAudioBuffer buffer(pixelcount);
 
-    if (m_fadeCurve->get_fade_type() == TFadeCurve::FadeOut && m_guicurve->get_range() > m_parentViewItem->boundingRect().width()) {
-        vector_start += m_guicurve->get_range() - m_parentViewItem->boundingRect().width();
+    // The fade is in time units, one pixel is timeref_scalefactor universal frames
+    const double scale = double(m_sv->timeref_scalefactor);
+    const qreal range = m_fadeCurve->get_range() / scale;
+
+    if (m_fadeCurve->get_fade_type() == TFadeCurve::FadeOut && range > m_parentViewItem->boundingRect().width()) {
+        vector_start += range - m_parentViewItem->boundingRect().width();
     }
 
-    m_guicurve->get_vector(vector_start, vector_start + pixelcount, buffer, nframes_t(pixelcount));
+    m_fadeCurve->get_vector(vector_start * scale, (vector_start + pixelcount) * scale, buffer, nframes_t(pixelcount));
 
     for (int i=0; i<pixelcount; i++) {
         polygon <<  QPointF(xstart + 1 + i, height - (double(buffer[i]) * height) );
@@ -166,57 +158,11 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     painter->restore();
 }
 
-int TFadeCurveView::get_vector(qreal xstart, int pixelcount, TAudioBuffer &buffer)
-{
-    // If boundingrect width is smaller then a pixel, don't even try
-    if (m_boundingRect.width() < 1.0) {
-        return 0;
-    }
-
-    if (m_fadeCurve->get_fade_type() == TFadeCurve::FadeOut) {
-
-        // If the fade width is longer the the clipview, add the difference,
-        // since the 'start' of the FadeCurveView lies beyond the left edge of the clip!
-        if (m_boundingRect.width() > m_parentViewItem->boundingRect().width()) {
-            xstart += m_boundingRect.width() - m_parentViewItem->boundingRect().width();
-        }
-
-        // map the xstart position to the FadeCurveViews x position
-        qreal mappedx = mapFromParent(QPointF(xstart, 0)).x();
-
-        m_guicurve->get_vector(mappedx, mappedx + pixelcount, buffer, nframes_t(pixelcount));
-
-        buffer.set_data_start_offset(0);
-
-        return 1;
-    }
-
-    if (xstart < m_boundingRect.width()) {
-        m_guicurve->get_vector(xstart, xstart + pixelcount, buffer, nframes_t(pixelcount));
-        return 1;
-    }
-
-    return 0;
-}
-
 void TFadeCurveView::calculate_bounding_rect()
 {
     prepareGeometryChange();
 
-    TRealTimeLinkedList<TCurveNode*> guinodes = m_guicurve->get_nodes();
-    TRealTimeLinkedList<TCurveNode*> nodes = m_fadeCurve->get_nodes();
-
-    TCurveNode* node = nodes.first();
-    TCurveNode* guinode = guinodes.first();
-
-    while (node) {
-        guinode->set_when_and_value(node->get_when() / m_sv->timeref_scalefactor, node->get_value());
-
-        node = node->next;
-        guinode = guinode->next;
-    }
-
-    double range = m_guicurve->get_range();
+    double range = m_fadeCurve->get_range() / double(m_sv->timeref_scalefactor);
     m_boundingRect = QRectF( 0, 0, range, m_parentViewItem->get_height() );
 
     if (m_fadeCurve->get_fade_type() == TFadeCurve::FadeOut) {

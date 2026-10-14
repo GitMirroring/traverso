@@ -40,7 +40,6 @@ public:
 	~TCurveView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-    int get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer);
 	bool has_nodes() const;
 	float get_default_value();
 	void calculate_bounding_rect();
@@ -62,7 +61,6 @@ public:
 
 private:
 	TCurve*		m_curve;
-	TCurve*		m_guicurve;
 	QTimer		m_blinkTimer;
 	TCurveNodeView*	m_blinkingNode;
 	int		m_blinkDarkness{};

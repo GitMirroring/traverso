@@ -40,7 +40,6 @@ public:
     ~TFadeCurveView();
 	
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-    int get_vector(qreal xstart, int pixelcount, TAudioBuffer &buffer);
 	void calculate_bounding_rect();
 	void set_holding(bool hold);
 	
@@ -52,7 +51,6 @@ public:
 private:
 	TFadeCurve*	m_fadeCurve;
     TAudioClip*  m_audioClip;
-	TCurve*		m_guicurve;
 	bool		m_holdactive;
 	
 public slots:

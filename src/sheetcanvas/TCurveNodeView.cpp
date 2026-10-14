@@ -31,9 +31,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <Debugger.h>
 
-TCurveNodeView::TCurveNodeView( TSheetView * sv, TCurveView* curveview, TCurveNode * node, TCurve* guicurve)
+TCurveNodeView::TCurveNodeView( TSheetView * sv, TCurveView* curveview, TCurveNode * node)
     : TViewItem(curveview, nullptr)
-    , TCurveNode(guicurve, node->get_when(), node->get_value())
     , m_node(node)
 {
 	PENTERCONS;
@@ -46,7 +45,7 @@ TCurveNodeView::TCurveNodeView( TSheetView * sv, TCurveView* curveview, TCurveNo
     TCurveNodeView::load_theme_data();
     TCurveNodeView::calculate_bounding_rect();
 
-    connect(m_node->m_curve, &TCurve::nodePositionChanged, this, &TCurveNodeView::update_pos);
+    connect(m_curveview->get_curve(), &TCurve::nodePositionChanged, this, &TCurveNodeView::update_pos);
 }
 
 TCurveNodeView::~ TCurveNodeView( )
@@ -121,7 +120,8 @@ void TCurveNodeView::update_pos( )
 	qreal value = parentheight - (m_node->get_value() * parentheight + halfwidth);
 	setPos(when, value);
 		
-    set_when_and_value((m_node->get_when() / m_sv->timeref_scalefactor), m_node->get_value());
+    m_when = m_node->get_when() / m_sv->timeref_scalefactor;
+    m_value = m_node->get_value();
 }
 
 void TCurveNodeView::set_soft_selected(bool selected)

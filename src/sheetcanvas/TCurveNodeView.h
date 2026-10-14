@@ -24,16 +24,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TViewItem.h"
 
-#include <TCurveNode.h>
-
+class TCurveNode;
 class TCurveView;
 
-class TCurveNodeView : public TViewItem, public TCurveNode
+class TCurveNodeView : public TViewItem
 {
 	Q_OBJECT
 
 public:
-    TCurveNodeView(TSheetView* sv, TCurveView* curveview, TCurveNode* node, TCurve* guicurve);
+    TCurveNodeView(TSheetView* sv, TCurveView* curveview, TCurveNode* node);
     ~TCurveNodeView();
 	
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -47,11 +46,17 @@ public:
 	TCurveNode* get_curve_node() const {return m_node;}
     TCurveView* get_curve_view() const {return m_curveview;}
 
+    // The node position in pixels, relative to the start of the curve, and its value
+    double get_when() const {return m_when;}
+    double get_value() const {return m_value;}
+
 	bool is_hard_selected() const {return m_isHardSelected;}
 	
 private:
 	TCurveView*	m_curveview;
 	TCurveNode*	m_node;
+	double		m_when{};
+	double		m_value{};
 	QColor		m_color;
 	bool		m_isSoftSelected;
 	bool		m_isHardSelected;

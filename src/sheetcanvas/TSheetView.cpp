@@ -38,6 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "TAudioClipView.h"
 #include "TCurveView.h"
 #include "TCurveNodeView.h"
+#include "TCurveNode.h"
 #include "TTimeLineMarkerView.h"
 #include "TSheetView.h"
 #include "TSheetWidget.h"

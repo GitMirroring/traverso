@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TSheet.h>
 #include "TInputEventDispatcher.h"
 
-#include <TAddRemoveCommand.h>
 #include "CommandGroup.h"
 #include "MoveCurveNode.h"
 
@@ -55,8 +54,6 @@ TCurveView::TCurveView(TSheetView* sv, TViewItem *parentViewItem, TCurve* curve)
     m_blinkColorDirection = 1;
     m_blinkingNode = nullptr;
     m_startoffset = TTimeRef();
-    m_guicurve = new TCurve(nullptr);
-    m_guicurve->set_sheet(sv->get_sheet());
 
     for(TCurveNode* node = m_curve->get_nodes().first(); node != nullptr; node = node->next) {
         add_curvenode_view(node);
@@ -73,8 +70,6 @@ TCurveView::TCurveView(TSheetView* sv, TViewItem *parentViewItem, TCurve* curve)
 
 TCurveView::~ TCurveView( )
 {
-    m_guicurve->clear_curve();
-    delete m_guicurve;
 }
 
 void TCurveView::updateNodeVisibility(int startx, int endx)
@@ -177,11 +172,12 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
     QPolygonF polygon;
     TAudioBuffer buffer(pixelcount);
 
-    // 	printf("range: %d\n", (int)m_nodeViews.last()->pos().x());
-    m_guicurve->get_vector(xstart + offset,
-                           xstart + pixelcount + offset,
-                           buffer,
-                           nframes_t(pixelcount));
+    // The curve is in time units, one pixel is timeref_scalefactor universal frames
+    const double scale = double(m_sv->timeref_scalefactor);
+    m_curve->get_vector((xstart + offset) * scale,
+                        (xstart + pixelcount + offset) * scale,
+                        buffer,
+                        nframes_t(pixelcount));
 
     for (int i=0; i<pixelcount; i+=3) {
         polygon <<  QPointF(xstart + i, height - qreal(buffer.at(i) * height) );
@@ -208,17 +204,6 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
     painter->restore();
 }
 
-int TCurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &buffer)
-{
-    if (m_guicurve->get_nodes().size() == 1 && TraversoDAW::Float::equals_1(m_guicurve->get_nodes().first()->get_value())) {
-        return 0;
-    }
-
-    m_guicurve->get_vector(xstart, xstart + pixelcount, buffer, nframes_t(pixelcount));
-
-    return 1;
-}
-
 /**
  * @brief GUI slot triggered when a new core curve node keyframe has been added down the pipeline.
  *        Instantiates the matching graphical presentation view layer dynamically.
@@ -226,26 +211,16 @@ int TCurveView::get_vector(qreal xstart, qreal pixelcount, const TAudioBuffer &b
 void TCurveView::add_curvenode_view(TCurveNode* node)
 {
     // Create the lightweight visual node element within the canvas scene context
-    TCurveNodeView* nodeview = new TCurveNodeView(m_sv, this, node, m_guicurve);
+    TCurveNodeView* nodeview = new TCurveNodeView(m_sv, this, node);
     m_nodeViews.append(nodeview);
 
-    // ARCHITECTURALLY PURE CAST:
-    // Because TCurve::add_node returns a polymorphic command context loop,
-    // we cast cleanly to TAddRemoveCommandBase* without exposing template details!
-    TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->add_node(nodeview, false));
-    if (cmd) {
-        // Execute the initialization step instantly local to the current UI thread context scope
-        cmd->set_instantanious(true);
-        TCommand::process_command(cmd);
+    // Maintain strict chronological sorting across our visual presentation components
+    std::sort(m_nodeViews.begin(), m_nodeViews.end(), [](TCurveNodeView* left, TCurveNodeView* right){
+        return left->get_when() < right->get_when();
+    });
 
-        // Maintain strict chronological sorting across our visual presentation components
-        std::sort(m_nodeViews.begin(), m_nodeViews.end(), [](TCurveNodeView* left, TCurveNodeView* right){
-            return left->get_when() < right->get_when();
-        });
-
-        update();
-        emit curveUpdated(0, int(m_boundingRect.width()));
-    }
+    update();
+    emit curveUpdated(0, int(m_boundingRect.width()));
 }
 
 /**
@@ -264,19 +239,13 @@ void TCurveView::remove_curvenode_view(TCurveNode* node)
                 update_softselected_node(cpointer().scene_pos());
             }
 
-            TAddRemoveCommand* cmd = qobject_cast<TAddRemoveCommand*>(m_guicurve->remove_node(nodeview, false));
-            if (cmd) {
-                cmd->set_instantanious(true);
-                TCommand::process_command(cmd);
+            // Cleanly purge the visual representation layout straight out of the graphics viewport
+            scene()->removeItem(nodeview);
+            delete nodeview;
 
-                // Cleanly purge the visual representation layout straight out of the graphics viewport
-                scene()->removeItem(nodeview);
-                delete nodeview;
-
-                update();
-                emit curveUpdated(0, int(m_boundingRect.width()));
-                return;
-            }
+            update();
+            emit curveUpdated(0, int(m_boundingRect.width()));
+            return;
         }
     }
 }
@@ -587,16 +556,16 @@ void TCurveView::set_start_offset(const TTimeRef &offset)
 
 bool TCurveView::has_nodes() const
 {
-    return m_guicurve->get_nodes().size() > 1 ? true : false;
+    return m_nodeViews.size() > 1;
 }
 
 float TCurveView::get_default_value()
 {
-    if (m_guicurve->get_nodes().isEmpty()) {
+    if (m_nodeViews.isEmpty()) {
         return 1.0f;
     }
 
-    return float(m_guicurve->get_nodes().first()->get_value());
+    return float(m_nodeViews.first()->get_value());
 }
 
 TCommand * TCurveView::remove_all_nodes()
