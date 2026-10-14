@@ -21,8 +21,10 @@
  * released by the message queue worker thread, together with the step that
  * carried the new one.
  *
- * Like TRtList, a pending transaction step refers to this object, so it (and
- * its owner) must not be destroyed before the audio thread applied that step.
+ * A pending step shares the version the audio thread uses with this object, so
+ * this object (and its owner) may be destroyed before the audio thread applied
+ * the step, e.g. a curve of a clip that was only created for a moment. It must
+ * not be destroyed while the audio thread still evaluates it.
  */
 template <class T>
 class TRtShared final : public TRtListBase
@@ -34,6 +36,7 @@ public:
     // thread. There is no version until the first change is published.
     explicit TRtShared(Builder builder)
         : m_builder(std::move(builder))
+        , m_rtSlot(std::make_shared<RtSlot>())
     {
         Q_ASSERT(m_builder);
     }
@@ -70,35 +73,42 @@ public:
     const T* rt_current() const
     {
         Q_ASSERT_X(!is_gui_thread(), "TRtShared::rt_current", "audio thread side used in the GUI thread");
-        return m_rtCurrent.get();
+        return m_rtSlot->version.get();
     }
 
 private:
+    // The version the audio thread uses
+    struct RtSlot
+    {
+        std::shared_ptr<const T> version;
+    };
+
     class SwapStep final : public TRtStep
     {
     public:
-        SwapStep(std::shared_ptr<const T>* slot, std::shared_ptr<const T> version)
-            : m_slot(slot), m_version(std::move(version)) {}
+        SwapStep(std::shared_ptr<RtSlot> slot, std::shared_ptr<const T> version)
+            : m_slot(std::move(slot)), m_version(std::move(version)) {}
 
-        // Releases the version the audio thread swapped out, in the worker thread
+        // Releases the version the audio thread swapped out, in the worker
+        // thread, and the slot if its TRtShared is gone
         ~SwapStep() override = default;
 
         // Swapping two shared pointers only exchanges pointers, it does not
         // allocate, release or touch the reference counts
-        void apply_in_audio_thread() override { m_slot->swap(m_version); }
+        void apply_in_audio_thread() override { m_slot->version.swap(m_version); }
 
     private:
-        std::shared_ptr<const T>* m_slot;
-        std::shared_ptr<const T>  m_version;
+        std::shared_ptr<RtSlot>  m_slot;
+        std::shared_ptr<const T> m_version;
     };
 
     std::unique_ptr<TRtStep> create_publish_step() override
     {
-        return std::make_unique<SwapStep>(&m_rtCurrent, current());
+        return std::make_unique<SwapStep>(m_rtSlot, current());
     }
 
     Builder                          m_builder;
     mutable std::shared_ptr<const T> m_current;
     mutable bool                     m_changed{true};
-    std::shared_ptr<const T>         m_rtCurrent;
+    std::shared_ptr<RtSlot>          m_rtSlot;
 };
