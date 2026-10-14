@@ -17,8 +17,8 @@
  *
  * The GUI thread owns the list: it is the single source of truth and only the
  * GUI thread changes it. The audio thread reads an immutable snapshot of it.
- * Every change registers the list in the current TRtTransaction, which builds
- * a new snapshot in the GUI thread and lets the audio thread swap it in.
+ * Every change registers the list in the TRtTransaction it is given, which
+ * builds a new snapshot in the GUI thread and lets the audio thread swap it in.
  *
  * Replaces TRealTimeLinkedList: the audio thread only swaps a pointer, so the
  * cost in the audio thread does not depend on the size of the list.

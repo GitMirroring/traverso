@@ -76,6 +76,7 @@ add_library(traversocore STATIC
     TUndoCommand.h
     TRtTransaction.h TRtTransaction.cpp
     TRtList.h
+    TRtShared.h
     TViewPortScroller.h TViewPortScroller.cpp
     TTimeLineEntity.h TTimeLineEntity.cpp
     TSelectionService.h TSelectionService.cpp
