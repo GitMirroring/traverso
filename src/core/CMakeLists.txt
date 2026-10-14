@@ -41,6 +41,7 @@ add_library(traversocore STATIC
     TContextItem.cpp
     TCurve.cpp
     TCurveNode.cpp
+    TCurveSnapshot.h TCurveSnapshot.cpp
     TDiskIOThread.cpp
     TFadeCurve.cpp
     FileHelpers.cpp
