@@ -35,7 +35,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSession.h"
 #include "Utils.h"
 #include <TAddRemoveCommand.h>
-#include "Mixer.h"
 #include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 
@@ -169,7 +168,6 @@ int TCurve::process(
                 }
             }
             m_rtCurrentMakeupGain = m_rtTargetMakeupGain;
-            printf("TCURVE RT: Fader/Mute Ramping past curve boundary to %f\n", m_rtTargetMakeupGain);
         } else {
             // Performance Critical: If both parameters are static, evaluate absolute silence clearing
             float finalStaticGain = nodeGain * m_rtCurrentMakeupGain;
@@ -208,7 +206,6 @@ int TCurve::process(
 
     if (requiresMakeupRamp) {
         m_rtCurrentMakeupGain = m_rtTargetMakeupGain;
-        printf("TCURVE RT: Fader/Mute Ramping inside active curve area to %f\n", m_rtTargetMakeupGain);
     } else {
         // Zero out residual memory frames during prolonged mute/solo intervals to block leakage noise
         if (TraversoDAW::Float::equals_0(m_rtCurrentMakeupGain)) {
@@ -393,7 +390,7 @@ void TCurve::get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, 
 		
 		subveclen = min (subveclen, veclen);
 
-//                printf("filling first %d samples %f\n", subveclen, firstnode->get_value());
+//                printf("filling first %d samples %f\n", subSveclen, firstnode->get_value());
 
 		for (i = 0; i < subveclen; ++i) {
             vec[i] = float(firstnode->get_value());
