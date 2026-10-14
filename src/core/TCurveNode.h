@@ -25,39 +25,26 @@ $Id: CurveNode.h,v 1.9 2007/11/19 11:18:53 r_sijrier Exp $
 
 class TCurve;
 
+/**
+ * @brief A node of a TCurve: a value at a position in time.
+ *
+ * Only its curve changes a node, see TCurve::set_node(). The audio thread never
+ * reads nodes, it evaluates the TCurveSnapshot the curve publishes.
+ */
 class TCurveNode
 {
-
 public:
-     TCurveNode(TCurve* curve, double when, double  val);
+    TCurveNode(TCurve* curve, double when, double value);
 
-    ~TCurveNode();
-	
-    void set_when(double when);
-	
-    void set_when_and_value(double when, double value);
-
-    void set_relative_when_and_value(double relwhen, double value);
-	
-    inline double get_when() const {return m_when;}
-    inline double get_value() const {return m_value;}
-
-    bool operator<(const TCurveNode &other) {
-        return this->get_when() < other.get_when();
-    }
-
-    TCurve*	m_curve;
-
-
-    TCurveNode* next;
+    double get_when() const {return m_when;}
+    double get_value() const {return m_value;}
+    TCurve* get_curve() const {return m_curve;}
 
 private:
-    double  coeff[4];
-    double 	m_when;
-    double 	m_value;
+    TCurve* m_curve;
+    double  m_when;
+    double  m_value;
 
-    void set_when_and_value_internal(double when, double value);
-    
     friend class TCurve;
 };
 

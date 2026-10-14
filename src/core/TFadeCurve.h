@@ -60,8 +60,8 @@ public:
     int get_raster() const {return m_raster;}
 
     void set_shape(const QString &shapeName);
-    void set_bend_factor(float factor);
-    void set_strength_factor(float factor);
+    void set_bend_factor(float factor, TRtTransaction& transaction);
+    void set_strength_factor(float factor, TRtTransaction& transaction);
 
     void set_parent_timeline_entity(TTimeLineEntity* entity) {
         m_parentTimeLineEntity = entity;
@@ -72,7 +72,7 @@ public:
 
     bool is_bypassed() const {return m_bypass;}
 
-    void set_mode(int m);
+    void set_mode(int m, TRtTransaction& transaction);
 
     QString fade_type_to_string() const;
 
@@ -95,10 +95,12 @@ private:
     QPointF get_curve_point(float f);
     void init();
 
-public slots:
-    void solve_node_positions();
-    void set_range(double range) final;
+public:
+    // Positions the nodes for the bend and strength factors and the mode
+    void solve_node_positions(TRtTransaction& transaction);
+    void set_range(double range, TRtTransaction& transaction) final;
 
+public slots:
     TCommand* toggle_bypass();
     TCommand* set_mode();
     TCommand* toggle_raster();

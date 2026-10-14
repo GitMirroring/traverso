@@ -47,7 +47,6 @@ TFadeCurve::TFadeCurve(TContextItem *parent, FadeType fadeType )
     m_controlPoints.append(QPointF(0.75, 0.75));
     m_controlPoints.append(QPointF(1.0, 1.0));
 
-    connect(this, &TFadeCurve::stateChanged, this, &TFadeCurve::solve_node_positions);
     connect(this, &TFadeCurve::bendValueChanged, this, &TFadeCurve::stateChanged);
     connect(this, &TFadeCurve::strengthValueChanged, this, &TFadeCurve::stateChanged);
     connect(this, &TFadeCurve::modeChanged, this, &TFadeCurve::stateChanged);
@@ -59,18 +58,17 @@ void TFadeCurve::init()
 {
     QObject::tr("TFadeCurve");
 
+    TRtTransaction transaction;
+
     int nodecount = 11;
     for (int i = 0; i <= nodecount; ++i) {
         float f = static_cast<float>(i) / nodecount;
         QPointF p = get_curve_point(f);
 
-        TCurveNode* node = new TCurveNode(this, p.x(), p.y());
-        TAddRemoveCommand* cmd = (TAddRemoveCommand*) add_node(node, false);
-        cmd->set_instantanious(true);
-        TCommand::process_command(cmd);
+        private_add_node(new TCurveNode(this, p.x(), p.y()), transaction);
     }
 
-    set_range(1.0);
+    set_range(1.0, transaction);
 }
 
 QDomNode TFadeCurve::get_state( QDomDocument doc )
@@ -127,9 +125,11 @@ int TFadeCurve::set_state( const QDomNode & node )
 
     range = (range < 1.0) ? 1 : range;
 
-    set_range(range);
+    TRtTransaction transaction;
 
-    solve_node_positions();
+    set_range(range, transaction);
+
+    solve_node_positions(transaction);
 
     emit stateChanged();
 
@@ -147,13 +147,18 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
         return;
     }
 
+    const TCurveSnapshot* snapshot = rt_snapshot();
+    if (!snapshot || snapshot->is_empty()) {
+        return;
+    }
+
     TLocation* parentLocation = m_parentTimeLineEntity->get_location();
     uint outputRate = audiodevice().get_sample_rate();
     uint framesToProcess = nframes;
     uint channelCount = bus->get_channel_count();
 
     TTimeRef fadeStartLocation, fadeEndLocation, fadeLocation;
-    TTimeRef fadeRange = TTimeRef(get_range());
+    TTimeRef fadeRange = TTimeRef(snapshot->get_range());
     TTimeRef upperRange = startLocation + TTimeRef(nframes, outputRate);
 
     if (m_type == FadeIn) {
@@ -189,7 +194,8 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
 
     upperRange = fadeLocation + TTimeRef(framesToProcess, outputRate);
 
-    get_vector(fadeLocation.universal_frame(), upperRange.universal_frame(), curveBuffer, framesToProcess);
+    snapshot->get_vector(double(fadeLocation.universal_frame()), double(upperRange.universal_frame()),
+                         curveBuffer.get_data(framesToProcess), framesToProcess, rt_lookup_cache());
 
     for (uint chan = 0; chan < channelCount; ++chan) {
         TAudioBuffer &buf = bus->get_buffer(chan);
@@ -243,7 +249,7 @@ void TFadeCurve::set_shape(const QString& shapeName)
     emit stateChanged();
 }
 
-void TFadeCurve::solve_node_positions( )
+void TFadeCurve::solve_node_positions(TRtTransaction& transaction)
 {
     // calculate control points values
     if (m_mode == 0) { // bended
@@ -272,22 +278,17 @@ void TFadeCurve::solve_node_positions( )
     }
 
 
-    // calculate curve nodes values
+    // calculate curve nodes values, relative to the range
     float f = 0.0;
-    TRealTimeLinkedList<TCurveNode*> list = TCurve::get_nodes();
-    int listsize = list.size();
-    if (listsize > 0) {
-        TCurveNode* node = list.first()->next;
+    const QList<TCurveNode*>& nodes = TCurve::get_nodes();
+    const int listsize = nodes.size();
+    const double range = get_range();
 
-        while (node) {
-            f += 1.0 / (listsize - 1);
-            QPointF p = get_curve_point(f);
-            node->set_relative_when_and_value(p.x(), p.y());
-            node = node->next;
-        }
+    for (int i = 1; i < listsize; ++i) {
+        f += 1.0 / (listsize - 1);
+        QPointF p = get_curve_point(f);
+        move_node(nodes.at(i), p.x() * range, p.y(), transaction);
     }
-
-    set_changed();
 }
 
 QPointF TFadeCurve::get_curve_point( float f)
@@ -309,17 +310,17 @@ QPointF TFadeCurve::get_curve_point( float f)
     return QPointF(x, y);
 }
 
-void TFadeCurve::set_range(double range)
+void TFadeCurve::set_range(double range, TRtTransaction& transaction)
 {
     if (range <= 1.0) {
         range = 1.0;
     }
 
-    TCurve::set_range(range);
+    TCurve::set_range(range, transaction);
     emit rangeChanged();
 }
 
-void TFadeCurve::set_bend_factor( float factor )
+void TFadeCurve::set_bend_factor(float factor, TRtTransaction& transaction)
 {
     if (factor > 1.0)
         factor = 1.0;
@@ -327,11 +328,12 @@ void TFadeCurve::set_bend_factor( float factor )
         factor = 0.0;
 
     m_bendFactor = factor;
+    solve_node_positions(transaction);
 
     emit bendValueChanged();
 }
 
-void TFadeCurve::set_strength_factor( float factor )
+void TFadeCurve::set_strength_factor(float factor, TRtTransaction& transaction)
 {
     if (factor > 1.0)
         factor = 1.0;
@@ -339,6 +341,7 @@ void TFadeCurve::set_strength_factor( float factor )
         factor = 0.0;
 
     m_strenghtFactor = factor;
+    solve_node_positions(transaction);
 
     emit strengthValueChanged();
 }
@@ -357,9 +360,10 @@ TCommand* TFadeCurve::set_mode( )
     }
 }
 
-void TFadeCurve::set_mode(int m)
+void TFadeCurve::set_mode(int m, TRtTransaction& transaction)
 {
     m_mode = m;
+    solve_node_positions(transaction);
 
     emit modeChanged();
 }

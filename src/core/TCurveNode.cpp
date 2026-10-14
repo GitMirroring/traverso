@@ -21,7 +21,6 @@ $Id: TCurveNode.cpp,v 1.8 2007/11/23 14:56:36 r_sijrier Exp $
 */
 
 #include "TCurveNode.h"
-#include "TCurve.h"
 
 #include "qassert.h"
 #include <cmath>
@@ -29,49 +28,10 @@ $Id: TCurveNode.cpp,v 1.8 2007/11/23 14:56:36 r_sijrier Exp $
 
 TCurveNode::TCurveNode(TCurve *curve, double when, double value)
     : m_curve(curve)
-{
-    coeff[0] = coeff[1] = coeff[2] = coeff[3] = 0.0;
-    set_when_and_value_internal(when, value);
-    next = nullptr;
-}
-
-TCurveNode::~TCurveNode()
-{
-
-}
-
-void TCurveNode::set_when(double when) {
-    Q_ASSERT( ! std::isnan(when));
-
-    m_when = when;
-}
-
-void TCurveNode::set_relative_when_and_value( double relwhen, double value )
-{
-    Q_ASSERT( ! std::isnan(relwhen));
-    Q_ASSERT( ! std::isnan(value));
-
-    m_when = relwhen * m_curve->get_range();
-    m_value = value;
-}
-
-void TCurveNode::set_when_and_value_internal(double when, double value)
+    , m_when(when)
+    , m_value(value)
 {
     Q_ASSERT( ! std::isnan(when));
     Q_ASSERT( ! std::isnan(value));
-
-    if (TraversoDAW::Float::compare(m_when, when) && TraversoDAW::Float::compare(m_value, value)) {
-        return;
-    }
-    m_when = when;
-    m_value = value;
-}
-
-void TCurveNode::set_when_and_value(double when, double value)
-{
-    set_when_and_value_internal(when, value);
-    emit m_curve->nodePositionChanged();
 }
 //eof
-
-

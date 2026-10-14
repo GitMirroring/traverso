@@ -10,6 +10,7 @@
 #include "TSheetView.h"
 #include "Mixer.h"
 #include "TContextPointer.h"
+#include "TRtTransaction.h"
 
 MoveCurveNode::MoveCurveNode(TCurve* curve,
                              QList<TCurveNode*> nodes,
@@ -87,16 +88,18 @@ int MoveCurveNode::begin_hold()
 
 int MoveCurveNode::do_action()
 {
+    TRtTransaction transaction;
     for (const CurveNodeData& nodeData : m_nodeDatas) {
-        nodeData.node->set_when_and_value(nodeData.origWhen + m_whenDiff.universal_frame(), nodeData.origValue + m_valueDiff);
+        nodeData.node->get_curve()->set_node(nodeData.node, nodeData.origWhen + m_whenDiff.universal_frame(), nodeData.origValue + m_valueDiff, transaction);
     }
     return 1;
 }
 
 int MoveCurveNode::undo_action()
 {
+    TRtTransaction transaction;
     for (const CurveNodeData& nodeData : m_nodeDatas) {
-        nodeData.node->set_when_and_value(nodeData.origWhen, nodeData.origValue);
+        nodeData.node->get_curve()->set_node(nodeData.node, nodeData.origWhen, nodeData.origValue, transaction);
     }
     return 1;
 }

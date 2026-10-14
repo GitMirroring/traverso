@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioClip.h"
 #include "TBufferedAudioStreamReader.h"
 #include "TFadeCurve.h"
+#include "TRtTransaction.h"
 #include "TProjectManager.h"
 #include "TResourcesManager.h"
 #include "TLocation.h"
@@ -277,7 +278,8 @@ void AudioClipEditDialog::fadein_mode_edit_changed(int index)
 {
     if (!m_clip->has_fade_in()) return;
 	locked = true;
-	m_clip->get_fade_in()->set_mode(index);
+	TRtTransaction transaction;
+	m_clip->get_fade_in()->set_mode(index, transaction);
 	locked = false;
 }
 
@@ -285,7 +287,8 @@ void AudioClipEditDialog::fadeout_mode_edit_changed(int index)
 {
     if (!m_clip->has_fade_out()) return;
 	locked = true;
-	m_clip->get_fade_out()->set_mode(index);
+	TRtTransaction transaction;
+	m_clip->get_fade_out()->set_mode(index, transaction);
 	locked = false;
 }
 
@@ -293,7 +296,8 @@ void AudioClipEditDialog::fadein_bending_edit_changed(double value)
 {
     if (!m_clip->has_fade_in()) return;
 	locked = true;
-	m_clip->get_fade_in()->set_bend_factor(value);
+	TRtTransaction transaction;
+	m_clip->get_fade_in()->set_bend_factor(value, transaction);
 	locked = false;
 }
 
@@ -301,7 +305,8 @@ void AudioClipEditDialog::fadeout_bending_edit_changed(double value)
 {
     if (!m_clip->has_fade_out()) return;
 	locked = true;
-	m_clip->get_fade_out()->set_bend_factor(value);
+	TRtTransaction transaction;
+	m_clip->get_fade_out()->set_bend_factor(value, transaction);
 	locked = false;
 }
 
@@ -309,7 +314,8 @@ void AudioClipEditDialog::fadein_strength_edit_changed(double value)
 {
     if (!m_clip->has_fade_in()) return;
 	locked = true;
-	m_clip->get_fade_in()->set_strength_factor(value);
+	TRtTransaction transaction;
+	m_clip->get_fade_in()->set_strength_factor(value, transaction);
 	locked = false;
 }
 
@@ -317,7 +323,8 @@ void AudioClipEditDialog::fadeout_strength_edit_changed(double value)
 {
     if (!m_clip->has_fade_out()) return;
 	locked = true;
-	m_clip->get_fade_out()->set_strength_factor(value);
+	TRtTransaction transaction;
+	m_clip->get_fade_out()->set_strength_factor(value, transaction);
 	locked = false;
 }
 

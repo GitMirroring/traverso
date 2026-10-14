@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInputEventDispatcher.h"
 #include "TSnapList.h"
 #include "TContextPointer.h"
+#include "TRtTransaction.h"
 
 TFadeRangeCommand::TFadeRangeCommand(TAudioClip* clip, TFadeCurve* fadeIn, TFadeCurve *fadeOut, qint64 scalefactor)
     : TMoveCommand(nullptr, clip, "")
@@ -76,22 +77,24 @@ int TFadeRangeCommand::finish_hold()
 
 int TFadeRangeCommand::do_action()
 {
+    TRtTransaction transaction;
     if (m_fadeIn) {
-        m_fadeIn->set_range( m_fadeInNewRange );
+        m_fadeIn->set_range(m_fadeInNewRange, transaction);
     }
     if (m_fadeOut) {
-        m_fadeOut->set_range(m_fadeOutNewRange);
+        m_fadeOut->set_range(m_fadeOutNewRange, transaction);
     }
     return 1;
 }
 
 int TFadeRangeCommand::undo_action()
 {
+    TRtTransaction transaction;
     if (m_fadeIn) {
-        m_fadeIn->set_range( m_fadeInOrigRange );
+        m_fadeIn->set_range(m_fadeInOrigRange, transaction);
     }
     if (m_fadeOut) {
-        m_fadeOut->set_range(m_fadeOutOrigRange);
+        m_fadeOut->set_range(m_fadeOutOrigRange, transaction);
     }
     return 1;
 }

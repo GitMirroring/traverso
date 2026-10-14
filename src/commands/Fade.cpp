@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TContextPointer.h"
 #include <TViewPort.h>
 #include <TFadeCurve.h>
+#include <TRtTransaction.h>
 #include <TFadeCurveView.h>
 #include <TPeak.h>
 #include <TSheet.h>
@@ -86,13 +87,15 @@ int FadeBend::prepare_actions()
 
 int FadeBend::do_action()
 {
-	m_fade->set_bend_factor(newBend);
+	TRtTransaction transaction;
+	m_fade->set_bend_factor(newBend, transaction);
 	return 1;
 }
 
 int FadeBend::undo_action()
 {
-	m_fade->set_bend_factor(origBend);
+	TRtTransaction transaction;
+	m_fade->set_bend_factor(origBend, transaction);
 	return 1;
 }
 
@@ -116,11 +119,13 @@ int FadeBend::jog()
 	
 	float dx = (float(origY - m_contextPointer->mouse_viewport_y()) / CURSOR_SPEED);
 
+	TRtTransaction transaction;
+
 	if (m_fade->get_raster()) {
 		float value = round_float(oldValue + dx * direction);
-		m_fade->set_bend_factor(value);
+		m_fade->set_bend_factor(value, transaction);
 	} else {
-		m_fade->set_bend_factor(oldValue + dx * direction);
+		m_fade->set_bend_factor(oldValue + dx * direction, transaction);
 	}
 
 	oldValue = m_fade->get_bend_factor();
@@ -177,13 +182,15 @@ int FadeStrength::prepare_actions()
 
 int FadeStrength::do_action()
 {
-	m_fade->set_strength_factor(newStrength);
+	TRtTransaction transaction;
+	m_fade->set_strength_factor(newStrength, transaction);
 	return 1;
 }
 
 int FadeStrength::undo_action()
 {
-	m_fade->set_strength_factor(origStrength);
+	TRtTransaction transaction;
+	m_fade->set_strength_factor(origStrength, transaction);
 	return 1;
 }
 
@@ -204,15 +211,17 @@ void FadeStrength::set_cursor_shape(int useX, int useY)
 int FadeStrength::jog()
 {
     float dy = float(origY - m_contextPointer->mouse_viewport_y()) / CURSOR_SPEED;
-	
+
+	TRtTransaction transaction;
+
 	if (m_fade->get_bend_factor() >= 0.5) {
-		m_fade->set_strength_factor(oldValue + dy );
+		m_fade->set_strength_factor(oldValue + dy, transaction);
 	} else {
 		if (m_fade->get_raster()) {
 			float value = round_float(oldValue + dy);
-			m_fade->set_strength_factor(value);
+			m_fade->set_strength_factor(value, transaction);
 		} else {
-			m_fade->set_strength_factor(oldValue - dy);
+			m_fade->set_strength_factor(oldValue - dy, transaction);
 		}
 	}
 	
@@ -245,13 +254,15 @@ int FadeMode::prepare_actions()
 
 int FadeMode::do_action()
 {
-	m_fade->set_mode(m_newMode);
+	TRtTransaction transaction;
+	m_fade->set_mode(m_newMode, transaction);
 	return 1;
 }
 
 int FadeMode::undo_action()
 {
-	m_fade->set_mode(m_oldMode);
+	TRtTransaction transaction;
+	m_fade->set_mode(m_oldMode, transaction);
 	return 1;
 }
 

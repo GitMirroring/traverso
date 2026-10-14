@@ -55,7 +55,7 @@ TCurveView::TCurveView(TSheetView* sv, TViewItem *parentViewItem, TCurve* curve)
     m_blinkingNode = nullptr;
     m_startoffset = TTimeRef();
 
-    for(TCurveNode* node = m_curve->get_nodes().first(); node != nullptr; node = node->next) {
+    for (TCurveNode* node : m_curve->get_nodes()) {
         add_curvenode_view(node);
     }
 
@@ -437,7 +437,7 @@ TCommand* TCurveView::drag_node()
 
     TTimeRef min = TTimeRef();
     TTimeRef max = TTimeRef::max_length();
-    TRealTimeLinkedList<TCurveNode*> nodeList = m_curve->get_nodes();
+    const QList<TCurveNode*>& nodeList = m_curve->get_nodes();
 
     int indexFirstNode = nodeList.indexOf(selectedNodes.first());
     int indexLastNode = nodeList.indexOf(selectedNodes.last());
@@ -572,7 +572,7 @@ TCommand * TCurveView::remove_all_nodes()
 {
     CommandGroup* group = new CommandGroup(m_curve, tr("Clear Nodes"));
 
-    for(TCurveNode* node = m_curve->get_nodes().first(); node != nullptr; node = node->next) {
+    for (TCurveNode* node : m_curve->get_nodes()) {
         group->add_command(m_curve->remove_node(node));
     }
 

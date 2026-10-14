@@ -37,6 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TResourcesManager.h"
 #include "TCurve.h"
 #include "TFadeCurve.h"
+#include "TRtTransaction.h"
 #include "TProjectManager.h"
 #include "TPeak.h"
 #include "TProject.h"
@@ -434,7 +435,8 @@ void TAudioClip::set_fade_in_range(double range)
     if (!m_fadeIn) {
         create_fade(TFadeCurve::FadeIn);
     }
-    m_fadeIn->set_range(range);
+    TRtTransaction transaction;
+    m_fadeIn->set_range(range, transaction);
 }
 
 void TAudioClip::set_fade_out_range(double range)
@@ -442,7 +444,8 @@ void TAudioClip::set_fade_out_range(double range)
     if (!m_fadeOut) {
         create_fade(TFadeCurve::FadeOut);
     }
-    m_fadeOut->set_range(range);
+    TRtTransaction transaction;
+    m_fadeOut->set_range(range, transaction);
 }
 
 void TAudioClip::set_selected(bool /*selected*/)
@@ -655,14 +658,16 @@ TCommand* TAudioClip::lock()
 void TAudioClip::reset_fade_in()
 {
     if (m_fadeIn) {
-        m_fadeIn->set_range(0.99);
+        TRtTransaction transaction;
+        m_fadeIn->set_range(0.99, transaction);
     }
 }
 
 void TAudioClip::reset_fade_out()
 {
     if (m_fadeOut) {
-        m_fadeOut->set_range(0.99);
+        TRtTransaction transaction;
+        m_fadeOut->set_range(0.99, transaction);
     }
 }
 
