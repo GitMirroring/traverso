@@ -52,6 +52,8 @@ public:
 
     TCommand* add_node(TCurveNode* node, bool historable=true);
     TCommand* remove_node(TCurveNode* node, bool historable=true);
+    // One command for all nodes, nullptr without nodes
+    TCommand* remove_nodes(const QList<TCurveNode*>& nodes, const QString& description);
 
     // Moves node of this curve to when and value
     void set_node(TCurveNode* node, double when, double value, TRtTransaction& transaction);

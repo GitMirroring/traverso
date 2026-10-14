@@ -27,7 +27,6 @@ $Id: TFadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 #include "TCurveNode.h"
 #include "Fade.h"
 #include "TCommand.h"
-#include "CommandGroup.h"
 #include "TAddRemoveCommand.h"
 #include "TAudioDevice.h"
 #include "AudioBus.h"
@@ -239,12 +238,24 @@ void TFadeCurve::set_shape(const QString& shapeName)
         return;
     }
 
-    CommandGroup* group = new CommandGroup(this, tr("Fade Preset"));
+    const float bend = fadeElement.attribute( "bendfactor", "0.0" ).toFloat();
+    const float strength = fadeElement.attribute( "strengthfactor", "0.5" ).toFloat();
+    const float origBend = m_bendFactor;
+    const float origStrength = m_strenghtFactor;
 
-    group->add_command(new FadeBend(this, fadeElement.attribute( "bendfactor", "0.0" ).toDouble()));
-    group->add_command(new FadeStrength(this, fadeElement.attribute( "strengthfactor", "0.5" ).toDouble()));
-
-    TCommand::process_command(group);
+    TCommand::process_command(new TAddRemoveCommand(
+        this,
+        nullptr,
+        true,
+        [this, bend, strength](TRtTransaction& transaction) {
+            set_bend_factor(bend, transaction);
+            set_strength_factor(strength, transaction);
+        },
+        [this, origBend, origStrength](TRtTransaction& transaction) {
+            set_bend_factor(origBend, transaction);
+            set_strength_factor(origStrength, transaction);
+        },
+        tr("Fade Preset")));
 
     emit stateChanged();
 }

@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cmath>
 
 #include "AudioBus.h"
+#include "TAudioThreadMessageQueue.h"
 #include "TCurveNode.h"
 #include "TSession.h"
 #include "Utils.h"
@@ -361,6 +362,42 @@ TCommand* TCurve::remove_node(TCurveNode* node, bool historable)
         [this, node](TRtTransaction& transaction) { private_remove_node(node, transaction); },
         [this, node](TRtTransaction& transaction) { private_add_node(node, transaction); },
         tr("Remove CurveNode")
+        );
+}
+
+/**
+ * @brief Removes nodes of this curve with one command.
+ *
+ * @note This function must be called exclusively from the main GUI thread context!
+ */
+TCommand* TCurve::remove_nodes(const QList<TCurveNode*>& nodes, const QString& description)
+{
+    PENTER2;
+
+    if (nodes.isEmpty()) {
+        return nullptr;
+    }
+
+    // The batch signals let the views handle all removals at once
+    return new TAddRemoveCommand(
+        this,
+        nullptr,
+        true,
+        [this, nodes](TRtTransaction& transaction) {
+            tsmp().trigger_batch_start();
+            for (TCurveNode* node : nodes) {
+                private_remove_node(node, transaction);
+            }
+            tsmp().trigger_batch_finish();
+        },
+        [this, nodes](TRtTransaction& transaction) {
+            tsmp().trigger_batch_start();
+            for (TCurveNode* node : nodes) {
+                private_add_node(node, transaction);
+            }
+            tsmp().trigger_batch_finish();
+        },
+        description
         );
 }
 

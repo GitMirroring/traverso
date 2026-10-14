@@ -30,7 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TSheet.h>
 #include "TInputEventDispatcher.h"
 
-#include "CommandGroup.h"
 #include "MoveCurveNode.h"
 
 #include <Debugger.h>
@@ -409,14 +408,14 @@ TCommand* TCurveView::remove_node()
     emit curveModified();
 
     QString description = tr("Removed %n Node(s)", "", nodesToBeRemoved.size());
-    CommandGroup* group = new CommandGroup(m_curve, description);
+    QList<TCurveNode*> nodes;
 
     foreach(TCurveNodeView* nodeView, nodesToBeRemoved) {
         nodeView->set_hard_selected(false);
-        group->add_command(m_curve->remove_node(nodeView->get_curve_node()));
+        nodes.append(nodeView->get_curve_node());
     }
 
-    return group;
+    return m_curve->remove_nodes(nodes, description);
 }
 
 TCommand* TCurveView::drag_node()
@@ -570,13 +569,7 @@ float TCurveView::get_default_value()
 
 TCommand * TCurveView::remove_all_nodes()
 {
-    CommandGroup* group = new CommandGroup(m_curve, tr("Clear Nodes"));
-
-    for (TCurveNode* node : m_curve->get_nodes()) {
-        group->add_command(m_curve->remove_node(node));
-    }
-
-    return group;
+    return m_curve->remove_nodes(m_curve->get_nodes(), tr("Clear Nodes"));
 }
 
 TCommand* TCurveView::select_lazy_selected_node()
