@@ -63,7 +63,7 @@ target_include_directories(traversosheetcanvas
         ${CMAKE_SOURCE_DIR}/src/plugins/native
         ${CMAKE_SOURCE_DIR}/src/commands
         ${CMAKE_SOURCE_DIR}/src/audiofileio
-        ${CMAKE_SOURCE_DIR}/src/engine
+        ${CMAKE_SOURCE_DIR}/src/audioruntime
 )
 
 # Connect supporting interface drawing mechanics to the canvas engine

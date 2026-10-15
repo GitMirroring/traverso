@@ -12,9 +12,6 @@ add_library(traversosupport STATIC
     defines.h
     RingBufferNPT.h
     TRealTimeLinkedList.h
-    TTransportControl.h TTransportControl.cpp
-    TProcessCallBackData.h
-    TAudioThreadMessageQueue.h TAudioThreadMessageQueue.cpp
 )
 
 target_include_directories(traversosupport PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

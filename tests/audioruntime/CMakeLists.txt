@@ -4,7 +4,7 @@
 # Headless test of the audio thread watchdog
 add_executable(traverso_audio_thread_watchdog_test test_audio_thread_watchdog.cpp)
 
-target_include_directories(traverso_audio_thread_watchdog_test PRIVATE ${CMAKE_SOURCE_DIR}/src/engine)
+target_include_directories(traverso_audio_thread_watchdog_test PRIVATE ${CMAKE_SOURCE_DIR}/src/audioruntime)
 
 target_link_libraries(traverso_audio_thread_watchdog_test PRIVATE traverso_compiler_settings Qt6::Core)
 

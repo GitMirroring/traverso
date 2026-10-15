@@ -26,7 +26,7 @@ target_include_directories(traversoplugins
         ${CMAKE_SOURCE_DIR}/src/core
         ${CMAKE_SOURCE_DIR}/src/support
         ${CMAKE_SOURCE_DIR}/src/dsp
-        ${CMAKE_SOURCE_DIR}/src/engine
+        ${CMAKE_SOURCE_DIR}/src/audioruntime
         ${CMAKE_SOURCE_DIR}/src/commands
 )
 

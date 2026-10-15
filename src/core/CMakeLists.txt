@@ -51,9 +51,6 @@ add_library(traversocore STATIC
     TCommandPlugin.h
     TActions.h
     TUndoCommand.h
-    TRtTransaction.h TRtTransaction.cpp
-    TRtList.h
-    TRtValue.h
     TViewPortScroller.h TViewPortScroller.cpp
     TTimeLineEntity.h TTimeLineEntity.cpp
     TSelectionService.h TSelectionService.cpp
@@ -70,7 +67,6 @@ target_include_directories(traversocore
         ${CMAKE_SOURCE_DIR}/src/audiofileio/decode
         ${CMAKE_SOURCE_DIR}/src/audiofileio/encode
         ${CMAKE_SOURCE_DIR}/src/commands
-        ${CMAKE_SOURCE_DIR}/src/engine
         ${CMAKE_SOURCE_DIR}/src/plugins
         ${CMAKE_SOURCE_DIR}/src/plugins/native
 )
@@ -80,6 +76,7 @@ target_link_libraries(traversocore
     PUBLIC
         traversosupport
         traversodsp
+        traversoaudioruntime
         Qt6::Widgets
         Qt6::Gui
         Qt6::Xml
