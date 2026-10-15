@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInputEventDispatcher.h"
 
 #include "MoveCurveNode.h"
+#include "TCurvePolyline.h"
 
 #include <Debugger.h>
 
@@ -93,17 +94,23 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
 
     painter->save();
 
-    int xstart = int(option->exposedRect.x());
-    int pixelcount = int(option->exposedRect.width()+1);
-    int height = int(m_boundingRect.height());
-    int offset = int(m_startoffset / m_sv->timeref_scalefactor);
+    // Path's need an additional pixel right/left to be painted correctly
+    int xstart = int(option->exposedRect.x()) - 1;
+    int pixelcount = int(option->exposedRect.width()) + 3;
+    if (xstart < 0) {
+        pixelcount += xstart;
+        xstart = 0;
+    }
+    const qreal height = m_boundingRect.height();
 
-
+    // A cosmetic pen of one device pixel: Qt draws wider pens (or a 1 pixel
+    // pen scaled for a high resolution screen) with its general stroker,
+    // which is 30 to 600 times slower, see tests/curves/benchmark_curve_paint
     QPen pen;
+    pen.setWidth(1);
+    pen.setCosmetic(true);
 
     QColor penColor;
-    // NOTE: setting penwidth to 2 increases cpu load by at least 5 times for this function
-    pen.setWidth(1);
     if (item_ignores_context()) {
         penColor = themer()->get_color("Curve:inactive");
     } else {
@@ -113,93 +120,29 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
     }
     pen.setColor(penColor);
     painter->setPen(pen);
-    //	painter->setClipRect(m_boundingRect);
 
-
-    if (m_nodeViews.size() == 1) {
-        int y = int(height - (m_nodeViews.first()->get_value() * height));
-        painter->drawLine(xstart, y, xstart + pixelcount, y);
+    if (pixelcount <= 0) {
         painter->restore();
         return;
     }
 
-    Q_ASSERT(m_nodeViews.size() > 0);
-
-    TCurveNodeView* firstNodeView = m_nodeViews.constFirst();
-    if (firstNodeView->get_when() > xstart) {
-        int y = int(height - (firstNodeView->get_value() * height));
-        int length = int(firstNodeView->get_when()) - xstart - offset;
-        if (length > 0) {
-            painter->drawLine(xstart, y, xstart + length, y);
-            xstart += length;
-            pixelcount -= length;
-        }
-        if (pixelcount <= 0) {
-            painter->restore();
-            return;
-        }
-    }
-
-    TCurveNodeView* lastNodeView = m_nodeViews.constLast();
-    if (lastNodeView->get_when() < (xstart + pixelcount + offset)) {
-        int y = int(height - (lastNodeView->get_value() * height));
-        int x = int(lastNodeView->get_when()) - offset;
-        int length = (xstart + pixelcount) - int(lastNodeView->get_when()) + offset;
-        if (length > 0) {
-            painter->drawLine(x, y, x + length - 1, y);
-            pixelcount -= length;
-        }
-        if (pixelcount <= 0) {
-            painter->restore();
-            return;
-        }
-    }
-
-
-    // Path's need an additional pixel righ/left to be painted correctly.
-    // FadeCurveView get_curve adjusts for this, if changing these
-    // values, also change the adjustment in FadeCurveView::get_curve() !!!
-    pixelcount += 2;
-    xstart -= 1;
-    if (xstart < 0) {
-        xstart = 0;
-        pixelcount -= 1;
-    }
-
     painter->setRenderHint(QPainter::Antialiasing);
 
-    QPolygonF polygon;
-    TAudioBuffer buffer(pixelcount);
+    // Through the middle of the device pixels, so flat stretches are one
+    // pixel row as before
+    painter->translate(0.0, 0.5 / painter->device()->devicePixelRatioF());
 
-    // The curve is in time units, one pixel is timeref_scalefactor universal frames
+    // One column per pixel, in time units: one pixel is timeref_scalefactor
+    // universal frames. A column shows the lowest and highest value inside
+    // it, so nodes closer together than a pixel stay visible.
     const double scale = double(m_sv->timeref_scalefactor);
-    m_curve->get_vector((xstart + offset) * scale,
-                        (xstart + pixelcount + offset) * scale,
-                        buffer,
-                        nframes_t(pixelcount));
+    std::vector<TCurveColumn> columns(static_cast<size_t>(pixelcount));
+    m_curve->get_columns(xstart * scale + double(m_startoffset.universal_frame()), scale, pixelcount, columns.data());
 
-    for (int i=0; i<pixelcount; i+=3) {
-        polygon <<  QPointF(xstart + i, height - qreal(buffer.at(i) * height) );
-    }
+    // Not reduced: the time to paint a line depends on the pixels it covers,
+    // not on its number of points
+    painter->drawPolyline(curve_polyline(columns.data(), pixelcount, xstart, height, 0.0));
 
-    // Depending on the zoom level, curve nodes can end up to be aligned
-    // vertically at the exact same x position. The curve line won't be painted
-    // by the routine above (it doesn't catch the second node position obviously)
-    // so we add curvenodes _always_ to solve this problem easily :-)
-    for(TCurveNodeView* view : m_nodeViews) {
-        qreal x = view->x();
-        if ( (x > xstart) && x < (xstart + pixelcount)) {
-            polygon <<  QPointF( x + view->boundingRect().width() / 2,
-                                 (height - (view->get_curve_node()->get_value() * height)) );
-        }
-    }
-
-    // Which means we have to sort the polygon
-    std::sort(polygon.begin(), polygon.end(), [&](const QPointF &left, const QPointF &right){
-        return left.x() < right.x();
-    });
-
-    painter->drawPolyline(polygon);
     painter->restore();
 }
 

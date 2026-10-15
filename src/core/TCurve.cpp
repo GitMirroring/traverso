@@ -241,6 +241,11 @@ void TCurve::get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, 
     gui_snapshot()->get_vector(x0, x1, audioBuffer.get_data(veclen), veclen, m_guiLookupCache);
 }
 
+void TCurve::get_columns(double x0, double columnWidth, int count, TCurveColumn* columns)
+{
+    gui_snapshot()->get_columns(x0, columnWidth, count, columns, m_guiLookupCache);
+}
+
 void TCurve::set_range(double when, TRtTransaction& transaction)
 {
 	if (m_nodes.isEmpty()) {

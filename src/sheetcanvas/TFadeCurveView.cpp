@@ -21,6 +21,7 @@ $Id: FadeCurveView.cpp,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 */
 
 #include "TFadeCurveView.h"
+#include "TCurvePolyline.h"
 
 #include <QPainter>
 
@@ -77,7 +78,6 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
         return;
     }
 
-    QPolygonF polygon;
     qreal xstart = option->exposedRect.x();
     if (xstart > 0) {
             xstart -= 1;
@@ -86,7 +86,6 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     pixelcount += 1;
     qreal vector_start = xstart;
     qreal height = m_boundingRect.height();
-    TAudioBuffer buffer(pixelcount);
 
     // The fade is in time units, one pixel is timeref_scalefactor universal frames
     const double scale = double(m_sv->timeref_scalefactor);
@@ -96,11 +95,12 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
         vector_start += range - m_parentViewItem->boundingRect().width();
     }
 
-    m_fadeCurve->get_vector(vector_start * scale, (vector_start + pixelcount) * scale, buffer, nframes_t(pixelcount));
-
-    for (int i=0; i<pixelcount; i++) {
-        polygon <<  QPointF(xstart + 1 + i, height - (double(buffer[i]) * height) );
-    }
+    // One column per pixel, reduced to half a device pixel: filling costs
+    // time per point, see tests/curves/benchmark_curve_paint
+    std::vector<TCurveColumn> columns(static_cast<size_t>(pixelcount));
+    m_fadeCurve->get_columns(vector_start * scale, scale, pixelcount, columns.data());
+    const qreal tolerance = 0.5 / painter->device()->devicePixelRatioF();
+    QPolygonF polygon = curve_polyline(columns.data(), pixelcount, xstart + 1, height, tolerance);
 
 
     painter->save();

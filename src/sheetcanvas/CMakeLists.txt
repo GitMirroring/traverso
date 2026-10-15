@@ -7,6 +7,7 @@ set(TRAVERSO_SHEETCANVAS_SOURCES
     TPlayHeadView.cpp
     TCurveNodeView.cpp
     TCurveView.cpp
+    TCurvePolyline.h
     TFadeCurveView.cpp
     TTimeLineMarkerView.cpp
     TLineView.cpp

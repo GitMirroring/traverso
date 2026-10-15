@@ -61,6 +61,8 @@ public:
     // Get functions
     double get_range() const;
     void get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen);
+    // For drawing, see TCurveSnapshot::get_columns()
+    void get_columns(double x0, double columnWidth, int count, TCurveColumn* columns);
     // Sorted by when
     const QList<TCurveNode*>& get_nodes() const {return m_nodes;}
     TSession* get_sheet() const {return m_session;}

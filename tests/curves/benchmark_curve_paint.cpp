@@ -14,7 +14,9 @@
 // seconds (default 1) and reports the process CPU time per repaint. Build it
 // in Release: a Debug build mostly measures the missing optimisation.
 //
-// Usage: traverso_curve_paint_benchmark [seconds per case]
+// Usage: traverso_curve_paint_benchmark [seconds per case] [directory]
+// With a directory it also writes a PNG per curve and method, 800 px of the
+// curve at 2x device pixel ratio with the cosmetic pen, to compare the looks.
 
 #include "TCurvePolyline.h"
 #include "TCurveSnapshot.h"
@@ -42,6 +44,7 @@ static const double SCALE = 10.0 * ONE_MINUTE / WIDTH;      // 10 minutes on scr
 static const double START = 60.0 * ONE_MINUTE;              // one hour into the timeline
 
 static double g_secondsPerCase = 1.0;
+static QString g_imageDirectory;
 
 struct Curve
 {
@@ -168,6 +171,44 @@ static void run_curve(const Curve& curve, bool fill)
         {"columns, reduced 0.5 px", [&]() { return column_polyline(*snapshot, 0.5, columns, cache); }},
     };
 
+    if (!g_imageDirectory.isEmpty()) {
+        // The first 800 pixels, every method below the other
+        const int dpr = 2;
+        const int shown = 800;
+        QImage image(shown * dpr, int(methods.size() * (HEIGHT + 20)) * dpr, QImage::Format_ARGB32_Premultiplied);
+        image.fill(QColor(40, 40, 40));
+        QPainter painter(&image);
+        painter.scale(dpr, dpr);
+        painter.setRenderHint(QPainter::Antialiasing);
+        for (size_t m = 0; m < methods.size(); ++m) {
+            painter.save();
+            painter.translate(0, qreal(m) * (HEIGHT + 20) + 10);
+            painter.setPen(QColor(90, 90, 90));
+            painter.drawText(QPointF(4, -1), methods[m].name);
+            QPen pen(QColor(255, 200, 0));
+            pen.setWidth(1);
+            pen.setCosmetic(true);
+            painter.setPen(fill ? QPen(Qt::NoPen) : pen);
+            painter.setBrush(QColor(255, 200, 0, 120));
+            painter.setClipRect(QRectF(0, 0, shown, HEIGHT));
+            QPolygonF polyline = methods[m].build();
+            if (fill) {
+                QPainterPath path;
+                path.addPolygon(polyline);
+                path.lineTo(WIDTH, 0);
+                path.lineTo(0, 0);
+                path.closeSubpath();
+                painter.drawPath(path);
+            } else {
+                painter.drawPolyline(polyline);
+            }
+            painter.restore();
+        }
+        painter.end();
+        QString name = QString::fromLatin1(curve.name).section(',', 0, 0).replace(' ', '-');
+        image.save(g_imageDirectory + "/curve-" + name + ".png");
+    }
+
     std::printf("\n%s%s\n", curve.name, fill ? ", filled like a fade" : "");
     std::printf("  %-26s %7s %9s %13s %13s %13s %13s\n", "method", "points", "build us", "paint 1x us", "2x us", "2x cosm. 1px", "2x cosm. 2px");
 
@@ -216,12 +257,50 @@ static void run_curve(const Curve& curve, bool fill)
         std::printf("  %-26s %7lld %9.1f %13.1f %13.1f %13.1f %13.1f\n", method.name, qlonglong(points), buildTime,
                     paintTimes[0], paintTimes[1], paintTimes[2], paintTimes[3]);
     }
+
+    if (fill) {
+        return;
+    }
+
+    // Painting only, from a polyline or a QPainterPath built once before:
+    // shows whether QPainter reuses anything of a path it drew before
+    QPolygonF polyline = column_polyline(*snapshot, 0.0, columns, cache);
+    QPainterPath path;
+    path.addPolygon(polyline);
+
+    std::printf("  painting only, built once:  %13s %13s\n", "1x us", "2x cosm. 1px");
+    for (int usePath = 0; usePath < 2; ++usePath) {
+        double times[2];
+        for (int dpr = 1; dpr <= 2; ++dpr) {
+            QImage image(int(WIDTH * dpr), int(HEIGHT * dpr) + dpr * 2, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            painter.scale(dpr, dpr);
+            painter.setRenderHint(QPainter::Antialiasing);
+            QPen pen(QColor(255, 200, 0));
+            pen.setWidth(1);
+            pen.setCosmetic(dpr == 2);
+            painter.setPen(pen);
+            painter.setBrush(Qt::NoBrush);
+            times[dpr - 1] = measure([&]() {
+                if (usePath) {
+                    painter.drawPath(path);
+                } else {
+                    painter.drawPolyline(polyline);
+                }
+            });
+        }
+        std::printf("  %-26s %13.1f %13.1f\n", usePath ? "drawPath(QPainterPath)" : "drawPolyline(QPolygonF)", times[0], times[1]);
+    }
 }
 
 int main(int argc, char** argv)
 {
     if (argc > 1) {
         g_secondsPerCase = std::max(0.1, std::atof(argv[1]));
+    }
+    if (argc > 2) {
+        g_imageDirectory = QString::fromLocal8Bit(argv[2]);
     }
 
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
