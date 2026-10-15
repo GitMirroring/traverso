@@ -22,8 +22,6 @@ target_link_libraries(traversoaudiobackend PRIVATE traverso_compiler_settings)
 target_include_directories(traversoaudiobackend
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/src/core
-        ${CMAKE_SOURCE_DIR}/src/common
 )
 
 # Establish required upstream structural linkages
@@ -33,7 +31,7 @@ target_link_libraries(traversoaudiobackend
         Qt6::Gui
         PkgConfig::SNDFILE
     PRIVATE
-        traversocore
+        traversosupport
 )
 
 # Process platform drivers contextually based on package scanning outcomes

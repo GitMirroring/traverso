@@ -9,7 +9,7 @@ add_executable(traverso_curve_test
 
 target_include_directories(traverso_curve_test PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/support
 )
 
 target_link_libraries(traverso_curve_test PRIVATE traverso_compiler_settings Qt6::Core)
@@ -24,7 +24,7 @@ add_executable(traverso_curve_polyline_test
 
 target_include_directories(traverso_curve_polyline_test PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/support
     ${CMAKE_SOURCE_DIR}/src/sheetcanvas
 )
 
@@ -41,7 +41,7 @@ add_executable(traverso_curve_paint_benchmark
 
 target_include_directories(traverso_curve_paint_benchmark PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/support
     ${CMAKE_SOURCE_DIR}/src/sheetcanvas
 )
 
@@ -56,7 +56,7 @@ add_executable(traverso_fade_shape_test
 
 target_include_directories(traverso_fade_shape_test PRIVATE
     ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/support
 )
 
 target_link_libraries(traverso_fade_shape_test PRIVATE traverso_compiler_settings Qt6::Core)

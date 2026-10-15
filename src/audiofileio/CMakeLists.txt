@@ -31,7 +31,6 @@ target_include_directories(traversoaudiofileio
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src/core
-        ${CMAKE_SOURCE_DIR}/src/common
 )
 
 # Connect foundational dependencies using uniform PkgConfig target identifiers
@@ -40,6 +39,7 @@ target_link_libraries(traversoaudiofileio
         Qt6::Core
         Qt6::Xml
     PRIVATE
+        traversosupport
         PkgConfig::SNDFILE
         PkgConfig::WAVPACK
         PkgConfig::SAMPLERATE

@@ -40,7 +40,7 @@ target_include_directories(traversocommands
         ${CMAKE_SOURCE_DIR}/src/traverso/dialogs
         ${CMAKE_SOURCE_DIR}/src/sheetcanvas
         ${CMAKE_SOURCE_DIR}/src/core
-        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_SOURCE_DIR}/src/support
         ${CMAKE_SOURCE_DIR}/src/audiofileio
 )
 

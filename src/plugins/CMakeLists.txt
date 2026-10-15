@@ -24,7 +24,7 @@ target_include_directories(traversoplugins
         ${CMAKE_CURRENT_SOURCE_DIR}/native
         ${CMAKE_CURRENT_SOURCE_DIR}/LV2
         ${CMAKE_SOURCE_DIR}/src/core
-        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_SOURCE_DIR}/src/support
         ${CMAKE_SOURCE_DIR}/src/engine
         ${CMAKE_SOURCE_DIR}/src/commands
 )

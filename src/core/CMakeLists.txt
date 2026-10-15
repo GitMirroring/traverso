@@ -1,30 +1,7 @@
-# Enable the hardware-level assembly compilation layer
-enable_language(ASM)
-
-# Track relevant low-level optimization resource modules based on CPU indicators
-set(CORE_ASM_SOURCE "")
-if(WANT_SSE)
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(CORE_ASM_SOURCE ${CMAKE_SOURCE_DIR}/src/common/sse_functions_64bit.S)
-    else()
-        set(CORE_ASM_SOURCE ${CMAKE_SOURCE_DIR}/src/common/sse_functions.S)
-    endif()
-endif()
-
-if(CORE_ASM_SOURCE)
-    set_source_files_properties(${CORE_ASM_SOURCE} PROPERTIES LANGUAGE ASM)
-endif()
-
 # Define the central data structures and engine synchronization library.
 # TCommandPlugin.h is explicitly included in the sources list to force
 # Qt's AUTOMOC to parse its meta-object macros and generate the required vtable symbols.
 add_library(traversocore STATIC
-    ${CMAKE_SOURCE_DIR}/src/common/Utils.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/TAudioThreadMessageQueue.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/Debugger.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/Mixer.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/TTimeRef.h ${CMAKE_SOURCE_DIR}/src/common/TTimeRef.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/TTransportControl.cpp
     TAudioClip.cpp
     TAudioClipGroup.cpp
     TAudioClipManager.cpp
@@ -82,7 +59,6 @@ add_library(traversocore STATIC
     TViewPortScroller.h TViewPortScroller.cpp
     TTimeLineEntity.h TTimeLineEntity.cpp
     TSelectionService.h TSelectionService.cpp
-    ${CORE_ASM_SOURCE}
 )
 
 # Bind structural build directives and environmental variables
@@ -95,7 +71,6 @@ target_include_directories(traversocore
         ${CMAKE_SOURCE_DIR}/src/audiofileio
         ${CMAKE_SOURCE_DIR}/src/audiofileio/decode
         ${CMAKE_SOURCE_DIR}/src/audiofileio/encode
-        ${CMAKE_SOURCE_DIR}/src/common
         ${CMAKE_SOURCE_DIR}/src/commands
         ${CMAKE_SOURCE_DIR}/src/engine
         ${CMAKE_SOURCE_DIR}/src/plugins
@@ -105,6 +80,7 @@ target_include_directories(traversocore
 # Connect user-interface frameworks and resampler packages to the target
 target_link_libraries(traversocore
     PUBLIC
+        traversosupport
         Qt6::Widgets
         Qt6::Gui
         Qt6::Xml
