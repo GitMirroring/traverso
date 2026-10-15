@@ -4,7 +4,10 @@
 #include <chrono>
 #include "Utils.h"
 #include "defines.h"
-#include "qdatetime.h"
+#include <QMetaType>
+#include <QString>
+
+class QTime;
 
 
 

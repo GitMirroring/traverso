@@ -1,3 +1,4 @@
+#include <QTime>
 #include "TTimeRef.h"
 
 #include <QLocale>

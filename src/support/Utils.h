@@ -21,8 +21,10 @@
 
 #pragma once
 
-#include <QDateTime>
-#include <QStringList>
+#include <QString>
+#include <QtCore/qcontainerfwd.h>
+
+class QDateTime;
 #include <cmath>
 
 #define QS_C(x) x.toUtf8().data()

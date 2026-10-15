@@ -4,6 +4,8 @@
 */
 
 #include "TSelectionService.h"
+
+#include <QVariant>
 #include "TContextItem.h"
 #include "TSelectionTimeBounds.h"
 #include <QObject>

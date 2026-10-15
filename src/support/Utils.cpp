@@ -19,6 +19,8 @@
 
 */
 
+#include <QDateTime>
+#include <QStringList>
 #include "Utils.h"
 
 #include <QString>

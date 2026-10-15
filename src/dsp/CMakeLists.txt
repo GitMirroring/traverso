@@ -18,7 +18,7 @@ if(WANT_SSE)
 endif()
 
 add_library(traversodsp STATIC
-    TAudioBuffer.h
+    TAudioBuffer.h TAudioBuffer.cpp
     Mixer.h Mixer.cpp
     fpu.h fpu.cc
     gdither.h gdither_types.h gdither.cpp
