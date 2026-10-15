@@ -286,7 +286,7 @@ QDomNode TSheet::get_state(QDomDocument doc, bool istemplate)
 
     QDomNode tracksNode = doc.createElement("Tracks");
 
-    foreach(TAudioTrack* track, m_audioTracks.items()) {
+    foreach(TAudioTrack* track, m_audioTracks.gui_items()) {
         tracksNode.appendChild(track->get_state(doc, istemplate));
     }
 
@@ -294,7 +294,7 @@ QDomNode TSheet::get_state(QDomDocument doc, bool istemplate)
 
 
     QDomNode busTracksNode = doc.createElement("BusTracks");
-    foreach(TBusTrack* busTrack, m_busTracks.items()) {
+    foreach(TBusTrack* busTrack, m_busTracks.gui_items()) {
         busTracksNode.appendChild(busTrack->get_state(doc, istemplate));
     }
 
@@ -357,7 +357,7 @@ bool TSheet::get_export_range(TTimeRef &exportStartLocation, TTimeRef &exportEnd
     if (soloTracks.size() > 0) {
         tracksToExport = soloTracks;
     } else {
-        tracksToExport = m_audioTracks.items();
+        tracksToExport = m_audioTracks.gui_items();
     }
 
     TTimeRef trackExportStartlocation;
@@ -1006,12 +1006,12 @@ void TSheet::config_changed()
 
 QList< TAudioTrack * > TSheet::get_audio_tracks() const
 {
-    return m_audioTracks.items();
+    return m_audioTracks.gui_items();
 }
 
 TAudioTrack * TSheet::get_audio_track_for_index(int index)
 {
-    for(TAudioTrack* track : m_audioTracks.items()) {
+    for(TAudioTrack* track : m_audioTracks.gui_items()) {
         if (track->get_sort_index() == index) {
             return track;
         }
@@ -1059,7 +1059,7 @@ bool TSheet::get_write_diskio_cpu_time(float &time)
 QList<TAudioTrack *> TSheet::get_solo_tracks() const
 {
     QList<TAudioTrack*> soloTracks;
-    for(auto track : m_audioTracks.items()) {
+    for(auto track : m_audioTracks.gui_items()) {
         if (track->is_solo()) {
             soloTracks.append(track);
         }
@@ -1070,7 +1070,7 @@ QList<TAudioTrack *> TSheet::get_solo_tracks() const
 QList<TAudioTrack *> TSheet::get_armed_tracks() const
 {
     QList<TAudioTrack*> armedTracks;
-    for(auto track : m_audioTracks.items()) {
+    for(auto track : m_audioTracks.gui_items()) {
         if (track->armed()) {
             armedTracks.append(track);
         }

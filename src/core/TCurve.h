@@ -16,7 +16,7 @@
 
 #include "TAudioBuffer.h"
 #include "TCurveSnapshot.h"
-#include "TRtShared.h"
+#include "TRtValue.h"
 #include "TTimeRef.h"
 
 class TSession;
@@ -30,7 +30,7 @@ class TRtTransaction;
  * The GUI thread owns the nodes and is the only thread that reads or changes
  * them. Every change takes a TRtTransaction, which publishes a new solved
  * TCurveSnapshot to the audio thread. The GUI thread evaluates the same
- * snapshot, see evaluation_snapshot().
+ * snapshot, see gui_snapshot().
  */
 class TCurve : public TContextItem
 {
@@ -69,7 +69,7 @@ public:
 
     // The solved curve the GUI thread evaluates, the same one the audio thread
     // gets. Never nullptr.
-    std::shared_ptr<const TCurveSnapshot> evaluation_snapshot() const;
+    std::shared_ptr<const TCurveSnapshot> gui_snapshot() const;
 
     // Set functions
     virtual void set_range(double when, TRtTransaction& transaction);
@@ -90,12 +90,12 @@ protected:
 
     // Audio thread: the snapshot to evaluate, nullptr until the first one is
     // published, and the lookup cache of the audio thread
-    const TCurveSnapshot* rt_snapshot() const {return m_snapshot.rt_current();}
+    const TCurveSnapshot* rt_snapshot() const {return m_snapshot.rt_snapshot();}
     TCurveLookupCache& rt_lookup_cache() {return m_rtLookupCache;}
 
 private :
     QList<TCurveNode*>          m_nodes;
-    TRtShared<TCurveSnapshot>   m_snapshot;
+    TRtValue<TCurveSnapshot>    m_snapshot;
     TCurveLookupCache           m_guiLookupCache;
     TCurveLookupCache           m_rtLookupCache;
     double          m_defaultValue{};

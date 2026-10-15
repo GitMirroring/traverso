@@ -27,7 +27,7 @@
  * must not be destroyed before the audio thread applied that step.
  */
 template <class T>
-class TRtList final : public TRtListBase
+class TRtList final : public TRtPublishable
 {
 public:
     using LessThan = std::function<bool(const T*, const T*)>;
@@ -48,25 +48,25 @@ public:
 
     // GUI thread
 
-    const QList<T*>& items() const
+    const QList<T*>& gui_items() const
     {
-        Q_ASSERT_X(is_gui_thread(), "TRtList::items", "GUI side used outside the GUI thread");
-        return m_items;
+        Q_ASSERT_X(is_gui_thread(), "TRtList::gui_items", "GUI side used outside the GUI thread");
+        return m_guiItems;
     }
 
     void add(T* item, TRtTransaction& transaction)
     {
         Q_ASSERT_X(is_gui_thread(), "TRtList::add", "GUI side used outside the GUI thread");
-        m_items.append(item);
+        m_guiItems.append(item);
         sort();
-        mark_dirty(transaction);
+        publish_in(transaction);
     }
 
     void remove(T* item, TRtTransaction& transaction)
     {
         Q_ASSERT_X(is_gui_thread(), "TRtList::remove", "GUI side used outside the GUI thread");
-        m_items.removeAll(item);
-        mark_dirty(transaction);
+        m_guiItems.removeAll(item);
+        publish_in(transaction);
     }
 
     // Call after the sort order of items changed, e.g. a clip moved
@@ -74,7 +74,7 @@ public:
     {
         Q_ASSERT_X(is_gui_thread(), "TRtList::resort", "GUI side used outside the GUI thread");
         sort();
-        mark_dirty(transaction);
+        publish_in(transaction);
     }
 
     // Audio thread
@@ -104,17 +104,17 @@ private:
 
     std::unique_ptr<TRtStep> create_publish_step() override
     {
-        return std::make_unique<SwapStep>(&m_rtItems, new std::vector<T*>(m_items.begin(), m_items.end()));
+        return std::make_unique<SwapStep>(&m_rtItems, new std::vector<T*>(m_guiItems.begin(), m_guiItems.end()));
     }
 
     void sort()
     {
         if (m_lessThan) {
-            std::stable_sort(m_items.begin(), m_items.end(), m_lessThan);
+            std::stable_sort(m_guiItems.begin(), m_guiItems.end(), m_lessThan);
         }
     }
 
-    QList<T*>                              m_items;
+    QList<T*>                              m_guiItems;
     std::vector<T*>*                       m_rtItems;
     LessThan                               m_lessThan;
 };

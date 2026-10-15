@@ -93,7 +93,7 @@ QDomNode TAudioTrack::get_state( QDomDocument doc, bool istemplate)
     if (! istemplate ) {
         QDomNode clips = doc.createElement("Clips");
 
-        for(TAudioClip* clip: m_clips.items()) {
+        for(TAudioClip* clip: m_clips.gui_items()) {
             if (clip->get_length() == qint64(0)) {
                 PERROR("Clip length is 0! This shouldn't happen!!!!");
                 continue;
@@ -113,8 +113,8 @@ QDomNode TAudioTrack::get_state( QDomDocument doc, bool istemplate)
 TTimeRef TAudioTrack::get_end_location() const
 {
     TTimeRef endLocation{};
-    if (!m_clips.items().isEmpty()) {
-        endLocation = m_clips.items().last()->get_location_end();
+    if (!m_clips.gui_items().isEmpty()) {
+        endLocation = m_clips.gui_items().last()->get_location_end();
     }
     return endLocation;
 }
@@ -351,14 +351,14 @@ TCommand* TAudioTrack::toggle_arm()
 
 bool TAudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef& trackExportEndLocation )
 {
-    if(m_clips.items().isEmpty()) {
+    if(m_clips.gui_items().isEmpty()) {
         return false;
     }
 
     trackExportStartLocation = TTimeRef::max_length();
     trackExportEndLocation = TTimeRef();
 
-    for(TAudioClip* clip : m_clips.items()) {
+    for(TAudioClip* clip : m_clips.gui_items()) {
         if (! clip->is_muted() ) {
             if (clip->get_location_end() > trackExportEndLocation) {
                 trackExportEndLocation = clip->get_location_end();
@@ -375,7 +375,7 @@ bool TAudioTrack::get_export_range(TTimeRef& trackExportStartLocation, TTimeRef&
 
 TAudioClip* TAudioTrack::get_clip_after(const TTimeRef& pos) const
 {
-    for(TAudioClip* clip : m_clips.items()) {
+    for(TAudioClip* clip : m_clips.gui_items()) {
         if (clip->get_location_start() > pos) {
             return clip;
         }
@@ -385,9 +385,9 @@ TAudioClip* TAudioTrack::get_clip_after(const TTimeRef& pos) const
 
 TAudioClip *TAudioTrack::get_audio_clip_after(TAudioClip *audioClip) const
 {
-    auto index = m_clips.items().indexOf(audioClip);
-    if (index >= 0 && (index + 1) < m_clips.items().size()) {
-        return m_clips.items().at(index + 1);
+    auto index = m_clips.gui_items().indexOf(audioClip);
+    if (index >= 0 && (index + 1) < m_clips.gui_items().size()) {
+        return m_clips.gui_items().at(index + 1);
     }
 
     return nullptr;
@@ -395,9 +395,9 @@ TAudioClip *TAudioTrack::get_audio_clip_after(TAudioClip *audioClip) const
 
 TAudioClip *TAudioTrack::get_audio_clip_before(TAudioClip *audioClip) const
 {
-    auto index = m_clips.items().indexOf(audioClip);
+    auto index = m_clips.gui_items().indexOf(audioClip);
     if ((index - 1) >= 0) {
-        return m_clips.items().at(index - 1);
+        return m_clips.gui_items().at(index - 1);
     }
 
     return nullptr;
@@ -409,7 +409,7 @@ TAudioClip* TAudioTrack::get_clip_before(const TTimeRef& pos) const
     TTimeRef shortestDistance = TTimeRef::max_length();
     TAudioClip* nearest = nullptr;
 
-    for(TAudioClip* clip : m_clips.items()) {
+    for(TAudioClip* clip : m_clips.gui_items()) {
         if (clip->get_location_start() < pos) {
             TTimeRef diff = pos - clip->get_location_start();
             if (diff < shortestDistance) {
@@ -425,7 +425,7 @@ TAudioClip* TAudioTrack::get_clip_before(const TTimeRef& pos) const
 
 TAudioClip *TAudioTrack::get_clip_at_location(const TTimeRef &location) const
 {
-    for(TAudioClip* clip : m_clips.items()) {
+    for(TAudioClip* clip : m_clips.gui_items()) {
         if (clip->get_location_start() < location && clip->get_location_end() > location) {
             return clip;
         }
@@ -439,7 +439,7 @@ void TAudioTrack::clip_position_changed(TAudioClip* clip)
     // new clips, don't affect the order of this track's clips.
     // A changed position is a complete change on its own; called during a
     // larger change, this transaction joins that one.
-    if (m_clips.items().contains(clip)) {
+    if (m_clips.gui_items().contains(clip)) {
         TRtTransaction transaction;
         m_clips.resort(transaction);
     }

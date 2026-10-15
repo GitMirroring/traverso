@@ -176,10 +176,10 @@ TBusTrack* TSession::get_master_out_bus_track() const
 QList<TTrack*> TSession::get_tracks() const
 {
     QList<TTrack*> list;
-    for(TAudioTrack* track : m_audioTracks.items()) {
+    for(TAudioTrack* track : m_audioTracks.gui_items()) {
 		list.append(track);
 	}
-    for(TBusTrack* track : m_busTracks.items()) {
+    for(TBusTrack* track : m_busTracks.gui_items()) {
 		list.append(track);
 	}
 
@@ -203,7 +203,7 @@ TTrack* TSession::get_track(qint64 id) const
 
 QList<TBusTrack*> TSession::get_bus_tracks() const
 {
-	return m_busTracks.items();
+	return m_busTracks.gui_items();
 }
 
 TSnapList* TSession::get_snap_list() const
@@ -417,13 +417,13 @@ TCommand* TSession::toggle_mute()
 	}
 
 	bool hasMute = false;
-    for(TAudioTrack* track : m_audioTracks.items()) {
+    for(TAudioTrack* track : m_audioTracks.gui_items()) {
         if (track->is_muted()) {
             hasMute = true;
         }
 	}
 
-    for(TAudioTrack* track : m_audioTracks.items()) {
+    for(TAudioTrack* track : m_audioTracks.gui_items()) {
 		track->set_muted(!hasMute);
 	}
 
@@ -437,11 +437,11 @@ TCommand* TSession::toggle_arm()
 	}
 
 	bool hasArmed = false;
-	foreach(TAudioTrack* track, m_audioTracks.items()) {
+	foreach(TAudioTrack* track, m_audioTracks.gui_items()) {
 		if (track->armed()) hasArmed = true;
 	}
 
-	foreach(TAudioTrack* track, m_audioTracks.items()) {
+	foreach(TAudioTrack* track, m_audioTracks.gui_items()) {
 		if (hasArmed) {
 			track->disarm();
 		} else {

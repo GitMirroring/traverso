@@ -48,15 +48,15 @@ struct TRtStepBatch
     }
 };
 
-bool TRtListBase::is_gui_thread()
+bool TRtPublishable::is_gui_thread()
 {
     return QThread::currentThread() == QCoreApplication::instance()->thread();
 }
 
-void TRtListBase::mark_dirty(TRtTransaction& transaction)
+void TRtPublishable::publish_in(TRtTransaction& transaction)
 {
-    Q_ASSERT_X(is_gui_thread(), "TRtListBase::mark_dirty", "TRtLists can only be changed in the GUI thread");
-    transaction.mark_dirty(this);
+    Q_ASSERT_X(is_gui_thread(), "TRtPublishable::publish_in", "Real-time state can only be changed in the GUI thread");
+    transaction.publish_at_end(this);
 }
 
 TRtTransaction::TRtTransaction()
@@ -77,7 +77,7 @@ TRtTransaction::~TRtTransaction()
     }
 }
 
-void TRtTransaction::mark_dirty(TRtListBase* list)
+void TRtTransaction::publish_at_end(TRtPublishable* publishable)
 {
     // Only the outermost transaction publishes
     TRtTransaction* outermost = this;
@@ -85,22 +85,22 @@ void TRtTransaction::mark_dirty(TRtListBase* list)
         outermost = outermost->m_outer;
     }
 
-    if (!outermost->m_dirtyLists.contains(list)) {
-        outermost->m_dirtyLists.append(list);
+    if (!outermost->m_toPublish.contains(publishable)) {
+        outermost->m_toPublish.append(publishable);
     }
 }
 
 void TRtTransaction::commit()
 {
-    if (m_dirtyLists.isEmpty()) {
+    if (m_toPublish.isEmpty()) {
         return;
     }
 
     auto* batch = new TRtStepBatch;
-    batch->steps.reserve(m_dirtyLists.size());
+    batch->steps.reserve(m_toPublish.size());
 
-    for (TRtListBase* list : std::as_const(m_dirtyLists)) {
-        batch->steps.push_back(list->create_publish_step());
+    for (TRtPublishable* publishable : std::as_const(m_toPublish)) {
+        batch->steps.push_back(publishable->create_publish_step());
     }
 
     if (!audiodevice().is_driver_loaded()) {

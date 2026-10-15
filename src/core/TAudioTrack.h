@@ -59,7 +59,7 @@ public :
 
     TSheet* get_sheet() const {return m_sheet;}
     QDomNode get_state(QDomDocument doc, bool istemplate=false);
-    QList<TAudioClip*> get_audioclips() const {return m_clips.items();}
+    QList<TAudioClip*> get_audioclips() const {return m_clips.gui_items();}
 
     // Return the rightmost AudioClip track end location
     TTimeRef get_end_location() const;

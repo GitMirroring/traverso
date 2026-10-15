@@ -635,7 +635,7 @@ QDomNode TProject::get_state(QDomDocument doc, bool istemplate)
 
 
     QDomNode busTracksNode = doc.createElement("BusTracks");
-    foreach(TBusTrack* busTrack, m_busTracks.items()) {
+    foreach(TBusTrack* busTrack, m_busTracks.gui_items()) {
         busTracksNode.appendChild(busTrack->get_state(doc, istemplate));
     }
 

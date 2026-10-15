@@ -231,14 +231,14 @@ std::shared_ptr<const TCurveSnapshot> TCurve::create_snapshot() const
     return TCurveSnapshot::create(std::move(points), m_defaultValue);
 }
 
-std::shared_ptr<const TCurveSnapshot> TCurve::evaluation_snapshot() const
+std::shared_ptr<const TCurveSnapshot> TCurve::gui_snapshot() const
 {
-    return m_snapshot.current();
+    return m_snapshot.gui_snapshot();
 }
 
 void TCurve::get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen)
 {
-    evaluation_snapshot()->get_vector(x0, x1, audioBuffer.get_data(veclen), veclen, m_guiLookupCache);
+    gui_snapshot()->get_vector(x0, x1, audioBuffer.get_data(veclen), veclen, m_guiLookupCache);
 }
 
 void TCurve::set_range(double when, TRtTransaction& transaction)

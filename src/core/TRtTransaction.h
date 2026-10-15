@@ -29,20 +29,20 @@ public:
 };
 
 /**
- * @brief Base class for containers that publish their state to the audio
- *        thread through a TRtTransaction, see TRtList.
+ * @brief Base class for state that a TRtTransaction publishes to the audio
+ *        thread, see TRtList and TRtValue.
  */
-class TRtListBase
+class TRtPublishable
 {
 public:
-    virtual ~TRtListBase() = default;
+    virtual ~TRtPublishable() = default;
 
 protected:
-    // GUI thread: register this list as changed in transaction.
-    void mark_dirty(TRtTransaction& transaction);
+    // GUI thread: publish this object's state when transaction ends.
+    void publish_in(TRtTransaction& transaction);
 
-    // Used by debug assertions to check that each side of a list is only used
-    // from its own thread.
+    // Used by debug assertions to check that each side is only used from its
+    // own thread.
     static bool is_gui_thread();
 
 private:
@@ -89,11 +89,11 @@ public:
     static void* operator new[](std::size_t) = delete;
 
 private:
-    friend class TRtListBase;
+    friend class TRtPublishable;
 
-    void mark_dirty(TRtListBase* list);
+    void publish_at_end(TRtPublishable* publishable);
     void commit();
 
-    TRtTransaction*      m_outer{nullptr};
-    QList<TRtListBase*>  m_dirtyLists;
+    TRtTransaction*         m_outer{nullptr};
+    QList<TRtPublishable*>  m_toPublish;
 };
