@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TAudioThreadMessageQueue.h"
+#include "Debugger.h"
 
 /**
  * @brief Continuous background execution loop for processing thread-safe events.
@@ -95,6 +96,12 @@ void TAudioThreadMessageQueue::post_gui_event(TAudioThreadMessageQueueEvent &&ev
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "TSMP::post_gui_event", "Adding event from other than GUI thread!!");
 
     if (!m_postedFromGuiThreadQueue->try_enqueue(std::move(event))) {
+        // Producers should never wait: a full queue means too many events are
+        // posted, which should be made visible and optimized
+        PWARN(QString("TAudioThreadMessageQueue: the queue to the audio thread is full (%1 of %2 events), "
+                      "the GUI thread waits for the audio thread")
+                  .arg(m_postedFromGuiThreadQueue->size_approx())
+                  .arg(m_postedFromGuiThreadQueue->max_capacity()).toLatin1().data());
         m_postedFromGuiThreadQueue->wait_enqueue(std::move(event));
     }
 }

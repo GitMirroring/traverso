@@ -46,3 +46,19 @@ target_include_directories(traverso_curve_paint_benchmark PRIVATE
 )
 
 target_link_libraries(traverso_curve_paint_benchmark PRIVATE traverso_compiler_settings Qt6::Core Qt6::Gui)
+
+# Headless test of the fade shape
+add_executable(traverso_fade_shape_test
+    test_fade_shape.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/TFadeShape.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/TCurveSnapshot.cpp
+)
+
+target_include_directories(traverso_fade_shape_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/core
+    ${CMAKE_SOURCE_DIR}/src/common
+)
+
+target_link_libraries(traverso_fade_shape_test PRIVATE traverso_compiler_settings Qt6::Core)
+
+add_test(NAME fade_shape COMMAND traverso_fade_shape_test)
