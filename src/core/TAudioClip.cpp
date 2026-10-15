@@ -149,8 +149,10 @@ int TAudioClip::set_state(const QDomNode& node)
         // Joins the transaction of the sheet when loading a project
         TRtTransaction transaction;
 
+        // Older versions created a fade for every clip that was drawn, those
+        // that do nothing are not loaded
         QDomElement fadeInNode = node.firstChildElement("FadeIn");
-        if (!fadeInNode.isNull()) {
+        if (!fadeInNode.isNull() && (m_fadeIn || !TFadeCurve::is_unused(fadeInNode))) {
             if (!m_fadeIn) {
                 TFadeCurve* fade = new TFadeCurve(this, TFadeCurve::FadeIn, transaction);
                 fade->set_parent_timeline_entity(this);
@@ -160,7 +162,7 @@ int TAudioClip::set_state(const QDomNode& node)
         }
 
         QDomElement fadeOutNode = node.firstChildElement("FadeOut");
-        if (!fadeOutNode.isNull()) {
+        if (!fadeOutNode.isNull() && (m_fadeOut || !TFadeCurve::is_unused(fadeOutNode))) {
             if (!m_fadeOut) {
                 TFadeCurve* fade = new TFadeCurve(this, TFadeCurve::FadeOut, transaction);
                 fade->set_parent_timeline_entity(this);

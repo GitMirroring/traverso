@@ -73,6 +73,27 @@ QDomNode TFadeCurve::get_state( QDomDocument doc )
     return node;
 }
 
+// The stored length, 0 when it is not a number
+static double stored_length(const QDomElement& e)
+{
+    QString rangestring = e.attribute("range", "0");
+    if (rangestring == "nan" || rangestring == "inf") {
+        printf("FadeCurve::set_state: stored range was not a number!\n");
+        return 0.0;
+    }
+    return rangestring.toDouble();
+}
+
+bool TFadeCurve::is_unused(const QDomElement& e)
+{
+    return TFadeShape::is_unused(stored_length(e),
+                                 e.attribute("bypassed", "0").toInt(),
+                                 e.attribute("raster", "0").toInt(),
+                                 e.attribute("mode", "2").toInt(),
+                                 e.attribute("bendfactor", "0.0").toDouble(),
+                                 e.attribute("strengthfactor", "0.5").toDouble());
+}
+
 int TFadeCurve::set_state( const QDomNode & node )
 {
     QDomElement e = node.toElement();
@@ -85,17 +106,9 @@ int TFadeCurve::set_state( const QDomNode & node )
     // The control points follow from the mode, bend and strength, the stored
     // ones are only written for older versions
 
-    QString rangestring = e.attribute("range", "0");
-    double length = 0.0;
-    if (rangestring == "nan" || rangestring == "inf") {
-        printf("FadeCurve::set_state: stored range was not a number!\n");
-    } else {
-        length = rangestring.toDouble();
-    }
-
     TRtTransaction transaction;
 
-    set_length(length, transaction);
+    set_length(stored_length(e), transaction);
     solve_shape(transaction);
 
     emit stateChanged();
@@ -241,10 +254,7 @@ std::shared_ptr<const TFadeState> TFadeCurve::create_state() const
 
 void TFadeCurve::set_length(double length, TRtTransaction& transaction)
 {
-    // Older versions stored a fade that was off as one frame long
-    if (length <= 1.0) {
-        length = 0.0;
-    }
+    length = TFadeShape::effective_length(length);
 
     if (length == m_length) {
         return;

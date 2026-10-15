@@ -38,4 +38,13 @@ public:
 
     // The shape a new fade starts with: the "Fast" preset in the Long mode
     static bool is_default(int mode, double bend, double strength);
+
+    // A length of one universal frame or less is off: older versions stored
+    // a fade that was off as one frame long
+    static double effective_length(double length);
+
+    // A stored fade older versions created for every clip that was drawn: off,
+    // with the default shape, not bypassed and without raster. Loading it would
+    // only cost memory and audio thread time.
+    static bool is_unused(double length, bool bypassed, int raster, int mode, double bend, double strength);
 };

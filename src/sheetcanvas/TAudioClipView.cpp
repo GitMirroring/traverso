@@ -305,8 +305,9 @@ void TAudioClipView::draw_tile(QPainter* painter, qreal xstart, int pixelcount)
         const double trackCurveOffset = double(m_clip->get_location_start() / timeRefScale);
 
         auto trackGainCurve = m_tv->get_gain_curve_view()->get_curve();
-        auto fadeIn = m_clip->get_fade_in();
-        auto fadeOut = m_clip->get_fade_out();
+        // Drawing never creates fades
+        auto fadeIn = m_clip->get_existing_fade_in();
+        auto fadeOut = m_clip->get_existing_fade_out();
 
         if (clipCurve && (!clipCurve->is_trivial() || !TraversoDAW::Float::equals_1(clipCurve->get_trivial_gain()))) {
             // apply the clip's gain curve to curveMixdown, if it exists

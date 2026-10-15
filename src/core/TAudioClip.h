@@ -84,8 +84,13 @@ public:
     TSheet* get_sheet() const;
     TPeak* get_peak() const {return m_peak;}
     QDomNode get_state(QDomDocument doc);
+    // Create the fade if the clip has none yet, for user actions that give the
+    // clip a fade
     TFadeCurve* get_fade_in();
     TFadeCurve* get_fade_out();
+    // nullptr if the clip has no fade
+    TFadeCurve* get_existing_fade_in() const {return m_fadeIn;}
+    TFadeCurve* get_existing_fade_out() const {return m_fadeOut;}
     bool has_fade_in() const {return m_fadeIn != nullptr;}
     bool has_fade_out() const {return m_fadeOut != nullptr;}
 

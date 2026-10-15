@@ -78,6 +78,9 @@ public:
     QDomNode get_state(QDomDocument doc);
     int set_state( const QDomNode & node );
 
+    // A stored fade that does nothing, see TFadeShape::is_unused()
+    static bool is_unused(const QDomElement& storedFade);
+
     // Audio thread
     void process(const TAudioBuffer &curveBuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes);
 
