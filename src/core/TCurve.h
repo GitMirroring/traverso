@@ -74,28 +74,13 @@ public:
     std::shared_ptr<const TCurveSnapshot> gui_snapshot() const;
 
     // Set functions
-    virtual void set_range(double when, TRtTransaction& transaction);
     void set_sheet(TSession* sheet);
 
     void set_start_offset(TTimeRef offset) {m_startoffset = offset;}
     TTimeRef get_start_offset() const {return m_startoffset;}
 
-protected:
-    TSession* m_session{};
-
-    // Adds node without a command, e.g. for the nodes a curve starts with
-    void private_add_node(TCurveNode* node, TRtTransaction& transaction);
-
-    // Moves node without sorting or signals, for subclasses that position all
-    // nodes at once and keep them in order, see TFadeCurve
-    void move_node(TCurveNode* node, double when, double value, TRtTransaction& transaction);
-
-    // Audio thread: the snapshot to evaluate, nullptr until the first one is
-    // published, and the lookup cache of the audio thread
-    const TCurveSnapshot* rt_snapshot() const {return m_snapshot.rt_snapshot();}
-    TCurveLookupCache& rt_lookup_cache() {return m_rtLookupCache;}
-
 private :
+    TSession* m_session{};
     QList<TCurveNode*>          m_nodes;
     TRtValue<TCurveSnapshot>    m_snapshot;
     TCurveLookupCache           m_guiLookupCache;
@@ -107,9 +92,15 @@ private :
     float           m_rtTargetMakeupGain{1.0f};
 
     std::shared_ptr<const TCurveSnapshot> create_snapshot() const;
+    void private_add_node(TCurveNode* node, TRtTransaction& transaction);
     void private_remove_node(TCurveNode* node, TRtTransaction& transaction);
-    void x_scale(double factor, TRtTransaction& transaction);
+    // Moves node without sorting or signals
+    void move_node(TCurveNode* node, double when, double value, TRtTransaction& transaction);
     void init();
+
+    // Audio thread: the snapshot to evaluate, nullptr until the first one is
+    // published
+    const TCurveSnapshot* rt_snapshot() const {return m_snapshot.rt_snapshot();}
 
     friend class TAudioProcessingNode; // Grants thread-queue access to target gain states
 

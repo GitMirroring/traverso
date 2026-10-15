@@ -246,46 +246,6 @@ void TCurve::get_columns(double x0, double columnWidth, int count, TCurveColumn*
     gui_snapshot()->get_columns(x0, columnWidth, count, columns, m_guiLookupCache);
 }
 
-void TCurve::set_range(double when, TRtTransaction& transaction)
-{
-	if (m_nodes.isEmpty()) {
-		printf("Curve::set_range: no nodes!!");
-		return;
-	}
-	
-    TCurveNode* lastnode = m_nodes.last();
-	
-    if (TraversoDAW::Float::compare(lastnode->get_when(), when)) {
-// 		printf("Curve::set_range: new range == current range!\n");
-		return;
-	}
-	
-	if (when < 0.0 ) {
-		printf("Curve::set_range: error, when < 0.0 !  (%f)\n", when);
-		return;
-	}
-	
-	Q_ASSERT(when >= 0.0);
-    Q_ASSERT(lastnode);
-    Q_ASSERT(lastnode->get_when() != 0.0);
-	
-    double factor = when / lastnode->get_when();
-	
-    if (TraversoDAW::Float::equals_1(factor))
-		return;
-	
-    x_scale(factor, transaction);
-}
-
-void TCurve::x_scale(double factor, TRtTransaction& transaction)
-{
-	Q_ASSERT(factor != 0.0);
-
-    for (TCurveNode* node : std::as_const(m_nodes)) {
-        move_node(node, node->get_when() * factor, node->get_value(), transaction);
-	}
-}
-
 void TCurve::set_node(TCurveNode* node, double when, double value, TRtTransaction& transaction)
 {
     Q_ASSERT(node->get_curve() == this);
