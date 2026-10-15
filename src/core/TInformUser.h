@@ -58,6 +58,8 @@ signals:
 	
 private slots:
     void audiodevice_message();
+    void audio_thread_stalled(const QString& driverType);
+    void audio_thread_dead();
 };
 
 // use this function to propagate the TInformUser

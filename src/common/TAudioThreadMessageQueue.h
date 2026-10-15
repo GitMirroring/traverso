@@ -122,8 +122,6 @@ private:
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>> m_processedByRTThreadQueue;
 
     TAudioThreadMessageQueueThread* m_TAudioThreadMessageQueueThread;
-    int             m_eventCounter;
-    int             m_retryCount;
     std::atomic<int>  m_droppedRtEvents{0};
     std::atomic<bool> m_running{true};
 
@@ -134,8 +132,6 @@ public slots:
 signals:
     void batchTransactionStarted();
     void batchTransactionFinished();
-    void audioDriverStalled();
-    void audioDriverFatal();
     void queueOverflowDetected();
 };
 

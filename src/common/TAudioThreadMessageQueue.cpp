@@ -19,10 +19,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TAudioThreadMessageQueue.h"
-#include "TAudioDevice.h"
-#include "TAudioDeviceSetup.h"
-#include <QMessageBox>
-#include <QCoreApplication>
 
 /**
  * @brief Continuous background execution loop for processing thread-safe events.
@@ -51,8 +47,6 @@ TAudioThreadMessageQueue& tsmp()
 TAudioThreadMessageQueue::TAudioThreadMessageQueue()
 {
     m_running = true;
-    m_eventCounter = 0;
-    m_retryCount = 0;
     m_droppedRtEvents = 0; // Initialize the atomic overflow tracker
 
     // Allocate fixed-capacity lock-free queues via automatic memory wrappers.
@@ -60,23 +54,6 @@ TAudioThreadMessageQueue::TAudioThreadMessageQueue()
     m_postedFromGuiThreadQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>>(1024);
     m_postedFromRTThreadQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>>(4096);
     m_processedByRTThreadQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>>(5120);
-
-    // Bind thread-safety notifications to GUI slots using standard QueuedConnections
-    connect(this, &TAudioThreadMessageQueue::audioDriverStalled, this, []() {
-        if (audiodevice().get_driver_type() != "Dummy") {
-            QMessageBox::critical(nullptr, tr("Traverso - Malfunction!"),
-                                  tr("The Audiodriver Thread seems to be stalled/stopped..."), QMessageBox::Ok);
-            TAudioDeviceSetup audioDeviceSetup;
-            audioDeviceSetup.set_driver_type("Dummy");
-            audiodevice().set_parameters(audioDeviceSetup);
-        }
-    }, Qt::QueuedConnection);
-
-    connect(this, &TAudioThreadMessageQueue::audioDriverFatal, this, []() {
-        QMessageBox::critical(nullptr, tr("Traverso - Fatal!"),
-                              tr("The Null AudioDriver stalled too, exiting application!"), QMessageBox::Ok);
-        QCoreApplication::exit(-1);
-    }, Qt::QueuedConnection);
 
     // Asynchronously notify the system when the lock-free queues encounter pressure
     connect(this, &TAudioThreadMessageQueue::queueOverflowDetected, this, []() {
@@ -120,7 +97,6 @@ void TAudioThreadMessageQueue::post_gui_event(TAudioThreadMessageQueueEvent &&ev
     if (!m_postedFromGuiThreadQueue->try_enqueue(std::move(event))) {
         m_postedFromGuiThreadQueue->wait_enqueue(std::move(event));
     }
-    m_eventCounter++;
 }
 
 /**
@@ -158,10 +134,7 @@ void TAudioThreadMessageQueue::process_posted_gui_events()
             // callback event prevents kernel locks from disrupting the audio streaming deadline.
             if (!m_processedByRTThreadQueue->try_enqueue(std::move(event))) {
                 m_droppedRtEvents.fetch_add(1, std::memory_order_relaxed);
-                --m_eventCounter; // Compensate transaction counter to prevent structural watch-dog deadlocks
             }
-        } else {
-            --m_eventCounter;
         }
     }
 }
@@ -203,22 +176,5 @@ void TAudioThreadMessageQueue::process_processed_events_by_rt_thread_queue()
     // Execute callback patterns strictly when operating active run states
     if (m_running && event.guiCallback) {
         event.guiCallback();
-    }
-
-    --m_eventCounter;
-    m_retryCount++;
-
-    // Integrated engine health checking watchdog mechanism
-    if (m_retryCount > 200) {
-        m_retryCount = 0;
-        if (audiodevice().get_driver_type() != "Dummy") {
-            emit audioDriverStalled();
-        } else {
-            emit audioDriverFatal();
-        }
-    }
-
-    if (m_eventCounter <= 0) {
-        m_retryCount = 0;
     }
 }

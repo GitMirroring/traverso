@@ -23,6 +23,9 @@
 #include "Utils.h"
 #include "TAudioDevice.h"
 
+#include <QCoreApplication>
+#include <QMessageBox>
+
 #include "Debugger.h"
 
 
@@ -36,6 +39,8 @@ TInformUser& tInformUser()
 TInformUser::TInformUser()
 {
     connect(&audiodevice(), &TAudioDevice::newDriverSetupMessage, this, &TInformUser::audiodevice_message);
+    connect(&audiodevice(), &TAudioDevice::audioThreadStalled, this, &TInformUser::audio_thread_stalled);
+    connect(&audiodevice(), &TAudioDevice::audioThreadDead, this, &TInformUser::audio_thread_dead);
 }
 
 
@@ -81,4 +86,22 @@ void TInformUser::audiodevice_message()
             default: ;// do nothing;
         }
     }
+}
+
+void TInformUser::audio_thread_stalled(const QString& driverType)
+{
+    QMessageBox::critical(nullptr, tr("Traverso - Malfunction!"),
+        tr("The %1 audio driver thread stopped processing, but Traverso didn't ask for it!\n"
+           "Traverso switched to the 'Dummy' driver, so you can save your work.\n\n"
+           "Potential issues why this can show up are:\n\n"
+           "* You're not running with real time privileges! Please make sure this is setup properly.\n\n"
+           "* The audio chipset isn't supported (completely), you probably have to turn off some of it's features.\n").arg(driverType),
+        QMessageBox::Ok);
+}
+
+void TInformUser::audio_thread_dead()
+{
+    QMessageBox::critical(nullptr, tr("Traverso - Fatal!"),
+                          tr("The Dummy audio driver stalled too, exiting application!"), QMessageBox::Ok);
+    QCoreApplication::exit(-1);
 }

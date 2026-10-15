@@ -29,6 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QStringList>
 #include <QByteArray>
 #include <QTimer>
+#include <QElapsedTimer>
+#include "TAudioThreadWatchdog.h"
 #include <QVariant>
 
 
@@ -215,6 +217,12 @@ private:
     QMap<int, TAudioDriverSetupMessage> m_audioDriverSetupMessages;
 
     QTimer			m_xrunResetTimer;
+
+    // Watches whether the audio thread keeps completing its cycles
+    std::atomic<quint64>    m_cycleCount{0};
+    TAudioThreadWatchdog    m_watchdog;
+    QTimer                  m_watchdogTimer;
+    QElapsedTimer           m_watchdogClock;
 #if defined (JACK_SUPPORT)
     QTimer			jackShutDownChecker;
     TJackDriver* slaved_jack_driver();
@@ -310,6 +318,12 @@ signals:
 
     void xrunStormDetected();
 
+    // The audio thread of driverType stopped completing its cycles, the
+    // device switched to the Dummy driver so the user can save their work
+    void audioThreadStalled(const QString& driverType);
+    // The audio thread of the Dummy driver stalled too
+    void audioThreadDead();
+
     void newDriverSetupMessage();
 
     void finishedOneProcessCycle();
@@ -322,6 +336,7 @@ private slots:
     void switch_to_null_driver();
     void reset_xrun_counter() {m_xrunCount = 0;}
     void check_jack_shutdown();
+    void check_audio_thread_progress();
     void driver_setup_message(const QString &driver, const QString &message, int severity, trav_time_t creatonOn = TTimeRef::get_milliseconds_since_epoch());
 };
 

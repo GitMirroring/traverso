@@ -194,6 +194,10 @@ TAudioDevice::TAudioDevice()
     connect(&m_xrunResetTimer, &QTimer::timeout, this, &TAudioDevice::reset_xrun_counter);
 
     m_xrunResetTimer.start(30000);
+
+    m_watchdogClock.start();
+    m_watchdogTimer.setInterval(500);
+    connect(&m_watchdogTimer, &QTimer::timeout, this, &TAudioDevice::check_audio_thread_progress);
 }
 
 TAudioDevice::~TAudioDevice()
@@ -280,6 +284,9 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         .rtTask = nullptr,
         .guiCallback = [this]() { emit finishedOneProcessCycle(); }
     });
+
+    // Only the audio thread writes it
+    m_cycleCount.store(m_cycleCount.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
     return 1;
 }
@@ -423,6 +430,9 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
         }
 #endif
     }
+
+    m_watchdog.restart(m_cycleCount.load(std::memory_order_relaxed), m_watchdogClock.elapsed());
+    m_watchdogTimer.start();
 
     emit started();
 }
@@ -615,6 +625,7 @@ int TAudioDevice::shutdown( )
 
     emit stopped();
 
+    m_watchdogTimer.stop();
     m_runAudioThread.store(false);
 
     if (m_audioThread) {
@@ -918,6 +929,32 @@ void TAudioDevice::xrun( )
         });
         m_driver->stop();
         m_runAudioThread.store(false);
+    }
+}
+
+void TAudioDevice::check_audio_thread_progress()
+{
+    if (!m_driver || !m_runAudioThread.load()) {
+        // Stopped on purpose, e.g. after a buffer underrun storm
+        m_watchdog.restart(m_cycleCount.load(std::memory_order_relaxed), m_watchdogClock.elapsed());
+        return;
+    }
+
+    if (!m_watchdog.is_stalled(m_cycleCount.load(std::memory_order_relaxed), m_watchdogClock.elapsed())) {
+        return;
+    }
+
+    m_watchdogTimer.stop();
+
+    const QString driverType = m_driverType;
+
+    if (driverType != "Dummy") {
+        PERROR(QString("AudioDevice: the %1 audio thread stopped processing, switching to the Dummy driver").arg(driverType));
+        set_parameters(m_fallBackSetup);
+        emit audioThreadStalled(driverType);
+    } else {
+        PERROR(QString("AudioDevice: the Dummy driver audio thread stopped processing too"));
+        emit audioThreadDead();
     }
 }
 

@@ -5,6 +5,7 @@ set(TRAVERSO_ENGINE_SOURCES
     TAudioDeviceSetup.cpp
     TAudioDevice.cpp
     TAudioDeviceThread.cpp
+    TAudioThreadWatchdog.h
     TAudioDeviceClient.cpp
     TAudioDriver.cpp
     TAudioBusConfiguration.cpp
