@@ -5,43 +5,43 @@
 
 #pragma once
 
-#include "TRtTransaction.h"
+#include "TRtValue.h"
 
 #include <QList>
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <vector>
 
 /**
  * @brief A list of items that is read by the audio thread.
  *
  * The GUI thread owns the list: it is the single source of truth and only the
- * GUI thread changes it. The audio thread reads an immutable snapshot of it.
- * Every change registers the list in the TRtTransaction it is given, which
- * builds a new snapshot in the GUI thread and lets the audio thread swap it in.
+ * GUI thread changes it. The audio thread reads an immutable snapshot of it, a
+ * TRtValue holding a vector of the item pointers. Every change publishes the
+ * list in the TRtTransaction it is given, which builds a new snapshot in the
+ * GUI thread and lets the audio thread swap it in.
  *
  * Replaces TRealTimeLinkedList: the audio thread only swaps a pointer, so the
  * cost in the audio thread does not depend on the size of the list.
  *
- * A pending transaction step refers to the list, so the list (and its owner)
- * must not be destroyed before the audio thread applied that step.
+ * Like TRtValue, the list may be destroyed while a step is pending, but not
+ * while the audio thread still iterates it.
  */
 template <class T>
-class TRtList final : public TRtPublishable
+class TRtList final
 {
 public:
     using LessThan = std::function<bool(const T*, const T*)>;
 
-    TRtList() : m_rtItems(new std::vector<T*>()) {}
+    TRtList() : TRtList(LessThan()) {}
 
     // Keeps the list sorted by lessThan, e.g. clips by start location. The
     // order is fixed for the list's lifetime, so it never changes unpublished.
     explicit TRtList(LessThan lessThan)
-        : m_rtItems(new std::vector<T*>())
-        , m_lessThan(std::move(lessThan))
+        : m_lessThan(std::move(lessThan))
+        , m_snapshot([this]() { return build_snapshot(); }, std::make_shared<std::vector<T*>>())
     {}
-
-    ~TRtList() override { delete m_rtItems; }
 
     TRtList(const TRtList&) = delete;
     TRtList& operator=(const TRtList&) = delete;
@@ -50,61 +50,41 @@ public:
 
     const QList<T*>& gui_items() const
     {
-        Q_ASSERT_X(is_gui_thread(), "TRtList::gui_items", "GUI side used outside the GUI thread");
+        Q_ASSERT_X(TRtPublishable::is_gui_thread(), "TRtList::gui_items", "GUI side used outside the GUI thread");
         return m_guiItems;
     }
 
     void add(T* item, TRtTransaction& transaction)
     {
-        Q_ASSERT_X(is_gui_thread(), "TRtList::add", "GUI side used outside the GUI thread");
         m_guiItems.append(item);
         sort();
-        publish_in(transaction);
+        m_snapshot.mark_changed(transaction);
     }
 
     void remove(T* item, TRtTransaction& transaction)
     {
-        Q_ASSERT_X(is_gui_thread(), "TRtList::remove", "GUI side used outside the GUI thread");
         m_guiItems.removeAll(item);
-        publish_in(transaction);
+        m_snapshot.mark_changed(transaction);
     }
 
     // Call after the sort order of items changed, e.g. a clip moved
     void resort(TRtTransaction& transaction)
     {
-        Q_ASSERT_X(is_gui_thread(), "TRtList::resort", "GUI side used outside the GUI thread");
         sort();
-        publish_in(transaction);
+        m_snapshot.mark_changed(transaction);
     }
 
     // Audio thread
 
     const std::vector<T*>& rt_items() const
     {
-        Q_ASSERT_X(!is_gui_thread(), "TRtList::rt_items", "audio thread side used in the GUI thread");
-        return *m_rtItems;
+        return *m_snapshot.rt_snapshot();
     }
 
 private:
-    class SwapStep final : public TRtStep
+    std::shared_ptr<const std::vector<T*>> build_snapshot() const
     {
-    public:
-        SwapStep(std::vector<T*>** slot, std::vector<T*>* snapshot)
-            : m_slot(slot), m_snapshot(snapshot) {}
-
-        // Before apply this deletes the unused new snapshot, after apply the old one
-        ~SwapStep() override { delete m_snapshot; }
-
-        void apply_in_audio_thread() override { std::swap(*m_slot, m_snapshot); }
-
-    private:
-        std::vector<T*>** m_slot;
-        std::vector<T*>*  m_snapshot;
-    };
-
-    std::unique_ptr<TRtStep> create_publish_step() override
-    {
-        return std::make_unique<SwapStep>(&m_rtItems, new std::vector<T*>(m_guiItems.begin(), m_guiItems.end()));
+        return std::make_shared<std::vector<T*>>(m_guiItems.begin(), m_guiItems.end());
     }
 
     void sort()
@@ -114,7 +94,7 @@ private:
         }
     }
 
-    QList<T*>                              m_guiItems;
-    std::vector<T*>*                       m_rtItems;
-    LessThan                               m_lessThan;
+    QList<T*>                         m_guiItems;
+    LessThan                          m_lessThan;
+    TRtValue<std::vector<T*>>         m_snapshot;
 };

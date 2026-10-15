@@ -43,6 +43,17 @@ public:
         Q_ASSERT(m_buildSnapshot);
     }
 
+    // Starts with initialSnapshot on both sides, e.g. an empty list, so the
+    // audio thread never gets nullptr
+    TRtValue(BuildSnapshot buildSnapshot, std::shared_ptr<const T> initialSnapshot)
+        : m_buildSnapshot(std::move(buildSnapshot))
+        , m_guiSnapshot(initialSnapshot)
+        , m_guiSnapshotOutdated(false)
+        , m_rtSide(std::make_shared<RtSide>(RtSide{std::move(initialSnapshot)}))
+    {
+        Q_ASSERT(m_buildSnapshot);
+    }
+
     ~TRtValue() override = default;
 
     TRtValue(const TRtValue&) = delete;

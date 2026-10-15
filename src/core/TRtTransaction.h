@@ -37,13 +37,13 @@ class TRtPublishable
 public:
     virtual ~TRtPublishable() = default;
 
-protected:
-    // GUI thread: publish this object's state when transaction ends.
-    void publish_in(TRtTransaction& transaction);
-
     // Used by debug assertions to check that each side is only used from its
     // own thread.
     static bool is_gui_thread();
+
+protected:
+    // GUI thread: publish this object's state when transaction ends.
+    void publish_in(TRtTransaction& transaction);
 
 private:
     friend class TRtTransaction;
