@@ -15,3 +15,34 @@ target_include_directories(traverso_curve_test PRIVATE
 target_link_libraries(traverso_curve_test PRIVATE traverso_compiler_settings Qt6::Core)
 
 add_test(NAME curve_snapshot COMMAND traverso_curve_test)
+
+# Headless test of the curve polyline the curve views draw
+add_executable(traverso_curve_polyline_test
+    test_curve_polyline.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/TCurveSnapshot.cpp
+)
+
+target_include_directories(traverso_curve_polyline_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/core
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/sheetcanvas
+)
+
+target_link_libraries(traverso_curve_polyline_test PRIVATE traverso_compiler_settings Qt6::Core Qt6::Gui)
+
+add_test(NAME curve_polyline COMMAND traverso_curve_polyline_test)
+
+# Benchmark of curve painting, not part of ctest. Build it in Release:
+#   cmake -DCMAKE_BUILD_TYPE=Release ... && cmake --build . --target traverso_curve_paint_benchmark
+add_executable(traverso_curve_paint_benchmark
+    benchmark_curve_paint.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/TCurveSnapshot.cpp
+)
+
+target_include_directories(traverso_curve_paint_benchmark PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/core
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/sheetcanvas
+)
+
+target_link_libraries(traverso_curve_paint_benchmark PRIVATE traverso_compiler_settings Qt6::Core Qt6::Gui)

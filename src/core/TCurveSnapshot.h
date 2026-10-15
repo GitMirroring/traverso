@@ -15,6 +15,20 @@ struct TCurveLookupCache
     int segment{-1};
 };
 
+// One pixel column of a drawn curve: where the curve enters the column, its
+// lowest and highest value inside the column in the order they occur, and
+// where it leaves the column. Lets a view draw spikes and groups of nodes that
+// are narrower than one pixel. Positions are fractions of the column, 0..1.
+struct TCurveColumn
+{
+    double entry;
+    double firstExtreme;
+    double firstExtremeAt;
+    double secondExtreme;
+    double secondExtremeAt;
+    double exit;
+};
+
 /**
  * @brief The solved state of a curve: its points and spline segments.
  *
@@ -51,6 +65,13 @@ public:
 
     // The value of the curve at x, for x between the first and the last point
     double evaluate(double x, TCurveLookupCache& cache) const;
+
+    // The value of the curve at any x, like get_vector(): before the first
+    // point the first value, after the last point the last value
+    double value_at(double x, TCurveLookupCache& cache) const;
+
+    // Fills count columns, the first one starting at x0, each columnWidth wide
+    void get_columns(double x0, double columnWidth, int count, TCurveColumn* columns, TCurveLookupCache& cache) const;
 
 private:
     // y = a + b*u + c*u^2 + d*u^3, with u = x - when of the segment's first point

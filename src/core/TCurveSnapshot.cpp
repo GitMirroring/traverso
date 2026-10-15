@@ -212,3 +212,104 @@ void TCurveSnapshot::get_vector(double x0, double x1, float* vec, nframes_t vecl
         vec[i] = float(evaluate(rx, cache));
     }
 }
+
+double TCurveSnapshot::value_at(double x, TCurveLookupCache& cache) const
+{
+    const int npoints = int(m_points.size());
+
+    if (npoints == 0) {
+        return m_defaultValue;
+    }
+
+    const Point& firstPoint = m_points.front();
+    const Point& lastPoint = m_points.back();
+
+    if (x <= firstPoint.when) {
+        return firstPoint.value;
+    }
+    if (x >= lastPoint.when) {
+        return lastPoint.value;
+    }
+
+    if (npoints == 2) {
+        // Linear between the two points, their whens differ since x lies between them
+        const double slope = (lastPoint.value - firstPoint.value) / (lastPoint.when - firstPoint.when);
+        return firstPoint.value + slope * (x - firstPoint.when);
+    }
+
+    return evaluate(x, cache);
+}
+
+// The lowest and highest value seen in one column, with their positions
+struct TColumnExtremes
+{
+    double low;
+    double lowAt;
+    double high;
+    double highAt;
+
+    TColumnExtremes(double value, double at) : low(value), lowAt(at), high(value), highAt(at) {}
+
+    void add(double value, double at)
+    {
+        if (value < low) {
+            low = value;
+            lowAt = at;
+        }
+        if (value > high) {
+            high = value;
+            highAt = at;
+        }
+    }
+};
+
+void TCurveSnapshot::get_columns(double x0, double columnWidth, int count, TCurveColumn* columns, TCurveLookupCache& cache) const
+{
+    Q_ASSERT(columnWidth > 0.0);
+
+    const int npoints = int(m_points.size());
+    auto before = [](const Point& point, double when) { return point.when < when; };
+
+    // The first point at or after the current column start
+    int nextPoint = int(std::lower_bound(m_points.begin(), m_points.end(), x0, before) - m_points.begin());
+
+    double entry = value_at(x0, cache);
+
+    for (int i = 0; i < count; ++i) {
+        const double start = x0 + i * columnWidth;
+        const double end = start + columnWidth;
+        const double exit = value_at(end, cache);
+
+        // The constrained spline never turns between two points: the slope at
+        // a point is at most twice the smaller slope of the segments next to
+        // it, which keeps every segment monotone. So the lowest and highest
+        // value of a column are at its edges or at points inside it.
+        TColumnExtremes extremes(entry, 0.0);
+        extremes.add(exit, 1.0);
+
+        // The points inside the column
+        while (nextPoint < npoints && m_points[size_t(nextPoint)].when < end) {
+            const Point& point = m_points[size_t(nextPoint)];
+            extremes.add(point.value, (point.when - start) / columnWidth);
+            ++nextPoint;
+        }
+
+        TCurveColumn& column = columns[i];
+        column.entry = entry;
+        column.exit = exit;
+
+        if (extremes.lowAt <= extremes.highAt) {
+            column.firstExtreme = extremes.low;
+            column.firstExtremeAt = extremes.lowAt;
+            column.secondExtreme = extremes.high;
+            column.secondExtremeAt = extremes.highAt;
+        } else {
+            column.firstExtreme = extremes.high;
+            column.firstExtremeAt = extremes.highAt;
+            column.secondExtreme = extremes.low;
+            column.secondExtremeAt = extremes.lowAt;
+        }
+
+        entry = exit;
+    }
+}

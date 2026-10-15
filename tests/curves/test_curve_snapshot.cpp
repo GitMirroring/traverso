@@ -281,11 +281,116 @@ static void test_points_at_the_same_position()
     check(finite, "points at the same position give NaN or infinity");
 }
 
+// The constrained spline never turns between two points: every segment stays
+// between the values of its two points. get_columns() relies on this.
+static void test_segments_do_not_turn()
+{
+    std::mt19937 rng(11);
+    bool ok = true;
+
+    for (int round = 0; round < 300; ++round) {
+        std::vector<Point> points = random_curve(rng, 3 + round % 40, 0.0, 1.0e7);
+        auto snapshot = TCurveSnapshot::create(points, 1.0);
+        TCurveLookupCache cache;
+
+        for (size_t i = 0; i + 1 < points.size(); ++i) {
+            const double low = std::min(points[i].value, points[i + 1].value);
+            const double high = std::max(points[i].value, points[i + 1].value);
+            for (int sample = 1; sample < 1000; ++sample) {
+                double x = points[i].when + (points[i + 1].when - points[i].when) * sample / 1000.0;
+                double value = snapshot->value_at(x, cache);
+                if (value < low - 1.0e-9 || value > high + 1.0e-9) ok = false;
+            }
+        }
+    }
+
+    std::printf("segments do not turn: %s\n", ok ? "ok" : "FAILED");
+    check(ok, "a segment turns between its points");
+}
+
+// Columns: every value of the curve inside a column lies between its lowest and
+// highest value, the reported extremes are values of the curve, and each column
+// starts where the previous one ended
+static void test_columns()
+{
+    std::mt19937 rng(7);
+    std::uniform_real_distribution<double> unit(0.0, 1.0);
+    bool ok = true;
+
+    for (int npoints : {0, 1, 2, 3, 5, 12, 40}) {
+        for (int round = 0; round < 50; ++round) {
+            const double span = 1.0e7;
+            std::vector<Point> points = random_curve(rng, npoints, 0.0, span);
+            auto snapshot = TCurveSnapshot::create(points, 1.0);
+
+            const int count = 64;
+            const double width = span * (0.2 + unit(rng)) / count;
+            const double x0 = -span * 0.1 + unit(rng) * span * 0.2;
+            std::vector<TCurveColumn> columns(count);
+            TCurveLookupCache cache;
+            snapshot->get_columns(x0, width, count, columns.data(), cache);
+
+            for (int i = 0; i < count; ++i) {
+                const TCurveColumn& column = columns[size_t(i)];
+                const double start = x0 + i * width;
+                const double low = std::min(column.firstExtreme, column.secondExtreme);
+                const double high = std::max(column.firstExtreme, column.secondExtreme);
+                const double eps = 1.0e-9;
+
+                if (i > 0 && column.entry != columns[size_t(i) - 1].exit) ok = false;
+                if (column.firstExtremeAt > column.secondExtremeAt) ok = false;
+
+                for (int sample = 0; sample <= 200; ++sample) {
+                    double value = snapshot->value_at(start + width * sample / 200.0, cache);
+                    if (value < low - eps || value > high + eps) ok = false;
+                }
+                for (const Point& point : points) {
+                    if (point.when >= start && point.when < start + width && (point.value < low - eps || point.value > high + eps)) ok = false;
+                }
+
+                // A reported extreme is a value of the curve where it is reported
+                // (a point's own value where two points share a position)
+                double firstAt = snapshot->value_at(start + column.firstExtremeAt * width, cache);
+                double secondAt = snapshot->value_at(start + column.secondExtremeAt * width, cache);
+                bool isPointValue = false;
+                for (const Point& point : points) {
+                    if (point.value == column.firstExtreme || point.value == column.secondExtreme) isPointValue = true;
+                }
+                if (!isPointValue && (std::fabs(firstAt - column.firstExtreme) > 1.0e-6 || std::fabs(secondAt - column.secondExtreme) > 1.0e-6)) ok = false;
+            }
+        }
+    }
+
+    // A group of 100 nodes inside one column: its lowest and highest node show
+    std::vector<Point> group = {{0.0, 0.5}};
+    double groupLow = 0.5, groupHigh = 0.5;
+    for (int i = 1; i <= 100; ++i) {
+        double value = unit(rng);
+        group.push_back({1.0e6 + i, value});
+        groupLow = std::min(groupLow, value);
+        groupHigh = std::max(groupHigh, value);
+    }
+    group.push_back({2.0e6, 0.5});
+    auto snapshot = TCurveSnapshot::create(group, 1.0);
+    std::vector<TCurveColumn> columns(20);
+    TCurveLookupCache cache;
+    snapshot->get_columns(0.0, 1.0e5, 20, columns.data(), cache);   // the group is in column 10
+    const TCurveColumn& column = columns[10];
+    const double low = std::min(column.firstExtreme, column.secondExtreme);
+    const double high = std::max(column.firstExtreme, column.secondExtreme);
+    if (low != groupLow || high != groupHigh) ok = false;
+
+    std::printf("columns: %s\n", ok ? "ok" : "FAILED");
+    check(ok, "pixel columns");
+}
+
 int main()
 {
     test_same_as_legacy();
     test_precision_far_on_timeline();
     test_points_at_the_same_position();
+    test_segments_do_not_turn();
+    test_columns();
 
     if (failures) {
         std::printf("%d test(s) failed\n", failures);
