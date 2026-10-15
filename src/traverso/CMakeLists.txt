@@ -1,6 +1,5 @@
 # Define the graphical user interface source files for the main application executable.
 set(TRAVERSO_GUI_SOURCES
-    ${CMAKE_SOURCE_DIR}/src/support/fpu.cc
     Main.cpp
     TMainWindow.cpp
     Traverso.cpp

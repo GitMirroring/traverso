@@ -18,6 +18,7 @@ target_include_directories(tcp_traversocommands
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src/traverso
         ${CMAKE_SOURCE_DIR}/src/support
+        ${CMAKE_SOURCE_DIR}/src/dsp
         ${CMAKE_SOURCE_DIR}/src/core
         ${CMAKE_SOURCE_DIR}/src/sheetcanvas
         ${CMAKE_SOURCE_DIR}/src/commands

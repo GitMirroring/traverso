@@ -5,19 +5,6 @@
 # Traverso libraries: time, ring buffers, debugging and small utilities.
 # Depends on Qt Core only.
 
-enable_language(ASM)
-
-# The SSE functions of the Mixer, which moves to the dsp library
-set(SUPPORT_ASM_SOURCE "")
-if(WANT_SSE)
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(SUPPORT_ASM_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sse_functions_64bit.S)
-    else()
-        set(SUPPORT_ASM_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sse_functions.S)
-    endif()
-    set_source_files_properties(${SUPPORT_ASM_SOURCE} PROPERTIES LANGUAGE ASM)
-endif()
-
 add_library(traversosupport STATIC
     Debugger.h Debugger.cpp
     Utils.h Utils.cpp
@@ -25,12 +12,9 @@ add_library(traversosupport STATIC
     defines.h
     RingBufferNPT.h
     TRealTimeLinkedList.h
-    Mixer.h Mixer.cpp
-    TAudioBuffer.h
     TTransportControl.h TTransportControl.cpp
     TProcessCallBackData.h
     TAudioThreadMessageQueue.h TAudioThreadMessageQueue.cpp
-    ${SUPPORT_ASM_SOURCE}
 )
 
 target_include_directories(traversosupport PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -37,7 +37,6 @@ add_library(traversocore STATIC
     TSheet.cpp
     TTrack.cpp
     TBufferedAudioStreamWriter.cpp
-    gdither.cpp
     TSnapList.cpp
     TLocation.cpp
     TTimeLineRuler.cpp
@@ -49,7 +48,6 @@ add_library(traversocore STATIC
     TShortCutFunction.cpp
     TShortCut.cpp
     TExportSpecification.cpp
-    TAudioResampler.cpp
     TCommandPlugin.h
     TActions.h
     TUndoCommand.h
@@ -81,10 +79,10 @@ target_include_directories(traversocore
 target_link_libraries(traversocore
     PUBLIC
         traversosupport
+        traversodsp
         Qt6::Widgets
         Qt6::Gui
         Qt6::Xml
         Qt6::Core
         Qt6::Concurrent
-        PkgConfig::SOXR
 )

@@ -58,6 +58,7 @@ target_include_directories(traversosheetcanvas
         ${CMAKE_SOURCE_DIR}/src/traverso/dialogs
         ${CMAKE_SOURCE_DIR}/src/core
         ${CMAKE_SOURCE_DIR}/src/support
+        ${CMAKE_SOURCE_DIR}/src/dsp
         ${CMAKE_SOURCE_DIR}/src/plugins
         ${CMAKE_SOURCE_DIR}/src/plugins/native
         ${CMAKE_SOURCE_DIR}/src/commands

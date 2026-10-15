@@ -40,6 +40,7 @@ target_link_libraries(traversoaudiofileio
         Qt6::Xml
     PRIVATE
         traversosupport
+        traversodsp
         PkgConfig::SNDFILE
         PkgConfig::WAVPACK
         PkgConfig::SAMPLERATE

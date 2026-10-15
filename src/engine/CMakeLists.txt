@@ -32,6 +32,7 @@ target_link_libraries(traversoaudiobackend
         PkgConfig::SNDFILE
     PRIVATE
         traversosupport
+        traversodsp
 )
 
 # Process platform drivers contextually based on package scanning outcomes
