@@ -167,7 +167,7 @@ void AudioClipEditDialog::fadein_length_changed()
 {
 	if (locked) return;
 	
-	TTimeRef ref(qint64(m_clip->get_fade_in()->get_range()));
+	TTimeRef ref(qint64(m_clip->get_fade_in()->get_length()));
     QTime fadeTime = TTimeRef::timeref_to_qtime(ref);
 	fadeInEdit->setTime(fadeTime);
 }
@@ -176,7 +176,7 @@ void AudioClipEditDialog::fadeout_length_changed()
 {
 	if (locked) return;
 
-	TTimeRef ref(qint64(m_clip->get_fade_out()->get_range()));
+	TTimeRef ref(qint64(m_clip->get_fade_out()->get_length()));
     QTime fadeTime = TTimeRef::timeref_to_qtime(ref);
 	fadeOutEdit->setTime(fadeTime);
 }
@@ -191,7 +191,7 @@ void AudioClipEditDialog::fadein_edit_changed(const QTime& time)
 
 	locked = true;
     double range = double(TTimeRef::qtime_to_timeref(time).universal_frame());
-    m_clip->set_fade_in_range(range);
+    m_clip->set_fade_in_length(range);
 	locked = false;
 }
 
@@ -201,7 +201,7 @@ void AudioClipEditDialog::fadeout_edit_changed(const QTime& time)
 
 	locked = true;
     double range = double(TTimeRef::qtime_to_timeref(time).universal_frame());
-    m_clip->set_fade_out_range(range);
+    m_clip->set_fade_out_length(range);
 	locked = false;
 }
 
@@ -363,7 +363,7 @@ void AudioClipEditDialog::fade_curve_added()
 		fadein_mode_changed();
 		fadein_bending_changed();
 		fadein_strength_changed();
-		connect(m_clip->get_fade_in(), &TFadeCurve::rangeChanged, this, &AudioClipEditDialog::fadein_length_changed);
+		connect(m_clip->get_fade_in(), &TFadeCurve::lengthChanged, this, &AudioClipEditDialog::fadein_length_changed);
 		connect(m_clip->get_fade_in(), &TFadeCurve::modeChanged, this, &AudioClipEditDialog::fadein_mode_changed);
 		connect(m_clip->get_fade_in(), &TFadeCurve::bendValueChanged, this, &AudioClipEditDialog::fadein_bending_changed);
 		connect(m_clip->get_fade_in(), &TFadeCurve::strengthValueChanged, this, &AudioClipEditDialog::fadein_strength_changed);
@@ -373,7 +373,7 @@ void AudioClipEditDialog::fade_curve_added()
 		fadeout_mode_changed();
 		fadeout_bending_changed();
 		fadeout_strength_changed();
-		connect(m_clip->get_fade_out(), &TFadeCurve::rangeChanged, this, &AudioClipEditDialog::fadeout_length_changed);
+		connect(m_clip->get_fade_out(), &TFadeCurve::lengthChanged, this, &AudioClipEditDialog::fadeout_length_changed);
 		connect(m_clip->get_fade_out(), &TFadeCurve::modeChanged, this, &AudioClipEditDialog::fadeout_mode_changed);
 		connect(m_clip->get_fade_out(), &TFadeCurve::bendValueChanged, this, &AudioClipEditDialog::fadeout_bending_changed);
 		connect(m_clip->get_fade_out(), &TFadeCurve::strengthValueChanged, this, &AudioClipEditDialog::fadeout_strength_changed);

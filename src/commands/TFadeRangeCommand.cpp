@@ -60,10 +60,10 @@ int TFadeRangeCommand::begin_hold()
 {
     frp->origX = m_contextPointer->on_first_input_event_x();
     if (m_fadeIn) {
-        m_fadeInNewRange = m_fadeInOrigRange = m_fadeIn->get_range();
+        m_fadeInNewRange = m_fadeInOrigRange = m_fadeIn->get_length();
     }
     if (m_fadeOut) {
-        m_fadeOutNewRange = m_fadeOutOrigRange = m_fadeOut->get_range();
+        m_fadeOutNewRange = m_fadeOutOrigRange = m_fadeOut->get_length();
     }
     return 1;
 }
@@ -79,10 +79,10 @@ int TFadeRangeCommand::do_action()
 {
     TRtTransaction transaction;
     if (m_fadeIn) {
-        m_fadeIn->set_range(m_fadeInNewRange, transaction);
+        m_fadeIn->set_length(m_fadeInNewRange, transaction);
     }
     if (m_fadeOut) {
-        m_fadeOut->set_range(m_fadeOutNewRange, transaction);
+        m_fadeOut->set_length(m_fadeOutNewRange, transaction);
     }
     return 1;
 }
@@ -91,10 +91,10 @@ int TFadeRangeCommand::undo_action()
 {
     TRtTransaction transaction;
     if (m_fadeIn) {
-        m_fadeIn->set_range(m_fadeInOrigRange, transaction);
+        m_fadeIn->set_length(m_fadeInOrigRange, transaction);
     }
     if (m_fadeOut) {
-        m_fadeOut->set_range(m_fadeOutOrigRange, transaction);
+        m_fadeOut->set_length(m_fadeOutOrigRange, transaction);
     }
     return 1;
 }

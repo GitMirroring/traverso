@@ -23,51 +23,33 @@ $Id: TFadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 #include "TFadeCurve.h"
 
 #include <QFile>
+#include <algorithm>
 #include <cmath>
-#include "TCurveNode.h"
 #include "Fade.h"
 #include "TCommand.h"
 #include "TAddRemoveCommand.h"
 #include "TAudioDevice.h"
 #include "AudioBus.h"
+#include "TFadeShape.h"
 #include "TLocation.h"
+#include "TRtTransaction.h"
 #include "TTimeLineEntity.h"
 #include "Debugger.h"
-#include "TSession.h"
 
 QStringList TFadeCurve::defaultShapes = QStringList() << "Fastest" << "Fast" << "Linear"  << "Slow" << "Slowest";
 
-TFadeCurve::TFadeCurve(TContextItem *parent, FadeType fadeType )
-    : TCurve(parent)
+TFadeCurve::TFadeCurve(TContextItem *parent, FadeType fadeType, TRtTransaction& transaction)
+    : TContextItem(parent)
     , m_type(fadeType)
+    , m_state([this]() { return create_state(); })
 {
-    m_controlPoints.append(QPointF(0.0, 0.0));
-    m_controlPoints.append(QPointF(0.25, 0.25));
-    m_controlPoints.append(QPointF(0.75, 0.75));
-    m_controlPoints.append(QPointF(1.0, 1.0));
+    QObject::tr("TFadeCurve");
 
     connect(this, &TFadeCurve::bendValueChanged, this, &TFadeCurve::stateChanged);
     connect(this, &TFadeCurve::strengthValueChanged, this, &TFadeCurve::stateChanged);
     connect(this, &TFadeCurve::modeChanged, this, &TFadeCurve::stateChanged);
 
-    init();
-}
-
-void TFadeCurve::init()
-{
-    QObject::tr("TFadeCurve");
-
-    TRtTransaction transaction;
-
-    int nodecount = 11;
-    for (int i = 0; i <= nodecount; ++i) {
-        float f = static_cast<float>(i) / nodecount;
-        QPointF p = get_curve_point(f);
-
-        private_add_node(new TCurveNode(this, p.x(), p.y()), transaction);
-    }
-
-    set_range(1.0, transaction);
+    solve_shape(transaction);
 }
 
 QDomNode TFadeCurve::get_state( QDomDocument doc )
@@ -76,15 +58,13 @@ QDomNode TFadeCurve::get_state( QDomDocument doc )
     node.setAttribute("bendfactor", m_bendFactor);
     node.setAttribute("strengthfactor", m_strenghtFactor);
     node.setAttribute("bypassed", m_bypass);
-    node.setAttribute("range", get_range());
+    node.setAttribute("range", m_length);
     node.setAttribute("mode", m_mode);
     node.setAttribute("raster", m_raster);
 
     QStringList controlPointsList;
 
-    for (int i=0; i< m_controlPoints.size(); ++i) {
-        QPointF point = m_controlPoints.at(i);
-
+    for (const QPointF& point : m_controlPoints) {
         controlPointsList << QString::number(point.x()).append(",").append(QString::number(point.y()));
     }
 
@@ -102,33 +82,21 @@ int TFadeCurve::set_state( const QDomNode & node )
     m_mode = e.attribute( "mode", "2" ).toInt();
     m_raster = e.attribute( "raster", "0" ).toInt();
 
-    QStringList controlPointsList = e.attribute( "controlpoints", "0.0,0.0;0.25,0.25;0.75,0.75;1.0,1.0" ).split(";");
+    // The control points follow from the mode, bend and strength, the stored
+    // ones are only written for older versions
 
-
-    for (int i=0; i<controlPointsList.size(); ++i) {
-        QStringList xyList = controlPointsList.at(i).split(",");
-        float x = xyList.at(0).toFloat();
-        float y = xyList.at(1).toFloat();
-        m_controlPoints[i] = QPointF(x,y);
-    }
-
-
-    QString rangestring = e.attribute("range", "1");
-    double range;
+    QString rangestring = e.attribute("range", "0");
+    double length = 0.0;
     if (rangestring == "nan" || rangestring == "inf") {
         printf("FadeCurve::set_state: stored range was not a number!\n");
-        range = 1;
     } else {
-        range = rangestring.toDouble();
+        length = rangestring.toDouble();
     }
-
-    range = (range < 1.0) ? 1 : range;
 
     TRtTransaction transaction;
 
-    set_range(range, transaction);
-
-    solve_node_positions(transaction);
+    set_length(length, transaction);
+    solve_shape(transaction);
 
     emit stateChanged();
 
@@ -142,12 +110,8 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
     Q_ASSERT(m_parentTimeLineEntity != nullptr);
     Q_ASSERT(m_parentTimeLineEntity->get_location() != nullptr);
 
-    if (is_bypassed()) {
-        return;
-    }
-
-    const TCurveSnapshot* snapshot = rt_snapshot();
-    if (!snapshot || snapshot->is_empty()) {
+    const TFadeState* state = m_state.rt_snapshot();
+    if (!state || state->bypassed || state->length <= 0.0) {
         return;
     }
 
@@ -157,7 +121,7 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
     uint channelCount = bus->get_channel_count();
 
     TTimeRef fadeStartLocation, fadeEndLocation, fadeLocation;
-    TTimeRef fadeRange = TTimeRef(snapshot->get_range());
+    TTimeRef fadeRange = TTimeRef(state->length);
     TTimeRef upperRange = startLocation + TTimeRef(nframes, outputRate);
 
     if (m_type == FadeIn) {
@@ -193,8 +157,10 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
 
     upperRange = fadeLocation + TTimeRef(framesToProcess, outputRate);
 
-    snapshot->get_vector(double(fadeLocation.universal_frame()), double(upperRange.universal_frame()),
-                         curveBuffer.get_data(framesToProcess), framesToProcess, rt_lookup_cache());
+    // The shape runs from 0 to 1 over the length of the fade
+    state->shape->get_vector(double(fadeLocation.universal_frame()) / state->length,
+                             double(upperRange.universal_frame()) / state->length,
+                             curveBuffer.get_data(framesToProcess), framesToProcess, m_rtLookupCache);
 
     for (uint chan = 0; chan < channelCount; ++chan) {
         TAudioBuffer &buf = bus->get_buffer(chan);
@@ -260,75 +226,34 @@ void TFadeCurve::set_shape(const QString& shapeName)
     emit stateChanged();
 }
 
-void TFadeCurve::solve_node_positions(TRtTransaction& transaction)
+void TFadeCurve::solve_shape(TRtTransaction& transaction)
 {
-    // calculate control points values
-    if (m_mode == 0) { // bended
-        if (m_type == FadeIn) {
-            m_controlPoints[1] = QPointF(m_strenghtFactor * (1.0 - m_bendFactor), m_strenghtFactor * m_bendFactor);
-            m_controlPoints[2] = QPointF(1.0 - (m_strenghtFactor * m_bendFactor), 1.0 - (m_strenghtFactor * (1.0 - m_bendFactor)));
-        }
-        if (m_type == FadeOut) {
-            m_controlPoints[1] = QPointF(m_strenghtFactor * m_bendFactor, m_strenghtFactor * (1.0 - m_bendFactor));
-            m_controlPoints[2] = QPointF(1.0 - (m_strenghtFactor * (1.0 - m_bendFactor)), 1.0 - (m_strenghtFactor * m_bendFactor));
-        }
-    }
-    if (m_mode == 1) { // s-shape
-        m_controlPoints[1] = QPointF(m_strenghtFactor * (1.0 - m_bendFactor), m_strenghtFactor * m_bendFactor);
-        m_controlPoints[2] = QPointF(1.0 - (m_strenghtFactor * (1.0 - m_bendFactor)), 1.0 - (m_strenghtFactor * m_bendFactor));
-    }
-    if (m_mode == 2) { // long
-        if (m_type == FadeIn) {
-            m_controlPoints[1] = QPointF(m_strenghtFactor * (1.0 - m_bendFactor), m_strenghtFactor * m_bendFactor);
-            m_controlPoints[2] = QPointF(1.0, 1.0);
-        }
-        if (m_type == FadeOut) {
-            m_controlPoints[1] = QPointF(0.0, 0.0);
-            m_controlPoints[2] = QPointF(1.0 - (m_strenghtFactor * (1.0 - m_bendFactor)), 1.0 - (m_strenghtFactor * m_bendFactor));
-        }
-    }
-
-
-    // calculate curve nodes values, relative to the range
-    float f = 0.0;
-    const QList<TCurveNode*>& nodes = TCurve::get_nodes();
-    const int listsize = nodes.size();
-    const double range = get_range();
-
-    for (int i = 1; i < listsize; ++i) {
-        f += 1.0 / (listsize - 1);
-        QPointF p = get_curve_point(f);
-        move_node(nodes.at(i), p.x() * range, p.y(), transaction);
-    }
+    const bool fadeOut = (m_type == FadeOut);
+    m_controlPoints = TFadeShape::control_points(fadeOut, m_mode, m_bendFactor, m_strenghtFactor);
+    m_shape = TCurveSnapshot::create(TFadeShape::points(fadeOut, m_controlPoints), 1.0);
+    m_state.mark_changed(transaction);
 }
 
-QPointF TFadeCurve::get_curve_point( float f)
+std::shared_ptr<const TFadeState> TFadeCurve::create_state() const
 {
-    float x = m_controlPoints.at(0).x() * pow((1.0 - f), 3.0)
-    + 3 * m_controlPoints.at(1).x() * f * pow((1.0 - f), 2.0)
-        + 3 * m_controlPoints.at(2).x() * pow(f, 2.0) * (1.0 - f)
-        + m_controlPoints.at(3).x() * pow(f, 3.0);
-
-    float y = m_controlPoints.at(0).y() * pow((1.0 - f), 3.0)
-              + 3 * m_controlPoints.at(1).y() * f * pow((1.0 - f), 2.0)
-              + 3 * m_controlPoints.at(2).y() * pow(f, 2.0) * (1.0 - f)
-              + m_controlPoints.at(3).y() * pow(f, 3.0);
-
-    if (m_type == FadeOut) {
-        y = 1.0 - y;
-    }
-
-    return QPointF(x, y);
+    return std::make_shared<TFadeState>(TFadeState{m_shape, m_length, m_bypass});
 }
 
-void TFadeCurve::set_range(double range, TRtTransaction& transaction)
+void TFadeCurve::set_length(double length, TRtTransaction& transaction)
 {
-    if (range <= 1.0) {
-        range = 1.0;
+    // Older versions stored a fade that was off as one frame long
+    if (length <= 1.0) {
+        length = 0.0;
     }
 
-    TCurve::set_range(range, transaction);
-    emit rangeChanged();
+    if (length == m_length) {
+        return;
+    }
+
+    m_length = length;
+    m_state.mark_changed(transaction);
+
+    emit lengthChanged();
 }
 
 void TFadeCurve::set_bend_factor(float factor, TRtTransaction& transaction)
@@ -339,7 +264,7 @@ void TFadeCurve::set_bend_factor(float factor, TRtTransaction& transaction)
         factor = 0.0;
 
     m_bendFactor = factor;
-    solve_node_positions(transaction);
+    solve_shape(transaction);
 
     emit bendValueChanged();
 }
@@ -352,14 +277,14 @@ void TFadeCurve::set_strength_factor(float factor, TRtTransaction& transaction)
         factor = 0.0;
 
     m_strenghtFactor = factor;
-    solve_node_positions(transaction);
+    solve_shape(transaction);
 
     emit strengthValueChanged();
 }
 
 QList< QPointF > TFadeCurve::get_control_points( ) const
 {
-    return m_controlPoints;
+    return QList<QPointF>(m_controlPoints.begin(), m_controlPoints.end());
 }
 
 TCommand* TFadeCurve::set_mode( )
@@ -374,7 +299,7 @@ TCommand* TFadeCurve::set_mode( )
 void TFadeCurve::set_mode(int m, TRtTransaction& transaction)
 {
     m_mode = m;
-    solve_node_positions(transaction);
+    solve_shape(transaction);
 
     emit modeChanged();
 }
@@ -390,9 +315,35 @@ QString TFadeCurve::fade_type_to_string() const
     return QString("Unknown Fade Type to String Conversion");
 }
 
+void TFadeCurve::get_vector(double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen)
+{
+    float* vec = audioBuffer.get_data(veclen);
+
+    if (m_length <= 0.0) {
+        std::fill(vec, vec + veclen, 1.0f);
+        return;
+    }
+
+    m_shape->get_vector(x0 / m_length, x1 / m_length, vec, veclen, m_guiLookupCache);
+}
+
+void TFadeCurve::get_columns(double x0, double columnWidth, int count, TCurveColumn* columns)
+{
+    if (m_length <= 0.0) {
+        std::fill(columns, columns + count, TCurveColumn{1.0, 1.0, 0.0, 1.0, 0.0, 1.0});
+        return;
+    }
+
+    // Positions inside a column are fractions of it, so they need no scaling
+    m_shape->get_columns(x0 / m_length, columnWidth / m_length, count, columns, m_guiLookupCache);
+}
+
 TCommand* TFadeCurve::toggle_bypass( )
 {
     m_bypass = !m_bypass;
+
+    TRtTransaction transaction;
+    m_state.mark_changed(transaction);
 
     emit stateChanged();
     return 0;
@@ -405,4 +356,3 @@ TCommand* TFadeCurve::toggle_raster( )
     emit rasterChanged();
     return 0;
 }
-

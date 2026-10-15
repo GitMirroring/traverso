@@ -57,7 +57,7 @@ TFadeCurveView::TFadeCurveView(TSheetView* sv, TAudioClipView* parent, TFadeCurv
     setFlags(QGraphicsItem::ItemUsesExtendedStyleOption);
 
     connect(m_fadeCurve, &TFadeCurve::stateChanged, this, &TFadeCurveView::state_changed);
-    connect(m_fadeCurve, &TFadeCurve::rangeChanged, this, &TFadeCurveView::state_changed);
+    connect(m_fadeCurve, &TFadeCurve::lengthChanged, this, &TFadeCurveView::state_changed);
 }
 
 
@@ -89,7 +89,7 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 
     // The fade is in time units, one pixel is timeref_scalefactor universal frames
     const double scale = double(m_sv->timeref_scalefactor);
-    const qreal range = m_fadeCurve->get_range() / scale;
+    const qreal range = m_fadeCurve->get_length() / scale;
 
     if (m_fadeCurve->get_fade_type() == TFadeCurve::FadeOut && range > m_parentViewItem->boundingRect().width()) {
         vector_start += range - m_parentViewItem->boundingRect().width();
@@ -162,7 +162,7 @@ void TFadeCurveView::calculate_bounding_rect()
 {
     prepareGeometryChange();
 
-    double range = m_fadeCurve->get_range() / double(m_sv->timeref_scalefactor);
+    double range = m_fadeCurve->get_length() / double(m_sv->timeref_scalefactor);
     m_boundingRect = QRectF( 0, 0, range, m_parentViewItem->get_height() );
 
     if (m_fadeCurve->get_fade_type() == TFadeCurve::FadeOut) {

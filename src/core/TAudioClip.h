@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioProcessingNode.h"
 #include "TProcessCallBackData.h"
-#include "TRealTimeLinkedList.h"
+#include "TRtList.h"
 #include "TSplitableTimeLineEntity.h"
 #include "TTimeRef.h"
 
@@ -39,6 +39,7 @@ class TPeak;
 class AudioBus;
 class TAudioPluginChain;
 class TFadeCurve;
+class TRtTransaction;
 
 class TAudioClip : public TAudioProcessingNode, public TSplitableTimeLineEntity
 {
@@ -66,8 +67,9 @@ public:
     TSplitMutationResult calculate_split_mutation(const TTimeRef& splitLocation) final;
 
 
-    void set_fade_in_range(double range);
-    void set_fade_out_range(double range);
+    // Creates the fade if the clip has none yet
+    void set_fade_in_length(double length);
+    void set_fade_out_length(double length);
     void set_track(TAudioTrack* track);
     void set_sheet(TSheet* sheet);
     void reset_fade_in();
@@ -124,7 +126,7 @@ public:
     TAudioClip* next = nullptr;
 
 private:
-    TRealTimeLinkedList<TFadeCurve*> m_fades;
+    TRtList<TFadeCurve>             m_fades;
     TSheet*                         m_sheet;
     TAudioTrack*                    m_track;
     TBufferedAudioStreamReader*     m_readSource;
@@ -149,7 +151,7 @@ private:
     qint64 m_readSourceId;
     qint64 m_sheetId;
 
-    void create_fade(int fadeType);
+    TFadeCurve* create_fade(int fadeType, TRtTransaction& transaction);
     void init();
     void set_source_end_location(const TTimeRef& location);
     void set_source_start_location(const TTimeRef& location);
@@ -178,8 +180,7 @@ public slots:
     TCommand* lock();
 
 private slots:
-    void private_add_fade(TFadeCurve* fade);
-    void private_remove_fade(TFadeCurve* fade);
+    void add_fade(TFadeCurve* fade, TRtTransaction& transaction);
     void update_global_configuration();
     void sync_location_to_stream();
 };

@@ -24,17 +24,43 @@ $Id: FadeCurve.h,v 1.19 2008/01/21 16:22:14 r_sijrier Exp $
 #define TFADE_CURVE_H
 
 #include "TCommand.h"
-#include "TCurve.h"
+#include "TContextItem.h"
+#include "TCurveSnapshot.h"
+#include "TRtValue.h"
+#include "TAudioBuffer.h"
+#include "TTimeRef.h"
 
+#include <QDomDocument>
 #include <QString>
 #include <QStringList>
 #include <QList>
 #include <QPointF>
 
+#include <array>
+#include <memory>
+
 class AudioBus;
 class TTimeLineEntity;
+class TRtTransaction;
 
-class TFadeCurve : public TCurve
+// What the audio thread needs of a fade, published as one snapshot
+struct TFadeState
+{
+    std::shared_ptr<const TCurveSnapshot> shape;    // time and value 0..1
+    double                                length;   // universal frames, 0: off
+    bool                                  bypassed;
+};
+
+/**
+ * @brief A fade in or fade out of a clip.
+ *
+ * The shape (mode, bend and strength) is solved once, as a curve with time
+ * and value from 0 to 1, see TFadeShape. The length is separate, a fade of
+ * length 0 is off but keeps its shape. Shape, length and bypass reach the
+ * audio thread together as one TFadeState; changing only the length publishes
+ * the same shape with the new length.
+ */
+class TFadeCurve : public TContextItem
 {
     Q_OBJECT
 
@@ -46,22 +72,30 @@ public:
         FadeOut = 1
     };
 
-    TFadeCurve(TContextItem* parent, FadeType fadeType);
+    TFadeCurve(TContextItem* parent, FadeType fadeType, TRtTransaction& transaction);
     ~TFadeCurve() override = default;
 
     QDomNode get_state(QDomDocument doc);
-    int set_state( const QDomNode & node ) final;
+    int set_state( const QDomNode & node );
 
+    // Audio thread
     void process(const TAudioBuffer &curveBuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes);
+
+    // GUI thread
 
     float get_bend_factor() {return m_bendFactor;}
     float get_strength_factor() {return m_strenghtFactor;}
     int get_mode() const {return m_mode;}
     int get_raster() const {return m_raster;}
+    // In universal frames, 0 when the fade is off
+    double get_length() const {return m_length;}
 
     void set_shape(const QString &shapeName);
     void set_bend_factor(float factor, TRtTransaction& transaction);
     void set_strength_factor(float factor, TRtTransaction& transaction);
+    void set_mode(int m, TRtTransaction& transaction);
+    // Lengths shorter than one universal frame turn the fade off
+    void set_length(double length, TRtTransaction& transaction);
 
     void set_parent_timeline_entity(TTimeLineEntity* entity) {
         m_parentTimeLineEntity = entity;
@@ -72,33 +106,31 @@ public:
 
     bool is_bypassed() const {return m_bypass;}
 
-    void set_mode(int m, TRtTransaction& transaction);
-
     QString fade_type_to_string() const;
 
-    bool operator<(const TFadeCurve& /*other*/) {
-        return false;
-    }
-
-    TFadeCurve* next{nullptr};
+    // The fade's gain between x0 and x1, in universal frames from the start of
+    // the fade, and for drawing, see TCurveSnapshot::get_columns()
+    void get_vector(double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen);
+    void get_columns(double x0, double columnWidth, int count, TCurveColumn* columns);
 
 private:
-    TTimeLineEntity* m_parentTimeLineEntity{nullptr};
-    float 		     m_bendFactor{0.0f};
-    float 		     m_strenghtFactor{0.5f};
-    bool		     m_bypass{false};
-    int 		     m_mode{2};
-    int              m_raster{0};
-    FadeType	     m_type;
-    QList<QPointF> 	 m_controlPoints;
+    TTimeLineEntity*                      m_parentTimeLineEntity{nullptr};
+    float 		                          m_bendFactor{0.0f};
+    float 		                          m_strenghtFactor{0.5f};
+    bool		                          m_bypass{false};
+    int 		                          m_mode{2};
+    int                                   m_raster{0};
+    double                                m_length{0.0};
+    FadeType	                          m_type;
+    std::array<QPointF, 4>                m_controlPoints;
+    std::shared_ptr<const TCurveSnapshot> m_shape;
+    TRtValue<TFadeState>                  m_state;
+    TCurveLookupCache                     m_guiLookupCache;
+    TCurveLookupCache                     m_rtLookupCache;
 
-    QPointF get_curve_point(float f);
-    void init();
-
-public:
-    // Positions the nodes for the bend and strength factors and the mode
-    void solve_node_positions(TRtTransaction& transaction);
-    void set_range(double range, TRtTransaction& transaction) final;
+    // Solves the shape for the mode, bend and strength
+    void solve_shape(TRtTransaction& transaction);
+    std::shared_ptr<const TFadeState> create_state() const;
 
 public slots:
     TCommand* toggle_bypass();
@@ -106,11 +138,12 @@ public slots:
     TCommand* toggle_raster();
 
 signals:
+    void stateChanged();
     void modeChanged();
     void bendValueChanged();
     void strengthValueChanged();
     void rasterChanged();
-    void rangeChanged();
+    void lengthChanged();
 };
 
 #endif

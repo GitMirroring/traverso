@@ -145,25 +145,29 @@ int TAudioClip::set_state(const QDomNode& node)
 
     emit stateChanged();
 
-    QDomElement fadeInNode = node.firstChildElement("FadeIn");
-    if (!fadeInNode.isNull()) {
-        if (!m_fadeIn) {
-            m_fadeIn = new TFadeCurve(this, TFadeCurve::FadeIn);
-            m_fadeIn->set_parent_timeline_entity(this);
+    {
+        // Joins the transaction of the sheet when loading a project
+        TRtTransaction transaction;
 
-            private_add_fade(m_fadeIn);
+        QDomElement fadeInNode = node.firstChildElement("FadeIn");
+        if (!fadeInNode.isNull()) {
+            if (!m_fadeIn) {
+                TFadeCurve* fade = new TFadeCurve(this, TFadeCurve::FadeIn, transaction);
+                fade->set_parent_timeline_entity(this);
+                add_fade(fade, transaction);
+            }
+            m_fadeIn->set_state( fadeInNode );
         }
-        m_fadeIn->set_state( fadeInNode );
-    }
 
-    QDomElement fadeOutNode = node.firstChildElement("FadeOut");
-    if (!fadeOutNode.isNull()) {
-        if (!m_fadeOut) {
-            m_fadeOut = new TFadeCurve(this, TFadeCurve::FadeOut);
-            m_fadeOut->set_parent_timeline_entity(this);
-            private_add_fade(m_fadeOut);
+        QDomElement fadeOutNode = node.firstChildElement("FadeOut");
+        if (!fadeOutNode.isNull()) {
+            if (!m_fadeOut) {
+                TFadeCurve* fade = new TFadeCurve(this, TFadeCurve::FadeOut, transaction);
+                fade->set_parent_timeline_entity(this);
+                add_fade(fade, transaction);
+            }
+            m_fadeOut->set_state( fadeOutNode );
         }
-        m_fadeOut->set_state( fadeOutNode );
     }
 
     QDomNode pluginChainNode = node.firstChildElement("PluginChain");
@@ -430,22 +434,22 @@ void TAudioClip::set_track_end_location(const TTimeRef& location)
     }
 }
 
-void TAudioClip::set_fade_in_range(double range)
+void TAudioClip::set_fade_in_length(double length)
 {
-    if (!m_fadeIn) {
-        create_fade(TFadeCurve::FadeIn);
-    }
     TRtTransaction transaction;
-    m_fadeIn->set_range(range, transaction);
+    if (!m_fadeIn) {
+        create_fade(TFadeCurve::FadeIn, transaction);
+    }
+    m_fadeIn->set_length(length, transaction);
 }
 
-void TAudioClip::set_fade_out_range(double range)
+void TAudioClip::set_fade_out_length(double length)
 {
-    if (!m_fadeOut) {
-        create_fade(TFadeCurve::FadeOut);
-    }
     TRtTransaction transaction;
-    m_fadeOut->set_range(range, transaction);
+    if (!m_fadeOut) {
+        create_fade(TFadeCurve::FadeOut, transaction);
+    }
+    m_fadeOut->set_length(length, transaction);
 }
 
 void TAudioClip::set_selected(bool /*selected*/)
@@ -530,7 +534,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
         std::cout << QString("AudioClip::process(): readFrames %1, framesToProcess %2").arg(readFrames).arg(framesToProcess).toLatin1().data() << &std::endl;
     }
 
-    for(TFadeCurve* fade = m_fades.first(); fade != nullptr; fade = fade->next) {
+    for (TFadeCurve* fade : m_fades.rt_items()) {
         fade->process(m_sheet->get_curve_buffer(), bus, startLocation, endLocation, nframes);
     }
 
@@ -659,7 +663,7 @@ void TAudioClip::reset_fade_in()
 {
     if (m_fadeIn) {
         TRtTransaction transaction;
-        m_fadeIn->set_range(0.99, transaction);
+        m_fadeIn->set_length(0.0, transaction);
     }
 }
 
@@ -667,7 +671,7 @@ void TAudioClip::reset_fade_out()
 {
     if (m_fadeOut) {
         TRtTransaction transaction;
-        m_fadeOut->set_range(0.99, transaction);
+        m_fadeOut->set_length(0.0, transaction);
     }
 }
 
@@ -904,7 +908,7 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
 TFadeCurve * TAudioClip::get_fade_in()
 {
     if (!m_fadeIn) {
-        set_fade_in_range(1.0);
+        set_fade_in_length(0.0);
         Q_ASSERT(m_fadeIn);
     }
     return m_fadeIn;
@@ -914,15 +918,15 @@ TFadeCurve * TAudioClip::get_fade_in()
 TFadeCurve * TAudioClip::get_fade_out()
 {
     if (!m_fadeOut) {
-        set_fade_out_range(1.0);
+        set_fade_out_length(0.0);
         Q_ASSERT(m_fadeOut);
     }
     return m_fadeOut;
 }
 
-void TAudioClip::private_add_fade( TFadeCurve* fade )
+void TAudioClip::add_fade(TFadeCurve* fade, TRtTransaction& transaction)
 {
-    m_fades.append(fade);
+    m_fades.add(fade, transaction);
 
     if (fade->get_fade_type() == TFadeCurve::FadeIn) {
         m_fadeIn = fade;
@@ -931,45 +935,25 @@ void TAudioClip::private_add_fade( TFadeCurve* fade )
     }
 }
 
-void TAudioClip::private_remove_fade( TFadeCurve * fade )
+// The fade, its first state and its place in the clip reach the audio thread
+// together, as part of transaction
+TFadeCurve* TAudioClip::create_fade(int fadeType, TRtTransaction& transaction)
 {
-    if (fade == m_fadeIn) {
-        m_fadeIn = nullptr;
-    } else if (fade == m_fadeOut) {
-        m_fadeOut = nullptr;
-    }
-
-    m_fades.remove(fade);
-}
-
-void TAudioClip::create_fade(int fadeType)
-{
-    TFadeCurve* fadeCurve = nullptr;
-    switch (fadeType) {
-    case TFadeCurve::FadeIn:
-        m_fadeIn = new TFadeCurve(this, TFadeCurve::FadeIn);
-        fadeCurve = m_fadeIn;
-        break;
-        case TFadeCurve::FadeOut:
-        m_fadeOut = new TFadeCurve(this, TFadeCurve::FadeOut);
-        fadeCurve = m_fadeOut;
-        break;
-    default:
+    if (fadeType != TFadeCurve::FadeIn && fadeType != TFadeCurve::FadeOut) {
         PERROR("FadeType unknown");
-        return;
+        return nullptr;
     }
 
-    Q_ASSERT(fadeCurve);
-
-    fadeCurve->set_shape("Fast");
+    // A new fade has the default shape, the "Fast" preset
+    TFadeCurve* fadeCurve = new TFadeCurve(this, TFadeCurve::FadeType(fadeType), transaction);
     fadeCurve->set_history_stack(get_history_stack());
     fadeCurve->set_parent_timeline_entity(this);
 
-    tsmp().post_rt_task(
-        [this, fadeCurve]() { private_add_fade(fadeCurve); }, // 1. Real-time audio loop processing task
-        [this, fadeCurve]() { emit fadeAdded(fadeCurve); }    // 2. Main GUI thread return signaling notification
-        );
+    add_fade(fadeCurve, transaction);
 
+    emit fadeAdded(fadeCurve);
+
+    return fadeCurve;
 }
 
 QDomNode TAudioClip::get_dom_node() const

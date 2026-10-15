@@ -44,6 +44,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include "TAudioBuffer.h"
 #include <TFadeCurve.h>
+#include <TCurve.h>
 #include "TMainWindow.h"
 #include "TAudioPluginChain.h"
 #include "Fade.h"
@@ -348,7 +349,7 @@ void TAudioClipView::draw_tile(QPainter* painter, qreal xstart, int pixelcount)
         const qreal clipWidth = double(m_clip->get_length() / timeRefScale);
         for (TFadeCurve* fade : {fadeIn, fadeOut}) {
             if (!fade) continue;
-            const int fadeWidth = double(fade->get_range() / m_sv->timeref_scalefactor);
+            const int fadeWidth = double(fade->get_length() / m_sv->timeref_scalefactor);
             if (fadeWidth == 0) continue;
             hasCurve = true;
             const qreal fadeStart = fade->get_fade_type() == TFadeCurve::FadeOut ? clipWidth - fadeWidth : 0.0;
@@ -633,7 +634,7 @@ void TAudioClipView::add_new_fade_curve_view( TFadeCurve * fade )
     TFadeCurveView* view = new TFadeCurveView(m_sv, this, fade);
     m_fadeCurveViews.append(view);
     connect(view, &TFadeCurveView::fadeModified, m_sv, &TSheetView::stop_follow_play_head);
-    connect(fade, &TFadeCurve::rangeChanged, this, &TAudioClipView::invalidate_fade_tiles);
+    connect(fade, &TFadeCurve::lengthChanged, this, &TAudioClipView::invalidate_fade_tiles);
     connect(fade, &TFadeCurve::stateChanged, this, &TAudioClipView::invalidate_fade_tiles);
     connect(fade, &TFadeCurve::bendValueChanged, this, &TAudioClipView::invalidate_fade_tiles);
     connect(fade, &TFadeCurve::strengthValueChanged, this, &TAudioClipView::invalidate_fade_tiles);
@@ -711,7 +712,7 @@ void TAudioClipView::invalidate_edge_tiles(bool isLeftEdge)
         if ((isLeftEdge && fadeView->get_fade()->get_fade_type() == TFadeCurve::FadeIn) ||
             (!isLeftEdge && fadeView->get_fade()->get_fade_type() == TFadeCurve::FadeOut))
         {
-            int range = fadeView->get_fade()->get_range() / m_sv->timeref_scalefactor;
+            int range = fadeView->get_fade()->get_length() / m_sv->timeref_scalefactor;
             if (range > 0) {
                 const qreal sourceStartPixels = double(m_clip->get_source_start_location() / m_sv->timeref_scalefactor);
                 const qreal left = fadeView->pos().x() + sourceStartPixels;
