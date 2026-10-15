@@ -38,6 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include "FileHelpers.h"
 #include "TAudioDevice.h"
+#include "TRtTransaction.h"
 #include "Utils.h"
 #include "Debugger.h"
 
@@ -153,9 +154,18 @@ TProject* TProjectManager::create_new_project(int numSheets, int numTracks, cons
 	QString newrootdir = config().get_property("Project", "directory", "/directory/unknown/").toString() + "/" + projectName;
 	m_projectDirs.append(newrootdir);
 	
-	TProject* newProject = new TProject(projectName);
+	TProject* newProject = nullptr;
+	int result = 0;
 
-	if (newProject->create(numSheets, numTracks) < 0) {
+	{
+		// The whole new project reaches the audio thread as one change
+		TRtTransaction transaction;
+
+		newProject = new TProject(projectName);
+		result = newProject->create(numSheets, numTracks);
+	}
+
+	if (result < 0) {
 		delete newProject;
 		tInformUser().critical(tr("Unable to create new Project %1").arg(projectName));
 		return 0;
@@ -176,9 +186,18 @@ TProject* TProjectManager::create_new_project(const QString& templatefile, const
 	QString newrootdir = config().get_property("Project", "directory", "/directory/unknown/").toString() + "/" + projectName;
 	m_projectDirs.append(newrootdir);
 	
-	TProject* newProject = new TProject(projectName);
-	
-	if (newProject->create(0, 0) < 0) {
+	TProject* newProject = nullptr;
+	int result = 0;
+
+	{
+		// The whole new project reaches the audio thread as one change
+		TRtTransaction transaction;
+
+		newProject = new TProject(projectName);
+		result = newProject->create(0, 0);
+	}
+
+	if (result < 0) {
 		delete newProject;
 		tInformUser().critical(tr("Unable to create new Project %1").arg(projectName));
 		return 0;
@@ -202,15 +221,22 @@ int TProjectManager::load_project(const QString& projectName)
 		return -1;
 	}
 
-	TProject* newProject = new TProject(projectName);
+	int err = 0;
 
-	if (!newProject)
-		return -1;
+	{
+		// The whole project reaches the audio thread as one change, applied in
+		// one audio cycle. Load() starts the project's audio driver, so the
+		// change is published to it.
+		TRtTransaction transaction;
 
-	set_current_project(newProject);
+		TProject* newProject = new TProject(projectName);
 
-	int err;
-        if ((err = m_currentProject->load()) < 0) {
+		set_current_project(newProject);
+
+		err = m_currentProject->load();
+	}
+
+        if (err < 0) {
 		switch (err) {
 			case TProject::PROJECT_FILE_VERSION_MISMATCH: {
                                 emit projectFileVersionMismatch(m_currentProject->get_root_dir(), m_currentProject->get_title());

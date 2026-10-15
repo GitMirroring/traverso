@@ -11,6 +11,7 @@
 
 #include <QCoreApplication>
 #include <QThread>
+#include <chrono>
 #include <vector>
 
 static TRtTransaction* s_current = nullptr;
@@ -20,11 +21,29 @@ static TRtTransaction* s_current = nullptr;
 struct TRtStepBatch
 {
     std::vector<std::unique_ptr<TRtStep>> steps;
+    std::chrono::nanoseconds              applyDuration{0};
 
     void apply_in_audio_thread()
     {
+        // Reading the monotonic clock does not block
+        const auto start = std::chrono::steady_clock::now();
+
         for (auto& step : steps) {
             step->apply_in_audio_thread();
+        }
+
+        applyDuration = std::chrono::steady_clock::now() - start;
+    }
+
+    // Message queue worker thread: how long the audio thread spent on the batch,
+    // big batches (a sheet or project load) at debug level 1, all at level 2
+    void report() const
+    {
+        const auto microseconds = double(applyDuration.count()) / 1000.0;
+        if (steps.size() >= 10) {
+            PMESG("TRtTransaction: applied %d steps in %.1f us", int(steps.size()), microseconds);
+        } else {
+            PMESG2("TRtTransaction: applied %d steps in %.1f us", int(steps.size()), microseconds);
         }
     }
 };
@@ -97,5 +116,5 @@ void TRtTransaction::commit()
 
     tsmp().post_rt_task(
         [batch]() { batch->apply_in_audio_thread(); },
-        [batch]() { delete batch; });
+        [batch]() { batch->report(); delete batch; });
 }
