@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "AbstractAudioWriter.h"
 #include "SFAudioWriter.h"
-#include "TExportSpecification.h"
 #include "WPAudioWriter.h"
 #include <QString>
 
@@ -33,8 +32,8 @@ RELAYTOOL_WAVPACK;
 RELAYTOOL_FAAC;
 
 
-AbstractAudioWriter::AbstractAudioWriter(TExportSpecification *spec)
-    : m_exportSpecification(spec)
+AbstractAudioWriter::AbstractAudioWriter(const TAudioEncodeSettings& settings)
+    : m_settings(settings)
 {
 	m_writePos = 0;
 	
@@ -103,20 +102,18 @@ nframes_t AbstractAudioWriter::write(void* buffer, nframes_t count)
 	return 0;
 }
 
-std::unique_ptr<AbstractAudioWriter> AbstractAudioWriter::create_audio_writer(TExportSpecification* spec)
+std::unique_ptr<AbstractAudioWriter> AbstractAudioWriter::create_audio_writer(const TAudioEncodeSettings& settings)
 {
-    Q_ASSERT(spec);
-
-    switch (spec->get_writer_type()) {
+    switch (settings.writerType) {
     case TraversoDAW::WriterType::WAVPACK:
-        return std::make_unique<WPAudioWriter>(spec);
+        return std::make_unique<WPAudioWriter>(settings);
 
     case TraversoDAW::WriterType::M4A:
-        return std::make_unique<FaacAudioWriter>(spec);
+        return std::make_unique<FaacAudioWriter>(settings);
 
     case TraversoDAW::WriterType::SNDFILE:
     default:
         // Default master wrapper routing directly to standard libsndfile structures
-        return std::make_unique<SFAudioWriter>(spec);
+        return std::make_unique<SFAudioWriter>(settings);
     }
 }

@@ -20,7 +20,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "SFAudioWriter.h"
-#include "TExportSpecification.h"
 #include "Utils.h"
 
 #include <QString>
@@ -30,8 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 
-SFAudioWriter::SFAudioWriter(TExportSpecification *spec)
-    : AbstractAudioWriter(spec)
+SFAudioWriter::SFAudioWriter(const TAudioEncodeSettings& settings)
+    : AbstractAudioWriter(settings)
 {
 	m_sf = 0;
 }
@@ -56,7 +55,7 @@ bool SFAudioWriter::open_private()
     // TRANSLATION STAGE: Map TraversoDAW compile-time enums to libsndfile bitmasks
     // =========================================================================
     int sf_file_format = 0;
-    switch (m_exportSpecification->get_file_format()) {
+    switch (m_settings.fileFormat) {
     case TraversoDAW::FileFormat::WAV:   sf_file_format = SF_FORMAT_WAV; break;
     case TraversoDAW::FileFormat::AIFF:  sf_file_format = SF_FORMAT_AIFF; break;
     case TraversoDAW::FileFormat::W64:   sf_file_format = SF_FORMAT_W64; break;
@@ -67,7 +66,7 @@ bool SFAudioWriter::open_private()
     }
 
     int sf_data_format = 0;
-    switch (m_exportSpecification->get_data_format()) {
+    switch (m_settings.dataFormat) {
     case TraversoDAW::DataFormat::PCM_S8: sf_data_format = SF_FORMAT_PCM_S8; break;
     case TraversoDAW::DataFormat::PCM_16: sf_data_format = SF_FORMAT_PCM_16; break;
     case TraversoDAW::DataFormat::PCM_24: sf_data_format = SF_FORMAT_PCM_24; break;
@@ -81,8 +80,8 @@ bool SFAudioWriter::open_private()
 
     m_sfinfo.frames = 0;
 
-    m_sfinfo.samplerate = m_exportSpecification->get_sample_rate();
-    m_sfinfo.channels = m_exportSpecification->get_channel_count();
+    m_sfinfo.samplerate = m_settings.sampleRate;
+    m_sfinfo.channels = m_settings.channelCount;
 
     m_file.setFileName(m_fileName);
     if (!m_file.open(QIODevice::WriteOnly)) {
@@ -93,8 +92,8 @@ bool SFAudioWriter::open_private()
     m_sf = sf_open_fd(m_file.handle(), SFM_WRITE, &m_sfinfo, false);
 
     // Apply specific variable bitrate encoding options if OGG or MP3 formats are selected
-    if (m_sf && (m_exportSpecification->get_file_format() == TraversoDAW::FileFormat::OGG ||
-                 m_exportSpecification->get_file_format() == TraversoDAW::FileFormat::MP3))
+    if (m_sf && (m_settings.fileFormat == TraversoDAW::FileFormat::OGG ||
+                 m_settings.fileFormat == TraversoDAW::FileFormat::MP3))
     {
         double quality = 5.0; // Default medium VBR execution boundaries
         sf_command(m_sf, SFC_SET_VBR_ENCODING_QUALITY, &quality, sizeof(double));
@@ -114,14 +113,13 @@ bool SFAudioWriter::open_private()
 
 nframes_t SFAudioWriter::write_private(void* buffer, nframes_t frameCount)
 {
-    Q_ASSERT(m_exportSpecification);
     Q_ASSERT(m_sf);
     Q_ASSERT(buffer);
 
     int written = 0;
     char errbuf[256];
-    uint channels = m_exportSpecification->get_channel_count();
-    TraversoDAW::DataFormat dataFormat = m_exportSpecification->get_data_format();
+    uint channels = m_settings.channelCount;
+    TraversoDAW::DataFormat dataFormat = m_settings.dataFormat;
 
     switch (dataFormat) {
     case TraversoDAW::DataFormat::PCM_S8:

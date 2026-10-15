@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "FaacAudioWriter.h"
-#include "TExportSpecification.h"
 #include <stdio.h>
 #include <faac.h>
 
@@ -48,8 +47,8 @@ struct FaacAudioWriter::FaacInfo {
 };
 
 
-FaacAudioWriter::FaacAudioWriter(TExportSpecification* spec)
-	: AbstractAudioWriter(spec)
+FaacAudioWriter::FaacAudioWriter(const TAudioEncodeSettings& settings)
+	: AbstractAudioWriter(settings)
 {
 	(void)libfaac_is_present;
 	m_fid = nullptr;
@@ -147,8 +146,8 @@ bool FaacAudioWriter::open_private()
 		return false;
 	}
 
-	params.sample_rate = m_exportSpecification->get_sample_rate();
-	params.num_channels = m_exportSpecification->get_channel_count();
+	params.sample_rate = m_settings.sampleRate;
+	params.num_channels = m_settings.channelCount;
 	params.mpeg_version = FAAC_MPEG4;
 	params.object_type = (m_objectType == 5) ? FAAC_OBJ_HE_AAC_V1 : FAAC_OBJ_LOW;
 	params.joint_mode = (params.num_channels > 1 && m_useMidside) ? FAAC_JOINT_MS : FAAC_JOINT_NONE;
@@ -187,7 +186,7 @@ bool FaacAudioWriter::open_private()
 	m_faacInfo->frameSamples = info.frame_samples;
 	m_faacInfo->maxOutputBytes = info.max_output_bytes;
 #else
-	m_faacInfo->handle = faacEncOpen(m_exportSpecification->get_sample_rate(), m_exportSpecification->get_channel_count(), &m_faacInfo->inputSamples, &m_faacInfo->maxOutputBytes);
+	m_faacInfo->handle = faacEncOpen(m_settings.sampleRate, m_settings.channelCount, &m_faacInfo->inputSamples, &m_faacInfo->maxOutputBytes);
 	if (!m_faacInfo->handle) {
 		// PERROR("FaacAudioWriter: faacEncOpen failed.");
 		fclose(m_fid);
@@ -208,7 +207,7 @@ bool FaacAudioWriter::open_private()
 	cfg->aacObjectType = (m_objectType == 5) ? 5 : LOW;
 	cfg->mpegVersion = MPEG4;
 	cfg->useTns = m_useTns ? 1 : 0;
-	cfg->allowMidside = (m_exportSpecification->get_channel_count() > 1 && m_useMidside) ? 1 : 0;
+	cfg->allowMidside = (m_settings.channelCount > 1 && m_useMidside) ? 1 : 0;
 	cfg->outputFormat = 1; // 1 = ADTS
 	cfg->inputFormat = FAAC_INPUT_16BIT;
 
@@ -217,7 +216,7 @@ bool FaacAudioWriter::open_private()
 		cfg->bitRate = 0;
 	} else {
 		uint32_t kbps = (m_bitrate > 0) ? m_bitrate : 128;
-		cfg->bitRate = (kbps * 1000) / m_exportSpecification->get_channel_count();
+		cfg->bitRate = (kbps * 1000) / m_settings.channelCount;
 		cfg->quantqual = 0;
 	}
 
@@ -248,10 +247,10 @@ nframes_t FaacAudioWriter::write_private(void* buffer, nframes_t frameCount)
 	}
 
 	const int16_t* pcmData = static_cast<const int16_t*>(buffer);
-	uint32_t totalSamples = (uint32_t)frameCount * m_exportSpecification->get_channel_count();
+	uint32_t totalSamples = (uint32_t)frameCount * m_settings.channelCount;
 
 #if defined(FAAC_VERSION_MAJOR) && (FAAC_VERSION_MAJOR >= 1)
-	uint32_t maxChunkSamples = m_faacInfo->frameSamples * m_exportSpecification->get_channel_count();
+	uint32_t maxChunkSamples = m_faacInfo->frameSamples * m_settings.channelCount;
 	uint32_t samplesProcessed = 0;
 
 	while (samplesProcessed < totalSamples) {

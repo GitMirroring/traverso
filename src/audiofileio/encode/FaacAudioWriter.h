@@ -33,7 +33,7 @@ class QString;
 class FaacAudioWriter : public AbstractAudioWriter
 {
 public:
-	FaacAudioWriter(TExportSpecification* spec);
+	FaacAudioWriter(const TAudioEncodeSettings& settings);
 	~FaacAudioWriter();
 
 	bool set_format_attribute(const QString& key, const QString& value);

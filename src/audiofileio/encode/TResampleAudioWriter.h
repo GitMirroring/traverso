@@ -17,7 +17,7 @@ the Free Software Foundation; either version 2 of the License, or
 #include <memory>
 #include <vector>
 
-class TExportSpecification;
+#include "TAudioEncodeSettings.h"
 class AbstractAudioWriter;
 class TAudioResampler;
 class TFileIOBuffer;
@@ -25,7 +25,7 @@ class TFileIOBuffer;
 class TResampleAudioWriter
 {
 public:
-    TResampleAudioWriter(TExportSpecification* spec);
+    TResampleAudioWriter(const TAudioEncodeSettings& settings);
     ~TResampleAudioWriter();
 
     bool open(const QString& filename, uint inputSampleRate);
@@ -34,7 +34,7 @@ public:
 
 private:
     std::unique_ptr<AbstractAudioWriter>            m_codecWriter;
-    TExportSpecification*                           m_spec;
+    TAudioEncodeSettings                            m_settings;
 
     uint                                            m_inputSampleRate;
     uint                                            m_outputSampleRate;

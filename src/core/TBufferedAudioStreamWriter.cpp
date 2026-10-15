@@ -59,7 +59,7 @@ int TBufferedAudioStreamWriter::prepare_export(TExportSpecification *specificati
     set_name(get_name() + specification->get_file_extension());
     specification->print_export_data();
 
-    m_resampleWriter = std::make_unique<TResampleAudioWriter>(specification);
+    m_resampleWriter = std::make_unique<TResampleAudioWriter>(specification->get_encode_settings());
     if (!m_resampleWriter->open(m_fileName, m_sampleRate)) {
         PERROR("Write Source failed to open via TResampleAudioWriter");
         return -1;

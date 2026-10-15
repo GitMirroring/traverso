@@ -63,9 +63,6 @@ target_link_libraries(traversocore PRIVATE traverso_compiler_settings)
 target_include_directories(traversocore
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/src/audiofileio
-        ${CMAKE_SOURCE_DIR}/src/audiofileio/decode
-        ${CMAKE_SOURCE_DIR}/src/audiofileio/encode
         ${CMAKE_SOURCE_DIR}/src/commands
         ${CMAKE_SOURCE_DIR}/src/plugins
         ${CMAKE_SOURCE_DIR}/src/plugins/native
@@ -77,6 +74,7 @@ target_link_libraries(traversocore
         traversosupport
         traversodsp
         traversoaudioruntime
+        traversoaudiofileio
         Qt6::Widgets
         Qt6::Gui
         Qt6::Xml

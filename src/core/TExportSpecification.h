@@ -6,6 +6,7 @@
 #include "TTimeRef.h"
 #include "defines.h"
 #include "gdither_types.h"
+#include "TAudioEncodeSettings.h"
 
 class TProject;
 class TSheet;
@@ -88,6 +89,8 @@ public:
     TTimeRef get_export_location() const { return m_exportLocation; }
     TTimeRef get_export_length() const;
     GDitherSize get_dither_size() const;
+    // What the audio writers need of this specification
+    TAudioEncodeSettings get_encode_settings() const;
     GDitherType get_dither_type() const { return m_ditherType; }
     uint get_sample_bytes() const { return m_sampleBytes; }
     QList<TSheet*> get_sheets_to_export() const { return m_sheetsToExport; }

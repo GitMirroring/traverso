@@ -27,13 +27,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "defines.h"
 #include "wavpack/wavpack.h"
 
-class TExportSpecification;
+#include "TAudioEncodeSettings.h"
 
 class WPAudioWriter : public AbstractAudioWriter
 {
 	
 public:
-    WPAudioWriter(TExportSpecification* spec);
+    WPAudioWriter(const TAudioEncodeSettings& settings);
 	~WPAudioWriter();
 	
 	bool set_format_attribute(const QString& key, const QString& value);

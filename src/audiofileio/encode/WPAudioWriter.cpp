@@ -22,12 +22,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "WPAudioWriter.h"
 
 #include <QString>
-#include "TExportSpecification.h"
 #include "Utils.h"
 #include "Debugger.h"
 
-WPAudioWriter::WPAudioWriter(TExportSpecification* spec)
-    : AbstractAudioWriter(spec)
+WPAudioWriter::WPAudioWriter(const TAudioEncodeSettings& settings)
+    : AbstractAudioWriter(settings)
 {
 	m_wp = 0;
     m_firstBlock = 0;
@@ -109,15 +108,15 @@ bool WPAudioWriter::open_private()
 	}
 
 	memset (&m_config, 0, sizeof(m_config));
-    int bitDepth = m_exportSpecification->get_bit_depth();
+    int bitDepth = m_settings.bitDepth;
     m_config.bytes_per_sample = bitDepth/8;
     m_config.bits_per_sample = bitDepth;
-    if (m_exportSpecification->get_data_format() == TraversoDAW::DataFormat::FLOAT) {
+    if (m_settings.dataFormat == TraversoDAW::DataFormat::FLOAT) {
         m_config.float_norm_exp = 127; // config->float_norm_exp,  select floating-point data (127 for +/-1.0)
     }
-    m_config.channel_mask = (m_exportSpecification->get_channel_count() == 2) ? 3 : 4; // Microsoft standard (mono = 4, stereo = 3)
-    m_config.num_channels = m_exportSpecification->get_channel_count();
-    m_config.sample_rate = m_exportSpecification->get_sample_rate();
+    m_config.channel_mask = (m_settings.channelCount == 2) ? 3 : 4; // Microsoft standard (mono = 4, stereo = 3)
+    m_config.num_channels = m_settings.channelCount;
+    m_config.sample_rate = m_settings.sampleRate;
 	m_config.flags = m_configFlags;
 	
 	WavpackSetConfiguration(m_wp, &m_config, -1);
@@ -199,12 +198,11 @@ bool WPAudioWriter::rewrite_first_block()
 
 nframes_t WPAudioWriter::write_private(void* buffer, nframes_t frameCount)
 {
-    Q_ASSERT(m_exportSpecification);
     Q_ASSERT(buffer);
 
-    uint channels = m_exportSpecification->get_channel_count();
+    uint channels = m_settings.channelCount;
     nframes_t totalSamples = frameCount * channels;
-    TraversoDAW::DataFormat dataFormat = m_exportSpecification->get_data_format();
+    TraversoDAW::DataFormat dataFormat = m_settings.dataFormat;
 
     // =========================================================================
     // CASE 1: Fixed Integer Bit-Depths (8-bit, 16-bit, 24-bit PCM inputs)

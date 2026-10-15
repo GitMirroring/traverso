@@ -11,20 +11,18 @@ the Free Software Foundation; either version 2 of the License, or
 
 #include "TResampleAudioWriter.h"
 #include "AbstractAudioWriter.h"
-#include "TExportSpecification.h"
 #include "TAudioResampler.h"
 #include "TFileIOBuffer.h"
 #include "gdither.h"
 
-TResampleAudioWriter::TResampleAudioWriter(TExportSpecification* spec)
-    : m_spec(spec)
+TResampleAudioWriter::TResampleAudioWriter(const TAudioEncodeSettings& settings)
+    : m_settings(settings)
     , m_inputSampleRate(0)
     , m_outputSampleRate(0)
     , m_channelCount(0)
     , m_dither(nullptr)
 {
-    Q_ASSERT(m_spec);
-    m_codecWriter = AbstractAudioWriter::create_audio_writer(m_spec);
+    m_codecWriter = AbstractAudioWriter::create_audio_writer(m_settings);
 }
 
 TResampleAudioWriter::~TResampleAudioWriter()
@@ -41,18 +39,18 @@ bool TResampleAudioWriter::open(const QString& filename, uint inputSampleRate)
     }
 
     m_inputSampleRate = inputSampleRate;
-    m_outputSampleRate = m_spec->get_sample_rate();
-    m_channelCount = m_spec->get_channel_count();
+    m_outputSampleRate = m_settings.sampleRate;
+    m_channelCount = m_settings.channelCount;
 
     m_resamplers.clear();
     if (m_inputSampleRate != m_outputSampleRate) {
         double ratio = double(m_outputSampleRate) / m_inputSampleRate;
         TAudioResampler::BackendType backend = TAudioResampler::BackendType::LIBSOXR;
-        int quality = m_spec->get_sample_rate_conversion_quality();
+        int quality = m_settings.sampleRateConversionQuality;
 
         for (uint chn = 0; chn < m_channelCount; ++chn) {
             m_resamplers.push_back(std::make_unique<TAudioResampler>(
-                backend, ratio, quality, m_spec->get_block_size()
+                backend, ratio, quality, m_settings.blockSize
                 ));
         }
     }
@@ -62,12 +60,12 @@ bool TResampleAudioWriter::open(const QString& filename, uint inputSampleRate)
         m_dither = nullptr;
     }
 
-    if (m_spec->get_data_format() != TraversoDAW::DataFormat::FLOAT) {
+    if (m_settings.dataFormat != TraversoDAW::DataFormat::FLOAT) {
         m_dither = gdither_new(
-            m_spec->get_dither_type(),
+            m_settings.ditherType,
             m_channelCount,
-            m_spec->get_dither_size(),
-            m_spec->get_bit_depth()
+            m_settings.ditherSize,
+            m_settings.bitDepth
             );
     }
 
@@ -147,7 +145,7 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
     }
 
     nframes_t finalInterleavedSamples = targetFrames * m_channelCount;
-    uint sampleBytes = m_spec->get_sample_bytes();
+    uint sampleBytes = m_settings.sampleBytes;
 
     if (sampleBytes > 0) {
         fileIOBuffer.check_packed_byte_capacity(finalInterleavedSamples * sampleBytes);
@@ -156,7 +154,7 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
     void* packedOutputBuffer = fileIOBuffer.get_packed_byte_buffer();
     nframes_t writtenFrames = 0;
 
-    switch (m_spec->get_data_format()) {
+    switch (m_settings.dataFormat) {
     case TraversoDAW::DataFormat::PCM_S8:
     case TraversoDAW::DataFormat::PCM_16:
     case TraversoDAW::DataFormat::PCM_24:

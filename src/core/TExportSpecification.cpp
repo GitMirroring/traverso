@@ -349,6 +349,23 @@ TTimeRef TExportSpecification::get_export_length() const
     return m_exportEndLocation - m_exportStartLocation;
 }
 
+TAudioEncodeSettings TExportSpecification::get_encode_settings() const
+{
+    TAudioEncodeSettings settings;
+    settings.writerType = get_writer_type();
+    settings.fileFormat = get_file_format();
+    settings.dataFormat = get_data_format();
+    settings.channelCount = get_channel_count();
+    settings.sampleRate = get_sample_rate();
+    settings.blockSize = get_block_size();
+    settings.sampleBytes = get_sample_bytes();
+    settings.bitDepth = get_bit_depth();
+    settings.sampleRateConversionQuality = get_sample_rate_conversion_quality();
+    settings.ditherType = get_dither_type();
+    settings.ditherSize = get_dither_size();
+    return settings;
+}
+
 GDitherSize TExportSpecification::get_dither_size() const
 {
     GDitherSize ditherSize;

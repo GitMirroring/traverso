@@ -29,13 +29,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QFile>
 
-class TExportSpecification;
+#include "TAudioEncodeSettings.h"
 
 class SFAudioWriter : public AbstractAudioWriter
 {
 	
 public:
-    SFAudioWriter(TExportSpecification* spec);
+    SFAudioWriter(const TAudioEncodeSettings& settings);
 	~SFAudioWriter();
 		
 protected:

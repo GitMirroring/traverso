@@ -24,39 +24,32 @@ if(TARGET PkgConfig::FAAC)
 endif()
 
 # Specify directory search paths for source compilation and downstream targets
+# Only its own directories: it never includes headers of libraries it does
+# not link
 target_include_directories(traversoaudiofileio
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/decode
-        ${CMAKE_CURRENT_SOURCE_DIR}/encode
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/decode
+        ${CMAKE_CURRENT_SOURCE_DIR}/encode
 )
 
-# Connect foundational dependencies using uniform PkgConfig target identifiers
+# Direct dependencies only, all private: consumers link what they use
+# themselves. Resampling and dithering come from dsp.
 target_link_libraries(traversoaudiofileio
-    PUBLIC
-        Qt6::Core
-        Qt6::Xml
     PRIVATE
         traversosupport
         traversodsp
+        Qt6::Core
         PkgConfig::SNDFILE
         PkgConfig::WAVPACK
         PkgConfig::SAMPLERATE
         PkgConfig::MAD
 )
 
-# Connect conditional dependencies if their targets were instantiated by the root
 if(TARGET PkgConfig::FAAD2)
-    target_link_libraries(traversoaudiofileio PUBLIC PkgConfig::FAAD2)
+    target_link_libraries(traversoaudiofileio PRIVATE PkgConfig::FAAD2)
 endif()
 
 if(TARGET PkgConfig::FAAC)
-    target_link_libraries(traversoaudiofileio PUBLIC PkgConfig::FAAC)
-endif()
-
-if(TARGET PkgConfig::SOXR)
-    target_link_libraries(traversoaudiofileio PUBLIC PkgConfig::SOXR)
-    target_compile_definitions(traversoaudiofileio PUBLIC HAVE_SOXR)
+    target_link_libraries(traversoaudiofileio PRIVATE PkgConfig::FAAC)
 endif()
