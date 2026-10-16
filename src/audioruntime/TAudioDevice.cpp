@@ -273,6 +273,11 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         printf ("late driver wakeup: nframes to process = %d\n", nframes);
     }
 
+    // Apply what the GUI posted before processing, so the cycle sees the
+    // current clients and state. A driver that just started then never
+    // processes a client whose removal was posted before it started
+    tsmp().process_posted_gui_events();
+
     /* run as many cycles as it takes to consume nframes (Should be 1 cycle!!)*/
     for (left = nframes; left >= m_bufferSize; left -= m_bufferSize) {
         if (run_one_cycle (m_bufferSize, delayed_usecs) < 0) {
@@ -281,14 +286,13 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         }
     }
 
-    tsmp().process_posted_gui_events();
     tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
         .rtTask = nullptr,
         .guiCallback = [this]() { emit finishedOneProcessCycle(); }
     });
 
     // Only the audio thread writes it. Release: whoever sees the new count
-    // also sees the changes applied above
+    // also sees the changes applied at the start of this cycle
     m_cycleCount.store(m_cycleCount.load(std::memory_order_relaxed) + 1, std::memory_order_release);
 
     return 1;
@@ -365,11 +369,11 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
                      QS_C(m_setup.get_driver_type()));
             delete m_driver;
             m_driver = nullptr;
-            set_parameters(m_fallBackSetup);
+            set_parameters(fallback_setup());
             return;
         }
     } else {
-        set_parameters(m_fallBackSetup);
+        set_parameters(fallback_setup());
         return;
     }
 
@@ -406,7 +410,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
     } else {
         if (m_driver->start() == -1) {
             // PortAudio driver failed to start, fallback to Dummy Driver:
-            set_parameters(m_fallBackSetup);
+            set_parameters(fallback_setup());
             return;
         }
 
@@ -427,7 +431,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
                     driver_setup_message("PipeWire", tr("The PipeWire server has been shutdown!"), CRITICAL);
                     delete m_driver;
                     m_driver = nullptr;
-                    set_parameters(m_fallBackSetup);
+                    set_parameters(fallback_setup());
                 }, Qt::QueuedConnection);
             }
         }
@@ -909,11 +913,10 @@ void TAudioDevice::remove_client( TAudioDeviceClient * client )
 
 bool TAudioDevice::wait_until_changes_applied(int timeoutMilliseconds)
 {
-    // The audio thread applies posted changes at the end of a cycle, after it
-    // processed that cycle with the old state, and then counts the cycle. A
-    // change posted just after the changes of a cycle were applied waits for
-    // the next one, so two counts later the old state is certainly no longer
-    // in use.
+    // The audio thread applies posted changes at the start of a cycle, then
+    // processes that cycle with the new state and counts it. A change posted
+    // after a cycle started waits for the next one, so two counts later the
+    // old state is certainly no longer in use.
     const quint64 start = m_cycleCount.load(std::memory_order_acquire);
 
     // Check once per audio period, the time between two cycles
@@ -940,7 +943,7 @@ void TAudioDevice::audiothread_finished()
         // so something certainly did go wrong when starting the beast
         // Start the Dummy Driver to avoid problems with TSMP
         PERROR("Alsa/Jack AudioThread stopped, but we didn't ask for it! Something apparently did go wrong :-(");
-        set_parameters(m_fallBackSetup);
+        set_parameters(fallback_setup());
     }
 }
 
@@ -980,7 +983,7 @@ void TAudioDevice::check_audio_thread_progress()
 
     if (driverType != "Dummy") {
         PERROR(QString("AudioDevice: the %1 audio thread stopped processing, switching to the Dummy driver").arg(driverType));
-        set_parameters(m_fallBackSetup);
+        set_parameters(fallback_setup());
         emit audioThreadStalled(driverType);
     } else {
         PERROR(QString("AudioDevice: the Dummy driver audio thread stopped processing too"));
@@ -1000,7 +1003,7 @@ void TAudioDevice::check_jack_shutdown()
                 driver_setup_message("Jack", tr("The Jack server has been shutdown!"), CRITICAL);
                 delete m_driver;
                 m_driver = nullptr;
-                set_parameters(m_fallBackSetup);
+                set_parameters(fallback_setup());
             }
         }
     }
@@ -1019,11 +1022,26 @@ void TAudioDevice::driver_setup_message(const QString &driver, const QString &me
 }
 
 
+// The Dummy driver runs at any rate and buffer size, so the fallback keeps
+// the current ones: the clients' buffers stay valid and the sheets keep
+// their rate
+TAudioDeviceSetup TAudioDevice::fallback_setup() const
+{
+    TAudioDeviceSetup setup = m_fallBackSetup;
+    if (m_rate > 0) {
+        setup.set_sample_rate(m_rate);
+    }
+    if (m_bufferSize > 0) {
+        setup.set_buffer_size(m_bufferSize);
+    }
+    return setup;
+}
+
 void TAudioDevice::switch_to_null_driver()
 {
     driver_setup_message("AudioDevice", tr("Buffer underrun 'Storm' detected, switching to Dummy Driver"), CRITICAL);
     driver_setup_message("AudioDevice", tr("For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
-    set_parameters(m_fallBackSetup);
+    set_parameters(fallback_setup());
 }
 
 int TAudioDevice::transport_control(TTransportControl *state)

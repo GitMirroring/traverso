@@ -213,6 +213,7 @@ private:
 
     TAudioDeviceSetup   m_setup;
     TAudioDeviceSetup   m_fallBackSetup;
+    TAudioDeviceSetup   fallback_setup() const;
     TAudioDriver* 		m_driver;
     TAudioDeviceThread* 	m_audioThread;
 
