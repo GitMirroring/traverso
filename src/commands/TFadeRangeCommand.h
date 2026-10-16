@@ -63,6 +63,7 @@ private :
     };
     FadeRangePrivate* frp;
 
+    void clamp_new_ranges();
     void do_keyboard_move();
     void update_canvas_cursor_text();
 

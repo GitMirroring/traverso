@@ -179,10 +179,31 @@ void TFadeRangeCommand::prev_snap_pos()
     do_keyboard_move();
 }
 
+// A fade is never shorter than 0 or longer than its clip. The command keeps
+// its own lengths in range too, so the cursor text matches and dragging back
+// past 0 makes the fade grow at once.
+void TFadeRangeCommand::clamp_new_ranges()
+{
+    const TTimeRef clipLength = frp->clip->get_length();
+
+    if (m_fadeInNewRange < TTimeRef()) {
+        m_fadeInNewRange = TTimeRef();
+    } else if (m_fadeInNewRange > clipLength) {
+        m_fadeInNewRange = clipLength;
+    }
+
+    if (m_fadeOutNewRange < TTimeRef()) {
+        m_fadeOutNewRange = TTimeRef();
+    } else if (m_fadeOutNewRange > clipLength) {
+        m_fadeOutNewRange = clipLength;
+    }
+}
+
 void TFadeRangeCommand::do_keyboard_move()
 {
     ied().bypass_jog_until_mouse_movements_exceeded_manhattenlength();
 
+    clamp_new_ranges();
     do_action();
 
     update_canvas_cursor_text();
@@ -199,6 +220,7 @@ int TFadeRangeCommand::jog()
         m_fadeOutNewRange = m_fadeOutOrigRange + (deltaX * frp->scalefactor * (m_fadeIn ? -1 : 1));
     }
 
+    clamp_new_ranges();
     do_action();
 
     update_canvas_cursor_text();
