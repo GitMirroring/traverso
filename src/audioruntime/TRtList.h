@@ -22,7 +22,7 @@
  * list in the TRtTransaction it is given, which builds a new snapshot in the
  * GUI thread and lets the audio thread swap it in.
  *
- * Replaces TRealTimeLinkedList: the audio thread only swaps a pointer, so the
+ * Replaced TRealTimeLinkedList: the audio thread only swaps a pointer, so the
  * cost in the audio thread does not depend on the size of the list.
  *
  * Like TRtValue, the list may be destroyed while a step is pending, but not

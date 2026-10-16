@@ -11,7 +11,6 @@ add_library(traversosupport STATIC
     TTimeRef.h TTimeRef.cpp
     defines.h
     RingBufferNPT.h
-    TRealTimeLinkedList.h
 )
 
 target_include_directories(traversosupport PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
