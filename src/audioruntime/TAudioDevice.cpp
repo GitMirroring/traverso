@@ -921,6 +921,9 @@ bool TAudioDevice::wait_until_changes_applied(int timeoutMilliseconds)
     // in use.
     const quint64 start = m_cycleCount.load(std::memory_order_acquire);
 
+    // Check once per audio period, the time between two cycles
+    const unsigned long periodMicroseconds = (m_rate > 0) ? (1000000UL * m_bufferSize) / m_rate : 1000;
+
     QElapsedTimer timer;
     timer.start();
 
@@ -928,7 +931,7 @@ bool TAudioDevice::wait_until_changes_applied(int timeoutMilliseconds)
         if (timer.elapsed() > timeoutMilliseconds) {
             return false;
         }
-        QThread::msleep(1);
+        QThread::usleep(periodMicroseconds);
     }
 
     return true;
