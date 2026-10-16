@@ -28,10 +28,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 #include "TAudioPlugin.h"
 #include "GainEnvelope.h"
-#include "TRealTimeLinkedList.h"
+#include "TRtList.h"
 
 class TSession;
 class AudioBus;
+class TRtTransaction;
 
 class TAudioPluginChain : public TContextItem
 {
@@ -51,28 +52,22 @@ public:
 
     void set_session(TSession* session);
 
-    QList<TAudioPlugin*>  get_plugins() const {return m_plugins;}
+    QList<TAudioPlugin*>  get_plugins() const {return m_plugins.gui_items();}
     QList<TAudioPlugin*>  get_pre_fader_plugins();
     QList<TAudioPlugin*>  get_post_fader_plugins();
     GainEnvelope*   get_fader() const {return m_fader;}
 
 private:
-    TRealTimeLinkedList<TAudioPlugin*>	m_rtPlugins;
-    QList<TAudioPlugin*>  m_plugins;
+    TRtList<TAudioPlugin> m_plugins;
     GainEnvelope*	m_fader;
     TSession*	m_session{};
 
-private slots:
-    void private_add_plugin(TAudioPlugin* plugin);
-    void private_remove_plugin(TAudioPlugin* plugin);
-    void private_plugin_added(TAudioPlugin* plugin);
-    void private_plugin_removed(TAudioPlugin* plugin);
+    void private_add_plugin(TAudioPlugin* plugin, TRtTransaction& transaction);
+    void private_remove_plugin(TAudioPlugin* plugin, TRtTransaction& transaction);
 
 signals:
     void pluginAdded(TAudioPlugin* plugin);
     void pluginRemoved(TAudioPlugin* plugin);
-    void privatePluginRemoved(TAudioPlugin*);
-    void privatePluginAdded(TAudioPlugin*);
 };
 
 #endif

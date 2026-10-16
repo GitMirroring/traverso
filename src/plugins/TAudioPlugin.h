@@ -70,12 +70,6 @@ public:
 
     void automate_port(int index, bool automate);
 
-    bool operator<(const TAudioPlugin& /*other*/) {
-        return true;
-    }
-
-    TAudioPlugin* next = nullptr;
-
 protected:
     TAudioPlugin*                         m_slave;
     TSession*                       m_session;
