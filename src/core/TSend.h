@@ -58,12 +58,6 @@ public:
     float get_pan() const {return m_pan;}
     float get_gain() const {return m_gain;}
 
-    bool operator<(const TSend& /*other*/) {
-        return false;
-    }
-
-    TSend* next = nullptr;
-
 private:
     AudioBus*       m_bus;
     TTrack*          m_track;

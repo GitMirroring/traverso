@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TTrack.h"
+#include "TRtTransaction.h"
 
 #include "AudioBus.h"
 #include "TAudioDevice.h"
@@ -90,10 +91,10 @@ void TTrack::get_state(QDomDocument& doc, QDomElement& node, bool istemplate)
 
     QDomNode sendsNode = doc.createElement("Sends");
 
-    for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_postSends.gui_items()) {
         sendsNode.appendChild(send->get_state(node.toDocument()));
     }
-    for(TSend* send = m_preSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_preSends.gui_items()) {
         sendsNode.appendChild(send->get_state(node.toDocument()));
     }
 
@@ -129,6 +130,9 @@ int TTrack::set_state( const QDomNode & node )
 
     QDomNode sendsNode = node.firstChildElement("Sends");
     if (!sendsNode.isNull()) {
+        // Joins the transaction of the sheet or project when loading
+        TRtTransaction transaction;
+
         QDomNode sendNode = sendsNode.firstChild();
         while (!sendNode.isNull()) {
             TSend* send = new TSend(this);
@@ -138,10 +142,10 @@ int TTrack::set_state( const QDomNode & node )
                 delete send;
             } else {
                 if (send->get_type() == TSend::POSTSEND) {
-                    private_add_post_send(send);
+                    private_add_post_send(send, transaction);
                 }
                 if (send->get_type() == TSend::PRESEND) {
-                    private_add_pre_send(send);
+                    private_add_pre_send(send, transaction);
                 }
             }
             sendNode = sendNode.nextSibling();
@@ -168,7 +172,7 @@ int TTrack::set_state( const QDomNode & node )
             // Make sure we output always to the most logical bus.
             // This might conflict with what the user asked for but then
             // Use MUTE instead :)
-            if (m_postSends.size() == 0) {
+            if (m_postSends.gui_items().isEmpty()) {
                 add_post_send(sendBusId);
             }
         }
@@ -290,7 +294,7 @@ void TTrack::add_input_bus(qint64 busId)
 
 void TTrack::add_post_send(qint64 busId)
 {
-    for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_postSends.gui_items()) {
 
         if (send->get_bus_id() == busId) {
             printf("Track %s already has this bus (bus id: %lld) as Post Send\n", m_name.toLatin1().data(), busId);
@@ -314,24 +318,18 @@ void TTrack::add_post_send(AudioBus *bus)
     TSend* postSend = new TSend(this, bus);
     postSend->set_type(TSend::POSTSEND);
 
-    if (!m_session || (m_session && m_session->is_transport_rolling())) {
-        // 1. Audio thread executes the bound private_add_post_send(postSend) lambda.
-        // 2. GUI thread automatically triggers the routing changed signal asynchronously afterwards.
-        tsmp().post_rt_task(
-            [this, postSend]() { private_add_post_send(postSend); },
-            [this]() { emit routingConfigurationChanged(); }
-            );
-
-    } else {
-        private_add_post_send(postSend);
-        emit routingConfigurationChanged();
+    {
+        TRtTransaction transaction;
+        private_add_post_send(postSend, transaction);
     }
+
+    emit routingConfigurationChanged();
 }
 
 
 void TTrack::add_pre_send(qint64 busId)
 {
-    for(TSend* send = m_preSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_preSends.gui_items()) {
         if (send->get_bus_id() == busId) {
             printf("Track %s already has this bus (bus id: %lld) as Pre Send\n", m_name.toLatin1().data(), busId);
             return;
@@ -349,15 +347,12 @@ void TTrack::add_pre_send(qint64 busId)
     TSend* preSend = new TSend(this, bus);
     preSend->set_type(TSend::PRESEND);
 
-    if (!m_session || (m_session && m_session->is_transport_rolling())) {
-        tsmp().post_rt_task(
-            [this, preSend]() { private_add_pre_send(preSend); },
-            [this]() { emit routingConfigurationChanged(); }
-            );
-    } else {
-        private_add_pre_send(preSend);
-        emit routingConfigurationChanged();
+    {
+        TRtTransaction transaction;
+        private_add_pre_send(preSend, transaction);
     }
+
+    emit routingConfigurationChanged();
 }
 
 void TTrack::remove_post_sends(QList<qint64> sendIds)
@@ -366,39 +361,46 @@ void TTrack::remove_post_sends(QList<qint64> sendIds)
 
     for(qint64 id : sendIds)
     {
-        for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
+        for (TSend* send : m_postSends.gui_items()) {
             if (send->get_id() == id) {
                 sendsToBeRemoved.append(send);
             }
         }
     }
 
-    for(TSend* send : sendsToBeRemoved) {
-        remove_post_send(send);
+    {
+        TRtTransaction transaction;
+        for(TSend* send : sendsToBeRemoved) {
+            private_remove_post_send(send, transaction);
+        }
     }
+
+    emit routingConfigurationChanged();
 }
 
 void TTrack::remove_post_send(TSend *send)
 {
-    if (!m_session || (m_session && m_session->is_transport_rolling())) {
-        // 1. Audio thread executes the bound private_remove_post_send(send) lambda.
-        // 2. GUI thread automatically triggers the routing changed signal asynchronously afterwards.
-        tsmp().post_rt_task(
-            [this, send]() { private_remove_post_send(send); },
-            [this]() { emit routingConfigurationChanged(); }
-            );
-
-    } else {
-        private_remove_post_send(send);
-        emit routingConfigurationChanged();
+    {
+        TRtTransaction transaction;
+        private_remove_post_send(send, transaction);
     }
+
+    emit routingConfigurationChanged();
 }
 
 void TTrack::remove_all_post_sends()
 {
-    for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
-        remove_post_send(send);
+    // A copy: removing changes the list
+    const QList<TSend*> sends = m_postSends.gui_items();
+
+    {
+        TRtTransaction transaction;
+        for (TSend* send : sends) {
+            private_remove_post_send(send, transaction);
+        }
     }
+
+    emit routingConfigurationChanged();
 }
 
 void TTrack::remove_pre_sends(QList<qint64> sendIds)
@@ -406,47 +408,41 @@ void TTrack::remove_pre_sends(QList<qint64> sendIds)
     QList<TSend*> sendsToBeRemoved;
 
     for(qint64 id : sendIds) {
-        for(TSend* send = m_preSends.first(); send != nullptr; send = send->next) {
+        for (TSend* send : m_preSends.gui_items()) {
             if (send->get_id() == id) {
                 sendsToBeRemoved.append(send);
             }
         }
     }
 
-    for(TSend* send : sendsToBeRemoved) {
-        if (!m_session || (m_session && m_session->is_transport_rolling())) {
-            // 1. Audio thread executes the bound private_remove_pre_send(send) lambda.
-            // 2. GUI thread automatically triggers the routing changed signal asynchronously afterwards.
-            tsmp().post_rt_task(
-                [this, send]() { private_remove_pre_send(send); },
-                [this]() { emit routingConfigurationChanged(); }
-                );
-
-        } else {
-            private_remove_pre_send(send);
-            emit routingConfigurationChanged();
+    {
+        TRtTransaction transaction;
+        for(TSend* send : sendsToBeRemoved) {
+            private_remove_pre_send(send, transaction);
         }
     }
+
+    emit routingConfigurationChanged();
 }
 
-void TTrack::private_add_post_send(TSend* postSend)
+void TTrack::private_add_post_send(TSend* postSend, TRtTransaction& transaction)
 {
-    m_postSends.append(postSend);
+    m_postSends.add(postSend, transaction);
 }
 
-void TTrack::private_remove_post_send(TSend* postSend)
+void TTrack::private_remove_post_send(TSend* postSend, TRtTransaction& transaction)
 {
-    m_postSends.remove(postSend);
+    m_postSends.remove(postSend, transaction);
 }
 
-void TTrack::private_remove_pre_send(TSend* preSend)
+void TTrack::private_remove_pre_send(TSend* preSend, TRtTransaction& transaction)
 {
-    m_preSends.remove(preSend);
+    m_preSends.remove(preSend, transaction);
 }
 
-void TTrack::private_add_pre_send(TSend* preSend)
+void TTrack::private_add_pre_send(TSend* preSend, TRtTransaction& transaction)
 {
-    m_preSends.append(preSend);
+    m_preSends.add(preSend, transaction);
 }
 
 
@@ -474,14 +470,14 @@ void TTrack::add_input_bus(const QString &name)
 
 void TTrack::process_post_sends(nframes_t nframes)
 {
-    for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_postSends.rt_items()) {
         process_send(send, nframes);
     }
 }
 
 void TTrack::process_pre_sends(nframes_t nframes)
 {
-    for(TSend* send = m_preSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_preSends.rt_items()) {
         process_send(send, nframes);
     }
 }
@@ -518,27 +514,17 @@ void TTrack::process_send(TSend *send, nframes_t nframes)
 
 QList<TSend* > TTrack::get_post_sends() const
 {
-    QList<TSend*> sends;
-
-    for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
-        sends.append(send);
-    }
-    return sends;
+    return m_postSends.gui_items();
 }
 
 QList<TSend* > TTrack::get_pre_sends() const
 {
-    QList<TSend*> sends;
-
-    for(TSend* send = m_preSends.first(); send != nullptr; send = send->next) {
-        sends.append(send);
-    }
-    return sends;
+    return m_preSends.gui_items();
 }
 
 bool TTrack::has_post_send(qint64 busId) const
 {
-    for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_postSends.gui_items()) {
         if (send->get_bus_id() == busId) {
             return true;
         }
@@ -549,12 +535,12 @@ bool TTrack::has_post_send(qint64 busId) const
 
 TSend* TTrack::get_send(qint64 sendId)
 {
-    for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_postSends.gui_items()) {
         if (send->get_id() == sendId) {
             return send;
         }
     }
-    for(TSend* send = m_preSends.first(); send != nullptr; send = send->next) {
+    for (TSend* send : m_preSends.gui_items()) {
         if (send->get_id() == sendId) {
             return send;
         }
@@ -646,7 +632,7 @@ bool TTrack::disconnect_from_jack(bool inports, bool outports)
 
     if (outports) {
         QList<qint64> jackSends;
-        for(TSend* send = m_postSends.first(); send != nullptr; send = send->next) {
+        for (TSend* send : m_postSends.gui_items()) {
             if (send->get_bus()->get_bus_type() == AudioBus::BusIsSoftware) {
                 jackSends.append(send->get_id());
                 project->remove_software_audio_bus(send->get_bus());

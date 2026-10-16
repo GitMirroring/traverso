@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TTRACK_H
 
 #include "TAudioProcessingNode.h"
-#include "TRealTimeLinkedList.h"
+#include "TRtList.h"
 #include "defines.h"
 
 #include <QDomDocument>
@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 class TSend;
 class TVUMonitor;
 class TProject;
+class TRtTransaction;
 
 class TTrack : public TAudioProcessingNode
 {
@@ -107,8 +108,8 @@ protected:
     bool		m_showTrackVolumeAutomation;
     bool		m_preSendOn;
 
-    TRealTimeLinkedList<TSend*>   m_postSends;
-    TRealTimeLinkedList<TSend*>   m_preSends;
+    TRtList<TSend>   m_postSends;
+    TRtList<TSend>   m_preSends;
 
     AudioBus*       m_inputBus;
     QString         m_busInName;
@@ -119,16 +120,16 @@ protected:
 
 private:
     void process_send(TSend* send, nframes_t nframes);
+    void private_add_post_send(TSend* postSend, TRtTransaction& transaction);
+    void private_add_pre_send(TSend* preSend, TRtTransaction& transaction);
+    void private_remove_post_send(TSend* postSend, TRtTransaction& transaction);
+    void private_remove_pre_send(TSend* preSend, TRtTransaction& transaction);
 
 public slots:
     TCommand* solo();
     TCommand* toggle_presend();
 
 private slots:
-    void private_add_post_send(TSend*);
-    void private_add_pre_send(TSend *);
-    void private_remove_post_send(TSend*);
-    void private_remove_pre_send(TSend*);
     void private_add_input_bus(AudioBus*);
     void private_remove_input_bus(AudioBus*);
 
