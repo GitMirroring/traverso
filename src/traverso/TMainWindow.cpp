@@ -72,6 +72,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioFileCopyConvert.h"
 
 #include "../sheetcanvas/TSheetWidget.h"
+#include "../sheetcanvas/TFrameClock.h"
 
 #include "qundogroup.h"
 #include "ui_QuickStart.h"
@@ -279,7 +280,10 @@ TMainWindow::TMainWindow()
     m_editToolBar->toggleViewAction()->setText(tr("Edit Tool Bar"));
     addToolBar(Qt::TopToolBarArea, m_editToolBar);
 
-    m_transportConsole = new TransportConsoleWidget(this);
+    // One clock for the playhead and the time label, see TFrameClock
+    m_frameClock = new TFrameClock(this);
+
+    m_transportConsole = new TransportConsoleWidget(this, m_frameClock);
     m_transportConsole->setObjectName("Transport Console");
 
 #if defined (Q_OS_MAC)
@@ -481,7 +485,7 @@ void TMainWindow::add_session(TSession *session)
         m_sessionTabWidgets.insert(session, tabWidget);
     }
 
-    TSheetWidget* sheetWidget = new TSheetWidget(session, m_centerAreaWidget);
+    TSheetWidget* sheetWidget = new TSheetWidget(session, m_frameClock, m_centerAreaWidget);
     m_sheetWidgets.insert(session, sheetWidget);
     m_centerAreaWidget->addWidget(sheetWidget);
 

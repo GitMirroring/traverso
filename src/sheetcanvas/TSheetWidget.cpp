@@ -102,7 +102,7 @@ TTimeLabel::TTimeLabel(QWidget* parent, TSession *session)
 }
 
 
-TSheetWidget::TSheetWidget(TSession* sheet, QWidget* parent)
+TSheetWidget::TSheetWidget(TSession* sheet, TFrameClock* frameClock, QWidget* parent)
     : QFrame(parent)
 	, m_session(sheet)
 {
@@ -153,7 +153,7 @@ TSheetWidget::TSheetWidget(TSession* sheet, QWidget* parent)
 
 	setLayout(m_mainLayout);
 
-	m_sv = new TSheetView(this, m_clipsViewPort, m_trackPanel, m_timeLine, sheet);
+	m_sv = new TSheetView(this, m_clipsViewPort, m_trackPanel, m_timeLine, sheet, frameClock);
         m_clipsViewPort->set_sheetview(m_sv);
         m_trackPanel->set_sheetview(m_sv);
 	m_timeLine->set_sheetview(m_sv);

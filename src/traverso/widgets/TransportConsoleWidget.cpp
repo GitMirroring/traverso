@@ -19,14 +19,16 @@
 #include "TConfig.h"
 #include "TInformUser.h"
 #include "TTransport.h"
+#include "TFrameClock.h"
 
 #include <QAction>
 #include <QPushButton>
 #include <QFont>
 #include <QString>
 
-TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
+TransportConsoleWidget::TransportConsoleWidget(QWidget* parent, TFrameClock* frameClock)
     : QToolBar(parent)
+    , m_frameClock(frameClock)
 {
     setEnabled(false);
 
@@ -34,7 +36,6 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     m_sheet = nullptr;
 
     m_transportLocation = TTimeRef();
-    m_lastTransportLocationUpdatetime = 0;
 
     m_timeLabel = new QPushButton(this);
     m_timeLabel->setFocusPolicy(Qt::NoFocus);
@@ -95,7 +96,8 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     m_lastSnapPosition = TTimeRef();
 
     connect(&pm(), &TProjectManager::projectLoaded, this, &TransportConsoleWidget::set_project);
-    connect(&audiodevice(), &TAudioDevice::finishedOneProcessCycle, this, &TransportConsoleWidget::update_label);
+    // About 8 updates per second while the transport rolls
+    m_frameClock->add_consumer(this, 8, [this](qint64 nowNanoseconds) { update_label(nowNanoseconds); });
 
     connect(&audiodevice(), &TAudioDevice::freeWheelingChanged, this, [this](){
         m_freeWheelingAction->setChecked(!audiodevice().running_real_time());
@@ -109,7 +111,7 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     });
 
     update_layout();
-    update_label();
+    update_label(TFrameClock::now_nanoseconds());
 }
 
 void TransportConsoleWidget::set_project(TProject* project)
@@ -138,6 +140,8 @@ void TransportConsoleWidget::set_session(TSession* session)
         disconnect(m_sheet, &TSheet::recordingStateChanged, this, &TransportConsoleWidget::update_recording_state);
         disconnect(m_sheet, &TSheet::transportStarted, this, &TransportConsoleWidget::transport_started);
         disconnect(m_sheet, &TSheet::transportStopped, this, &TransportConsoleWidget::transport_stopped);
+        disconnect(m_sheet, &TSheet::transportLocationChanged, this, nullptr);
+        m_frameClock->set_consumer_active(this, false);
     }
 
     m_sheet = qobject_cast<TSheet*>(session);
@@ -147,7 +151,7 @@ void TransportConsoleWidget::set_session(TSession* session)
 
     if (!m_sheet) {
         setEnabled(false);
-        update_label();
+        update_label(TFrameClock::now_nanoseconds());
         return;
     }
 
@@ -156,6 +160,18 @@ void TransportConsoleWidget::set_session(TSession* session)
     connect(m_sheet, &TSheet::recordingStateChanged, this, &TransportConsoleWidget::update_recording_state);
     connect(m_sheet, &TSheet::transportStarted, this, &TransportConsoleWidget::transport_started);
     connect(m_sheet, &TSheet::transportStopped, this, &TransportConsoleWidget::transport_stopped);
+    // Seeks and stops while the clock does not run
+    connect(m_sheet, &TSheet::transportLocationChanged, this, [this]() { update_label(TFrameClock::now_nanoseconds()); });
+
+    m_frameClock->set_consumer_active(this, m_sheet->is_transport_rolling());
+    update_label(TFrameClock::now_nanoseconds());
+}
+
+TransportConsoleWidget::~TransportConsoleWidget()
+{
+    if (m_frameClock) {
+        m_frameClock->remove_consumer(this);
+    }
 }
 
 void TransportConsoleWidget::rec_toggled()
@@ -175,6 +191,8 @@ void TransportConsoleWidget::transport_started()
     if (m_sheet && !m_sheet->is_recording()) {
         m_recAction->setChecked(false);
     }
+
+    m_frameClock->set_consumer_active(this, true);
 }
 
 void TransportConsoleWidget::transport_stopped()
@@ -183,6 +201,9 @@ void TransportConsoleWidget::transport_stopped()
     // Switch back to the Play icon, own icon as fallback
     m_playAction->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaPlaybackStart, QIcon(QStringLiteral(":/playstart"))));
     m_recAction->setEnabled(true);
+
+    m_frameClock->set_consumer_active(this, false);
+    update_label(TFrameClock::now_nanoseconds());
 }
 
 void TransportConsoleWidget::update_recording_state()
@@ -202,16 +223,8 @@ void TransportConsoleWidget::update_recording_state()
     }
 }
 
-void TransportConsoleWidget::update_label()
+void TransportConsoleWidget::update_label(qint64 nowNanoseconds)
 {
-    auto newUpdateTime = TTimeRef::get_milliseconds_since_epoch();
-
-    // 8 frames/sec limiet
-    if ((newUpdateTime - m_lastTransportLocationUpdatetime) < 125) {
-        return;
-    }
-
-    m_lastTransportLocationUpdatetime = newUpdateTime;
     TTimeRef newTransportLocation(TTimeRef::INVALID);
 
     if (!m_sheet) {
@@ -220,7 +233,7 @@ void TransportConsoleWidget::update_label()
             m_timeLabel->setText(TTimeRef::timeref_to_ms_2(m_transportLocation));
         }
     } else {
-        newTransportLocation = m_sheet->get_transport_location();
+        newTransportLocation = m_sheet->get_heard_transport_location(nowNanoseconds);
     }
 
     if (m_transportLocation == newTransportLocation) {

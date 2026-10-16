@@ -45,6 +45,7 @@ class TSheetWidget;
 class TAudioTrackView;
 class TTrack;
 class TPlayHeadView;
+class TFrameClock;
 class TWorkCursorView;
 class TCanvasCursor;
 class TCurve;
@@ -79,7 +80,8 @@ public :
                TClipsViewPort* viewPort,
                TTrackPanelViewPort* tpvp,
                TTimeLineRulerViewPort* tlvp,
-               TSession* sheet);
+               TSession* sheet,
+               TFrameClock* frameClock);
     ~TSheetView();
 
     void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*) {}

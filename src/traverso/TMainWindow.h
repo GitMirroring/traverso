@@ -65,6 +65,7 @@ class TSheetWidget;
 class CorrelationMeterWidget;
 class SpectralMeterWidget;
 class TransportConsoleWidget;
+class TFrameClock;
 class SettingsDialog;
 class ProjectManagerDialog;
 class OpenProjectDialog;
@@ -147,6 +148,7 @@ private:
     QDockWidget*		m_correlationMeterDW;
     CorrelationMeterWidget*	m_correlationMeter;
     TransportConsoleWidget*	m_transportConsole;
+    TFrameClock*            m_frameClock;
     QDockWidget*		m_spectralMeterDW;
     SpectralMeterWidget*	m_spectralMeter;
     SettingsDialog*		m_settingsdialog;

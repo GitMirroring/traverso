@@ -168,7 +168,6 @@ public:
 
     uint get_sample_rate() const;
     uint get_bit_depth() const;
-    TTimeRef get_buffer_latency() const;
     // From the start of a process cycle until the first frame of its buffer
     // leaves the output, as the driver knows it. Any thread
     TTimeRef get_playback_latency() const;
@@ -338,7 +337,6 @@ signals:
 
     void newDriverSetupMessage();
 
-    void finishedOneProcessCycle();
     void freeWheelingChanged();
 
 private slots:

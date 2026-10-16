@@ -2,7 +2,7 @@
 #include "TPlayHeadView.h"
 #include "TClipsViewPort.h"
 #include "TSheetView.h"
-#include "TAudioDevice.h"
+#include "TFrameClock.h"
 
 #include <TSheet.h>
 #include <TThemer.h>
@@ -12,9 +12,10 @@
 #define ANIME_DURATION		1000
 #define AUTO_SCROLL_MARGIN	0.05  // autoscroll when
 
-TPlayHeadView::TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* vp)
+TPlayHeadView::TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* vp, TFrameClock* frameClock)
         : TViewItem(nullptr, session)
         , m_session(session)
+        , m_frameClock(frameClock)
         , m_vp(vp)
         , m_mode(ANIMATED_FLIP_PAGE)
 {
@@ -29,7 +30,8 @@ TPlayHeadView::TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* 
 	connect(m_session, &TSession::transportStarted, this, &TPlayHeadView::play_start);
 	connect(m_session, &TSession::transportStopped, this, &TPlayHeadView::play_stop);
 	
-	connect(&m_playTimer, &QTimer::timeout, this, &TPlayHeadView::update_position);
+	// Every frame while the transport rolls
+	m_frameClock->add_consumer(this, 0, [this](qint64 nowNanoseconds) { update_position(nowNanoseconds); });
 	
 	connect(&m_animation, &QTimeLine::frameChanged, this, &TPlayHeadView::set_animation_value);
 	connect(&m_animation, &QTimeLine::finished, this, &TPlayHeadView::animation_finished);
@@ -43,6 +45,10 @@ TPlayHeadView::TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* 
 TPlayHeadView::~TPlayHeadView( )
 {
         PENTERDES2;
+
+        if (m_frameClock) {
+                m_frameClock->remove_consumer(this);
+        }
 }
 
 void TPlayHeadView::check_config( )
@@ -79,7 +85,7 @@ void TPlayHeadView::play_start()
 
 	m_followDisabled = false;
 
-	m_playTimer.start(20);
+	m_frameClock->set_consumer_active(this, true);
 	
 	if (m_animation.state() == QTimeLine::Running) {
 		m_animation.stop();
@@ -89,7 +95,7 @@ void TPlayHeadView::play_start()
 
 void TPlayHeadView::play_stop()
 {
-	m_playTimer.stop();
+	m_frameClock->set_consumer_active(this, false);
 
 	if (m_animation.state() == QTimeLine::Running) {
 		m_animation.stop();
@@ -98,6 +104,12 @@ void TPlayHeadView::play_stop()
 	// just one more update so the playhead can paint itself
 	// in the correct color.
 	update();
+
+	// Stopped: show where the transport is instead of where it was heard,
+	// a latency behind. During the page flip it still rolls
+	if (!m_session->is_transport_rolling()) {
+		update_position(TFrameClock::now_nanoseconds());
+	}
 
 }
 
@@ -116,18 +128,13 @@ void TPlayHeadView::enable_follow()
 	}
 }
 
-void TPlayHeadView::update_position()
+void TPlayHeadView::update_position(qint64 nowNanoseconds)
 {
-	QPointF newPos(m_session->get_transport_location() / m_sv->timeref_scalefactor, 1);
-    qreal playBufferTimePositionCompensation = 0;
-	if (m_session->is_transport_rolling()) {
-        playBufferTimePositionCompensation = audiodevice().get_buffer_latency() / m_sv->timeref_scalefactor;
+	// What is heard now: the output latency is accounted for
+	QPointF newPos(m_session->get_heard_transport_location(nowNanoseconds) / m_sv->timeref_scalefactor, 1);
+	if (newPos.x() < 0.0) {
+		newPos.setX(0.0);
 	}
-	qreal newXPos = newPos.x() - playBufferTimePositionCompensation;
-	if (newXPos < 0.0) {
-		newXPos = 0.0;
-	}
-	newPos.setX(newXPos);
 	
 	
     if (int(newPos.x()) != int(pos().x()) && (m_animation.state() != QTimeLine::Running)) {
@@ -197,7 +204,7 @@ void TPlayHeadView::set_animation_value(int /*value*/)
 		return;
 	}
 
-	QPointF newPos(m_session->get_transport_location() / m_sv->timeref_scalefactor, 0);
+	QPointF newPos(m_session->get_heard_transport_location(TFrameClock::now_nanoseconds()) / m_sv->timeref_scalefactor, 0);
 	
 	// calculate the animation x diff.
     qreal diff = m_animation.currentValue() * m_animFrameRange;
@@ -236,7 +243,7 @@ void TPlayHeadView::set_bounding_rect( QRectF rect )
 
 bool TPlayHeadView::is_active()
 {
-	return m_playTimer.isActive();
+	return m_frameClock->is_consumer_active(this);
 }
 
 void TPlayHeadView::set_active(bool active)

@@ -25,12 +25,13 @@
 #include "TViewItem.h"
 
 #include <QBrush>
-#include <QTimer>
+#include <QPointer>
 #include <QTimeLine>
 
 class TSession;
 class TSheetView;
 class TClipsViewPort;
+class TFrameClock;
 
 
 class TPlayHeadView : public TViewItem
@@ -38,7 +39,7 @@ class TPlayHeadView : public TViewItem
     Q_OBJECT
 
 public:
-    TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* vp);
+    TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* vp, TFrameClock* frameClock);
     ~TPlayHeadView();
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -58,7 +59,7 @@ public:
 
 private:
     TSession*	m_session;
-    QTimer		m_playTimer;
+    QPointer<TFrameClock> m_frameClock;
     QTimeLine	m_animation;
     TClipsViewPort*	m_vp;
     bool 		m_follow{};
@@ -82,7 +83,8 @@ private slots:
     void load_theme_data();
 
 public slots:
-    void update_position();
+    // nowNanoseconds: the frame time, see TSession::get_heard_transport_location()
+    void update_position(qint64 nowNanoseconds);
     void enable_follow();  // enable/disable follow only do anything if following is
     void disable_follow(); // enabled in the config
 };

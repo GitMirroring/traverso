@@ -43,6 +43,7 @@ class TCommand;
 class TSheetView;
 class TSheet;
 class TSheetWidget;
+class TFrameClock;
 
 
 class SheetPanelView : public TViewItem
@@ -90,7 +91,7 @@ class TSheetWidget : public QFrame
 {
 	Q_OBJECT
 public:
-        TSheetWidget(TSession* sheet, QWidget* parent=0);
+        TSheetWidget(TSession* sheet, TFrameClock* frameClock, QWidget* parent=0);
     ~TSheetWidget();
 	
         TSheet* get_sheet() const;

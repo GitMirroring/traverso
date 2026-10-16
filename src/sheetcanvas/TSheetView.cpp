@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include <QInputDialog>
 
 #include "TAudioThreadMessageQueue.h"
+#include "TFrameClock.h"
 #include "TConfig.h"
 #include "TCurve.h"
 #include "TInputEventDispatcher.h"
@@ -70,7 +71,8 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 	TClipsViewPort* viewPort,
 	TTrackPanelViewPort* tpvp,
 	TTimeLineRulerViewPort* tlvp,
-	TSession* session)
+	TSession* session,
+	TFrameClock* frameClock)
 	: TViewItem(nullptr, session)
 {
 	setZValue(1);
@@ -91,7 +93,7 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 
 	m_clipsViewPort->scene()->addItem(this);
 
-	m_playCursor = new TPlayHeadView(this, m_session, m_clipsViewPort);
+	m_playCursor = new TPlayHeadView(this, m_session, m_clipsViewPort, frameClock);
 	m_workCursor = new TWorkCursorView(this, m_session);
     m_canvasCursor = new TCanvasCursor(this);
     scene()->addItem(m_canvasCursor);
@@ -442,7 +444,7 @@ void TSheetView::update_scrollbars()
 	m_vScrollBar->setVisible(needsVScrollBar);
 
     m_playCursor->set_bounding_rect(QRectF(0, 0, 4, m_vScrollBar->maximum() + m_clipsViewPort->height()));
-	m_playCursor->update_position();
+	m_playCursor->update_position(TFrameClock::now_nanoseconds());
 	m_workCursor->set_bounding_rect(QRectF(0, 0, 1, m_vScrollBar->maximum() + m_clipsViewPort->height()));
 	m_workCursor->update_position();
 
@@ -729,7 +731,7 @@ TCommand* TSheetView::center()
 void TSheetView::transport_position_set()
 {
 	if (!m_session->is_transport_rolling()) {
-		m_playCursor->update_position();
+		m_playCursor->update_position(TFrameClock::now_nanoseconds());
 	}
 }
 
@@ -751,7 +753,7 @@ void TSheetView::set_follow_state(bool state)
 	if (state) {
 		m_actOnPlayHead = true;
 		m_playCursor->enable_follow();
-		m_playCursor->update_position();
+		m_playCursor->update_position(TFrameClock::now_nanoseconds());
 	} else {
 		m_actOnPlayHead = false;
 		m_playCursor->disable_follow();

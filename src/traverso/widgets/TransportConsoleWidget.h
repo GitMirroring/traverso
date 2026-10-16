@@ -25,6 +25,7 @@
 
 
 #include <QToolBar>
+#include <QPointer>
 #include <QWidget>
 
 #include "TTimeRef.h"
@@ -33,13 +34,15 @@ class TProject;
 class TSheet;
 class TSession;
 class QPushButton;
+class TFrameClock;
 
 class TransportConsoleWidget : public QToolBar
 {
 Q_OBJECT
 
 public:
-	TransportConsoleWidget(QWidget* parent);
+	TransportConsoleWidget(QWidget* parent, TFrameClock* frameClock);
+	~TransportConsoleWidget() override;
 
 private:
 	QPushButton*	m_timeLabel;
@@ -54,7 +57,7 @@ private:
     QAction*    m_freeWheelingAction;
     TTimeRef	m_lastSnapPosition;
     TTimeRef    m_transportLocation;
-    trav_time_t m_lastTransportLocationUpdatetime;
+    QPointer<TFrameClock> m_frameClock;
 
 public slots:
 	void set_project(TProject*);
@@ -66,7 +69,8 @@ private slots:
 	void transport_started();
 	void transport_stopped();
     void update_recording_state();
-	void update_label();
+    // nowNanoseconds: the frame time, see TSession::get_heard_transport_location()
+	void update_label(qint64 nowNanoseconds);
 	void update_layout();
 };
 

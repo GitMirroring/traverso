@@ -270,7 +270,7 @@ QDomNode TSheet::get_state(QDomDocument doc, bool istemplate)
     properties.setAttribute("artists", m_artists);
     properties.setAttribute("audiosourcesdir", m_audioSourcesDir);
     properties.setAttribute("m_workLocation", m_workLocation.universal_frame());
-    properties.setAttribute("transportlocation", m_transportLocation.universal_frame());
+    properties.setAttribute("transportlocation", get_transport_location().universal_frame());
     properties.setAttribute("hzoom", m_hzoom);
     properties.setAttribute("sbx", m_scrollBarXValue);
     properties.setAttribute("sby", m_scrollBarYValue);
@@ -556,11 +556,6 @@ int TSheet::process(TProcessCallBackData &processData)
     // update the transport location
     m_transportLocation.add_frames(nframes, audiodevice().get_sample_rate());
     m_readDiskIO->set_transport_location(m_transportLocation);
-
-    tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
-        .rtTask = nullptr,
-        .guiCallback = [this]() { emit transportLocationChanged(); }
-    });
 
     if (!processResult) {
         return 0;

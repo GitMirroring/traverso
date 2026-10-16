@@ -292,10 +292,10 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         }
     }
 
-    tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
-        .rtTask = nullptr,
-        .guiCallback = [this]() { emit finishedOneProcessCycle(); }
-    });
+    // Wakes the message queue worker thread, which runs the callbacks of
+    // the changes applied this cycle. The GUI follows the transport with
+    // TFrameClock, not with an event per cycle
+    tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{});
 
     // Only the audio thread writes it. Release: whoever sees the new count
     // also sees the changes applied at the start of this cycle
@@ -1174,11 +1174,6 @@ TTimeRef TAudioDevice::get_playback_latency() const
 
     const nframes_t frames = m_driver ? m_driver->get_playback_latency_frames() : m_bufferSize;
     return TTimeRef(frames, m_rate);
-}
-
-TTimeRef TAudioDevice::get_buffer_latency() const
-{
-    return TTimeRef{m_bufferSize, m_rate};
 }
 
 QString TAudioDevice::get_driver_latency_in_ms()
