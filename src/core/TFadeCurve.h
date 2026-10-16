@@ -26,6 +26,7 @@ $Id: FadeCurve.h,v 1.19 2008/01/21 16:22:14 r_sijrier Exp $
 #include "TCommand.h"
 #include "TContextItem.h"
 #include "TCurveSnapshot.h"
+#include "TFadeShape.h"
 #include "TRtValue.h"
 #include "TAudioBuffer.h"
 #include "TTimeRef.h"
@@ -67,10 +68,10 @@ class TFadeCurve : public TContextItem
 public:
     static QStringList defaultShapes;
 
-    enum FadeType {
-        FadeIn = 0,
-        FadeOut = 1
-    };
+    // Defined with the shape, which depends on it
+    using FadeType = TFadeShape::FadeType;
+    static constexpr FadeType FadeIn = TFadeShape::FadeIn;
+    static constexpr FadeType FadeOut = TFadeShape::FadeOut;
 
     TFadeCurve(TContextItem* parent, FadeType fadeType, TRtTransaction& transaction);
     ~TFadeCurve() override = default;

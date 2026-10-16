@@ -21,6 +21,11 @@
 class TFadeShape
 {
 public:
+    enum FadeType {
+        FadeIn = 0,
+        FadeOut = 1
+    };
+
     enum Mode {
         Bended = 0,
         SShape = 1,
@@ -30,11 +35,11 @@ public:
     static const int POINT_COUNT = 12;
 
     // The four control points for mode, bend and strength (both 0..1)
-    static std::array<QPointF, 4> control_points(bool fadeOut, int mode, double bend, double strength);
+    static std::array<QPointF, 4> control_points(FadeType type, int mode, double bend, double strength);
 
     // The points of the fade curve, time and value 0..1. A fade in rises from
     // 0 to 1, a fade out falls from 1 to 0.
-    static std::vector<TCurveSnapshot::Point> points(bool fadeOut, const std::array<QPointF, 4>& controlPoints);
+    static std::vector<TCurveSnapshot::Point> points(FadeType type, const std::array<QPointF, 4>& controlPoints);
 
     // A length of one universal frame or less, far shorter than one sample,
     // turns a fade off

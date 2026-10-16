@@ -27,20 +27,20 @@ int main()
 
     bool endsOk = true, monotone = true, inRange = true;
 
-    for (bool fadeOut : {false, true}) {
+    for (TFadeShape::FadeType type : {TFadeShape::FadeIn, TFadeShape::FadeOut}) {
         for (int mode : {int(TFadeShape::Bended), int(TFadeShape::SShape), int(TFadeShape::Long)}) {
             for (const auto& preset : presets) {
-                auto points = TFadeShape::points(fadeOut, TFadeShape::control_points(fadeOut, mode, preset[0], preset[1]));
+                auto points = TFadeShape::points(type, TFadeShape::control_points(type, mode, preset[0], preset[1]));
 
                 if (int(points.size()) != TFadeShape::POINT_COUNT) endsOk = false;
-                const double start = fadeOut ? 1.0 : 0.0;
+                const double start = (type == TFadeShape::FadeOut) ? 1.0 : 0.0;
                 if (points.front().when != 0.0 || points.front().value != start) endsOk = false;
                 if (std::fabs(points.back().when - 1.0) > 1.0e-12 || std::fabs(points.back().value - (1.0 - start)) > 1.0e-12) endsOk = false;
 
                 for (size_t i = 1; i < points.size(); ++i) {
                     if (points[i].when < points[i - 1].when) monotone = false;
                     const double step = points[i].value - points[i - 1].value;
-                    if (fadeOut ? step > 1.0e-12 : step < -1.0e-12) monotone = false;
+                    if ((type == TFadeShape::FadeOut) ? step > 1.0e-12 : step < -1.0e-12) monotone = false;
                 }
 
                 // The fade curve through the points, sampled densely
@@ -60,7 +60,7 @@ int main()
 
     // Linear: bend 0.5 and strength 0.5 put the control points on the diagonal
     {
-        auto points = TFadeShape::points(false, TFadeShape::control_points(false, TFadeShape::SShape, 0.5, 0.5));
+        auto points = TFadeShape::points(TFadeShape::FadeIn, TFadeShape::control_points(TFadeShape::FadeIn, TFadeShape::SShape, 0.5, 0.5));
         bool linear = true;
         for (const auto& point : points) {
             if (std::fabs(point.value - point.when) > 1.0e-12) linear = false;

@@ -4,12 +4,12 @@
 #include "TFadeShape.h"
 
 
-std::array<QPointF, 4> TFadeShape::control_points(bool fadeOut, int mode, double bend, double strength)
+std::array<QPointF, 4> TFadeShape::control_points(FadeType type, int mode, double bend, double strength)
 {
     std::array<QPointF, 4> points = {QPointF(0.0, 0.0), QPointF(0.25, 0.25), QPointF(0.75, 0.75), QPointF(1.0, 1.0)};
 
     if (mode == Bended) {
-        if (!fadeOut) {
+        if (type == FadeIn) {
             points[1] = QPointF(strength * (1.0 - bend), strength * bend);
             points[2] = QPointF(1.0 - (strength * bend), 1.0 - (strength * (1.0 - bend)));
         } else {
@@ -20,7 +20,7 @@ std::array<QPointF, 4> TFadeShape::control_points(bool fadeOut, int mode, double
         points[1] = QPointF(strength * (1.0 - bend), strength * bend);
         points[2] = QPointF(1.0 - (strength * (1.0 - bend)), 1.0 - (strength * bend));
     } else if (mode == Long) {
-        if (!fadeOut) {
+        if (type == FadeIn) {
             points[1] = QPointF(strength * (1.0 - bend), strength * bend);
             points[2] = QPointF(1.0, 1.0);
         } else {
@@ -32,7 +32,7 @@ std::array<QPointF, 4> TFadeShape::control_points(bool fadeOut, int mode, double
     return points;
 }
 
-std::vector<TCurveSnapshot::Point> TFadeShape::points(bool fadeOut, const std::array<QPointF, 4>& controlPoints)
+std::vector<TCurveSnapshot::Point> TFadeShape::points(FadeType type, const std::array<QPointF, 4>& controlPoints)
 {
     std::vector<TCurveSnapshot::Point> points;
     points.reserve(POINT_COUNT);
@@ -52,7 +52,7 @@ std::vector<TCurveSnapshot::Point> TFadeShape::points(bool fadeOut, const std::a
                  + 3 * controlPoints[2].y() * f * f * g
                  + controlPoints[3].y() * f * f * f;
 
-        if (fadeOut) {
+        if (type == FadeOut) {
             y = 1.0 - y;
         }
 

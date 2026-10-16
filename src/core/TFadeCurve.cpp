@@ -232,9 +232,8 @@ void TFadeCurve::set_shape(const QString& shapeName)
 
 void TFadeCurve::solve_shape(TRtTransaction& transaction)
 {
-    const bool fadeOut = (m_type == FadeOut);
-    m_controlPoints = TFadeShape::control_points(fadeOut, m_mode, m_bendFactor, m_strenghtFactor);
-    m_shape = TCurveSnapshot::create(TFadeShape::points(fadeOut, m_controlPoints), 1.0);
+    m_controlPoints = TFadeShape::control_points(m_type, m_mode, m_bendFactor, m_strenghtFactor);
+    m_shape = TCurveSnapshot::create(TFadeShape::points(m_type, m_controlPoints), 1.0);
     m_state.mark_changed(transaction);
 }
 
