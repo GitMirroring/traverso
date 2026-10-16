@@ -900,10 +900,6 @@ void TAudioDevice::remove_client( TAudioDeviceClient * client )
     // return before the audio thread stopped using the client
     Q_ASSERT_X(!TRtTransaction::is_open(), "TAudioDevice::remove_client",
                "a client cannot be removed inside a TRtTransaction");
-    if (TRtTransaction::is_open()) {
-        PERROR(QString("AudioDevice: client %1 not removed, a transaction is open").arg(client->m_name));
-        return;
-    }
 
     {
         TRtTransaction transaction;
