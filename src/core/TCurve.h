@@ -11,7 +11,6 @@
 #include <QString>
 #include <QList>
 #include <QDomDocument>
-#include <atomic>
 #include <memory>
 
 #include "TAudioBuffer.h"
@@ -88,9 +87,6 @@ private :
     double          m_defaultValue{};
     TTimeRef		m_startoffset;
 
-    float           m_rtCurrentMakeupGain{1.0f};
-    float           m_rtTargetMakeupGain{1.0f};
-
     std::shared_ptr<const TCurveSnapshot> create_snapshot() const;
     void private_add_node(TCurveNode* node, TRtTransaction& transaction);
     void private_remove_node(TCurveNode* node, TRtTransaction& transaction);
@@ -101,8 +97,6 @@ private :
     // Audio thread: the snapshot to evaluate, nullptr until the first one is
     // published
     const TCurveSnapshot* rt_snapshot() const {return m_snapshot.rt_snapshot();}
-
-    friend class TAudioProcessingNode; // Grants thread-queue access to target gain states
 
 signals :
     void stateChanged();

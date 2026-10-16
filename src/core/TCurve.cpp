@@ -137,81 +137,41 @@ int TCurve::process(
     const TTimeRef& endlocation,
     nframes_t nframes,
     uint channels,
-    audio_sample_t /*makeupgain*/ // Ignored: state is now driven exclusively by m_rtTargetMakeupGain
+    audio_sample_t makeupgain
     )
 {
     const TCurveSnapshot* snapshot = rt_snapshot();
 
-    // Do nothing if there are no nodes active
+    // Do nothing if there are no nodes!
     if (!snapshot || snapshot->is_empty()) {
         return 0;
     }
 
-    // Real-time Safety: Evaluate if the manual fader/mute/solo component requires linear ramping
-    bool requiresMakeupRamp = !TraversoDAW::Float::compare(m_rtCurrentMakeupGain, m_rtTargetMakeupGain);
-    float makeupDelta = requiresMakeupRamp ? (m_rtTargetMakeupGain - m_rtCurrentMakeupGain) / nframes : 0.0f;
-
-    // --- SCENARIO A: BEYOND THE LAST AUTOMATION NODE (Trivial static gain zone) ---
+    // Check if we are beyond the last node and only apply gain if != 1.0
     if (endlocation > qint64(snapshot->get_range())) {
-        audio_sample_t nodeGain = audio_sample_t(snapshot->points().back().value);
+        audio_sample_t gain = audio_sample_t(snapshot->points().back().value) * makeupgain;
 
-        if (requiresMakeupRamp) {
-            // Apply click-free linear coefficient ramping to the fader component past curve boundaries
-            for (uint chan = 0; chan < channels; ++chan) {
-                audio_sample_t* buffer = audioBus->get_buffer(chan).get_data(nframes);
-                float currentMakeupCache = m_rtCurrentMakeupGain;
-
-                for (nframes_t n = 0; n < nframes; ++n) {
-                    currentMakeupCache += makeupDelta;
-                    buffer[n] *= (nodeGain * currentMakeupCache);
-                }
-            }
-            m_rtCurrentMakeupGain = m_rtTargetMakeupGain;
-        } else {
-            // Performance Critical: If both parameters are static, evaluate absolute silence clearing
-            float finalStaticGain = nodeGain * m_rtCurrentMakeupGain;
-            if (TraversoDAW::Float::equals_0(finalStaticGain)) {
-                for (uint chan = 0; chan < channels; ++chan) {
-                    std::memset(audioBus->get_buffer(chan).get_data(nframes), 0, nframes * sizeof(audio_sample_t));
-                }
-            } else {
-                // Apply fast vectorized block scaling when faders are completely resting
-                audioBus->apply_gain_to_buffers(nframes, finalStaticGain);
-            }
+        if (TraversoDAW::Float::equals_1(gain)) {
+            return 0;
         }
+
+        audioBus->apply_gain_to_buffers(nframes, gain);
+
         return 1;
     }
 
-    // --- SCENARIO B: INSIDE THE ACTIVE AUTOMATION CURVE AREA ---
     TAudioBuffer &curveBuffer = m_session->get_curve_buffer();
 
-    // Compute the spline interpolation curve vector into curveBuffer
+    // Calculate the vector, and apply it to the buffer including the makeup gain.
     snapshot->get_vector(double(startlocation.universal_frame()), double(endlocation.universal_frame()),
                          curveBuffer.get_data(nframes), nframes, m_rtLookupCache);
 
     for (uint chan = 0; chan < channels; ++chan) {
         audio_sample_t* buffer = audioBus->get_buffer(chan).get_data(nframes);
-        float* cBuffer = curveBuffer.get_data(nframes);
-        float currentMakeupCache = m_rtCurrentMakeupGain;
+        const float* cBuffer = curveBuffer.get_data(nframes);
 
         for (nframes_t n = 0; n < nframes; ++n) {
-            if (requiresMakeupRamp) {
-                currentMakeupCache += makeupDelta;
-            }
-            // THE PRECISE GEOMETRIC MULTIPLICATION:
-            // Multiplies the audio, the curve, and the click-free manual fader inside a single L1-cache loop!
-            buffer[n] *= (cBuffer[n] * currentMakeupCache);
-        }
-    }
-
-    if (requiresMakeupRamp) {
-        m_rtCurrentMakeupGain = m_rtTargetMakeupGain;
-    } else {
-        // Zero out residual memory frames during prolonged mute/solo intervals to block leakage noise
-        if (TraversoDAW::Float::equals_0(m_rtCurrentMakeupGain)) {
-            for (uint chan = 0; chan < channels; ++chan) {
-                std::memset(audioBus->get_buffer(chan).get_data(nframes), 0, nframes * sizeof(audio_sample_t));
-            }
+            buffer[n] *= (cBuffer[n] * makeupgain);
         }
     }
 

@@ -37,12 +37,10 @@ public:
     float get_pan() const {return m_pan;}
 
     void set_muted(bool muted);
-    void set_muted_by_solo(bool mutedBySolo); // Tracks external solo constraints
     virtual void set_name(const QString& name);
     void set_pan(float pan);
 
     bool is_muted() const {return m_isMuted;}
-    bool is_muted_by_solo() const {return m_mutedBySolo;}
 
 protected:
     TSession*       m_session;
@@ -51,14 +49,10 @@ protected:
     TAudioPluginChain*    m_pluginChain;
     QString         m_name;
     bool            m_isMuted;
-    bool            m_mutedBySolo; // Stores the solo grouping isolation state
     float           m_pan;
 
 private:
     QPointer<QPropertyAnimation>  m_gainAnimation;
-    float m_gain;
-
-    void update_operational_gain(); // Consolidated execution pipeline mapping calculations
 
 public slots:
     float get_gain();
@@ -72,7 +66,6 @@ signals:
     void audibleStateChanged();
     void stateChanged();
     void muteChanged(bool isMuted);
-    void soloMuteChanged(bool isMutedBySolo);
     void panChanged();
     void gainChanged();
 };
