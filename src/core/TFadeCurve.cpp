@@ -34,6 +34,7 @@ $Id: TFadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 #include "TLocation.h"
 #include "TRtTransaction.h"
 #include "TTimeLineEntity.h"
+#include "Utils.h"
 #include "Debugger.h"
 
 QStringList TFadeCurve::defaultShapes = QStringList() << "Fastest" << "Fast" << "Linear"  << "Slow" << "Slowest";
@@ -246,7 +247,7 @@ void TFadeCurve::set_length(double length, TRtTransaction& transaction)
 {
     length = TFadeShape::effective_length(length);
 
-    if (length == m_length) {
+    if (TraversoDAW::Float::compare(length, m_length)) {
         return;
     }
 
