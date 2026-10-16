@@ -3,7 +3,6 @@
 
 #include "TFadeShape.h"
 
-#include <cmath>
 
 std::array<QPointF, 4> TFadeShape::control_points(bool fadeOut, int mode, double bend, double strength)
 {
@@ -63,17 +62,7 @@ std::vector<TCurveSnapshot::Point> TFadeShape::points(bool fadeOut, const std::a
     return points;
 }
 
-bool TFadeShape::is_default(int mode, double bend, double strength)
-{
-    return mode == Long && std::fabs(bend) < 1.0e-6 && std::fabs(strength - 0.5) < 1.0e-6;
-}
-
 double TFadeShape::effective_length(double length)
 {
     return (length <= 1.0) ? 0.0 : length;
-}
-
-bool TFadeShape::is_unused(double length, bool bypassed, int raster, int mode, double bend, double strength)
-{
-    return effective_length(length) == 0.0 && !bypassed && raster == 0 && is_default(mode, bend, strength);
 }

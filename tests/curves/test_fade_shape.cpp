@@ -3,8 +3,7 @@
 
 // Headless test of TFadeShape: for every preset, mode and fade type the shape
 // starts and ends at the right value, moves one way only, and the fade curve
-// through its points stays between 0 and 1. Also the rules for loading fades
-// stored by older versions.
+// through its points stays between 0 and 1.
 
 #include "TFadeShape.h"
 
@@ -69,22 +68,10 @@ int main()
         check(linear, "the Linear preset is a straight line");
     }
 
-    check(TFadeShape::is_default(TFadeShape::Long, 0.0, 0.5) && !TFadeShape::is_default(TFadeShape::Bended, 0.0, 0.5)
-              && !TFadeShape::is_default(TFadeShape::Long, 1.0, 0.5),
-          "the default shape is Fast in the Long mode");
-
-    // Older versions stored a fade that was off as one universal frame long
+    // One universal frame or less is off
     check(TFadeShape::effective_length(1.0) == 0.0 && TFadeShape::effective_length(0.99) == 0.0
               && TFadeShape::effective_length(-5.0) == 0.0 && TFadeShape::effective_length(1.5) == 1.5,
           "one universal frame or less is off");
-
-    // The fades older versions created for every drawn clip are not loaded,
-    // fades a user changed are
-    check(TFadeShape::is_unused(1.0, false, 0, TFadeShape::Long, 0.0, 0.5), "an implicit fade is unused");
-    check(!TFadeShape::is_unused(28224000.0, false, 0, TFadeShape::Long, 0.0, 0.5), "a fade with a length is used");
-    check(!TFadeShape::is_unused(1.0, true, 0, TFadeShape::Long, 0.0, 0.5), "a bypassed fade is used");
-    check(!TFadeShape::is_unused(1.0, false, 1, TFadeShape::Long, 0.0, 0.5), "a fade with raster is used");
-    check(!TFadeShape::is_unused(0.0, false, 0, TFadeShape::Long, 1.0, 0.75), "a fade with another shape is used");
 
     if (failures) {
         std::printf("%d check(s) failed\n", failures);

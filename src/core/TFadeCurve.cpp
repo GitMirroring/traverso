@@ -84,16 +84,6 @@ static double stored_length(const QDomElement& e)
     return rangestring.toDouble();
 }
 
-bool TFadeCurve::is_unused(const QDomElement& e)
-{
-    return TFadeShape::is_unused(stored_length(e),
-                                 e.attribute("bypassed", "0").toInt(),
-                                 e.attribute("raster", "0").toInt(),
-                                 e.attribute("mode", "2").toInt(),
-                                 e.attribute("bendfactor", "0.0").toDouble(),
-                                 e.attribute("strengthfactor", "0.5").toDouble());
-}
-
 int TFadeCurve::set_state( const QDomNode & node )
 {
     QDomElement e = node.toElement();

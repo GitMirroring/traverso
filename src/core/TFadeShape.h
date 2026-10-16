@@ -36,15 +36,7 @@ public:
     // 0 to 1, a fade out falls from 1 to 0.
     static std::vector<TCurveSnapshot::Point> points(bool fadeOut, const std::array<QPointF, 4>& controlPoints);
 
-    // The shape a new fade starts with: the "Fast" preset in the Long mode
-    static bool is_default(int mode, double bend, double strength);
-
-    // A length of one universal frame or less is off: older versions stored
-    // a fade that was off as one frame long
+    // A length of one universal frame or less, far shorter than one sample,
+    // turns a fade off
     static double effective_length(double length);
-
-    // A stored fade older versions created for every clip that was drawn: off,
-    // with the default shape, not bypassed and without raster. Loading it would
-    // only cost memory and audio thread time.
-    static bool is_unused(double length, bool bypassed, int raster, int mode, double bend, double strength);
 };
