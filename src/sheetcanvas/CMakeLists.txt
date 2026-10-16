@@ -5,6 +5,7 @@ set(TRAVERSO_SHEETCANVAS_SOURCES
     TClipsViewPort.cpp
     TWorkCursorView.cpp
     TPlayHeadView.cpp
+    TFrameClock.cpp
     TCurveNodeView.cpp
     TCurveView.cpp
     TCurvePolyline.h
