@@ -8,9 +8,16 @@
 #include "TCommand.h"
 #include <functional>
 
-class TSession;
 class TContextItem;
 
+/**
+ * @brief An undoable command from a do and an undo function.
+ *
+ * Both run directly in the GUI thread. Real-time state is changed with the
+ * transaction variant, in which each function gets the TRtTransaction to use.
+ * Goes away when commands become controllers (branch 3), TUndoCommand is the
+ * replacement.
+ */
 class TAddRemoveCommand : public TCommand
 {
     Q_OBJECT
@@ -22,25 +29,8 @@ public:
                                std::function<void()> undoMethod,
                                const QString& des);
 
-    TAddRemoveCommand(TContextItem* parent,
-                      void* arg,
-                      bool historable,
-                      TSession* sheet,
-                      std::function<void()> doMethod,   std::function<void()> doSignal,
-                      std::function<void()> undoMethod, std::function<void()> undoSignal,
-                      const QString& des);
-
-    TAddRemoveCommand(TContextItem* parent,
-                      TContextItem* item,
-                      bool historable,
-                      TSession* sheet,
-                      std::function<void()> doMethod,   std::function<void()> doSignal,
-                      std::function<void()> undoMethod, std::function<void()> undoSignal,
-                      const QString& des);
-
     // For owners whose lists are TRtLists: the methods change them in the GUI
-    // thread with the transaction they are given, so the command runs them
-    // directly. Goes away with TAddRemoveCommand itself.
+    // thread with the transaction they are given.
     using TransactionMethod = std::function<void(TRtTransaction& transaction)>;
 
     TAddRemoveCommand(TContextItem* parent,
@@ -58,16 +48,8 @@ public:
     int do_action() override;
     int undo_action() override;
 
-    void set_instantanious(bool instant);
-
 private:
-    int un_redo_action(const std::function<void()>& method, const std::function<void()>& signal);
-
     TContextItem*         m_parentItem{nullptr};
-    TSession*             m_sheet{nullptr};
     std::function<void()> m_doMethod;
     std::function<void()> m_undoMethod;
-    std::function<void()> m_doSignal;
-    std::function<void()> m_undoSignal;
-    bool                  m_instantanious{false};
 };
