@@ -51,12 +51,6 @@ public:
     QString		m_name;
     AudioBus*       masterOutBus{};
 
-    bool operator<(const TAudioDeviceClient& /*other*/) {
-        return false;
-    }
-
-    TAudioDeviceClient* next = nullptr;
-
 
 private:
     std::atomic<bool>   m_connected{false};

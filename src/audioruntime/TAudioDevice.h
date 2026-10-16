@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 #include "TAudioChannelConfiguration.h"
-#include "TRealTimeLinkedList.h"
+#include "TRtList.h"
 #include "TAudioBusConfiguration.h"
 #include "TAudioDeviceSetup.h"
 #include "TTimeRef.h"
@@ -124,7 +124,15 @@ public:
     bool running_real_time() const {return m_isRealTime;}
 
     void add_client(TAudioDeviceClient* client);
+    // Returns once the audio thread no longer uses client, so its owner may
+    // delete it (is_connected() is false then); after a second without that,
+    // client stays connected
     void remove_client(TAudioDeviceClient* client);
+
+    // GUI thread: waits until the audio thread applied every change posted so
+    // far, e.g. before deleting what it no longer reaches. Returns true at
+    // once without a running audio thread, false after timeoutMilliseconds.
+    bool wait_until_changes_applied(int timeoutMilliseconds);
 
     void transport_start(TAudioDeviceClient* client);
     void transport_stop(TAudioDeviceClient* client, const TTimeRef& location);
@@ -198,7 +206,7 @@ private:
 #if defined (PIPEWIRE_SUPPORT)
     friend class TPipeWireDriver;
 #endif
-    TRealTimeLinkedList<TAudioDeviceClient*> m_clients;
+    TRtList<TAudioDeviceClient> m_clients;
 
     TProcessCallBackData    m_processCallBackData;
     TTransportControl   m_transportControl;
@@ -330,8 +338,6 @@ signals:
     void freeWheelingChanged();
 
 private slots:
-    void private_add_client(TAudioDeviceClient* client);
-    void private_remove_client(TAudioDeviceClient* client);
     void audiothread_finished();
     void switch_to_null_driver();
     void reset_xrun_counter() {m_xrunCount = 0;}

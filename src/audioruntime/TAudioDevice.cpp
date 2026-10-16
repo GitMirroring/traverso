@@ -48,11 +48,13 @@ RELAYTOOL_JACK
 
 #include "TAudioDriver.h"
 #include "TAudioDeviceClient.h"
+#include "TRtTransaction.h"
 #include "AudioChannel.h"
 #include "TAudioThreadMessageQueue.h"
 
 //#include <sys/mman.h>
 #include <QDebug>
+#include <QThread>
 #include "Debugger.h"
 
 
@@ -285,8 +287,9 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
         .guiCallback = [this]() { emit finishedOneProcessCycle(); }
     });
 
-    // Only the audio thread writes it
-    m_cycleCount.store(m_cycleCount.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+    // Only the audio thread writes it. Release: whoever sees the new count
+    // also sees the changes applied above
+    m_cycleCount.store(m_cycleCount.load(std::memory_order_relaxed) + 1, std::memory_order_release);
 
     return 1;
 }
@@ -299,7 +302,7 @@ int TAudioDevice::run_one_cycle( nframes_t nframes, float  )
         return -1;
     }
 
-    for(TAudioDeviceClient* client = m_clients.first(); client != nullptr; client = client->next) {
+    for (TAudioDeviceClient* client : m_clients.rt_items()) {
         m_processCallBackData.set_nframes_to_process(nframes);
         client->process(m_processCallBackData);
         auto ringBufferReadTime = m_processCallBackData.get_ringbuffers_read_write_wait_time();
@@ -868,38 +871,67 @@ float TAudioDevice::get_cpu_time( )
     return result;
 }
 
-void TAudioDevice::private_add_client(TAudioDeviceClient* client)
-{
-    m_clients.append(client);
-    client->set_connected(true);
-}
-
-void TAudioDevice::private_remove_client(TAudioDeviceClient* client)
-{
-    PENTER;
-    if (!m_clients.remove(client)) {
-        printf("AudioDevice:: Client was not in clients list, failed to remove it!\n");
-    } else {
-        client->set_connected(false);
-    }
-}
-
 void TAudioDevice::add_client( TAudioDeviceClient * client )
 {
-    // Pack into a single execution frame using the lock-free pipeline
-    tsmp().post_rt_task(
-        [this, client]() { private_add_client(client); },
-        [this, client]() { emit audioDeviceClientAdded(client); }
-        );
+    {
+        TRtTransaction transaction;
+        m_clients.add(client, transaction);
+    }
+
+    client->set_connected(true);
+    emit audioDeviceClientAdded(client);
 }
 
 void TAudioDevice::remove_client( TAudioDeviceClient * client )
 {
-    // Pack into a single execution frame using the lock-free pipeline
-    tsmp().post_rt_task(
-        [this, client]() { private_remove_client(client); },
-        [this, client]() { emit audioDeviceClientRemoved(client); }
-        );
+    PENTER;
+
+    if (!m_clients.gui_items().contains(client)) {
+        printf("AudioDevice:: Client was not in clients list, failed to remove it!\n");
+        return;
+    }
+
+    {
+        TRtTransaction transaction;
+        m_clients.remove(client, transaction);
+    }
+
+    // The owner deletes the client after this (a closed project deletes
+    // itself), so the audio thread must be done with it
+    if (!wait_until_changes_applied(1000)) {
+        PERROR(QString("AudioDevice: the audio thread did not apply the removal of client %1").arg(client->m_name));
+        return;
+    }
+
+    client->set_connected(false);
+    emit audioDeviceClientRemoved(client);
+}
+
+bool TAudioDevice::wait_until_changes_applied(int timeoutMilliseconds)
+{
+    // Without a running audio thread a transaction applies its changes directly
+    if (!m_driver || !m_runAudioThread.load()) {
+        return true;
+    }
+
+    // The audio thread applies posted changes at the end of a cycle, after it
+    // processed that cycle with the old state, and then counts the cycle. A
+    // change posted just after the changes of a cycle were applied waits for
+    // the next one, so two counts later the old state is certainly no longer
+    // in use.
+    const quint64 start = m_cycleCount.load(std::memory_order_acquire);
+
+    QElapsedTimer timer;
+    timer.start();
+
+    while (m_cycleCount.load(std::memory_order_acquire) < start + 2) {
+        if (timer.elapsed() > timeoutMilliseconds) {
+            return false;
+        }
+        QThread::msleep(1);
+    }
+
+    return true;
 }
 
 
@@ -1006,7 +1038,8 @@ int TAudioDevice::transport_control(TTransportControl *state)
 
     int result = 0;
 
-    for(TAudioDeviceClient* client = m_clients.first(); client != nullptr; client = client->next) {
+    // Called in the audio thread when the transport follows jack
+    for (TAudioDeviceClient* client : m_clients.rt_items()) {
         result = client->transport_control(state);
     }
 

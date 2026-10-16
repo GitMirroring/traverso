@@ -35,10 +35,6 @@ public:
 
     inline void set_read() {m_wasRead = true;}
 
-    bool operator<(const TVUMonitor& /*other*/) {
-        return false;
-    }
-    TVUMonitor* next = nullptr;
 
 private:
     bool    m_wasRead;

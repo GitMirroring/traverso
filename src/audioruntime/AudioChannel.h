@@ -27,7 +27,7 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 #include "defines.h"
 #include <QString>
 #include <QObject>
-#include "TRealTimeLinkedList.h"
+#include "TRtList.h"
 
 class TVUMonitor;
 
@@ -67,7 +67,7 @@ public:
     qint64 get_id() const {return m_id;}
 
 private:
-    TRealTimeLinkedList<TVUMonitor*>    m_monitors;
+    TRtList<TVUMonitor>     m_monitors;
     TRealTimeAudioBuffer    m_audioBuffer;
     uint 			m_latency;
     uint 			m_number;
@@ -86,10 +86,6 @@ private:
 
     void read_from_hardware_port(audio_sample_t* buf, nframes_t nframes);
     void read_from_hardware_port_interleaved(const audio_sample_t* buf, nframes_t nframes, uint channelCount, uint channelNumber);
-
-private slots:
-    void private_add_monitor(TVUMonitor* monitor);
-    void private_remove_monitor(TVUMonitor* monitor);
 
 signals:
     void vuMonitorAdded(TVUMonitor*);

@@ -20,6 +20,7 @@
 */
 
 #include "AudioChannel.h"
+#include "TRtTransaction.h"
 
 #include "TVUMonitor.h"
 #include "TAudioThreadMessageQueue.h"
@@ -77,7 +78,7 @@ void AudioChannel::process_monitoring(TVUMonitor* monitor)
         monitor->process(peakValue);
     }
 
-    for(TVUMonitor* internalMonitor = m_monitors.first(); internalMonitor != nullptr; internalMonitor = internalMonitor->next) {
+    for (TVUMonitor* internalMonitor : m_monitors.rt_items()) {
         internalMonitor->process(peakValue);
     }
 }
@@ -88,32 +89,29 @@ void AudioChannel::set_monitoring( bool monitor )
 }
 
 
-void AudioChannel::private_add_monitor(TVUMonitor *monitor)
-{
-    m_monitors.append(monitor);
-}
-
-void AudioChannel::private_remove_monitor(TVUMonitor *monitor)
-{
-    if (!m_monitors.remove(monitor)) {
-        printf("AudioChannel:: VUMonitor was not in monitors list, failed to remove it!\n");
-    }
-}
-
 void AudioChannel::add_monitor(TVUMonitor *monitor)
 {
-    tsmp().post_rt_task(
-        [this, monitor]() { private_add_monitor(monitor); },
-        [this, monitor]() { emit vuMonitorAdded(monitor); }
-        );
+    {
+        TRtTransaction transaction;
+        m_monitors.add(monitor, transaction);
+    }
+
+    emit vuMonitorAdded(monitor);
 }
 
 void AudioChannel::remove_monitor(TVUMonitor *monitor)
 {
-    tsmp().post_rt_task(
-        [this, monitor]() { private_remove_monitor(monitor); },
-        [this, monitor]() { emit vuMonitorAdded(monitor); }
-        );
+    if (!m_monitors.gui_items().contains(monitor)) {
+        printf("AudioChannel:: VUMonitor was not in monitors list, failed to remove it!\n");
+        return;
+    }
+
+    {
+        TRtTransaction transaction;
+        m_monitors.remove(monitor, transaction);
+    }
+
+    emit vuMonitorRemoved(monitor);
 }
 
 void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes)
