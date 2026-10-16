@@ -130,8 +130,8 @@ public:
     void remove_client(TAudioDeviceClient* client);
 
     // GUI thread: waits until the audio thread applied every change posted so
-    // far, e.g. before deleting what it no longer reaches. Returns true at
-    // once without a running audio thread, false after timeoutMilliseconds.
+    // far, e.g. before deleting what it no longer reaches. False when that did
+    // not happen within timeoutMilliseconds.
     bool wait_until_changes_applied(int timeoutMilliseconds);
 
     void transport_start(TAudioDeviceClient* client);

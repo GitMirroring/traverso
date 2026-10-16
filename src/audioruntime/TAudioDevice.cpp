@@ -909,11 +909,6 @@ void TAudioDevice::remove_client( TAudioDeviceClient * client )
 
 bool TAudioDevice::wait_until_changes_applied(int timeoutMilliseconds)
 {
-    // Without a running audio thread a transaction applies its changes directly
-    if (!m_driver || !m_runAudioThread.load()) {
-        return true;
-    }
-
     // The audio thread applies posted changes at the end of a cycle, after it
     // processed that cycle with the old state, and then counts the cycle. A
     // change posted just after the changes of a cycle were applied waits for

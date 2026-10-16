@@ -70,9 +70,10 @@ private:
  * takes no arguments, so a command opens its own transaction, which joins
  * the one of a command or hold it runs in.
  *
- * The audio thread always runs (TAudioDevice falls back to the dummy driver),
- * so the event is always posted. Only while the audio device is switching
- * drivers or shutting down are the changes applied directly.
+ * The event is always posted, never applied in the GUI thread: the audio
+ * thread runs from the start of the application until its end (Traverso
+ * starts the dummy driver, TAudioDevice falls back to it), and while the
+ * audio device switches drivers the next driver's thread applies it.
  */
 class TRtTransaction
 {

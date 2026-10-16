@@ -103,15 +103,11 @@ void TRtTransaction::commit()
         batch->steps.push_back(publishable->create_publish_step());
     }
 
+    // Only possible while the audio device switches drivers, the next
+    // driver's thread applies the changes then. Steps may outlive the lists
+    // they publish (they share the RT side), so that is safe.
     if (!audiodevice().is_driver_loaded()) {
-        // Only possible while the audio device switches drivers or shuts down,
-        // as it falls back to the dummy driver otherwise. Posting now could run
-        // the steps after a restart, when the lists may be gone, so apply them
-        // directly.
-        PWARN("TRtTransaction: no audio driver loaded, applying changes directly");
-        batch->apply_in_audio_thread();
-        delete batch;
-        return;
+        PWARN("TRtTransaction: no audio driver loaded, the changes wait for the next one");
     }
 
     tsmp().post_rt_task(

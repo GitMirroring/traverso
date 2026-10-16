@@ -21,6 +21,7 @@ This file is part of Traverso
 #include "TThemer.h"
 #include "TConfig.h"
 #include "TAudioDevice.h"
+#include "TAudioDeviceSetup.h"
 #include "TContextPointer.h"
 #include "Debugger.h"
 #include "fpu.h"
@@ -46,6 +47,13 @@ Traverso::Traverso(int &argc, char **argv )
     srand ( time(nullptr) );
 
     init_sse();
+
+    // The audio thread runs from the start: its period is the clock pulse of
+    // Traverso, and real-time changes are only ever posted to it. Loading a
+    // project switches to the driver configured for it.
+    TAudioDeviceSetup dummySetup;
+    dummySetup.set_driver_type("Dummy");
+    audiodevice().set_parameters(dummySetup);
 
     connect(this, &QApplication::lastWindowClosed, &pm(), &TProjectManager::exit);
 }
