@@ -27,6 +27,9 @@
 #include <QObject>
 #include <QVector>
 
+#include <atomic>
+#include <cstdint>
+
 class TJackDriver : public TAudioDriver
 {
     Q_OBJECT
@@ -85,6 +88,11 @@ private:
     QList<PortChannelPair*> m_inputs;
     QList<PortChannelPair*> m_outputs;
     TTransportControl       m_transportControl;
+
+    // The transport position at which Traverso is ready to roll, -1 when it
+    // is not ready. Written by the process callback, read by the sync
+    // callback, which may run in another thread, see jack_sync_callback().
+    std::atomic<std::int64_t> m_readyAtFrame{-1};
 
     bool                    m_isSlave;
 

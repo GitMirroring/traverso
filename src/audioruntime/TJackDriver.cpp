@@ -250,7 +250,10 @@ int TJackDriver::process_callback (nframes_t nframes)
     m_transportControl.set_realtime(true);
     m_transportControl.set_slave(true);
 
-    m_device->transport_control(&m_transportControl);
+    const int ready = m_device->transport_control(&m_transportControl);
+
+    // For the sync callback: ready to roll at this position, or not ready
+    m_readyAtFrame.store(ready ? std::int64_t(pos.frame) : -1, std::memory_order_release);
 
     m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
     m_device->set_transport_cycle_start_time (m_runCycleStartTime);
@@ -263,18 +266,16 @@ int TJackDriver::process_callback (nframes_t nframes)
     return 0;
 }
 
-// NOTE:  note that in jack2 they (process and sync callback) occur asynchronously in 2 different threads
-//        How to handle that properly in Traverso? The TSMP RT event buffer assumes only one RT thread.
-int TJackDriver::jack_sync_callback (jack_transport_state_t state, jack_position_t* pos)
+// JACK documents the sync callback as running in the process thread just
+// before process(), but implementations differ (Traverso's notes say JACK2
+// calls it in another thread). So it never calls into Traverso: the process
+// callback hands JACK's transport state and position to the audio device every
+// cycle and records whether Traverso is ready to roll there. Ready only counts
+// for the position JACK asks about now, a new position is not ready until a
+// process cycle handled it. JACK keeps calling while the transport starts.
+int TJackDriver::jack_sync_callback (jack_transport_state_t /*state*/, jack_position_t* pos)
 {
-    m_transportControl.set_state(state);
-    m_transportControl.set_location(TTimeRef(pos->frame, audiodevice().get_sample_rate()));
-    m_transportControl.set_realtime(true);
-    m_transportControl.set_slave(true);
-    printf("jack state is %d\n", state);
-    printf("jack transport callback, location is %lld\n", m_transportControl.get_location().universal_frame());
-
-    return m_device->transport_control(&m_transportControl);
+    return m_readyAtFrame.load(std::memory_order_acquire) == std::int64_t(pos->frame);
 }
 
 int TJackDriver::_xrun_callback( void * arg )
