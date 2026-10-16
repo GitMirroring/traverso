@@ -392,8 +392,10 @@ TCommand* TCurveView::drag_node()
         max = TTimeRef((nodeList.at(indexLastNode+1))->get_when() - 1);
     }
 
-    if (boundingRect().width() * m_sv->timeref_scalefactor < max) {
-        max = boundingRect().width() * m_sv->timeref_scalefactor;
+    // The nodes are in source time, the clip's length is relative to its start
+    const TTimeRef clipEnd = TTimeRef(boundingRect().width() * m_sv->timeref_scalefactor) + m_startoffset;
+    if (clipEnd < max) {
+        max = clipEnd;
     }
 
     if ((min - get_start_offset()) < TTimeRef()) {
@@ -403,7 +405,7 @@ TCommand* TCurveView::drag_node()
     TTimeRef startLocation = TTimeRef(selectedNodes.first()->get_when());
     TTimeRef endLocation  = TTimeRef(selectedNodes.last()->get_when());
     TTimeRef minWhenDiff = min - startLocation;
-    TTimeRef maxWhenDiff = max - endLocation + m_startoffset;
+    TTimeRef maxWhenDiff = max - endLocation;
 
 
     double maxValue = DBL_MIN;
