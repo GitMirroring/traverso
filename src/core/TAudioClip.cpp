@@ -146,7 +146,12 @@ int TAudioClip::set_state(const QDomNode& node)
     emit stateChanged();
 
     {
-        // Joins the transaction of the sheet when loading a project
+        // A transaction opened while another one is open joins it: it hands its
+        // changes to the outermost one and publishes nothing itself. When a
+        // project loads, that is the transaction TProjectManager opens around
+        // the load (TSheet::set_state() opens one too, which joins it as well),
+        // so the fades reach the audio thread with the whole project in one
+        // event. When a clip is copied, this one publishes them.
         TRtTransaction transaction;
 
         // Older versions created a fade for every clip that was drawn, those

@@ -173,7 +173,10 @@ int TProject::create(int sheetcount, int numtracks)
     }
 
     {
-        // Joins the transaction of the project creation
+        // Joins the transaction TProjectManager::create_new_project() opens
+        // around creating the project: a transaction opened while another one
+        // is open hands its changes to the outermost one, which publishes all
+        // of them as one event when it ends.
         TRtTransaction transaction;
         for (int i=0; i< sheetcount; i++) {
             TSheet* sheet = new TSheet(this, numtracks);
@@ -433,7 +436,10 @@ int TProject::load(const QString& projectfile)
     {
         TSheet* sheet = new TSheet(this, sheetNode);
         {
-            // Joins the transaction of the project load
+            // Joins the transaction TProjectManager::load_project() opens around
+            // the load: a transaction opened while another one is open hands
+            // its changes to the outermost one, which publishes all of them as
+            // one event when it ends.
             TRtTransaction transaction;
             m_sheets.add(sheet, transaction);
         }

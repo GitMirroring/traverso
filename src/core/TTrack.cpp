@@ -130,7 +130,11 @@ int TTrack::set_state( const QDomNode & node )
 
     QDomNode sendsNode = node.firstChildElement("Sends");
     if (!sendsNode.isNull()) {
-        // Joins the transaction of the sheet or project when loading
+        // A transaction opened while another one is open joins it: it hands its
+        // changes to the outermost one and publishes nothing itself. When a
+        // project loads, the outermost one is the transaction TProjectManager
+        // opens around the load, so the sends reach the audio thread with the
+        // whole project in one event. Otherwise this one publishes them.
         TRtTransaction transaction;
 
         QDomNode sendNode = sendsNode.firstChild();

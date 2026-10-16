@@ -77,7 +77,11 @@ int TAudioPluginChain::set_state( const QDomNode & node )
 	QDomNode pluginsNode = node.firstChildElement("Plugins");
 	QDomNode pluginNode = pluginsNode.firstChild();
 
-	// Joins the transaction of the sheet or project when loading
+	// A transaction opened while another one is open joins it: it hands its
+	// changes to the outermost one and publishes nothing itself. When a project
+	// loads, the outermost one is the transaction TProjectManager opens around
+	// the load, so the plugins reach the audio thread with the whole project in
+	// one event. Otherwise this transaction is the outermost and publishes them.
 	TRtTransaction transaction;
 	
 	while(!pluginNode.isNull()) {
