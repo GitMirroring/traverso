@@ -68,8 +68,8 @@ public:
 
 
     // Creates the fade if the clip has none yet
-    void set_fade_in_length(double length);
-    void set_fade_out_length(double length);
+    void set_fade_in_length(const TTimeRef& length);
+    void set_fade_out_length(const TTimeRef& length);
     void set_track(TAudioTrack* track);
     void set_sheet(TSheet* sheet);
     void reset_fade_in();

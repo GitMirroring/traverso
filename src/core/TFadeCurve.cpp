@@ -34,7 +34,6 @@ $Id: TFadeCurve.cpp,v 1.36 2008/11/07 10:43:08 r_sijrier Exp $
 #include "TLocation.h"
 #include "TRtTransaction.h"
 #include "TTimeLineEntity.h"
-#include "Utils.h"
 #include "Debugger.h"
 
 QStringList TFadeCurve::defaultShapes = QStringList() << "Fastest" << "Fast" << "Linear"  << "Slow" << "Slowest";
@@ -59,7 +58,7 @@ QDomNode TFadeCurve::get_state( QDomDocument doc )
     node.setAttribute("bendfactor", m_bendFactor);
     node.setAttribute("strengthfactor", m_strenghtFactor);
     node.setAttribute("bypassed", m_bypass);
-    node.setAttribute("range", m_length);
+    node.setAttribute("range", m_length.universal_frame());
     node.setAttribute("mode", m_mode);
     node.setAttribute("raster", m_raster);
 
@@ -74,15 +73,19 @@ QDomNode TFadeCurve::get_state( QDomDocument doc )
     return node;
 }
 
-// The stored length, 0 when it is not a number
-static double stored_length(const QDomElement& e)
+// The stored length; 0 when the file holds no valid length (not a number,
+// infinite, or beyond what a TTimeRef can hold)
+static TTimeRef stored_length(const QDomElement& e)
 {
-    QString rangestring = e.attribute("range", "0");
-    if (rangestring == "nan" || rangestring == "inf") {
-        printf("FadeCurve::set_state: stored range was not a number!\n");
-        return 0.0;
+    bool ok = false;
+    const double length = e.attribute("range", "0").toDouble(&ok);
+
+    if (!ok || !std::isfinite(length) || std::fabs(length) > double(TTimeRef::max_length().universal_frame())) {
+        printf("FadeCurve::set_state: stored range is not a valid length, the fade is off\n");
+        return TTimeRef();
     }
-    return rangestring.toDouble();
+
+    return TTimeRef(length);
 }
 
 int TFadeCurve::set_state( const QDomNode & node )
@@ -115,7 +118,7 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
     Q_ASSERT(m_parentTimeLineEntity->get_location() != nullptr);
 
     const TFadeState* state = m_state.rt_snapshot();
-    if (!state || state->bypassed || state->length <= 0.0) {
+    if (!state || state->bypassed || state->length <= TTimeRef()) {
         return;
     }
 
@@ -125,7 +128,7 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
     uint channelCount = bus->get_channel_count();
 
     TTimeRef fadeStartLocation, fadeEndLocation, fadeLocation;
-    TTimeRef fadeRange = TTimeRef(state->length);
+    TTimeRef fadeRange = state->length;
     TTimeRef upperRange = startLocation + TTimeRef(nframes, outputRate);
 
     if (m_type == FadeIn) {
@@ -162,8 +165,7 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
     upperRange = fadeLocation + TTimeRef(framesToProcess, outputRate);
 
     // The shape runs from 0 to 1 over the length of the fade
-    state->shape->get_vector(double(fadeLocation.universal_frame()) / state->length,
-                             double(upperRange.universal_frame()) / state->length,
+    state->shape->get_vector(fadeLocation / state->length, upperRange / state->length,
                              curveBuffer.get_data(framesToProcess), framesToProcess, m_rtLookupCache);
 
     for (uint chan = 0; chan < channelCount; ++chan) {
@@ -242,15 +244,15 @@ std::shared_ptr<const TFadeState> TFadeCurve::create_state() const
     return std::make_shared<TFadeState>(TFadeState{m_shape, m_length, m_bypass});
 }
 
-void TFadeCurve::set_length(double length, TRtTransaction& transaction)
+void TFadeCurve::set_length(const TTimeRef& length, TRtTransaction& transaction)
 {
-    length = TFadeShape::effective_length(length);
+    const TTimeRef newLength = (length < TTimeRef()) ? TTimeRef() : length;
 
-    if (TraversoDAW::Float::compare(length, m_length)) {
+    if (newLength == m_length) {
         return;
     }
 
-    m_length = length;
+    m_length = newLength;
     m_state.mark_changed(transaction);
 
     emit lengthChanged();
@@ -319,23 +321,25 @@ void TFadeCurve::get_vector(double x0, double x1, const TAudioBuffer &audioBuffe
 {
     float* vec = audioBuffer.get_data(veclen);
 
-    if (m_length <= 0.0) {
+    if (m_length <= TTimeRef()) {
         std::fill(vec, vec + veclen, 1.0f);
         return;
     }
 
-    m_shape->get_vector(x0 / m_length, x1 / m_length, vec, veclen, m_guiLookupCache);
+    const double length = double(m_length.universal_frame());
+    m_shape->get_vector(x0 / length, x1 / length, vec, veclen, m_guiLookupCache);
 }
 
 void TFadeCurve::get_columns(double x0, double columnWidth, int count, TCurveColumn* columns)
 {
-    if (m_length <= 0.0) {
+    if (m_length <= TTimeRef()) {
         std::fill(columns, columns + count, TCurveColumn{1.0, 1.0, 0.0, 1.0, 0.0, 1.0});
         return;
     }
 
     // Positions inside a column are fractions of it, so they need no scaling
-    m_shape->get_columns(x0 / m_length, columnWidth / m_length, count, columns, m_guiLookupCache);
+    const double length = double(m_length.universal_frame());
+    m_shape->get_columns(x0 / length, columnWidth / length, count, columns, m_guiLookupCache);
 }
 
 TCommand* TFadeCurve::toggle_bypass( )

@@ -68,11 +68,6 @@ int main()
         check(linear, "the Linear preset is a straight line");
     }
 
-    // One universal frame or less is off
-    check(TFadeShape::effective_length(1.0) == 0.0 && TFadeShape::effective_length(0.99) == 0.0
-              && TFadeShape::effective_length(-5.0) == 0.0 && TFadeShape::effective_length(1.5) == 1.5,
-          "one universal frame or less is off");
-
     if (failures) {
         std::printf("%d check(s) failed\n", failures);
         return 1;

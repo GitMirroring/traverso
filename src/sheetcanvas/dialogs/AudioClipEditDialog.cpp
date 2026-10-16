@@ -167,7 +167,7 @@ void AudioClipEditDialog::fadein_length_changed()
 {
 	if (locked) return;
 	
-	TTimeRef ref(qint64(m_clip->get_fade_in()->get_length()));
+	TTimeRef ref = m_clip->get_fade_in()->get_length();
     QTime fadeTime = TTimeRef::timeref_to_qtime(ref);
 	fadeInEdit->setTime(fadeTime);
 }
@@ -176,7 +176,7 @@ void AudioClipEditDialog::fadeout_length_changed()
 {
 	if (locked) return;
 
-	TTimeRef ref(qint64(m_clip->get_fade_out()->get_length()));
+	TTimeRef ref = m_clip->get_fade_out()->get_length();
     QTime fadeTime = TTimeRef::timeref_to_qtime(ref);
 	fadeOutEdit->setTime(fadeTime);
 }
@@ -190,8 +190,7 @@ void AudioClipEditDialog::fadein_edit_changed(const QTime& time)
 	if (ied().is_holding()) return;
 
 	locked = true;
-    double range = double(TTimeRef::qtime_to_timeref(time).universal_frame());
-    m_clip->set_fade_in_length(range);
+    m_clip->set_fade_in_length(TTimeRef::qtime_to_timeref(time));
 	locked = false;
 }
 
@@ -200,8 +199,7 @@ void AudioClipEditDialog::fadeout_edit_changed(const QTime& time)
 	if (ied().is_holding()) return;
 
 	locked = true;
-    double range = double(TTimeRef::qtime_to_timeref(time).universal_frame());
-    m_clip->set_fade_out_length(range);
+    m_clip->set_fade_out_length(TTimeRef::qtime_to_timeref(time));
 	locked = false;
 }
 

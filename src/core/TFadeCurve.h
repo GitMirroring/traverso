@@ -48,7 +48,7 @@ class TRtTransaction;
 struct TFadeState
 {
     std::shared_ptr<const TCurveSnapshot> shape;    // time and value 0..1
-    double                                length;   // universal frames, 0: off
+    TTimeRef                              length;   // 0: off
     bool                                  bypassed;
 };
 
@@ -89,15 +89,15 @@ public:
     float get_strength_factor() {return m_strenghtFactor;}
     int get_mode() const {return m_mode;}
     int get_raster() const {return m_raster;}
-    // In universal frames, 0 when the fade is off
-    double get_length() const {return m_length;}
+    // 0 when the fade is off
+    TTimeRef get_length() const {return m_length;}
 
     void set_shape(const QString &shapeName);
     void set_bend_factor(float factor, TRtTransaction& transaction);
     void set_strength_factor(float factor, TRtTransaction& transaction);
     void set_mode(int m, TRtTransaction& transaction);
-    // Lengths shorter than one universal frame turn the fade off
-    void set_length(double length, TRtTransaction& transaction);
+    // A length of 0 turns the fade off, a negative one counts as 0
+    void set_length(const TTimeRef& length, TRtTransaction& transaction);
 
     void set_parent_timeline_entity(TTimeLineEntity* entity) {
         m_parentTimeLineEntity = entity;
@@ -122,7 +122,7 @@ private:
     bool		                          m_bypass{false};
     int 		                          m_mode{2};
     int                                   m_raster{0};
-    double                                m_length{0.0};
+    TTimeRef                              m_length;
     FadeType	                          m_type;
     std::array<QPointF, 4>                m_controlPoints;
     std::shared_ptr<const TCurveSnapshot> m_shape;

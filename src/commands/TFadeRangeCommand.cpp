@@ -142,8 +142,8 @@ void TFadeRangeCommand::move_right()
 
 void TFadeRangeCommand::reset_length()
 {
-    m_fadeInNewRange = 1.0;
-    m_fadeOutNewRange = 1.0;
+    m_fadeInNewRange = TTimeRef();
+    m_fadeOutNewRange = TTimeRef();
     do_action();
 }
 
@@ -152,12 +152,12 @@ void TFadeRangeCommand::next_snap_pos()
     if (m_fadeIn) {
         TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location_start() + m_fadeInNewRange);
         TTimeRef newpos = snap - frp->clip->get_location_start();
-        m_fadeInNewRange = newpos.universal_frame();
+        m_fadeInNewRange = newpos;
     }
     if (m_fadeOut) {
         TTimeRef snap = frp->sheet->get_snap_list()->next_snap_pos(frp->clip->get_location_start() + m_fadeOutNewRange) * (m_fadeIn ? -1 : 1);
         TTimeRef newpos = snap - frp->clip->get_location_start();
-        m_fadeOutNewRange = newpos.universal_frame();
+        m_fadeOutNewRange = newpos;
     }
 
 
@@ -169,12 +169,12 @@ void TFadeRangeCommand::prev_snap_pos()
     if (m_fadeIn) {
         TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location_start() + m_fadeInNewRange);
         TTimeRef newpos = snap - frp->clip->get_location_start();
-        m_fadeInNewRange = newpos.universal_frame();
+        m_fadeInNewRange = newpos;
     }
     if (m_fadeOut) {
         TTimeRef snap = frp->sheet->get_snap_list()->prev_snap_pos(frp->clip->get_location_start() + m_fadeOutNewRange);
         TTimeRef newpos = snap - frp->clip->get_location_start();
-        m_fadeOutNewRange = newpos.universal_frame();
+        m_fadeOutNewRange = newpos;
     }
     do_keyboard_move();
 }
@@ -212,13 +212,13 @@ void TFadeRangeCommand::update_canvas_cursor_text()
     QString location;
 
     if (m_fadeIn) {
-        location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeInNewRange));
+        location = TTimeRef::timeref_to_ms_3(m_fadeInNewRange);
     }
     if (m_fadeOut) {
-        location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
+        location = TTimeRef::timeref_to_ms_3(m_fadeOutNewRange);
     }
     if (m_fadeIn && m_fadeOut) {
-        location = TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeInNewRange)) + "  |  " + TTimeRef::timeref_to_ms_3(TTimeRef(m_fadeOutNewRange));
+        location = TTimeRef::timeref_to_ms_3(m_fadeInNewRange) + "  |  " + TTimeRef::timeref_to_ms_3(m_fadeOutNewRange);
     }
 
     m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(location));

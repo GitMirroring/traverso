@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TFADERANGECOMMAND_H
 
 #include "TMoveCommand.h"
+#include "TTimeRef.h"
 
 class TAudioClip;
 class TFadeCurve;
@@ -50,10 +51,10 @@ public :
 private :
     TFadeCurve*	m_fadeIn{nullptr};
     TFadeCurve*	m_fadeOut{nullptr};
-    double 		m_fadeInOrigRange;
-    double 		m_fadeInNewRange;
-    double 		m_fadeOutOrigRange;
-    double 		m_fadeOutNewRange;
+    TTimeRef 		m_fadeInOrigRange;
+    TTimeRef 		m_fadeInNewRange;
+    TTimeRef 		m_fadeOutOrigRange;
+    TTimeRef 		m_fadeOutNewRange;
     struct FadeRangePrivate {
         TSheet* sheet;
         TAudioClip* clip;

@@ -40,8 +40,4 @@ public:
     // The points of the fade curve, time and value 0..1. A fade in rises from
     // 0 to 1, a fade out falls from 1 to 0.
     static std::vector<TCurveSnapshot::Point> points(FadeType type, const std::array<QPointF, 4>& controlPoints);
-
-    // A length of one universal frame or less, far shorter than one sample,
-    // turns a fade off
-    static double effective_length(double length);
 };

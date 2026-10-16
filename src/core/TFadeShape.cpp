@@ -61,8 +61,3 @@ std::vector<TCurveSnapshot::Point> TFadeShape::points(FadeType type, const std::
 
     return points;
 }
-
-double TFadeShape::effective_length(double length)
-{
-    return (length <= 1.0) ? 0.0 : length;
-}

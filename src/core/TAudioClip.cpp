@@ -439,7 +439,7 @@ void TAudioClip::set_track_end_location(const TTimeRef& location)
     }
 }
 
-void TAudioClip::set_fade_in_length(double length)
+void TAudioClip::set_fade_in_length(const TTimeRef& length)
 {
     TRtTransaction transaction;
     if (!m_fadeIn) {
@@ -448,7 +448,7 @@ void TAudioClip::set_fade_in_length(double length)
     m_fadeIn->set_length(length, transaction);
 }
 
-void TAudioClip::set_fade_out_length(double length)
+void TAudioClip::set_fade_out_length(const TTimeRef& length)
 {
     TRtTransaction transaction;
     if (!m_fadeOut) {
@@ -668,7 +668,7 @@ void TAudioClip::reset_fade_in()
 {
     if (m_fadeIn) {
         TRtTransaction transaction;
-        m_fadeIn->set_length(0.0, transaction);
+        m_fadeIn->set_length(TTimeRef(), transaction);
     }
 }
 
@@ -676,7 +676,7 @@ void TAudioClip::reset_fade_out()
 {
     if (m_fadeOut) {
         TRtTransaction transaction;
-        m_fadeOut->set_length(0.0, transaction);
+        m_fadeOut->set_length(TTimeRef(), transaction);
     }
 }
 
@@ -913,7 +913,7 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
 TFadeCurve * TAudioClip::get_fade_in()
 {
     if (!m_fadeIn) {
-        set_fade_in_length(0.0);
+        set_fade_in_length(TTimeRef());
         Q_ASSERT(m_fadeIn);
     }
     return m_fadeIn;
@@ -923,7 +923,7 @@ TFadeCurve * TAudioClip::get_fade_in()
 TFadeCurve * TAudioClip::get_fade_out()
 {
     if (!m_fadeOut) {
-        set_fade_out_length(0.0);
+        set_fade_out_length(TTimeRef());
         Q_ASSERT(m_fadeOut);
     }
     return m_fadeOut;
