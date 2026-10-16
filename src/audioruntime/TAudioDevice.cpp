@@ -1166,6 +1166,16 @@ TJackDriver* TAudioDevice::slaved_jack_driver()
 }
 #endif
 
+TTimeRef TAudioDevice::get_playback_latency() const
+{
+    if (m_rate == 0) {
+        return TTimeRef();
+    }
+
+    const nframes_t frames = m_driver ? m_driver->get_playback_latency_frames() : m_bufferSize;
+    return TTimeRef(frames, m_rate);
+}
+
 TTimeRef TAudioDevice::get_buffer_latency() const
 {
     return TTimeRef{m_bufferSize, m_rate};

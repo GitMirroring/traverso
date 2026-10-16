@@ -59,6 +59,8 @@ public:
         return false;
     }
 
+    nframes_t get_playback_latency_frames() const override;
+
 protected:
     int _run_cycle() override;
     int _read(nframes_t nframes) override;

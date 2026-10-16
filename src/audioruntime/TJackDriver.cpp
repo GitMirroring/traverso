@@ -139,6 +139,10 @@ void TJackDriver::add_channel(AudioChannel* channel)
     pcpair->channel->set_latency( m_framesPerCycle + m_captureFrameLatency );
     pcpair->name = channel->get_name();
 
+    if (channel->get_type() == AudioChannel::ChannelIsOutput && !m_latencyReferencePort.load(std::memory_order_relaxed)) {
+        m_latencyReferencePort.store(pcpair->jackport, std::memory_order_release);
+    }
+
 
     if (is_running()) {
         tsmp().post_rt_task(
@@ -210,6 +214,7 @@ int TJackDriver::attach( )
     jack_set_buffer_size_callback (m_jackClient, _bufsize_callback, this);
     jack_set_freewheel_callback(m_jackClient, _freewheel_callback, this);
     jack_on_shutdown(m_jackClient, _on_jack_shutdown_callback, this);
+    jack_set_latency_callback(m_jackClient, _latency_callback, this);
 
     update_config();
 
@@ -226,8 +231,38 @@ int TJackDriver::start( )
 
     emit driverSetupMessage("Jack", tr("Succesfully connected to jack server!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
+    update_playback_latency();
+
     m_running = 1;
     return 1;
+}
+
+// JACK calls this in a non real-time thread when port latencies change
+void TJackDriver::_latency_callback(jack_latency_callback_mode_t mode, void* arg)
+{
+    if (mode == JackPlaybackLatency) {
+        static_cast<TJackDriver*>(arg)->update_playback_latency();
+    }
+}
+
+// The way from this client's output port to the physical output, as JACK
+// measured it
+void TJackDriver::update_playback_latency()
+{
+    jack_port_t* port = m_latencyReferencePort.load(std::memory_order_acquire);
+    if (!port) {
+        return;
+    }
+
+    jack_latency_range_t range;
+    jack_port_get_latency_range(port, JackPlaybackLatency, &range);
+    m_playbackFrameLatency.store(range.max, std::memory_order_relaxed);
+}
+
+nframes_t TJackDriver::get_playback_latency_frames() const
+{
+    const nframes_t portLatency = m_playbackFrameLatency.load(std::memory_order_relaxed);
+    return portLatency > 0 ? portLatency : m_framesPerCycle;
 }
 
 int TJackDriver::stop( )

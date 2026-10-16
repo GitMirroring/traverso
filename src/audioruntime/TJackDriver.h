@@ -38,16 +38,16 @@ public:
     ~TJackDriver();
 
     int  process_callback (nframes_t nframes);
-    int _read(nframes_t nframes);
-    int _write(nframes_t nframes);
-    int _run_cycle() {return 1;}
+    int _read(nframes_t nframes) override;
+    int _write(nframes_t nframes) override;
+    int _run_cycle() override {return 1;}
     int setup(QList<AudioChannel* > channels, const QString &projectName);
-    int attach();
-    int start();
-    int stop();
+    int attach() override;
+    int start() override;
+    int stop() override;
 
-    QString get_device_name();
-    QString get_device_longname();
+    QString get_device_name() override;
+    QString get_device_longname() override;
 
     void add_channel(AudioChannel* channel);
     void remove_channel(AudioChannel* channel);
@@ -59,19 +59,28 @@ public:
     bool is_slave() const {return m_isSlave;}
     void update_config();
 
-    virtual bool supports_free_wheeling() const {
+    virtual bool supports_free_wheeling() const override {
         return true;
     }
 
     void start_free_wheeling() final;
     void stop_free_wheeling() final;
 
-    virtual bool runs_in_blocking_mode() const {
+    virtual bool runs_in_blocking_mode() const override {
         return false;
     }
 
+    nframes_t get_playback_latency_frames() const override;
 
 private:
+    // The output port whose playback latency stands for all of them: the
+    // first one registered. Written in the GUI thread, read in JACK's
+    // latency callback thread
+    std::atomic<jack_port_t*> m_latencyReferencePort{nullptr};
+
+    static void _latency_callback(jack_latency_callback_mode_t mode, void* arg);
+    void update_playback_latency();
+
     struct PortChannelPair {
         PortChannelPair() {
             jackport = nullptr;

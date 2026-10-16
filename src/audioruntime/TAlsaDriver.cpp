@@ -1579,6 +1579,14 @@ int TAlsaDriver::_run_cycle()
     return m_device->run_cycle (nframes, delayed_usecs);
 }
 
+// The audio thread wakes up when one period is free: the other periods are
+// still queued in front of the buffer it writes
+nframes_t TAlsaDriver::get_playback_latency_frames() const
+{
+    const nframes_t queuedPeriods = playback_nperiods > 1 ? playback_nperiods - 1 : 1;
+    return queuedPeriods * m_framesPerCycle + m_playbackFrameLatency.load(std::memory_order_relaxed);
+}
+
 int TAlsaDriver::attach()
 {
     channel_t chn;

@@ -295,6 +295,14 @@ int TPipeWireDriver::stop()
     return 1;
 }
 
+// pw_stream_get_time() in process_callback(): the frames queued in front
+// of the buffer the callback fills, up to the output
+nframes_t TPipeWireDriver::get_playback_latency_frames() const
+{
+    const nframes_t measured = m_playbackFrameLatency.load(std::memory_order_relaxed);
+    return measured > 0 ? measured : m_framesPerCycle;
+}
+
 // Called in RT thread from PipeWire server
 int TPipeWireDriver::process_callback()
 {
@@ -302,8 +310,8 @@ int TPipeWireDriver::process_callback()
     m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
     m_device->set_transport_cycle_start_time(m_runCycleStartTime);
 
-    int64_t newPlaybackLatency = m_playbackFrameLatency;
-    int64_t newCaptureLatency = m_captureFrameLatency;
+    int64_t newPlaybackLatency = m_playbackFrameLatency.load(std::memory_order_relaxed);
+    int64_t newCaptureLatency = m_captureFrameLatency.load(std::memory_order_relaxed);
 
     if (m_playbackStream) {
         struct pw_time playback_time;
@@ -327,9 +335,10 @@ int TPipeWireDriver::process_callback()
         }
     }
 
-    if (newPlaybackLatency != m_playbackFrameLatency || newCaptureLatency != m_captureFrameLatency) {
-        m_playbackFrameLatency = newPlaybackLatency;
-        m_captureFrameLatency = newCaptureLatency;
+    if (newPlaybackLatency != m_playbackFrameLatency.load(std::memory_order_relaxed)
+        || newCaptureLatency != m_captureFrameLatency.load(std::memory_order_relaxed)) {
+        m_playbackFrameLatency.store(nframes_t(newPlaybackLatency), std::memory_order_relaxed);
+        m_captureFrameLatency.store(nframes_t(newCaptureLatency), std::memory_order_relaxed);
 
         tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
             .rtTask = nullptr,

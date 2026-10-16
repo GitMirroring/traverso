@@ -294,7 +294,7 @@ TTimeRef TSession::get_heard_transport_location(qint64 nowNanoseconds)
     if (nowNanoseconds != m_heardPositionNanoseconds) {
         m_heardPositionNanoseconds = nowNanoseconds;
         m_heardPosition = m_heardPositionEstimator.heard_position(
-            m_rtTransportPosition.read(), nowNanoseconds, audiodevice().get_buffer_latency());
+            m_rtTransportPosition.read(), nowNanoseconds, audiodevice().get_playback_latency());
     }
 
     return m_heardPosition;

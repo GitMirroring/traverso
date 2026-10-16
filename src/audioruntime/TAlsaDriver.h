@@ -50,25 +50,27 @@ public:
     TAlsaDriver(TAudioDevice* device);
     ~TAlsaDriver();
 
-	int start();
-	int stop();
-	int _read(nframes_t nframes);
-	int _write(nframes_t nframes);
-	int _null_cycle(nframes_t nframes);
-	int _run_cycle();
-	int attach();
-	int detach();
+	int start() override;
+	int stop() override;
+	int _read(nframes_t nframes) override;
+	int _write(nframes_t nframes) override;
+	int _null_cycle(nframes_t nframes) override;
+	int _run_cycle() override;
+	int attach() override;
+	int detach() override;
 	int bufsize(nframes_t nframes);
 	int restart();
     int setup(bool capture=true, bool playback=true, const QString& pcmName="hw:0", const QString& dither="None");
-        bool supports_software_channels() {return false;}
+        bool supports_software_channels() override {return false;}
 
-	QString get_device_name();
-	QString get_device_longname();
+	QString get_device_name() override;
+	QString get_device_longname() override;
     // The numbers of the sound cards ALSA knows, in its order
     static QList<int> alsa_card_numbers();
     static QString alsa_device_longname(int devicenumber);
     static QString alsa_device_name(int devicenumber);
+
+    nframes_t get_playback_latency_frames() const override;
 
 private:
 	void setup_io_function_pointers();

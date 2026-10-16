@@ -30,6 +30,7 @@
 #include <QList>
 #include <QString>
 #include <QObject>
+#include <atomic>
 
 class TAudioDevice;
 class AudioChannel;
@@ -79,7 +80,14 @@ public:
     }
 
     int get_roundtrip_latency() const {
-        return m_playbackFrameLatency + m_captureFrameLatency;
+        return int(m_playbackFrameLatency.load(std::memory_order_relaxed) + m_captureFrameLatency.load(std::memory_order_relaxed));
+    }
+
+    // Frames from the start of a process cycle until the first frame of the
+    // buffer processed in that cycle leaves the output: the period of
+    // buffering plus what the driver measured. Any thread
+    virtual nframes_t get_playback_latency_frames() const {
+        return m_framesPerCycle + m_playbackFrameLatency.load(std::memory_order_relaxed);
     }
 
     TAudioDriverReadWriteCallBack read;
@@ -99,8 +107,9 @@ protected:
     trav_time_t             m_runCycleStartTime;
     nframes_t               m_frameRate;
     nframes_t               m_framesPerCycle;
-    nframes_t               m_captureFrameLatency{};
-    nframes_t               m_playbackFrameLatency{};
+    // Measured by the driver in its own threads, read by the GUI
+    std::atomic<nframes_t>  m_captureFrameLatency{0};
+    std::atomic<nframes_t>  m_playbackFrameLatency{0};
     bool                    m_isFreeWheeling;
 
     virtual int _read(nframes_t nframes);

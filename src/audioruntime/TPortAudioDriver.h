@@ -36,28 +36,30 @@ public:
 
     int  process_callback (nframes_t nframes);
     int setup(bool capture=true, bool playback=true, const QString& deviceInfo="alsa::default::default");
-    int attach();
-    int start();
-    int stop();
+    int attach() override;
+    int start() override;
+    int stop() override;
 
-    QString get_device_name();
-    QString get_device_longname();
+    QString get_device_name() override;
+    QString get_device_longname() override;
     static QStringList devices_info(const QString& hostApi);
     static int host_index_for_host_api(const QString& hostapi);
 
     float get_cpu_load();
 
-    virtual bool runs_in_blocking_mode() const {
+    virtual bool runs_in_blocking_mode() const override {
         return true;
     }
-    virtual bool is_realtime_capable() const {
+    virtual bool is_realtime_capable() const override {
         return false;
     }
 
+    nframes_t get_playback_latency_frames() const override;
+
 protected:
-    int _read(nframes_t nframes);
-    int _write(nframes_t nframes);
-    int _run_cycle();
+    int _read(nframes_t nframes) override;
+    int _write(nframes_t nframes) override;
+    int _run_cycle() override;
 
 private:
     PaStream* m_paStream;
