@@ -9,3 +9,9 @@ target_include_directories(traverso_audio_thread_watchdog_test PRIVATE ${CMAKE_S
 target_link_libraries(traverso_audio_thread_watchdog_test PRIVATE traverso_compiler_settings Qt6::Core)
 
 add_test(NAME audio_thread_watchdog COMMAND traverso_audio_thread_watchdog_test)
+
+# Headless test of the published transport position and the heard position estimate
+add_executable(traverso_transport_position_test test_transport_position.cpp)
+target_include_directories(traverso_transport_position_test PRIVATE ${CMAKE_SOURCE_DIR}/src/audioruntime)
+target_link_libraries(traverso_transport_position_test PRIVATE traverso_compiler_settings traversosupport Qt6::Core)
+add_test(NAME transport_position COMMAND traverso_transport_position_test)

@@ -540,6 +540,19 @@ int TSheet::process(TProcessCallBackData &processData)
         processResult |= track->process(processData);
     }
 
+    // Where this buffer starts and when its cycle began, for the GUI's
+    // estimate of the position being heard
+    if (m_runStartPending.exchange(false, std::memory_order_relaxed)) {
+        m_rtRunStart = m_transportLocation;
+    }
+    publish_transport_position(TTransportPosition{
+        .universalFrame = m_transportLocation.universal_frame(),
+        .runStartUniversalFrame = m_rtRunStart.universal_frame(),
+        .cycleTimeNanoseconds = processData.get_cycle_start_nanoseconds(),
+        .frames = nframes,
+        .sampleRate = processData.get_sample_rate()
+    });
+
     // update the transport location
     m_transportLocation.add_frames(nframes, audiodevice().get_sample_rate());
     m_readDiskIO->set_transport_location(m_transportLocation);
@@ -863,6 +876,7 @@ void TSheet::seek_finished()
 // RT thread save function
 void TSheet::start_transport_rolling(bool realtime)
 {
+    m_runStartPending.store(true, std::memory_order_relaxed);
     set_transport_rolling_state(true);
     TLOG_RT_I("transport", "rolling from {} universal frames", m_transportLocation.universal_frame());
 

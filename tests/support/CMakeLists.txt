@@ -13,3 +13,8 @@ add_test(NAME float_compare COMMAND traverso_float_test)
 add_executable(traverso_log_test test_log.cpp)
 target_link_libraries(traverso_log_test PRIVATE traverso_compiler_settings traversosupport Qt6::Core)
 add_test(NAME log COMMAND traverso_log_test)
+
+# Headless test of TTimeRef conversions
+add_executable(traverso_timeref_test test_timeref.cpp)
+target_link_libraries(traverso_timeref_test PRIVATE traverso_compiler_settings traversosupport Qt6::Core)
+add_test(NAME timeref COMMAND traverso_timeref_test)

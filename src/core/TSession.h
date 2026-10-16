@@ -30,6 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioBuffer.h"
 #include "TLocation.h"
 #include "TRtList.h"
+#include "TRtTransportPosition.h"
+#include "TTransportPositionEstimator.h"
 #include "defines.h"
 #include "TTimeRef.h"
 
@@ -59,7 +61,17 @@ public:
 	TTimeRef get_work_location() const;
 	virtual TTimeRef get_last_location() const;
     TTimeRef get_seek_transport_location() const {return m_seekTransportLocation;}
+    // GUI thread. While rolling: the end of the buffer the audio thread
+    // published last, see get_published_transport_position()
 	virtual TTimeRef get_transport_location() const;
+    // The position the audio thread published last (the parent's for a
+    // child session). Any thread
+    TTransportPosition get_published_transport_position() const;
+    // GUI thread. While rolling: the position heard at nowNanoseconds (clock
+    // of TRtTransportPosition::now_nanoseconds()), computed once per
+    // nowNanoseconds so all callers of one frame agree; otherwise the
+    // transport location
+    TTimeRef get_heard_transport_location(qint64 nowNanoseconds);
 	virtual TSnapList* get_snap_list() const;
 	TTrack* get_track(qint64 id) const;
 	TTimeLineRuler* get_timeline_ruler() const;
@@ -153,6 +165,16 @@ public slots:
 protected:
 	void private_add_track(TTrack* track, TRtTransaction& transaction);
 	void private_remove_track(TTrack* track, TRtTransaction& transaction);
+
+    // Audio thread, once per processed buffer
+    void publish_transport_position(const TTransportPosition& position) {m_rtTransportPosition.publish(position);}
+
+private:
+    TRtTransportPosition        m_rtTransportPosition;
+    // GUI thread
+    TTransportPositionEstimator m_heardPositionEstimator;
+    qint64                      m_heardPositionNanoseconds{-1};
+    TTimeRef                    m_heardPosition;
 
 
 signals:

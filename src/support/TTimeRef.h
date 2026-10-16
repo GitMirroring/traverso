@@ -53,6 +53,8 @@ public:
     static TTimeRef qtime_to_timeref(const QTime& time);
     // Rounds to the nearest universal frame. Out of range values are clamped.
     static TTimeRef seconds_to_timeref(double seconds);
+    // Exact for any qint64 (truncates towards zero), e.g. for elapsed time
+    static TTimeRef from_nanoseconds(qint64 nanoseconds);
     static QTime timeref_to_qtime(const TTimeRef& ref);
 
 

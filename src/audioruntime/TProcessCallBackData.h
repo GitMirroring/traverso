@@ -71,6 +71,8 @@ public:
         Q_ASSERT(m_sampleRate != 0);
         return m_sampleRate;
     }
+    // When this cycle started, on the clock of TRtTransportPosition::now_nanoseconds()
+    qint64 get_cycle_start_nanoseconds() const {return m_cycleStartNanoseconds;}
 
     void add_ringbuffer_read_wait_time(trav_time_t time) {
         m_ringBufferReadWaitTime += time;
@@ -85,12 +87,16 @@ private:
     trav_time_t m_ringBufferReadWaitTime;
     bool        m_realTime;
     uint        m_sampleRate;
+    qint64      m_cycleStartNanoseconds{0};
 
     void set_nframes_to_process(nframes_t nframes) {
         m_nFramesToProcess = nframes;
     }
     void set_real_time(bool realTime) {
         m_realTime = realTime;
+    }
+    void set_cycle_start_nanoseconds(qint64 nanoseconds) {
+        m_cycleStartNanoseconds = nanoseconds;
     }
     void set_sample_rate(uint rate) {
         m_sampleRate= rate;

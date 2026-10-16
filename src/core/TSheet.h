@@ -134,6 +134,10 @@ private:
     std::atomic<bool>   m_isSeeking;
     std::atomic<bool>   m_transportLocateRequested;
     std::atomic<bool>   m_transportStopRequested;
+    // Set when the transport starts rolling, the audio thread takes the run
+    // start location in its first cycle of the run
+    std::atomic<bool>   m_runStartPending{false};
+    TTimeRef            m_rtRunStart;
 
     inline void set_transport_locate_requested_state(bool transportLocate) {
         m_transportLocateRequested.store(transportLocate);

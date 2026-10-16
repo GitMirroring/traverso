@@ -49,6 +49,7 @@ RELAYTOOL_JACK
 #include "TAudioDriver.h"
 #include "TAudioDeviceClient.h"
 #include "TRtTransaction.h"
+#include "TRtTransportPosition.h"
 #include "AudioChannel.h"
 #include "TAudioThreadMessageQueue.h"
 
@@ -279,6 +280,9 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
     // current clients and state. A driver that just started then never
     // processes a client whose removal was posted before it started
     tsmp().process_posted_gui_events();
+
+    // The sheets publish their transport position with this time
+    m_processCallBackData.set_cycle_start_nanoseconds(TRtTransportPosition::now_nanoseconds());
 
     /* run as many cycles as it takes to consume nframes (Should be 1 cycle!!)*/
     for (left = nframes; left >= m_bufferSize; left -= m_bufferSize) {

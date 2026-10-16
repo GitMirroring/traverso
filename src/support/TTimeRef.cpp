@@ -61,6 +61,18 @@ double TTimeRef::to_frames(const TTimeRef& duration, uint rate)
     return double(duration.m_universalFrame) * double(rate) / double(UNIVERSAL_SAMPLE_RATE);
 }
 
+// The whole seconds and the rest are converted separately: the
+// multiplication of the rest cannot overflow, and the whole seconds only
+// for more than ten thousand years
+TTimeRef TTimeRef::from_nanoseconds(qint64 nanoseconds)
+{
+    const qint64 nanosecondsPerSecond = 1000000000;
+    const qint64 seconds = nanoseconds / nanosecondsPerSecond;
+    const qint64 rest = nanoseconds % nanosecondsPerSecond;
+
+    return TTimeRef(seconds * UNIVERSAL_SAMPLE_RATE + rest * UNIVERSAL_SAMPLE_RATE / nanosecondsPerSecond);
+}
+
 TTimeRef TTimeRef::max_length()
 {
     return TTimeRef(LLONG_MAX);

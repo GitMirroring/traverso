@@ -24,6 +24,8 @@ set(TRAVERSO_AUDIORUNTIME_SOURCES
     TRtTransaction.h TRtTransaction.cpp
     TRtValue.h
     TRtList.h
+    TRtTransportPosition.h
+    TTransportPositionEstimator.h
 )
 
 add_library(traversoaudioruntime STATIC ${TRAVERSO_AUDIORUNTIME_SOURCES})

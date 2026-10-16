@@ -258,7 +258,46 @@ TTimeRef TSession::get_transport_location() const
 		return m_parentSession->get_transport_location();
 	}
 
+    // The audio thread moves the location while rolling: read what it
+    // published, up to the end of its last buffer
+    if (is_transport_rolling()) {
+        const TTransportPosition published = m_rtTransportPosition.read();
+        if (published.sampleRate == 0) {
+            return TTimeRef(published.universalFrame);
+        }
+        return TTimeRef(published.universalFrame) + TTimeRef(nframes_t(published.frames), uint(published.sampleRate));
+    }
+
 	return m_transportLocation;
+}
+
+TTransportPosition TSession::get_published_transport_position() const
+{
+    if (m_parentSession) {
+        return m_parentSession->get_published_transport_position();
+    }
+
+    return m_rtTransportPosition.read();
+}
+
+TTimeRef TSession::get_heard_transport_location(qint64 nowNanoseconds)
+{
+    if (m_parentSession) {
+        return m_parentSession->get_heard_transport_location(nowNanoseconds);
+    }
+
+    if (!is_transport_rolling()) {
+        m_heardPositionEstimator.reset();
+        return m_transportLocation;
+    }
+
+    if (nowNanoseconds != m_heardPositionNanoseconds) {
+        m_heardPositionNanoseconds = nowNanoseconds;
+        m_heardPosition = m_heardPositionEstimator.heard_position(
+            m_rtTransportPosition.read(), nowNanoseconds, audiodevice().get_buffer_latency());
+    }
+
+    return m_heardPosition;
 }
 
 qreal TSession::get_hzoom() const
