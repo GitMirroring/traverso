@@ -223,15 +223,19 @@ int TProjectManager::load_project(const QString& projectName)
 
 	int err = 0;
 
+	TProject* newProject = new TProject(projectName);
+
+	// Outside the transaction: closing the current project removes its
+	// client from the audio device, which must be applied by the audio
+	// thread before the project is deleted. Inside a transaction the
+	// removal would wait for the transaction to end.
+	set_current_project(newProject);
+
 	{
 		// The whole project reaches the audio thread as one change, applied in
 		// one audio cycle. Load() starts the project's audio driver, so the
 		// change is published to it.
 		TRtTransaction transaction;
-
-		TProject* newProject = new TProject(projectName);
-
-		set_current_project(newProject);
 
 		err = m_currentProject->load();
 	}

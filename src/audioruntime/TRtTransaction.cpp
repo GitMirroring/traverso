@@ -77,6 +77,11 @@ TRtTransaction::~TRtTransaction()
     }
 }
 
+bool TRtTransaction::is_open()
+{
+    return s_current != nullptr;
+}
+
 void TRtTransaction::publish_at_end(TRtPublishable* publishable)
 {
     // Only the outermost transaction publishes

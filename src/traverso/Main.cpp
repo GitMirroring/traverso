@@ -51,8 +51,7 @@ void catch_signal(int sig_num)
 		exit(0);
 	} else {
                 printf("Caught multiple signals, aborting !\n");
-		kill (-getpgrp(), SIGABRT);
-		exit(-1);
+		_exit(-1);
 	}
 }
 #endif
@@ -61,8 +60,8 @@ void catch_signal(int sig_num)
 int main( int argc, char **argv )
 {
 #if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
+	// Only SIGINT: a crash must stay a crash (core dump, debugger stop)
 	signal(SIGINT, catch_signal);
-	signal(SIGSEGV, catch_signal);
 #endif
 
 	TraversoDebugger::set_debug_level(TraversoDebugger::OFF);

@@ -89,6 +89,10 @@ public:
     static void* operator new(std::size_t) = delete;
     static void* operator new[](std::size_t) = delete;
 
+    // True while a transaction is open in the GUI thread: changes made now
+    // are published when the outermost one ends, not at once
+    static bool is_open();
+
 private:
     friend class TRtPublishable;
 

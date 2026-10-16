@@ -123,11 +123,6 @@ void Traverso::shutdown(int signal)
         printf("\nCaught the SIGINT signal!\nShutting down Traverso!\n\n");
         pm().exit();
         return;
-    case SIGSEGV:
-        printf("\nCaught the SIGSEGV signal!\n");
-        QMessageBox::critical(TMainWindow::instance(), "Crash",
-                              "The program made an invalid operation and crashed :-(\n"
-                              "Please, report this to us!");
     }
 
     printf("Stopped\n");
