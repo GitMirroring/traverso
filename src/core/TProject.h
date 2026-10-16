@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSession.h"
 #include "TRtList.h"
 #include "TProcessCallBackData.h"
+#include "TAudioDeviceSetup.h"
 
 class AudioBus;
 class AudioChannel;
@@ -210,7 +211,10 @@ private:
     int create_audiosources_dir();
     int create_peakfiles_dir();
 
-    void prepare_audio_device(QDomDocument doc);
+    // The setup the project saves and starts the audio device with: read
+    // from the project file, the global defaults for what it does not have
+    void read_audio_device_setup(const QDomDocument& doc);
+    TAudioDeviceSetup m_audioDeviceSetup;
 
     void set_project_closed();
 

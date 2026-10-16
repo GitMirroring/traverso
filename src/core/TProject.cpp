@@ -190,13 +190,9 @@ int TProject::create(int sheetcount, int numtracks)
 
     m_importDir = QDir::homePath();
 
-    // TODO: by calling prepare_audio_device() with an empty document
-    // all the defaults from the global config are applied to this projects
-    // audio device setup. It means audiodevice gets started/stopped twice
-    // once for creating the project, once for loading the project afterwards.
-    // should be handled more galantly?
-    QDomDocument doc;
-    prepare_audio_device(doc);
+    // Only the setup: the audio device starts when the project loads. Another
+    // project may still be connected to it now
+    read_audio_device_setup(QDomDocument());
 
     tInformUser().information(tr("Created new Project %1").arg(m_name));
     return 1;
@@ -371,7 +367,8 @@ int TProject::load(const QString& projectfile)
     }
 
 
-    prepare_audio_device(doc);
+    read_audio_device_setup(doc);
+    audiodevice().set_parameters(m_audioDeviceSetup);
 
     QDomNode masterOutNode = docElem.firstChildElement("MasterOut");
     m_masterOutBusTrack->set_state(masterOutNode.firstChildElement());
@@ -598,10 +595,10 @@ QDomNode TProject::get_state(QDomDocument doc, bool istemplate)
     QDomElement audioDriverConfigs = doc.createElement("AudioDriverConfigurations");
     QDomElement audioDriverConfig = doc.createElement("AudioDriverConfiguration");
 
-    audioDriverConfig.setAttribute("device", audiodevice().get_device_setup().get_card_device());
-    audioDriverConfig.setAttribute("driver", audiodevice().get_device_setup().get_driver_type());
-    audioDriverConfig.setAttribute("samplerate", audiodevice().get_sample_rate());
-    audioDriverConfig.setAttribute("buffersize", audiodevice().get_buffer_size());
+    audioDriverConfig.setAttribute("device", m_audioDeviceSetup.get_card_device());
+    audioDriverConfig.setAttribute("driver", m_audioDeviceSetup.get_driver_type());
+    audioDriverConfig.setAttribute("samplerate", m_audioDeviceSetup.get_sample_rate());
+    audioDriverConfig.setAttribute("buffersize", m_audioDeviceSetup.get_buffer_size());
 
     audioDriverConfigs.appendChild(audioDriverConfig);
 
@@ -683,7 +680,7 @@ QDomNode TProject::get_state(QDomDocument doc, bool istemplate)
     return projectNode;
 }
 
-void TProject::prepare_audio_device(QDomDocument doc)
+void TProject::read_audio_device_setup(const QDomDocument& doc)
 {
     TAudioDeviceSetup audioDeviceSetup;
 
@@ -736,8 +733,7 @@ void TProject::prepare_audio_device(QDomDocument doc)
     }
 #endif // end PORTAUDIO_SUPPORT
 
-
-    audiodevice().set_parameters(audioDeviceSetup);
+    m_audioDeviceSetup = audioDeviceSetup;
 }
 
 void TProject::set_project_closed()
@@ -1451,6 +1447,11 @@ TResourcesManager * TProject::get_audiosource_manager( ) const
 void TProject::audiodevice_params_changed()
 {
     PENTER;
+
+    // What the device runs now is what the project saves, e.g. after a
+    // driver change in the settings or a fallback to the Dummy driver
+    m_audioDeviceSetup = audiodevice().get_device_setup();
+
     setup_default_hardware_buses();
 
     for (TSheet* sheet : m_sheets.gui_items()) {
