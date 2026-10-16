@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 
 #include "TSession.h"
-#include "TRealTimeLinkedList.h"
+#include "TRtList.h"
 #include "TProcessCallBackData.h"
 
 class AudioBus;
@@ -35,6 +35,7 @@ class AudioChannel;
 class TAudioBusConfiguration;
 class TTransportControl;
 class TSheet;
+class TRtTransaction;
 class TTrack;
 class TResourcesManager;
 class TExportSpecification;
@@ -162,8 +163,7 @@ private:
 
 
     TResourcesManager*       m_resourcesManager;
-    QList<TSheet*>           m_sheets;
-    TRealTimeLinkedList<TSheet*> m_RtSheets;
+    TRtList<TSheet>          m_sheets;
     TSheet*                  m_activeSheet;
     TSession*               m_activeSession;
     TAudioDeviceClient*     m_audiodeviceClient;
@@ -216,21 +216,19 @@ private:
 
     friend class TProjectManager;
     
+private:
+    void private_add_sheet(TSheet* sheet, TRtTransaction& transaction);
+    void private_remove_sheet(TSheet* sheet, TRtTransaction& transaction);
+
 private slots:
     void audiodevice_params_changed();
-    void private_add_sheet(TSheet* sheet);
-    void private_remove_sheet(TSheet* sheet);
-    void sheet_removed(TSheet* sheet);
-    void sheet_added(TSheet* sheet);
     void export_finished();
     void audio_device_removed_client(TAudioDeviceClient*client);
     
 signals:
     void currentSessionChanged(TSession* );
     void sessionIsAlreadyCurrent(TSession* );
-    void privateSheetAdded(TSheet*);
     void sheetAdded(TSheet*);
-    void privateSheetRemoved(TSheet*);
     void sheetRemoved(TSheet*);
     void projectLoadFinished();
     void projectLoadStarted();

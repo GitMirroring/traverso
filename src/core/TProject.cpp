@@ -43,6 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TContextPointer.h"
 #include "Utils.h"
 #include <TAddRemoveCommand.h>
+#include "TRtTransaction.h"
 #include "FileHelpers.h"
 #include "TTimeLineRuler.h"
 #include "TBusTrack.h"
@@ -119,8 +120,6 @@ TProject::TProject(const QString& title)
 
     cpointer().add_contextitem(this);
 
-    connect(this, &TProject::privateSheetRemoved, this, &TProject::sheet_removed);
-    connect(this, &TProject::privateSheetAdded, this, &TProject::sheet_added);
     connect(this, &TProject::exportFinished, this, &TProject::export_finished, Qt::QueuedConnection);
     connect(&audiodevice(), &TAudioDevice::driverParamsChanged, this, &TProject::audiodevice_params_changed, Qt::DirectConnection);
     connect(&audiodevice(), &TAudioDevice::audioDeviceClientRemoved, this, &TProject::audio_device_removed_client);
@@ -136,7 +135,7 @@ TProject::~TProject()
     // Need to delete AudioClips/AudioSource first before deleting Sheets
     delete m_resourcesManager;
 
-    for(TSheet* sheet : m_sheets) {
+    for(TSheet* sheet : m_sheets.gui_items()) {
         delete sheet;
     }
     for (AudioBus* bus : m_hardwareAudioBuses) {
@@ -173,14 +172,17 @@ int TProject::create(int sheetcount, int numtracks)
         return -1;
     }
 
-    for (int i=0; i< sheetcount; i++) {
-        TSheet* sheet = new TSheet(this, numtracks);
-        m_RtSheets.append(sheet);
-        m_sheets.append(sheet);
+    {
+        // Joins the transaction of the project creation
+        TRtTransaction transaction;
+        for (int i=0; i< sheetcount; i++) {
+            TSheet* sheet = new TSheet(this, numtracks);
+            m_sheets.add(sheet, transaction);
+        }
     }
 
-    if (m_sheets.size()) {
-        set_current_session(m_sheets.first()->get_id());
+    if (!m_sheets.gui_items().isEmpty()) {
+        set_current_session(m_sheets.gui_items().first()->get_id());
     }
 
     m_importDir = QDir::homePath();
@@ -430,10 +432,11 @@ int TProject::load(const QString& projectfile)
     while(!sheetNode.isNull())
     {
         TSheet* sheet = new TSheet(this, sheetNode);
-        // add it to the non-real time safe list
-        m_sheets.append(sheet);
-        // and to the real time safe list
-        m_RtSheets.append(sheet);
+        {
+            // Joins the transaction of the project load
+            TRtTransaction transaction;
+            m_sheets.add(sheet, transaction);
+        }
 
         sheet->set_state(sheetNode);
 
@@ -456,8 +459,8 @@ int TProject::load(const QString& projectfile)
     qint64 activeSessionId = e.attribute("activesessionid", "0" ).toLongLong();
 
     if ( activeSheetId == 0) {
-        if (m_sheets.size()) {
-            activeSheetId = m_sheets.first()->get_id();
+        if (!m_sheets.gui_items().isEmpty()) {
+            activeSheetId = m_sheets.gui_items().first()->get_id();
         }
     }
 
@@ -657,7 +660,7 @@ QDomNode TProject::get_state(QDomDocument doc, bool istemplate)
     // Get all the Sheets
     QDomNode sheetsNode = doc.createElement("Sheets");
 
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         sheetsNode.appendChild(sheet->get_state(doc, istemplate));
     }
 
@@ -843,7 +846,7 @@ AudioBus* TProject::get_audio_bus(qint64 id)
         return m_masterOutBusTrack->get_process_bus();
     }
 
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         if (sheet->get_master_out_bus_track()->get_id() == id) {
             return sheet->get_master_out_bus_track()->get_process_bus();
         }
@@ -909,7 +912,7 @@ QList<TSend*> TProject::get_inputs_for_bus_track(TBusTrack *busTrack) const
 
     QList<TTrack*> tracks;
     tracks.append(get_tracks());
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         tracks.append(sheet->get_tracks());
         tracks.append(sheet->get_master_out_bus_track());
     }
@@ -929,7 +932,7 @@ QList<TSend*> TProject::get_inputs_for_bus_track(TBusTrack *busTrack) const
 QList<TTrack*> TProject::get_sheet_tracks() const
 {
     QList<TTrack*> tracks;
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         tracks.append(sheet->get_tracks());
         tracks.append(sheet->get_master_out_bus_track());
     }
@@ -1093,7 +1096,7 @@ void TProject::set_genre(int pGenre)
 
 bool TProject::has_changed()
 {
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         if(sheet->is_changed())
             return true;
     }
@@ -1105,15 +1108,12 @@ TCommand* TProject::add_sheet(TSheet* sheet, bool historable)
     PENTER;
 
     return new TAddRemoveCommand(
-        this,                                                 // 1. parent (TContextItem*)
-        sheet,                                                // 2. item (TContextItem* via TSheet)
-        historable,                                           // 3. bool historable
-        static_cast<TSession*>(sheet),                        // 4. TSession* sheet context
-        [this, sheet]() { private_add_sheet(sheet); },       // 5. doMethod closure
-        [this, sheet]() { emit privateSheetAdded(sheet); },   // 6. doSignal closure
-        [this, sheet]() { private_remove_sheet(sheet); },    // 7. undoMethod closure
-        [this, sheet]() { emit privateSheetRemoved(sheet); }, // 8. undoSignal closure
-        tr("Sheet %1 added").arg(sheet->get_name())          // 9. description string
+        this,
+        sheet,
+        historable,
+        [this, sheet](TRtTransaction& transaction) { private_add_sheet(sheet, transaction); },
+        [this, sheet](TRtTransaction& transaction) { private_remove_sheet(sheet, transaction); },
+        tr("Sheet %1 added").arg(sheet->get_name())
         );
 }
 
@@ -1123,11 +1123,8 @@ TCommand* TProject::remove_sheet(TSheet* sheet, bool historable)
         this,
         sheet,
         historable,
-        static_cast<TSession*>(sheet),
-        [this, sheet]() { private_remove_sheet(sheet); },
-        [this, sheet]() { emit privateSheetRemoved(sheet); },
-        [this, sheet]() { private_add_sheet(sheet); },
-        [this, sheet]() { emit privateSheetAdded(sheet); },
+        [this, sheet](TRtTransaction& transaction) { private_remove_sheet(sheet, transaction); },
+        [this, sheet](TRtTransaction& transaction) { private_add_sheet(sheet, transaction); },
         tr("Remove Sheet %1").arg(sheet->get_name())
         );
 }
@@ -1138,7 +1135,7 @@ TSheet* TProject::get_sheet(qint64 id) const
 {
     TSheet* current = nullptr;
 
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         if (sheet->get_id() == id) {
             current = sheet;
             break;
@@ -1326,13 +1323,14 @@ uint TProject::get_bitdepth( ) const
 
 QList<TSheet* > TProject::get_sheets( ) const
 {
-    return m_sheets;
+    return m_sheets.gui_items();
 }
 
 int TProject::get_sheet_index(qint64 id)
 {
-    for (int i=0; i<m_sheets.size(); ++i) {
-        TSheet* sheet = m_sheets.at(i);
+    const QList<TSheet*>& sheets = m_sheets.gui_items();
+    for (int i=0; i<sheets.size(); ++i) {
+        TSheet* sheet = sheets.at(i);
         if (sheet->get_id() == id) {
             return i + 1;
         }
@@ -1359,7 +1357,7 @@ QList<TSession*> TProject::get_sessions()
     QList<TSession*> sessions;
     sessions.append(this);
     sessions.append(get_child_sessions());
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         sessions.append(sheet);
         foreach(TSession* session, sheet->get_child_sessions()) {
             sessions.append(session);
@@ -1376,7 +1374,7 @@ qint64 TProject::get_current_sheet_id( ) const
 
 int TProject::get_num_sheets( ) const
 {
-    return m_sheets.size();
+    return m_sheets.gui_items().size();
 }
 
 QString TProject::get_title( ) const
@@ -1449,7 +1447,7 @@ void TProject::audiodevice_params_changed()
     PENTER;
     setup_default_hardware_buses();
 
-    for (TSheet* sheet : std::as_const(m_sheets)) {
+    for (TSheet* sheet : m_sheets.gui_items()) {
         sheet->audiodevice_params_changed();
     }
 
@@ -1533,34 +1531,23 @@ void TProject::setup_default_hardware_buses()
     }
 }
 
-void TProject::private_add_sheet(TSheet * sheet)
+void TProject::private_add_sheet(TSheet* sheet, TRtTransaction& transaction)
 {
     PENTER;
-    m_RtSheets.append(sheet);
+    m_sheets.add(sheet, transaction);
+    emit sheetAdded(sheet);
 }
 
-void TProject::private_remove_sheet(TSheet * sheet)
+void TProject::private_remove_sheet(TSheet* sheet, TRtTransaction& transaction)
 {
     PENTER;
-    m_RtSheets.remove(sheet);
-}
+    m_sheets.remove(sheet, transaction);
 
-void TProject::sheet_removed(TSheet *sheet)
-
-{
-    m_sheets.removeAll(sheet);
-
-    if (m_sheets.size() > 0) {
-        set_current_session(m_sheets.last()->get_id());
+    if (!m_sheets.gui_items().isEmpty()) {
+        set_current_session(m_sheets.gui_items().last()->get_id());
     }
 
     emit sheetRemoved(sheet);
-}
-
-void TProject::sheet_added(TSheet *sheet)
-{
-    m_sheets.append(sheet);
-    emit sheetAdded(sheet);
 }
 
 QString TProject::get_import_dir() const
@@ -1592,7 +1579,7 @@ bool TProject::is_save_to_close() const
 
 bool TProject::is_recording() const
 {
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         if (sheet->is_recording() && sheet->is_transport_rolling()) {
             return true;
         }
@@ -1602,7 +1589,7 @@ bool TProject::is_recording() const
 
 void TProject::set_work_at(const TTimeRef &worklocation, bool isFolder)
 {
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         sheet->set_work_at(worklocation, isFolder);
     }
 }
@@ -1625,7 +1612,7 @@ int TProject::process(TProcessCallBackData &processData)
 
     processData.set_start_location(get_transport_location());
 
-    for(TSheet* sheet = m_RtSheets.first(); sheet != nullptr; sheet = sheet->next) {
+    for (TSheet* sheet : m_sheets.rt_items()) {
         result |= sheet->process(processData);
     }
 
@@ -1661,8 +1648,16 @@ int TProject::transport_control(TTransportControl *transportControl)
 {
     bool result = true;
 
-    for(TSheet* sheet = m_RtSheets.first(); sheet != nullptr; sheet = sheet->next) {
-        result = sheet->transport_control(transportControl);
+    // Called in the audio thread when the transport follows jack, in the GUI
+    // thread otherwise: each reads its own side of the list
+    if (transportControl->is_realtime()) {
+        for (TSheet* sheet : m_sheets.rt_items()) {
+            result = sheet->transport_control(transportControl);
+        }
+    } else {
+        for (TSheet* sheet : m_sheets.gui_items()) {
+            result = sheet->transport_control(transportControl);
+        }
     }
 
     return result;
@@ -1672,7 +1667,7 @@ TTimeRef TProject::get_last_location() const
 {
     TTimeRef lastLocation;
 
-    foreach(TSheet* sheet, m_sheets) {
+    foreach(TSheet* sheet, m_sheets.gui_items()) {
         TTimeRef location = sheet->get_last_location();
         if (location > lastLocation) {
             lastLocation = location;

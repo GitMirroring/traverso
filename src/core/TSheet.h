@@ -112,12 +112,6 @@ public:
     bool is_changed() const {return m_changed;}
     bool is_recording() const {return m_isRecording;}
 
-    bool operator<(const TSheet& /*right*/) {
-        return true;
-    }
-
-    TSheet* next = nullptr;
-
     QUndoCommand* create_command_mutate_clips(const QList<TAudioClip*>& clipsToAdd,
                                               const QList<TAudioClip*>& clipsToRemove,
                                               const QString& description);
