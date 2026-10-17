@@ -821,7 +821,8 @@ void TAudioClipView::start_recording()
 {
     m_oldRecordingPos = TTimeRef();
     connect(&m_recordingTimer, &QTimer::timeout, this, &TAudioClipView::update_recording);
-    m_recordingTimer.start(750);
+    // Only the newly recorded strip is repainted per tick, so this is cheap
+    m_recordingTimer.start(100);
 }
 
 void TAudioClipView::finish_recording()
