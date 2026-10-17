@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBufferedAudioStreamReader.h"
 #include "TBufferedAudioStreamWriter.h"
 #include "TQueueBufferSlot.h"
-#include "TPeak.h"
 #include "defines.h"
 #include "Debugger.h"
 

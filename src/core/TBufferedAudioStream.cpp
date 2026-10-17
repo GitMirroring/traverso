@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <utility>
 #include "TSheet.h"
-#include "TPeak.h"
 #include "Utils.h"
 #include "TQueueBufferSlot.h"
 

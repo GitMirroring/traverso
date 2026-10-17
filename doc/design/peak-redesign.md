@@ -262,8 +262,8 @@ section 4, and the view path:
   stale, answers `columns()` with a reader of its own for the sample source.
 - `TPeakBuilder` (core): one worker thread, one job at a time, jobs for the
   same file are shared; a job owns its own reader; cancel on destruction.
-- `TAudioClipView::draw_columns()`: behind the setting
-  `Themer/paintwaveformcolumns` (default on in this branch). One column per
+- `TAudioClipView::draw_columns()` (first behind a setting, now the only
+  path). One column per
   device pixel of the exposed rect, queried in chunks of 256 so a rounded
   column width cannot drift; gain = clip gain x clip curve x track curve x
   fades per column (`fill_gain()`); spans blended into a premultiplied image
@@ -332,5 +332,13 @@ chunks and run one at a time.
   option, controller work). Sample dots at extreme zoom are not wanted:
   the line through the samples is what the user expects.
 
-Not done yet: removal of `TPeak` / `ClipTileCache` once the user has
-compared both paths.
+- Removed (2026-10-17, after the user's comparison): `TPeak` (with its
+  build thread and the `.peak` / `.norm` files), `ClipTileCache` and the
+  tile painter, the `Themer/paintwaveformcolumns` setting. The column
+  painter is the only waveform path; the repaint hooks that invalidated
+  tiles now just repaint the affected rect. Old `.peak` files in project
+  `peakfiles/` directories are simply unused.
+
+Open after this branch: zero-crossing snap in the split/trim commands and
+feedback on the targeted item (controller work), file-backed recording
+(parked, section 4).

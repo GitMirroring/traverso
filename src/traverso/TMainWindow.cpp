@@ -70,7 +70,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeLineRuler.h"
 #include "TThemer.h"
 #include "TAudioFileCopyConvert.h"
-#include "ClipTileCache.h"
 
 #include "../sheetcanvas/TSheetWidget.h"
 
@@ -414,8 +413,6 @@ void TMainWindow::set_project(TProject* project)
 
     m_trackFinderModel.clear();
     track_finder_show_initial_text();
-
-    ctcache().invalidate_all();
 
     if ( m_project ) {
         connect(m_project, &TProject::projectLoadFinished, this, &TMainWindow::project_load_finished);

@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TFadeCurve.h>
 #include <TRtTransaction.h>
 #include <TFadeCurveView.h>
-#include <TPeak.h>
 #include <TSheet.h>
 #include "TProjectManager.h"
 #include "TInputEventDispatcher.h"

@@ -31,7 +31,6 @@ set(TRAVERSO_SHEETCANVAS_SOURCES
     TCanvasCursor.cpp
     TKnobView.cpp
     TTextView.cpp
-    ClipTileCache.cpp
 )
 
 # Define the dynamic timeline canvas representation pipeline structure

@@ -25,7 +25,6 @@ add_library(traversocore STATIC
     FileHelpers.cpp
     TInformUser.cpp
     TInputEventDispatcher.cpp
-    TPeak.cpp
     TPeakFile.h TPeakFile.cpp
     TPeakPyramid.h TPeakPyramid.cpp
     TWaveformColumns.h TWaveformColumns.cpp

@@ -33,7 +33,6 @@ static constexpr int ZoomSliderSteps = 1000;
 
 #include <TSheet.h>
 #include "TContextPointer.h"
-#include "ClipTileCache.h"
 
 #include <QGridLayout>
 #include <QScrollBar>
@@ -217,8 +216,6 @@ void TSheetWidget::load_theme_data()
 {
 	QList<QGraphicsItem*> list = m_scene->items();
 	
-    ctcache().invalidate_all();
-
 	for (int i = 0; i < list.size(); ++i) {
         TViewItem* item = qgraphicsitem_cast<TViewItem*>(list.at(i));
 		if (item) {

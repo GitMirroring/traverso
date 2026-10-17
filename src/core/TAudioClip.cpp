@@ -39,7 +39,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TFadeCurve.h"
 #include "TRtTransaction.h"
 #include "TProjectManager.h"
-#include "TPeak.h"
 #include "TPeakPyramid.h"
 #include "TWaveform.h"
 #include "TProject.h"
@@ -69,7 +68,6 @@ TAudioClip::TAudioClip(const QString& name)
     m_track = nullptr;
     m_readSource = nullptr;
     m_writer = nullptr;
-    m_peak = nullptr;
     m_recordingStatus = NO_RECORDING;
     m_isReadSourceValid = m_isMoving = false;
     m_isLocked = config().get_property("AudioClip", "LockByDefault", false).toBool();
@@ -111,9 +109,6 @@ TAudioClip::~TAudioClip()
         m_sheet->remove_audio_source_from_diskio(m_readSource);
     }
 
-    if (m_peak) {
-        m_peak->close();
-    }
     delete m_waveform;
 }
 
@@ -735,13 +730,9 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
     set_sources_active_state();
 
     if (m_recordingStatus == NO_RECORDING) {
-        if (m_peak) {
-            m_peak->close();
-        }
         delete m_waveform;
         m_waveform = nullptr;
         if (m_isReadSourceValid) {
-            m_peak = new TPeak(rs);
             m_waveform = new TWaveform(rs);
         }
     }
@@ -909,10 +900,12 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
         target -= FLT_EPSILON;
     }
 
-    // From the new waveform when it has its peak file, else the old way
+    // Exact, from the peak pyramid plus a few samples; -1 while the peak
+    // file is still being built
     audio_sample_t maxamp = m_waveform ? m_waveform->max_amplitude(m_sourceStartLocation, m_sourceEndLocation) : -1.0f;
     if (maxamp < 0.0f) {
-        maxamp = m_peak->get_max_amplitude(m_sourceStartLocation, m_sourceEndLocation);
+        PWARN("AudioClip::normalization: the waveform's peak data is not ready yet");
+        return get_gain();
     }
 
     if (TraversoDAW::Float::equals_0(maxamp)) {

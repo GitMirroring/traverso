@@ -31,7 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBufferedAudioStreamReader.h"
 #include "TFileIOBuffer.h"
 #include "TBufferedAudioStreamWriter.h"
-#include "TPeak.h"
 #include "defines.h"
 
 TAudioFileCopyConvert::TAudioFileCopyConvert()

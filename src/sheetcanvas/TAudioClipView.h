@@ -38,7 +38,6 @@ class TCurveView;
 class TSheetView;
 class TAudioTrackView;
 class TFadeCurveView;
-class TPeak;
 class TWaveform;
 class TLineView;
 class TSplitEntityController;
@@ -83,7 +82,6 @@ private:
     bool m_mergedView{};
     bool m_classicView{};
     bool m_paintWithOutline{};
-    bool m_paintColumns{};
     bool m_drawDbGrid{};
     int m_height{};
     int m_infoAreaHeight{};
@@ -119,9 +117,7 @@ private:
 
     void draw_clipinfo_area(QPainter* painter, double xstart);
     void draw_db_lines(QPainter* painter, qreal xstart, int pixelcount);
-    void draw_peaks(QPainter* painter, qreal xstart, int pixelcount);
-    void draw_tile(QPainter* painter, qreal xstart, int pixelcount);
-    // The waveform as one span per column from TWaveform, no tile cache
+    // The waveform as one span per column from TWaveform
     void draw_columns(QPainter* painter, qreal xstart, int pixelcount);
     void fill_gain(const TTimeRef& clipLocalStart, const TTimeRef& columnWidth, int count, float* gain);
     void create_brushes();
@@ -133,10 +129,9 @@ public slots:
     void remove_fade_curve_view(TFadeCurve* fade);
     void update_start_pos();
     void position_changed();
-    void invalidate_clip_tiles();
-    void invalidate_fade_tiles();
-    void invalidate_edge_tiles(bool isLeftEdge);
-    void invalidate_tiles_range(int startx, int endx);
+    void repaint_clip();
+    void repaint_fade();
+    void repaint_edge(bool isLeftEdge);
 
     TCommand* select_fade_in_shape();
     TCommand* select_fade_out_shape();
