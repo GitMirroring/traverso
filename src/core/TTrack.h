@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioProcessingNode.h"
 #include "TRtList.h"
+#include "TRtValue.h"
 #include "defines.h"
 
 #include <QDomDocument>
@@ -87,7 +88,10 @@ public:
     bool disconnect_from_jack(bool inports, bool outports);
 
     AudioBus* get_process_bus() const {return m_processBus;}
+    // GUI thread
     AudioBus* get_input_bus() const {return m_inputBus;}
+    // Audio thread: the input bus the last applied transaction set, may be nullptr
+    AudioBus* rt_input_bus() const {return *m_rtInputBus.rt_snapshot();}
 
     QString get_bus_in_name() const {return m_busInName;}
 
@@ -111,12 +115,15 @@ protected:
     TRtList<TSend>   m_postSends;
     TRtList<TSend>   m_preSends;
 
-    AudioBus*       m_inputBus;
-    QString         m_busInName;
+    // The GUI thread's value and the audio thread's view of it, changed
+    // together in set_input_bus()
+    AudioBus*            m_inputBus{nullptr};
+    TRtValue<AudioBus*>  m_rtInputBus;
+    QString              m_busInName;
 
     void process_post_sends(nframes_t nframes);
     void process_pre_sends(nframes_t nframes);
-    void remove_input_bus(AudioBus* bus);
+    void set_input_bus(AudioBus* bus, TRtTransaction& transaction);
 
 private:
     void process_send(TSend* send, nframes_t nframes);
@@ -128,10 +135,6 @@ private:
 public slots:
     TCommand* solo();
     TCommand* toggle_presend();
-
-private slots:
-    void private_add_input_bus(AudioBus*);
-    void private_remove_input_bus(AudioBus*);
 
 signals:
     void soloChanged(bool isSolo);

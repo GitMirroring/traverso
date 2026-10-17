@@ -123,7 +123,9 @@ public:
     TBounceTrack(TSheet* sheet, const QString& name, int height);
     ~TBounceTrack();
 
-
+private:
+    // The bounce track owns its input bus: the master out sends to it
+    AudioBus* m_bounceInputBus{nullptr};
 };
 
 #endif

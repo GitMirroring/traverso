@@ -572,7 +572,9 @@ int TSheet::process(TProcessCallBackData &processData)
         m_bounceTrack->process(processData);
     } else {
         // FIXME: should only be done when arm state changes for BouncTrack
-        m_bounceTrack->get_input_bus()->silence_buffers();
+        if (AudioBus* bounceInputBus = m_bounceTrack->rt_input_bus()) {
+            bounceInputBus->silence_buffers();
+        }
     }
 
     m_readDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());

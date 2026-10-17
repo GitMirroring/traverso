@@ -330,8 +330,10 @@ int TAudioTrack::process(TProcessCallBackData &processData)
     }
 
     if (m_type == BOUNCE) {
-        m_inputBus->process_monitoring(m_vumonitors);
-        m_inputBus->silence_buffers();
+        if (AudioBus* inputBus = rt_input_bus()) {
+            inputBus->process_monitoring(m_vumonitors);
+            inputBus->silence_buffers();
+        }
     }
 
     return processResult;
@@ -477,10 +479,13 @@ TBounceTrack::TBounceTrack(TSheet *sheet, const QString &name, int height)
     busConfig.type = "input";
     busConfig.isInternalBus = true;
 
-    m_inputBus = new AudioBus(busConfig);
+    // Joins the transaction that creates the sheet, if one is open
+    m_bounceInputBus = new AudioBus(busConfig);
+    TRtTransaction transaction;
+    set_input_bus(m_bounceInputBus, transaction);
 }
 
 TBounceTrack::~TBounceTrack()
 {
-    delete m_inputBus;
+    delete m_bounceInputBus;
 }

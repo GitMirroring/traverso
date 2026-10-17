@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAddRemoveCommand.h"
 #include "AudioChannel.h"
 #include "TAudioPluginChain.h"
-#include "TAudioThreadMessageQueue.h"
 #include "TSheet.h"
 #include "TProjectManager.h"
 #include "TProject.h"
@@ -41,12 +40,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 TTrack::TTrack(TSession* session)
     : TAudioProcessingNode(session)
+    , m_rtInputBus([this]() { return std::make_shared<AudioBus*>(m_inputBus); }, std::make_shared<AudioBus*>(nullptr))
 {
     m_sortIndex = -1;
     m_isSolo = m_mutedBySolo = m_isMuted = false;
     m_showTrackVolumeAutomation = false;
     m_preSendOn = false;
-    m_inputBus = nullptr;
     m_channelCount = 2;
 
     for (int i=0; i<2; ++i) {
@@ -264,28 +263,17 @@ int TTrack::get_sort_index( ) const
 
 void TTrack::add_input_bus(AudioBus *bus)
 {
-    if (m_session && m_session->is_transport_rolling()) {
-        tsmp().post_rt_task(
-            [this, bus]() { private_add_input_bus(bus); },
-            [this]() { emit routingConfigurationChanged(); }
-            );
-    } else {
-        private_add_input_bus(bus);
-        emit routingConfigurationChanged();
-    }
+    TRtTransaction transaction;
+    set_input_bus(bus, transaction);
 }
 
-void TTrack::remove_input_bus(AudioBus *bus)
+// The audio thread sees the new bus when the transaction is applied, at the
+// start of a process cycle; the GUI sees it at once
+void TTrack::set_input_bus(AudioBus* bus, TRtTransaction& transaction)
 {
-    if (m_session && m_session->is_transport_rolling()) {
-        tsmp().post_rt_task(
-            [this, bus]() { private_remove_input_bus(bus); },
-            [this]() { emit routingConfigurationChanged(); }
-            );
-    } else {
-        private_remove_input_bus(bus);
-        emit routingConfigurationChanged();
-    }
+    m_inputBus = bus;
+    m_rtInputBus.mark_changed(transaction);
+    emit routingConfigurationChanged();
 }
 
 
@@ -449,18 +437,6 @@ void TTrack::private_add_pre_send(TSend* preSend, TRtTransaction& transaction)
     m_preSends.add(preSend, transaction);
 }
 
-
-void TTrack::private_add_input_bus(AudioBus* bus)
-{
-    m_inputBus = bus;
-}
-
-void TTrack::private_remove_input_bus(AudioBus *bus)
-{
-    if (bus == m_inputBus) {
-        m_inputBus = 0;
-    }
-}
 
 void TTrack::add_input_bus(const QString &name)
 {
