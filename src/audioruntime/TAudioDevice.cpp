@@ -1028,6 +1028,22 @@ void TAudioDevice::driver_setup_message(const QString &driver, const QString &me
     setupMessage.severity = severity;
     setupMessage.createdOn = creatonOn;
     m_audioDriverSetupMessages.insert(setupMessage.createdOn, setupMessage);
+
+    // The log keeps what the driver messages widget shows, e.g. why a
+    // driver fell back to the Dummy driver
+    switch (severity) {
+    case CRITICAL:
+    case DRIVER_SETUP_FAILURE:
+        TLOG_E("driver", "{}: {}", driver, message);
+        break;
+    case WARNING:
+    case DRIVER_SETUP_WARNING:
+        TLOG_W("driver", "{}: {}", driver, message);
+        break;
+    default:
+        TLOG_I("driver", "{}: {}", driver, message);
+        break;
+    }
     emit newDriverSetupMessage();
 }
 
