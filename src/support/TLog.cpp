@@ -5,7 +5,12 @@
 
 #include <QDateTime>
 #include <QDir>
+#include <QStandardPaths>
 #include <QSysInfo>
+
+#if defined(Q_OS_UNIX)
+#include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -259,13 +264,30 @@ static const char* thread_name(int index)
     return nullptr;
 }
 
-static void write_line(const std::string& line)
+static bool s_stderrIsTerminal = false;
+
+// On a terminal the thread name gets a colour of its own, so the threads
+// stand out in the stream; the file stays plain
+static void write_line(const std::string& line, int thread)
 {
     if (s_file) {
         std::fputs(line.c_str(), s_file);
         s_fileBytes += qint64(line.size());
     }
     if (s_stderr.load(std::memory_order_relaxed)) {
+        if (s_stderrIsTerminal) {
+            static const char* colours[] = {"\033[36m", "\033[33m", "\033[32m", "\033[35m", "\033[34m", "\033[91m", "\033[93m", "\033[96m"};
+            // The thread column: after the date, the time and the seconds
+            const size_t threadStart = 24 + 13;
+            if (line.size() > threadStart + 12) {
+                std::fputs(line.substr(0, threadStart).c_str(), stderr);
+                std::fputs(colours[size_t(thread) % 8], stderr);
+                std::fputs(line.substr(threadStart, 11).c_str(), stderr);
+                std::fputs("\033[0m", stderr);
+                std::fputs(line.substr(threadStart + 11).c_str(), stderr);
+                return;
+            }
+        }
         std::fputs(line.c_str(), stderr);
     }
 }
@@ -351,7 +373,7 @@ static void drain_round(qint64 holdNs)
     const qint64 limit = now_nanoseconds() - holdNs;
     size_t written = 0;
     while (written < s_pending.size() && s_pending[written].record.timeNs <= limit) {
-        write_line(format_line(s_pending[written]));
+        write_line(format_line(s_pending[written]), s_pending[written].thread);
         ++written;
     }
     s_pending.erase(s_pending.begin(), s_pending.begin() + qsizetype(written));
@@ -410,6 +432,9 @@ bool TLog::start(const QString& directory, bool alsoStderr, const char* version)
         return true;
     }
     s_stderr.store(alsoStderr, std::memory_order_relaxed);
+#if defined(Q_OS_UNIX)
+    s_stderrIsTerminal = isatty(fileno(stderr)) != 0;
+#endif
 
     if (!directory.isEmpty() && QDir().mkpath(directory)) {
         s_fileName = directory + "/traverso.log";
@@ -423,7 +448,7 @@ bool TLog::start(const QString& directory, bool alsoStderr, const char* version)
                                            version ? version : "", qVersion(),
                                            QSysInfo::prettyProductName().toStdString(), QSysInfo::kernelVersion().toStdString(),
                                            QDateTime::currentDateTime().toString(Qt::ISODate).toStdString());
-    write_line(header);
+    write_line(header, 0);
 
     qInstallMessageHandler(qt_message_handler);
 
@@ -454,4 +479,16 @@ void TLog::stop()
 QString TLog::file_name()
 {
     return s_fileName;
+}
+
+QString TLog::default_directory()
+{
+#if defined(Q_OS_MACOS)
+    return QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/Library/Logs/Traverso";
+#elif defined(Q_OS_WIN)
+    return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/logs";
+#else
+    // Not StateLocation: that depends on the application name being set already
+    return QStandardPaths::writableLocation(QStandardPaths::GenericStateLocation) + "/Traverso";
+#endif
 }

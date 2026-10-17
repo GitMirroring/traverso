@@ -135,6 +135,10 @@ public:
     // start() are kept in the buffers and written then. version goes into
     // the header line
     static bool start(const QString& directory, bool alsoStderr, const char* version);
+    // Where the log goes by default: the platform's place for logs and state
+    // (Linux ~/.local/state/<app>, macOS ~/Library/Logs/<app>, Windows
+    // AppData/Local/<app>/logs)
+    static QString default_directory();
     static void set_stderr(bool enabled);
     static void stop();
     static QString file_name();

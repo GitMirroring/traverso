@@ -37,7 +37,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TShortCutManager.h"
 #include "Debugger.h"
 #include "TLog.h"
-#include <QStandardPaths>
 
 Traverso* traverso;
 
@@ -67,7 +66,7 @@ int main( int argc, char **argv )
 #endif
 
 	// The session log is always written; stderr too in developer builds
-	QString logDirectory = QStandardPaths::writableLocation(QStandardPaths::StateLocation);
+	QString logDirectory = TLog::default_directory();
 #ifdef TRAVERSO_DEV_LOG
 	bool logToStderr = true;
 #else
@@ -97,7 +96,7 @@ int main( int argc, char **argv )
 				printf("\t -v   \t\t Print version number\n");
 				printf("\t--log-level=LEVEL\t error, warning, info (default), debug or trace (the last two in developer builds)\n");
 				printf("\t--log-stderr / --no-log-stderr\t Also write the log to stderr (default in developer builds)\n");
-				printf("\t--log-dir=DIR\t\t Directory of traverso.log (default: the state directory, e.g. ~/.local/state/Traverso)\n");
+				printf("\t--log-dir=DIR\t\t Directory of traverso.log (default: ~/.local/state/Traverso, ~/Library/Logs/Traverso or AppData/Local/Traverso/logs)\n");
 				printf("\t--show-compile-options\t\t Print options used during compilation\n");
                                 printf("\t--fft-meter   \t\t Start Traverso as a Spectral Analyzer\n");
                                 printf("\t--dump-shortcut-table FILE\t Write the shortcut resolution table to FILE and quit\n");
