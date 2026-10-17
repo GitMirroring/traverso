@@ -20,6 +20,9 @@
 */
 #include "TZoomCommand.h"
 #include "TSheetView.h"
+#include "TAudioClipView.h"
+#include "TAudioClip.h"
+#include "TSelectionService.h"
 #include "TTrackView.h"
 #include "TSheet.h"
 #include "TTrack.h"
@@ -186,6 +189,22 @@ void TZoomCommand::hzoom_out()
 
 void TZoomCommand::zoom_to_fit()
 {
+    // The clip under the pointer, unless it is part of the selection: then
+    // the selection; without a pointed clip the selection, else the sheet
+    for (TContextItem* item : m_contextPointer->get_active_context_items()) {
+        TAudioClipView* clipView = qobject_cast<TAudioClipView*>(item);
+        if (!clipView) {
+            continue;
+        }
+        TAudioClip* clip = clipView->get_clip();
+        TSheet* sheet = clip->get_sheet();
+        const bool selected = sheet && sheet->get_selection_service() && sheet->get_selection_service()->is_selected(clip->get_id());
+        if (!selected) {
+            m_sv->zoom_to_range(clip->get_location_start(), clip->get_location_end());
+            return;
+        }
+        break;
+    }
     m_sv->zoom_to_fit();
 }
 

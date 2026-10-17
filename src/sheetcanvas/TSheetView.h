@@ -113,6 +113,8 @@ public :
     qreal fit_hzoom() const;
     // The selected clips, else the whole session, into the viewport
     TCommand* zoom_to_fit();
+    // The time range into the viewport, with a small margin
+    void zoom_to_range(const TTimeRef& start, const TTimeRef& end);
     void clipviewport_resize_event();
     int hscrollbar_value() const;
     int vscrollbar_value() const;

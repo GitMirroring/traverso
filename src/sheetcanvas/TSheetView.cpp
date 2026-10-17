@@ -588,16 +588,20 @@ TCommand* TSheetView::zoom_to_fit()
             end = std::max(end, entity->get_location_end());
         }
     }
-    if (!(start < end)) {
-        return nullptr;
-    }
+    zoom_to_range(start, end);
+    return nullptr;
+}
 
+void TSheetView::zoom_to_range(const TTimeRef& start, const TTimeRef& end)
+{
+    if (!(start < end)) {
+        return;
+    }
     const qreal margin = m_clipsViewPort->width() * 0.02;
     const qreal width = std::max<qreal>(m_clipsViewPort->width() - 2 * margin, 1.0);
     const qreal frames = qreal((end - start).universal_frame()) * 44100.0 / qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE);
     m_session->set_hzoom(frames / width);
     set_hscrollbar_value(qRound(start / timeref_scalefactor - margin));
-    return nullptr;
 }
 
 
