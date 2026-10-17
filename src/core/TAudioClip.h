@@ -148,7 +148,7 @@ private:
 
     bool            m_isTake;
     bool            m_isLocked;
-    bool            m_isReadSourceValid;
+    bool            m_isReadSourceValid{false};
     bool            m_isMoving;
     bool            m_syncDuringDrag;
     RecordingStatus m_recordingStatus;

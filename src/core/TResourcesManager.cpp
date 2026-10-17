@@ -299,8 +299,11 @@ TAudioClip* TResourcesManager::new_audio_clip(const QString& name)
 	TAudioClip* clip = new TAudioClip(name);
 	ClipData* data = new ClipData();
 	data->clip = clip;
+	// In use from the start. Not through get_clip(): that sets the source a
+	// loaded clip refers to, a new clip has none yet, the caller sets it
+	data->inUse = true;
 	m_clips.insert(clip->get_id(), data);
-	return get_clip(clip->get_id());
+	return clip;
 }
 
 QList<TBufferedAudioStreamReader*> TResourcesManager::get_all_audio_sources( ) const
