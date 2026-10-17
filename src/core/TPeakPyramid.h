@@ -5,6 +5,8 @@
 
 #include <QtGlobal>
 
+#include <atomic>
+#include <memory>
 #include <vector>
 
 // The lowest and highest sample value of a block of frames, scaled by
@@ -26,8 +28,11 @@ struct TPeakBlock
  * fewer frames. A level may miss its last block while a recording grows (a
  * block is only added when both its children are complete).
  *
+ * The blocks of a level live in chunks of 2^chunkShift blocks: one chunk
+ * for a mapped file, many for a growing pyramid (which never moves a block).
  * The view does not own the data: TPeakPyramidBuilder (memory) and TPeakFile
- * (mapped file) do.
+ * (mapped file) do. A view taken from a growing pyramid is a snapshot: the
+ * blocks it names never change.
  */
 class TPeakLevels
 {
@@ -40,7 +45,8 @@ public:
     struct Level
     {
         qint64 blockCount{0};
-        std::vector<const TPeakBlock*> channels;   // blockCount blocks each
+        int chunkShift{62};                                      // 62: everything in one chunk
+        std::vector<std::vector<const TPeakBlock*>> channels;    // [channel][chunk]
     };
 
     TPeakLevels() = default;
@@ -57,8 +63,12 @@ public:
     const TPeakBlock& block(int level, int channel, qint64 index) const
     {
         Q_ASSERT(index >= 0 && index < block_count(level));
-        return m_levels[size_t(level)].channels[size_t(channel)][index];
+        const Level& l = m_levels[size_t(level)];
+        return l.channels[size_t(channel)][size_t(index >> l.chunkShift)][index & ((qint64(1) << l.chunkShift) - 1)];
     }
+    // The blocks from index on that follow each other in memory: their
+    // start and how many (at least 1 when index < block_count(level))
+    const TPeakBlock* blocks(int level, int channel, qint64 index, qint64& count) const;
 
     // The combined block of the level-0 blocks [first, last) of channel,
     // from the coarsest levels that fit. first < last <= block_count(0).
@@ -81,10 +91,19 @@ private:
  * The same code serves a background import (whole file) and a recording
  * (buffer by buffer): every level grows as soon as its blocks are complete.
  * finish() closes the last partial blocks.
+ *
+ * One thread appends; any thread may take levels() meanwhile: a block is
+ * written once, then its level's count is published (release), and a reader's
+ * snapshot (acquire) only names blocks below that count. Blocks never move
+ * (chunked storage) and live until the builder is destroyed. No locks.
  */
 class TPeakPyramidBuilder
 {
 public:
+    static constexpr int MaxLevels = 40;
+    static constexpr int ChunkShift = 16;   // blocks per chunk
+    static constexpr qint64 MaxLevel0Blocks = qint64(1) << 28;   // 2^34 frames, a day at 192 kHz
+
     TPeakPyramidBuilder(uint rate, int channelCount);
 
     // channels[c] points to frames samples of channel c
@@ -92,17 +111,32 @@ public:
     void finish();
 
     bool is_finished() const { return m_finished; }
-    qint64 frame_count() const { return m_frameCount; }
+    uint rate() const { return m_rate; }
+    int channel_count() const { return int(m_channels.size()); }
+    qint64 frame_count() const { return m_publishedFrames.load(std::memory_order_acquire); }
 
-    // Valid until the next append() or finish()
+    // A snapshot of what is complete now; valid while the builder lives
     TPeakLevels levels() const;
 
 private:
+    struct LevelStore
+    {
+        std::vector<std::unique_ptr<TPeakBlock[]>> chunks;   // the writer's
+        std::vector<const TPeakBlock*> published;            // sized once, read by snapshots
+        qint64 count{0};
+        std::atomic<qint64> publishedCount{0};
+
+        const TPeakBlock& at(qint64 index) const
+        {
+            return chunks[size_t(index >> ChunkShift)][index & ((qint64(1) << ChunkShift) - 1)];
+        }
+    };
+
     struct Channel
     {
         float min;
         float max;
-        std::vector<std::vector<TPeakBlock>> levels;
+        std::vector<LevelStore> levels;   // MaxLevels, so nothing ever resizes
     };
 
     void add_block(Channel& channel, int level, TPeakBlock block);
@@ -111,6 +145,8 @@ private:
     uint m_rate;
     std::vector<Channel> m_channels;
     qint64 m_frameCount{0};
+    std::atomic<qint64> m_publishedFrames{0};
     int m_blockFill{0};   // frames in the current level-0 block
     bool m_finished{false};
+    bool m_full{false};
 };

@@ -111,6 +111,7 @@ public:
     bool any_audio_track_armed();
     bool is_changed() const {return m_changed;}
     bool is_recording() const {return m_isRecording;}
+    qreal minimum_hzoom() const override;
 
     QUndoCommand* create_command_mutate_clips(const QList<TAudioClip*>& clipsToAdd,
                                               const QList<TAudioClip*>& clipsToRemove,

@@ -279,7 +279,23 @@ section 4, and the view path:
   `TAudioClip::calculate_normalization_factor()` uses it when the waveform
   is ready and falls back to the old `TPeak` otherwise.
 
-Not done yet: 3.7 recording (the recording waveform is not drawn by either
-path today), sample dots at extreme zoom, removal of `TPeak` /
-`ClipTileCache` / the zoom-step coupling once the user has compared both
-paths.
+- 3.7 recording: the writer feeds a `TPeakPyramidBuilder` on the DiskIO
+  thread (`rb_file_write`); the clip gets a live `TWaveform` on the growing
+  pyramid (columns from the pyramid only, no samples); on `finish_export`
+  the `.peaks` file is written from memory after the audio file is closed,
+  and the clip's normal `TWaveform` opens it when the read source is set.
+  Thread safety without locks: chunked storage (blocks never move), a block
+  is written once, per level an atomic published count (release/acquire),
+  a snapshot per paint takes the minimum count over the channels. Tested:
+  writer thread vs. snapshotting reader (`growing pyramid`), also under
+  ThreadSanitizer. Zoom: while clips record, `TSheet::minimum_hzoom()`
+  limits zooming in to one level-0 block per pixel at the device rate, and
+  `prepare_recording()` zooms out to it; the limit lifts with the last
+  recording clip. Imports through `TBufferedAudioStreamWriter`
+  (`set_process_peaks`) now write `.peaks` files too. The old `TPeak` is no
+  longer built during recording.
+
+Not done yet: sample dots at extreme zoom, continuous zoom in the UI (3.8:
+`get_hzoom()` still rounds to a power of two and the slider uses
+`TPeak::zoomStep`), removal of `TPeak` / `ClipTileCache` once the user has
+compared both paths.

@@ -305,6 +305,11 @@ bool TSession::is_child_session() const
 	return true;
 }
 
+qreal TSession::minimum_hzoom() const
+{
+    return 1.0;
+}
+
 void TSession::set_hzoom( qreal hzoom )
 {
 	if (m_parentSession) {
@@ -317,9 +322,10 @@ void TSession::set_hzoom( qreal hzoom )
 		hzoom = TPeak::max_zoom_value();
 	}
 
-	if (hzoom < 1.0) {
-		hzoom = 1.0;
-	}
+    const qreal minimum = minimum_hzoom();
+    if (hzoom < minimum) {
+        hzoom = minimum;
+    }
 
 	qreal old_hzoom = get_hzoom();
 	m_hzoom = hzoom;

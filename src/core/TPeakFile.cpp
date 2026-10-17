@@ -141,7 +141,12 @@ TPeakFile::Status TPeakFile::write(const QString& path, const TPeakLevels& level
     for (int level = 0; ok && level < levels.level_count(); ++level) {
         ok = pad_to(qint64(table[size_t(level)].offset));
         for (int channel = 0; ok && channel < levels.channel_count(); ++channel) {
-            ok = write_bytes(&levels.block(level, channel, 0), levels.block_count(level) * qint64(sizeof(TPeakBlock)));
+            for (qint64 index = 0; ok && index < levels.block_count(level);) {
+                qint64 count = 0;
+                const TPeakBlock* run = levels.blocks(level, channel, index, count);
+                ok = write_bytes(run, count * qint64(sizeof(TPeakBlock)));
+                index += count;
+            }
         }
     }
     ok = ok && pad_to(offset) && file.commit();
@@ -231,8 +236,9 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected)
 
         levels[level].blockCount = counts[level];
         for (int channel = 0; channel < expected.channelCount; ++channel) {
+            // One chunk per channel: the mapped file is contiguous
             levels[level].channels.push_back(
-                reinterpret_cast<const TPeakBlock*>(m_map + entry.offset + quint64(channelBytes) * quint64(channel)));
+                {reinterpret_cast<const TPeakBlock*>(m_map + entry.offset + quint64(channelBytes) * quint64(channel))});
         }
     }
 

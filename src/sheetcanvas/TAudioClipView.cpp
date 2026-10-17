@@ -195,7 +195,8 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
             QString buildProcess = "Building Peaks: " + si + "%";
             painter->drawText(r, Qt::AlignVCenter, buildProcess);
 
-        } else if (m_clip->recording_state() == TAudioClip::NO_RECORDING) {
+        } else if (m_clip->recording_state() == TAudioClip::NO_RECORDING
+                   || (m_paintColumns && m_clip->recording_state() == TAudioClip::RECORDING)) {
             //                        PROFILE_START;
             if (m_paintColumns) {
                 draw_columns(painter, option->exposedRect.x(), int(pixelcount));

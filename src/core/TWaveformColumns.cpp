@@ -106,7 +106,12 @@ TWaveformColumns::Source TWaveformColumns::query(const TPeakLevels& levels,
 
     switch (source_for(levels, columnWidth)) {
     case Source::Samples:
-        return samples ? from_samples(levels, samples, start, columnWidth, count, out) : Source::None;
+        if (samples) {
+            return from_samples(levels, samples, start, columnWidth, count, out);
+        }
+        // No samples to read (a recording in progress): the pyramid's
+        // level-0 blocks are the finest there is
+        return levels.level_count() > 0 ? from_pyramid(levels, start, columnWidth, count, out) : Source::None;
     case Source::Pyramid:
         return from_pyramid(levels, start, columnWidth, count, out);
     case Source::None:

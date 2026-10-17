@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <commands.h>
 
 #include "TAudioDevice.h"
+#include "TPeakPyramid.h"
 #include "AudioBus.h"
 #include "TAudioDeviceClient.h"
 #include "TProjectManager.h"
@@ -964,7 +965,27 @@ void TSheet::prepare_recording()
         }
     }
 
+    // The recording clips are painted from their peak pyramid, whose finest
+    // level is one block: zoom out to it when zoomed in further
+    set_hzoom(get_hzoom());
+
     m_readyToRecord = true;
+}
+
+qreal TSheet::minimum_hzoom() const
+{
+    if (m_recordingClips.isEmpty()) {
+        return 1.0;
+    }
+    // hzoom counts frames per pixel at 44100 Hz; the recording runs at the
+    // device rate, and get_hzoom() rounds to a power of two, so the limit
+    // is the first power of two with at least one block per pixel
+    const qreal rate = audiodevice().get_sample_rate();
+    qreal limit = 1.0;
+    while (limit * rate / 44100.0 < TPeakLevels::BlockFrames) {
+        limit *= 2.0;
+    }
+    return limit;
 }
 
 void TSheet::clip_finished_recording(TAudioClip * clip)

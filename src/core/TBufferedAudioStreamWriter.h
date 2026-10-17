@@ -21,10 +21,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 #include "TBufferedAudioStream.h"
+
+#include <memory>
+#include <vector>
 #include "TProcessCallBackData.h"
 
 class TExportSpecification;
-class TPeak;
+class TPeakPyramidBuilder;
 class TResampleAudioWriter;
 class AudioBus;
 class TFileIOBuffer;
@@ -41,7 +44,8 @@ public :
     int rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer);
 
     TBufferedAudioStreamStatus& get_buffer_status() final;
-    TPeak* get_peak() { return m_peak; }
+    // The peak pyramid of what is written so far, when peaks are processed
+    std::shared_ptr<TPeakPyramidBuilder> get_pyramid() const { return m_pyramid; }
 
     int prepare_export(TExportSpecification* specification);
     int finish_export();
@@ -53,7 +57,9 @@ public :
 
 private:
     std::unique_ptr<TResampleAudioWriter>           m_resampleWriter;
-    TPeak*                                          m_peak;
+    std::shared_ptr<TPeakPyramidBuilder>            m_pyramid;
+    QString                                         m_peakPath;
+    std::vector<const float*>                       m_peakChannels;
 
     nframes_t       m_sampleRate;
     bool            m_processPeaks;

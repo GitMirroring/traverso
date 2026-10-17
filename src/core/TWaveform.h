@@ -12,7 +12,9 @@
 
 #include <memory>
 
+class TBufferedAudioStream;
 class TBufferedAudioStreamReader;
+class TPeakPyramidBuilder;
 class TFileIOBuffer;
 class TPeakBuildJob;
 
@@ -37,6 +39,10 @@ public:
 
     // source: the clip's reader; the waveform gets a reader of its own by id
     explicit TWaveform(TBufferedAudioStreamReader* source);
+    // A recording in progress: painted from the growing pyramid, no samples
+    explicit TWaveform(std::shared_ptr<TPeakPyramidBuilder> live);
+    // Where the peak file of an audio source lives
+    static QString peak_path(const TBufferedAudioStream* source);
     ~TWaveform();
 
     // Starts the build when the peak file is missing or stale
@@ -64,7 +70,8 @@ private:
     void open_or_build();
     void build_finished();
 
-    TBufferedAudioStreamReader* m_source;
+    TBufferedAudioStreamReader* m_source{nullptr};
+    std::shared_ptr<TPeakPyramidBuilder> m_live;
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;

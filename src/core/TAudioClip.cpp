@@ -651,6 +651,10 @@ int TAudioClip::init_recording()
     m_writer->set_process_peaks( true );
     m_writer->set_recording( true );
 
+    // Painted from the growing pyramid until the recording is finished
+    delete m_waveform;
+    m_waveform = new TWaveform(m_writer->get_pyramid());
+
     m_sheet->add_audio_source_to_diskio(m_writer);
 
     // Writers exportFinished() signal comes from DiskIO thread, so we have to connect by Qt::QueuedConnection

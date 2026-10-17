@@ -7,15 +7,14 @@
 #include "TFileIOBuffer.h"
 #include "TLog.h"
 #include "TPeakBuilder.h"
+#include "TPeakPyramid.h"
 #include "TProject.h"
 #include "TProjectManager.h"
 #include "TResourcesManager.h"
 
 #include <algorithm>
 
-TWaveform::TWaveform(TBufferedAudioStreamReader* source)
-    : m_source(resources_manager()->get_readsource(source->get_id()))
-    , m_decodeBuffer(std::make_unique<TFileIOBuffer>())
+QString TWaveform::peak_path(const TBufferedAudioStream* source)
 {
     // Next to the project's audio sources, like the old peak files
     QString path;
@@ -25,7 +24,21 @@ TWaveform::TWaveform(TBufferedAudioStreamReader* source)
         path = source->get_dir();
         path.replace("audiosources", "peakfiles");
     }
-    m_peakPath = path + source->get_name() + ".peaks";
+    return path + source->get_name() + ".peaks";
+}
+
+TWaveform::TWaveform(TBufferedAudioStreamReader* source)
+    : m_source(resources_manager()->get_readsource(source->get_id()))
+    , m_peakPath(peak_path(source))
+    , m_decodeBuffer(std::make_unique<TFileIOBuffer>())
+{
+}
+
+TWaveform::TWaveform(std::shared_ptr<TPeakPyramidBuilder> live)
+    : m_live(std::move(live))
+    , m_state(State::Ready)
+    , m_opened(true)
+{
 }
 
 TWaveform::~TWaveform()
@@ -38,6 +51,9 @@ TWaveform::~TWaveform()
 
 int TWaveform::channel_count() const
 {
+    if (m_live) {
+        return m_live->channel_count();
+    }
     return m_source ? int(m_source->get_channel_count()) : 0;
 }
 
@@ -122,12 +138,15 @@ TWaveformColumns::Source TWaveform::columns(const TTimeRef& start, const TTimeRe
     if (state() != State::Ready) {
         return TWaveformColumns::Source::None;
     }
+    if (m_live) {
+        return TWaveformColumns::query(m_live->levels(), nullptr, start, columnWidth, count, out);
+    }
     return TWaveformColumns::query(m_file.levels(), this, start, columnWidth, count, out);
 }
 
 float TWaveform::max_amplitude(const TTimeRef& start, const TTimeRef& end)
 {
-    if (state() != State::Ready) {
+    if (state() != State::Ready || m_live) {
         return -1.0f;
     }
     const uint rate = m_source->get_file_rate();

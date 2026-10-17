@@ -76,6 +76,8 @@ public:
 
 
 	void set_hzoom(qreal hzoom);
+    // The zoom-in limit, in hzoom units (frames per pixel at 44100 Hz)
+    virtual qreal minimum_hzoom() const;
 	void scale_hzoom(qreal scale);
     virtual void set_work_at(const TTimeRef &location, bool isFolder=false);
 	void set_scrollbar_xy(int x, int y);

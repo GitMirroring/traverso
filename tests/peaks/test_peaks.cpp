@@ -19,7 +19,9 @@
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <random>
+#include <thread>
 #include <vector>
 
 static int s_failures = 0;
@@ -91,9 +93,9 @@ static Signal make_signal(uint rate, int channelCount, qint64 frames)
     return signal;
 }
 
-static TPeakPyramidBuilder build(const Signal& signal, bool randomChunks, bool finish = true)
+static std::unique_ptr<TPeakPyramidBuilder> build(const Signal& signal, bool randomChunks, bool finish = true)
 {
-    TPeakPyramidBuilder builder(signal.rate, int(signal.channels.size()));
+    auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()));
     qint64 position = 0;
     while (position < signal.frames()) {
         const qint64 chunk = randomChunks ? random_between(1, 3000) : signal.frames();
@@ -102,11 +104,11 @@ static TPeakPyramidBuilder build(const Signal& signal, bool randomChunks, bool f
         for (const auto& channel : signal.channels) {
             pointers.push_back(channel.data() + position);
         }
-        builder.append(pointers.data(), count);
+        builder->append(pointers.data(), count);
         position += count;
     }
     if (finish) {
-        builder.finish();
+        builder->finish();
     }
     return builder;
 }
@@ -134,8 +136,12 @@ static bool same_levels(const TPeakLevels& a, const TPeakLevels& b)
             return false;
         }
         for (int c = 0; c < a.channel_count(); ++c) {
-            if (std::memcmp(&a.block(level, c, 0), &b.block(level, c, 0), size_t(a.block_count(level)) * sizeof(TPeakBlock)) != 0) {
-                return false;
+            for (qint64 k = 0; k < a.block_count(level); ++k) {
+                const TPeakBlock& x = a.block(level, c, k);
+                const TPeakBlock& y = b.block(level, c, k);
+                if (x.min != y.min || x.max != y.max) {
+                    return false;
+                }
             }
         }
     }
@@ -171,11 +177,11 @@ static void test_pyramid()
     for (qint64 frames : lengths) {
         for (int channelCount = 1; channelCount <= 3; ++channelCount) {
             const Signal signal = make_signal(s_rates[random_between(0, std::size(s_rates) - 1)], channelCount, frames);
-            const TPeakPyramidBuilder whole = build(signal, false);
-            const TPeakPyramidBuilder chunked = build(signal, true);
-            const TPeakLevels levels = chunked.levels();
+            const std::unique_ptr<TPeakPyramidBuilder> whole = build(signal, false);
+            const std::unique_ptr<TPeakPyramidBuilder> chunked = build(signal, true);
+            const TPeakLevels levels = chunked->levels();
 
-            CHECK(same_levels(whole.levels(), levels), "frames %lld: chunked differs from one append", (long long)frames);
+            CHECK(same_levels(whole->levels(), levels), "frames %lld: chunked differs from one append", (long long)frames);
             CHECK(levels.frame_count() == frames, "frames %lld", (long long)frames);
 
             // Level structure: ceil halving down to one block
@@ -204,8 +210,8 @@ static void test_pyramid()
             }
 
             // Ranges, on the finished pyramid and on one that is still growing
-            const TPeakPyramidBuilder growing = build(signal, true, false);
-            for (const TPeakLevels& view : {levels, growing.levels()}) {
+            const std::unique_ptr<TPeakPyramidBuilder> partial = build(signal, true, false);
+            for (const TPeakLevels& view : {levels, partial->levels()}) {
                 if (view.level_count() == 0) {
                     continue;
                 }
@@ -238,15 +244,15 @@ static void test_file()
 
     for (qint64 frames : {qint64(0), qint64(1), qint64(64), qint64(1000), qint64(123457)}) {
         const Signal signal = make_signal(48000, 2, frames);
-        const TPeakPyramidBuilder builder = build(signal, true);
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
 
         TPeakFile::SourceInfo source{48000, 2, frames, 1234567, 1760000000000};
         QString error;
-        CHECK(TPeakFile::write(path, builder.levels(), source, &error) == TPeakFile::Status::Ok, "write: %s", qPrintable(error));
+        CHECK(TPeakFile::write(path, builder->levels(), source, &error) == TPeakFile::Status::Ok, "write: %s", qPrintable(error));
 
         TPeakFile file;
         CHECK(file.open(path, source) == TPeakFile::Status::Ok, "frames %lld: open", (long long)frames);
-        CHECK(same_levels(file.levels(), builder.levels()), "frames %lld: levels differ after reading", (long long)frames);
+        CHECK(same_levels(file.levels(), builder->levels()), "frames %lld: levels differ after reading", (long long)frames);
         file.close();
 
         // Another source
@@ -264,9 +270,9 @@ static void test_file()
 
     // Damaged files
     const Signal signal = make_signal(44100, 1, 50000);
-    const TPeakPyramidBuilder builder = build(signal, false);
+    const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
     const TPeakFile::SourceInfo source{44100, 1, 50000, 99, 42};
-    CHECK(TPeakFile::write(path, builder.levels(), source) == TPeakFile::Status::Ok, "write");
+    CHECK(TPeakFile::write(path, builder->levels(), source) == TPeakFile::Status::Ok, "write");
 
     QFile original(path);
     CHECK(original.open(QIODevice::ReadOnly), "reopen");
@@ -343,8 +349,8 @@ static void test_columns()
         const int channelCount = int(random_between(1, 2));
         const qint64 frames = random_between(0, 4) == 0 ? random_between(0, 200) : random_between(1, 80000);
         const Signal signal = make_signal(rate, channelCount, frames);
-        const TPeakPyramidBuilder builder = build(signal, true);
-        const TPeakLevels levels = builder.levels();
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
+        const TPeakLevels levels = builder->levels();
 
         // Frames per column, log-uniform from 1/20 to 100000, sometimes right at the threshold
         double framesPerColumn = std::exp(std::log(0.05) + random_unit() * (std::log(100000.0) - std::log(0.05)));
@@ -476,6 +482,70 @@ static void run(const char* name, Test test)
     std::printf("%-18s %s (%lld ms)\n", name, s_failures == failuresBefore ? "ok" : "FAILED", (long long)timer.elapsed());
 }
 
+// One thread appends, another takes snapshots meanwhile: every block a
+// snapshot names must already have its final value, and ranges over a
+// snapshot must agree with the finished pyramid
+static void test_growing_pyramid()
+{
+    const qint64 frames = 3000000;   // 46875 blocks: level 0 spans a chunk boundary (65536) only with more, so also test that
+    for (qint64 length : {frames, qint64(70000) * 64 + 17}) {
+        const Signal signal = make_signal(48000, 2, length);
+        const std::unique_ptr<TPeakPyramidBuilder> reference = build(signal, false);
+        const TPeakLevels final = reference->levels();
+
+        TPeakPyramidBuilder growing(48000, 2);
+        std::atomic<bool> done{false};
+        std::thread writer([&] {
+            qint64 position = 0;
+            std::mt19937_64 random(7);
+            while (position < length) {
+                const qint64 count = std::min<qint64>(std::uniform_int_distribution<qint64>(1, 4096)(random), length - position);
+                const float* pointers[2] = {signal.channels[0].data() + position, signal.channels[1].data() + position};
+                growing.append(pointers, count);
+                position += count;
+                std::this_thread::yield();
+            }
+            growing.finish();
+            done.store(true);
+        });
+
+        int snapshots = 0;
+        qint64 lastCount = 0;
+        bool finished = false;
+        while (!finished) {
+            finished = done.load();   // one more snapshot after the writer is done
+            const TPeakLevels snapshot = growing.levels();
+            ++snapshots;
+            if (snapshot.level_count() == 0) {
+                continue;
+            }
+            CHECK(snapshot.block_count(0) >= lastCount, "level 0 shrank");
+            lastCount = snapshot.block_count(0);
+            for (int level = 0; level < snapshot.level_count(); ++level) {
+                CHECK(snapshot.block_count(level) <= final.block_count(level), "snapshot level %d has more blocks than the final pyramid", level);
+                for (int i = 0; i < 200; ++i) {
+                    const qint64 k = random_between(0, snapshot.block_count(level) - 1);
+                    for (int c = 0; c < 2; ++c) {
+                        const TPeakBlock& x = snapshot.block(level, c, k);
+                        const TPeakBlock& y = final.block(level, c, k);
+                        CHECK(x.min == y.min && x.max == y.max, "snapshot level %d block %lld differs", level, (long long)k);
+                    }
+                }
+            }
+            for (int i = 0; i < 50; ++i) {
+                const qint64 first = random_between(0, snapshot.block_count(0) - 1);
+                const qint64 last = random_between(first + 1, snapshot.block_count(0));
+                const TPeakBlock x = snapshot.range(0, first, last);
+                const TPeakBlock y = final.range(0, first, last);
+                CHECK(x.min == y.min && x.max == y.max, "snapshot range %lld..%lld differs", (long long)first, (long long)last);
+            }
+        }
+        writer.join();
+        CHECK(same_levels(growing.levels(), final), "the grown pyramid differs from the one-shot one");
+        std::printf("    growing pyramid of %lld frames: %d snapshots\n", (long long)length, snapshots);
+    }
+}
+
 static void test_max_amplitude()
 {
     for (int round = 0; round < 400; ++round) {
@@ -487,7 +557,7 @@ static void test_max_amplitude()
         if (frames > 0 && random_between(0, 2) == 0) {
             signal.channels[0][size_t(random_between(0, frames - 1))] = random_between(0, 1) ? 3.9f : -3.9f;
         }
-        const TPeakPyramidBuilder builder = build(signal, true);
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
         MemorySource memory(signal);
 
         for (int range = 0; range < 10; ++range) {
@@ -500,7 +570,7 @@ static void test_max_amplitude()
                 }
             }
             memory.reads = 0;
-            const float amplitude = TWaveformColumns::max_amplitude(builder.levels(), &memory, first, last);
+            const float amplitude = TWaveformColumns::max_amplitude(builder->levels(), &memory, first, last);
             CHECK(amplitude == expected, "round %d range %lld..%lld: %f expected %f", round, (long long)first, (long long)last,
                   amplitude, expected);
             // Reads: the two partial blocks plus the candidate blocks
@@ -519,6 +589,7 @@ int main()
     run("file", test_file);
     run("columns", test_columns);
     run("max amplitude", test_max_amplitude);
+    run("growing pyramid", test_growing_pyramid);
     std::printf("non-empty columns checked: %lld from samples, %lld from the pyramid\n",
                 (long long)s_checkedColumns[int(TWaveformColumns::Source::Samples)],
                 (long long)s_checkedColumns[int(TWaveformColumns::Source::Pyramid)]);
