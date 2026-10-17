@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TRtTransaction.h"
 #include "TProjectManager.h"
 #include "TPeak.h"
+#include "TPeakPyramid.h"
 #include "TWaveform.h"
 #include "TProject.h"
 #include "Utils.h"
@@ -771,6 +772,10 @@ void TAudioClip::finish_write_source()
         m_length = TTimeRef();
     }
 
+    // The peak file is being written from this pyramid on the peaks thread;
+    // the view paints from the pyramid until the file opens
+    std::shared_ptr<TPeakPyramidBuilder> pyramid = m_writer->get_pyramid();
+
     m_sheet->remove_audio_source_from_diskio(m_writer);
 
     m_writer = nullptr;
@@ -778,6 +783,10 @@ void TAudioClip::finish_write_source()
     m_recordingStatus = NO_RECORDING;
 
     resources_manager()->set_source_for_clip(this, m_readSource);
+
+    if (m_waveform && pyramid) {
+        m_waveform->use_until_file_ready(pyramid);
+    }
 
     emit recordingFinished(this);
 }

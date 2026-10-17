@@ -87,13 +87,20 @@ TBufferedAudioStreamReader* TWaveform::reader()
     return m_source;
 }
 
+void TWaveform::use_until_file_ready(std::shared_ptr<TPeakPyramidBuilder> pyramid)
+{
+    if (m_state != State::Ready) {
+        m_live = std::move(pyramid);
+    }
+}
+
 TWaveform::State TWaveform::state()
 {
     if (!m_opened) {
         m_opened = true;
         open_or_build();
     }
-    return m_state;
+    return m_live ? State::Ready : m_state;
 }
 
 void TWaveform::open_or_build()
@@ -154,6 +161,7 @@ void TWaveform::build_finished()
     } else {
         m_state = State::Failed;
     }
+    m_live.reset();
     emit ready();
 }
 

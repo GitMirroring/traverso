@@ -13,6 +13,7 @@
 #include <memory>
 
 class TBufferedAudioStreamReader;
+class TPeakPyramidBuilder;
 
 /**
  * @brief One build of a peak file: reads the source, builds the pyramid and
@@ -26,6 +27,8 @@ class TPeakBuildJob : public QObject
 public:
     // Takes ownership of source, a reader of its own (not the clip's)
     TPeakBuildJob(TBufferedAudioStreamReader* source, const QString& peakPath);
+    // Writes a finished pyramid (a recording's) for the audio file audioPath
+    TPeakBuildJob(std::shared_ptr<TPeakPyramidBuilder> pyramid, const QString& audioPath, const QString& peakPath);
     ~TPeakBuildJob();
 
     const QString& peak_path() const { return m_peakPath; }
@@ -42,7 +45,12 @@ private:
     friend class TPeakBuilder;
     void run();
 
-    TBufferedAudioStreamReader* m_source;
+    void build();
+    void write();
+
+    TBufferedAudioStreamReader* m_source{nullptr};
+    std::shared_ptr<TPeakPyramidBuilder> m_pyramid;
+    QString m_audioPath;
     QString m_peakPath;
     std::atomic<bool> m_cancelled{false};
     std::atomic<bool> m_done{false};
@@ -62,6 +70,12 @@ public:
     // The running or queued job for peakPath, or a new one. sourceId is the
     // resources manager id of the source to read.
     std::shared_ptr<TPeakBuildJob> build(const QString& peakPath, qint64 sourceId);
+    // Writes a finished pyramid to peakPath on the builder thread; a build()
+    // for the same path meanwhile waits for it
+    std::shared_ptr<TPeakBuildJob> write(const QString& peakPath, std::shared_ptr<TPeakPyramidBuilder> pyramid, const QString& audioPath);
+
+private:
+    std::shared_ptr<TPeakBuildJob> queue(const QString& peakPath, TPeakBuildJob* job);
 
 private:
     TPeakBuilder();

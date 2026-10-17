@@ -282,8 +282,10 @@ section 4, and the view path:
 - 3.7 recording: the writer feeds a `TPeakPyramidBuilder` on the DiskIO
   thread (`rb_file_write`); the clip gets a live `TWaveform` on the growing
   pyramid (columns from the pyramid only, no samples); on `finish_export`
-  the `.peaks` file is written from memory after the audio file is closed,
-  and the clip's normal `TWaveform` opens it when the read source is set.
+  the finished pyramid is handed to the peaks thread, which writes the
+  `.peaks` file after the audio file is closed (DiskIO never waits for it);
+  the clip's normal `TWaveform` keeps painting from the pyramid until that
+  file opens.
   Thread safety without locks: chunked storage (blocks never move), a block
   is written once, per level an atomic published count (release/acquire),
   a snapshot per paint takes the minimum count over the channels. Tested:
@@ -294,6 +296,23 @@ section 4, and the view path:
   recording clip. Imports through `TBufferedAudioStreamWriter`
   (`set_process_peaks`) now write `.peaks` files too. The old `TPeak` is no
   longer built during recording.
+
+Parked, with its numbers (2026-10-17): **file-backed recording**. The
+pyramid of a recording stays in memory until stop: 21.6 MB per channel-hour
+at 48 kHz (43 MB stereo/hour; 100 stems x 15 min at 96 kHz = 1.1 GB, freed
+when the take's file is written). Writing it to the `.peaks` file during the
+recording would need a chunk-table header (per level and channel a list of
+offset + count, chunks appended in fill order, header written at stop), the
+builder writing a level's current chunk with batched `pwrite`s, and the live
+view mapping the growing file; about 700 lines and a second storage backend.
+Only worth it if sessions of 100+ stems over 15 minutes become a real
+pattern; the stop-time freeze it would also remove is already gone (the
+write runs on the peaks thread). Per-level temp files were rejected (file
+descriptors), a separate index file too (no simplification, one more file to
+keep in sync). Also parked: idle I/O priority for the peaks thread plus
+back-pressure from DiskIO's buffer fill, for disk bandwidth contention of
+builds with playback and recording; builds read sequentially in 64 K-frame
+chunks and run one at a time.
 
 Not done yet: sample dots at extreme zoom, continuous zoom in the UI (3.8:
 `get_hzoom()` still rounds to a power of two and the slider uses

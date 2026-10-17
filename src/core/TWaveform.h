@@ -48,6 +48,10 @@ public:
     static QString peak_path(const TBufferedAudioStream* source);
     ~TWaveform();
 
+    // A recording that just finished: its pyramid serves the columns until
+    // the peak file written from it opens
+    void use_until_file_ready(std::shared_ptr<TPeakPyramidBuilder> pyramid);
+
     // Starts the build when the peak file is missing or stale
     State state();
     int progress() const { return m_progress; }

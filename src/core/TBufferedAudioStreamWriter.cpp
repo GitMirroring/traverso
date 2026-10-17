@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TResampleAudioWriter.h"
 #include "TLog.h"
-#include "TPeakFile.h"
+#include "TPeakBuilder.h"
 #include "TPeakPyramid.h"
 #include "TWaveform.h"
 #include "TQueueBufferSlot.h"
@@ -76,18 +76,12 @@ int TBufferedAudioStreamWriter::finish_export()
         m_resampleWriter.reset();
     }
 
-    // The peak file, from memory, after the audio file is complete (its
-    // size and time are part of the peak file's validation)
+    // The peak file is written from memory on the peaks thread, after the
+    // audio file is complete (its size and time are part of the peak file's
+    // validation); this thread feeds the playback and must not wait for it
     if (m_pyramid) {
         m_pyramid->finish();
-        const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(
-            m_fileName, m_pyramid->rate(), m_pyramid->channel_count(), m_pyramid->frame_count());
-        QString error;
-        if (TPeakFile::write(m_peakPath, m_pyramid->levels(), source, &error) == TPeakFile::Status::Ok) {
-            TLOG_I("peaks", "wrote {} from the recording", m_peakPath.toStdString());
-        } else {
-            TLOG_W("peaks", "writing {} failed: {}", m_peakPath.toStdString(), error.toStdString());
-        }
+        peak_builder().write(m_peakPath, m_pyramid, m_fileName);
     }
 
     m_exportFinished = true;

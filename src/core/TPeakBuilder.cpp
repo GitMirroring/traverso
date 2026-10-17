@@ -25,12 +25,51 @@ TPeakBuildJob::TPeakBuildJob(TBufferedAudioStreamReader* source, const QString& 
 {
 }
 
+TPeakBuildJob::TPeakBuildJob(std::shared_ptr<TPeakPyramidBuilder> pyramid, const QString& audioPath, const QString& peakPath)
+    : m_pyramid(std::move(pyramid))
+    , m_audioPath(audioPath)
+    , m_peakPath(peakPath)
+{
+}
+
 TPeakBuildJob::~TPeakBuildJob()
 {
     delete m_source;
 }
 
 void TPeakBuildJob::run()
+{
+    if (m_pyramid) {
+        write();
+    } else {
+        build();
+    }
+
+    if (m_cancelled.load()) {
+        TLOG_D("peaks", "build of {} cancelled", m_peakPath.toStdString());
+    } else if (m_succeeded) {
+        TLOG_I("peaks", "{} {}", m_pyramid ? "wrote" : "built", m_peakPath.toStdString());
+    } else {
+        TLOG_W("peaks", "{} {} failed: {}", m_pyramid ? "writing" : "building", m_peakPath.toStdString(), m_error.toStdString());
+    }
+
+    m_done.store(true);
+}
+
+void TPeakBuildJob::write()
+{
+    if (!QDir().mkpath(QFileInfo(m_peakPath).absolutePath())) {
+        m_error = QStringLiteral("cannot create the peak file directory");
+        return;
+    }
+    // The audio file is complete by now: its size and time go into the header
+    const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(
+        m_audioPath, m_pyramid->rate(), m_pyramid->channel_count(), m_pyramid->frame_count());
+    m_succeeded = TPeakFile::write(m_peakPath, m_pyramid->levels(), source, &m_error) == TPeakFile::Status::Ok;
+    m_pyramid.reset();   // the memory goes as soon as the file is there
+}
+
+void TPeakBuildJob::build()
 {
     const uint rate = m_source->get_file_rate();
     const uint channels = m_source->get_channel_count();
@@ -79,15 +118,6 @@ void TPeakBuildJob::run()
         }
     }
 
-    if (m_cancelled.load()) {
-        TLOG_D("peaks", "build of {} cancelled", m_peakPath.toStdString());
-    } else if (m_succeeded) {
-        TLOG_I("peaks", "built {}", m_peakPath.toStdString());
-    } else {
-        TLOG_W("peaks", "building {} failed: {}", m_peakPath.toStdString(), m_error.toStdString());
-    }
-
-    m_done.store(true);
 }
 
 
@@ -134,10 +164,20 @@ std::shared_ptr<TPeakBuildJob> TPeakBuilder::build(const QString& peakPath, qint
     if (!source) {
         return nullptr;
     }
+    return queue(peakPath, new TPeakBuildJob(source, peakPath));
+}
 
-    // The job is a QObject of this (the GUI) thread; whichever thread drops
+std::shared_ptr<TPeakBuildJob> TPeakBuilder::write(const QString& peakPath, std::shared_ptr<TPeakPyramidBuilder> pyramid, const QString& audioPath)
+{
+    QMutexLocker locker(&m_mutex);
+    return queue(peakPath, new TPeakBuildJob(std::move(pyramid), audioPath, peakPath));
+}
+
+std::shared_ptr<TPeakBuildJob> TPeakBuilder::queue(const QString& peakPath, TPeakBuildJob* newJob)
+{
+    // The job is a QObject of the calling thread; whichever thread drops
     // the last reference hands the deletion to that thread
-    std::shared_ptr<TPeakBuildJob> job(new TPeakBuildJob(source, peakPath), [](TPeakBuildJob* j) { j->deleteLater(); });
+    std::shared_ptr<TPeakBuildJob> job(newJob, [](TPeakBuildJob* j) { j->deleteLater(); });
     m_jobs.insert(peakPath, job);
 
     QMetaObject::invokeMethod(m_worker, [job] {
