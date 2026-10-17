@@ -244,6 +244,14 @@ is ~10x slower than opaque spans. Opaque spans (or a premultiplied blend of
 our own into an image drawn once) stay at ~3 ms for a full 4K row at any
 zoom. Qt Quick column quads blend on the GPU.
 
+User observation (2026-10-17, first runtime comparison): the new path
+shows the correct maximum/minimum amplitude where the legacy view did not,
+and no longer shows odd shapes at certain zoom levels. Causes in the legacy
+code: nearest-power-of-two level snapping (a block up to 1.5x too wide or
+too narrow per pixel), the start offset rounded to half a block, level-0
+blocks not aligned to real frames for other rates, the micro view reduced to
+one value per pixel, and values truncated towards zero.
+
 ## 5. Proof of concept status
 
 Done (branch `peak-redesign`): parts 3.1-3.4, the tests and benchmark of
