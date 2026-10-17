@@ -8,6 +8,7 @@
 #include "TWaveformColumns.h"
 
 #include <QObject>
+#include <QTimer>
 #include <QString>
 
 #include <memory>
@@ -37,7 +38,9 @@ public:
         Failed
     };
 
-    // source: the clip's reader; the waveform gets a reader of its own by id
+    // source: the clip's reader. The waveform reads samples with a reader
+    // of its own, opened on the first sample query and closed again when
+    // unused for a while, so a clip normally holds one open file.
     explicit TWaveform(TBufferedAudioStreamReader* source);
     // A recording in progress: painted from the growing pyramid, no samples
     explicit TWaveform(std::shared_ptr<TPeakPyramidBuilder> live);
@@ -69,8 +72,16 @@ private:
     TPeakFile::SourceInfo source_info() const;
     void open_or_build();
     void build_finished();
+    TBufferedAudioStreamReader* reader();
 
-    TBufferedAudioStreamReader* m_source{nullptr};
+    qint64 m_sourceId{0};
+    QString m_fileName;
+    uint m_rate{0};
+    int m_channelCount{0};
+    qint64 m_frameCount{0};
+    bool m_sourceValid{false};
+    TBufferedAudioStreamReader* m_source{nullptr};   // only while samples are read
+    QTimer m_closeReader;
     std::shared_ptr<TPeakPyramidBuilder> m_live;
     QString m_peakPath;
     TPeakFile m_file;

@@ -23,11 +23,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <csignal>
 #include <cstdlib>
 #include <unistd.h>
+#include <algorithm>
 
 #include <QFile>
 #include <QLocale>
 #include <QTextStream>
 #include <QTranslator>
+
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
+#include <sys/resource.h>
+#endif
+#if defined (Q_OS_MAC)
+#include <sys/syslimits.h>
+#endif
 
 #include "TConfig.h"
 #include "Traverso.h"
@@ -117,6 +125,24 @@ int main( int argc, char **argv )
 	TLog::name_thread("gui");
 	TLog::start(logDirectory, logToStderr, VERSION);
 	TLOG_I("app", "log file {}", TLog::file_name());
+
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
+	// Every audio clip keeps its file open: take the open files the system allows
+	struct rlimit openFiles;
+	if (getrlimit(RLIMIT_NOFILE, &openFiles) == 0 && openFiles.rlim_cur < openFiles.rlim_max) {
+		rlim_t wanted = openFiles.rlim_max;
+#if defined (Q_OS_MAC)
+		wanted = std::min<rlim_t>(wanted, OPEN_MAX);
+#endif
+		const rlim_t before = openFiles.rlim_cur;
+		openFiles.rlim_cur = wanted;
+		if (setrlimit(RLIMIT_NOFILE, &openFiles) == 0) {
+			TLOG_I("app", "open files limit raised from {} to {}", (unsigned long long)before, (unsigned long long)wanted);
+		} else {
+			TLOG_W("app", "cannot raise the open files limit from {}", (unsigned long long)before);
+		}
+	}
+#endif
 
 	traverso = new Traverso(argc, argv);
 

@@ -28,10 +28,21 @@ QString TWaveform::peak_path(const TBufferedAudioStream* source)
 }
 
 TWaveform::TWaveform(TBufferedAudioStreamReader* source)
-    : m_source(resources_manager()->get_readsource(source->get_id()))
+    : m_sourceId(source->get_id())
+    , m_fileName(source->get_filename())
+    , m_rate(source->get_file_rate())
+    , m_channelCount(int(source->get_channel_count()))
+    , m_frameCount(source->get_nframes())
+    , m_sourceValid(source->get_error() >= 0)
     , m_peakPath(peak_path(source))
     , m_decodeBuffer(std::make_unique<TFileIOBuffer>())
 {
+    m_closeReader.setSingleShot(true);
+    m_closeReader.setInterval(5000);
+    connect(&m_closeReader, &QTimer::timeout, this, [this] {
+        delete m_source;
+        m_source = nullptr;
+    });
 }
 
 TWaveform::TWaveform(std::shared_ptr<TPeakPyramidBuilder> live)
@@ -54,13 +65,26 @@ int TWaveform::channel_count() const
     if (m_live) {
         return m_live->channel_count();
     }
-    return m_source ? int(m_source->get_channel_count()) : 0;
+    return m_channelCount;
 }
 
 TPeakFile::SourceInfo TWaveform::source_info() const
 {
-    return TPeakFile::SourceInfo::from_file(m_source->get_filename(), m_source->get_file_rate(),
-                                            int(m_source->get_channel_count()), m_source->get_nframes());
+    return TPeakFile::SourceInfo::from_file(m_fileName, m_rate, m_channelCount, m_frameCount);
+}
+
+TBufferedAudioStreamReader* TWaveform::reader()
+{
+    if (!m_source && m_sourceValid) {
+        m_source = resources_manager()->get_readsource(m_sourceId);
+        if (m_source && m_source->get_error() < 0) {
+            delete m_source;
+            m_source = nullptr;
+            m_sourceValid = false;
+        }
+    }
+    m_closeReader.start();
+    return m_source;
 }
 
 TWaveform::State TWaveform::state()
@@ -74,7 +98,7 @@ TWaveform::State TWaveform::state()
 
 void TWaveform::open_or_build()
 {
-    if (!m_source || m_source->get_error() < 0) {
+    if (!m_sourceValid) {
         TLOG_W("peaks", "no readable source for {}", m_peakPath.toStdString());
         m_state = State::Failed;
         return;
@@ -107,7 +131,7 @@ void TWaveform::open_or_build()
     ++m_builds;
     m_state = State::Building;
     m_progress = 0;
-    m_job = peak_builder().build(m_peakPath, m_source->get_id());
+    m_job = peak_builder().build(m_peakPath, m_sourceId);
     if (!m_job) {
         TLOG_W("peaks", "no reader for the source of {}", m_peakPath.toStdString());
         m_state = State::Failed;
@@ -149,17 +173,20 @@ float TWaveform::max_amplitude(const TTimeRef& start, const TTimeRef& end)
     if (state() != State::Ready || m_live) {
         return -1.0f;
     }
-    const uint rate = m_source->get_file_rate();
     return TWaveformColumns::max_amplitude(m_file.levels(), this,
-                                           TTimeRef::frame_at_or_after(start, rate), TTimeRef::frame_at_or_after(end, rate));
+                                           TTimeRef::frame_at_or_after(start, m_rate), TTimeRef::frame_at_or_after(end, m_rate));
 }
 
 qint64 TWaveform::read(qint64 firstFrame, qint64 count, float* const* channels)
 {
-    const uint channelCount = m_source->get_channel_count();
+    TBufferedAudioStreamReader* source = reader();
+    if (!source) {
+        return 0;
+    }
+    const uint channelCount = uint(m_channelCount);
     m_decodeBuffer->check_capacity(uint(count), channelCount);
 
-    const int read = m_source->file_read(*m_decodeBuffer, nframes_t(firstFrame), nframes_t(count));
+    const int read = source->file_read(*m_decodeBuffer, nframes_t(firstFrame), nframes_t(count));
     if (read <= 0) {
         return 0;
     }
