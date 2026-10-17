@@ -142,7 +142,7 @@ void ProjectManagerDialog::sheets_are_track_folder_check_box_state_changed(int s
 void ProjectManagerDialog::update_sheet_list( )
 {
 	if ( ! m_project) {
-		printf("ProjectManagerDialog:: no project ?\n");
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ProjectManagerDialog:: no project ?");
 		return;
 	}
 	

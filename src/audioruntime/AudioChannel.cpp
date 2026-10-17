@@ -102,7 +102,7 @@ void AudioChannel::add_monitor(TVUMonitor *monitor)
 void AudioChannel::remove_monitor(TVUMonitor *monitor)
 {
     if (!m_monitors.gui_items().contains(monitor)) {
-        printf("AudioChannel:: VUMonitor was not in monitors list, failed to remove it!\n");
+        TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "AudioChannel:: VUMonitor was not in monitors list, failed to remove it!");
         return;
     }
 

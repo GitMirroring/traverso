@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TCoreAudioDriver.h"
+#include "TLog.h"
 
 #include "AudioChannel.h"
 #include "TAudioDevice.h"
@@ -627,8 +628,7 @@ int TCoreAudioDriver::process_callback(AudioUnitRenderActionFlags* flags,
                                                       nframes, m_inputList);
             if (m_lastInputRenderStatus != noErr) {
                 if (m_lastInputRenderStatus != m_reportedInputRenderStatus) {
-                    std::fprintf(stderr, "TCoreAudioDriver: AudioUnitRender failed with status %d\n",
-                                 m_lastInputRenderStatus);
+                    TLOG_RT_W("coreaudio", "AudioUnitRender failed with status {}", int(m_lastInputRenderStatus));
                     m_reportedInputRenderStatus = m_lastInputRenderStatus;
                 }
                 m_device->xrun();
@@ -709,8 +709,7 @@ OSStatus TCoreAudioDriver::capture_callback(AudioUnitRenderActionFlags* flags,
                                               nframes, m_inputList);
     if (m_lastInputRenderStatus != noErr) {
         if (m_lastInputRenderStatus != m_reportedInputRenderStatus) {
-            std::fprintf(stderr, "TCoreAudioDriver: input AudioUnitRender failed with status %d\n",
-                         m_lastInputRenderStatus);
+            TLOG_RT_W("coreaudio", "input AudioUnitRender failed with status {}", int(m_lastInputRenderStatus));
             m_reportedInputRenderStatus = m_lastInputRenderStatus;
         }
         m_device->xrun();

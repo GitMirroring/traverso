@@ -1,4 +1,5 @@
 #include "TAudioDeviceSetup.h"
+#include "Debugger.h"
 
 QList<uint>	sampleRatesList;
 QList<uint>	periodBufferSizesList;
@@ -18,7 +19,7 @@ int TAudioDeviceSetup::set_sample_rate(uint sampleRate)
     int ret = 1;
 
     if (!get_sample_rates_list().contains(sampleRate)) {
-        printf("TAudioDeviceSetup::set_sample_rate: Unsupported sample rate: %d, resetting to 44100\n", sampleRate);
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "TAudioDeviceSetup::set_sample_rate: Unsupported sample rate: %d, resetting to 44100", sampleRate);
         sampleRate = 44100;
         ret = -1;
     }
@@ -31,7 +32,7 @@ int TAudioDeviceSetup::set_buffer_size(nframes_t bufferSize)
 {
     int ret = 1;
     if(!get_buffer_sizes_list().contains(bufferSize)) {
-        printf("TAudioDeviceSetup::set_buffer_size: Unsupported buffer size: %d, resetting to 1024\n", bufferSize);
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "TAudioDeviceSetup::set_buffer_size: Unsupported buffer size: %d, resetting to 1024", bufferSize);
         bufferSize = 1024;
         ret = -1;
     }

@@ -113,11 +113,12 @@ int main( int argc, char **argv )
 			}
 		}
 	}
-	traverso = new Traverso(argc, argv);
-
+	// Before the application: Qt's messages while it starts go to the log too
 	TLog::name_thread("gui");
 	TLog::start(logDirectory, logToStderr, VERSION);
 	TLOG_I("app", "log file {}", TLog::file_name());
+
+	traverso = new Traverso(argc, argv);
 
 	// Writes the shortcut resolution table for both built-in keymaps and quits,
 	// used to verify that shortcut handling keeps behaving the same

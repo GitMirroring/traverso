@@ -174,7 +174,7 @@ class FlacPrivate
 		static FLAC__SeekableStreamDecoderTellStatus tell_callback(const FLAC__SeekableStreamDecoder *decoder, FLAC__uint64 *absolute_byte_offset, void *client_data);
 		static FLAC__SeekableStreamDecoderLengthStatus length_callback(const FLAC__SeekableStreamDecoder *decoder, FLAC__uint64 *stream_length, void *client_data);
 		static FLAC__bool eof_callback(const FLAC__SeekableStreamDecoder *decoder, void *client_data);
-		static void error_callback(const FLAC__SeekableStreamDecoder *decoder, FLAC__StreamDecoderErrorStatus s, void *client_data){ Q_UNUSED(decoder); Q_UNUSED(client_data); printf("!!! %d !!!\n", s); };
+		static void error_callback(const FLAC__SeekableStreamDecoder *decoder, FLAC__StreamDecoderErrorStatus s, void *client_data){ Q_UNUSED(decoder); Q_UNUSED(client_data); TLog::write_printf(TLogLevel::Warning, "flac", "decoder error %d", int(s)); };
 		static void metadata_callback(const FLAC__SeekableStreamDecoder *decoder, const ::FLAC__StreamMetadata *metadata, void *client_data);
 		static FLAC__StreamDecoderWriteStatus write_callback(const FLAC__SeekableStreamDecoder *decoder, const FLAC__Frame *frame, const FLAC__int32 * const buffer[], void *client_data);
 #else
@@ -183,7 +183,7 @@ class FlacPrivate
 		static FLAC__StreamDecoderTellStatus tell_callback(const FLAC__StreamDecoder *decoder, FLAC__uint64 *absolute_byte_offset, void *client_data);
 		static FLAC__StreamDecoderLengthStatus length_callback(const FLAC__StreamDecoder *decoder, FLAC__uint64 *stream_length, void *client_data);
 		static FLAC__bool eof_callback(const FLAC__StreamDecoder *decoder, void *client_data);
-		static void error_callback(const FLAC__StreamDecoder *decoder, FLAC__StreamDecoderErrorStatus s, void *client_data){Q_UNUSED(decoder); Q_UNUSED(client_data); printf("!!! %d !!!\n", s); };
+		static void error_callback(const FLAC__StreamDecoder *decoder, FLAC__StreamDecoderErrorStatus s, void *client_data){Q_UNUSED(decoder); Q_UNUSED(client_data); TLog::write_printf(TLogLevel::Warning, "flac", "decoder error %d", int(s)); };
 		static void metadata_callback(const FLAC__StreamDecoder *decoder, const ::FLAC__StreamMetadata *metadata, void *client_data);
 		static FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder *decoder, const FLAC__Frame *frame, const FLAC__int32 * const buffer[], void *client_data);
 #endif

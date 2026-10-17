@@ -50,12 +50,12 @@ PluginSelectorDialog::PluginSelectorDialog(QWidget* parent)
 	
 
 #if defined (LV2_SUPPORT)
-        printf("Getting the list of found lv2 plugins from the PluginManager\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Getting the list of found lv2 plugins from the PluginManager");
 	const LilvPlugins* pluginList = PluginManager::instance()->get_lilv_plugins();
 
     QMultiMap<QString, TAudioPluginInfo> pluginsMap;
 
-	printf("Number of found lv2 plugins: %d\n", lilv_plugins_size(pluginList));
+	TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Number of found lv2 plugins: %d", lilv_plugins_size(pluginList));
 	
 	LILV_FOREACH(plugins, i, pluginList) {
 
@@ -100,7 +100,7 @@ void PluginSelectorDialog::on_okButton_clicked( )
 	QList<QTreeWidgetItem *> list = pluginTreeWidget->selectedItems();
 	
 	if ( ! list.size()) {
-		printf("No plugin selected\n");
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "No plugin selected");
 		reject();
 		return;
 	}

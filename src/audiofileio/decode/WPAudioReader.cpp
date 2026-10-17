@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "WPAudioReader.h"
+#include "Debugger.h"
 #include <QString>
 #include "TFileIOBuffer.h"
 #include "Utils.h"
@@ -77,7 +78,7 @@ bool WPAudioReader::can_decode(const QString& filename)
 
 void WPAudioReader::print_libwavpack_version()
 {
-    printf("Wavpack version %s\n", WavpackGetLibraryVersionString());
+    TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Wavpack version %s", WavpackGetLibraryVersionString());
 }
 
 
@@ -91,7 +92,7 @@ bool WPAudioReader::seek_private(nframes_t frameToSeekTo)
     }
 
     if (!WavpackSeekSample(m_wp, frameToSeekTo)) {
-        printf("WPAudioRead::seek_private: Could not seek to frame %d, reason %s\n", frameToSeekTo, WavpackGetErrorMessage(m_wp));
+        TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "WPAudioRead::seek_private: Could not seek to frame %d, reason %s", frameToSeekTo, WavpackGetErrorMessage(m_wp));
         return false;
     }
 

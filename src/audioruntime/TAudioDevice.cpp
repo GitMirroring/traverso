@@ -378,6 +378,8 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
         return;
     }
 
+    TLOG_I("device", "driver={} device={} rate={} buffer={} realtime={}", m_driverType, m_setup.get_card_device(), m_rate,
+           m_bufferSize, m_driver->is_realtime_capable());
     emit driverParamsChanged();
 
     m_runAudioThread.store(true);
@@ -956,6 +958,7 @@ void TAudioDevice::audiothread_finished()
 
 void TAudioDevice::xrun( )
 {
+    TLOG_RT_W("audio", "xrun {}", m_xrunCount + 1);
     tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
         .rtTask = nullptr,
         .guiCallback = [this]() { emit bufferUnderRun(); }

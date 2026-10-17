@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TSend.h"
+#include "Debugger.h"
 
 #include "AudioBus.h"
 #include "TProject.h"
@@ -80,7 +81,7 @@ int TSend::set_state( const QDomNode & node )
 {
         TProject* project = pm().get_project();
         if (!project) {
-                printf("TSend::set_state: Oh boy, no project?? Can't restore state without a project running!!\n");
+                TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "TSend::set_state: Oh boy, no project?? Can't restore state without a project running!!");
                 return -1;
         }
 
@@ -106,7 +107,7 @@ int TSend::set_state( const QDomNode & node )
         m_bus = project->get_audio_bus(busId);
 
         if (!m_bus) {
-                printf("TSend::set_state: Project didn't return my Bus (%s)!\n", busName.toLatin1().data());
+                TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "TSend::set_state: Project didn't return my Bus (%s)!", busName.toLatin1().data());
                 return -1;
         }
 

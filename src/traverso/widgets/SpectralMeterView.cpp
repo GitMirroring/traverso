@@ -460,7 +460,7 @@ TCommand* SpectralMeterView::export_average_curve()
 {
 	// check if all requirements are met
 	if ((!show_average) || (!m_project)) {
-		printf("No average data available.\n");
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "No average data available.");
                 tInformUser().warning(tr("FFT: No average curve used, not data to export!"));
                 tInformUser().information(tr("FFT: Enable average curve with < M > to generate data"));
 		return 0;
@@ -469,7 +469,7 @@ TCommand* SpectralMeterView::export_average_curve()
 	// check if there actually is data to export
 	int s = qMin(m_map_idx2freq.size(), m_avg_db.size());
 	if (!s) {
-		printf("No average data available.\n");
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "No average data available.");
                 tInformUser().warning(tr("FFT: No average data to export!"));
 		return 0;
 	}
@@ -487,7 +487,7 @@ TCommand* SpectralMeterView::export_average_curve()
 						oFormats, 0, false, &ok );
 
 	if (!ok) {
-		printf("Aborted.");
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Aborted.");
 		return 0;
 	}
 
@@ -502,7 +502,7 @@ TCommand* SpectralMeterView::export_average_curve()
 
 	// check if the selected file can be opened for writing
 	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-		printf("Could not open file for writing.");
+		TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not open file for writing.");
 		return 0;
 	}
 

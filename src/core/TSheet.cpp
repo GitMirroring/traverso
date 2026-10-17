@@ -520,6 +520,7 @@ int TSheet::process(TProcessCallBackData &processData)
     if (transport_stop_requested()) {
         set_transport_rolling_state(false);
         set_transport_stop_requested_state(false);
+        TLOG_RT_I("transport", "stopped at {} universal frames", m_transportLocation.universal_frame());
         tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
             .rtTask = nullptr,
             .guiCallback = [this]() { emit transportStopped(); }
@@ -862,6 +863,7 @@ void TSheet::seek_finished()
 void TSheet::start_transport_rolling(bool realtime)
 {
     set_transport_rolling_state(true);
+    TLOG_RT_I("transport", "rolling from {} universal frames", m_transportLocation.universal_frame());
 
     if (realtime) {
         tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{

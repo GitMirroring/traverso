@@ -426,7 +426,7 @@ void TThemer::use_builtin_theme(const QString & theme)
 QColor TThemer::get_default_color(const QString & name)
 {
     if (!m_defaultColors.contains(name)) {
-        printf("Default color %s was requested, but no such default color does exist, please add it to the themer!\n", QS_C(name));
+        TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Default color %s was requested, but no such default color does exist, please add it to the themer!", QS_C(name));
         return QColor(Qt::blue);
     }
 
@@ -593,14 +593,11 @@ void TThemer::validate_loaded_theme()
     }
 
     if (list.size()) {
-        printf("\n");
-        printf("Themer: the following entries are missing, please edit theme: %s\n", QS_C(m_themefile));
+        TLOG_I("theme", "the following entries are missing in {}, adjust the colours with the edit theme button in the Appearance config page (the edited theme is saved to ~/.traverso/themes/editedtheme.xml)", m_themefile);
 
         foreach(QString string, list) {
-            printf("%s\n", QS_C(string));
+            TLOG_I("theme", "missing: {}", string);
         }
-        printf("\nAnd adjust the color(s) to fit your theme, using the edit theme button in the Appearance config page!\n"
-               "The edited theme will be saved to ~/.traverso/themes/editedtheme.xml\n\n");
     }
 }
 

@@ -1040,7 +1040,7 @@ TCommand * TMainWindow::show_context_menu( )
     }
 
     if (items.isEmpty()) {
-        printf("Interface:: No items under mouse to show context menu for!\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Interface:: No items under mouse to show context menu for!");
         return nullptr;
     }
 

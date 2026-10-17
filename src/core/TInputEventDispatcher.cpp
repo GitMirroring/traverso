@@ -204,6 +204,10 @@ int TInputEventDispatcher::dispatch_shortcut(TShortCut* shortCut, bool fromConte
 
             return 1;
         } else {
+            // The session log: what the user asked for, with what and where
+            TLOG_I("action", "{} [{}] on {}", shortCutFunction->get_description(), shortCutFunction->get_key_sequence(),
+                   metaObject->className());
+
             if (shortCutFunction->plugin_based()) {
                 // Commands that are ported to a controller are created as one,
                 // all others are still created as a TCommand

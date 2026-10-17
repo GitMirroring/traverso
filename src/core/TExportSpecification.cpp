@@ -56,17 +56,17 @@ TExportSpecification::~TExportSpecification()
 int TExportSpecification::is_valid()
 {
     if (m_channelCount == 0) {
-        printf("ExportSpecification: No channels configured!\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ExportSpecification: No channels configured!");
         return -1;
     }
 
     if (m_exportStartLocation == TTimeRef::INVALID) {
-        printf("ExportSpecification: No start frame configured!\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ExportSpecification: No start frame configured!");
         return -1;
     }
 
     if (m_exportEndLocation == TTimeRef::INVALID) {
-        printf("ExportSpecification: No end frame configured!\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ExportSpecification: No end frame configured!");
         return -1;
     }
 
@@ -76,16 +76,16 @@ int TExportSpecification::is_valid()
     }
 
     if (m_exportDir.isEmpty()) {
-        printf("ExportSpecification: No export dir configured!\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ExportSpecification: No export dir configured!");
         return -1;
     }
 
     if (m_exportFileName.isEmpty()) {
-        printf("ExportSpecification: No name configured!\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ExportSpecification: No name configured!");
         return -1;
     }
     if (m_fileFormat == TraversoDAW::FileFormat::UNKNOWN) {
-        printf("ExportSpecification: No File Format set\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ExportSpecification: No File Format set");
         return -1;
     }
 
@@ -467,7 +467,7 @@ int TExportSpecification::create_cdrdao_toc(TProject* project, TExportSpecificat
         QFile file(filename);
 
         if (file.open(QFile::WriteOnly)) {
-            printf("Saving cdrdao toc-file to %s\n", QS_C(spec->tocFileName));
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Saving cdrdao toc-file to %s", QS_C(spec->tocFileName));
             QTextStream out(&file);
             out << output;
             file.close();

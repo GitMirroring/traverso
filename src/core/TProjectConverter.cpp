@@ -20,6 +20,7 @@
 */
 
 #include "TProjectConverter.h"
+#include "Debugger.h"
 
 #include <QTextStream>
 #include <QFile>
@@ -78,7 +79,7 @@ void TProjectConverter::set_project(const QString & rootdir, const QString & nam
 	QFile file(filename);
 		
 	if (!file.open(QIODevice::ReadOnly)) {
-		printf("filename '%s' could not be opened!\n", QS_C(filename));
+		TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "filename '%s' could not be opened!", QS_C(filename));
 		return;
 	}
 		
@@ -87,7 +88,7 @@ void TProjectConverter::set_project(const QString & rootdir, const QString & nam
     QDomDocument::ParseResult result = doc.setContent(file.readAll());
     if (!result) {
 		QString error = tr("Project %1: Failed to parse project.tpf file! (Reason: %2)").arg(m_projectname).arg(result.errorMessage);
-		printf("%s\n", QS_C(error));
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "%s", QS_C(error));
 		return;
 	}
 	
@@ -191,7 +192,7 @@ int TProjectConverter::start_conversion_from_version_2_to_3()
 			QString rangestring = e.attribute("range", "1");
 			double range;
 			if (rangestring == "nan" || rangestring == "inf") {
-				printf("FadeCurve::set_state: stored range was not a number!\n");
+				TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "FadeCurve::set_state: stored range was not a number!");
 				range = 1;
 			} else {
 				range = rangestring.toDouble();
@@ -206,7 +207,7 @@ int TProjectConverter::start_conversion_from_version_2_to_3()
 			QString rangestring = e.attribute("range", "1");
 			double range;
 			if (rangestring == "nan" || rangestring == "inf") {
-				printf("FadeCurve::set_state: stored range was not a number!\n");
+				TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "FadeCurve::set_state: stored range was not a number!");
 				range = 1;
 			} else {
 				range = rangestring.toDouble();
@@ -289,13 +290,13 @@ int TProjectConverter::save_converted_document()
 
 	if (!savefile.open( QIODevice::WriteOnly ) ) {
 		QString errorstring = TFileHelper::fileerror_to_string(savefile.error());
-		printf("%s\n", QS_C(tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(filename).arg(errorstring)));
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "%s", QS_C(tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(filename).arg(errorstring)));
 		return -1;
 	}
 	
 	QTextStream stream(&savefile);
 	m_document.save(stream, 4);
-	printf("%s\n", QS_C(tr("Project %1 converted").arg(m_projectname)));
+	TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "%s", QS_C(tr("Project %1 converted").arg(m_projectname)));
 	emit message(tr("Saving converted project.tpf file.... Done!"));
 	
 	return 1;

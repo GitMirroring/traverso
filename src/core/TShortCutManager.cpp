@@ -69,7 +69,7 @@ TShortCutManager::~TShortCutManager()
 TShortCutFunction *TShortCutManager::add_group(const TActionGroup &group, const QMetaObject *itemMetaObject)
 {
     if (m_groupShortCutFunctions.contains(group.id)) {
-        printf("TShortCutManager::add_group: group %s already in database\n", group.name);
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "TShortCutManager::add_group: group %s already in database", group.name);
         return nullptr;
     }
 
@@ -87,7 +87,7 @@ TShortCutFunction* TShortCutManager::add_function(const QMetaObject *metaObject,
     const char* commandName = action.name;
 
     if (m_shortCutFunctions.contains(commandName)) {
-        printf("There is already a function registered with command name %s\n", commandName);
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "There is already a function registered with command name %s", commandName);
         // Return the old function here to fix a crash on first start with no existing user Shortcuts file.
         // The startup code sets up the functions a 2nd time, and crashes after this if we return nullptr.
         return m_shortCutFunctions.value(commandName);
@@ -112,7 +112,7 @@ TShortCutFunction* TShortCutManager::get_shortcut_function_for_group(TActionGrou
     auto function = m_groupShortCutFunctions.value(group);
 	if (!function)
 	{
-        printf("TShortCutManager::get_shortcut_function_for_group: group %s not in database!!\n",
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "TShortCutManager::get_shortcut_function_for_group: group %s not in database!!",
                TActionGroups::All[static_cast<int>(group)].name);
 	}
 
@@ -951,7 +951,7 @@ bool TShortCutManager::keyboard_key_string_to_numerical_value(const QString &tex
                         } else if (text == ".") {
                             value = Qt::Key_Period;
                         } else {
-                            printf("KeyStringToValue: No value found for key %s\n", QS_C(text));
+                            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "KeyStringToValue: No value found for key %s", QS_C(text));
                             return false;
                         }
                     }

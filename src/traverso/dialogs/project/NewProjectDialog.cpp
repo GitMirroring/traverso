@@ -348,7 +348,7 @@ void NewProjectDialog::load_file(const QString &fileName, int i, QString trackna
                 return;
         }
 
-    printf("renaming track to %s\n", trackname.toLatin1().data());
+    TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "renaming track to %s", trackname.toLatin1().data());
     track->set_name(trackname);
 
     TAudioClip* clip = TAudioClipFactory::create_from_file(track, fileName, TTimeRef());

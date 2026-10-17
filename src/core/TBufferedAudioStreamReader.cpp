@@ -403,11 +403,11 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
         // and read in the samples. We have to use the source start location as the start location, see explanation above
         nframes_t read = file_read(fileDecodeBuffer, m_sourceStartLocation, toRead);
         if (read != toRead) {
-            printf("Could not read %d frames, only %d\n", toRead, read);
+            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not read %d frames, only %d", toRead, read);
         }
 
         if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
-            printf("ReadSource::rb_seek_to_transport_location:: try dequeue failed");
+            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "ReadSource::rb_seek_to_transport_location:: try dequeue failed");
             m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
             return;
         }
@@ -418,7 +418,7 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
-            printf("ReadSource::fill_realtime_buffers: try enqueue failed");
+            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "ReadSource::fill_realtime_buffers: try enqueue failed");
             m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
             return;
         }
@@ -443,7 +443,7 @@ void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDec
 
     auto freeSlots = m_freeBufferSlotsQueue->size_approx();
     if (freeSlots == 0) {
-        printf("Free Buffer Slots Queue is empty, why was I called?\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Free Buffer Slots Queue is empty, why was I called?");
         return;
     }
 
@@ -513,9 +513,9 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &proc
 {
     if (m_bufferstatus.out_of_sync()) {
         if (processData.get_is_real_time()) {
-            printf("ReadSource::ringbuffer_read: RealTime: Buffer out of sync, skipping file location %s\n",
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: RealTime: Buffer out of sync, skipping file location %s",
                    QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
-            printf("ReadSource::ringbuffer_read: RealTime: Buffer status %s\n", QS_C(m_bufferstatus.get_readable_sync_status()));
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: RealTime: Buffer status %s", QS_C(m_bufferstatus.get_readable_sync_status()));
             return 0;
         } else {
             // During freewheeling the status of the buffers can get out of sync
@@ -524,17 +524,17 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &proc
             // is slow or overloaded compared to the audio thread, the latter one can get in front of the disk thread
             // It's perfectly valid and in fact mandatory to start waiting here to let the disk thread
             // fill the buffers and then continue freewheeling
-            printf("ReadSource::ringbuffer_read: FreeWheeling: Buffer status %s, waiting for buffers to get back in sync\n", QS_C(m_bufferstatus.get_readable_sync_status()));
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: FreeWheeling: Buffer status %s, waiting for buffers to get back in sync", QS_C(m_bufferstatus.get_readable_sync_status()));
             uint counter = 0;
             while(m_bufferstatus.out_of_sync() && (counter < 100000)) {
                 QThread::sleep(std::chrono::nanoseconds(10000));
                 counter++;
             }
             if (m_bufferstatus.out_of_sync()) {
-                printf("ReadSource::ringbuffer_read: FreeWheeling: Buffers still out of sync after 1 second wait, giving up\n");
+                TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: FreeWheeling: Buffers still out of sync after 1 second wait, giving up");
                 return 0;
             } else {
-                printf("ReadSource::ringbuffer_read: Buffers back in sync after %d micro second, continuing processing now\n", counter);
+                TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: Buffers back in sync after %d micro second, continuing processing now", counter);
             }
         }
     }
@@ -576,7 +576,7 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &proc
         // check if this slot or any available is a candidate slot, if not, no need to process the
         // whole queue, instead start a resync
         if ((fileLocation < slotFileLocation) || (fileLocation > lastAvailableSlotFileLocation)) {
-            printf("ReadSource::ringbuffer_read: FileLocation not in queue range: %s (%s - %s)\n",
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: FileLocation not in queue range: %s (%s - %s)",
                    QS_C(TTimeRef::timeref_to_ms_3(fileLocation)),
                    QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)),
                    QS_C(TTimeRef::timeref_to_ms_3(lastAvailableSlotFileLocation)));
@@ -587,7 +587,7 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &proc
             break;
         }
 
-        printf("ReadSource::rb_read: Skipping slot %d, location %s\n",
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::rb_read: Skipping slot %d, location %s",
                slot->get_slot_number(), QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)));
 
         m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots

@@ -94,7 +94,7 @@ void TSnapList::update_snaplist_algorithm()
     m_isDirty = false;
 
     auto totaltime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
-    printf("SnapList::update_snaplist_algorithm completed in: %ld ns\n", totaltime);
+    TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "SnapList::update_snaplist_algorithm completed in: %ld ns", totaltime);
 }
 
 TRichSnapResult TSnapList::get_snap_context(const TTimeRef& mouseLocation, qint64 scaleFactor, SnapFilters activeFilters)

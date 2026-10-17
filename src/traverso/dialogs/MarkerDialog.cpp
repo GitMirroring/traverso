@@ -20,6 +20,7 @@
 */
 
 #include "MarkerDialog.h"
+#include "Debugger.h"
 
 #include <QMessageBox>
 #include <QHeaderView>
@@ -475,7 +476,7 @@ void MarkerDialog::export_toc()
 
 	// check if the selected file can be opened for writing
 	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-		printf("Could not open file for writing.");
+		TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not open file for writing.");
 		return;
 	}
 

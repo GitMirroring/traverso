@@ -664,7 +664,7 @@ QStringList TProjectManager::get_projects_list()
                 QFile file(fileToOpen);
 
                 if (!file.open(QIODevice::ReadOnly)) {
-                        PWARN(QString("ProjectManager:: Cannot open project properties file (%1)").arg(fileToOpen).toLatin1().data());
+                        TLOG_D("project", "not a project directory, no properties file: {}", fileToOpen);
                         continue;
                 }
 

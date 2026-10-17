@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "ClipTileCache.h"
+#include "Debugger.h"
 #include <QElapsedTimer>
 
 QElapsedTimer referenceTimer;
@@ -106,7 +107,7 @@ void ClipTileCache::invalidate_clip_range(TAudioClip* clip, int zoom, qreal star
         const ClipTile& tile = it.value();
         if (tile.zoom == zoom) {
             if (end > tile.startX && start < tile.startX + ClipTileWidth) {
-                if (m_tileRefs.remove(it.value().lastAccessed) == 0) printf("tile not removed 1\n");
+                if (m_tileRefs.remove(it.value().lastAccessed) == 0) TLOG_D("tiles", "tile not removed (1)");
                 it = m_tiles[clip].erase(it);
                 m_numTiles--;
             } else {
@@ -114,7 +115,7 @@ void ClipTileCache::invalidate_clip_range(TAudioClip* clip, int zoom, qreal star
             }
         }
         else {
-            if (m_tileRefs.remove(it.value().lastAccessed) == 0) printf("tile not removed 2\n");
+            if (m_tileRefs.remove(it.value().lastAccessed) == 0) TLOG_D("tiles", "tile not removed (2)");
             it = m_tiles[clip].erase(it);
             m_numTiles--;
         }

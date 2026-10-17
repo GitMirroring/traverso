@@ -215,8 +215,8 @@ int TPeak::read_header()
 
         if (fileModTime > peakModTime) {
             PERROR("Source and Peak file modification time do not match");
-            printf("SourceFile modification time is %s\n", fileModTime.toString().toLatin1().data());
-            printf("PeakFile modification time is %s\n", peakModTime.toString().toLatin1().data());
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "SourceFile modification time is %s", fileModTime.toString().toLatin1().data());
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "PeakFile modification time is %s", peakModTime.toString().toLatin1().data());
             return -1;
         }
 
@@ -234,7 +234,7 @@ int TPeak::read_header()
                 (data->headerdata.label[5]!='F') ||
                 (data->headerdata.version[0] != PEAKFILE_MAJOR_VERSION) ||
                 (data->headerdata.version[1] != PEAKFILE_MINOR_VERSION)) {
-            printf("This file either isn't a Traverso Peak file, or the version doesn't match!\n");
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "This file either isn't a Traverso Peak file, or the version doesn't match!");
             data->file.close();
             return -1;
         }
@@ -752,7 +752,7 @@ audio_sample_t TPeak::get_max_amplitude(const TTimeRef &startlocation, const TTi
 {
     foreach(ChannelData* data, m_channelData) {
         if (!data->file.isOpen() || !m_peaksAvailable) {
-            printf("either the file is not open, or no peak data available\n");
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "either the file is not open, or no peak data available");
             return 0.0f;
         }
     }
@@ -805,7 +805,7 @@ audio_sample_t TPeak::get_max_amplitude(const TTimeRef &startlocation, const TTi
         int read = data->file.read((char*)audioReadBuffer.get_data(buffersize), sizeof(audio_sample_t) * count) / sizeof(audio_sample_t);
 
         if (read != (int)count) {
-            printf("Peak::get_max_amplitude: could only read %d, %d requested\n", read, count);
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Peak::get_max_amplitude: could only read %d, %d requested", read, count);
         }
 
         maxamp = audioReadBuffer.compute_peak(read, maxamp);

@@ -180,7 +180,7 @@ int TPortAudioDriver::host_index_for_host_api(const QString& hostapi)
     }
 
     if (hostIndex >= 0) {
-        printf("PADriver:: Found %s host api\n", QS_C(hostapi));
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "PADriver:: Found %s host api", QS_C(hostapi));
     }
 
     return hostIndex;
@@ -188,7 +188,7 @@ int TPortAudioDriver::host_index_for_host_api(const QString& hostapi)
 
 int TPortAudioDriver::setup(bool capture, bool playback, const QString& deviceInfo)
 {
-    printf("PADriver::setup\n");
+    TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "PADriver::setup");
     // TODO In case of hostapi == "alsa", the callback thread prio needs to be set to realtime.
     // 	there has been some discussion on this on the pa mailinglist, digg it up!
 
@@ -315,7 +315,7 @@ int TPortAudioDriver::setup(bool capture, bool playback, const QString& deviceIn
 
 int TPortAudioDriver::attach()
 {
-    printf("PADriver::attach()\n");
+    TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "PADriver::attach()");
     m_device->set_buffer_size (m_framesPerCycle);
     m_device->set_sample_rate (m_frameRate);
 
@@ -329,7 +329,7 @@ int TPortAudioDriver::start( )
 {
     PENTER;
 
-    printf("PADriver::start()\n");
+    TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "PADriver::start()");
 
     PaError err = Pa_StartStream( m_paStream );
 

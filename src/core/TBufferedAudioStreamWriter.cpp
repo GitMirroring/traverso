@@ -129,7 +129,7 @@ nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessCallBackData &pro
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
-            printf("WriteSource::ringbuffer_write: Failed to write to rt buffer queue\n");
+            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "WriteSource::ringbuffer_write: Failed to write to rt buffer queue");
             return 0;
         }
 

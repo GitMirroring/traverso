@@ -280,6 +280,8 @@ void TCommand::process_command(TCommand * cmd)
 {
 	Q_ASSERT(cmd);
 
+    TLOG_D("action", "command {}", cmd->text());
+
     if (cmd->prepare_actions() != -1) {
 		cmd->set_valid(true);
 		if (cmd->push_to_history_stack() < 0) {

@@ -139,7 +139,7 @@ void CDWritingDialog::query_devices()
 {
 	PENTER;
 	if ( ! (m_burnprocess->state() == QProcess::NotRunning) ) {
-		printf("query_devices: burnprocess still running!\n");
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "query_devices: burnprocess still running!");
 		return;
 	}
 	
@@ -411,7 +411,7 @@ void CDWritingDialog::write_to_cd()
 	
 	arguments << m_exportSpec->tocFileName;
 	
-	printf("%s arguments: %s\n", QS_C(burnprogram), QS_C(arguments.join(" ")));
+	TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "%s arguments: %s", QS_C(burnprogram), QS_C(arguments.join(" ")));
 
 #if defined (Q_OS_MAC)
 	m_burnprocess->start(qApp->applicationDirPath() + "/cdrdao", arguments);
@@ -480,7 +480,7 @@ void CDWritingDialog::read_standard_output()
 				continue;
 			}
 			
-			printf("%s\n", data.data());
+			TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "%s", data.data());
 			
 			if (data.contains("trying to open")) {
 				update_cdburn_status(tr("Trying to access CD Writer ..."), NORMAL_MESSAGE);
@@ -614,7 +614,7 @@ void CDWritingDialog::read_standard_output()
 	}
 	
 	// Write out only the unhandled cdrdao lines
-	printf("CD Writing: %s\n", QS_C(sout.trimmed()));
+	TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "CD Writing: %s", QS_C(sout.trimmed()));
 }
 
 void CDWritingDialog::closeEvent(QCloseEvent * event)

@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "ExternalProcessingDialog.h"
+#include "Debugger.h"
 
 #include "AudioClipExternalProcessing.h"
 
@@ -201,11 +202,11 @@ void ExternalProcessingDialog::process_finished(int exitcode, QProcess::ExitStat
 	
 	QString result = m_processor->readAllStandardOutput();
 	// print anything on command line we didn't catch
-	printf("output: \n %s", QS_C(result));
+	TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "output:  %s", QS_C(result));
 		
 	TBufferedAudioStreamReader* source = resources_manager()->import_source(dir, m_filename);
 	if (!source) {
-		printf("ResourcesManager didn't return a ReadSource, most likely sox didn't understand your command\n");
+		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ResourcesManager didn't return a ReadSource, most likely sox didn't understand your command");
 		return rejected();
 	}
 		

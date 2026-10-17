@@ -51,7 +51,7 @@ TResourcesManager::~TResourcesManager()
 	PENTERDES;
     for(SourceData* data : std::as_const(m_sources)) {
         if (data->clipCount == 0) {
-            printf("Unused source file: %s\n", QS_C(data->stream->get_dir()));
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Unused source file: %s", QS_C(data->stream->get_dir()));
         }
         if (! data->stream->ref()) {
             delete data->stream;
@@ -147,7 +147,7 @@ TBufferedAudioStreamReader* TResourcesManager::import_source(const QString& dir,
 	QString fileName = dir + name;
 	foreach(SourceData* data, m_sources) {
         if (data->stream->get_filename() == fileName) {
-            printf("id is %lld\n", data->stream->get_id());
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "id is %lld", data->stream->get_id());
             return get_readsource(data->stream->get_id());
 		}
 	}

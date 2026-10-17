@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TCurveView.h"
+#include "Debugger.h"
 #include "TSheetView.h"
 #include "TCurveNodeView.h"
 #include <TThemer.h>
@@ -208,7 +209,7 @@ void TCurveView::active_context_changed()
         m_blinkTimer.start(40);
     } else {
         if (ied().is_holding()) {
-            printf("returning in active context changed\n");
+            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "returning in active context changed");
             return;
         }
 

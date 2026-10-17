@@ -81,7 +81,7 @@ static TTimeRef stored_length(const QDomElement& e)
     const double length = e.attribute("range", "0").toDouble(&ok);
 
     if (!ok || !std::isfinite(length) || std::fabs(length) > double(TTimeRef::max_length().universal_frame())) {
-        printf("FadeCurve::set_state: stored range is not a valid length, the fade is off\n");
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "FadeCurve::set_state: stored range is not a valid length, the fade is off");
         return TTimeRef();
     }
 
@@ -186,12 +186,12 @@ void TFadeCurve::set_shape(const QString& shapeName)
         QFile file(":/fadeshapes");
 
         if (!file.open(QIODevice::ReadOnly)) {
-            printf("Could not open fadeshapes file!!\n");
+            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not open fadeshapes file!!");
             return;
         }
         if (!doc.setContent(&file)) {
             file.close();
-            printf("Could not set QDomDocument content!\n");
+            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not set QDomDocument content!");
             return;
         }
         file.close();
@@ -206,7 +206,7 @@ void TFadeCurve::set_shape(const QString& shapeName)
     QDomElement fadeElement = node.firstChildElement(shapeName);
 
     if (fadeElement.isNull()) {
-        printf("%s does not exist?????\n", shapeName.toLatin1().data());
+        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "%s does not exist?????", shapeName.toLatin1().data());
         return;
     }
 

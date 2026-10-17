@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 #include "LV2Plugin.h"
+#include "Debugger.h"
 
 #include "PluginManager.h"
 #include "AudioBus.h"
@@ -226,7 +227,7 @@ int LV2Plugin::create_instance()
 
 	
 	if (! m_plugin) {
-		fprintf(stderr, "Failed to find plugin %s.\n", QS_C(m_pluginUri));
+		TLOG_W("lv2", "failed to find plugin {}", m_pluginUri);
 		return -1;
 	}
 	
@@ -235,7 +236,7 @@ int LV2Plugin::create_instance()
     m_instance = lilv_plugin_instantiate(m_plugin, samplerate, nullptr);
 
 	if (! m_instance) {
-		printf("Failed to instantiate plugin.\n");
+		TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Failed to instantiate plugin.");
 		return -1;
 	} else {
 // 		printf("Succesfully instantiated plugin.\n\n");
