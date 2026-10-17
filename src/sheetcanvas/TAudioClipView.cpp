@@ -135,8 +135,14 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
         // so return here nothing to be done
         return;
     }
+    // While recording the bounding rect is reserved ahead of the clip's
+    // length (see update_recording()); everything is drawn within the length
+    const QRectF extent = m_clip->recording_state() == TAudioClip::RECORDING
+        ? QRectF(0, 0, m_clip->get_length() / m_sv->timeref_scalefactor, m_height)
+        : m_boundingRect;
+
     painter->save();
-    painter->setClipRect(m_boundingRect);
+    painter->setClipRect(extent);
     painter->setRenderHint(QPainter::TextAntialiasing);
 
     QRectF fillRect = QRectF(xstart, 0.0, pixelcount, qreal(m_height));
@@ -216,7 +222,7 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
 
     // Draw the contour
     painter->setPen(themer()->get_color("AudioClip:contour"));
-    painter->drawRect(m_boundingRect.adjusted(0.0, 0, -0.5, -0.5));
+    painter->drawRect(extent.adjusted(0.0, 0, -0.5, -0.5));
 
     // Paint a pixmap if the clip is locked
     if (m_clip->is_locked()) {
@@ -821,8 +827,9 @@ void TAudioClipView::start_recording()
 {
     m_oldRecordingPos = TTimeRef();
     connect(&m_recordingTimer, &QTimer::timeout, this, &TAudioClipView::update_recording);
-    // Only the newly recorded strip is repainted per tick, so this is cheap
-    m_recordingTimer.start(100);
+    // The same cadence as the play head (TPlayHeadView), so the waveform's
+    // end keeps up with it; a tick paints only the strip that is new
+    m_recordingTimer.start(20);
 }
 
 void TAudioClipView::finish_recording()
@@ -840,12 +847,23 @@ void TAudioClipView::update_recording()
         return;
     }
 
-    TTimeRef newPos = m_clip->get_length();
-    m_boundingRect = QRectF(0, 0, (newPos / m_sv->timeref_scalefactor), m_height);
+    const TTimeRef newPos = m_clip->get_length();
+    const int oldPixel = int(m_oldRecordingPos / m_sv->timeref_scalefactor);
+    const int newPixel = int(newPos / m_sv->timeref_scalefactor);
+    if (newPixel <= oldPixel) {
+        return;
+    }
 
-    int updatewidth = int((newPos - m_oldRecordingPos) / m_sv->timeref_scalefactor);
-    QRect updaterect = QRect(int(m_oldRecordingPos / m_sv->timeref_scalefactor) - 1, 0, updatewidth + 1, m_height);
-    update(updaterect);
+    // A geometry change makes the scene repaint the whole item, so the
+    // bounding rect is reserved a minute ahead and only grows now and then;
+    // paint() draws within the clip's length
+    if (newPixel >= m_boundingRect.width()) {
+        prepareGeometryChange();
+        const qreal reserve = TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE / qreal(m_sv->timeref_scalefactor);
+        m_boundingRect = QRectF(0, 0, newPixel + reserve, m_height);
+    }
+
+    update(QRectF(oldPixel - 2, 0, newPixel - oldPixel + 3, m_height));
     m_oldRecordingPos = newPos;
 }
 
