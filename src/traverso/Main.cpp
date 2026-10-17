@@ -36,6 +36,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TMainWindow.h"
 #include "TShortCutManager.h"
 #include "Debugger.h"
+#include "TLog.h"
+#include <QStandardPaths>
 
 Traverso* traverso;
 
@@ -64,29 +66,38 @@ int main( int argc, char **argv )
 	signal(SIGINT, catch_signal);
 #endif
 
-	TraversoDebugger::set_debug_level(TraversoDebugger::OFF);
+	// The session log is always written; stderr too in developer builds
+	QString logDirectory = QStandardPaths::writableLocation(QStandardPaths::StateLocation);
+#ifdef TRAVERSO_DEV_LOG
+	bool logToStderr = true;
+#else
+	bool logToStderr = false;
+#endif
 	if (argc > 1) {
 		for (int i=1; i<argc; i++) {
-			if (strcmp(argv[i],"--d1")==0)
-					TraversoDebugger::set_debug_level(TraversoDebugger::BASIC);
-			if (strcmp(argv[i],"--d2")==0)
-					TraversoDebugger::set_debug_level(TraversoDebugger::FLOOD);
-			if (strcmp(argv[i],"--d3")==0)
-					TraversoDebugger::set_debug_level(TraversoDebugger::SUPER_FLOOD);
-			if (strcmp(argv[i],"--d4")==0)
-					TraversoDebugger::set_debug_level(TraversoDebugger::ALL);
-			if (strcmp(argv[i],"--log")==0)
-					TraversoDebugger::create_log("traverso.log");
+			if (strncmp(argv[i], "--log-level=", 12) == 0) {
+				TLogLevel level;
+				if (TLog::level_from_name(argv[i] + 12, level)) {
+					TLog::set_level(level);
+				} else {
+					printf("Unknown log level '%s', use error, warning, info, debug or trace\n", argv[i] + 12);
+					return 1;
+				}
+			}
+			if (strcmp(argv[i],"--log-stderr")==0)
+					logToStderr = true;
+			if (strcmp(argv[i],"--no-log-stderr")==0)
+					logToStderr = false;
+			if (strncmp(argv[i], "--log-dir=", 10) == 0)
+					logDirectory = QString::fromLocal8Bit(argv[i] + 10);
 			if ((strcmp(argv[i],"--help")==0) || (strcmp(argv[i],"-h")==0)) {
 				printf("\nUsage: traverso [OPTIONS]\n\n");
 				printf("Valid OPTIONS are :\n\n");
 				printf("\t--help or -h \t This help text\n");
 				printf("\t -v   \t\t Print version number\n");
-				printf("\t--d1  \t\t Set debug level to 1 (BASIC)\n");
-				printf("\t--d2  \t\t Set debug level to 2 (FLOOD)\n");
-				printf("\t--d3  \t\t Set debug level to 3 (SUPER_FLOOD)\n");
-				printf("\t--d4  \t\t Set debug level to 4 (ALL)\n");
-				printf("\t--log \t\t Create a ~/traverso.log file instead of dumping debug messages to stdout\n");
+				printf("\t--log-level=LEVEL\t error, warning, info (default), debug or trace (the last two in developer builds)\n");
+				printf("\t--log-stderr / --no-log-stderr\t Also write the log to stderr (default in developer builds)\n");
+				printf("\t--log-dir=DIR\t\t Directory of traverso.log (default: the state directory, e.g. ~/.local/state/Traverso)\n");
 				printf("\t--show-compile-options\t\t Print options used during compilation\n");
                                 printf("\t--fft-meter   \t\t Start Traverso as a Spectral Analyzer\n");
                                 printf("\t--dump-shortcut-table FILE\t Write the shortcut resolution table to FILE and quit\n");
@@ -103,9 +114,11 @@ int main( int argc, char **argv )
 			}
 		}
 	}
-	PENTER;
-
 	traverso = new Traverso(argc, argv);
+
+	TLog::name_thread("gui");
+	TLog::start(logDirectory, logToStderr, VERSION);
+	TLOG_I("app", "log file {}", TLog::file_name());
 
 	// Writes the shortcut resolution table for both built-in keymaps and quits,
 	// used to verify that shortcut handling keeps behaving the same
@@ -165,7 +178,8 @@ int main( int argc, char **argv )
 	
 	delete traverso;
 
-	printf("Thank you for using Traverso !\n");
+	TLOG_I("app", "Thank you for using Traverso !");
+	TLog::stop();
 	return 0;
 }
 

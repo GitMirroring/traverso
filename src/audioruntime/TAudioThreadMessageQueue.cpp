@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  */
 void TAudioThreadMessageQueueThread::run()
 {
+    TLog::name_thread("mq");
     while (tsmp().m_running) {
         tsmp().process_processed_events_by_rt_thread_queue();
     }
@@ -73,7 +74,7 @@ TAudioThreadMessageQueue::TAudioThreadMessageQueue()
  */
 TAudioThreadMessageQueue::~TAudioThreadMessageQueue()
 {
-    printf("TAudioThreadMessageQueue dropped real time events: %d\n", m_droppedRtEvents.load());
+    TLOG_I("mq", "dropped real time events: {}", m_droppedRtEvents.load());
 
     m_running = false;
 

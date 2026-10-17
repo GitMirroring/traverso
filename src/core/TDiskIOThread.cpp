@@ -86,6 +86,7 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 
 void TDiskIOThread::run()
 {
+    TLog::name_thread("diskio");
 #if defined(Q_OS_LINUX)
     // struct sched_param param;
     // param.sched_priority = 40;
@@ -105,7 +106,7 @@ void TDiskIOThread::run()
             ioprio = syscall (__NR_ioprio_get, IOPRIO_WHO_PROCESS, getpid());
             ioprio_class = ioprio >> IOPRIO_CLASS_SHIFT;
             ioprio = ioprio & IOPRIO_PRIO_MASK;
-            printf("DiskIOThread: Using prioritized disk I/O using %s prio %d (Only effective with the cfq scheduler)\n", to_prio[ioprio_class], ioprio);
+            TLOG_I("diskio", "prioritized disk I/O: {} prio {} (only effective with the cfq scheduler)", to_prio[ioprio_class], ioprio);
         }
     }
 #endif
@@ -114,7 +115,7 @@ void TDiskIOThread::run()
 
     }
 
-    printf("DiskIO::run(): bye\n");
+    TLOG_I("diskio", "stopped");
 
 }
 
@@ -214,7 +215,7 @@ bool TDiskIOThread::do_work( )
     const TTimeRef transportLocation = m_transportLocation;
 
     if (seekRequested) {
-        printf("DiskIO::do_work: Seek requested, starting seek now\n");
+        TLOG_D("diskio", "seek requested, seeking");
     }
 
     QtConcurrent::blockingMap(m_bufferedAudioStreams, [this, seekRequested, bufferSize, sampleRateChanged, outputSampleRate, resampleQuality, seekTransportLocation, transportLocation](TBufferedAudioStream* stream) {
@@ -364,7 +365,7 @@ void TDiskIOThread::set_resample_quality(int quality)
 
 void TDiskIOThread::set_output_sample_rate(uint outputSampleRate)
 {
-    printf("DiskIO::set_output_sample_rate: new sample rate %d\n", outputSampleRate);
+    TLOG_I("diskio", "output sample rate {}", outputSampleRate);
     m_outputSampleRate = outputSampleRate;
     m_sampleRateChanged = true;
 }

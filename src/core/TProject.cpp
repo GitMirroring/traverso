@@ -1229,7 +1229,7 @@ int TProject::export_project()
         }
 
         if (!exportRangeAvailable) {
-            printf("No export range available for Sheet %s\n", QS_C(sheet->get_name()));
+            TLOG_W("export", "no export range for sheet {}", sheet->get_name());
             return -1;
         }
 
@@ -1240,12 +1240,12 @@ int TProject::export_project()
         sheet->set_transport_location(m_exportSpecification->get_export_start_location());
 
         while (sheet->get_transport_location() != m_exportSpecification->get_export_start_location()) {
-            printf("Export: waiting on Sheet seek to finish\n");
+            TLOG_D("export", "waiting for the sheet's seek to finish");
             usleep(100 * 1000);
             qApp->processEvents();
         }
 
-        printf("Export: Sheet finished seeking\n");
+        TLOG_D("export", "the sheet finished seeking");
 
         sheet->set_recordable_and_start_transport();
 

@@ -269,8 +269,10 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
 {
     nframes_t left;
 
+    TLog::set_audio_cycle(m_cycleCount.load(std::memory_order_relaxed) + 1);
+
     if (nframes != m_bufferSize) {
-        printf ("late driver wakeup: nframes to process = %d\n", nframes);
+        TLOG_RT_W("audio", "late driver wakeup: {} frames to process instead of {}", nframes, m_bufferSize);
     }
 
     // Apply what the GUI posted before processing, so the cycle sees the
@@ -365,8 +367,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
             m_driverType = m_setup.get_driver_type();
             m_driver->attach();
         } else {
-                 printf("AudioDevice:set_parameters: Failed to setup driver %s, falling back to Dummy Driver\n",
-                     QS_C(m_setup.get_driver_type()));
+            TLOG_W("device", "failed to set up driver {}, falling back to the Dummy driver", m_setup.get_driver_type());
             delete m_driver;
             m_driver = nullptr;
             set_parameters(fallback_setup());
@@ -383,7 +384,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     if (m_driver->runs_in_blocking_mode()) {
 
-        printf("AudioDevice: Starting Audio Thread ... ");
+        TLOG_I("device", "starting the audio thread for driver {}, {} Hz, {} frames", m_driverType, m_rate, m_bufferSize);
 
 
         bool realTime = false;
@@ -427,7 +428,7 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
             TPipeWireDriver* pwDriver = qobject_cast<TPipeWireDriver*>(m_driver);
             if (pwDriver) {
                 connect(pwDriver, &TPipeWireDriver::pipewireShutDown, this, [this]() {
-                    printf("pipewire shutdown detected\n");
+                    TLOG_W("device", "PipeWire shut down");
                     driver_setup_message("PipeWire", tr("The PipeWire server has been shutdown!"), CRITICAL);
                     delete m_driver;
                     m_driver = nullptr;
@@ -531,7 +532,7 @@ void TAudioDevice::create_driver()
 
 
     if (driverType == "Dummy") {
-        printf("AudioDevice: Creating Dummy Driver...\n");        
+        TLOG_I("device", "creating the Dummy driver");
         m_driver = new TAudioDriver(this);
         driver_setup_message("Dummy Driver", tr("Started successfully"), TAudioDevice::DRIVER_SETUP_SUCCESS);
         return;
@@ -641,7 +642,7 @@ int TAudioDevice::shutdown( )
         // Wait until the audioThread has finished execution. One second
         // should do, if it's still running then, the thread must have gone wild or something....
         if (m_audioThread->isRunning()) {
-            printf("AudioDevice: Starting to shutdown Audio Thread ... \n");
+            TLOG_I("device", "stopping the audio thread");
             r = m_audioThread->wait(1000);
         }
 
@@ -746,7 +747,7 @@ void TAudioDevice::remove_jack_channel(AudioChannel *channel)
             return;
         }
 
-        printf("removing channel from jackdriver\n");
+        TLOG_D("device", "removing channel from the JACK driver");
         jackdriver->remove_channel(channel);
     }
 #else
@@ -891,7 +892,7 @@ void TAudioDevice::remove_client( TAudioDeviceClient * client )
     PENTER;
 
     if (!m_clients.gui_items().contains(client)) {
-        printf("AudioDevice:: Client was not in clients list, failed to remove it!\n");
+        TLOG_W("device", "client {} was not in the clients list, failed to remove it", client->m_name);
         return;
     }
 
@@ -1005,7 +1006,7 @@ void TAudioDevice::check_jack_shutdown()
         if (jackdriver) {
             if ( ! jackdriver->is_running()) {
                 jackShutDownChecker.stop();
-                printf("jack shutdown detected\n");
+                TLOG_W("device", "JACK shut down");
                 driver_setup_message("Jack", tr("The Jack server has been shutdown!"), CRITICAL);
                 delete m_driver;
                 m_driver = nullptr;

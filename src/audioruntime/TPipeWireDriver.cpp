@@ -298,6 +298,7 @@ int TPipeWireDriver::stop()
 // Called in RT thread from PipeWire server
 int TPipeWireDriver::process_callback()
 {
+    TLog::name_thread("audio");
     m_runCycleStartTime = TTimeRef::get_nanoseconds_since_epoch();
     m_device->set_transport_cycle_start_time(m_runCycleStartTime);
 

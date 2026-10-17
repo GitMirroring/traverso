@@ -511,14 +511,14 @@ int TAudioClip::process(TProcessCallBackData &processData)
     if (startLocation < m_location->get_start()) {
         offset = TTimeRef::to_frame(m_location->get_start() - startLocation, outputRate);
         framesToProcess -= offset;
-        printf("framesToProcess %d\n", framesToProcess);
+        TLOG_RT_D("clip", "frames to process {}", framesToProcess);
         Q_ASSERT(offset < nframes);
         Q_ASSERT(framesToProcess > 0);
     }
 
     fileLocation = (startLocation - m_location->get_start() + m_sourceStartLocation);
     if (offset != 0) {
-        printf("AudioClip: fileLocation using offset is %s, %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
+        TLOG_RT_D("clip", "file location with offset {}", offset);
     }
 
     if (m_location->get_end() < endLocation) {
@@ -536,7 +536,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
     }
 
     if (readFrames != framesToProcess) {
-        std::cout << QString("AudioClip::process(): readFrames %1, framesToProcess %2").arg(readFrames).arg(framesToProcess).toLatin1().data() << &std::endl;
+        TLOG_RT_W("clip", "read {} frames of the {} to process", readFrames, framesToProcess);
     }
 
     for (TFadeCurve* fade : m_fades.rt_items()) {
@@ -581,7 +581,7 @@ void TAudioClip::process_capture(TProcessCallBackData &processData)
 
     nframes_t toWrite = processData.get_nframes_to_process();
     if (written != toWrite) {
-        printf("AudioClip::process_capture: couldn't write nframes %d to recording buffer for channel 0, only %d\n", toWrite, written);
+        TLOG_RT_W("clip", "recording buffer: could only write {} of {} frames", written, toWrite);
     }
 }
 
@@ -595,7 +595,7 @@ int TAudioClip::init_recording()
 
     if (channelcount == 0) {
         // Can't record from a Bus with no channels!
-        printf("AudioClip::init_recording(): Track input bus has zero channels, not recording\n");
+        TLOG_W("clip", "the track's input bus has no channels, not recording");
         return -1;
     }
 
@@ -639,7 +639,7 @@ int TAudioClip::init_recording()
 
     m_writer = new TBufferedAudioStreamWriter(spec->get_export_dir(), spec->get_export_file_name());
     if (m_writer->prepare_export(spec) == -1) {
-        printf("AudioClip::init_recording(): WriteSource prepare_export() failed\n");
+        TLOG_E("clip", "preparing the write source for recording failed");
         delete m_writer;
         m_writer = nullptr;
         delete spec;

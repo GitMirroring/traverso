@@ -73,7 +73,7 @@ else()
     set(DEFAULT_TRAVERSO_DEBUG OFF)
 endif()
 
-option(WANT_TRAVERSO_DEBUG "Provides 4 levels of debug output on the command line" ${DEFAULT_TRAVERSO_DEBUG})
+option(WANT_TRAVERSO_DEBUG "Developer log: debug and trace messages (--log-level), nothing in user builds" ${DEFAULT_TRAVERSO_DEBUG})
 
 # ---------------------------------------------------------------------------
 # 3. Centralized Interface Target Configuration (MUST BE BEFORE DEPENDENCIES)
@@ -92,7 +92,7 @@ if(WIN32)
 endif()
 
 if(WANT_TRAVERSO_DEBUG)
-    target_compile_definitions(traverso_compiler_settings INTERFACE USE_DEBUGGER)
+    target_compile_definitions(traverso_compiler_settings INTERFACE TRAVERSO_DEV_LOG)
 endif()
 
 # ---------------------------------------------------------------------------

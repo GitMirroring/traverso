@@ -503,7 +503,7 @@ int TSheet::process(TProcessCallBackData &processData)
     m_writeDiskIO->wakeup();
 
     if (transport_locate_requested()) {
-        printf("Sheet::process: starting seek\n");
+        TLOG_RT_D("transport", "starting the seek");
         rt_inititate_seek();
         return 0;
     }
@@ -626,7 +626,7 @@ QList<TTimeLineEntity *> TSheet::get_all_active_timeline_entities() const
 QString TSheet::get_audio_sources_dir() const
 {
     if (m_audioSourcesDir.isEmpty() || m_audioSourcesDir.isNull()) {
-        printf("no audio sources dir set, returning projects one\n");
+        TLOG_D("sheet", "no audio sources dir set, returning the project's");
         return m_project->get_audiosources_dir();
     }
 
@@ -648,7 +648,7 @@ void TSheet::set_audio_sources_dir(const QString &dir)
     QDir asDir;
 
     if (!asDir.exists(m_audioSourcesDir)) {
-        printf("creating new audio sources dir: %s\n", dir.toLatin1().data());
+        TLOG_I("sheet", "creating audio sources dir {}", dir);
         if (!asDir.mkdir(m_audioSourcesDir)) {
             tInformUser().critical(tr("Cannot create dir %1").arg(m_audioSourcesDir));
         }
@@ -751,13 +751,13 @@ int TSheet::transport_control(TTransportControl *transportControl)
         return true;
 
     case TTransportControl::TransportStarting:
-        printf("Sheet::transport_control: TransportStarting\n");
+        TLOG_RT_I("transport", "starting");
         if (transportControl->get_location() != m_transportLocation) {
             initiate_seek_start(transportControl->get_location());
             return false;
         }
         if (is_seeking()) {
-            printf("Sheet::transport_control: Tranport Starting: Still seeking");
+            TLOG_RT_D("transport", "starting: still seeking");
             return false;
         }
         if (is_recording())
@@ -773,14 +773,14 @@ int TSheet::transport_control(TTransportControl *transportControl)
                     .rtTask = nullptr,
                     .guiCallback = [this]() { emit prepareRecording(); }
                 });
-                printf("Sheet::transport_control: Transport Starting: posting 'prepareRecording()' signal to TSMP\n");
+                TLOG_RT_D("transport", "starting: asking the GUI thread to prepare the recording");
                 return false;
             }
             if (!m_readyToRecord) {
                 PMESG("transport starting: still preparing for record");
                 return false;
             }
-            printf("Sheet::transort_starting: Transport Starting: Ready for recording\n");
+            TLOG_RT_I("transport", "starting: ready for recording");
         }
         PMESG("tranport starting: seek finished");
         return true;
@@ -808,7 +808,7 @@ int TSheet::transport_control(TTransportControl *transportControl)
 void TSheet::initiate_seek_start(TTimeRef location)
 {
     if (is_seeking()) {
-        printf("Seeking is already true, not starting seek again\n");
+        TLOG_RT_D("transport", "already seeking, not starting the seek again");
         return;
     }
 
@@ -845,9 +845,7 @@ void TSheet::seek_finished()
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "Sheet::seek_finished", "Called from other Thread!");
 
     m_transportLocation  = m_seekTransportLocation;
-    printf("Sheet::seek_finished: Transport Location is now %s (Sheet: %s)\n",
-           QS_C(TTimeRef::timeref_to_ms_3(m_transportLocation)),
-           QS_C(get_name()));
+    TLOG_I("transport", "seek finished, transport at {} ({})", TTimeRef::timeref_to_ms_3(m_transportLocation), get_name());
     set_transport_seeking_state(false);
 
     if (m_resumeTransport) {
@@ -990,7 +988,7 @@ void TSheet::set_transport_location(TTimeRef location)
         return;
     }
 
-    printf("Sheet::set_transport_location: set transport to: %s\n", QS_C(TTimeRef::timeref_to_ms_3(location)));
+    TLOG_I("transport", "locate to {}", TTimeRef::timeref_to_ms_3(location));
     audiodevice().transport_locate(m_audiodeviceClient, location);
 }
 

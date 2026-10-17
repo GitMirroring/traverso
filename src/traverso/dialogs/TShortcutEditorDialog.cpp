@@ -38,7 +38,7 @@ TShortcutEditorDialog::TShortcutEditorDialog(QWidget *parent)
 
 	ui->upPushButton->hide();
 	ui->downPushButton->hide();
-#ifdef USE_DEBUGGER
+#ifdef TRAVERSO_DEV_LOG
 	ui->upPushButton->show();
 	ui->downPushButton->show();
 #endif

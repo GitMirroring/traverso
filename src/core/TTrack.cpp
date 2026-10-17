@@ -142,7 +142,7 @@ int TTrack::set_state( const QDomNode & node )
             TSend* send = new TSend(this);
             if (send->set_state(sendNode) < 0) {
                 // This send could not set it's state...
-                printf("Track::set_state: Send could not properly restore it's state, moving on..\n");
+                TLOG_W("track", "a send could not restore its state, moving on");
                 delete send;
             } else {
                 if (send->get_type() == TSend::POSTSEND) {
@@ -167,7 +167,7 @@ int TTrack::set_state( const QDomNode & node )
         if (m_session && project) {
             qint64 sendBusId;
             if (m_name == "Sheet Master") {
-                printf("Sheet Master getting project bus id\n");
+                TLOG_D("track", "sheet master gets the project bus id");
                 sendBusId = project->get_master_out_bus_track()->get_id();
             } else {
                 sendBusId = m_session->get_master_out_bus_track()->get_id();
@@ -301,7 +301,7 @@ void TTrack::add_post_send(qint64 busId)
     for (TSend* send : m_postSends.gui_items()) {
 
         if (send->get_bus_id() == busId) {
-            printf("Track %s already has this bus (bus id: %lld) as Post Send\n", m_name.toLatin1().data(), busId);
+            TLOG_W("track", "track {} already has bus {} as post send", m_name, busId);
             return;
         }
     }
@@ -310,7 +310,7 @@ void TTrack::add_post_send(qint64 busId)
     AudioBus* bus = project->get_audio_bus(busId);
 
     if (!bus) {
-        printf("bus with id %lld could not be found by project!\n", busId);
+        TLOG_W("track", "bus {} not found in the project", busId);
         return;
     }
 
@@ -335,7 +335,7 @@ void TTrack::add_pre_send(qint64 busId)
 {
     for (TSend* send : m_preSends.gui_items()) {
         if (send->get_bus_id() == busId) {
-            printf("Track %s already has this bus (bus id: %lld) as Pre Send\n", m_name.toLatin1().data(), busId);
+            TLOG_W("track", "track {} already has bus {} as pre send", m_name, busId);
             return;
         }
     }
@@ -344,7 +344,7 @@ void TTrack::add_pre_send(qint64 busId)
     AudioBus* bus = project->get_audio_bus(busId);
 
     if (!bus) {
-        printf("bus with id %lld could not be found by project!\n", busId);
+        TLOG_W("track", "bus {} not found in the project", busId);
         return;
     }
 

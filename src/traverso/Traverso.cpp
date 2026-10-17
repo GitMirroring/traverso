@@ -136,7 +136,7 @@ void Traverso::init_sse()
 
 #if defined(__SSE__) && defined(SSE_OPTIMIZATIONS)
     if (fpu.has_sse()) {
-        printf("Using SSE optimized routines\n");
+        TLOG_I("app", "Using SSE optimized routines");
 
         Mixer::compute_peak           = x86_sse_compute_peak;
         Mixer::apply_gain_to_buffer   = x86_sse_apply_gain_to_buffer;
@@ -152,7 +152,7 @@ void Traverso::init_sse()
     Mixer::mix_buffers_no_gain    = accel_mix_buffers_no_gain;
     generic_mix_functions = false;
 
-    printf("Apple Accelerate/vDSP H/W specific optimizations in use\n");
+    TLOG_I("app", "Apple Accelerate/vDSP H/W specific optimizations in use");
 #endif
 
     setup_fpu();
@@ -163,14 +163,14 @@ void Traverso::init_sse()
         Mixer::mix_buffers_with_gain  = default_mix_buffers_with_gain;
         Mixer::mix_buffers_no_gain    = default_mix_buffers_no_gain;
 
-        printf("No Hardware specific optimizations in use\n");
+        TLOG_I("app", "No Hardware specific optimizations in use");
     }
 }
 
 void Traverso::setup_fpu()
 {
     if (getenv("TRAVERSO_RUNNING_UNDER_VALGRIND")) {
-        printf("TRAVERSO_RUNNING_UNDER_VALGRIND=TRUE\n");
+        TLOG_I("app", "TRAVERSO_RUNNING_UNDER_VALGRIND=TRUE");
         return;
     }
 

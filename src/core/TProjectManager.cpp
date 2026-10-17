@@ -519,7 +519,7 @@ void TProjectManager::cleanup_backupfiles_for_project(const QString & projectnam
     QStringList entrylist = dir.entryList(QDir::Files);
 
     if (entrylist.size() > 1000) {
-        printf("more then thousand backup files, deleting oldest 200\n");
+        TLOG_I("project", "more than a thousand backup files, deleting the oldest 200");
 
         foreach (QString file, dir.entryList(QDir::Files)) {
             int separatorPos = file.lastIndexOf("__");
@@ -537,7 +537,7 @@ void TProjectManager::cleanup_backupfiles_for_project(const QString & projectnam
         for(int i=0; i<200; ++i) {
             QFile file(backupdir + "/" + tobedeleted.at(i));
             if ( ! file.remove() ) {
-                printf("Could not remove file %s (Reason: %s)\n", QS_C(tobedeleted.at(i)), QS_C(TFileHelper::fileerror_to_string(file.error())));
+                TLOG_W("project", "could not remove {} ({})", tobedeleted.at(i), TFileHelper::fileerror_to_string(file.error()));
             }
         }
     }
@@ -569,7 +569,7 @@ int TProjectManager::restore_project_from_backup(const QString& projectname, qin
             qint64 fileTime = backup.mid(separatorPos + 2).toLongLong();
             if (fileTime == restoretime) {
                 backupfile = backupDir + "/" + backup;
-                printf("backupfile found: %s\n", QS_C(backupfile));
+                TLOG_D("project", "backup file found: {}", backupfile);
                 break;
             }
         }
@@ -623,7 +623,7 @@ QList<qint64> TProjectManager::get_backup_date_times(const QString& projectname)
         if (ok) {
             dateList.append(date);
         } else {
-            printf("filename: %s is not backupfile made by Traverso, removing it!\n", QS_C(filename));
+            TLOG_W("project", "{} is not a backup file made by Traverso, removing it", filename);
             QFile::remove(backupDir + "/" + filename);
         }
     }

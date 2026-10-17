@@ -101,7 +101,7 @@ int TJackDriver::setup(QList<AudioChannel* > channels, const QString &projectNam
     m_captureFrameLatency = m_playbackFrameLatency =0 ;
 
 
-    printf("Connecting to the Jack server...\n");
+    TLOG_I("jack", "connecting to the JACK server as {}", clientName);
 
     if ( (m_jackClient = jack_client_open(QS_C(clientName), JackNoStartServer, nullptr)) == nullptr) {
         emit driverSetupMessage("Jack", tr("Couldn't connect to the jack server, is jack running?"), TAudioDevice::DRIVER_SETUP_FAILURE);
@@ -130,7 +130,7 @@ void TJackDriver::add_channel(AudioChannel* channel)
     }
 
     if (pcpair->jackport == nullptr) {
-        printf("JackDriver: cannot register port \"%s\"!\n", channel->get_name().toUtf8().data());
+        TLOG_W("jack", "cannot register port \"{}\"", channel->get_name());
         delete pcpair;
         return;
     }
@@ -290,6 +290,7 @@ int TJackDriver::_xrun_callback( void * arg )
 int TJackDriver::_process_callback (nframes_t nframes, void *arg)
 {
     TJackDriver* driver  = static_cast<TJackDriver *> (arg);
+    TLog::name_thread("audio");
     if (!driver->is_running()) {
         return 0;
     }
@@ -324,7 +325,7 @@ void TJackDriver::_freewheel_callback(int starting, void *arg)
     driver->m_isFreeWheeling = ((starting == 1) ? true : false);
     driver->m_device->driver_changed_free_wheel_mode();
 
-    printf("Jack freewheel callback %d\n", starting);
+    TLOG_RT_I("jack", "freewheel callback {}", starting);
 }
 
 void TJackDriver::start_free_wheeling()

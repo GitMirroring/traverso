@@ -85,6 +85,7 @@ TAudioDeviceThread::TAudioDeviceThread(TAudioDevice* device, bool realTime)
 
 void TAudioDeviceThread::run()
 {
+    TLog::name_thread("audio");
     run_on_cpu( 0 );
 
 	
@@ -95,15 +96,15 @@ void TAudioDeviceThread::run()
         become_realtime();
     }
 
-    printf("TAudioDeviceThread: Starting Driver\n");
+    TLOG_RT_I("audio", "starting the driver");
     if (m_device->start_driver() < 0) {
-        printf("TAudioDeviceThread: Starting Driver Failed\n");
+        TLOG_RT_E("audio", "starting the driver failed");
         watchdog.terminate();
 		watchdog.wait();
 		return;
 	}
 
-    printf("TAudioDeviceThread: Running\n");
+    TLOG_RT_I("audio", "running");
 
 	while (m_device->run_audio_thread()) {
         if (m_device->_run_cycle() < 0) {
@@ -116,7 +117,7 @@ void TAudioDeviceThread::run()
 	watchdog.terminate();
 	watchdog.wait();
 
-    printf("TAudioDeviceThread: Bye.\n");
+    TLOG_RT_I("audio", "stopped");
 }
 
 void TAudioDeviceThread::set_real_time(bool realTime)
@@ -140,7 +141,7 @@ int TAudioDeviceThread::become_realtime()
             "Please make sure you run this program with realtime privileges!!!"), TAudioDevice::CRITICAL);
         return -1;
     } else {
-        printf("AudioThread: Running with realtime priority\n");
+        TLOG_RT_I("audio", "running with real-time priority");
         return 1;
     }
 
@@ -166,13 +167,13 @@ void TAudioDeviceThread::run_on_cpu( int cpu )
 		CPU_ZERO(&mask);
 		CPU_SET(cpu, &mask);
 		if (setaffinity_func(0, sizeof(mask), &mask)) {
-            printf("AudioThread: Unable to set CPU affinity\n");
+            TLOG_RT_W("audio", "unable to set the CPU affinity");
 		} else {
-            printf("AudioThread: Running on CPU %d\n", cpu);
+            TLOG_RT_I("audio", "running on CPU {}", cpu);
 		}
 	}
 	else {
-        printf("AudioDevice: Unable to set CPU affinity (glibc is too old)\n");
+        TLOG_RT_W("audio", "unable to set the CPU affinity (glibc is too old)");
 	}
 #else
 	Q_UNUSED(cpu);

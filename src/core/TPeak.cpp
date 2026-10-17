@@ -941,6 +941,7 @@ TPPThread::TPPThread(TPeakProcessor * pp)
 
 void TPPThread::run()
 {
+    TLog::name_thread("peak");
     exec();
 }
 

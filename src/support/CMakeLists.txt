@@ -7,6 +7,7 @@
 
 add_library(traversosupport STATIC
     Debugger.h Debugger.cpp
+    TLog.h TLog.cpp
     Utils.h Utils.cpp
     TTimeRef.h TTimeRef.cpp
     defines.h

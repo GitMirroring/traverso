@@ -107,7 +107,7 @@ int TAlsaDriver::setup(bool capture, bool playback, const QString& devicename, c
     QString pcmName = "default";
     if (devicename != "default") {
         pcmName = QString("hw:%1").arg(devicename);
-        printf(" devicename %s\n", devicename.toLatin1().data());
+        TLog::write_printf(TLogLevel::Info, "alsa", " devicename %s", devicename.toLatin1().data());
     }
 
     int shorts_first = false;
@@ -360,14 +360,14 @@ void TAlsaDriver::setup_io_function_pointers()
             break;
 
         case Triangular:
-            printf("Triangular dithering at 16 bits\n");
+            TLog::write_printf(TLogLevel::Info, "alsa", "Triangular dithering at 16 bits");
             write_via_copy = quirk_bswap?
                         sample_move_dither_tri_d16_sSs:
                         sample_move_dither_tri_d16_sS;
             break;
 
         case Shaped:
-            printf("Noise-shaped dithering at 16 bits\n");
+            TLog::write_printf(TLogLevel::Info, "alsa", "Noise-shaped dithering at 16 bits");
             write_via_copy = quirk_bswap?
                         sample_move_dither_shaped_d16_sSs:
                         sample_move_dither_shaped_d16_sS;
@@ -389,21 +389,21 @@ void TAlsaDriver::setup_io_function_pointers()
 
         switch (m_dither) {
         case Rectangular:
-            printf("Rectangular dithering at 24 bits\n");
+            TLog::write_printf(TLogLevel::Info, "alsa", "Rectangular dithering at 24 bits");
             write_via_copy = quirk_bswap?
                         sample_move_dither_rect_d24_sSs:
                         sample_move_dither_rect_d24_sS;
             break;
 
         case Triangular:
-            printf("Triangular dithering at 24 bits\n");
+            TLog::write_printf(TLogLevel::Info, "alsa", "Triangular dithering at 24 bits");
             write_via_copy = quirk_bswap?
                         sample_move_dither_tri_d24_sSs:
                         sample_move_dither_tri_d24_sS;
             break;
 
         case Shaped:
-            printf("Noise-shaped dithering at 24 bits\n");
+            TLog::write_printf(TLogLevel::Info, "alsa", "Noise-shaped dithering at 24 bits");
             write_via_copy = quirk_bswap?
                         sample_move_dither_shaped_d24_sSs:
                         sample_move_dither_shaped_d24_sS;
@@ -425,21 +425,21 @@ void TAlsaDriver::setup_io_function_pointers()
 
         switch (m_dither) {
         case Rectangular:
-            printf("Rectangular dithering at 32 bits\n");
+            TLog::write_printf(TLogLevel::Info, "alsa", "Rectangular dithering at 32 bits");
             write_via_copy = quirk_bswap?
                         sample_move_dither_rect_d32u24_sSs:
                         sample_move_dither_rect_d32u24_sS;
             break;
 
         case Triangular:
-            printf("Triangular dithering at 16 bits\n");
+            TLog::write_printf(TLogLevel::Info, "alsa", "Triangular dithering at 16 bits");
             write_via_copy = quirk_bswap?
                         sample_move_dither_tri_d32u24_sSs:
                         sample_move_dither_tri_d32u24_sS;
             break;
 
         case Shaped:
-            printf("Noise-shaped dithering at 32 bits\n");
+            TLog::write_printf(TLogLevel::Info, "alsa", "Noise-shaped dithering at 32 bits");
             write_via_copy = quirk_bswap?
                         sample_move_dither_shaped_d32u24_sSs:
                         sample_move_dither_shaped_d32u24_sS;
@@ -497,20 +497,19 @@ int TAlsaDriver::configure_stream(const QString &device_name,
 #define FIRST_16BIT_FORMAT 4
 
     if ((err = snd_pcm_hw_params_any (handle, hw_params)) < 0)  {
-        printf("AlsaDriver: no playback configurations available (%s)\n", snd_strerror (err));
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: no playback configurations available (%s)", snd_strerror (err));
         return -1;
     }
 
     if ((err = snd_pcm_hw_params_set_periods_integer (handle, hw_params))  < 0) {
-        printf("AlsaDriver: cannot restrict period size to integral value.\n");
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot restrict period size to integral value.");
         return -1;
     }
 
     if ((err = snd_pcm_hw_params_set_access (handle, hw_params, SND_PCM_ACCESS_MMAP_NONINTERLEAVED)) < 0) {
         if ((err = snd_pcm_hw_params_set_access (handle, hw_params, SND_PCM_ACCESS_MMAP_INTERLEAVED)) < 0) {
             if ((err = snd_pcm_hw_params_set_access (handle, hw_params, SND_PCM_ACCESS_MMAP_COMPLEX)) < 0) {
-                printf("AlsaDriver: mmap-based access is not possible for the %s "
-                       "stream of this audio interface\n", stream_name);
+                TLog::write_printf(TLogLevel::Warning, "alsa", "mmap-based access is not possible for the %s stream of this audio interface", stream_name);
 
                 emit driverSetupMessage("ALSA", tr("Memory-based access is not possible for Device %1, unable to configure driver").arg(device_name), TAudioDevice::DRIVER_SETUP_FAILURE);
 
@@ -524,8 +523,7 @@ int TAlsaDriver::configure_stream(const QString &device_name,
         if ((err = snd_pcm_hw_params_set_format ( handle, hw_params, formats[format].format)) < 0) {
 
             if (( (sample_width == 4) ? (format++ >= int(NUMFORMATS) - 1) : (format-- <= 0))) {
-                printf("ALSA Driver: Sorry. The audio interface \"%s\" doesn't support any of the"
-                       " hardware sample formats that Traverso's alsa-driver can use.\n", QS_C(device_name));
+                TLog::write_printf(TLogLevel::Warning, "alsa", "the audio interface \"%s\" supports none of the hardware sample formats the ALSA driver can use", QS_C(device_name));
                 return -1;
             }
         } else {
@@ -534,7 +532,7 @@ int TAlsaDriver::configure_stream(const QString &device_name,
             } else {
                 quirk_bswap = 0;
             }
-            printf("AlsaDriver: final selected sample format for %s: %s\n", stream_name, formats[format].Name);
+            TLog::write_printf(TLogLevel::Info, "alsa", "AlsaDriver: final selected sample format for %s: %s", stream_name, formats[format].Name);
             m_device->set_bit_depth(formats[format].bitdepth);
             break;
         }
@@ -542,7 +540,7 @@ int TAlsaDriver::configure_stream(const QString &device_name,
 
     uint requestedFrameRate = m_frameRate;
     if ( (err = snd_pcm_hw_params_set_rate_near (handle, hw_params, &m_frameRate, NULL)) < 0) {
-        printf("AlsaDriver: cannot set sample/frame rate to %d for %s\n", m_frameRate, stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set sample/frame rate to %d for %s", m_frameRate, stream_name);
         return -1;
     }
 
@@ -579,12 +577,12 @@ int TAlsaDriver::configure_stream(const QString &device_name,
     }
 
     if ((err = snd_pcm_hw_params_set_channels (handle, hw_params, *nchns)) < 0) {
-        printf("AlsaDriver: cannot set channel count to %lu for %s\n", *nchns, stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set channel count to %lu for %s", *nchns, stream_name);
         return -1;
     }
     int frperscycle = m_framesPerCycle;
     if ((err = snd_pcm_hw_params_set_period_size (handle, hw_params, m_framesPerCycle, 0)) < 0) {
-        printf("AlsaDriver: cannot set period size to %d frames for %s\n", frperscycle, stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set period size to %d frames for %s", frperscycle, stream_name);
         return -1;
     }
 
@@ -594,27 +592,27 @@ int TAlsaDriver::configure_stream(const QString &device_name,
         *nperiodsp = user_nperiods;
 
     if (snd_pcm_hw_params_set_periods_near (handle, hw_params, nperiodsp, NULL) < 0) {
-        printf("AlsaDriver: cannot set number of periods to %u for %s\n", *nperiodsp, stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set number of periods to %u for %s", *nperiodsp, stream_name);
         return -1;
     }
 
     if (int(*nperiodsp) < user_nperiods) {
-        printf("AlsaDriver: use %d periods for %s\n", *nperiodsp, stream_name);
+        TLog::write_printf(TLogLevel::Info, "alsa", "AlsaDriver: use %d periods for %s", *nperiodsp, stream_name);
         return -1;
     }
 
     if (!TraversoDAW::Utils::is_power_of_two(m_framesPerCycle)) {
-        printf("Traverso: frames must be a power of two (64, 512, 1024, ...)\n");
+        TLog::write_printf(TLogLevel::Warning, "alsa", "Traverso: frames must be a power of two (64, 512, 1024, ...)");
         return -1;
     }
 
     if ((err = snd_pcm_hw_params_set_buffer_size (handle, hw_params,  *nperiodsp * m_framesPerCycle)) < 0) {
-        printf("AlsaDriver: cannot set buffer length to %d for %s\n", *nperiodsp * m_framesPerCycle, stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set buffer length to %d for %s", *nperiodsp * m_framesPerCycle, stream_name);
         return -1;
     }
 
     if ((err = snd_pcm_hw_params (handle, hw_params)) < 0) {
-        printf("AlsaDriver: cannot set hardware parameters for %s\n", stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set hardware parameters for %s", stream_name);
         emit driverSetupMessage("ALSA", tr("Unable to configure device %1, is it in use by another application?").
                                    arg(device_name), TAudioDevice::DRIVER_SETUP_FAILURE);
         return -1;
@@ -623,7 +621,7 @@ int TAlsaDriver::configure_stream(const QString &device_name,
     snd_pcm_sw_params_current (handle, sw_params);
 
     if ((err = snd_pcm_sw_params_set_start_threshold (handle, sw_params, 0U)) < 0) {
-        printf("AlsaDriver: cannot set start mode for %s\n", stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set start mode for %s", stream_name);
         return -1;
     }
 
@@ -633,12 +631,12 @@ int TAlsaDriver::configure_stream(const QString &device_name,
     }
 
     if ((err = snd_pcm_sw_params_set_stop_threshold (handle, sw_params, stop_th)) < 0) {
-        printf("AlsaDriver: cannot set stop mode for %s\n", stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set stop mode for %s", stream_name);
         return -1;
     }
 
     if ((err = snd_pcm_sw_params_set_silence_threshold (handle, sw_params, 0)) < 0) {
-        printf("AlsaDriver: cannot set silence threshold for %s\n", stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set silence threshold for %s", stream_name);
         return -1;
     }
 
@@ -662,12 +660,12 @@ int TAlsaDriver::configure_stream(const QString &device_name,
         err = snd_pcm_sw_params_set_avail_min (handle, sw_params, m_framesPerCycle);
 
     if (err < 0) {
-        printf("AlsaDriver: cannot set avail min for %s\n", stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set avail min for %s", stream_name);
         return -1;
     }
 
     if ((err = snd_pcm_sw_params (handle, sw_params)) < 0) {
-        printf("AlsaDriver: cannot set software parameters for %s\n",	stream_name);
+        TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot set software parameters for %s",	stream_name);
         return -1;
     }
 
@@ -1102,11 +1100,11 @@ int TAlsaDriver::xrun_recovery (float *delayed_usecs)
 
     if (capture_handle) {
         if ((res = snd_pcm_status(capture_handle, status))  < 0) {
-            printf ("status error: %s", snd_strerror(res));
+            TLog::write_printf(TLogLevel::Info, "alsa", "status error: %s", snd_strerror(res));
         }
     } else {
         if ((res = snd_pcm_status(playback_handle, status)) < 0) {
-            printf ("status error: %s", snd_strerror(res));
+            TLog::write_printf(TLogLevel::Info, "alsa", "status error: %s", snd_strerror(res));
         }
     }
 
@@ -1116,7 +1114,7 @@ int TAlsaDriver::xrun_recovery (float *delayed_usecs)
         snd_pcm_status_get_trigger_tstamp(status, &tstamp);
         timersub(&now, &tstamp, &diff);
         *delayed_usecs = diff.tv_sec * 1000000 + diff.tv_usec;
-        printf ("\n**** alsa_pcm: xrun of at least %.3f msecs\n\n", *delayed_usecs / 1000.0);
+        TLog::write_printf(TLogLevel::Info, "alsa", "**** alsa_pcm: xrun of at least %.3f msecs", *delayed_usecs / 1000.0);
         m_device->xrun();
     }
 
@@ -1219,7 +1217,7 @@ again:
         if (poll_result < 0) {
 
             if (errno == EINTR) {
-                printf ("poll interrupt\n");
+                TLog::write_printf(TLogLevel::Info, "alsa", "poll interrupt");
                 // this happens mostly when run
                 // under gdb, or when exiting due to a signal
                 if (under_gdb) {
@@ -1383,7 +1381,7 @@ again:
 void TAlsaDriver::print_alsa_error_messages(QStringList &list)
 {
     for (const QString &string : list) {
-        printf("ALSA: %s\n", QS_C(string));
+        TLog::write_printf(TLogLevel::Info, "alsa", "ALSA: %s", QS_C(string));
     }
     list.clear();
 }
