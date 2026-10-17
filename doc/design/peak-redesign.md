@@ -274,8 +274,12 @@ section 4, and the view path:
   starts the build, the file is built and opened, the painted image matches
   the old tile's shape; the paint count per 20 s is the same as the old path.
 
-Not done yet: 3.6 (normalise still uses the old `TPeak`, so it needs an old
-peak file), 3.7 recording (the recording waveform is not drawn by either
+- 3.6 normalise: `TWaveformColumns::max_amplitude()` (exact, tested against
+  brute force incl. saturated blocks) via `TWaveform::max_amplitude()`;
+  `TAudioClip::calculate_normalization_factor()` uses it when the waveform
+  is ready and falls back to the old `TPeak` otherwise.
+
+Not done yet: 3.7 recording (the recording waveform is not drawn by either
 path today), sample dots at extreme zoom, removal of `TPeak` /
 `ClipTileCache` / the zoom-step coupling once the user has compared both
 paths.

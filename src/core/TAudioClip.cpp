@@ -896,7 +896,11 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
         target -= FLT_EPSILON;
     }
 
-    audio_sample_t maxamp = m_peak->get_max_amplitude(m_sourceStartLocation, m_sourceEndLocation);
+    // From the new waveform when it has its peak file, else the old way
+    audio_sample_t maxamp = m_waveform ? m_waveform->max_amplitude(m_sourceStartLocation, m_sourceEndLocation) : -1.0f;
+    if (maxamp < 0.0f) {
+        maxamp = m_peak->get_max_amplitude(m_sourceStartLocation, m_sourceEndLocation);
+    }
 
     if (TraversoDAW::Float::equals_0(maxamp)) {
         PWARN("AudioClip::normalization: max amplitude == 0");

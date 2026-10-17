@@ -476,12 +476,49 @@ static void run(const char* name, Test test)
     std::printf("%-18s %s (%lld ms)\n", name, s_failures == failuresBefore ? "ok" : "FAILED", (long long)timer.elapsed());
 }
 
+static void test_max_amplitude()
+{
+    for (int round = 0; round < 400; ++round) {
+        const uint rate = s_rates[random_between(0, std::size(s_rates) - 1)];
+        const int channelCount = int(random_between(1, 2));
+        const qint64 frames = random_between(0, 3) == 0 ? random_between(0, 300) : random_between(1, 60000);
+        Signal signal = make_signal(rate, channelCount, frames);
+        // Sometimes one clear maximum, sometimes a flat signal with ties
+        if (frames > 0 && random_between(0, 2) == 0) {
+            signal.channels[0][size_t(random_between(0, frames - 1))] = random_between(0, 1) ? 3.9f : -3.9f;
+        }
+        const TPeakPyramidBuilder builder = build(signal, true);
+        MemorySource memory(signal);
+
+        for (int range = 0; range < 10; ++range) {
+            const qint64 first = random_between(-100, frames + 100);
+            const qint64 last = random_between(first - 10, frames + 200);
+            float expected = 0.0f;
+            for (qint64 n = std::max<qint64>(first, 0); n < std::min(last, frames); ++n) {
+                for (int c = 0; c < channelCount; ++c) {
+                    expected = std::max(expected, std::fabs(signal.channels[size_t(c)][size_t(n)]));
+                }
+            }
+            memory.reads = 0;
+            const float amplitude = TWaveformColumns::max_amplitude(builder.levels(), &memory, first, last);
+            CHECK(amplitude == expected, "round %d range %lld..%lld: %f expected %f", round, (long long)first, (long long)last,
+                  amplitude, expected);
+            // Reads: the two partial blocks plus the candidate blocks
+            const qint64 covered = std::min(last, frames) - std::max<qint64>(first, 0);
+            if (covered > 4 * TPeakLevels::BlockFrames) {
+                CHECK(memory.reads < covered, "round %d: read %lld of %lld frames", round, (long long)memory.reads, (long long)covered);
+            }
+        }
+    }
+}
+
 int main()
 {
     run("time conversions", test_time_conversions);
     run("pyramid", test_pyramid);
     run("file", test_file);
     run("columns", test_columns);
+    run("max amplitude", test_max_amplitude);
     std::printf("non-empty columns checked: %lld from samples, %lld from the pyramid\n",
                 (long long)s_checkedColumns[int(TWaveformColumns::Source::Samples)],
                 (long long)s_checkedColumns[int(TWaveformColumns::Source::Pyramid)]);

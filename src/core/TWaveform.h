@@ -48,6 +48,10 @@ public:
     // TWaveformColumns::query(). Source::None while not Ready.
     TWaveformColumns::Source columns(const TTimeRef& start, const TTimeRef& columnWidth, int count, TWaveformColumn* out);
 
+    // The highest |sample| of all channels between start and end (source
+    // time), exact; -1 while not Ready
+    float max_amplitude(const TTimeRef& start, const TTimeRef& end);
+
     // TWaveformSampleSource
     qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override;
 

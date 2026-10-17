@@ -4,6 +4,7 @@
 #include "TWaveformColumns.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <vector>
 
@@ -18,6 +19,77 @@ TWaveformColumns::Source TWaveformColumns::source_for(const TPeakLevels& levels,
         return Source::Samples;
     }
     return levels.level_count() > 0 ? Source::Pyramid : Source::None;
+}
+
+float TWaveformColumns::max_amplitude(const TPeakLevels& levels, TWaveformSampleSource* samples, qint64 first, qint64 last)
+{
+    const int channels = levels.channel_count();
+    first = std::max<qint64>(first, 0);
+    last = std::min(last, levels.frame_count());
+    if (first >= last || channels <= 0) {
+        return 0.0f;
+    }
+
+    std::vector<float> buffer;
+    std::vector<float*> pointers(static_cast<size_t>(channels));
+    auto max_of_samples = [&](qint64 from, qint64 to) {
+        float amplitude = 0.0f;
+        if (from >= to) {
+            return amplitude;
+        }
+        buffer.resize(size_t(to - from) * size_t(channels));
+        for (int c = 0; c < channels; ++c) {
+            pointers[size_t(c)] = buffer.data() + qsizetype(c) * (to - from);
+        }
+        const qint64 read = samples->read(from, to - from, pointers.data());
+        for (int c = 0; c < channels; ++c) {
+            for (qint64 i = 0; i < read; ++i) {
+                amplitude = std::max(amplitude, std::fabs(pointers[size_t(c)][i]));
+            }
+        }
+        return amplitude;
+    };
+
+    // The level-0 blocks fully inside the range; without them (short range
+    // or no pyramid) the samples decide
+    const qint64 firstBlock = (first + TPeakLevels::BlockFrames - 1) >> TPeakLevels::BlockFramesShift;
+    const qint64 lastBlock = std::min(last >> TPeakLevels::BlockFramesShift, levels.level_count() > 0 ? levels.block_count(0) : 0);
+    if (firstBlock >= lastBlock) {
+        return max_of_samples(first, last);
+    }
+
+    float amplitude = std::max(max_of_samples(first, firstBlock << TPeakLevels::BlockFramesShift),
+                               max_of_samples(lastBlock << TPeakLevels::BlockFramesShift, last));
+
+    // A stored block span contains the real one and is at most one
+    // quantization step wider, so the real maximum of the blocks is within
+    // one step below the bound, and only blocks whose stored amplitude
+    // reaches that can hold it
+    auto stored_amplitude = [](const TPeakBlock& block) {
+        return std::max(std::fabs(TPeakLevels::to_value(block.min)), std::fabs(TPeakLevels::to_value(block.max)));
+    };
+    float bound = 0.0f;
+    for (int c = 0; c < channels; ++c) {
+        bound = std::max(bound, stored_amplitude(levels.range(c, firstBlock, lastBlock)));
+    }
+    // A saturated block (|sample| beyond the stored range) says nothing
+    // about how far beyond, so every saturated block is read
+    const bool saturated = bound >= float(TPeakLevels::MaxValue) / TPeakLevels::ValueScale;
+    if (!saturated && bound <= amplitude) {
+        return amplitude;
+    }
+    const float threshold = saturated ? bound : std::max(amplitude, bound - 1.0f / TPeakLevels::ValueScale);
+    for (qint64 block = firstBlock; block < lastBlock; ++block) {
+        bool candidate = false;
+        for (int c = 0; c < channels && !candidate; ++c) {
+            candidate = stored_amplitude(levels.block(0, c, block)) >= threshold;
+        }
+        if (candidate) {
+            const qint64 from = block << TPeakLevels::BlockFramesShift;
+            amplitude = std::max(amplitude, max_of_samples(from, std::min(from + TPeakLevels::BlockFrames, last)));
+        }
+    }
+    return amplitude;
 }
 
 TWaveformColumns::Source TWaveformColumns::query(const TPeakLevels& levels,

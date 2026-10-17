@@ -125,6 +125,16 @@ TWaveformColumns::Source TWaveform::columns(const TTimeRef& start, const TTimeRe
     return TWaveformColumns::query(m_file.levels(), this, start, columnWidth, count, out);
 }
 
+float TWaveform::max_amplitude(const TTimeRef& start, const TTimeRef& end)
+{
+    if (state() != State::Ready) {
+        return -1.0f;
+    }
+    const uint rate = m_source->get_file_rate();
+    return TWaveformColumns::max_amplitude(m_file.levels(), this,
+                                           TTimeRef::frame_at_or_after(start, rate), TTimeRef::frame_at_or_after(end, rate));
+}
+
 qint64 TWaveform::read(qint64 firstFrame, qint64 count, float* const* channels)
 {
     const uint channelCount = m_source->get_channel_count();

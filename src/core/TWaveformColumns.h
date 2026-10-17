@@ -64,6 +64,12 @@ public:
     // Which source a request with this column width uses
     static Source source_for(const TPeakLevels& levels, const TTimeRef& columnWidth);
 
+    // The highest |sample| of all channels in the frames [first, last),
+    // exact: the pyramid bounds it in O(log n), the partial blocks at both
+    // ends and the few blocks that can hold the maximum are read from the
+    // samples. 0 for an empty range.
+    static float max_amplitude(const TPeakLevels& levels, TWaveformSampleSource* samples, qint64 first, qint64 last);
+
     // Fills out[channel * count + i] for every channel of levels.
     // samples may be nullptr if the request never needs them.
     static Source query(const TPeakLevels& levels,
