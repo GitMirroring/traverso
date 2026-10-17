@@ -14,7 +14,8 @@
  * The file is a cache of its source: when it is missing, from another
  * version, or does not match the source (rate, channels, frames, file size,
  * modification time), open() says so and the caller rebuilds it. Written with
- * QSaveFile, so a crash never leaves half a file. Layout: see
+ * QSaveFile, so a crash never leaves half a file. An open peak file holds a
+ * mapping, not a file descriptor. Layout: see
  * doc/design/peak-redesign.md.
  */
 class TPeakFile
@@ -59,7 +60,7 @@ public:
     static constexpr quint32 FormatVersion = 2;
 
 private:
-    Status validate(const SourceInfo& expected);
+    Status validate(const SourceInfo& expected, qint64 fileSize);
 
     QFile m_file;
     uchar* m_map{nullptr};

@@ -177,22 +177,24 @@ TPeakFile::Status TPeakFile::open(const QString& path, const SourceInfo& expecte
         return Status::Invalid;
     }
 
-    m_map = m_file.map(0, m_file.size());
+    const qint64 size = m_file.size();
+    m_map = m_file.map(0, size);
+    // The mapping does not need the descriptor (QFileDevice::map), so an
+    // open peak file costs no file descriptor
+    m_file.close();
     if (!m_map) {
-        m_file.close();
         return Status::Error;
     }
 
-    const Status status = validate(expected);
+    const Status status = validate(expected, size);
     if (status != Status::Ok) {
         close();
     }
     return status;
 }
 
-TPeakFile::Status TPeakFile::validate(const SourceInfo& expected)
+TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSize)
 {
-    const qint64 fileSize = m_file.size();
 
     TPeakFileHeader header;
     std::memcpy(&header, m_map, sizeof(header));
@@ -252,6 +254,5 @@ void TPeakFile::close()
         m_file.unmap(m_map);
         m_map = nullptr;
     }
-    m_file.close();
     m_levels = TPeakLevels();
 }
