@@ -39,6 +39,7 @@ class TSheetView;
 class TAudioTrackView;
 class TFadeCurveView;
 class TPeak;
+class TWaveform;
 class TLineView;
 class TSplitEntityController;
 
@@ -82,6 +83,7 @@ private:
     bool m_mergedView{};
     bool m_classicView{};
     bool m_paintWithOutline{};
+    bool m_paintColumns{};
     bool m_drawDbGrid{};
     int m_height{};
     int m_infoAreaHeight{};
@@ -118,6 +120,9 @@ private:
     void draw_db_lines(QPainter* painter, qreal xstart, int pixelcount);
     void draw_peaks(QPainter* painter, qreal xstart, int pixelcount);
     void draw_tile(QPainter* painter, qreal xstart, int pixelcount);
+    // The waveform as one span per column from TWaveform, no tile cache
+    void draw_columns(QPainter* painter, qreal xstart, int pixelcount);
+    void fill_gain(const TTimeRef& clipLocalStart, const TTimeRef& columnWidth, int count, float* gain);
     void create_brushes();
 
     friend class TFadeCurveView;

@@ -36,6 +36,7 @@ class TBufferedAudioStreamReader;
 class TBufferedAudioStreamWriter;
 class TAudioTrack;
 class TPeak;
+class TWaveform;
 class AudioBus;
 class TAudioPluginChain;
 class TFadeCurve;
@@ -83,6 +84,7 @@ public:
     TAudioTrack* get_track() const;
     TSheet* get_sheet() const;
     TPeak* get_peak() const {return m_peak;}
+    TWaveform* get_waveform() const {return m_waveform;}
     QDomNode get_state(QDomDocument doc);
     // Create the fade if the clip has none yet, for user actions that give the
     // clip a fade
@@ -137,6 +139,7 @@ private:
     TBufferedAudioStreamReader*     m_readSource;
     TBufferedAudioStreamWriter*     m_writer;
     TPeak*                          m_peak;
+    TWaveform*                      m_waveform{nullptr};
     TFadeCurve*                     m_fadeIn;
     TFadeCurve*                     m_fadeOut;
     QDomNode                        m_domNode;

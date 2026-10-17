@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TRtTransaction.h"
 #include "TProjectManager.h"
 #include "TPeak.h"
+#include "TWaveform.h"
 #include "TProject.h"
 #include "Utils.h"
 #include "TConfig.h"
@@ -112,6 +113,7 @@ TAudioClip::~TAudioClip()
     if (m_peak) {
         m_peak->close();
     }
+    delete m_waveform;
 }
 
 void TAudioClip::init()
@@ -731,8 +733,11 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
         if (m_peak) {
             m_peak->close();
         }
+        delete m_waveform;
+        m_waveform = nullptr;
         if (m_isReadSourceValid) {
             m_peak = new TPeak(rs);
+            m_waveform = new TWaveform(rs);
         }
     }
 

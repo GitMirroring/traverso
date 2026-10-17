@@ -38,6 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TResourcesManager.h"
 #include "TProjectManager.h"
 #include "TPeak.h"
+#include "TWaveform.h"
 #include "TInformUser.h"
 #include "TLocation.h"
 #include "TThemer.h"
@@ -196,7 +197,11 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
 
         } else if (m_clip->recording_state() == TAudioClip::NO_RECORDING) {
             //                        PROFILE_START;
-            draw_peaks(painter, option->exposedRect.x(), pixelcount);
+            if (m_paintColumns) {
+                draw_columns(painter, option->exposedRect.x(), int(pixelcount));
+            } else {
+                draw_peaks(painter, option->exposedRect.x(), pixelcount);
+            }
             //                        PROFILE_END("draw peaks");
         }
     }
@@ -766,6 +771,7 @@ void TAudioClipView::load_theme_data()
     m_fillwave = themer()->get_property("AudioClip:fillwave", 1).toInt();
     minINFLineColor = themer()->get_color("AudioClip:channelseperator");
     m_paintWithOutline = config().get_property("Themer", "paintwavewithoutline", true).toBool();
+    m_paintColumns = config().get_property("Themer", "paintwaveformcolumns", true).toBool();
     m_drawDbGrid = config().get_property("Themer", "drawdbgrid", false).toBool();
     TAudioClipView::calculate_bounding_rect();
 
@@ -929,3 +935,227 @@ void TAudioClipView::connect_interaction_controller(TSplitEntityController* cont
 }
 
 
+
+
+void TAudioClipView::fill_gain(const TTimeRef& clipLocalStart, const TTimeRef& columnWidth, int count, float* gain)
+{
+    const float clipGain = m_clip->get_gain();
+    std::fill(gain, gain + count, clipGain);
+
+    const double width = double(columnWidth.universal_frame());
+    TAudioBuffer buffer{nframes_t(count)};
+
+    // The clip's gain curve, in source time
+    TCurve* clipCurve = m_clip->get_plugin_chain()->get_fader()->get_curve();
+    if (clipCurve) {
+        if (clipCurve->is_trivial()) {
+            const float trivial = clipCurve->get_trivial_gain();
+            for (int i = 0; i < count; ++i) {
+                gain[i] *= trivial;
+            }
+        } else {
+            const double x0 = double((m_clip->get_source_start_location() + clipLocalStart).universal_frame());
+            clipCurve->get_vector(x0, x0 + width * count, buffer, nframes_t(count));
+            for (int i = 0; i < count; ++i) {
+                gain[i] *= buffer[i];
+            }
+        }
+    }
+
+    // The track's gain curve, in sheet time
+    TCurve* trackCurve = m_tv->get_gain_curve_view()->get_curve();
+    if (trackCurve) {
+        if (trackCurve->is_trivial()) {
+            const float trivial = trackCurve->get_trivial_gain();
+            for (int i = 0; i < count; ++i) {
+                gain[i] *= trivial;
+            }
+        } else {
+            const double x0 = double((m_clip->get_location_start() + clipLocalStart).universal_frame());
+            trackCurve->get_vector(x0, x0 + width * count, buffer, nframes_t(count));
+            for (int i = 0; i < count; ++i) {
+                gain[i] *= buffer[i];
+            }
+        }
+    }
+
+    // The fades, in time relative to their start; drawing never creates fades
+    const double clipLength = double(m_clip->get_length().universal_frame());
+    const double start = double(clipLocalStart.universal_frame());
+    for (TFadeCurve* fade : {m_clip->get_existing_fade_in(), m_clip->get_existing_fade_out()}) {
+        if (!fade) {
+            continue;
+        }
+        const double fadeLength = double(fade->get_length().universal_frame());
+        if (fadeLength <= 0.0) {
+            continue;
+        }
+        const double fadeStart = fade->get_fade_type() == TFadeCurve::FadeOut ? clipLength - fadeLength : 0.0;
+        // The columns whose start is inside the fade
+        const int first = std::max(0, int(std::ceil((fadeStart - start) / width)));
+        const int last = std::min(count, int(std::ceil((fadeStart + fadeLength - start) / width)));
+        if (last <= first) {
+            continue;
+        }
+        const double x0 = start + first * width - fadeStart;
+        fade->get_vector(x0, x0 + width * (last - first), buffer, nframes_t(last - first));
+        for (int i = first; i < last; ++i) {
+            gain[i] *= buffer[i - first];
+        }
+    }
+}
+
+void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcount)
+{
+    TWaveform* waveform = m_clip->get_waveform();
+    if (!waveform || pixelcount <= 0 || m_height <= 0) {
+        return;
+    }
+    const int channels = waveform->channel_count();
+    if (channels <= 0) {
+        return;
+    }
+
+    switch (waveform->state()) {
+    case TWaveform::State::Building:
+        if (!m_waitingForPeaks) {
+            m_waitingForPeaks = true;
+            m_progress = waveform->progress();
+            connect(waveform, qOverload<int>(&TWaveform::progress), this, &TAudioClipView::update_progress_info, Qt::UniqueConnection);
+            connect(waveform, &TWaveform::ready, this, &TAudioClipView::peak_creation_finished, Qt::UniqueConnection);
+            update();
+        }
+        return;
+    case TWaveform::State::Failed:
+        return;
+    case TWaveform::State::Ready:
+        break;
+    }
+
+    // One column per device pixel
+    const qreal dpr = painter->device()->devicePixelRatioF();
+    const int x0 = qFloor(xstart);
+    const int logicalWidth = qCeil(xstart + pixelcount) - x0;
+    const int columns = qCeil(logicalWidth * dpr);
+    const int deviceHeight = qRound(m_height * dpr);
+    const double scale = double(m_sv->timeref_scalefactor);
+    const TTimeRef columnWidth(qint64(std::llround(scale / dpr)));
+    if (columns <= 0 || deviceHeight <= 0 || columnWidth <= qint64(0)) {
+        return;
+    }
+    const TTimeRef sourceStart = m_clip->get_source_start_location();
+
+    // The columns and their gain, in chunks so a rounded column width does
+    // not drift from the pixel grid
+    std::vector<TWaveformColumn> data(size_t(columns) * size_t(channels));
+    std::vector<TWaveformColumn> chunk;
+    std::vector<float> gain(static_cast<size_t>(columns));
+    constexpr int Chunk = 256;
+    for (int first = 0; first < columns; first += Chunk) {
+        const int count = std::min(Chunk, columns - first);
+        const TTimeRef clipLocal(qint64(std::llround((x0 + first / dpr) * scale)));
+        chunk.resize(size_t(count) * size_t(channels));
+        waveform->columns(sourceStart + clipLocal, columnWidth, count, chunk.data());
+        for (int c = 0; c < channels; ++c) {
+            std::copy_n(chunk.data() + c * count, count, data.data() + c * columns + first);
+        }
+        fill_gain(clipLocal, columnWidth, count, gain.data() + first);
+    }
+
+    // The wave brush as one premultiplied colour per device row
+    std::vector<quint32> rowColor(size_t(deviceHeight), 0);
+    if (m_fillwave) {
+        QImage strip(1, deviceHeight, QImage::Format_ARGB32_Premultiplied);
+        strip.fill(Qt::transparent);
+        strip.setDevicePixelRatio(dpr);
+        QPainter stripPainter(&strip);
+        stripPainter.fillRect(QRectF(0, 0, 1, m_height), m_waveBrush);
+        stripPainter.end();
+        for (int y = 0; y < deviceHeight; ++y) {
+            rowColor[size_t(y)] = *reinterpret_cast<const quint32*>(strip.constScanLine(y));
+        }
+    }
+
+    QImage image(columns, deviceHeight, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+
+    const int drawnChannels = m_mergedView ? 1 : channels;
+    const int channelHeight = deviceHeight / drawnChannels;
+    QPolygonF top;
+    QPolygonF bottom;
+    top.reserve(columns);
+    bottom.reserve(columns);
+    QPainter outlinePainter(&image);
+    outlinePainter.setPen(QPen(themer()->get_color(m_clip->is_muted() ? "AudioClip:wavemacroview:outline:muted"
+                                                                       : "AudioClip:wavemacroview:outline"), 0));
+
+    for (int drawn = 0; drawn < drawnChannels; ++drawn) {
+        const int channelTop = drawn * channelHeight;
+        const int channelBottom = channelTop + channelHeight;
+        const double center = channelTop + channelHeight / 2.0;
+        const double amplitude = m_classicView ? channelHeight * 0.45 : channelHeight * 0.95;
+        top.clear();
+        bottom.clear();
+
+        for (int i = 0; i < columns; ++i) {
+            TWaveformColumn column = data[size_t(i)];
+            if (m_mergedView) {
+                for (int c = 1; c < channels; ++c) {
+                    const TWaveformColumn& other = data[size_t(c) * size_t(columns) + size_t(i)];
+                    column.min = std::min(column.min, other.min);
+                    column.max = std::max(column.max, other.max);
+                }
+            } else if (drawn > 0) {
+                column = data[size_t(drawn) * size_t(columns) + size_t(i)];
+            }
+            if (column.is_empty()) {
+                continue;
+            }
+
+            const float g = gain[size_t(i)];
+            float low = column.min * g;
+            float high = column.max * g;
+            if (low > high) {
+                std::swap(low, high);
+            }
+
+            double yTop, yBottom;
+            if (m_classicView) {
+                yTop = center - amplitude * high;
+                yBottom = center - amplitude * low;
+            } else {
+                yTop = channelBottom - amplitude * std::max(std::fabs(low), std::fabs(high));
+                yBottom = channelBottom;
+            }
+            top.append(QPointF(i + 0.5, yTop));
+            bottom.append(QPointF(i + 0.5, yBottom));
+
+            if (!m_fillwave) {
+                continue;
+            }
+            // At least one device pixel, inside the channel
+            int y0 = std::clamp(int(std::floor(yTop)), channelTop, channelBottom);
+            int y1 = std::clamp(std::max(int(std::ceil(yBottom)), y0 + 1), channelTop, channelBottom);
+            for (int y = y0; y < y1; ++y) {
+                quint32* pixel = reinterpret_cast<quint32*>(image.scanLine(y)) + i;
+                const quint32 source = rowColor[size_t(y)];
+                const quint32 inverse = 255 - (source >> 24);
+                const quint32 d = *pixel;
+                const quint32 rb = (((d & 0x00ff00ffu) * inverse) >> 8) & 0x00ff00ffu;
+                const quint32 ag = (((d >> 8) & 0x00ff00ffu) * inverse) & 0xff00ff00u;
+                *pixel = source + rb + ag;
+            }
+        }
+
+        if (m_paintWithOutline || !m_fillwave) {
+            outlinePainter.drawPolyline(top);
+            if (m_classicView) {
+                outlinePainter.drawPolyline(bottom);
+            }
+        }
+    }
+    outlinePainter.end();
+
+    image.setDevicePixelRatio(dpr);
+    painter->drawImage(QPointF(x0, 0), image);
+}

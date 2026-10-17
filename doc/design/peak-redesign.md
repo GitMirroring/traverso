@@ -244,20 +244,30 @@ is ~10x slower than opaque spans. Opaque spans (or a premultiplied blend of
 our own into an image drawn once) stay at ~3 ms for a full 4K row at any
 zoom. Qt Quick column quads blend on the GPU.
 
-## 5. Proof of concept scope
+## 5. Proof of concept status
 
-1. `TPeakPyramidBuilder` + `TPeakLevels`: headless test against brute force for
-   lengths 0, 1, 63, 64, 65, 127, 128, 129, primes and ~1M frames, 1–3
-   channels, random chunk sizes (incremental == one shot), every level.
-2. `TPeakFile`: write → map → identical levels; every validation rule
-   rejects a corrupted or mismatching file (magic, version, byte order, rate,
-   channels, frames, source size/mtime, truncated).
-3. `TWaveformColumns`: random rate (22050 … 192000), length, start (also
-   negative and past the end), column width (1/20 frame … 1M frames per
-   column), count; compare against brute-force references for both sources;
-   partition property (all columns together = global min/max); sample-source
-   spans of neighbours touch.
-4. Benchmark (Release, not in ctest): query time for 4K columns over a one
-   hour 48 kHz stereo pyramid at several zooms; envelope paint time.
-5. View behind a setting, then the builder; old code removed once the user
-   has compared both.
+Done (branch `peak-redesign`): parts 3.1-3.4, the tests and benchmark of
+section 4, and the view path:
+
+- `TWaveform` (core): one per clip source; opens the source's `.peaks` file
+  on the first paint, has `TPeakBuilder` build it when it is missing or
+  stale, answers `columns()` with a reader of its own for the sample source.
+- `TPeakBuilder` (core): one worker thread, one job at a time, jobs for the
+  same file are shared; a job owns its own reader; cancel on destruction.
+- `TAudioClipView::draw_columns()`: behind the setting
+  `Themer/paintwaveformcolumns` (default on in this branch). One column per
+  device pixel of the exposed rect, queried in chunks of 256 so a rounded
+  column width cannot drift; gain = clip gain x clip curve x track curve x
+  fades per column (`fill_gain()`); spans blended into a premultiplied image
+  with the wave brush's colour per row (gradients kept), optional cosmetic
+  outlines, then one `drawImage`. Classic and rectified and merged-stereo
+  views come from the same columns. No tile cache.
+- Verified headlessly (offscreen QPA, project "Out of sync"): first paint
+  starts the build, the file is built and opened, the painted image matches
+  the old tile's shape; the paint count per 20 s is the same as the old path.
+
+Not done yet: 3.6 (normalise still uses the old `TPeak`, so it needs an old
+peak file), 3.7 recording (the recording waveform is not drawn by either
+path today), sample dots at extreme zoom, removal of `TPeak` /
+`ClipTileCache` / the zoom-step coupling once the user has compared both
+paths.
