@@ -156,6 +156,15 @@ private:
     qreal               m_zoomAnimationTo{1.0};
     TTimeRef            m_zoomAnimationLeftFrom;
     TTimeRef            m_zoomAnimationLeftTo;
+    // Zoom to fit a second time, with the view still where the fit put it,
+    // goes back to the view before the fit
+    bool                m_fitValid{false};
+    TTimeRef            m_fitRangeStart;
+    TTimeRef            m_fitRangeEnd;
+    qreal               m_fitZoom{1.0};
+    int                 m_fitScroll{0};
+    qreal               m_beforeFitZoom{1.0};
+    TTimeRef            m_beforeFitLeft;
 
     TSession*           m_session;
     TPlayHeadView*           m_playCursor;

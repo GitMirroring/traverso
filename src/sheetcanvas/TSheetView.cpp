@@ -641,7 +641,26 @@ void TSheetView::zoom_to_range(const TTimeRef& start, const TTimeRef& end)
     const qreal frames = qreal((end - start).universal_frame()) * 44100.0 / qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE);
     const qreal zoom = std::clamp(frames / width, m_session->minimum_hzoom(), m_session->maximum_hzoom());
     const qreal scale = zoom * (qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE) / 44100.0);
-    animate_zoom_to(zoom, TTimeRef(qint64(qreal(start.universal_frame()) - margin * scale)), 300);
+    const TTimeRef left(qint64(qreal(start.universal_frame()) - margin * scale));
+
+    // The same range again while still at its fit: back to the view before
+    const bool atFit = m_fitValid && start == m_fitRangeStart && end == m_fitRangeEnd
+        && std::abs(m_session->get_hzoom() - m_fitZoom) <= m_fitZoom * 0.01
+        && std::abs(hscrollbar_value() - m_fitScroll) <= 2;
+    if (atFit) {
+        m_fitValid = false;
+        animate_zoom_to(m_beforeFitZoom, m_beforeFitLeft, 300);
+        return;
+    }
+
+    m_beforeFitZoom = m_session->get_hzoom();
+    m_beforeFitLeft = TTimeRef(qint64(hscrollbar_value()) * timeref_scalefactor);
+    m_fitRangeStart = start;
+    m_fitRangeEnd = end;
+    m_fitZoom = zoom;
+    m_fitScroll = qRound(qreal(left.universal_frame()) / scale);
+    m_fitValid = true;
+    animate_zoom_to(zoom, left, 300);
 }
 
 
