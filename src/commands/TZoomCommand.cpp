@@ -178,12 +178,12 @@ void TZoomCommand::vzoom_out()
 
 void TZoomCommand::hzoom_in()
 {
-    m_sv->hzoom(1.0 / 1.5);
+    m_sv->hzoom(1.0 / 1.5, true);
 }
 
 void TZoomCommand::hzoom_out()
 {
-    m_sv->hzoom(1.5);
+    m_sv->hzoom(1.5, true);
 }
 
 void TZoomCommand::zoom_to_fit()

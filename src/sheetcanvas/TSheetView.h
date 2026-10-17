@@ -25,6 +25,7 @@
 #include "TViewItem.h"
 #include "TViewPortInterface.h"
 #include <QPropertyAnimation>
+#include <QVariantAnimation>
 #include "TTimeRef.h"
 
 class TAudioClip;
@@ -105,8 +106,9 @@ public :
 
     void load_theme_data();
     void vzoom(qreal scale);
-    // Zooms by factor around the work cursor (the play head while playing)
-    void hzoom(qreal scale);
+    // Zooms by factor around the work cursor (the play head while playing);
+    // animated for discrete steps (keys), immediate for continuous input
+    void hzoom(qreal scale, bool animated = false);
     // Zooms by factor keeping the time at viewport x where it is
     void zoom_around(qreal factor, int viewportX);
     // The zoom at which the whole session fits the viewport
@@ -115,7 +117,7 @@ public :
     qreal zoom_out_limit() const { return 2.0 * fit_hzoom(); }
     // The selected clips, else the whole session, into the viewport
     TCommand* zoom_to_fit();
-    // The time range into the viewport, with a small margin
+    // The time range into the viewport, with a small margin, animated
     void zoom_to_range(const TTimeRef& start, const TTimeRef& end);
     void clipviewport_resize_event();
     int hscrollbar_value() const;
@@ -146,6 +148,15 @@ public :
     qint64		timeref_scalefactor;
 
 private:
+    // Animated zoom: the zoom interpolates logarithmically, the time at the
+    // left edge of the view linearly
+    void animate_zoom_to(qreal zoom, const TTimeRef& viewportLeft, int milliseconds);
+    QVariantAnimation   m_zoomAnimation;
+    qreal               m_zoomAnimationFrom{1.0};
+    qreal               m_zoomAnimationTo{1.0};
+    TTimeRef            m_zoomAnimationLeftFrom;
+    TTimeRef            m_zoomAnimationLeftTo;
+
     TSession*           m_session;
     TPlayHeadView*           m_playCursor;
     TClipsViewPort* 		m_clipsViewPort;
@@ -216,6 +227,7 @@ public slots:
 
 private slots:
     void scale_factor_changed();
+    void zoom_animation_step(const QVariant& value);
     void add_new_track_view(TTrack*);
     void remove_track_view(TTrack*);
     void hscrollbar_value_changed(int);

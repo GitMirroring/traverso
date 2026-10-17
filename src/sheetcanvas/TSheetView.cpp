@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "TInputEventDispatcher.h"
 #include "TSheet.h"
 #include <algorithm>
+#include <cmath>
 #include "TSelectionService.h"
 #include "TAudioClip.h"
 #include "TSnapList.h"
@@ -138,6 +139,11 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 	scale_factor_changed();
 
 	connect(m_session, &TSession::hzoomChanged, this, &TSheetView::scale_factor_changed);
+
+    m_zoomAnimation.setStartValue(0.0);
+    m_zoomAnimation.setEndValue(1.0);
+    m_zoomAnimation.setEasingCurve(QEasingCurve::InOutQuad);
+    connect(&m_zoomAnimation, &QVariantAnimation::valueChanged, this, &TSheetView::zoom_animation_step);
 	connect(m_session, &TSession::tempFollowChanged, this, &TSheetView::set_follow_state);
     connect(m_session, &TSession::trackAdded, this, &TSheetView::add_new_track_view);
     connect(m_session, &TSession::trackRemoved, this, &TSheetView::remove_track_view);
@@ -536,7 +542,7 @@ void TSheetView::set_track_height(TTrackView *view, int newheight)
 	center_in_view(view, Qt::AlignVCenter);
 }
 
-void TSheetView::hzoom(qreal factor)
+void TSheetView::hzoom(qreal factor, bool animated)
 {
 	PENTER;
     // A cursor outside the view zooms around the center instead
@@ -546,11 +552,23 @@ void TSheetView::hzoom(qreal factor)
     if (x < 0 || x > m_clipsViewPort->width()) {
         x = m_clipsViewPort->width() / 2;
     }
-    zoom_around(factor, x);
+    if (!animated) {
+        zoom_around(factor, x);
+        return;
+    }
+    // Like zoom_around(), but reached over a few frames; a running step
+    // continues from where it is
+    const qreal current = m_session->get_hzoom();
+    const qreal zoom = std::min(current * factor, std::max(zoom_out_limit(), current));
+    const qreal anchorFrames = qreal(anchor.universal_frame());
+    const qreal scale = zoom * (qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE) / 44100.0);
+    animate_zoom_to(zoom, TTimeRef(qint64(anchorFrames - x * scale)), 150);
 }
 
 void TSheetView::zoom_around(qreal factor, int viewportX)
 {
+    m_zoomAnimation.stop();
+
     // Zooming out stops at the limit; zooming in from beyond it (the
     // session got shorter) is always possible
     const qreal current = m_session->get_hzoom();
@@ -559,6 +577,27 @@ void TSheetView::zoom_around(qreal factor, int viewportX)
     const TTimeRef anchor(qint64(hscrollbar_value() + viewportX) * timeref_scalefactor);
     m_session->set_hzoom(zoom);   // hzoomChanged -> scale_factor_changed, synchronous
     set_hscrollbar_value(qRound(anchor / timeref_scalefactor) - viewportX);
+}
+
+void TSheetView::animate_zoom_to(qreal zoom, const TTimeRef& viewportLeft, int milliseconds)
+{
+    m_zoomAnimation.stop();
+    m_zoomAnimationFrom = m_session->get_hzoom();
+    m_zoomAnimationTo = zoom;
+    m_zoomAnimationLeftFrom = TTimeRef(qint64(hscrollbar_value()) * timeref_scalefactor);
+    m_zoomAnimationLeftTo = viewportLeft;
+    m_zoomAnimation.setDuration(milliseconds);
+    m_zoomAnimation.start();
+}
+
+void TSheetView::zoom_animation_step(const QVariant& value)
+{
+    const qreal t = value.toReal();
+    const qreal zoom = std::exp(std::log(m_zoomAnimationFrom) + t * (std::log(m_zoomAnimationTo) - std::log(m_zoomAnimationFrom)));
+    const qreal left = qreal(m_zoomAnimationLeftFrom.universal_frame())
+        + t * qreal((m_zoomAnimationLeftTo - m_zoomAnimationLeftFrom).universal_frame());
+    m_session->set_hzoom(zoom);
+    set_hscrollbar_value(qRound(left / qreal(timeref_scalefactor)));
 }
 
 qreal TSheetView::fit_hzoom() const
@@ -600,8 +639,9 @@ void TSheetView::zoom_to_range(const TTimeRef& start, const TTimeRef& end)
     const qreal margin = m_clipsViewPort->width() * 0.02;
     const qreal width = std::max<qreal>(m_clipsViewPort->width() - 2 * margin, 1.0);
     const qreal frames = qreal((end - start).universal_frame()) * 44100.0 / qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE);
-    m_session->set_hzoom(frames / width);
-    set_hscrollbar_value(qRound(start / timeref_scalefactor - margin));
+    const qreal zoom = std::clamp(frames / width, m_session->minimum_hzoom(), m_session->maximum_hzoom());
+    const qreal scale = zoom * (qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE) / 44100.0);
+    animate_zoom_to(zoom, TTimeRef(qint64(qreal(start.universal_frame()) - margin * scale)), 300);
 }
 
 
