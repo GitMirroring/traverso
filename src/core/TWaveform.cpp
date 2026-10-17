@@ -95,6 +95,16 @@ void TWaveform::use_until_file_ready(std::shared_ptr<TPeakPyramidBuilder> pyrami
     }
 }
 
+TTimeRef TWaveform::recorded_length() const
+{
+    if (!m_live) {
+        return TTimeRef();
+    }
+    const TPeakLevels levels = m_live->levels();
+    const qint64 frames = levels.level_count() > 0 ? levels.block_count(0) * TPeakLevels::BlockFrames : 0;
+    return TTimeRef(nframes_t(frames), m_live->rate());
+}
+
 TWaveform::State TWaveform::state()
 {
     if (!m_opened) {

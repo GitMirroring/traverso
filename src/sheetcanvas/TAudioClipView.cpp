@@ -826,6 +826,7 @@ TCommand * TAudioClipView::select_fade_out_shape( )
 void TAudioClipView::start_recording()
 {
     m_oldRecordingPos = TTimeRef();
+    m_paintedRecordingPos = TTimeRef();
     connect(&m_recordingTimer, &QTimer::timeout, this, &TAudioClipView::update_recording);
     // The same cadence as the play head (TPlayHeadView), so the waveform's
     // end keeps up with it; a tick paints only the strip that is new
@@ -847,9 +848,14 @@ void TAudioClipView::update_recording()
         return;
     }
 
+    // The clip's length (its contour) runs ahead of the waveform: the
+    // pyramid is filled by the DiskIO thread later than the audio thread
+    // counts the frames. Repaint from where the waveform was painted up to
+    // what has arrived since, and the contour's new part.
     const TTimeRef newPos = m_clip->get_length();
-    const int oldPixel = int(m_oldRecordingPos / m_sv->timeref_scalefactor);
-    const int newPixel = int(newPos / m_sv->timeref_scalefactor);
+    const TTimeRef painted = m_clip->get_waveform() ? m_clip->get_waveform()->recorded_length() : newPos;
+    const int oldPixel = std::min(int(m_oldRecordingPos / m_sv->timeref_scalefactor), int(m_paintedRecordingPos / m_sv->timeref_scalefactor));
+    const int newPixel = std::max(int(newPos / m_sv->timeref_scalefactor), int(painted / m_sv->timeref_scalefactor));
     if (newPixel <= oldPixel) {
         return;
     }
@@ -865,6 +871,7 @@ void TAudioClipView::update_recording()
 
     update(QRectF(oldPixel - 2, 0, newPixel - oldPixel + 3, m_height));
     m_oldRecordingPos = newPos;
+    m_paintedRecordingPos = painted;
 }
 
 TCommand * TAudioClipView::set_audio_file()

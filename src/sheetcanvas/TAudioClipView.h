@@ -90,7 +90,8 @@ private:
     int m_mimimumheightforinfoarea{};
     int m_lineOffset{};
     int m_lineVOffset{};
-    TTimeRef m_oldRecordingPos;
+    TTimeRef m_oldRecordingPos;        // the clip's length at the last tick
+    TTimeRef m_paintedRecordingPos;    // how far the waveform was painted
 
     // theme data
     int m_drawbackground{};

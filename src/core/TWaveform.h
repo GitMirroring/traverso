@@ -52,6 +52,10 @@ public:
     // the peak file written from it opens
     void use_until_file_ready(std::shared_ptr<TPeakPyramidBuilder> pyramid);
 
+    // How far the waveform of a recording in progress reaches: whole peak
+    // blocks published by the builder (the clip's length runs ahead of it)
+    TTimeRef recorded_length() const;
+
     // Starts the build when the peak file is missing or stale
     State state();
     int progress() const { return m_progress; }
