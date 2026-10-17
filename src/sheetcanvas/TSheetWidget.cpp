@@ -249,7 +249,7 @@ void TSheetWidget::zoom_slider_value_changed(int value)
         return;
     }
     const qreal minimum = m_session->minimum_hzoom();
-    const qreal maximum = std::max(m_sv->fit_hzoom(), minimum * 2.0);
+    const qreal maximum = std::max(m_sv->zoom_out_limit(), minimum * 2.0);
     const qreal zoom = minimum * std::pow(maximum / minimum, qreal(value) / ZoomSliderSteps);
     m_sv->hzoom(zoom / m_session->get_hzoom());
 }
@@ -258,7 +258,7 @@ void TSheetWidget::sheet_zoom_level_changed()
 {
     const qreal minimum = m_session->minimum_hzoom();
     // The slider is synced once before the view exists
-    const qreal maximum = std::max(m_sv ? m_sv->fit_hzoom() : m_session->maximum_hzoom(), minimum * 2.0);
+    const qreal maximum = std::max(m_sv ? m_sv->zoom_out_limit() : m_session->maximum_hzoom(), minimum * 2.0);
     const qreal position = std::log(m_session->get_hzoom() / minimum) / std::log(maximum / minimum);
     // setValue() does not emit sliderMoved, so this does not zoom back
     m_zoomSlider->setValue(std::clamp(qRound(position * ZoomSliderSteps), 0, ZoomSliderSteps));

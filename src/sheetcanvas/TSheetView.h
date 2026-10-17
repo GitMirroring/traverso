@@ -111,6 +111,8 @@ public :
     void zoom_around(qreal factor, int viewportX);
     // The zoom at which the whole session fits the viewport
     qreal fit_hzoom() const;
+    // How far out the view zooms: room to the right of the last clip
+    qreal zoom_out_limit() const { return 2.0 * fit_hzoom(); }
     // The selected clips, else the whole session, into the viewport
     TCommand* zoom_to_fit();
     // The time range into the viewport, with a small margin

@@ -551,10 +551,10 @@ void TSheetView::hzoom(qreal factor)
 
 void TSheetView::zoom_around(qreal factor, int viewportX)
 {
-    // Zooming out stops where the whole session fills the view; zooming
-    // in from beyond that (the session got shorter) is always possible
+    // Zooming out stops at the limit; zooming in from beyond it (the
+    // session got shorter) is always possible
     const qreal current = m_session->get_hzoom();
-    const qreal zoom = std::min(current * factor, std::max(fit_hzoom(), current));
+    const qreal zoom = std::min(current * factor, std::max(zoom_out_limit(), current));
 
     const TTimeRef anchor(qint64(hscrollbar_value() + viewportX) * timeref_scalefactor);
     m_session->set_hzoom(zoom);   // hzoomChanged -> scale_factor_changed, synchronous

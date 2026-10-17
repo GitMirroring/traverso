@@ -20,9 +20,8 @@
 */
 #include "TZoomCommand.h"
 #include "TSheetView.h"
-#include "TAudioClipView.h"
-#include "TAudioClip.h"
 #include "TSelectionService.h"
+#include "TTimeLineEntity.h"
 #include "TTrackView.h"
 #include "TSheet.h"
 #include "TTrack.h"
@@ -189,21 +188,22 @@ void TZoomCommand::hzoom_out()
 
 void TZoomCommand::zoom_to_fit()
 {
-    // The clip under the pointer, unless it is part of the selection: then
-    // the selection; without a pointed clip the selection, else the sheet
+    // The pointed item that lives on the timeline (a clip today, anything
+    // with a TLocation once it is a TTimeLineEntity), unless it is part of
+    // the selection: then the selection; without one the selection, else
+    // the sheet
+    TSheet* sheet = qobject_cast<TSheet*>(m_sv->get_sheet());
+    TSelectionService* selection = sheet ? sheet->get_selection_service() : nullptr;
     for (TContextItem* item : m_contextPointer->get_active_context_items()) {
-        TAudioClipView* clipView = qobject_cast<TAudioClipView*>(item);
-        if (!clipView) {
+        TTimeLineEntity* entity = dynamic_cast<TTimeLineEntity*>(item->get_related_context_item());
+        if (!entity) {
             continue;
         }
-        TAudioClip* clip = clipView->get_clip();
-        TSheet* sheet = clip->get_sheet();
-        const bool selected = sheet && sheet->get_selection_service() && sheet->get_selection_service()->is_selected(clip->get_id());
-        if (!selected) {
-            m_sv->zoom_to_range(clip->get_location_start(), clip->get_location_end());
-            return;
+        if (selection && selection->get_selected_entities().contains(entity)) {
+            break;
         }
-        break;
+        m_sv->zoom_to_range(entity->get_location_start(), entity->get_location_end());
+        return;
     }
     m_sv->zoom_to_fit();
 }
