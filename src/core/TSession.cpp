@@ -268,7 +268,9 @@ TTimeRef TSession::get_transport_location() const
         return TTimeRef(published.universalFrame) + TTimeRef(nframes_t(published.frames), uint(published.sampleRate));
     }
 
-	return m_transportLocation;
+    // Stopped: a requested seek is where the transport will be; the audio
+    // thread confirms it later (seek_finished), without a jump back meanwhile
+    return is_seeking() ? m_seekTransportLocation : m_transportLocation;
 }
 
 TTransportPosition TSession::get_published_transport_position() const
@@ -288,7 +290,7 @@ TTimeRef TSession::get_heard_transport_location(qint64 nowNanoseconds)
 
     if (!is_transport_rolling()) {
         m_heardPositionEstimator.reset();
-        return m_transportLocation;
+        return is_seeking() ? m_seekTransportLocation : m_transportLocation;
     }
 
     if (nowNanoseconds != m_heardPositionNanoseconds) {

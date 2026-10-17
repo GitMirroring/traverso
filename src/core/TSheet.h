@@ -148,7 +148,7 @@ private:
     inline void set_transport_seeking_state(bool seeking) {
         m_isSeeking.store(seeking);
     }
-    inline bool is_seeking() const {
+    inline bool is_seeking() const override {
         return m_isSeeking.load();
     }
     void set_transport_stop_requested_state(bool stop) {

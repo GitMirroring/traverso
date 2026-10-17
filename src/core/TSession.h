@@ -64,6 +64,8 @@ public:
     // GUI thread. While rolling: the end of the buffer the audio thread
     // published last, see get_published_transport_position()
 	virtual TTimeRef get_transport_location() const;
+    // A seek is requested and not confirmed by the audio thread yet
+    virtual bool is_seeking() const { return false; }
     // The position the audio thread published last (the parent's for a
     // child session). Any thread
     TTransportPosition get_published_transport_position() const;
