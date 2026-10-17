@@ -92,6 +92,71 @@ float TWaveformColumns::max_amplitude(const TPeakLevels& levels, TWaveformSample
     return amplitude;
 }
 
+qint64 TWaveformColumns::nearest_zero_crossing(const TPeakLevels& levels, TWaveformSampleSource* samples, qint64 frame, qint64 maxDistance)
+{
+    const int channels = levels.channel_count();
+    const qint64 frames = levels.frame_count();
+    if (channels <= 0 || frames < 2 || maxDistance < 0) {
+        return -1;
+    }
+
+    // One frame beyond the distance on both sides: a crossing's other frame
+    // may lie there
+    const qint64 first = std::max<qint64>(frame - maxDistance - 1, 0);
+    const qint64 last = std::min(frame + maxDistance + 2, frames);   // exclusive
+    if (last - first < 2) {
+        return -1;
+    }
+
+    std::vector<float> buffer(size_t(last - first) * size_t(channels));
+    std::vector<float*> pointers(static_cast<size_t>(channels));
+    for (int c = 0; c < channels; ++c) {
+        pointers[size_t(c)] = buffer.data() + qsizetype(c) * (last - first);
+    }
+    const qint64 read = samples->read(first, last - first, pointers.data());
+    if (read < 2) {
+        return -1;
+    }
+
+    // The signed sum over the channels decides the sign, the sum of the
+    // magnitudes how close to zero a frame is
+    auto sum = [&](qint64 i) {
+        float value = 0.0f;
+        for (int c = 0; c < channels; ++c) {
+            value += pointers[size_t(c)][i];
+        }
+        return value;
+    };
+    auto magnitude = [&](qint64 i) {
+        float value = 0.0f;
+        for (int c = 0; c < channels; ++c) {
+            value += std::fabs(pointers[size_t(c)][i]);
+        }
+        return value;
+    };
+
+    qint64 best = -1;
+    qint64 bestDistance = std::numeric_limits<qint64>::max();
+    float previous = sum(0);
+    for (qint64 i = 1; i < read; ++i) {
+        const float current = sum(i);
+        const bool crossing = (previous <= 0.0f && current >= 0.0f) || (previous >= 0.0f && current <= 0.0f);
+        if (crossing) {
+            const qint64 candidate = first + (magnitude(i) < magnitude(i - 1) ? i : i - 1);
+            const qint64 distance = std::abs(candidate - frame);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = candidate;
+            } else if (candidate > frame) {
+                break;   // only farther crossings from here on
+            }
+        }
+        previous = current;
+    }
+
+    return (best >= 0 && bestDistance <= maxDistance) ? best : -1;
+}
+
 TWaveformColumns::Source TWaveformColumns::query(const TPeakLevels& levels,
                                                  TWaveformSampleSource* samples,
                                                  const TTimeRef& start,

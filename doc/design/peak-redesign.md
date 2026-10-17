@@ -325,5 +325,12 @@ chunks and run one at a time.
   selected clips, else the whole session. `TPeak::zoomStep` /
   `max_zoom_value()` are no longer used.
 
-Not done yet: sample dots at extreme zoom, removal of `TPeak` /
-`ClipTileCache` once the user has compared both paths.
+- Zero crossings (2026-10-17): `TWaveformColumns::nearest_zero_crossing()`
+  (sign change of the channel sum, the frame nearer to zero of the pair,
+  within a distance; brute-force tested) via `TWaveform::nearest_zero_crossing(time, maxDistance)`,
+  for click-free cuts; the split/trim commands do not use it yet (a snap
+  option, controller work). Sample dots at extreme zoom are not wanted:
+  the line through the samples is what the user expects.
+
+Not done yet: removal of `TPeak` / `ClipTileCache` once the user has
+compared both paths.

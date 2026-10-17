@@ -13,6 +13,7 @@
 #include "TResourcesManager.h"
 
 #include <algorithm>
+#include <cmath>
 
 QString TWaveform::peak_path(const TBufferedAudioStream* source)
 {
@@ -183,6 +184,17 @@ float TWaveform::max_amplitude(const TTimeRef& start, const TTimeRef& end)
     }
     return TWaveformColumns::max_amplitude(m_file.levels(), this,
                                            TTimeRef::frame_at_or_after(start, m_rate), TTimeRef::frame_at_or_after(end, m_rate));
+}
+
+TTimeRef TWaveform::nearest_zero_crossing(const TTimeRef& time, const TTimeRef& maxDistance)
+{
+    if (state() != State::Ready || m_live) {
+        return TTimeRef(TTimeRef::INVALID);
+    }
+    const qint64 frame = TWaveformColumns::nearest_zero_crossing(
+        m_file.levels(), this, TTimeRef::frame_at_or_before(time, m_rate),
+        qint64(std::ceil(TTimeRef::to_frames(maxDistance, m_rate))));
+    return frame < 0 ? TTimeRef(TTimeRef::INVALID) : TTimeRef(nframes_t(frame), m_rate);
 }
 
 qint64 TWaveform::read(qint64 firstFrame, qint64 count, float* const* channels)

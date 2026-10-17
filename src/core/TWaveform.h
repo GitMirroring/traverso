@@ -65,6 +65,10 @@ public:
     // time), exact; -1 while not Ready
     float max_amplitude(const TTimeRef& start, const TTimeRef& end);
 
+    // The zero crossing of the source nearest to time, at most maxDistance
+    // away; an invalid TTimeRef when there is none (or while not Ready)
+    TTimeRef nearest_zero_crossing(const TTimeRef& time, const TTimeRef& maxDistance);
+
     // TWaveformSampleSource
     qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override;
 

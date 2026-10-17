@@ -70,6 +70,13 @@ public:
     // samples. 0 for an empty range.
     static float max_amplitude(const TPeakLevels& levels, TWaveformSampleSource* samples, qint64 first, qint64 last);
 
+    // The frame of the zero crossing nearest to frame, at most maxDistance
+    // frames away, or -1. A crossing is between two frames where the signal
+    // changes sign (or touches zero); the frame returned is the one nearer
+    // to zero of the two. With several channels the crossing is where the sum
+    // of the channels' |values| is smallest. Reads a window of the samples.
+    static qint64 nearest_zero_crossing(const TPeakLevels& levels, TWaveformSampleSource* samples, qint64 frame, qint64 maxDistance);
+
     // Fills out[channel * count + i] for every channel of levels.
     // samples may be nullptr if the request never needs them.
     static Source query(const TPeakLevels& levels,

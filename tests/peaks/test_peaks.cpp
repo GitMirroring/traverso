@@ -582,6 +582,60 @@ static void test_max_amplitude()
     }
 }
 
+static void test_zero_crossing()
+{
+    for (int round = 0; round < 300; ++round) {
+        const uint rate = s_rates[random_between(0, std::size(s_rates) - 1)];
+        const int channelCount = int(random_between(1, 2));
+        const qint64 frames = random_between(2, 20000);
+        Signal signal = make_signal(rate, channelCount, frames);
+        // Sometimes a DC signal without any crossing
+        const bool dc = random_between(0, 9) == 0;
+        if (dc) {
+            for (auto& channel : signal.channels) {
+                for (float& v : channel) {
+                    v = 0.5f + std::fabs(v) * 0.1f;
+                }
+            }
+        }
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        MemorySource memory(signal);
+
+        for (int probe = 0; probe < 10; ++probe) {
+            const qint64 frame = random_between(-50, frames + 50);
+            const qint64 maxDistance = random_between(0, 3000);
+            const qint64 result = TWaveformColumns::nearest_zero_crossing(builder->levels(), &memory, frame, maxDistance);
+
+            // Brute force: every crossing in the file, pick the nearest
+            auto sum = [&](qint64 i) { float v = 0; for (int c = 0; c < channelCount; ++c) v += signal.channels[size_t(c)][size_t(i)]; return v; };
+            auto mag = [&](qint64 i) { float v = 0; for (int c = 0; c < channelCount; ++c) v += std::fabs(signal.channels[size_t(c)][size_t(i)]); return v; };
+            qint64 expected = -1;
+            qint64 expectedDistance = std::numeric_limits<qint64>::max();
+            for (qint64 i = 1; i < frames; ++i) {
+                const float a = sum(i - 1), b = sum(i);
+                if ((a <= 0 && b >= 0) || (a >= 0 && b <= 0)) {
+                    const qint64 candidate = mag(i) < mag(i - 1) ? i : i - 1;
+                    const qint64 distance = std::abs(candidate - frame);
+                    if (distance < expectedDistance) {
+                        expectedDistance = distance;
+                        expected = candidate;
+                    }
+                }
+            }
+            if (expectedDistance > maxDistance) {
+                expected = -1;
+            }
+            // Equal distances on both sides: either is right
+            const bool tie = result >= 0 && expected >= 0 && std::abs(result - frame) == std::abs(expected - frame);
+            CHECK(result == expected || tie, "round %d frame %lld max %lld: %lld expected %lld", round, (long long)frame,
+                  (long long)maxDistance, (long long)result, (long long)expected);
+            if (dc) {
+                CHECK(result == -1, "round %d: crossing %lld in a DC signal", round, (long long)result);
+            }
+        }
+    }
+}
+
 int main()
 {
     run("time conversions", test_time_conversions);
@@ -590,6 +644,7 @@ int main()
     run("columns", test_columns);
     run("max amplitude", test_max_amplitude);
     run("growing pyramid", test_growing_pyramid);
+    run("zero crossing", test_zero_crossing);
     std::printf("non-empty columns checked: %lld from samples, %lld from the pyramid\n",
                 (long long)s_checkedColumns[int(TWaveformColumns::Source::Samples)],
                 (long long)s_checkedColumns[int(TWaveformColumns::Source::Pyramid)]);
