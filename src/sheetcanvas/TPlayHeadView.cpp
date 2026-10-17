@@ -31,7 +31,13 @@ TPlayHeadView::TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* 
 	connect(m_session, &TSession::transportStopped, this, &TPlayHeadView::play_stop);
 	
 	// Every frame while the transport rolls
-	connect(m_frameClock, &TFrameClock::frame, this, &TPlayHeadView::update_position);
+	// Only while this view holds the clock: another follower (the time
+	// label) keeps it running while the playhead is grabbed (PlayHeadMove)
+	connect(m_frameClock, &TFrameClock::frame, this, [this](qint64 nowNanoseconds) {
+		if (m_frameClock->is_held_by(this)) {
+			update_position(nowNanoseconds);
+		}
+	});
 	
 	connect(&m_animation, &QTimeLine::frameChanged, this, &TPlayHeadView::set_animation_value);
 	connect(&m_animation, &QTimeLine::finished, this, &TPlayHeadView::animation_finished);
