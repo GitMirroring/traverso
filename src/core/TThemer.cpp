@@ -346,8 +346,8 @@ QBrush TThemer::get_brush(const QString& name, QPoint start, QPoint stop) const
         return QBrush(m_colors.value(name));
     }
 
-    // not a colour either? return a fallback colour.
-    printf("Brush %s was requested, but no such element was found in the theme file\n", QS_C(name));
+    // Not in the theme file: the built-in default, which warns when it does
+    // not exist either
     return QBrush(themer()->get_default_color(name));
 }
 
@@ -358,10 +358,14 @@ QLinearGradient TThemer::get_gradient(const QString& name) const
     if (m_gradients.contains(name))
     {
         return m_gradients.value(name);
-    } else {
-        printf("Gradient %s was requested, but no such element was found in the theme file\n", QS_C(name));
-        return QLinearGradient();
     }
+
+    // Not in the theme file: the built-in default colour as a one colour
+    // gradient, like get_brush(). It warns when no default exists either
+    QLinearGradient gradient;
+    gradient.setColorAt(0.0, themer()->get_default_color(name));
+    gradient.setColorAt(1.0, themer()->get_default_color(name));
+    return gradient;
 }
 
 QFont TThemer::get_font(const QString& fontname) const
@@ -491,7 +495,8 @@ void TThemer::load_defaults()
     m_defaultColors.insert("CorrelationMeter:foreground:side", p.color(QPalette::LinkVisited));
     m_defaultColors.insert("CorrelationMeter:centerline", p.color(QPalette::Highlight));
     m_defaultColors.insert("CorrelationMeter:text", p.color(QPalette::WindowText));
-    m_defaultColors.insert("CorrelationMeter:foreground", p.color(QPalette::Text));
+    // Like the fades: the highlight colour, partly transparent
+    m_defaultColors.insert("CorrelationMeter:foreground", set_color_alpha(p.color(QPalette::Highlight), 150));
     m_defaultColors.insert("GainSlider:6db", QColor(Qt::red));
     m_defaultColors.insert("GainSlider:0db", QColor(Qt::yellow));
     m_defaultColors.insert("GainSlider:-6db", QColor(Qt::green));

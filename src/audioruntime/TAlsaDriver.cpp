@@ -1621,6 +1621,18 @@ QString TAlsaDriver::get_device_longname( )
     return alsa_device_name(true, 0);
 }
 
+// Asks ALSA which cards exist: opening a card that does not exist makes
+// alsa-lib print an error to stderr
+QList<int> TAlsaDriver::alsa_card_numbers()
+{
+    QList<int> cards;
+    int card = -1;
+    while (snd_card_next(&card) == 0 && card >= 0) {
+        cards.append(card);
+    }
+    return cards;
+}
+
 QString TAlsaDriver::alsa_device_longname(int devicenumber)
 {
     return alsa_device_name(true, devicenumber);
@@ -1665,9 +1677,9 @@ QString TAlsaDriver::alsa_device_name(bool longname, int devicenumber)
 
 int TAlsaDriver::get_device_id_by_name(const QString& name)
 {
-    for (int i=0; i<6; i++) {
-        if (alsa_device_name(false, i) == name) {
-            return i;
+    for (int card : alsa_card_numbers()) {
+        if (alsa_device_name(false, card) == name) {
+            return card;
         }
     }
 

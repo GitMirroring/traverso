@@ -757,13 +757,13 @@ void TMainWindow::create_menus()
 
     // New Project
     action = fileMenu->addAction(tr("&New..."));
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentNew, QIcon(QStringLiteral(":/icons/new.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentNew, QIcon(QStringLiteral(":/new"))));
     action->setShortcut(QKeySequence::New);
     connect(action, &QAction::triggered, this, &TMainWindow::show_newproject_dialog);
 
     // Open Project / Welcome Page
     action = fileMenu->addAction(tr("&Open..."));
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentOpen, QIcon(QStringLiteral(":/icons/open.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentOpen, QIcon(QStringLiteral(":/open"))));
     action->setShortcut(QKeySequence::Open);
     connect(action, &QAction::triggered, this, &TMainWindow::show_welcome_page);
 
@@ -772,7 +772,7 @@ void TMainWindow::create_menus()
     // Save Project
     action = fileMenu->addAction(tr("&Save"));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSave, QIcon(QStringLiteral(":/icons/save.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSave, QIcon(QStringLiteral(":/save"))));
     action->setShortcut(QKeySequence::Save);
     connect(action, &QAction::triggered, &pm(), &TProjectManager::save_project);
 
@@ -781,7 +781,7 @@ void TMainWindow::create_menus()
     // Close Project
     action = fileMenu->addAction(tr("&Close Project"));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::WindowClose, QIcon(QStringLiteral(":/icons/close.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::WindowClose));
     action->setShortcut(QKeySequence::Close);
     connect(action, &QAction::triggered, &pm(), &TProjectManager::close_current_project);
 
@@ -790,7 +790,7 @@ void TMainWindow::create_menus()
     // Project Management (F4)
     action = fileMenu->addAction(tr("&Manage Project..."));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentProperties, QIcon(QStringLiteral(":/icons/projectmanager.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentProperties, QIcon(QStringLiteral(":/projectmanager"))));
     action->setShortcut(QKeySequence(QStringLiteral("F4")));
     fileMenu->addAction(action);
     m_projectToolBar->addAction(action);
@@ -799,7 +799,7 @@ void TMainWindow::create_menus()
     // Export Audio (F9)
     action = fileMenu->addAction(tr("&Export..."));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSend, QIcon(QStringLiteral(":/icons/export.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentSend, QIcon(QStringLiteral(":/export"))));
     action->setShortcut(QKeySequence(QStringLiteral("F9")));
     m_projectToolBar->addAction(action);
     connect(action, &QAction::triggered, this, &TMainWindow::show_export_widget);
@@ -807,7 +807,7 @@ void TMainWindow::create_menus()
     // Burn CD (F8)
     action = fileMenu->addAction(tr("&CD Writing..."));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DriveOptical, QIcon(QStringLiteral(":/icons/write-cd.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DriveOptical, QIcon(QStringLiteral(":/write-cd"))));
     action->setShortcut(QKeySequence(QStringLiteral("F8")));
     m_projectToolBar->addAction(action);
     connect(action, &QAction::triggered, this, &TMainWindow::show_cd_writing_dialog);
@@ -815,7 +815,7 @@ void TMainWindow::create_menus()
     // Restore Backup (F10)
     action = fileMenu->addAction(tr("&Restore Backup..."));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::EditUndo, QIcon(QStringLiteral(":/icons/restore.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::EditUndo, QIcon(QStringLiteral(":/restore"))));
     action->setShortcut(QKeySequence(QStringLiteral("F10")));
     fileMenu->addAction(action);
     m_projectToolBar->addAction(action);
@@ -825,7 +825,7 @@ void TMainWindow::create_menus()
 
     // Quit Application
     action = fileMenu->addAction(tr("&Quit"));
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::ApplicationExit, QIcon(QStringLiteral(":/icons/exit.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::ApplicationExit, QIcon(QStringLiteral(":/exit"))));
     action->setShortcut(QKeySequence(QStringLiteral("CTRL+Q")));
     connect(action, &QAction::triggered, &pm(), &TProjectManager::exit);
 
@@ -839,7 +839,7 @@ void TMainWindow::create_menus()
     // Undo
     action = editMenu->addAction(tr("Undo"));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::EditUndo, QIcon(QStringLiteral(":/icons/undo.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::EditUndo, QIcon(QStringLiteral(":/undo"))));
     action->setShortcut(QKeySequence::Undo);
     m_editToolBar->addAction(action);
     connect(action, &QAction::triggered, this, &TMainWindow::undo);
@@ -847,7 +847,7 @@ void TMainWindow::create_menus()
     // Redo
     action = editMenu->addAction(tr("Redo"));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::EditRedo, QIcon(QStringLiteral(":/icons/redo.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::EditRedo, QIcon(QStringLiteral(":/redo"))));
     action->setShortcut(QKeySequence::Redo);
     m_editToolBar->addAction(action);
     connect(action, &QAction::triggered, this, &TMainWindow::redo);
@@ -858,14 +858,14 @@ void TMainWindow::create_menus()
     // Import Audio
     action = editMenu->addAction(tr("Import &Audio..."));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::ListAdd, QIcon(QStringLiteral(":/icons/import-audio.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::ListAdd, QIcon(QStringLiteral(":/import-audio"))));
     m_editToolBar->addAction(action);
     connect(action, &QAction::triggered, this, &TMainWindow::import_audio);
 
     // Insert Silence
     action = editMenu->addAction(tr("Insert Si&lence..."));
     m_projectMenuToolbarActions.append(action);
-    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::InsertLink, QIcon(QStringLiteral(":/icons/import-silence.svg"))));
+    action->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::InsertLink, QIcon(QStringLiteral(":/import-silence"))));
     m_editToolBar->addAction(action);
     connect(action, &QAction::triggered, this, [this](bool checked){ (void)checked; this->show_insertsilence_dialog(); });
 
@@ -875,7 +875,7 @@ void TMainWindow::create_menus()
     // Snap (setIsMask(false) keeps the icon's own colors)
     m_snapAction = editMenu->addAction(tr("&Snap"));
     m_projectMenuToolbarActions.append(m_snapAction);
-    QIcon snapIcon = QIcon::fromTheme(QStringLiteral("snap-magnet"), QIcon(QStringLiteral(":/icons/snap-magnet.svg")));
+    QIcon snapIcon = QIcon::fromTheme(QStringLiteral("snap-magnet"), QIcon(QStringLiteral(":/ui/icons/scalable/actions/snap-magnet.svg")));
     snapIcon.setIsMask(false);
     m_snapAction->setIcon(snapIcon);
     m_snapAction->setCheckable(true);
@@ -886,7 +886,7 @@ void TMainWindow::create_menus()
     // Scroll Playback (Follow Head)
     m_followAction = editMenu->addAction(tr("S&croll Playback"));
     m_projectMenuToolbarActions.append(m_followAction);
-    m_followAction->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::GoNext, QIcon(QStringLiteral(":/icons/follow.svg"))));
+    m_followAction->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::GoNext, QIcon(QStringLiteral(":/follow"))));
     m_followAction->setCheckable(true);
     m_followAction->setToolTip(tr("Keep play cursor in view while playing or recording."));
     m_editToolBar->addAction(m_followAction);

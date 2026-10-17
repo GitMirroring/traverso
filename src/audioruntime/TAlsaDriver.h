@@ -65,6 +65,8 @@ public:
 
 	QString get_device_name();
 	QString get_device_longname();
+    // The numbers of the sound cards ALSA knows, in its order
+    static QList<int> alsa_card_numbers();
     static QString alsa_device_longname(int devicenumber);
     static QString alsa_device_name(int devicenumber);
 

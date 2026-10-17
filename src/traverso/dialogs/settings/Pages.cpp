@@ -264,12 +264,11 @@ void AudioDriverConfigPage::load_config( )
     // Always add the 'default' device
     m_alsadevices->devicesCombo->addItem(tr("System default"), "default");
 
-    // Iterate over the maximum number of devices that can be in a system
-    // according to alsa, and add them to the devices list.
+    // The cards ALSA knows
     QString name, longName;
-    for (int i=0; i<6; ++i) {
-        name = TAlsaDriver::alsa_device_name(i);
-        longName = TAlsaDriver::alsa_device_longname(i);
+    for (int card : TAlsaDriver::alsa_card_numbers()) {
+        name = TAlsaDriver::alsa_device_name(card);
+        longName = TAlsaDriver::alsa_device_longname(card);
         if (name != "") {
                 m_alsadevices->devicesCombo->addItem(name + ", " + longName + "", name);
         }

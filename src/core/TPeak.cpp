@@ -198,12 +198,12 @@ int TPeak::read_header()
         data->file.setFileName(data->fileName);
 
         if (! data->file.open(QIODevice::ReadOnly)) {
+            // No peak file yet is normal: the caller builds it
             if (QFile::exists(data->fileName)) {
                 m_permanentFailure = true;
+                QString errorstring = TFileHelper::fileerror_to_string(data->file.error());
+                qWarning("Couldn't open peak file for reading! (%s, Error: %s)", QS_C(data->fileName), QS_C(errorstring));
             }
-
-            QString errorstring = TFileHelper::fileerror_to_string(data->file.error());
-            qWarning("Couldn't open peak file for reading! (%s, Error: %s)", QS_C(data->fileName), QS_C(errorstring));
             return -1;
         }
 

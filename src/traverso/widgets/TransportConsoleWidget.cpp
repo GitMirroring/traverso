@@ -39,44 +39,44 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent)
     m_timeLabel = new QPushButton(this);
     m_timeLabel->setFocusPolicy(Qt::NoFocus);
 
-    // 1. Skip to Start: theme icon, own SVG as fallback
+    // 1. Skip to Start: theme icon, own icon as fallback
     m_toStartAction = addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::MediaSkipBackward, QIcon(QStringLiteral(":/icons/skip-start.svg"))),
+        QIcon::fromTheme(QIcon::ThemeIcon::MediaSkipBackward, QIcon(QStringLiteral(":/skipleft"))),
         tr("Skip to Start")
         );
     connect(m_toStartAction, &QAction::triggered, &transport(), &TTransport::to_start);
 
-    // 2. Previous Snap: no direct theme equivalent, own SVG as fallback
+    // 2. Previous Snap: theme icon, own icon as fallback
     m_toLeftAction = addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::MediaSeekBackward, QIcon(QStringLiteral(":/icons/seek-prev.svg"))),
+        QIcon::fromTheme(QIcon::ThemeIcon::MediaSeekBackward, QIcon(QStringLiteral(":/seekleft"))),
         tr("Previous Snap Position")
         );
     connect(m_toLeftAction, &QAction::triggered, &transport(), &TTransport::prev_skip_pos);
 
-    // 3. Record: theme icon, own SVG as fallback
+    // 3. Record: theme icon, own icon as fallback
     m_recAction = addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::MediaRecord, QIcon(QStringLiteral(":/icons/record.svg"))),
+        QIcon::fromTheme(QIcon::ThemeIcon::MediaRecord, QIcon(QStringLiteral(":/record"))),
         tr("Record")
         );
     connect(m_recAction, &QAction::triggered, this, &TransportConsoleWidget::rec_toggled);
 
-    // 4. Play / Stop: theme icon, own SVG as fallback
+    // 4. Play / Stop: theme icon, own icon as fallback
     m_playAction = addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::MediaPlaybackStart, QIcon(QStringLiteral(":/icons/play.svg"))),
+        QIcon::fromTheme(QIcon::ThemeIcon::MediaPlaybackStart, QIcon(QStringLiteral(":/playstart"))),
         tr("Play / Stop")
         );
     connect(m_playAction, &QAction::triggered, &transport(), &TTransport::start_transport);
 
-    // 5. Next Snap: own SVG as fallback
+    // 5. Next Snap: theme icon, own icon as fallback
     m_toRightAction = addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::MediaSeekForward, QIcon(QStringLiteral(":/icons/seek-prev.svg"))),
+        QIcon::fromTheme(QIcon::ThemeIcon::MediaSeekForward, QIcon(QStringLiteral(":/seekright"))),
         tr("Next Snap Position")
         );
     connect(m_toRightAction, &QAction::triggered, &transport(), &TTransport::next_skip_pos);
 
-    // 6. Skip to End: theme icon, own SVG as fallback
+    // 6. Skip to End: theme icon, own icon as fallback
     m_toEndAction = addAction(
-        QIcon::fromTheme(QIcon::ThemeIcon::MediaSkipForward, QIcon(QStringLiteral(":/icons/skip-end.svg"))),
+        QIcon::fromTheme(QIcon::ThemeIcon::MediaSkipForward, QIcon(QStringLiteral(":/skipright"))),
         tr("Skip to End")
         );
     connect(m_toEndAction, &QAction::triggered, &transport(), &TTransport::to_end);
@@ -168,8 +168,8 @@ void TransportConsoleWidget::rec_toggled()
 void TransportConsoleWidget::transport_started()
 {
     m_playAction->setChecked(true);
-    // Switch to the Stop icon, own SVG as fallback
-    m_playAction->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaPlaybackStop, QIcon(QStringLiteral(":/icons/stop.svg"))));
+    // Switch to the Stop icon, own icon as fallback
+    m_playAction->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaPlaybackStop, QIcon(QStringLiteral(":/playstop"))));
     m_recAction->setEnabled(false);
 
     if (m_sheet && !m_sheet->is_recording()) {
@@ -180,8 +180,8 @@ void TransportConsoleWidget::transport_started()
 void TransportConsoleWidget::transport_stopped()
 {
     m_playAction->setChecked(false);
-    // Switch back to the Play icon, own SVG as fallback
-    m_playAction->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaPlaybackStart, QIcon(QStringLiteral(":/icons/play.svg"))));
+    // Switch back to the Play icon, own icon as fallback
+    m_playAction->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaPlaybackStart, QIcon(QStringLiteral(":/playstart"))));
     m_recAction->setEnabled(true);
 }
 
