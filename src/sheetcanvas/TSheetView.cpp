@@ -562,7 +562,7 @@ void TSheetView::hzoom(qreal factor, bool animated)
     const qreal zoom = std::min(current * factor, std::max(zoom_out_limit(), current));
     const qreal anchorFrames = qreal(anchor.universal_frame());
     const qreal scale = zoom * (qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE) / 44100.0);
-    animate_zoom_to(zoom, TTimeRef(qint64(anchorFrames - x * scale)), 150);
+    animate_zoom_to(zoom, TTimeRef(qint64(anchorFrames - x * scale)), 120);
 }
 
 void TSheetView::zoom_around(qreal factor, int viewportX)
@@ -649,7 +649,7 @@ void TSheetView::zoom_to_range(const TTimeRef& start, const TTimeRef& end)
         && std::abs(hscrollbar_value() - m_fitScroll) <= 2;
     if (atFit) {
         m_fitValid = false;
-        animate_zoom_to(m_beforeFitZoom, m_beforeFitLeft, 300);
+        animate_zoom_to(m_beforeFitZoom, m_beforeFitLeft, 200);
         return;
     }
 
@@ -660,7 +660,7 @@ void TSheetView::zoom_to_range(const TTimeRef& start, const TTimeRef& end)
     m_fitZoom = zoom;
     m_fitScroll = qRound(qreal(left.universal_frame()) / scale);
     m_fitValid = true;
-    animate_zoom_to(zoom, left, 300);
+    animate_zoom_to(zoom, left, 200);
 }
 
 

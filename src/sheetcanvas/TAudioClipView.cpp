@@ -52,6 +52,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "dialogs/AudioClipEditDialog.h"
 #include "ClipTileCache.h"
 
+#include <QElapsedTimer>
 #include <QFileDialog>
 #include <QApplication>
 #include <QLinearGradient>
@@ -1059,6 +1060,9 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
         break;
     }
 
+    QElapsedTimer paintTimer;
+    paintTimer.start();
+
     // One column per device pixel
     const qreal dpr = painter->device()->devicePixelRatioF();
     const int x0 = qFloor(xstart);
@@ -1185,4 +1189,11 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
 
     image.setDevicePixelRatio(dpr);
     painter->drawImage(QPointF(x0, 0), image);
+
+    // A slow paint is worth knowing about (zooming feels sluggish then)
+    const qint64 microseconds = paintTimer.nsecsElapsed() / 1000;
+    if (microseconds > 8000) {
+        TLOG_D("peaks", "slow waveform paint: {} columns x {} px in {} ms ({})", columns, deviceHeight,
+               microseconds / 1000.0, m_clip->get_name().toStdString());
+    }
 }

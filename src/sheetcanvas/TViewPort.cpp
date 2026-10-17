@@ -330,9 +330,9 @@ void TViewPort::set_canvas_cursor_pos(QPointF pos, CursorMoveReason reason)
 
 void TViewPort::wheelEvent(QWheelEvent *event)
 {
-    // Ctrl + wheel zooms around the pointer, a notch is a factor 1.25
+    // Ctrl + wheel zooms around the pointer, a notch is a factor 1.5
     if ((event->modifiers() & Qt::ControlModifier) && event->angleDelta().y() != 0) {
-        m_sv->zoom_around(std::pow(1.25, -event->angleDelta().y() / 120.0), int(event->position().x()));
+        m_sv->zoom_around(std::pow(1.5, -event->angleDelta().y() / 120.0), int(event->position().x()));
         event->accept();
         return;
     }
