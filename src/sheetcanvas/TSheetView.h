@@ -105,7 +105,14 @@ public :
 
     void load_theme_data();
     void vzoom(qreal scale);
+    // Zooms by factor around the work cursor (the play head while playing)
     void hzoom(qreal scale);
+    // Zooms by factor keeping the time at viewport x where it is
+    void zoom_around(qreal factor, int viewportX);
+    // The zoom at which the whole session fits the viewport
+    qreal fit_hzoom() const;
+    // The selected clips, else the whole session, into the viewport
+    TCommand* zoom_to_fit();
     void clipviewport_resize_event();
     int hscrollbar_value() const;
     int vscrollbar_value() const;

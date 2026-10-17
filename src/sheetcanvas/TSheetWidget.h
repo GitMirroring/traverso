@@ -102,7 +102,7 @@ protected:
 	QSize sizeHint () const;
 
 private:
-	TSheetView* 		m_sv;
+	TSheetView* 		m_sv{nullptr};
         TSession*		m_session;
 	QGridLayout*		m_mainLayout;
 	TTrackPanelViewPort*	m_trackPanel;

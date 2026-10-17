@@ -387,6 +387,7 @@ void TraversoCommands::load(TShortCutManager* m)
     m->add_function<TZoomCommand>(TActions::ZoomTrackVerticalOut, &TZoomCommand::track_vzoom_out);
     m->add_function<TZoomCommand>(TActions::ZoomNumericalInput, &TZoomCommand::numerical_input);
     m->add_function<TZoomCommand>(TActions::ZoomToggleExpandAllTracks, &TZoomCommand::toggle_expand_all_tracks);
+    m->add_function<TZoomCommand>(TActions::ZoomToFit, &TZoomCommand::zoom_to_fit);
     m->add_function<TZoomCommand>(TActions::ZoomToggleVerticalHorizontal, TActionGroups::ToggleVerticalBase, &TZoomCommand::toggle_vertical_horizontal_jog_zoom);
 }
 

@@ -975,7 +975,7 @@ void TSheet::prepare_recording()
 qreal TSheet::minimum_hzoom() const
 {
     if (m_recordingClips.isEmpty()) {
-        return 1.0;
+        return TSession::minimum_hzoom();
     }
     // hzoom counts frames per pixel at 44100 Hz; the recording runs at the
     // device rate, and get_hzoom() rounds to a power of two, so the limit

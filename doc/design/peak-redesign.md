@@ -314,7 +314,16 @@ back-pressure from DiskIO's buffer fill, for disk bandwidth contention of
 builds with playback and recording; builds read sequentially in 64 K-frame
 chunks and run one at a time.
 
-Not done yet: sample dots at extreme zoom, continuous zoom in the UI (3.8:
-`get_hzoom()` still rounds to a power of two and the slider uses
-`TPeak::zoomStep`), removal of `TPeak` / `ClipTileCache` once the user has
-compared both paths.
+- 3.8 zoom (2026-10-17): continuous. `get_hzoom()` no longer rounds to a
+  power of two; limits are 32 px per frame (zoomed in) and the whole session
+  filling the view (zoomed out, `TSheetView::fit_hzoom()`), the recording
+  limit on top. `TSheetView::zoom_around(factor, x)` keeps the time under a
+  viewport x in place: keyboard zoom (x1.5 steps) and the slider anchor on
+  the work cursor / play head, the hold-Z jog (continuous, 100 px = factor
+  e), the trackpad pinch and Ctrl+wheel anchor on the pointer. The slider
+  is logarithmic between the limits. Zoom to fit = F while holding Z: the
+  selected clips, else the whole session. `TPeak::zoomStep` /
+  `max_zoom_value()` are no longer used.
+
+Not done yet: sample dots at extreme zoom, removal of `TPeak` /
+`ClipTileCache` once the user has compared both paths.

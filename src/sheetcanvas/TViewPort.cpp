@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QResizeEvent>
 #include <QKeyEvent>
 #include <QWheelEvent>
+#include <cmath>
 #include <QTabletEvent>
 #include <QGraphicsScene>
 #include <QScrollBar>
@@ -329,6 +330,13 @@ void TViewPort::set_canvas_cursor_pos(QPointF pos, CursorMoveReason reason)
 
 void TViewPort::wheelEvent(QWheelEvent *event)
 {
+    // Ctrl + wheel zooms around the pointer, a notch is a factor 1.25
+    if ((event->modifiers() & Qt::ControlModifier) && event->angleDelta().y() != 0) {
+        m_sv->zoom_around(std::pow(1.25, -event->angleDelta().y() / 120.0), int(event->position().x()));
+        event->accept();
+        return;
+    }
+
     bool handled = false;
 
     if (event->angleDelta().x() > 0) {
@@ -379,7 +387,7 @@ bool TViewPort::event(QEvent *event)
                 m_sv->vzoom(1 + zoomFactor);
             }
             else {
-                m_sv->hzoom(1 - zoomFactor);
+                m_sv->zoom_around(1 - zoomFactor, int(gestureEvent->position().x()));
             }
             return true;
         }

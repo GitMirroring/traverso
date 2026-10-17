@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-11  USA.
 #include "TCurve.h"
 #include "TInputEventDispatcher.h"
 #include "TSheet.h"
+#include <algorithm>
+#include "TSelectionService.h"
 #include "TAudioClip.h"
 #include "TSnapList.h"
 #include "TAudioTrack.h"
@@ -175,7 +177,7 @@ void TSheetView::scale_factor_changed( )
 //		PERROR("Session %s return 0 hzoom factor!", m_session->get_name().toLatin1().data());
 		// Woopsy, zoom can't be zero, if we allow that, timeref_scalefactor
 		// will be zero too, and we use timeref_scalefactor as a divider so...:
-		zoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
+		zoom = config().get_property("Sheet", "hzoomLevel", 8192).toDouble();
 	}
     timeref_scalefactor = qint64(zoom * (TTimeRef::UNIVERSAL_SAMPLE_RATE / 44100));
 	m_tlvp->scale_factor_changed();
@@ -537,8 +539,65 @@ void TSheetView::set_track_height(TTrackView *view, int newheight)
 void TSheetView::hzoom(qreal factor)
 {
 	PENTER;
-	m_session->scale_hzoom(factor);
-	center();
+    // A cursor outside the view zooms around the center instead
+    const TTimeRef anchor = (m_session->is_transport_rolling() && m_actOnPlayHead)
+        ? m_session->get_transport_location() : m_session->get_work_location();
+    int x = qRound(anchor / timeref_scalefactor) - hscrollbar_value();
+    if (x < 0 || x > m_clipsViewPort->width()) {
+        x = m_clipsViewPort->width() / 2;
+    }
+    zoom_around(factor, x);
+}
+
+void TSheetView::zoom_around(qreal factor, int viewportX)
+{
+    // Zooming out stops where the whole session fills the view; zooming
+    // in from beyond that (the session got shorter) is always possible
+    const qreal current = m_session->get_hzoom();
+    const qreal zoom = std::min(current * factor, std::max(fit_hzoom(), current));
+
+    const TTimeRef anchor(qint64(hscrollbar_value() + viewportX) * timeref_scalefactor);
+    m_session->set_hzoom(zoom);   // hzoomChanged -> scale_factor_changed, synchronous
+    set_hscrollbar_value(qRound(anchor / timeref_scalefactor) - viewportX);
+}
+
+qreal TSheetView::fit_hzoom() const
+{
+    // Before the viewport exists (the sheet widget's zoom slider asks while
+    // it is built) the session's own limit is all there is
+    if (!m_clipsViewPort || m_clipsViewPort->width() <= 0) {
+        return m_session->maximum_hzoom();
+    }
+    const qreal margin = m_clipsViewPort->width() * 0.02;
+    const qreal width = std::max<qreal>(m_clipsViewPort->width() - 2 * margin, 1.0);
+    const qint64 length = std::max(m_session->get_last_location().universal_frame(), qint64(TTimeRef::UNIVERSAL_SAMPLE_RATE));
+    return qreal(length) * 44100.0 / qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE) / width;
+}
+
+TCommand* TSheetView::zoom_to_fit()
+{
+    TTimeRef start;
+    TTimeRef end = m_session->get_last_location();
+
+    TSheet* sheet = qobject_cast<TSheet*>(m_session);
+    if (sheet && sheet->get_selection_service() && sheet->get_selection_service()->has_selection()) {
+        start = TTimeRef::max_length();
+        end = TTimeRef();
+        for (TTimeLineEntity* entity : sheet->get_selection_service()->get_selected_entities()) {
+            start = std::min(start, entity->get_location_start());
+            end = std::max(end, entity->get_location_end());
+        }
+    }
+    if (!(start < end)) {
+        return nullptr;
+    }
+
+    const qreal margin = m_clipsViewPort->width() * 0.02;
+    const qreal width = std::max<qreal>(m_clipsViewPort->width() - 2 * margin, 1.0);
+    const qreal frames = qreal((end - start).universal_frame()) * 44100.0 / qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    m_session->set_hzoom(frames / width);
+    set_hscrollbar_value(qRound(start / timeref_scalefactor - margin));
+    return nullptr;
 }
 
 

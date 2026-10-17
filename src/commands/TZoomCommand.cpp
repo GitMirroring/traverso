@@ -73,6 +73,8 @@ int TZoomCommand::begin_hold()
     m_verticalJogZoomLastY = m_contextPointer->mouse_viewport_y();
     m_horizontalJogZoomLastX = m_contextPointer->mouse_viewport_x();
     m_origPos = m_contextPointer->scene_pos();
+    m_anchorViewportX = m_horizontalJogZoomLastX;
+    m_anchorTime = TTimeRef(qint64(m_origPos.x() * m_sv->timeref_scalefactor));
 
     return 1;
 }
@@ -108,7 +110,6 @@ int TZoomCommand::jog()
     PENTER;
 
     static const int VERTICAL_JOG_THRESHOLD_PIXELS = 8;
-    static const int HORIZONTAL_JOG_THRESHOLD_PIXELS = 10;
 
     if (m_jogVertical && m_tv) {
         int y = m_contextPointer->mouse_viewport_y();
@@ -128,17 +129,15 @@ int TZoomCommand::jog()
     }
 
     if (m_jogHorizontal) {
-        int x = m_contextPointer->mouse_viewport_x();
-        int dx = x - m_horizontalJogZoomLastX;
+        const int x = m_contextPointer->mouse_viewport_x();
+        const int dx = x - m_horizontalJogZoomLastX;
 
-        if (std::abs(dx) > HORIZONTAL_JOG_THRESHOLD_PIXELS) {
+        if (dx != 0) {
             m_horizontalJogZoomLastX = x;
-            if (dx > 0) {
-                hzoom_in();
-            } else {
-                hzoom_out();
-            }
-
+            // Continuous: 100 px of travel is a factor e, to the right zooms
+            // in; the time where the hold began stays under its pixel
+            m_sv->zoom_around(std::exp(-dx / 100.0), m_anchorViewportX);
+            m_origPos.setX(m_anchorTime / m_sv->timeref_scalefactor);
             m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("Scaling")));
         }
     }
@@ -177,12 +176,17 @@ void TZoomCommand::vzoom_out()
 
 void TZoomCommand::hzoom_in()
 {
-    m_sv->hzoom(0.5);
+    m_sv->hzoom(1.0 / 1.5);
 }
 
 void TZoomCommand::hzoom_out()
 {
-    m_sv->hzoom(2.0);
+    m_sv->hzoom(1.5);
+}
+
+void TZoomCommand::zoom_to_fit()
+{
+    m_sv->zoom_to_fit();
 }
 
 void TZoomCommand::track_vzoom_in()

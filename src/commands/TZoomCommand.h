@@ -6,6 +6,7 @@
 #pragma once
 
 #include "TCommand.h"
+#include "TTimeRef.h"
 #include <QVariantList>
 #include <QPointF>
 #include <QPoint>
@@ -48,6 +49,8 @@ private:
     qreal m_yScalefactor{0.0};
     QPoint m_mousePos;
     QPointF m_origPos;
+    TTimeRef m_anchorTime;        // the time under the pointer when the hold began
+    int m_anchorViewportX{0};     // stays there while jogging
 
     int collected_number_to_track_height(const QString& collected) const;
 
@@ -63,6 +66,7 @@ public slots:
     void track_vzoom_out();
     void toggle_vertical_horizontal_jog_zoom();
     void toggle_expand_all_tracks();
+    void zoom_to_fit();
     void numerical_input();
 };
 

@@ -21,11 +21,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TSession.h"
 
+#include <algorithm>
+
 #include "TAudioDevice.h"
 #include "TAddRemoveCommand.h"
 #include "TAudioTrack.h"
 #include "TConfig.h"
-#include "TPeak.h"
 #include "Utils.h"
 #include "TBusTrack.h"
 #include "TSheet.h"
@@ -59,7 +60,7 @@ TSession::TSession(TSession *parentSession)
     m_workLocation = TTimeRef();
     m_transportLocation = TTimeRef();
     m_scrollBarXValue = m_scrollBarYValue = 0;
-    m_hzoom = config().get_property("Sheet", "hzoomLevel", 8192).toInt();
+    m_hzoom = config().get_property("Sheet", "hzoomLevel", 8192).toDouble();
     set_transport_rolling_state(false);
     m_isSnapOn=true;
 }
@@ -265,8 +266,7 @@ qreal TSession::get_hzoom() const
 	if (m_parentSession) {
 		return m_parentSession->get_hzoom();
 	}
-	int highbit;
-    return TraversoDAW::Utils::nearest_power_of_two(ulong(m_hzoom), highbit);
+    return m_hzoom;
 }
 
 QPoint TSession::get_scrollbar_xy()
@@ -307,7 +307,14 @@ bool TSession::is_child_session() const
 
 qreal TSession::minimum_hzoom() const
 {
-    return 1.0;
+    return 1.0 / 32.0;   // 32 pixels per frame
+}
+
+qreal TSession::maximum_hzoom() const
+{
+    // The whole session on 32 pixels; the views keep it on screen
+    const qreal frames = qreal(get_last_location().universal_frame()) * 44100.0 / qreal(TTimeRef::UNIVERSAL_SAMPLE_RATE);
+    return std::max(1024.0, frames / 32.0);
 }
 
 void TSession::set_hzoom( qreal hzoom )
@@ -318,9 +325,10 @@ void TSession::set_hzoom( qreal hzoom )
 		return;
 	}
 
-	if (hzoom > TPeak::max_zoom_value()) {
-		hzoom = TPeak::max_zoom_value();
-	}
+    const qreal maximum = maximum_hzoom();
+    if (hzoom > maximum) {
+        hzoom = maximum;
+    }
 
     const qreal minimum = minimum_hzoom();
     if (hzoom < minimum) {

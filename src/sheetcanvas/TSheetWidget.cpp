@@ -26,7 +26,10 @@
 #include "TTimeLineRulerViewPort.h"
 #include "TSheetView.h"
 #include "TThemer.h"
-#include "TPeak.h"
+#include <algorithm>
+#include <cmath>
+
+static constexpr int ZoomSliderSteps = 1000;
 
 #include <TSheet.h>
 #include "TContextPointer.h"
@@ -124,10 +127,10 @@ TSheetWidget::TSheetWidget(TSession* sheet, QWidget* parent)
         QLabel* zoomLabel = new QLabel(this);
         zoomLabel->setText("Zoom");
         m_zoomSlider = new QSlider(this);
-        m_zoomSlider->setMaximum(TPeak::ZOOM_LEVELS);
-        m_zoomSlider->setMinimum(0);
-        m_zoomSlider->setPageStep(4);
-        m_zoomSlider->setSingleStep(1);
+        // Logarithmic between the zoom limits, see zoom_slider_value_changed()
+        m_zoomSlider->setRange(0, ZoomSliderSteps);
+        m_zoomSlider->setPageStep(ZoomSliderSteps / 20);
+        m_zoomSlider->setSingleStep(ZoomSliderSteps / 100);
         m_zoomSlider->setOrientation(Qt::Horizontal);
         sheet_zoom_level_changed();
 
@@ -242,17 +245,21 @@ TSheetView * TSheetWidget::get_sheetview() const
 
 void TSheetWidget::zoom_slider_value_changed(int value)
 {
-    m_session->set_hzoom(TPeak::zoomStep[value]);
-    m_sv->center();
+    if (!m_sv) {
+        return;
+    }
+    const qreal minimum = m_session->minimum_hzoom();
+    const qreal maximum = std::max(m_sv->fit_hzoom(), minimum * 2.0);
+    const qreal zoom = minimum * std::pow(maximum / minimum, qreal(value) / ZoomSliderSteps);
+    m_sv->hzoom(zoom / m_session->get_hzoom());
 }
 
 void TSheetWidget::sheet_zoom_level_changed()
 {
-        int level = m_session->get_hzoom();
-        for (int i=0; i<TPeak::ZOOM_LEVELS; ++i) {
-                if (level == TPeak::zoomStep[i]) {
-                        m_zoomSlider->setValue(i);
-                        return;
-                }
-        }
+    const qreal minimum = m_session->minimum_hzoom();
+    // The slider is synced once before the view exists
+    const qreal maximum = std::max(m_sv ? m_sv->fit_hzoom() : m_session->maximum_hzoom(), minimum * 2.0);
+    const qreal position = std::log(m_session->get_hzoom() / minimum) / std::log(maximum / minimum);
+    // setValue() does not emit sliderMoved, so this does not zoom back
+    m_zoomSlider->setValue(std::clamp(qRound(position * ZoomSliderSteps), 0, ZoomSliderSteps));
 }

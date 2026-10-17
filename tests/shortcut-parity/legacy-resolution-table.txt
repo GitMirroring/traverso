@@ -150,6 +150,7 @@ Zoom	class=TSheetView	base=	usesbase=0	plugin=TraversoCommands	alwayssafe=0	keys
 ZoomIn	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=RIGHTARROW	modifiers=	ownkeys=RIGHTARROW	ownmodifiers=	description=In	submenu=	sortorder=1	autorepeat=1,80,200	repeatsonitself=0	usex=0	usey=0	args=
 ZoomNumericalInput	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=NUMERICAL	modifiers=	ownkeys=NUMERICAL	ownmodifiers=	description=Track Height	submenu=	sortorder=4	autorepeat=0,-1,-1	repeatsonitself=0	usex=0	usey=0	args=
 ZoomOut	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=LEFTARROW	modifiers=	ownkeys=LEFTARROW	ownmodifiers=	description=Out	submenu=	sortorder=0	autorepeat=1,80,200	repeatsonitself=0	usex=0	usey=0	args=
+ZoomToFit	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=F	modifiers=	ownkeys=F	ownmodifiers=	description=Fit	submenu=	sortorder=6	autorepeat=0,-1,-1	repeatsonitself=0	usex=0	usey=0	args=
 ZoomToggleExpandAllTracks	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=E	modifiers=	ownkeys=E	ownmodifiers=	description=Expand/Collapse Tracks	submenu=	sortorder=5	autorepeat=0,-1,-1	repeatsonitself=0	usex=0	usey=0	args=
 ZoomToggleVerticalHorizontal	class=TZoomCommand	base=ToggleVerticalBase	usesbase=1	plugin=	alwayssafe=0	keys=L	modifiers=	ownkeys=	ownmodifiers=	description=Toggle Vertical	submenu=	sortorder=6	autorepeat=0,-1,-1	repeatsonitself=0	usex=0	usey=0	args=
 ZoomTrackVerticalIn	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=DOWNARROW;MOUSESCROLLVERTICALDOWN	modifiers=	ownkeys=DOWNARROW;MOUSESCROLLVERTICALDOWN	ownmodifiers=	description=Track Vertical Zoom In	submenu=	sortorder=3	autorepeat=1,80,200	repeatsonitself=0	usex=0	usey=0	args=
@@ -439,6 +440,7 @@ TTransport	END		TransportToEnd
 TZoomCommand	MOUSESCROLLVERTICALDOWN		ZoomTrackVerticalIn
 TZoomCommand	MOUSESCROLLVERTICALUP		ZoomTrackVerticalOut
 TZoomCommand	E		ZoomToggleExpandAllTracks
+TZoomCommand	F		ZoomToFit
 TZoomCommand	L		ZoomToggleVerticalHorizontal
 TZoomCommand	ESC		RejectHoldCommand
 TZoomCommand	RETURN		AcceptHoldCommand
@@ -627,6 +629,7 @@ Zoom	class=TSheetView	base=	usesbase=0	plugin=TraversoCommands	alwayssafe=0	keys
 ZoomIn	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=RIGHTARROW	modifiers=	ownkeys=RIGHTARROW	ownmodifiers=	description=In	submenu=	sortorder=1	autorepeat=1,80,200	repeatsonitself=0	usex=0	usey=0	args=
 ZoomNumericalInput	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=NUMERICAL	modifiers=	ownkeys=NUMERICAL	ownmodifiers=	description=Track Height	submenu=	sortorder=4	autorepeat=0,-1,-1	repeatsonitself=0	usex=0	usey=0	args=
 ZoomOut	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=LEFTARROW	modifiers=	ownkeys=LEFTARROW	ownmodifiers=	description=Out	submenu=	sortorder=0	autorepeat=1,80,200	repeatsonitself=0	usex=0	usey=0	args=
+ZoomToFit	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=F	modifiers=	ownkeys=F	ownmodifiers=	description=Fit	submenu=	sortorder=6	autorepeat=0,-1,-1	repeatsonitself=0	usex=0	usey=0	args=
 ZoomToggleExpandAllTracks	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=E	modifiers=	ownkeys=E	ownmodifiers=	description=Expand/Collapse Tracks	submenu=	sortorder=5	autorepeat=0,-1,-1	repeatsonitself=0	usex=0	usey=0	args=
 ZoomToggleVerticalHorizontal	class=TZoomCommand	base=ToggleVerticalBase	usesbase=1	plugin=	alwayssafe=0	keys=V	modifiers=	ownkeys=	ownmodifiers=	description=Toggle Vertical	submenu=	sortorder=6	autorepeat=0,-1,-1	repeatsonitself=0	usex=0	usey=0	args=
 ZoomTrackVerticalIn	class=TZoomCommand	base=	usesbase=0	plugin=	alwayssafe=0	keys=DOWNARROW;MOUSESCROLLVERTICALDOWN	modifiers=	ownkeys=DOWNARROW;MOUSESCROLLVERTICALDOWN	ownmodifiers=	description=Track Vertical Zoom In	submenu=	sortorder=3	autorepeat=1,80,200	repeatsonitself=0	usex=0	usey=0	args=
@@ -915,6 +918,7 @@ TTransport	END		TransportToEnd
 TZoomCommand	MOUSESCROLLVERTICALDOWN		ZoomTrackVerticalIn
 TZoomCommand	MOUSESCROLLVERTICALUP		ZoomTrackVerticalOut
 TZoomCommand	E		ZoomToggleExpandAllTracks
+TZoomCommand	F		ZoomToFit
 TZoomCommand	V		ZoomToggleVerticalHorizontal
 TZoomCommand	ESC		RejectHoldCommand
 TZoomCommand	RETURN		AcceptHoldCommand
