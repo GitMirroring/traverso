@@ -58,6 +58,7 @@ private:
     TTimeRef	m_lastSnapPosition;
     TTimeRef    m_transportLocation;
     QPointer<TFrameClock> m_frameClock;
+    qint64 m_lastLabelFrame{0};   // the label follows about 8 frames per second
 
 public slots:
 	void set_project(TProject*);

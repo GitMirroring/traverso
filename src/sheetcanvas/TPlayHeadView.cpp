@@ -31,7 +31,7 @@ TPlayHeadView::TPlayHeadView(TSheetView* sv, TSession* session, TClipsViewPort* 
 	connect(m_session, &TSession::transportStopped, this, &TPlayHeadView::play_stop);
 	
 	// Every frame while the transport rolls
-	m_frameClock->add_consumer(this, 0, [this](qint64 nowNanoseconds) { update_position(nowNanoseconds); });
+	connect(m_frameClock, &TFrameClock::frame, this, &TPlayHeadView::update_position);
 	
 	connect(&m_animation, &QTimeLine::frameChanged, this, &TPlayHeadView::set_animation_value);
 	connect(&m_animation, &QTimeLine::finished, this, &TPlayHeadView::animation_finished);
@@ -47,7 +47,7 @@ TPlayHeadView::~TPlayHeadView( )
         PENTERDES2;
 
         if (m_frameClock) {
-                m_frameClock->remove_consumer(this);
+                m_frameClock->release(this);
         }
 }
 
@@ -85,7 +85,7 @@ void TPlayHeadView::play_start()
 
 	m_followDisabled = false;
 
-	m_frameClock->set_consumer_active(this, true);
+	m_frameClock->hold(this);
 	
 	if (m_animation.state() == QTimeLine::Running) {
 		m_animation.stop();
@@ -95,7 +95,7 @@ void TPlayHeadView::play_start()
 
 void TPlayHeadView::play_stop()
 {
-	m_frameClock->set_consumer_active(this, false);
+	m_frameClock->release(this);
 
 	if (m_animation.state() == QTimeLine::Running) {
 		m_animation.stop();
@@ -243,7 +243,7 @@ void TPlayHeadView::set_bounding_rect( QRectF rect )
 
 bool TPlayHeadView::is_active()
 {
-	return m_frameClock->is_consumer_active(this);
+	return m_frameClock->is_held_by(this);
 }
 
 void TPlayHeadView::set_active(bool active)

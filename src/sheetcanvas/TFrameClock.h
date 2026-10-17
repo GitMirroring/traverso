@@ -3,68 +3,49 @@
 
 #pragma once
 
-#include "TFrameRateFilter.h"
-
 #include <QObject>
+#include <QSet>
 #include <QTimer>
-#include <functional>
-#include <vector>
 
 class QWidget;
 
 /**
  * @brief One clock for everything in the GUI that follows the audio
- *        transport: it ticks at the display's frame rate, only while a
- *        consumer needs it.
+ *        transport: it emits frame() at the display's frame rate, only
+ *        while a follower holds it.
  *
- * A consumer registers once with the most updates per second it wants and
- * a tick function, and switches itself active while it has something to
- * follow (the playhead while the transport rolls). Every tick hands the
- * same time to all due consumers, so a playhead and a time label that read
- * the heard transport position with it agree (see
- * TSession::get_heard_transport_location()).
- *
- * The frame rate is the refresh rate of the window's screen when the clock
- * starts. In QML the ticks would come from FrameAnimation with the same
- * consumer interface.
+ * Every frame hands the same time to all followers, so a playhead and a
+ * time label that read the heard transport position with it agree (see
+ * TSession::get_heard_transport_location()). A follower that wants fewer
+ * updates skips frames itself. The frame rate is the refresh rate of the
+ * window's screen when the clock starts. In QML the frames would come from
+ * FrameAnimation instead of the timer.
  */
 class TFrameClock : public QObject
 {
     Q_OBJECT
 
 public:
-    using Tick = std::function<void(qint64 nowNanoseconds)>;
-
     explicit TFrameClock(QWidget* window);
 
-    // The clock of the tick times, the same the audio thread stamps its
+    // The clock of the frame times, the same the audio thread stamps its
     // cycles with
     static qint64 now_nanoseconds();
 
-    // consumer identifies the registration; the consumer removes it before
-    // it is destroyed. tick runs in the GUI thread, at most maxHz times per
-    // second, never within another consumer's tick
-    void add_consumer(QObject* consumer, int maxHz, Tick tick);
-    void remove_consumer(QObject* consumer);
+    // The clock runs while at least one follower holds it; a follower
+    // releases it before it is destroyed
+    void hold(QObject* follower);
+    void release(QObject* follower);
+    bool is_held_by(QObject* follower) const { return m_followers.contains(follower); }
 
-    void set_consumer_active(QObject* consumer, bool active);
-    bool is_consumer_active(QObject* consumer) const;
+signals:
+    void frame(qint64 nowNanoseconds);
 
 private:
-    struct Consumer
-    {
-        QObject*         object;
-        TFrameRateFilter filter;
-        Tick             tick;
-        bool             active{false};
-    };
-
-    QWidget*              m_window;
-    QTimer                m_timer;
-    std::vector<Consumer> m_consumers;
-    qint64                m_frameIntervalNanoseconds{0};
-    bool                  m_ticking{false};
-
-    void start_or_stop();
     void tick();
+
+    QWidget*       m_window;
+    QTimer         m_timer;
+    QSet<QObject*> m_followers;
+    bool           m_ticking{false};
 };

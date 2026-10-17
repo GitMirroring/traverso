@@ -97,7 +97,13 @@ TransportConsoleWidget::TransportConsoleWidget(QWidget* parent, TFrameClock* fra
 
     connect(&pm(), &TProjectManager::projectLoaded, this, &TransportConsoleWidget::set_project);
     // About 8 updates per second while the transport rolls
-    m_frameClock->add_consumer(this, 8, [this](qint64 nowNanoseconds) { update_label(nowNanoseconds); });
+    connect(m_frameClock, &TFrameClock::frame, this, [this](qint64 nowNanoseconds) {
+        if (nowNanoseconds - m_lastLabelFrame < 120000000) {
+            return;
+        }
+        m_lastLabelFrame = nowNanoseconds;
+        update_label(nowNanoseconds);
+    });
 
     connect(&audiodevice(), &TAudioDevice::freeWheelingChanged, this, [this](){
         m_freeWheelingAction->setChecked(!audiodevice().running_real_time());
@@ -141,7 +147,7 @@ void TransportConsoleWidget::set_session(TSession* session)
         disconnect(m_sheet, &TSheet::transportStarted, this, &TransportConsoleWidget::transport_started);
         disconnect(m_sheet, &TSheet::transportStopped, this, &TransportConsoleWidget::transport_stopped);
         disconnect(m_sheet, &TSheet::transportLocationChanged, this, nullptr);
-        m_frameClock->set_consumer_active(this, false);
+        m_frameClock->release(this);
     }
 
     m_sheet = qobject_cast<TSheet*>(session);
@@ -163,14 +169,18 @@ void TransportConsoleWidget::set_session(TSession* session)
     // Seeks and stops while the clock does not run
     connect(m_sheet, &TSheet::transportLocationChanged, this, [this]() { update_label(TFrameClock::now_nanoseconds()); });
 
-    m_frameClock->set_consumer_active(this, m_sheet->is_transport_rolling());
+    if (m_sheet->is_transport_rolling()) {
+        m_frameClock->hold(this);
+    } else {
+        m_frameClock->release(this);
+    }
     update_label(TFrameClock::now_nanoseconds());
 }
 
 TransportConsoleWidget::~TransportConsoleWidget()
 {
     if (m_frameClock) {
-        m_frameClock->remove_consumer(this);
+        m_frameClock->release(this);
     }
 }
 
@@ -192,7 +202,7 @@ void TransportConsoleWidget::transport_started()
         m_recAction->setChecked(false);
     }
 
-    m_frameClock->set_consumer_active(this, true);
+    m_frameClock->hold(this);
 }
 
 void TransportConsoleWidget::transport_stopped()
@@ -202,7 +212,7 @@ void TransportConsoleWidget::transport_stopped()
     m_playAction->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::MediaPlaybackStart, QIcon(QStringLiteral(":/playstart"))));
     m_recAction->setEnabled(true);
 
-    m_frameClock->set_consumer_active(this, false);
+    m_frameClock->release(this);
     update_label(TFrameClock::now_nanoseconds());
 }
 
