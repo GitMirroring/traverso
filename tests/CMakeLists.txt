@@ -4,3 +4,4 @@
 add_subdirectory(support)
 add_subdirectory(curves)
 add_subdirectory(audioruntime)
+add_subdirectory(peaks)

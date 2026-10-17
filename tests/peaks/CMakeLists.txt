@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 Remon Sijrier
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+set(TRAVERSO_PEAK_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/core/TPeakPyramid.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/TPeakFile.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/TWaveformColumns.cpp
+)
+
+# Headless test of the peak pyramid, the peak file and the waveform columns,
+# against brute force over the samples
+add_executable(traverso_peak_test test_peaks.cpp ${TRAVERSO_PEAK_SOURCES})
+target_include_directories(traverso_peak_test PRIVATE ${CMAKE_SOURCE_DIR}/src/core)
+target_link_libraries(traverso_peak_test PRIVATE traverso_compiler_settings traversosupport Qt6::Core)
+add_test(NAME peaks COMMAND traverso_peak_test)
+
+# Benchmark of the column query and the envelope painting, not part of ctest.
+# Build it in Release.
+add_executable(traverso_peak_benchmark benchmark_peaks.cpp ${TRAVERSO_PEAK_SOURCES})
+target_include_directories(traverso_peak_benchmark PRIVATE ${CMAKE_SOURCE_DIR}/src/core)
+target_link_libraries(traverso_peak_benchmark PRIVATE traverso_compiler_settings traversosupport Qt6::Core Qt6::Gui)

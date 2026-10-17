@@ -26,6 +26,9 @@ add_library(traversocore STATIC
     TInformUser.cpp
     TInputEventDispatcher.cpp
     TPeak.cpp
+    TPeakFile.h TPeakFile.cpp
+    TPeakPyramid.h TPeakPyramid.cpp
+    TWaveformColumns.h TWaveformColumns.cpp
     TProject.cpp
     TProjectManager.cpp
     TAudioProcessingNode.cpp

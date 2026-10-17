@@ -76,6 +76,19 @@ public:
         return  std::round(duration / UNIVERSAL_SAMPLE_RATE);
     }
 
+    // Exact conversions for any sample rate (also rates that do not divide
+    // UNIVERSAL_SAMPLE_RATE), for negative times too. Frame n of a stream at
+    // rate r sits at time n / r.
+
+    // The last frame at or before time; fraction (optional) is how far time is
+    // past that frame, in frames, 0 <= fraction < 1
+    static qint64 frame_at_or_before(const TTimeRef& time, uint rate, double* fraction = nullptr);
+    // The first frame at or after time
+    static qint64 frame_at_or_after(const TTimeRef& time, uint rate);
+    // The length of duration in frames, with fraction. For decisions and
+    // ratios, not for positions.
+    static double to_frames(const TTimeRef& duration, uint rate);
+
 
     void add_frames(nframes_t frames, uint rate) {
         m_universalFrame += ((UNIVERSAL_SAMPLE_RATE / rate) * frames);

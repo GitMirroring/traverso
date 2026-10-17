@@ -27,6 +27,40 @@ TTimeRef::TTimeRef(qreal frame, uint rate) {
     m_universalFrame = qint64((qreal(UNIVERSAL_SAMPLE_RATE) / rate) * frame);
 }
 
+qint64 TTimeRef::frame_at_or_before(const TTimeRef& time, uint rate, double* fraction)
+{
+    Q_ASSERT(rate != 0);
+    const qint64 universal = time.m_universalFrame;
+    Q_ASSERT_X(universal <= LLONG_MAX / qint64(rate) && universal >= LLONG_MIN / qint64(rate),
+               "TTimeRef::frame_at_or_before", "time * rate does not fit in 64 bits");
+
+    // frame = floor(universal * rate / UNIVERSAL_SAMPLE_RATE), remainder >= 0
+    const qint64 scaled = universal * qint64(rate);
+    qint64 frame = scaled / UNIVERSAL_SAMPLE_RATE;
+    qint64 remainder = scaled % UNIVERSAL_SAMPLE_RATE;
+    if (remainder < 0) {
+        frame -= 1;
+        remainder += UNIVERSAL_SAMPLE_RATE;
+    }
+    if (fraction) {
+        *fraction = double(remainder) / double(UNIVERSAL_SAMPLE_RATE);
+    }
+    return frame;
+}
+
+qint64 TTimeRef::frame_at_or_after(const TTimeRef& time, uint rate)
+{
+    double fraction;
+    const qint64 frame = frame_at_or_before(time, rate, &fraction);
+    return fraction > 0.0 ? frame + 1 : frame;
+}
+
+double TTimeRef::to_frames(const TTimeRef& duration, uint rate)
+{
+    Q_ASSERT(rate != 0);
+    return double(duration.m_universalFrame) * double(rate) / double(UNIVERSAL_SAMPLE_RATE);
+}
+
 TTimeRef TTimeRef::max_length()
 {
     return TTimeRef(LLONG_MAX);
