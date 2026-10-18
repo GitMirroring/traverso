@@ -96,15 +96,26 @@ private:
  * written once, then its level's count is published (release), and a reader's
  * snapshot (acquire) only names blocks below that count. Blocks never move
  * (chunked storage) and live until the builder is destroyed. No locks.
+ *
+ * The storage of a level L <= period_shift() is chunked per period (or in
+ * chunks of several whole periods), so a period's blocks of one level and
+ * channel follow each other in memory.
  */
 class TPeakPyramidBuilder
 {
 public:
     static constexpr int MaxLevels = 40;
-    static constexpr int ChunkShift = 16;   // blocks per chunk
     static constexpr qint64 MaxLevel0Blocks = qint64(1) << 28;   // 2^34 frames, a day at 192 kHz
 
-    TPeakPyramidBuilder(uint rate, int channelCount);
+    // A period is 2^periodShift level-0 blocks. Within a period every level
+    // L <= periodShift has exactly 2^(periodShift - L) blocks, so all those
+    // levels complete it at the same moment: the record of a peak file.
+    static constexpr int DefaultPeriodShift = 14;   // 2^20 frames, ~22 s at 48 kHz
+    static constexpr int MaxPeriodShift = 24;
+    // Storage chunks hold at least 2^MinChunkShift blocks (4 KB)
+    static constexpr int MinChunkShift = 10;
+
+    TPeakPyramidBuilder(uint rate, int channelCount, int periodShift = DefaultPeriodShift);
 
     // channels[c] points to frames samples of channel c
     void append(const float* const* channels, qint64 frames);
@@ -113,22 +124,39 @@ public:
     bool is_finished() const { return m_finished; }
     uint rate() const { return m_rate; }
     int channel_count() const { return int(m_channels.size()); }
+    int period_shift() const { return m_periodShift; }
     qint64 frame_count() const { return m_publishedFrames.load(std::memory_order_acquire); }
+
+    // The periods that every level 0..period_shift() has completed. Only for
+    // the thread that appends.
+    qint64 complete_periods() const;
 
     // A snapshot of what is complete now; valid while the builder lives
     TPeakLevels levels() const;
 
 private:
+    // The published chunk pointers live in pages of PageSize pointers. The
+    // page directory is sized once and a page is allocated before its first
+    // chunk is published, so nothing a snapshot reads ever moves, and the
+    // pointers cost memory only for the chunks that exist.
+    static constexpr int PageShift = 6;
+    static constexpr qint64 PageSize = qint64(1) << PageShift;
+
     struct LevelStore
     {
-        std::vector<std::unique_ptr<TPeakBlock[]>> chunks;   // the writer's
-        std::vector<const TPeakBlock*> published;            // sized once, read by snapshots
+        int chunkShift{MinChunkShift};
+        std::vector<std::unique_ptr<TPeakBlock[]>> chunks;          // the writer's
+        std::vector<std::unique_ptr<const TPeakBlock*[]>> pages;    // sized once, read by snapshots
         qint64 count{0};
         std::atomic<qint64> publishedCount{0};
 
         const TPeakBlock& at(qint64 index) const
         {
-            return chunks[size_t(index >> ChunkShift)][index & ((qint64(1) << ChunkShift) - 1)];
+            return chunks[size_t(index >> chunkShift)][index & ((qint64(1) << chunkShift) - 1)];
+        }
+        const TPeakBlock* published_chunk(qint64 chunk) const
+        {
+            return pages[size_t(chunk >> PageShift)][chunk & (PageSize - 1)];
         }
     };
 
@@ -143,6 +171,7 @@ private:
     void close_partial_block();
 
     uint m_rate;
+    int m_periodShift;
     std::vector<Channel> m_channels;
     qint64 m_frameCount{0};
     std::atomic<qint64> m_publishedFrames{0};

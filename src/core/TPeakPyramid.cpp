@@ -93,21 +93,41 @@ qint16 TPeakLevels::quantize_max(float value)
 }
 
 
-TPeakPyramidBuilder::TPeakPyramidBuilder(uint rate, int channelCount)
+TPeakPyramidBuilder::TPeakPyramidBuilder(uint rate, int channelCount, int periodShift)
     : m_rate(rate)
+    , m_periodShift(periodShift)
     , m_channels(size_t(channelCount))
 {
     Q_ASSERT(rate > 0 && channelCount > 0);
+    Q_ASSERT(periodShift >= 0 && periodShift <= MaxPeriodShift);
     for (Channel& channel : m_channels) {
         channel.min = std::numeric_limits<float>::max();
         channel.max = std::numeric_limits<float>::lowest();
         channel.levels = std::vector<LevelStore>(MaxLevels);
         for (int level = 0; level < MaxLevels; ++level) {
+            LevelStore& store = channel.levels[size_t(level)];
+            // A chunk holds whole periods of this level: 2^(periodShift - level)
+            // blocks per period, but never less than MinChunkShift
+            store.chunkShift = std::max(periodShift - level, MinChunkShift);
             const qint64 maxBlocks = std::max<qint64>(1, MaxLevel0Blocks >> level);
-            const qint64 maxChunks = (maxBlocks + (qint64(1) << ChunkShift) - 1) >> ChunkShift;
-            channel.levels[size_t(level)].published.assign(size_t(maxChunks), nullptr);
+            const qint64 maxChunks = (maxBlocks + (qint64(1) << store.chunkShift) - 1) >> store.chunkShift;
+            store.pages = std::vector<std::unique_ptr<const TPeakBlock*[]>>(size_t((maxChunks + PageSize - 1) >> PageShift));
         }
     }
+}
+
+qint64 TPeakPyramidBuilder::complete_periods() const
+{
+    // A level's part of a period is complete when the level has all its
+    // blocks; after finish() the promoted last blocks can complete a period
+    // of a higher level only, so take the minimum
+    qint64 periods = std::numeric_limits<qint64>::max();
+    for (const Channel& channel : m_channels) {
+        for (int level = 0; level <= m_periodShift && level < MaxLevels; ++level) {
+            periods = std::min(periods, channel.levels[size_t(level)].count >> (m_periodShift - level));
+        }
+    }
+    return periods;
 }
 
 void TPeakPyramidBuilder::append(const float* const* channels, qint64 frames)
@@ -183,13 +203,18 @@ TPeakLevels TPeakPyramidBuilder::levels() const
         if (count == 0) {
             break;
         }
+        const int chunkShift = m_channels.front().levels[size_t(level)].chunkShift;
         TPeakLevels::Level snapshot;
         snapshot.blockCount = count;
-        snapshot.chunkShift = ChunkShift;
-        const size_t chunks = size_t((count - 1) >> ChunkShift) + 1;
+        snapshot.chunkShift = chunkShift;
+        const qint64 chunks = ((count - 1) >> chunkShift) + 1;
         for (const Channel& channel : m_channels) {
-            const std::vector<const TPeakBlock*>& published = channel.levels[size_t(level)].published;
-            snapshot.channels.emplace_back(published.begin(), published.begin() + qsizetype(chunks));
+            const LevelStore& store = channel.levels[size_t(level)];
+            std::vector<const TPeakBlock*> pointers(static_cast<size_t>(chunks));
+            for (qint64 chunk = 0; chunk < chunks; ++chunk) {
+                pointers[size_t(chunk)] = store.published_chunk(chunk);
+            }
+            snapshot.channels.push_back(std::move(pointers));
         }
         levels.push_back(std::move(snapshot));
     }
@@ -203,16 +228,21 @@ void TPeakPyramidBuilder::add_block(Channel& channel, int level, TPeakBlock bloc
         return;
     }
     LevelStore& store = channel.levels[size_t(level)];
-    const qint64 chunkIndex = store.count >> ChunkShift;
-    const qint64 inChunk = store.count & ((qint64(1) << ChunkShift) - 1);
+    const qint64 chunkIndex = store.count >> store.chunkShift;
+    const qint64 inChunk = store.count & ((qint64(1) << store.chunkShift) - 1);
 
     if (inChunk == 0) {
-        if (size_t(chunkIndex) >= store.published.size()) {
+        const size_t page = size_t(chunkIndex >> PageShift);
+        if (page >= store.pages.size()) {
             m_full = true;   // longer than MaxLevel0Blocks: the pyramid stops here
             return;
         }
-        store.chunks.push_back(std::make_unique<TPeakBlock[]>(size_t(1) << ChunkShift));
-        store.published[size_t(chunkIndex)] = store.chunks.back().get();
+        if (!store.pages[page]) {
+            store.pages[page] = std::make_unique<const TPeakBlock*[]>(size_t(PageSize));
+        }
+        // Not zeroed: a block is written before its count is published
+        store.chunks.emplace_back(new TPeakBlock[size_t(1) << store.chunkShift]);
+        store.pages[page][chunkIndex & (PageSize - 1)] = store.chunks.back().get();
     }
 
     store.chunks[size_t(chunkIndex)][inChunk] = block;

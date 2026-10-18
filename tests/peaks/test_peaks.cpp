@@ -93,9 +93,10 @@ static Signal make_signal(uint rate, int channelCount, qint64 frames)
     return signal;
 }
 
-static std::unique_ptr<TPeakPyramidBuilder> build(const Signal& signal, bool randomChunks, bool finish = true)
+static std::unique_ptr<TPeakPyramidBuilder> build(const Signal& signal, bool randomChunks, bool finish = true,
+                                                  int periodShift = TPeakPyramidBuilder::DefaultPeriodShift)
 {
-    auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()));
+    auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()), periodShift);
     qint64 position = 0;
     while (position < signal.frames()) {
         const qint64 chunk = randomChunks ? random_between(1, 3000) : signal.frames();
@@ -178,11 +179,23 @@ static void test_pyramid()
         for (int channelCount = 1; channelCount <= 3; ++channelCount) {
             const Signal signal = make_signal(s_rates[random_between(0, std::size(s_rates) - 1)], channelCount, frames);
             const std::unique_ptr<TPeakPyramidBuilder> whole = build(signal, false);
-            const std::unique_ptr<TPeakPyramidBuilder> chunked = build(signal, true);
+            // Any period shift stores the same pyramid
+            const int periodShift = int(random_between(0, 16));
+            const std::unique_ptr<TPeakPyramidBuilder> chunked = build(signal, true, true, periodShift);
             const TPeakLevels levels = chunked->levels();
 
-            CHECK(same_levels(whole->levels(), levels), "frames %lld: chunked differs from one append", (long long)frames);
+            CHECK(same_levels(whole->levels(), levels), "frames %lld shift %d: chunked differs from one append",
+                  (long long)frames, periodShift);
             CHECK(levels.frame_count() == frames, "frames %lld", (long long)frames);
+
+            // Complete periods: every level 0..shift has all its blocks of them
+            qint64 periods = std::numeric_limits<qint64>::max();
+            for (int level = 0; level <= periodShift; ++level) {
+                const qint64 blocks = level < levels.level_count() ? levels.block_count(level) : 0;
+                periods = std::min(periods, blocks >> (periodShift - level));
+            }
+            CHECK(chunked->complete_periods() == periods, "frames %lld shift %d: %lld complete periods, expected %lld",
+                  (long long)frames, periodShift, (long long)chunked->complete_periods(), (long long)periods);
 
             // Level structure: ceil halving down to one block
             qint64 expected = (frames + 63) / 64;
