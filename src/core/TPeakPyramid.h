@@ -102,7 +102,7 @@ struct TPeakCodeTables
  * Level 0 holds one block per BlockFrames frames of the source, at the
  * source's own sample rate. Every block has its min/max (TPeakBlock) and,
  * in an array of its own, the RMS of its frames as a code (nearest; a
- * sample beyond the code range counts at its top, a NaN as silence); a
+ * level-0 block with a NaN or an inf sample gets its peak instead); a
  * parent's RMS is the root of its children's mean squares weighted by
  * their frames. Block k of level L covers the frames
  * [k * BlockFrames * 2^L, (k + 1) * BlockFrames * 2^L), and is the combination

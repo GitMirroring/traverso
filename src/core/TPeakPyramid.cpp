@@ -323,10 +323,6 @@ void TPeakPyramidBuilder::append(const float* const* channels, qint64 frames)
         return;
     }
 
-    // A square counts a sample at most at the top of the code range, a NaN
-    // as silence: one broken sample (a plugin, a float file) must not take
-    // the RMS of every block above it along (they are made from it)
-    const float limit = TPeakLevels::max_value();
     qint64 position = 0;
     while (position < frames) {
         const int count = int(std::min<qint64>(frames - position, TPeakLevels::BlockFrames - m_blockFill));
@@ -339,9 +335,7 @@ void TPeakPyramidBuilder::append(const float* const* channels, qint64 frames)
             for (int i = 0; i < count; ++i) {
                 low = std::min(low, samples[i]);
                 high = std::max(high, samples[i]);
-                const float magnitude = std::fabs(samples[i]);
-                const float bounded = magnitude <= limit ? magnitude : (magnitude > limit ? limit : 0.0f);
-                squares += bounded * bounded;
+                squares += samples[i] * samples[i];
             }
             m_channels[c].min = low;
             m_channels[c].max = high;
@@ -480,8 +474,19 @@ void TPeakPyramidBuilder::close_partial_block()
 
     // A partial last block weighs its own frames
     for (Channel& channel : m_channels) {
+        double meanSquare = double(channel.sumSquares) / double(m_blockFill);
+        if (!std::isfinite(meanSquare)) {
+            // A NaN, an inf or a square too large for a float among the
+            // samples: this block gets its peak (min and max leave NaN out),
+            // clamped to the code range, so the blocks above, made from it,
+            // stay finite. One broken sample (a plugin, a float file) does not
+            // take the RMS of the whole source along.
+            const float peak = channel.min <= channel.max ? std::max(std::fabs(channel.min), std::fabs(channel.max)) : 0.0f;
+            const double bounded = std::min(peak, TPeakLevels::max_value());
+            meanSquare = bounded * bounded;
+        }
         add_block(channel, 0, {TPeakLevels::code_at_or_below(channel.min), TPeakLevels::code_at_or_above(channel.max)},
-                  double(channel.sumSquares) / double(m_blockFill), m_blockFill);
+                  meanSquare, m_blockFill);
         channel.min = std::numeric_limits<float>::max();
         channel.max = std::numeric_limits<float>::lowest();
         channel.sumSquares = 0.0f;

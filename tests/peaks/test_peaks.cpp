@@ -697,9 +697,7 @@ static void test_rms()
         return value <= expected * half && value >= expected / half;
     };
 
-    // Samples beyond the code range count at its top, like min and max
-    const double limitSquare = double(TPeakLevels::max_value()) * TPeakLevels::max_value();
-    auto square = [&](float sample) { return std::min(double(sample) * sample, limitSquare); };
+    auto square = [&](float sample) { return double(sample) * sample; };
     for (qint64 frames : {qint64(1), qint64(63), qint64(64), qint64(65), qint64(1000), qint64(123457), random_between(200000, 400000)}) {
         const int channelCount = int(random_between(1, 2));
         const Signal signal = make_signal(44100, channelCount, frames);
@@ -765,28 +763,37 @@ static void test_rms()
         }
     }
 
-    // A NaN counts as silence, an inf and values past the code range at its
-    // top: the blocks above stay finite
+    // A level-0 block with a NaN or an inf sample gets its peak (clamped to
+    // the code range) as its RMS: the blocks above stay finite and right
     {
         Signal signal{48000, {std::vector<float>(65536, 0.1f)}};
         signal.channels[0][1000] = std::nanf("");
         signal.channels[0][30000] = std::numeric_limits<float>::infinity();
-        signal.channels[0][50000] = 1e30f;
+        signal.channels[0][50000] = -std::numeric_limits<float>::infinity();
         const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
         const TPeakLevels levels = builder->levels();
-        const double limit = TPeakLevels::max_value();
+        // Level-0 mean squares as the rule says, then weighted up
+        std::vector<double> level0(65536 / 64);
+        for (size_t k = 0; k < level0.size(); ++k) {
+            double squares = 0.0;
+            for (size_t n = k * 64; n < k * 64 + 64; ++n) {
+                squares += double(signal.channels[0][n]) * signal.channels[0][n];
+            }
+            const double broken = double(TPeakLevels::max_value());
+            level0[k] = std::isnan(squares) ? 0.1 * 0.1 : (std::isinf(squares) ? broken * broken : squares / 64.0);
+        }
         for (int level = 0; level < levels.level_count(); ++level) {
             for (qint64 k = 0; k < levels.block_count(level); ++k) {
-                const qint64 first = k << (TPeakLevels::BlockFramesShift + level);
-                const qint64 last = std::min<qint64>(first + (qint64(TPeakLevels::BlockFrames) << level), 65536);
-                double squares = 0.0;
-                for (qint64 n = first; n < last; ++n) {
-                    const double sample = signal.channels[0][size_t(n)];
-                    squares += sample == sample ? std::min(sample * sample, limit * limit) : 0.0;
+                double sum = 0.0;
+                const qint64 first = k << level;
+                const qint64 last = std::min<qint64>(first + (qint64(1) << level), qint64(level0.size()));
+                for (qint64 b = first; b < last; ++b) {
+                    sum += level0[size_t(b)];
                 }
-                const double expected = std::sqrt(squares / double(last - first));
-                CHECK(within_a_step(levels.rms(level, 0, k), expected), "broken samples: level %d block %lld: RMS %g expected %g",
-                      level, (long long)k, TPeakLevels::to_value(levels.rms(level, 0, k)), expected);
+                const double expected = std::sqrt(sum / double(last - first));
+                CHECK(std::isfinite(TPeakLevels::to_value(levels.rms(level, 0, k))) && within_a_step(levels.rms(level, 0, k), expected),
+                      "broken samples: level %d block %lld: RMS %g expected %g", level, (long long)k,
+                      TPeakLevels::to_value(levels.rms(level, 0, k)), expected);
             }
         }
     }
