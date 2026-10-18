@@ -50,6 +50,8 @@ public:
     const QString& peak_path() const { return m_peakPath; }
     // Frames recorded so far (any thread)
     qint64 recorded_frames() const { return m_builder.frame_count(); }
+    // Level-0 blocks recorded so far (any thread): a read() now has them
+    qint64 recorded_blocks() const { return m_builder.published_blocks(); }
 
     // The writer thread. open() before the first append().
     TPeakFile::Status open(QString* error = nullptr);

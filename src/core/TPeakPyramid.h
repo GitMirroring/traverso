@@ -256,6 +256,10 @@ public:
     int channel_count() const { return int(m_channels.size()); }
     int period_shift() const { return m_periodShift; }
     qint64 frame_count() const { return m_publishedFrames.load(std::memory_order_acquire); }
+    // The level-0 blocks every channel has published (any thread): what a
+    // snapshot taken now names at least. The frame count can be a block
+    // ahead of it (it is published first).
+    qint64 published_blocks() const;
 
     // The periods that every level 0..period_shift() has completed. For the
     // thread that appends, or any thread once a finished pyramid was handed

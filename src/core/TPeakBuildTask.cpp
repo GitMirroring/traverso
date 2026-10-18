@@ -69,11 +69,15 @@ TPeakBuildTask::TPeakBuildTask(OpenSource openSource, QString audioPath, QString
 
 TPeakBuildTask::~TPeakBuildTask() = default;
 
-bool TPeakBuildTask::fail(const QString& error)
+bool TPeakBuildTask::fail(const QString& error, State state)
 {
     m_error = error;
-    m_state = State::Failed;
-    TLOG_W("peaks", "building {} failed: {}", m_peakPath.toStdString(), error.toStdString());
+    m_state = state;
+    if (state == State::Unsupported) {
+        TLOG_I("peaks", "{} is not built: {}", m_peakPath.toStdString(), error.toStdString());
+    } else {
+        TLOG_W("peaks", "building {} failed: {}", m_peakPath.toStdString(), error.toStdString());
+    }
     release();
     return false;
 }
@@ -104,9 +108,7 @@ bool TPeakBuildTask::start()
         return fail(QStringLiteral("the source has no audio"));
     }
     if (!supports(channels)) {
-        fail(QStringLiteral("sources with %1 channels are not supported").arg(channels));
-        m_state = State::Unsupported;
-        return false;
+        return fail(QStringLiteral("sources with %1 channels are not supported").arg(channels), State::Unsupported);
     }
     if (!QDir().mkpath(QFileInfo(m_peakPath).absolutePath())) {
         return fail(QStringLiteral("cannot create the peak file directory"));

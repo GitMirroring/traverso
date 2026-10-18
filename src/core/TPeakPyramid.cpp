@@ -280,6 +280,15 @@ qint64 TPeakPyramidBuilder::complete_periods() const
     return periods;
 }
 
+qint64 TPeakPyramidBuilder::published_blocks() const
+{
+    qint64 blocks = std::numeric_limits<qint64>::max();
+    for (const Channel& channel : m_channels) {
+        blocks = std::min(blocks, channel.levels.front().publishedCount.load(std::memory_order_acquire));
+    }
+    return blocks;
+}
+
 qint64 TPeakPyramidBuilder::allocated_blocks() const
 {
     qint64 blocks = 0;

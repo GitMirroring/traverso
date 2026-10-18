@@ -102,9 +102,8 @@ TTimeRef TWaveform::recorded_length() const
     if (!m_live) {
         return TTimeRef();
     }
-    // Whole blocks: the waveform ends at the last complete one
-    const qint64 frames = (m_live->recorded_frames() >> TPeakLevels::BlockFramesShift) << TPeakLevels::BlockFramesShift;
-    return TTimeRef(uint64_t(frames), m_live->rate());
+    // The blocks a read has: the waveform ends at the last complete one
+    return TTimeRef(uint64_t(m_live->recorded_blocks() << TPeakLevels::BlockFramesShift), m_live->rate());
 }
 
 void TWaveform::prepare()

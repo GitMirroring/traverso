@@ -56,8 +56,8 @@ public:
     static QString peak_path(const TBufferedAudioStream* source);
     ~TWaveform();
 
-    // How far the waveform of a recording in progress reaches: whole peak
-    // blocks published by the builder (the clip's length runs ahead of it)
+    // How far the waveform of a recording in progress reaches: the peak
+    // blocks a read has now (the clip's length runs ahead of it)
     TTimeRef recorded_length() const;
 
     // Opens the peak file, or starts building it when it is missing or

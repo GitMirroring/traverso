@@ -829,11 +829,16 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
     std::vector<TWaveformColumn> chunk;
     std::vector<float> gain(static_cast<size_t>(columns));
     constexpr int Chunk = 256;
+    // Columns from the samples show the line through them: an RMS of one or
+    // two samples next to it would only darken part of the line
+    bool drawRms = true;
     for (int first = 0; first < columns; first += Chunk) {
         const int count = std::min(Chunk, columns - first);
         const TTimeRef clipLocal(qint64(std::llround((x0 + first / dpr) * scale)));
         chunk.resize(size_t(count) * size_t(channels));
-        waveform->columns(sourceStart + clipLocal, columnWidth, count, chunk.data());
+        if (waveform->columns(sourceStart + clipLocal, columnWidth, count, chunk.data()) == TWaveformColumns::Source::Samples) {
+            drawRms = false;
+        }
         for (int c = 0; c < channels; ++c) {
             std::copy_n(chunk.data() + c * count, count, data.data() + c * columns + first);
         }
@@ -932,8 +937,8 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
             // (rounded inwards) in its darker colour
             int y0 = std::clamp(int(std::floor(yTop)), channelTop, channelBottom);
             int y1 = std::clamp(std::max(int(std::ceil(yBottom)), y0 + 1), channelTop, channelBottom);
-            const int r0 = std::clamp(int(std::ceil(rmsTop)), channelTop, channelBottom);
-            const int r1 = std::clamp(int(std::floor(rmsBottom)), channelTop, channelBottom);
+            const int r0 = drawRms ? std::clamp(int(std::ceil(rmsTop)), channelTop, channelBottom) : 0;
+            const int r1 = drawRms ? std::clamp(int(std::floor(rmsBottom)), channelTop, channelBottom) : 0;
             for (int y = y0; y < y1; ++y) {
                 quint32* pixel = reinterpret_cast<quint32*>(image.scanLine(y)) + i;
                 const quint32 source = (y >= r0 && y < r1) ? rmsRowColor[size_t(y)] : rowColor[size_t(y)];

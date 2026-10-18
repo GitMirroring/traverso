@@ -84,7 +84,7 @@ public:
 private:
     bool start();
     bool finish();
-    bool fail(const QString& error);
+    bool fail(const QString& error, State state = State::Failed);
     void release();
 
     OpenSource m_openSource;
