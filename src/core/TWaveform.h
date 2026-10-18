@@ -59,7 +59,10 @@ public:
     // blocks published by the builder (the clip's length runs ahead of it)
     TTimeRef recorded_length() const;
 
-    // Starts the build when the peak file is missing or stale
+    // Opens the peak file, or starts building it when it is missing or
+    // stale. Called when the clip has its source and its sheet, so a peak
+    // file never waits for its clip to become visible.
+    void prepare();
     State state();
     int progress() const { return m_progress; }
     int channel_count() const;
@@ -107,4 +110,5 @@ private:
     bool m_opened{false};
     int m_progress{0};
     int m_builds{0};
+    int m_cancelledBuilds{0};
 };

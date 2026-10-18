@@ -106,12 +106,17 @@ TTimeRef TWaveform::recorded_length() const
     return TTimeRef(nframes_t(frames), m_live->rate());
 }
 
-TWaveform::State TWaveform::state()
+void TWaveform::prepare()
 {
     if (!m_opened) {
         m_opened = true;
         open_or_build();
     }
+}
+
+TWaveform::State TWaveform::state()
+{
+    prepare();
     return m_live ? State::Ready : m_state;
 }
 
@@ -163,6 +168,15 @@ void TWaveform::build_finished()
 
     if (result.ok) {
         open_or_build();
+    } else if (build.isCanceled() && m_cancelledBuilds++ == 0) {
+        // Not failed but cancelled: the DiskIO that ran it went (its sheet
+        // was deleted) while this waveform's clip lives on. Ask once more.
+        TLOG_I("peaks", "the build of {} was cancelled, asking again", m_peakPath.toStdString());
+        m_builds = 0;
+        open_or_build();
+        if (m_state == State::Building) {
+            return;
+        }
     } else {
         m_state = State::Failed;
     }

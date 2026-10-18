@@ -737,6 +737,9 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
             m_waveform = new TWaveform(rs, [this](const QString& audioPath, const QString& peakPath) {
                 return m_sheet ? m_sheet->request_peak_build(audioPath, peakPath) : QFuture<TPeakBuildResult>();
             });
+            if (m_sheet) {
+                m_waveform->prepare();
+            }
         }
     }
 
@@ -823,7 +826,12 @@ void TAudioClip::set_sheet( TSheet * sheet )
     }
     
     m_sheetId = sheet->get_id();
-    
+
+    // The peak file is needed before the clip is ever seen
+    if (m_waveform) {
+        m_waveform->prepare();
+    }
+
     set_history_stack(m_sheet->get_history_stack());
     m_pluginChain->set_session(m_sheet);
 }
