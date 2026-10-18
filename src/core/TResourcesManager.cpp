@@ -104,7 +104,7 @@ void TResourcesManager::discard_takes(const QList<TAudioClip*>& takes)
     bool remove = behaviour == "delete";
     if (behaviour == "ask") {
         remove = pm().ask_discard(tr("%n recorded take(s) were undone and can not be brought back anymore:\n\n%1\n\n"
-                                     "Delete their audio files from the project?", "", int(discarded.size()))
+                                     "Delete their audio files when the project is saved?", "", int(discarded.size()))
                                   .arg(names.join(QLatin1Char('\n'))));
     }
     if (!remove) {
@@ -125,16 +125,28 @@ void TResourcesManager::delete_takes(const QList<TAudioClip*>& takes)
         const QString audioPath = source->stream->get_filename();
         const QString peakPath = TWaveform::peak_path(source->stream);
         // Out of the project: neither is saved anymore. The objects stay
-        // until the project closes (see m_retiredClips).
+        // until the project closes (see m_retiredClips), the files until
+        // it is saved.
         m_retiredClips.append(clip);
         m_retiredSources.append(source);
         emit sourceRemoved(source->stream);
-
-        const bool audioRemoved = QFile::remove(audioPath);
-        QFile::remove(peakPath);
-        TLOG_I("recording", "discarded take {}: {} {}", take->get_name().toStdString(), audioPath.toStdString(),
-               audioRemoved ? "deleted" : "could not be deleted");
+        // The peak file only: a part file has a name of its writer's own and
+        // is renamed, given up or evicted by the peak cache
+        m_discardedFiles << audioPath << peakPath;
+        TLOG_I("recording", "discarded take {}: {} goes when the project is saved", take->get_name().toStdString(),
+               audioPath.toStdString());
     }
+}
+
+void TResourcesManager::delete_discarded_files()
+{
+    for (const QString& path : std::as_const(m_discardedFiles)) {
+        if (QFile::exists(path)) {
+            const bool removed = QFile::remove(path);
+            TLOG_I("recording", "{} {}", path.toStdString(), removed ? "deleted" : "could not be deleted");
+        }
+    }
+    m_discardedFiles.clear();
 }
 
 QDomNode TResourcesManager::get_state( QDomDocument doc )

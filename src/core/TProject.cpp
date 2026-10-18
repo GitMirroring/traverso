@@ -530,6 +530,10 @@ int TProject::save(bool autosave)
         return -1;
     }
 
+    // The project file no longer names the discarded recording takes: now
+    // their files can go
+    m_resourcesManager->delete_discarded_files();
+
     if (!autosave) {
         tInformUser().information( tr("Project %1 saved ").arg(m_name) );
     }

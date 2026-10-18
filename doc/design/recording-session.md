@@ -32,6 +32,10 @@ Decisions are the user's (2026-10-18); open points are marked.
 5. Only what the session created is deleted (its take clips, their audio
    sources, audio files and peak files), and only takes whose source no
    clip in the project uses.
+6. A discarded take leaves the project at once, its files only when the
+   project is saved without it. A project file saved before the undo still
+   names the take; closing without saving keeps it and its audio together.
+   (Older incremental backups still name such takes.)
 
 ## 2. Pieces
 
@@ -47,9 +51,10 @@ Decisions are the user's (2026-10-18); open points are marked.
   of a push then).
 - `TResourcesManager::discard_takes()`: applies the setting. Deleting
   takes the clips and sources out of the project (they are not saved
-  anymore), removes the audio and peak files, and keeps the objects until
-  the project closes: a clip's reader leaves its DiskIO asynchronously, so
-  freeing it at once could pull it from under DiskIO.
+  anymore) and keeps the objects until the project closes: a clip's reader
+  leaves its DiskIO asynchronously, so freeing it at once could pull it
+  from under DiskIO. `TProject::save()` deletes the audio and peak files
+  once the project file is written.
 - Asking: core does not show dialogs. `TProjectManager` holds a question
   function the application installs (a QMessageBox in `TMainWindow`; a
   Qt Quick UI installs its own). Without one the files are kept.

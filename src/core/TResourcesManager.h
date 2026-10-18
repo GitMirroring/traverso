@@ -72,8 +72,13 @@ public:
     // Takes of a recording that can never come back (TRecordingCommand):
     // their files are deleted or kept as the user prefers (Recording >
     // DiscardedTakes: ask, delete, keep). A take whose clip is in a track,
-    // or whose source another clip uses, is left alone.
+    // or whose source another clip uses, is left alone. Deleted takes leave
+    // the project at once, their files when the project is saved without
+    // them (delete_discarded_files()): a project file saved before still
+    // names them, and stays right if the project closes unsaved.
     void discard_takes(const QList<TAudioClip*>& takes);
+    // After the project file was written
+    void delete_discarded_files();
 
 
 private:
@@ -100,6 +105,7 @@ private:
     // a clip's reader leaves its DiskIO asynchronously
     QList<ClipData*> m_retiredClips;
     QList<SourceData*> m_retiredSources;
+    QStringList m_discardedFiles;
 	TBufferedAudioStreamReader*			m_silentReadSource;
 	
 	
