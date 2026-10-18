@@ -20,23 +20,29 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
    time budget per tick and a self-wakeup while work remains. While the
    sheet records, it does not build (flag). No thread of its own. First
    version: at most 3 ms per DiskIO wakeup (one per audio cycle), no
-   self-wakeup.
+   self-wakeup. The other sheets of the project go on building while one
+   records (accepted: peak files are rebuilt only after a new file version
+   or when they are lost, and then nobody records yet).
 4. Results reach the GUI through a `QPromise` driven by the build task and a
    `QFutureWatcher` in `TWaveform`: exactly one `finished` per watcher, no
    QObject job. A waveform never cancels a build; builds are cancelled when
    the project closes.
-5. A **checksum** in the header tells whether the block data is complete.
-   No fsync: the peak file is a cache. A file found on disk is shown at once
-   and checked in DiskIO's idle time (TPeakVerifyTask, in slices; the
-   sequential read doubles as a prefetch); a damaged one is built again and
-   repainted. A file built or checked in this session passes at once.
-   Open: every project open reads all its peak files once for the check
-   (about 43 MB per hour of stereo audio).
-7. Peak files are prepared when a clip gets its source and its sheet, not
+5. **Checksums** tell whether the block data is complete: every record and
+   the tail end in the checksum of their blocks, the header has one of its
+   own. No fsync: the peak file is a cache. A file found on disk is shown at
+   once and checked in DiskIO's idle time (TPeakVerifyTask, a record at a
+   time; the sequential read doubles as a prefetch); a damaged one is built
+   again and repainted. Normalising waits for the check (a damaged file must
+   not set a gain). A file built or checked in this session passes at once.
+   A file is checked **once**: a passed check sets a flag in the header
+   (not part of its checksum), so the next open does not read it again.
+   Only a file older than a few minutes is marked: a check of a file written
+   moments ago can read the page cache instead of the disk.
+6. Peak files are prepared when a clip gets its source and its sheet, not
    at its first paint: whether a clip is visible does not matter. When peak
    files must be rebuilt, every sheet's DiskIO builds at once (accepted: it
    is rare) and as fast as the disk allows while no stream needs reading.
-6. No network file systems for now.
+7. No network file systems for now.
 
 ## 2. File format, version 3
 
@@ -49,17 +55,23 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
   of a period at the same moment. S is in the header (default 14: 1,048,576
   frames, ~22 s at 48 kHz); tests use small values.
 - **Record**: the blocks of one complete period for levels 0..S, level by
-  level, channel by channel (2^(S-L) blocks each). All records have the same
-  size, so record i starts at `dataStart + i × recordSize`. No table.
+  level, channel by channel (2^(S-L) blocks each), then the 64-bit checksum
+  of those blocks. All records have the same size, so record i starts at
+  `dataStart + i × recordSize`. No table.
 - **Tail**, written at finish: the part of every level 0..S beyond the
-  complete periods, then the levels above S, each level by channel. Its
-  layout follows from the frame count (`expected_block_counts`).
+  complete periods, then the levels above S, each level by channel, then the
+  checksum of those blocks. Its layout follows from the frame count
+  (`expected_block_counts`).
 - **Header**, written at once with frame count 0 (= unfinished). Finish adds
   the frame count, the source's size and modification time (a recording's
-  file is complete only then) and the checksum over all block data in file
-  order and the header itself (a damaged period shift or frame count can
-  keep the file size the same). A file with frame count 0 or a checksum mismatch is Invalid and is
-  built again.
+  file is complete only then) and the header's checksum (a damaged period
+  shift or frame count can keep the file size the same). A file with frame
+  count 0 or a header that does not match its checksum is Invalid at open
+  and is built again; a record that does not match is found by the check.
+  The header's checked flag is left out of its checksum.
+- A checksum per record keeps a crashed recording's part file usable: its
+  complete records can be checked one by one. Salvaging them belongs to the
+  recording crash safety task (with the audio writers' header updates).
 - The file is written as `<name>.part` and renamed over `<name>` by
   finish (an atomic replace on POSIX). Writing in place cut a file short
   under a waveform that had it mapped (SIGBUS, found in the first headless
@@ -80,7 +92,7 @@ has, so `TWaveformColumns` and the painters do not change.
 `TPeakPyramidBuilder` gets the period shift: the storage of level L ≤ S is
 chunked per period (chunk shift S-L; this also removes the 256 KB chunks of
 the high levels that wasted memory). When a period completes the writer
-writes its record from the builder's chunks, adds it to the checksum and
+writes its record from the builder's chunks with the record's checksum and
 publishes it; the chunks of written periods can then be released. Builds
 release them at once; a recording when no read is going on (section 4).
 

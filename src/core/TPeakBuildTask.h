@@ -101,17 +101,24 @@ private:
 };
 
 /**
- * @brief Checks the block data of a peak file against its checksum, a slice
- * at a time (it reads the whole file, which also brings it into the page
- * cache before the waveform paints from it). Same states as TPeakBuildTask:
- * Done means the file is whole.
+ * @brief Checks the block data of a peak file against its checksums, a
+ * record at a time (it reads the whole file, which also brings it into the
+ * page cache). Same states as TPeakBuildTask: Done means the file is whole,
+ * and then the file says so in its header, so it is not read again at its
+ * next open.
  */
 class TPeakVerifyTask
 {
 public:
     using State = TPeakBuildTask::State;
 
-    TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected, qint64 sliceBytes = 4 << 20);
+    // A check reads what the system has, which for a file written moments
+    // ago can be its page cache instead of the disk: only a file this old is
+    // marked as checked (systems write changed pages back within about 30
+    // seconds). A younger file is checked again at its next open.
+    static constexpr std::chrono::minutes SettledAge{5};
+
+    TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected);
 
     bool step(std::chrono::nanoseconds budget);
     void cancel() { m_cancelled.store(true, std::memory_order_relaxed); }
@@ -123,10 +130,8 @@ public:
 private:
     QString m_peakPath;
     TPeakFile::SourceInfo m_expected;
-    qint64 m_sliceBytes;
     TPeakFile m_file;
-    quint64 m_checksum{0};
-    qint64 m_position{0};
+    qint64 m_part{0};
 
     std::atomic<bool> m_cancelled{false};
     State m_state{State::Waiting};

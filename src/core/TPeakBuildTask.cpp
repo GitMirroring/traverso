@@ -191,10 +191,9 @@ bool TPeakBuildTask::step(std::chrono::nanoseconds budget)
 }
 
 
-TPeakVerifyTask::TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected, qint64 sliceBytes)
+TPeakVerifyTask::TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected)
     : m_peakPath(std::move(peakPath))
     , m_expected(expected)
-    , m_sliceBytes(std::max<qint64>(4096, sliceBytes & ~qint64(3)))
 {
 }
 
@@ -211,33 +210,39 @@ bool TPeakVerifyTask::step(std::chrono::nanoseconds budget)
     const auto started = std::chrono::steady_clock::now();
 
     if (m_state == State::Waiting) {
-        if (m_file.open(m_peakPath, m_expected) != TPeakFile::Status::Ok) {
+        // Writable to mark it checked; a file on read-only media is checked
+        // all the same
+        TPeakFile::Status status = m_file.open(m_peakPath, m_expected, TPeakFile::Access::ReadWrite);
+        if (status == TPeakFile::Status::Error) {
+            status = m_file.open(m_peakPath, m_expected);
+        }
+        if (status != TPeakFile::Status::Ok) {
             m_error = QStringLiteral("the peak file does not open");
             m_state = State::Failed;
             return false;
         }
-        m_checksum = TPeakFile::checksum_begin();
         m_state = State::Running;
     }
 
     do {
-        const qint64 bytes = std::min(m_sliceBytes, m_file.data_size() - m_position);
-        if (bytes <= 0) {
-            const bool whole = m_file.checksum_matches(m_checksum);
-            m_file.close();
-            if (!whole) {
-                m_error = QStringLiteral("the peak file does not match its checksum");
-                m_state = State::Failed;
-                TLOG_W("peaks", "{} does not match its checksum", m_peakPath.toStdString());
-                return false;
+        if (m_part == m_file.part_count()) {
+            if (m_file.modified().msecsTo(QDateTime::currentDateTimeUtc()) >= std::chrono::milliseconds(SettledAge).count()) {
+                m_file.mark_checked();
             }
+            m_file.close();
             m_progress = 100;
             m_state = State::Done;
             return false;
         }
-        m_checksum = m_file.checksum_add(m_checksum, m_position, bytes);
-        m_position += bytes;
-        m_progress = int(m_position * 100 / std::max<qint64>(1, m_file.data_size()));
+        if (!m_file.part_matches(m_part)) {
+            m_error = QStringLiteral("part %1 of %2 does not match its checksum").arg(m_part).arg(m_file.part_count());
+            TLOG_W("peaks", "{}: {}", m_peakPath.toStdString(), m_error.toStdString());
+            m_file.close();
+            m_state = State::Failed;
+            return false;
+        }
+        ++m_part;
+        m_progress = int(m_part * 100 / m_file.part_count());
     } while (std::chrono::steady_clock::now() - started < budget);
     return true;
 }

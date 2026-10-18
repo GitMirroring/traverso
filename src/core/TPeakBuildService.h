@@ -39,7 +39,7 @@ class TPeakBuildService
 public:
     QFuture<TPeakBuildResult> build(const QString& audioPath, const QString& peakPath, TDiskIOThread* diskio);
     // Checks the block data of a peak file found on disk against its
-    // checksum; ok at once for a file built or checked in this session
+    // checksums; ok at once for a file built or checked in this session
     QFuture<TPeakBuildResult> verify(const QString& peakPath, const TPeakFile::SourceInfo& expected, TDiskIOThread* diskio);
     void cancel_all();
 

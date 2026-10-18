@@ -25,19 +25,22 @@ struct TPeakFileHeader
     quint32 blockFrames;
     quint32 valueScale;
     quint32 periodShift;
+    quint32 checked;        // 1: a check found all block data whole
+    quint32 padding;
     quint64 frameCount;     // 0: unfinished
     qint64 sourceSize;
     qint64 sourceModified;
-    quint64 checksum;       // of the block data in file order, then of this header with checksum 0
+    quint64 checksum;       // of this header with checksum and checked 0
 };
 
-static_assert(sizeof(TPeakFileHeader) == 72 && offsetof(TPeakFileHeader, frameCount) == 40);
+static_assert(sizeof(TPeakFileHeader) == 80 && offsetof(TPeakFileHeader, frameCount) == 48);
 static_assert(sizeof(TPeakBlock) == 4);
 
 static constexpr char Magic[8] = {'T', 'R', 'A', 'V', 'P', 'E', 'A', 'K'};
 static constexpr quint32 ByteOrderMark = 0x01020304;   // stored in the writer's byte order
 static constexpr qint64 DataStart = qint64(sizeof(TPeakFileHeader));
 static constexpr qint64 BlockBytes = qint64(sizeof(TPeakBlock));
+static constexpr qint64 ChecksumBytes = qint64(sizeof(quint64));
 
 // FNV-1a over 32-bit words: block data always is a whole number of blocks.
 // Not a cryptographic hash: it only has to notice data that is missing,
@@ -55,12 +58,14 @@ static quint64 add_to_checksum(quint64 checksum, const void* data, qint64 bytes)
 }
 static constexpr quint64 ChecksumSeed = 14695981039346656037ull;
 
-// The header goes into the checksum too (with its checksum field 0): a
-// damaged period shift or frame count can keep the file size the same
-static quint64 add_header_to_checksum(quint64 checksum, TPeakFileHeader header)
+// The header has a checksum of its own: a damaged period shift or frame
+// count can keep the file size the same. The checked flag is left out, it
+// is set after the file was written.
+static quint64 header_checksum(TPeakFileHeader header)
 {
     header.checksum = 0;
-    return add_to_checksum(checksum, &header, qint64(sizeof(header)));
+    header.checked = 0;
+    return add_to_checksum(ChecksumSeed, &header, qint64(sizeof(header)));
 }
 
 // The block count of every level of a complete pyramid over frames frames
@@ -81,7 +86,8 @@ static std::vector<qint64> expected_block_counts(qint64 frames)
 
 /**
  * Where everything is in a version 3 file: follows from the period shift,
- * the channel count and the block count of every level.
+ * the channel count and the block count of every level. A record and the
+ * tail end in the checksum of their blocks.
  */
 struct TPeakFileLayout
 {
@@ -99,6 +105,7 @@ struct TPeakFileLayout
         for (int level = 0; level <= periodShift; ++level) {
             recordBytes += period_blocks(level) * BlockBytes * channelCount;
         }
+        recordBytes += ChecksumBytes;
         periods = complete_periods(periodShift, counts);
     }
 
@@ -140,7 +147,9 @@ struct TPeakFileLayout
         return offset + channel * tail_blocks(level) * BlockBytes;
     }
 
-    qint64 end() const { return level_count() > 0 ? tail_offset(level_count() - 1, channelCount) : tail_start(); }
+    // Where the tail's blocks end and its checksum starts
+    qint64 tail_end() const { return level_count() > 0 ? tail_offset(level_count() - 1, channelCount) : tail_start(); }
+    qint64 end() const { return tail_end() + ChecksumBytes; }
 };
 
 
@@ -183,7 +192,7 @@ TPeakFile::Status TPeakFile::write(const QString& path, const TPeakLevels& level
     return writer.finish(levels, source, error);
 }
 
-TPeakFile::Status TPeakFile::open(const QString& path, const SourceInfo& expected)
+TPeakFile::Status TPeakFile::open(const QString& path, const SourceInfo& expected, Access access)
 {
     close();
 
@@ -191,9 +200,13 @@ TPeakFile::Status TPeakFile::open(const QString& path, const SourceInfo& expecte
     if (!m_file.exists()) {
         return Status::Missing;
     }
-    if (!m_file.open(QIODevice::ReadOnly)) {
+    // A writable mapping, so the flag goes into the file that was checked
+    // even when a build replaced the one under its name meanwhile
+    m_writable = access == Access::ReadWrite;
+    if (!m_file.open(m_writable ? QIODevice::ReadWrite : QIODevice::ReadOnly)) {
         return Status::Error;
     }
+    m_modified = m_file.fileTime(QFileDevice::FileModificationTime);
     if (m_file.size() < qint64(sizeof(TPeakFileHeader))) {
         m_file.close();
         return Status::Invalid;
@@ -226,7 +239,8 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
             || header.headerSize != sizeof(TPeakFileHeader)
             || header.blockFrames != quint32(TPeakLevels::BlockFrames)
             || header.valueScale != quint32(TPeakLevels::ValueScale)
-            || header.periodShift > quint32(TPeakPyramidBuilder::MaxPeriodShift)) {
+            || header.periodShift > quint32(TPeakPyramidBuilder::MaxPeriodShift)
+            || header.checksum != header_checksum(header)) {
         return Status::Invalid;
     }
 
@@ -268,37 +282,55 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
         }
     }
 
-    m_dataStart = DataStart;
-    m_dataEnd = fileSize;
+    m_periods = layout.periods;
+    m_recordBytes = layout.recordBytes;
+    m_tailEnd = layout.tail_end();
 
     m_levels = TPeakLevels(expected.rate, expected.channelCount, qint64(header.frameCount), std::move(levels));
     return Status::Ok;
 }
 
-bool TPeakFile::verify_checksum() const
-{
-    return m_map && checksum_matches(checksum_add(checksum_begin(), 0, data_size()));
-}
-
-quint64 TPeakFile::checksum_begin()
-{
-    return ChecksumSeed;
-}
-
-quint64 TPeakFile::checksum_add(quint64 checksum, qint64 offset, qint64 bytes) const
-{
-    Q_ASSERT(m_map && offset >= 0 && offset + bytes <= data_size() && offset % 4 == 0 && bytes % 4 == 0);
-    return add_to_checksum(checksum, m_map + m_dataStart + offset, bytes);
-}
-
-bool TPeakFile::checksum_matches(quint64 checksum) const
+bool TPeakFile::checked() const
 {
     if (!m_map) {
         return false;
     }
     TPeakFileHeader header;
     std::memcpy(&header, m_map, sizeof(header));
-    return add_header_to_checksum(checksum, header) == header.checksum;
+    return header.checked == 1;
+}
+
+bool TPeakFile::mark_checked()
+{
+    if (!m_map || !m_writable) {
+        return false;
+    }
+    const quint32 checked = 1;
+    std::memcpy(m_map + offsetof(TPeakFileHeader, checked), &checked, sizeof(checked));
+    return true;
+}
+
+bool TPeakFile::part_matches(qint64 part) const
+{
+    Q_ASSERT(part >= 0 && part < part_count());
+    const qint64 start = DataStart + part * m_recordBytes;
+    const qint64 end = part < m_periods ? start + m_recordBytes - ChecksumBytes : m_tailEnd;
+    quint64 stored;
+    std::memcpy(&stored, m_map + end, sizeof(stored));
+    return add_to_checksum(ChecksumSeed, m_map + start, end - start) == stored;
+}
+
+bool TPeakFile::verify_checksum() const
+{
+    if (!m_map) {
+        return false;
+    }
+    for (qint64 part = 0; part < part_count(); ++part) {
+        if (!part_matches(part)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void TPeakFile::close()
@@ -307,6 +339,7 @@ void TPeakFile::close()
         m_file.unmap(m_map);
         m_map = nullptr;
     }
+    m_writable = false;
     m_levels = TPeakLevels();
 }
 
@@ -344,7 +377,6 @@ TPeakFile::Status TPeakFileWriter::open(const QString& path, uint rate, int chan
     m_channelCount = channelCount;
     m_periodShift = periodShift;
     m_writtenPeriods = 0;
-    m_checksum = ChecksumSeed;
     m_finished = false;
 
     m_path = path;
@@ -386,12 +418,18 @@ bool TPeakFileWriter::write_blocks(const TPeakLevels& levels, int level, int cha
     return true;
 }
 
+bool TPeakFileWriter::write_checksum()
+{
+    return m_file.write(reinterpret_cast<const char*>(&m_checksum), ChecksumBytes) == ChecksumBytes;
+}
+
 TPeakFile::Status TPeakFileWriter::write_periods(const TPeakLevels& levels, qint64 periods, QString* error)
 {
     Q_ASSERT(m_file.isOpen() && !m_finished);
     Q_ASSERT(levels.channel_count() == m_channelCount);
 
     for (; m_writtenPeriods < periods; ++m_writtenPeriods) {
+        m_checksum = ChecksumSeed;
         for (int level = 0; level <= m_periodShift; ++level) {
             const qint64 blocks = qint64(1) << (m_periodShift - level);
             const qint64 first = m_writtenPeriods * blocks;
@@ -401,6 +439,9 @@ TPeakFile::Status TPeakFileWriter::write_periods(const TPeakLevels& levels, qint
                     return failed(error);
                 }
             }
+        }
+        if (!write_checksum()) {
+            return failed(error);
         }
     }
     // Out of QFile's buffer: a record is in the file (and visible to a
@@ -440,12 +481,16 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
     }
 
     // The tail: the rest of every level, level by level, channel by channel
+    m_checksum = ChecksumSeed;
     for (int level = 0; level < layout.level_count(); ++level) {
         for (int channel = 0; channel < m_channelCount; ++channel) {
             if (!write_blocks(levels, level, channel, layout.record_blocks(level), layout.counts[size_t(level)])) {
                 return failed(error);
             }
         }
+    }
+    if (!write_checksum()) {
+        return failed(error);
     }
     Q_ASSERT(m_file.pos() == layout.end());
 
@@ -462,12 +507,12 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
     header.frameCount = quint64(source.frameCount);
     header.sourceSize = source.fileSize;
     header.sourceModified = source.modified;
-    header.checksum = add_header_to_checksum(m_checksum, header);
+    header.checksum = header_checksum(header);
     if (!m_file.seek(0) || m_file.write(reinterpret_cast<const char*>(&header), sizeof(header)) != qint64(sizeof(header))) {
         return failed(error);
     }
 
-    // No fsync: the file is a cache, the checksum tells whether it is whole.
+    // No fsync: the file is a cache, the checksums tell whether it is whole.
     // Flush first: close() would clear the error text of a failed write.
     if (!m_file.flush()) {
         return failed(error);

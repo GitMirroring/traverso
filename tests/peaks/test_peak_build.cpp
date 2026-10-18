@@ -12,6 +12,7 @@
 #include "TPeakPyramid.h"
 #include "TPeakRecording.h"
 
+#include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
@@ -293,7 +294,7 @@ int main()
         reference_file(peakPath, signal, audioPath, 3);
         const auto expected = TPeakFile::SourceInfo::from_file(audioPath, signal.rate, 2, signal.frames());
         auto check = [&](const char* what) {
-            TPeakVerifyTask task(peakPath, expected, 4096);
+            TPeakVerifyTask task(peakPath, expected);
             int steps = 0;
             while (task.step(std::chrono::nanoseconds(0))) {
                 ++steps;
@@ -302,6 +303,25 @@ int main()
             return task.state();
         };
         CHECK(check("whole file") == TPeakVerifyTask::State::Done, "a whole peak file fails its check");
+        // Just written: maybe read from the page cache, so checked again next time
+        TPeakFile file;
+        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && !file.checked(), "a new file was marked checked");
+        file.close();
+        // Written long enough ago: marked, not read again
+        {
+            QFile old(peakPath);
+            CHECK(old.open(QIODevice::ReadWrite)
+                  && old.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-3600), QFileDevice::FileModificationTime),
+                  "age the peak file");
+        }
+        const QByteArray whole = file_bytes(peakPath);
+        CHECK(check("old file") == TPeakVerifyTask::State::Done, "an old peak file fails its check");
+        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && file.checked(), "an old file was not marked checked");
+        file.close();
+        {
+            QFile out(peakPath);
+            CHECK(out.open(QIODevice::WriteOnly | QIODevice::Truncate) && out.write(whole) == whole.size(), "rewrite");
+        }
         QByteArray bytes = file_bytes(peakPath);
         bytes[bytes.size() - 7] = char(bytes[bytes.size() - 7] ^ 0x01);
         {
@@ -479,7 +499,7 @@ int main()
         // Streamed: the periods completed so far are on disk, in the part
         // file (50 slices of at most 1024 frames, periods of 256 frames)
         const QString part = TPeakFileWriter::part_path(peakPath);
-        CHECK(QFileInfo(part).size() >= 72 + 40 * (4 + 2 + 1) * 4 * 2, "%lld bytes: the periods were not streamed",
+        CHECK(QFileInfo(part).size() >= TPeakFileWriter::records_end(2, 2, 40), "%lld bytes: the periods were not streamed",
               (long long)QFileInfo(part).size());
         task.cancel();
         CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Cancelled, "cancel not honoured");

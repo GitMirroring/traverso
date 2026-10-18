@@ -5,6 +5,7 @@
 
 #include "TPeakPyramid.h"
 
+#include <QDateTime>
 #include <QFile>
 #include <QString>
 
@@ -22,7 +23,12 @@
  * period, level by level, channel by channel), then a tail with the rest of
  * every level. Every offset follows from the header, so there is no table.
  * The header says unfinished (frame count 0) until TPeakFileWriter::finish()
- * writes the frame count, the source and the checksum of the block data.
+ * writes the frame count and the source.
+ *
+ * Every record and the tail end in the checksum of their blocks, so each can
+ * be checked on its own; the header has a checksum of its own, which open()
+ * checks. A check that found all block data whole can say so in the header
+ * (mark_checked()), so a file is read back once, not at every open.
  */
 class TPeakFile
 {
@@ -57,26 +63,35 @@ public:
     static Status write(const QString& path, const TPeakLevels& levels, const SourceInfo& source, QString* error = nullptr,
                         int periodShift = TPeakPyramidBuilder::DefaultPeriodShift);
 
-    // Checks the header and the layout, not the block data: see verify_checksum()
-    Status open(const QString& path, const SourceInfo& expected);
+    enum class Access
+    {
+        ReadOnly,
+        ReadWrite   // to mark_checked() the file
+    };
+
+    // Checks the header, its checksum and the layout, not the block data:
+    // see part_matches()
+    Status open(const QString& path, const SourceInfo& expected, Access access = Access::ReadOnly);
     void close();
 
     bool is_open() const { return m_map != nullptr; }
     // Valid while the file is open
     const TPeakLevels& levels() const { return m_levels; }
+    // When the file was last modified, as it was opened
+    const QDateTime& modified() const { return m_modified; }
 
-    // Whether the header and the block data match the checksum. Reads all of the
-    // file (which also brings it into the page cache), so not for the GUI
-    // thread.
+    // Whether a check found all block data whole
+    bool checked() const;
+    // Says so in the header (not part of its checksum); needs Access::ReadWrite
+    bool mark_checked();
+
+    // The block data in parts with a checksum each: the records, then the
+    // tail. Checking a part reads it (which also brings it into the page
+    // cache), so not for the GUI thread.
+    qint64 part_count() const { return m_map ? m_periods + 1 : 0; }
+    bool part_matches(qint64 part) const;
+    // All parts
     bool verify_checksum() const;
-
-    // The same check in steps (a background task): data_size() bytes of block
-    // data, added in pieces of whole blocks from checksum_begin(), then
-    // compared with checksum_matches()
-    qint64 data_size() const { return m_dataEnd - m_dataStart; }
-    static quint64 checksum_begin();
-    quint64 checksum_add(quint64 checksum, qint64 offset, qint64 bytes) const;
-    bool checksum_matches(quint64 checksum) const;
 
     static constexpr quint32 FormatVersion = 3;
 
@@ -85,8 +100,11 @@ private:
 
     QFile m_file;
     uchar* m_map{nullptr};
-    qint64 m_dataStart{0};
-    qint64 m_dataEnd{0};
+    bool m_writable{false};
+    QDateTime m_modified;
+    qint64 m_periods{0};
+    qint64 m_recordBytes{0};
+    qint64 m_tailEnd{0};    // where the tail's blocks end, its checksum follows
     TPeakLevels m_levels;
 };
 
@@ -125,7 +143,8 @@ public:
     static QString part_path(const QString& path) { return path + QStringLiteral(".part"); }
 
     // Where the blocks of level (<= periodShift) and channel of record
-    // period start, and how many bytes all records before period take
+    // period start, and where the records before period end (a record ends
+    // in the checksum of its blocks)
     static qint64 record_offset(int periodShift, int channelCount, qint64 period, int level, int channel);
     static qint64 records_end(int periodShift, int channelCount, qint64 periods);
 
@@ -134,6 +153,7 @@ public:
 
 private:
     bool write_blocks(const TPeakLevels& levels, int level, int channel, qint64 first, qint64 last);
+    bool write_checksum();
     TPeakFile::Status failed(QString* error);
 
     QFile m_file;
@@ -142,6 +162,6 @@ private:
     int m_channelCount{0};
     int m_periodShift{TPeakPyramidBuilder::DefaultPeriodShift};
     qint64 m_writtenPeriods{0};
-    quint64 m_checksum{0};
+    quint64 m_checksum{0};      // of the record or tail being written
     bool m_finished{false};
 };

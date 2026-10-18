@@ -133,12 +133,12 @@ void TWaveform::open_or_build()
     case TPeakFile::Status::Ok:
         TLOG_D("peaks", "opened {}", m_peakPath.toStdString());
         m_state = State::Ready;
-        if (m_builds == 0 && m_jobs.verify) {
-            // Found on disk: shown at once, its blocks are checked (and read
-            // into the page cache) in DiskIO's idle time. A damaged cache file
-            // shows a wrong waveform until it is built again, which is
-            // harmless; waiting with an empty clip is not. A file this session
-            // built or checked passes at once.
+        if (m_builds == 0 && m_jobs.verify && !m_file.checked()) {
+            // Found on disk and not checked before: shown at once, its blocks
+            // are checked (and read into the page cache) in DiskIO's idle
+            // time. A damaged cache file shows a wrong waveform until it is
+            // built again, which is harmless; waiting with an empty clip is
+            // not. A file this session built or checked passes at once.
             m_verifying = true;
             m_build.setFuture(m_jobs.verify(m_peakPath, source_info()));
         }

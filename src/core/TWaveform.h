@@ -25,7 +25,7 @@ class TFileIOBuffer;
  * @brief The waveform of one audio source for its views.
  *
  * Opens the source's peak file (TPeakFile), has a file found on disk checked
- * against its checksum and a missing or stale one built (through the
+ * against its checksums once and a missing or stale one built (through the
  * PeakJobs it was given: the sheet's DiskIO does both in its idle time), and
  * answers column queries (TWaveformColumns) from the pyramid or from the
  * source's samples with a reader of its own. GUI thread only.
