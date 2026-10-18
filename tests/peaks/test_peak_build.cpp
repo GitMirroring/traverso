@@ -247,7 +247,7 @@ int main()
         int snapshots = 0;
         bool wrong = false;
         while (!done.load() || snapshots == 0) {
-            const TPeakLevels view = recording.levels();
+          recording.read([&](const TPeakLevels& view) {
             ++snapshots;
             for (int level = 0; level < view.level_count() && !wrong; ++level) {
                 // Blocks of a growing pyramid equal the finished one's, except a
@@ -266,23 +266,165 @@ int main()
                     }
                 }
             }
+          });
         }
         writer.join();
         CHECK(finished == TPeakFile::Status::Ok, "recording %d: finish", round);
         CHECK(file_bytes(peakPath) == reference, "recording %d: the streamed file differs from the one-go file", round);
         CHECK(!QFile::exists(TPeakFileWriter::part_path(peakPath)), "recording %d: part file left", round);
         // After finish the snapshot is the whole pyramid, records from the renamed file
-        const TPeakLevels last = recording.levels();
-        CHECK(last.level_count() == expected.level_count() && last.frame_count() == expected.frame_count(), "recording %d: final view", round);
-        for (int level = 0; level < last.level_count(); ++level) {
-            for (qint64 k = 0; k < last.block_count(level); ++k) {
-                if (last.block(level, 0, k).min != expected.block(level, 0, k).min) {
-                    CHECK(false, "recording %d: final view level %d block %lld", round, level, (long long)k);
-                    break;
+        recording.read([&](const TPeakLevels& last) {
+            CHECK(last.level_count() == expected.level_count() && last.frame_count() == expected.frame_count(), "recording %d: final view", round);
+            for (int level = 0; level < last.level_count(); ++level) {
+                for (qint64 k = 0; k < last.block_count(level); ++k) {
+                    if (last.block(level, 0, k).min != expected.block(level, 0, k).min) {
+                        CHECK(false, "recording %d: final view level %d block %lld", round, level, (long long)k);
+                        break;
+                    }
+                }
+            }
+        });
+        std::printf("    recording of %lld frames: %d snapshots\n", (long long)signal.frames(), snapshots);
+    }
+
+    // Recording memory without and with readers: helpers
+    auto record_into = [&](TPeakRecording& recording, const Signal& signal, qint64 from, qint64 to) {
+        for (qint64 position = from; position < to;) {
+            const qint64 count = std::min<qint64>(1024, to - position);
+            std::vector<const float*> pointers;
+            for (const auto& channel : signal.channels) {
+                pointers.push_back(channel.data() + position);
+            }
+            recording.append(pointers.data(), count);
+            position += count;
+        }
+    };
+    auto same_as = [&](const TPeakLevels& view, const TPeakLevels& expected) {
+        for (int level = 0; level < view.level_count(); ++level) {
+            const qint64 blocks = std::min(view.block_count(level), expected.block_count(level) - 1);
+            for (int c = 0; c < view.channel_count(); ++c) {
+                for (qint64 k = 0; k < blocks; ++k) {
+                    if (view.block(level, c, k).min != expected.block(level, c, k).min
+                            || view.block(level, c, k).max != expected.block(level, c, k).max) {
+                        return false;
+                    }
                 }
             }
         }
-        std::printf("    recording of %lld frames: %d snapshots\n", (long long)signal.frames(), snapshots);
+        return true;
+    };
+    auto whole_pyramid = [&](const Signal& signal, int shift) {
+        auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()), shift);
+        std::vector<const float*> pointers;
+        for (const auto& channel : signal.channels) {
+            pointers.push_back(channel.data());
+        }
+        builder->append(pointers.data(), signal.frames());
+        builder->finish();
+        return builder;
+    };
+
+    // Nothing reads: the written periods leave memory anyway. The memory does
+    // not grow with the length: after 36 periods about what it was after 12
+    // (the current period plus one chunk of 1024 blocks per level; a level
+    // more per doubling of the length)
+    {
+        const int shift = 11;   // periods of 2048 level-0 blocks
+        const qint64 period = qint64(TPeakLevels::BlockFrames) << shift;
+        const Signal signal = make_signal(2, period * 36 + period / 2);
+        QFile::remove(peakPath);
+        TPeakRecording recording(signal.rate, 2, peakPath, shift);
+        CHECK(recording.open() == TPeakFile::Status::Ok, "no reader: open");
+        record_into(recording, signal, 0, period * 12 + period / 2);
+        const qint64 afterTwelve = recording.memory_blocks();
+        record_into(recording, signal, period * 12 + period / 2, signal.frames());
+        const qint64 afterThirtySix = recording.memory_blocks();
+        const qint64 all = 2 * 2 * ((signal.frames() + 63) / 64);   // every block of every level, both channels
+        CHECK(afterThirtySix <= afterTwelve + 2 * 2 * 1024 && afterThirtySix < all / 8,
+              "no reader: %lld blocks in memory after 36 periods, %lld after 12 (all: %lld)",
+              (long long)afterThirtySix, (long long)afterTwelve, (long long)all);
+        CHECK(recording.finish(audioPath) == TPeakFile::Status::Ok, "no reader: finish");
+        CHECK(file_bytes(peakPath) == reference_file(referencePath, signal, audioPath, shift), "no reader: file differs");
+    }
+
+    // A reader that pauses inside its read while the writer passes periods:
+    // its snapshot stays right, the memory is freed after the read
+    {
+        const int shift = 11;
+        const Signal signal = make_signal(1, qint64(TPeakLevels::BlockFrames) * (2048 * 10 + 50));
+        const auto expected = whole_pyramid(signal, shift);
+        const TPeakLevels expectedLevels = expected->levels();
+        QFile::remove(peakPath);
+        TPeakRecording recording(signal.rate, 1, peakPath, shift);
+        CHECK(recording.open() == TPeakFile::Status::Ok, "paused reader: open");
+        const qint64 third = (signal.frames() / 3) & ~qint64(63);
+        record_into(recording, signal, 0, third);
+        std::atomic<bool> reading{false};
+        std::atomic<bool> release{false};
+        std::thread writer([&] {
+            while (!reading.load()) {
+                std::this_thread::yield();
+            }
+            record_into(recording, signal, third, 2 * third);   // several periods while the reader holds its snapshot
+            release.store(true);
+        });
+        bool right = false;
+        qint64 heldMemory = 0;
+        recording.read([&](const TPeakLevels& view) {
+            reading.store(true);
+            while (!release.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            heldMemory = recording.memory_blocks();
+            right = same_as(view, expectedLevels);
+        });
+        writer.join();
+        CHECK(right, "paused reader: its snapshot changed under it");
+        record_into(recording, signal, 2 * third, signal.frames());
+        CHECK(recording.memory_blocks() < heldMemory, "paused reader: memory not freed after the read (%lld, held %lld)",
+              (long long)recording.memory_blocks(), (long long)heldMemory);
+        CHECK(recording.finish(audioPath) == TPeakFile::Status::Ok, "paused reader: finish");
+    }
+
+    // The part file cannot be written: peaks stay in memory, no peak file
+    {
+        const Signal signal = make_signal(1, 300000);
+        const auto expected = whole_pyramid(signal, 2);
+        const QString blocked = dir.filePath("blocked");
+        {
+            QFile blocker(blocked);   // a file where the directory would be
+            CHECK(blocker.open(QIODevice::WriteOnly), "write failure: blocker");
+        }
+        TPeakRecording recording(signal.rate, 1, blocked + "/x.peaks", 2);
+        CHECK(recording.open() != TPeakFile::Status::Ok, "write failure: opened");
+        record_into(recording, signal, 0, signal.frames());
+        bool right = false;
+        recording.read([&](const TPeakLevels& view) { right = same_as(view, expected->levels()) && view.block_count(0) > 0; });
+        CHECK(right, "write failure: the peaks in memory are wrong");
+        CHECK(recording.finish(audioPath) != TPeakFile::Status::Ok, "write failure: finish reports Ok");
+    }
+
+    // The mapping cannot follow (the part file went): the snapshot ends where
+    // the mapping ends, and is right
+    {
+        const int shift = 2;
+        const Signal signal = make_signal(1, 200000);
+        const auto expected = whole_pyramid(signal, shift);
+        QFile::remove(peakPath);
+        TPeakRecording recording(signal.rate, 1, peakPath, shift);
+        CHECK(recording.open() == TPeakFile::Status::Ok, "remap failure: open");
+        record_into(recording, signal, 0, signal.frames() / 4);
+        qint64 mappedBlocks = 0;
+        recording.read([&](const TPeakLevels& view) { mappedBlocks = view.block_count(0); });
+        QFile::remove(TPeakFileWriter::part_path(peakPath));   // the writer keeps writing to the unlinked file
+        record_into(recording, signal, signal.frames() / 4, signal.frames() / 2);
+        bool right = false;
+        qint64 blocks = 0;
+        recording.read([&](const TPeakLevels& view) { right = same_as(view, expected->levels()); blocks = view.block_count(0); });
+        CHECK(right, "remap failure: wrong blocks");
+        CHECK(blocks <= mappedBlocks + 4 && blocks < (signal.frames() / 2) / 64, "remap failure: %lld blocks, the mapping covers %lld",
+              (long long)blocks, (long long)mappedBlocks);
+        recording.finish(audioPath);
     }
 
     auto expect_no_file = [&](const Signal& signal, qint64 reported, const char* what) {

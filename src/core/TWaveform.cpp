@@ -101,8 +101,8 @@ TTimeRef TWaveform::recorded_length() const
     if (!m_live) {
         return TTimeRef();
     }
-    const TPeakLevels levels = m_live->levels();
-    const qint64 frames = levels.level_count() > 0 ? levels.block_count(0) * TPeakLevels::BlockFrames : 0;
+    // Whole blocks: the waveform ends at the last complete one
+    const qint64 frames = (m_live->recorded_frames() >> TPeakLevels::BlockFramesShift) << TPeakLevels::BlockFramesShift;
     return TTimeRef(nframes_t(frames), m_live->rate());
 }
 
@@ -189,7 +189,12 @@ TWaveformColumns::Source TWaveform::columns(const TTimeRef& start, const TTimeRe
         return TWaveformColumns::Source::None;
     }
     if (m_live) {
-        return TWaveformColumns::query(m_live->levels(), nullptr, start, columnWidth, count, out);
+        // The recording's memory stays put during the read only
+        TWaveformColumns::Source source = TWaveformColumns::Source::None;
+        m_live->read([&](const TPeakLevels& levels) {
+            source = TWaveformColumns::query(levels, nullptr, start, columnWidth, count, out);
+        });
+        return source;
     }
     return TWaveformColumns::query(m_file.levels(), this, start, columnWidth, count, out);
 }

@@ -14,6 +14,12 @@ TPeakRecording::TPeakRecording(uint rate, int channelCount, QString peakPath, in
     : m_builder(rate, channelCount, periodShift)
     , m_peakPath(std::move(peakPath))
 {
+    // The record layout is fixed by the period shift and the channel count
+    m_dataStart = TPeakFileWriter::records_end(periodShift, channelCount, 0);
+    m_recordBytes = TPeakFileWriter::records_end(periodShift, channelCount, 1) - m_dataStart;
+    for (int level = 0; level <= periodShift; ++level) {
+        m_levelOffsets.push_back(TPeakFileWriter::record_offset(periodShift, channelCount, 0, level, 0) - m_dataStart);
+    }
 }
 
 TPeakRecording::~TPeakRecording()
@@ -55,11 +61,14 @@ void TPeakRecording::append(const float* const* channels, qint64 frames)
             m_writer.close();
             return;
         }
-        m_writtenPeriods.store(periods, std::memory_order_release);
+        m_writtenPeriods.store(periods, std::memory_order_seq_cst);
     }
 
-    // The GUI reads these periods from the file now
-    m_builder.release_periods(std::min(m_releasablePeriods.load(std::memory_order_acquire), m_writer.written_periods()));
+    // Free the written periods while nobody reads (see the class comment);
+    // with a read going on the next append tries again
+    if (m_readers.load(std::memory_order_seq_cst) == 0) {
+        m_builder.release_periods(m_writer.written_periods());
+    }
 }
 
 TPeakFile::Status TPeakRecording::finish(const QString& audioPath, QString* error)
@@ -75,19 +84,21 @@ TPeakFile::Status TPeakRecording::finish(const QString& audioPath, QString* erro
         audioPath, m_builder.rate(), m_builder.channel_count(), m_builder.frame_count());
     const TPeakFile::Status status = m_writer.finish(m_builder.levels(), source, error);
     m_writeFailed = status != TPeakFile::Status::Ok;
+    if (!m_writeFailed) {
+        m_writtenPeriods.store(m_writer.written_periods(), std::memory_order_seq_cst);
+    }
     return status;
 }
 
 void TPeakRecording::remap(qint64 periods)
 {
     // The part file grows; after finish() it has its final name. The new
-    // mapping comes first: when it fails, the old one and memory still
-    // serve every period.
+    // mapping comes first: when it fails, the old one stays.
     auto file = std::make_unique<QFile>(TPeakFileWriter::part_path(m_peakPath));
     if (!file->exists()) {
         file->setFileName(m_peakPath);
     }
-    const qint64 size = TPeakFileWriter::records_end(m_builder.period_shift(), m_builder.channel_count(), periods);
+    const qint64 size = m_dataStart + periods * m_recordBytes;
     if (!file->open(QIODevice::ReadOnly) || file->size() < size) {
         return;
     }
@@ -105,57 +116,75 @@ void TPeakRecording::remap(qint64 periods)
     m_mappedPeriods = periods;
 }
 
-TPeakLevels TPeakRecording::levels()
+const TPeakBlock* TPeakRecording::mapped_blocks(qint64 period, int level, int channel) const
 {
-    // The previous snapshot is no longer in use: what it read from the
-    // mapping only may leave memory
-    m_releasablePeriods.store(m_mappedPeriods, std::memory_order_release);
+    const qint64 periodBlocks = qint64(1) << (m_builder.period_shift() - level);
+    return reinterpret_cast<const TPeakBlock*>(m_map + m_dataStart + period * m_recordBytes + m_levelOffsets[size_t(level)]
+                                               + channel * periodBlocks * qint64(sizeof(TPeakBlock)));
+}
 
-    const qint64 written = m_writtenPeriods.load(std::memory_order_acquire);
+TPeakLevels TPeakRecording::snapshot()
+{
+    const qint64 written = m_writtenPeriods.load(std::memory_order_seq_cst);
     if (written > m_mappedPeriods) {
         remap(written);
     }
 
     const TPeakLevels memory = m_builder.levels();
     const int shift = m_builder.period_shift();
-    std::vector<TPeakLevels::Level> levels(size_t(memory.level_count()));
+    const int channels = memory.channel_count();
+
+    // Written periods may only be read from the mapping. When it does not
+    // reach them all yet (a failed remap), the snapshot ends where it does.
+    const bool capped = m_mappedPeriods < written;
+    const qint64 cappedBlocks = m_mappedPeriods << shift;   // level 0
+
+    std::vector<TPeakLevels::Level> levels;
     for (int level = 0; level < memory.level_count(); ++level) {
-        TPeakLevels::Level& out = levels[size_t(level)];
-        out.blockCount = memory.block_count(level);
+        qint64 blockCount = memory.block_count(level);
+        if (capped) {
+            blockCount = std::min(blockCount, level <= shift ? cappedBlocks >> level : (cappedBlocks >> level));
+        }
+        if (blockCount == 0) {
+            break;
+        }
+
+        TPeakLevels::Level out;
+        out.blockCount = blockCount;
         if (level > shift) {
             // Not in records: memory only, in the builder's chunks (of
-            // MinChunkShift blocks above the period shift)
+            // MinChunkShift blocks above the period shift), never freed
             out.chunkShift = TPeakPyramidBuilder::MinChunkShift;
-            for (int channel = 0; channel < memory.channel_count(); ++channel) {
+            for (int channel = 0; channel < channels; ++channel) {
                 std::vector<const TPeakBlock*> pointers;
-                for (qint64 index = 0; index < out.blockCount;) {
+                for (qint64 index = 0; index < blockCount;) {
                     qint64 count = 0;
                     pointers.push_back(memory.blocks(level, channel, index, count));
                     index += count;
                 }
                 out.channels.push_back(std::move(pointers));
             }
-            continue;
-        }
-
-        // One chunk per period: from the mapping while it covers the period
-        out.chunkShift = shift - level;
-        const qint64 periodBlocks = qint64(1) << out.chunkShift;
-        const qint64 chunks = (out.blockCount + periodBlocks - 1) / periodBlocks;
-        for (int channel = 0; channel < memory.channel_count(); ++channel) {
-            std::vector<const TPeakBlock*> pointers(static_cast<size_t>(chunks));
-            for (qint64 period = 0; period < chunks; ++period) {
-                if (period < m_mappedPeriods) {
-                    pointers[size_t(period)] = reinterpret_cast<const TPeakBlock*>(
-                        m_map + TPeakFileWriter::record_offset(shift, memory.channel_count(), period, level, channel));
-                } else {
-                    qint64 count = 0;
-                    pointers[size_t(period)] = memory.blocks(level, channel, period * periodBlocks, count);
+        } else {
+            // One chunk per period: the written ones from the mapping
+            out.chunkShift = shift - level;
+            const qint64 periodBlocks = qint64(1) << out.chunkShift;
+            const qint64 chunks = (blockCount + periodBlocks - 1) / periodBlocks;
+            for (int channel = 0; channel < channels; ++channel) {
+                std::vector<const TPeakBlock*> pointers(static_cast<size_t>(chunks));
+                for (qint64 period = 0; period < chunks; ++period) {
+                    if (period < written) {
+                        pointers[size_t(period)] = mapped_blocks(period, level, channel);
+                    } else {
+                        qint64 count = 0;
+                        pointers[size_t(period)] = memory.blocks(level, channel, period * periodBlocks, count);
+                    }
                 }
+                out.channels.push_back(std::move(pointers));
             }
-            out.channels.push_back(std::move(pointers));
         }
+        levels.push_back(std::move(out));
     }
 
-    return TPeakLevels(memory.rate(), memory.channel_count(), memory.frame_count(), std::move(levels));
+    const qint64 frames = capped ? std::min(memory.frame_count(), cappedBlocks * TPeakLevels::BlockFrames) : memory.frame_count();
+    return TPeakLevels(memory.rate(), channels, frames, std::move(levels));
 }

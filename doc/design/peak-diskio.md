@@ -74,9 +74,7 @@ chunked per period (chunk shift S-L; this also removes the 256 KB chunks of
 the high levels that wasted memory). When a period completes the writer
 writes its record from the builder's chunks, adds it to the checksum and
 publishes it; the chunks of written periods can then be released. Builds
-release them at once. A recording's view still reads the current period
-from memory; **only the GUI frees** period storage, once its mapping covers
-the period (the writer hands the storage over).
+release them at once; a recording when no read is going on (section 4).
 
 ## 4. Steps on branch `peak-diskio`
 
@@ -91,14 +89,22 @@ the period (the writer hands the storage over).
 
 A recording streams through `TPeakRecording`: the writer thread appends,
 writes every complete period to the part file at once and publishes the
-count; the GUI's snapshots read the written periods from a mapping of the
-part file (remapped as it grows, new mapping before the old one goes) and
-the rest from memory. A period's memory is freed only after the GUI's
-mapping covers it: each `levels()` call tells the writer which periods the
-previous snapshot read from the mapping only. `finish_export()` writes the
-tail and the header and renames the file; the clip's next waveform opens it.
-When writing fails the recording keeps its peaks in memory and the waveform
-builds the file from the audio afterwards. `TAudioFileCopyConvert` streams
-the same way.
+count. A reader (the GUI) reads inside `read()`: its snapshot names the
+written periods in a mapping of the part file (remapped as it grows, new
+mapping before the old one goes) and only the periods not written yet in
+memory; it is valid during the call only, and views copy what they need
+(also a Qt Quick item: it copies columns in its update, the render thread
+never sees model memory). The writer frees a written period's memory as
+soon as no read is going on; a read only defers that to a later append.
+The reader announces itself before it loads the written count, the writer
+publishes the count before it looks for readers (seq_cst): either the
+writer sees the reader and waits, or the reader sees the count and does
+not touch that memory. So memory per recording stays bounded (the current
+period plus one 4 KB chunk per level), whether anything reads or not.
+When a remap fails the snapshot ends where the mapping ends.
+`finish_export()` writes the tail and the header and renames the file; the
+clip's next waveform opens it. When writing fails the recording keeps its
+peaks in memory and the waveform builds the file from the audio
+afterwards. `TAudioFileCopyConvert` streams the same way.
 
 Open: S (14 proposed), the mapping window size for growing files.

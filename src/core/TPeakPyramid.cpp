@@ -130,6 +130,17 @@ qint64 TPeakPyramidBuilder::complete_periods() const
     return periods;
 }
 
+qint64 TPeakPyramidBuilder::allocated_blocks() const
+{
+    qint64 blocks = 0;
+    for (const Channel& channel : m_channels) {
+        for (const LevelStore& store : channel.levels) {
+            blocks += (qint64(store.chunks.size()) - store.releasedChunks) << store.chunkShift;
+        }
+    }
+    return blocks;
+}
+
 void TPeakPyramidBuilder::release_periods(qint64 periods)
 {
     // add_block() never reads a block of an earlier chunk (chunks hold an
@@ -141,6 +152,12 @@ void TPeakPyramidBuilder::release_periods(qint64 periods)
             const qint64 chunks = std::min<qint64>(releasedBlocks >> store.chunkShift, qint64(store.chunks.size()));
             for (; store.releasedChunks < chunks; ++store.releasedChunks) {
                 store.pages[size_t(store.releasedChunks >> PageShift)][store.releasedChunks & (PageSize - 1)].store(nullptr, std::memory_order_relaxed);
+#ifndef NDEBUG
+                // A read of released blocks shows up as nonsense, not as the
+                // old values that freed memory often still holds
+                std::fill_n(store.chunks[size_t(store.releasedChunks)].get(), size_t(1) << store.chunkShift,
+                            TPeakBlock{qint16(0x5a5a), qint16(-0x5a5a)});
+#endif
                 store.chunks[size_t(store.releasedChunks)].reset();
             }
         }

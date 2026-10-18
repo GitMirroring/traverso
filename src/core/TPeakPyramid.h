@@ -137,6 +137,9 @@ public:
     // the thread that appends, and only when no snapshot that names those
     // blocks is in use anymore: later snapshots name them with null chunks.
     void release_periods(qint64 periods);
+    // Blocks of storage allocated and not released. Only for the thread that
+    // appends.
+    qint64 allocated_blocks() const;
 
     // A snapshot of what is complete now; valid while the builder lives
     TPeakLevels levels() const;
