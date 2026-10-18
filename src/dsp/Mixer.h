@@ -21,7 +21,7 @@ static inline float f_max(float x, float a)
 
 static inline float dB_to_scale_factor (float dB)
 {
-    return dB > -120.0f ? ::pow(10.0f, dB * 0.05f) : 0.0f;
+    return dB > -120.0f ? std::pow(10.0f, dB * 0.05f) : 0.0f;
 }
 
 float default_compute_peak             (const audio_sample_t*  buf, nframes_t nsamples, float current);
@@ -39,7 +39,7 @@ void  x86_sse_mix_buffers_no_gain    (audio_sample_t*  dst, const audio_sample_t
 }
 #endif
 
-#if defined (__APPLE__)
+#if defined (Q_OS_MACOS)
 float accel_compute_peak              (const audio_sample_t* buf, nframes_t nsamples, float current);
 void  accel_apply_gain_to_buffer      (audio_sample_t* buf, nframes_t nframes, float gain);
 void  accel_mix_buffers_with_gain     (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes, float gain);
@@ -65,6 +65,16 @@ public:
     static inline float min_fader_gain() { return 0.000001f; } // Threshold for absolute silence (-120 dB)
     static inline float max_fader_gain() { return 3.981072f; }  // Scale factor for +12 dB
 
+    // The fader puts 0 dB at ZeroDbPosition of its travel. Below it the gain
+    // is warped with LowerExponent, which gives the 0 to -10 dB zone more
+    // travel and compresses -30 to -60 dB into a small area; above it
+    // UpperExponent spreads 0 to +12 dB over the rest of the travel.
+    static constexpr float ZeroDbPosition = 0.85f;
+    static constexpr float LowerExponent  = 0.47f;
+    static constexpr float UpperExponent  = 0.85f;
+    static_assert(ZeroDbPosition > 0.0f && ZeroDbPosition < 1.0f);
+    static_assert(LowerExponent > 0.0f && UpperExponent > 0.0f);
+
     /**
      * @brief Maps a decibel value safely within the professional fader boundaries.
      */
@@ -86,7 +96,7 @@ public:
     static inline float coefficient_to_dB (float coeff)
     {
         if (coeff < min_fader_gain()) return min_fader_dB();
-        return 20.0f * log10 (coeff);
+        return 20.0f * std::log10(coeff);
     }
 
     /**

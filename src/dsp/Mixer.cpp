@@ -23,7 +23,7 @@
 #include "Mixer.h"
 #include "defines.h"
 #include <cmath> // used for fabs
-#if defined(Q_OS_MAC)
+#if defined(Q_OS_MACOS)
 #include <Accelerate/Accelerate.h>
 #endif
 
@@ -62,19 +62,13 @@ void default_mix_buffers_no_gain (audio_sample_t* dst, const audio_sample_t* src
 }
 
 
-#if defined (Q_OS_MAC)
+#if defined (Q_OS_MACOS)
 
 float accel_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current)
 {
 	float tmpmax = 0.0f;
 	vDSP_maxmgv(buf, 1, &tmpmax, nsamples);
 	return f_max(current, tmpmax);
-}
-
-void accel_find_peaks (const audio_sample_t* buf, nframes_t nframes, float *min, float *max)
-{
-	vDSP_maxv (const_cast<audio_sample_t*>(buf), 1, max, nframes);
-	vDSP_minv (const_cast<audio_sample_t*>(buf), 1, min, nframes);
 }
 
 void accel_apply_gain_to_buffer (audio_sample_t * buf, nframes_t nframes, float gain)
@@ -99,24 +93,21 @@ float Mixer::db_to_fader_position(float dB)
     if (dB <= min_fader_dB()) return 0.0f;
     if (dB >= max_fader_dB()) return 1.0f;
 
-    // Secure 0.0 dB unity gain perfectly at 92% of the physical fader height
-    const float zeroDbPos = 0.85f;
     float gain = dB_to_scale_factor(dB);
 
     if (dB < 0.0f) {
-        // PROGRESSIVE COMPRESSION: Normalize linear gain between absolute silence and 0 dB (1.0f)
+        // Normalize the gain between absolute silence and 0 dB (1.0f), then
+        // warp it with LowerExponent
         float minGain = min_fader_gain();
         float normalizedGain = (gain - minGain) / (1.0f - minGain);
 
-        // Applying a 0.47f warp over the gain domain expands the 0 to -10dB zone,
-        // while compressing the -30 to -60dB zone into a small, tight pixel area underin.
-        return zeroDbPos * ::powf(std::clamp(normalizedGain, 0.0f, 1.0f), 0.47f);
+        return ZeroDbPosition * std::pow(std::clamp(normalizedGain, 0.0f, 1.0f), LowerExponent);
     } else {
-        // Compress the positive boost range (+0 dB to +12 dB) tightly into the top 8%
+        // 0 dB to +12 dB in the travel above ZeroDbPosition
         float maxGain = max_fader_gain();
         float normalizedGain = (gain - 1.0f) / (maxGain - 1.0f);
 
-        return zeroDbPos + ((1.0f - zeroDbPos) * ::powf(std::clamp(normalizedGain, 0.0f, 1.0f), 0.85f));
+        return ZeroDbPosition + ((1.0f - ZeroDbPosition) * std::pow(std::clamp(normalizedGain, 0.0f, 1.0f), UpperExponent));
     }
 }
 
@@ -125,16 +116,14 @@ float Mixer::fader_position_to_gain(float position)
     if (position <= 0.0f) return 0.0f;
     if (position >= 1.0f) return max_fader_gain();
 
-    const float zeroDbPos = 0.85f;
-
-    if (position < zeroDbPos) {
-        // Reverse the progressive negative gain domain warp
-        float normalizedGain = ::powf(position / zeroDbPos, 1.0f / 0.47f);
+    if (position < ZeroDbPosition) {
+        // The inverse of the warp below 0 dB in db_to_fader_position()
+        float normalizedGain = std::pow(position / ZeroDbPosition, 1.0f / LowerExponent);
         float minGain = min_fader_gain();
         return (normalizedGain * (1.0f - minGain)) + minGain;
     } else {
-        // Reverse the highly compressed positive boost warp
-        float normalizedGain = ::powf((position - zeroDbPos) / (1.0f - zeroDbPos), 1.0f / 0.85f);
+        // The inverse of the warp above 0 dB
+        float normalizedGain = std::pow((position - ZeroDbPosition) / (1.0f - ZeroDbPosition), 1.0f / UpperExponent);
         float maxGain = max_fader_gain();
         return (normalizedGain * (maxGain - 1.0f)) + 1.0f;
     }

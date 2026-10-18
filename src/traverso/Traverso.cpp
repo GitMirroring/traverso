@@ -145,7 +145,7 @@ void Traverso::init_sse()
 
         generic_mix_functions = false;
     }
-#elif defined (__APPLE__)
+#elif defined (Q_OS_MACOS)
     Mixer::compute_peak           = accel_compute_peak;
     Mixer::apply_gain_to_buffer   = accel_apply_gain_to_buffer;
     Mixer::mix_buffers_with_gain  = accel_mix_buffers_with_gain;
