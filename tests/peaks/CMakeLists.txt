@@ -26,3 +26,9 @@ add_test(NAME peak_build COMMAND traverso_peak_build_test)
 add_executable(traverso_peak_benchmark benchmark_peaks.cpp ${TRAVERSO_PEAK_SOURCES})
 target_include_directories(traverso_peak_benchmark PRIVATE ${CMAKE_SOURCE_DIR}/src/core)
 target_link_libraries(traverso_peak_benchmark PRIVATE traverso_compiler_settings traversosupport Qt6::Core Qt6::Gui)
+
+# Measurements on real audio files (doc/design/peaks-v6-report.md), not part
+# of ctest. Build it in Release.
+add_executable(traverso_peak_measure measure_peaks.cpp ${TRAVERSO_PEAK_SOURCES} ${CMAKE_SOURCE_DIR}/src/core/TPeakBuildTask.cpp ${CMAKE_SOURCE_DIR}/src/core/TPeakRecording.cpp)
+target_include_directories(traverso_peak_measure PRIVATE ${CMAKE_SOURCE_DIR}/src/core)
+target_link_libraries(traverso_peak_measure PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
