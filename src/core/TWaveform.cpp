@@ -127,6 +127,8 @@ void TWaveform::open_or_build()
     case TPeakFile::Status::Ok:
         TLOG_D("peaks", "opened {}", m_peakPath.toStdString());
         m_state = State::Ready;
+        // A finished recording's pyramid is only needed until the file opens
+        m_live.reset();
         return;
     case TPeakFile::Status::Error:
         TLOG_W("peaks", "cannot open {}", m_peakPath.toStdString());
