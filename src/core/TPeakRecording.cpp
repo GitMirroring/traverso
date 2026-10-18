@@ -55,7 +55,10 @@ void TPeakRecording::append(const float* const* channels, qint64 frames)
     if (periods > m_writer.written_periods()) {
         QString error;
         if (m_writer.write_periods(m_builder.levels(), periods, &error) != TPeakFile::Status::Ok) {
-            // Keep everything in memory from here on; no peak file
+            // Keep everything in memory from here on; no peak file. Periods
+            // already released live on in the reader's mapping of the part
+            // file, which close() removes: on POSIX the mapping keeps the
+            // data, on Windows the removal fails and leaves the part file.
             TLOG_W("peaks", "writing {} failed: {}", m_peakPath.toStdString(), error.toStdString());
             m_writeFailed = true;
             m_writer.close();

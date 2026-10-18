@@ -31,8 +31,9 @@
  * readers: either the writer sees the reader and waits, or the reader sees
  * the count and does not touch that memory.)
  *
- * When writing fails (disk full) the recording keeps its peaks in memory and
- * has no peak file afterwards: the waveform builds it from the audio.
+ * When writing fails (disk full) the recording keeps the peaks it has not
+ * written in memory, still reads the written ones from its mapping, and has
+ * no peak file afterwards: the waveform builds it from the audio.
  */
 class TPeakRecording
 {

@@ -44,7 +44,6 @@ public :
     int rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer);
 
     TBufferedAudioStreamStatus& get_buffer_status() final;
-    // The peak pyramid of what is written so far, when peaks are processed
     // The peaks of this recording, streamed to its peak file
     std::shared_ptr<TPeakRecording> get_peaks() const { return m_peaks; }
 

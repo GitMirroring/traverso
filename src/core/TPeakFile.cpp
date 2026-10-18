@@ -467,14 +467,16 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
         return failed(error);
     }
 
-    // No fsync: the file is a cache, the checksum tells whether it is whole
-    m_file.close();
-    if (m_file.error() != QFileDevice::NoError) {
+    // No fsync: the file is a cache, the checksum tells whether it is whole.
+    // Flush first: close() would clear the error text of a failed write.
+    if (!m_file.flush()) {
         return failed(error);
     }
+    m_file.close();
 
     // Replaces an older file at once (POSIX rename): whoever has the old one
-    // mapped keeps reading it
+    // mapped keeps reading it. On Windows replacing a file that is mapped
+    // fails; such a build reports an error and the file is built again later.
     std::error_code renameError;
     std::filesystem::rename(QFile::encodeName(part_path(m_path)).toStdString(), QFile::encodeName(m_path).toStdString(), renameError);
     if (renameError) {
