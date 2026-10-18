@@ -178,8 +178,7 @@ TPeakLevels TPeakRecording::snapshot()
                     rms.push_back(memory.rms_blocks(level, channel, index, count));
                     index += count;
                 }
-                out.channels.push_back(std::move(pointers));
-                out.rms.push_back(std::move(rms));
+                out.add_channel(pointers, rms);
             }
         } else {
             // One chunk per period: the written ones from the mapping
@@ -199,8 +198,7 @@ TPeakLevels TPeakRecording::snapshot()
                         rms[size_t(period)] = memory.rms_blocks(level, channel, period * periodBlocks, count);
                     }
                 }
-                out.channels.push_back(std::move(pointers));
-                out.rms.push_back(std::move(rms));
+                out.add_channel(pointers, rms);
             }
         }
         levels.push_back(std::move(out));

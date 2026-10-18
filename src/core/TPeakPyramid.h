@@ -118,12 +118,31 @@ public:
     static constexpr int OneCode = 28 * CodesPerOctave;
     static constexpr int MaxCode = 32767;
 
+    // A chunk's min/max and RMS codes, side by side so one lookup finds both
+    struct Chunk
+    {
+        const TPeakBlock* blocks;
+        const qint16* rms;
+    };
+
     struct Level
     {
         qint64 blockCount{0};
-        int chunkShift{62};                                      // 62: everything in one chunk
-        std::vector<std::vector<const TPeakBlock*>> channels;    // [channel][chunk]
-        std::vector<std::vector<const qint16*>> rms;             // the same chunks, RMS codes
+        int chunkShift{62};            // 62: everything in one chunk
+        qint64 chunkCount{0};          // per channel
+        std::vector<Chunk> chunks;     // channel by channel: [channel * chunkCount + chunk]
+
+        // Appends the next channel's chunks; every channel has as many
+        void add_channel(const std::vector<const TPeakBlock*>& blocks, const std::vector<const qint16*>& rms)
+        {
+            Q_ASSERT(blocks.size() == rms.size() && (chunks.empty() || qint64(blocks.size()) == chunkCount));
+            chunkCount = qint64(blocks.size());
+            for (size_t i = 0; i < blocks.size(); ++i) {
+                chunks.push_back({blocks[i], rms[i]});
+            }
+        }
+        const Chunk& chunk(int channel, qint64 index) const { return chunks[size_t(channel * chunkCount + (index >> chunkShift))]; }
+        qint64 offset(qint64 index) const { return index & ((qint64(1) << chunkShift) - 1); }
     };
 
     TPeakLevels() = default;
@@ -141,13 +160,13 @@ public:
     {
         Q_ASSERT(index >= 0 && index < block_count(level));
         const Level& l = m_levels[size_t(level)];
-        return l.channels[size_t(channel)][size_t(index >> l.chunkShift)][index & ((qint64(1) << l.chunkShift) - 1)];
+        return l.chunk(channel, index).blocks[l.offset(index)];
     }
     qint16 rms(int level, int channel, qint64 index) const
     {
         Q_ASSERT(index >= 0 && index < block_count(level));
         const Level& l = m_levels[size_t(level)];
-        return l.rms[size_t(channel)][size_t(index >> l.chunkShift)][index & ((qint64(1) << l.chunkShift) - 1)];
+        return l.chunk(channel, index).rms[l.offset(index)];
     }
     // The blocks (RMS codes) from index on that follow each other in memory:
     // their start and how many (at least 1 when index < block_count(level))

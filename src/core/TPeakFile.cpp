@@ -328,8 +328,7 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
                 chunks.push_back(reinterpret_cast<const TPeakBlock*>(m_map + layout.tail_offset(level, channel)));
                 rms.push_back(reinterpret_cast<const qint16*>(m_map + layout.tail_rms_offset(level, channel)));
             }
-            out.channels.push_back(std::move(chunks));
-            out.rms.push_back(std::move(rms));
+            out.add_channel(chunks, rms);
         }
     }
 

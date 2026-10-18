@@ -33,25 +33,44 @@ static_assert(TPeakCodeTables::Mantissas[0] == 1.0f && TPeakCodeTables::Mantissa
 static_assert(TPeakCodeTables::Octaves[TPeakLevels::OneCode >> 10] == 1.0f && TPeakCodeTables::Octaves[31] == 8.0f);
 static_assert((TPeakLevels::MaxCode >> 10) == 31 && TPeakLevels::CodesPerOctave == 1024);
 
+// The index of the first mantissa >= mantissa (upper: > mantissa), 0 ..
+// 1024: a binary search without branches in the loop, so its speed does not
+// depend on the branch predictor (the builder encodes several values per
+// block)
+static int mantissa_index(float mantissa, bool upper)
+{
+    const auto& mantissas = TPeakCodeTables::Mantissas;
+    int base = 0;
+    for (int step = TPeakLevels::CodesPerOctave / 2; step > 0; step >>= 1) {
+        const float probe = mantissas[size_t(base + step)];
+        base += (upper ? probe <= mantissa : probe < mantissa) ? step : 0;
+    }
+    const float last = mantissas[size_t(base)];
+    return base + ((upper ? last <= mantissa : last < mantissa) ? 1 : 0);
+}
+
+// A positive magnitude below the top of the code range as its octave (of
+// the codes, may be negative below the range) and its mantissa in [1, 2)
+static int split(float magnitude, float& mantissa)
+{
+    int exponent = 0;
+    mantissa = 2.0f * std::frexp(magnitude, &exponent);
+    return exponent - 1 + (TPeakLevels::OneCode >> 10);
+}
+
 // The smallest positive code whose value is >= magnitude (> 0)
 static int magnitude_at_or_above(float magnitude)
 {
     if (!(magnitude <= TPeakLevels::max_value())) {
         return TPeakLevels::MaxCode;
     }
-    int exponent = 0;
-    const float mantissa = 2.0f * std::frexp(magnitude, &exponent);   // [1, 2)
-    int octave = exponent - 1 + (TPeakLevels::OneCode >> 10);
+    float mantissa = 0.0f;
+    const int octave = split(magnitude, mantissa);
     if (octave < 0) {
         return 1;
     }
-    const auto& mantissas = TPeakCodeTables::Mantissas;
-    int index = int(std::lower_bound(mantissas.begin(), mantissas.end(), mantissa) - mantissas.begin());
-    if (index == TPeakLevels::CodesPerOctave) {
-        ++octave;
-        index = 0;
-    }
-    return std::clamp(octave * TPeakLevels::CodesPerOctave + index, 1, TPeakLevels::MaxCode);
+    // An index of 1024 is the next octave's first code
+    return std::clamp(octave * TPeakLevels::CodesPerOctave + mantissa_index(mantissa, false), 1, TPeakLevels::MaxCode);
 }
 
 // The largest code whose value is <= magnitude (>= 0)
@@ -63,15 +82,36 @@ static int magnitude_at_or_below(float magnitude)
     if (magnitude >= TPeakLevels::max_value()) {
         return TPeakLevels::MaxCode;
     }
-    int exponent = 0;
-    const float mantissa = 2.0f * std::frexp(magnitude, &exponent);
-    const int octave = exponent - 1 + (TPeakLevels::OneCode >> 10);
+    float mantissa = 0.0f;
+    const int octave = split(magnitude, mantissa);
     if (octave < 0) {
         return 0;
     }
+    // At least 1: the first mantissa is 1.0, mantissa is not below it
+    return octave * TPeakLevels::CodesPerOctave + mantissa_index(mantissa, true) - 1;
+}
+
+// The code whose value is nearest to magnitude (>= 0): one search, then the
+// nearer of the two neighbours
+static int magnitude_nearest(float magnitude)
+{
+    if (!(magnitude > 0.0f)) {
+        return 0;
+    }
+    if (magnitude >= TPeakLevels::max_value()) {
+        return TPeakLevels::MaxCode;
+    }
+    float mantissa = 0.0f;
+    const int octave = split(magnitude, mantissa);
+    if (octave < 0) {
+        return magnitude > TPeakLevels::to_value(1) * 0.5f ? 1 : 0;
+    }
     const auto& mantissas = TPeakCodeTables::Mantissas;
-    const int index = int(std::upper_bound(mantissas.begin(), mantissas.end(), mantissa) - mantissas.begin()) - 1;
-    return octave * TPeakLevels::CodesPerOctave + index;
+    const int above = mantissa_index(mantissa, false);   // >= 1: mantissa >= 1.0 = the first
+    const float high = above == TPeakLevels::CodesPerOctave ? 2.0f : mantissas[size_t(above)];
+    const float low = mantissas[size_t(std::max(above - 1, 0))];
+    const int index = (above > 0 && mantissa - low <= high - mantissa) ? above - 1 : above;
+    return std::clamp(octave * TPeakLevels::CodesPerOctave + index, 0, TPeakLevels::MaxCode);
 }
 
 static void combine(TPeakBlock& into, const TPeakBlock& block)
@@ -95,7 +135,7 @@ const TPeakBlock* TPeakLevels::blocks(int level, int channel, qint64 index, qint
     const qint64 chunkBlocks = qint64(1) << l.chunkShift;
     const qint64 inChunk = index & (chunkBlocks - 1);
     count = std::min(chunkBlocks - inChunk, l.blockCount - index);
-    return l.channels[size_t(channel)][size_t(index >> l.chunkShift)] + inChunk;
+    return l.chunk(channel, index).blocks + inChunk;
 }
 
 const qint16* TPeakLevels::rms_blocks(int level, int channel, qint64 index, qint64& count) const
@@ -105,7 +145,7 @@ const qint16* TPeakLevels::rms_blocks(int level, int channel, qint64 index, qint
     const qint64 chunkBlocks = qint64(1) << l.chunkShift;
     const qint64 inChunk = index & (chunkBlocks - 1);
     count = std::min(chunkBlocks - inChunk, l.blockCount - index);
-    return l.rms[size_t(channel)][size_t(index >> l.chunkShift)] + inChunk;
+    return l.chunk(channel, index).rms + inChunk;
 }
 
 // The blocks that make up the level-0 blocks [first, last), from the
@@ -161,14 +201,18 @@ TPeakBlock TPeakLevels::range(int channel, qint64 first, qint64 last, double& me
 {
     TPeakBlock result{qint16(MaxCode), qint16(-MaxCode)};
     double sum = 0.0;
-    qint64 frames = 0;
     visit_range(*this, first, last, [&](int level, qint64 index) {
-        combine(result, block(level, channel, index));
-        const double value = to_value(rms(level, channel, index));
-        const qint64 blockFrames = block_frames(level, index);
-        sum += value * value * double(blockFrames);
-        frames += blockFrames;
+        // The block and its RMS from one chunk lookup; an RMS code is >= 0
+        const Level& l = m_levels[size_t(level)];
+        const Chunk& chunk = l.chunk(channel, index);
+        const qint64 offset = l.offset(index);
+        combine(result, chunk.blocks[offset]);
+        const qint16 code = chunk.rms[offset];
+        const float value = code > 0 ? TPeakCodeTables::Octaves[size_t(code >> 10)] * TPeakCodeTables::Mantissas[size_t(code & 1023)] : 0.0f;
+        sum += double(value * value) * double(block_frames(level, index));
     });
+    // The blocks cover these frames together
+    const qint64 frames = std::min(last << BlockFramesShift, m_frameCount) - (first << BlockFramesShift);
     meanSquare = frames > 0 ? sum / double(frames) : 0.0;
     return result;
 }
@@ -191,9 +235,7 @@ qint16 TPeakLevels::code_at_or_below(float value)
 
 qint16 TPeakLevels::code_nearest(float value)
 {
-    const qint16 below = code_at_or_below(value);
-    const qint16 above = code_at_or_above(value);
-    return value - to_value(below) <= to_value(above) - value ? below : above;
+    return qint16(value < 0.0f ? -magnitude_nearest(-value) : magnitude_nearest(value));
 }
 
 
@@ -364,8 +406,7 @@ TPeakLevels TPeakPyramidBuilder::levels() const
                 pointers[size_t(chunk)] = store.published_chunk(chunk);
                 rms[size_t(chunk)] = store.published_rms_chunk(chunk);
             }
-            snapshot.channels.push_back(std::move(pointers));
-            snapshot.rms.push_back(std::move(rms));
+            snapshot.add_channel(pointers, rms);
         }
         levels.push_back(std::move(snapshot));
     }
