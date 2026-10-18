@@ -73,7 +73,8 @@ Replaces `TPeak` (`src/core/TPeak.cpp`), the micro/macro branches in
 - A block is `{qint16 min, qint16 max}` with `min = floor(x·8192)`,
   `max = ceil(x·8192)` clamped to ±32767: conservative, the stored span always
   contains the true span; resolution 1/8192 (−78 dBFS), headroom ±4.0
-  (+12 dBFS, matches the gain clamp). Not 8 bit: a linear 8-bit value cannot
+  (+12 dBFS, matches the gain clamp). (Format 6 replaces this linear code
+  by a log code and adds an RMS plane: section 6.) Not 8 bit: a linear 8-bit value cannot
   show anything below −42 dBFS and steps become visible when clip gain and
   automation scale the waveform up.
 - Level *L+1* block *k* = combine(level *L* blocks *2k*, *2k+1*). A block is
@@ -90,6 +91,9 @@ Pointers + counts per level and channel. Produced by the builder (in memory)
 and by `TPeakFile` (mapped file). `TWaveformColumns` only knows this view.
 
 ### 3.3 `TPeakFile` (format v2)
+
+(The current format is 6, streamed per period: doc/design/peak-diskio.md
+for the layout, section 6 here for the values and sizes.)
 
 One file per source, `<source name>.peaks` in `peakfiles/`. Written with
 `QSaveFile` (never a half-written cache), read with `QFile::map()` (the OS
@@ -189,7 +193,8 @@ Frames outside the file (before 0, after the last frame) give empty columns.
 segment-tree decomposition, the partial blocks at both ends from source
 samples (< 64 frames each). To make the result exact instead of 1/8192
 conservative, the block(s) holding the maximum are read from the source
-(64 frames each). Replaces the `.norm` file.
+(64 frames each). Replaces the `.norm` file. (Format 6: the interior comes
+from the bound alone, at most one log step above the real peak: section 6.)
 
 ### 3.7 `TPeakBuilder` (later step)
 
@@ -342,3 +347,65 @@ chunks and run one at a time.
 Open after this branch: zero-crossing snap in the split/trim commands and
 feedback on the targeted item (controller work), file-backed recording
 (parked, section 4).
+
+## 6. Format 6: log codes, RMS, normalise on the bound (2026-10-18)
+
+Measured numbers and the verification: doc/design/peaks-v6-report.md.
+
+### Values as log codes
+
+A min, max or RMS value (1.0 = full scale) is an int16 code: 0 is silence,
+code c > 0 is 2^((c − 28672) / 1024), −c the same value negated. 1024 codes
+per octave, so a step is 2^(1/1024) = 0.0059 dB at every level, from about
+−168 dB (code 1) to +24 dB (code 32767); larger values saturate at ±32767.
+Codes compare like their values, so the pyramid combines min and max on the
+codes. Decoding is two tables the compiler builds (1024 mantissas
+2^(i/1024) from a constexpr function of our own, 32 powers of two; 4 KB):
+`Octaves[c >> 10] * Mantissas[c & 1023]`. Encoding takes `frexp` and a
+binary search in the same mantissa table, so a max rounded up and a min
+rounded down hold their sample exactly; the RMS takes the nearest code.
+
+The step at a level, linear (formats up to 5) against log:
+
+| Level | linear 1/8192 | log, 1024 per octave |
+|---|---|---|
+| 0 dBFS | 0.001 dB | 0.0059 dB |
+| −20 dBFS | 0.011 dB | 0.0059 dB |
+| −40 dBFS | 0.11 dB | 0.0059 dB |
+| −60 dBFS | 1.0 dB | 0.0059 dB |
+| −78 dBFS | 5.9 dB (the last step) | 0.0059 dB |
+| −120 dBFS | silence | 0.0059 dB |
+| −168 dBFS | silence | the smallest code |
+
+Near full scale the log step is coarser than the linear one: 0.07 % of the
+amplitude, 0.3 px in a waveform 1000 px high.
+
+### RMS plane
+
+Every block also holds the RMS of its frames (nearest code) in an array of
+its own next to min/max; `range()` for min/max does not read it. The builder
+keeps a level's unpaired block's mean square exactly (a double) until its
+pair arrives, so a parent comes from exact values and every stored RMS is
+rounded once; a partial last block weighs its own frames. A column's RMS is
+the root of its blocks' mean squares weighted by their frames, within one
+step of the real one; from the samples it is the samples' RMS. The painter
+fills the RMS band inside the envelope in a darker shade of the wave (fill
+mode). An RMS that includes fades or the gain curve is a weighted query on
+the same plane (weight g² per block), parked until a feature needs it.
+
+### Normalise on the bound
+
+`max_amplitude()` takes the blocks between the range's ends from the
+pyramid's bound and reads only the two partial end blocks. The bound is
+never below the real peak and at most one step (0.0059 dB) above it, so the
+gain is at most that much too low and never clips. Below the smallest code
+(−168 dB) the bound is that code's value. Only blocks beyond +24 dB
+(float sources) are read, because their code only says "beyond".
+
+### Sizes
+
+A block takes 6 bytes per channel (min/max 4, RMS 2). A peak file holds
+about 2 × level 0: 64.8 MB per hour of stereo audio at 48 kHz (format 5:
+43.2 MB). A recording keeps about one period (22 s) per track in memory plus
+one chunk per level: 270 KB per mono track (format 5: 180 KB).
+

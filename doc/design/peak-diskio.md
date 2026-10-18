@@ -50,7 +50,10 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
    is rare) and as fast as the disk allows while no stream needs reading.
 7. No network file systems for now.
 
-## 2. File format, version 5
+## 2. File format, version 6
+
+Version 6 (2026-10-18) stores values as log codes and adds an RMS plane:
+doc/design/peak-redesign.md section 6.
 
 ```
 [header, fixed size][record 0][record 1] ... [record n-1][tail]
@@ -61,12 +64,18 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
   of a period at the same moment. S is in the header (default 14: 1,048,576
   frames, ~22 s at 48 kHz); tests use small values.
 - **Record**: the blocks of one complete period for levels 0..S, level by
-  level, channel by channel (2^(S-L) blocks each). All records have the same
-  size, so record i starts at `dataStart + i × recordSize`. No table.
+  level (2^(S-L) blocks each); per level the min/max of every channel, then
+  the RMS codes of every channel. All records have the same size, so record
+  i starts at `dataStart + i × recordSize`. No table. The planes sit inside
+  every record, not one after the other in the file: a second plane's
+  offset would depend on the length of the first, which a recording does
+  not know while it streams.
 - **Tail**, written at finish: the part of every level 0..S beyond the
-  complete periods, then the levels above S, each level by channel. Its
-  layout follows from the frame count (`expected_block_counts`).
-- **Header**, written at once with frame count 0 (= unfinished). Finish adds
+  complete periods, then the levels above S, each level in the same order
+  as in a record. Its layout follows from the frame count
+  (`expected_block_counts`).
+- **Header** (80 bytes; it names the planes, min/max and RMS, and the codes
+  per octave), written at once with frame count 0 (= unfinished). Finish adds
   the frame count, the source's size and modification time (a recording's
   file is complete only then) and the header's checksum (a damaged period
   shift or frame count can keep the file size the same). A file with frame
