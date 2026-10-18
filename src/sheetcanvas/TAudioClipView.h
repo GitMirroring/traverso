@@ -23,6 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define AUDIO_CLIP_VIEW_H
 
 #include "TViewItem.h"
+
+#include <QPointer>
 #include <defines.h>
 #include <QList>
 #include <QTimer>
@@ -31,6 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TTimeRef.h"
 
+class TFrameClock;
 class TAudioClip;
 class TSheet;
 class TFadeCurve;
@@ -73,7 +76,6 @@ private:
     TCurveView* 	m_gainCurveView;
     QPolygonF 	m_polygon;
     QPixmap 	m_clipInfo;
-    QTimer 		m_recordingTimer;
 
     float m_progress;
     int m_peakloadingcount{};
@@ -88,7 +90,8 @@ private:
     int m_mimimumheightforinfoarea{};
     int m_lineOffset{};
     int m_lineVOffset{};
-    TTimeRef m_oldRecordingPos;        // the clip's length at the last tick
+    TTimeRef m_recordingDrawn;         // how far a recording is drawn: up to the play head
+    QPointer<TFrameClock> m_recordingClock;   // held while recording
     TTimeRef m_paintedRecordingPos;    // how far the waveform was painted
 
     // theme data
@@ -143,7 +146,7 @@ private slots:
     void peak_creation_finished();
     void start_recording();
     void finish_recording();
-    void update_recording();
+    void update_recording(qint64 nowNanoseconds);
     void active_context_changed();
     void clip_state_changed();
 };

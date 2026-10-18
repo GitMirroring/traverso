@@ -78,6 +78,7 @@ TSheetView::TSheetView(TSheetWidget* sheetwidget,
 	setZValue(1);
 
 	m_session = session;
+	m_frameClock = frameClock;
 	m_clipsViewPort = viewPort;
 	m_tpvp = tpvp;
 	m_tlvp = tlvp;

@@ -88,6 +88,8 @@ public :
     QRectF boundingRect() const {return QRectF();}
 
     TSession* get_sheet() const {return m_session;}
+    // The clock everything that follows the transport is drawn with
+    TFrameClock* get_frame_clock() const {return m_frameClock;}
     TTrackPanelViewPort* get_trackpanel_view_port() const;
     TClipsViewPort* get_clips_viewport() const;
     TTimeLineRulerViewPort* get_timeline_viewport() const;
@@ -169,6 +171,7 @@ private:
     TTimeRef            m_beforeFitLeft;
 
     TSession*           m_session;
+    TFrameClock*        m_frameClock;
     TPlayHeadView*           m_playCursor;
     TClipsViewPort* 		m_clipsViewPort;
     TTrackPanelViewPort*	m_tpvp;

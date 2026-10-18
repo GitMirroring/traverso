@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QGraphicsSimpleTextItem>
 
 #include "TAudioClipView.h"
+#include "TFrameClock.h"
 #include "TLineView.h"
 #include "TSheetView.h"
 #include "TAudioTrackView.h"
@@ -117,6 +118,10 @@ TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioCl
 TAudioClipView::~ TAudioClipView()
 {
     PENTERDES;
+    // A view that goes while its clip records
+    if (m_recordingClock) {
+        m_recordingClock->release(this);
+    }
 }
 
 void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -135,9 +140,9 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
         return;
     }
     // While recording the bounding rect is reserved ahead of the clip's
-    // length (see update_recording()); everything is drawn within the length
+    // length (see update_recording()); everything is drawn up to the play head
     const QRectF extent = m_clip->recording_state() == TAudioClip::RECORDING
-        ? QRectF(0, 0, m_clip->get_length() / m_sv->timeref_scalefactor, m_height)
+        ? QRectF(0, 0, m_recordingDrawn / m_sv->timeref_scalefactor, m_height)
         : m_boundingRect;
 
     painter->save();
@@ -549,37 +554,52 @@ TCommand * TAudioClipView::select_fade_out_shape( )
 
 void TAudioClipView::start_recording()
 {
-    m_oldRecordingPos = TTimeRef();
+    m_recordingDrawn = TTimeRef();
     m_paintedRecordingPos = TTimeRef();
-    connect(&m_recordingTimer, &QTimer::timeout, this, &TAudioClipView::update_recording);
-    // The same cadence as the play head (TPlayHeadView), so the waveform's
-    // end keeps up with it; a tick paints only the strip that is new
-    m_recordingTimer.start(20);
+    // The play head's frames (TPlayHeadView), so the clip's end moves with
+    // it; a frame paints only the strip that is new
+    m_recordingClock = m_sv->get_frame_clock();
+    connect(m_recordingClock, &TFrameClock::frame, this, &TAudioClipView::update_recording);
+    m_recordingClock->hold(this);
 }
 
 void TAudioClipView::finish_recording()
 {
-    m_recordingTimer.stop();
+    if (m_recordingClock) {
+        disconnect(m_recordingClock, &TFrameClock::frame, this, &TAudioClipView::update_recording);
+        m_recordingClock->release(this);
+        m_recordingClock = nullptr;
+    }
     prepareGeometryChange();
     m_boundingRect = QRectF(0, 0, (m_clip->get_length() / m_sv->timeref_scalefactor), m_height);
     m_gainCurveView->calculate_bounding_rect();
     update();
 }
 
-void TAudioClipView::update_recording()
+void TAudioClipView::update_recording(qint64 nowNanoseconds)
 {
     if (m_clip->recording_state() != TAudioClip::RECORDING) {
         return;
     }
 
-    // The clip's length (its contour) runs ahead of the waveform: the
-    // pyramid is filled by the DiskIO thread later than the audio thread
-    // counts the frames. Repaint from where the waveform was painted up to
-    // what has arrived since, and the contour's new part.
-    const TTimeRef newPos = m_clip->get_length();
-    const TTimeRef painted = m_clip->get_waveform() ? m_clip->get_waveform()->recorded_length() : newPos;
-    const int oldPixel = std::min(int(m_oldRecordingPos / m_sv->timeref_scalefactor), int(m_paintedRecordingPos / m_sv->timeref_scalefactor));
-    const int newPixel = std::max(int(newPos / m_sv->timeref_scalefactor), int(painted / m_sv->timeref_scalefactor));
+    // Drawn up to the play head, which shows what is heard now: what is
+    // played now is recorded there. The clip's length runs ahead of it by
+    // the output latency (the audio thread counts frames that are not heard
+    // yet). The waveform follows a little behind, as DiskIO fills the
+    // pyramid; repaint from where it was painted up to the play head.
+    const TTimeRef heard = m_sv->get_sheet()->get_heard_transport_location(nowNanoseconds);
+    const TTimeRef start = m_clip->get_location_start();
+    TTimeRef drawn = heard > start ? heard - start : TTimeRef();
+    if (drawn > m_clip->get_length()) {
+        drawn = m_clip->get_length();
+    }
+    TTimeRef painted = m_clip->get_waveform() ? m_clip->get_waveform()->recorded_length() : drawn;
+    if (painted > drawn) {
+        painted = drawn;
+    }
+    const int oldPixel = std::min(int(m_recordingDrawn / m_sv->timeref_scalefactor), int(m_paintedRecordingPos / m_sv->timeref_scalefactor));
+    const int newPixel = int(drawn / m_sv->timeref_scalefactor);
+    m_recordingDrawn = drawn;
     if (newPixel <= oldPixel) {
         return;
     }
@@ -594,7 +614,6 @@ void TAudioClipView::update_recording()
     }
 
     update(QRectF(oldPixel - 2, 0, newPixel - oldPixel + 3, m_height));
-    m_oldRecordingPos = newPos;
     m_paintedRecordingPos = painted;
 }
 
