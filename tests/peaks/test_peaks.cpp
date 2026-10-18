@@ -211,7 +211,11 @@ static void test_codes()
         CHECK(std::fabs(nearest - value) <= value * float(step - 1.0) * 0.5f * 1.0001f, "nearest of %g is %g", value, nearest);
     }
     CHECK(TPeakLevels::code_at_or_above(0.0f) == 0 && TPeakLevels::code_at_or_below(0.0f) == 0, "zero");
+    // Only 0.0 is silence: a value outward from zero gets at least one step,
+    // also below the range (a min rounds down, a max up)
     CHECK(TPeakLevels::code_at_or_above(1e-30f) == 1 && TPeakLevels::code_at_or_below(1e-30f) == 0, "below the range");
+    CHECK(TPeakLevels::code_at_or_below(-1e-30f) == -1 && TPeakLevels::code_at_or_above(-1e-30f) == 0, "below the range, negative");
+    CHECK(TPeakLevels::code_at_or_above(std::numeric_limits<float>::denorm_min()) == 1, "the smallest float");
     CHECK(TPeakLevels::code_at_or_above(20.0f) == TPeakLevels::MaxCode && TPeakLevels::code_at_or_below(-20.0f) == -TPeakLevels::MaxCode,
           "saturation");
     CHECK(TPeakLevels::code_at_or_above(std::nanf("")) == 0 && TPeakLevels::code_at_or_below(std::nanf("")) == 0, "NaN");
@@ -473,6 +477,9 @@ static void test_file()
     expect_damaged(patched(8, 2), "version 2");
     expect_damaged(patched(8, 3), "version 3");
     expect_damaged(patched(8, 4), "version 4");
+    expect_damaged(patched(8, 5), "version 5 (the linear codes, no RMS)");
+    expect_damaged(patched(40, 1), "planes: min/max only");
+    expect_damaged(patched(40, 7), "planes: one more than this version knows");
     expect_damaged(patched(12, 0x04030201), "byte order");
     expect_damaged(patched(16, 64), "header size");
     expect_damaged(patched(28, 32), "block frames");

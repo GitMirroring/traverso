@@ -206,7 +206,10 @@ static void stress_recording(const QString& peakPath, const QString& audioPath)
         recording.read([&](const TPeakLevels& view) {
             ++reads;
             const qint64 blocks = view.level_count() > 0 ? view.block_count(0) : 0;
-            if (view.frame_count() < lastFrames || blocks < lastBlocks || view.frame_count() < blocks * TPeakLevels::BlockFrames) {
+            // The frames cover every block named (after finish() the last one
+            // may be partial)
+            if (view.frame_count() < lastFrames || blocks < lastBlocks
+                    || (blocks > 0 && view.frame_count() <= (blocks - 1) * TPeakLevels::BlockFrames)) {
                 CHECK(false, "stress read %d: %lld frames %lld blocks after %lld / %lld", reads, (long long)view.frame_count(),
                       (long long)blocks, (long long)lastFrames, (long long)lastBlocks);
                 failed = true;
