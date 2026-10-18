@@ -38,19 +38,30 @@ struct TPeakCodeMath
         return root;
     }
 
-    // i in [0, 1024)
-    static constexpr double octave_fraction(int i)
+    // 2^(1/2), 2^(1/4) .. 2^(1/1024)
+    static constexpr std::array<double, 10> octave_roots()
+    {
+        std::array<double, 10> roots{};
+        double root = 2.0;
+        for (double& r : roots) {
+            root = square_root(root);
+            r = root;
+        }
+        return roots;
+    }
+
+    // i in [0, 1024), from the roots (computed once for a table)
+    static constexpr double octave_fraction(int i, const std::array<double, 10>& roots)
     {
         double value = 1.0;
-        double root = 2.0;
         for (int bit = 9; bit >= 0; --bit) {
-            root = square_root(root);
             if (i & (1 << bit)) {
-                value *= root;
+                value *= roots[size_t(9 - bit)];
             }
         }
         return value;
     }
+    static constexpr double octave_fraction(int i) { return octave_fraction(i, octave_roots()); }
 };
 
 // The decoding tables of the value codes (TPeakLevels), built by the
@@ -60,10 +71,12 @@ struct TPeakCodeMath
 // exact as its mantissa.
 struct TPeakCodeTables
 {
+    static constexpr std::array<double, 10> Roots = TPeakCodeMath::octave_roots();
+
     static constexpr std::array<float, 1024> Mantissas = [] {
         std::array<float, 1024> mantissas{};
         for (int i = 0; i < 1024; ++i) {
-            mantissas[size_t(i)] = float(TPeakCodeMath::octave_fraction(i));
+            mantissas[size_t(i)] = float(TPeakCodeMath::octave_fraction(i, Roots));
         }
         return mantissas;
     }();
@@ -138,6 +151,7 @@ public:
         {
             Q_ASSERT(blocks.size() == rms.size() && (chunks.empty() || qint64(blocks.size()) == chunkCount));
             chunkCount = qint64(blocks.size());
+            chunks.reserve(chunks.size() + blocks.size());
             for (size_t i = 0; i < blocks.size(); ++i) {
                 chunks.push_back({blocks[i], rms[i]});
             }
@@ -171,8 +185,16 @@ public:
     }
     // The blocks (RMS codes) from index on that follow each other in memory:
     // their start and how many (at least 1 when index < block_count(level))
-    const TPeakBlock* blocks(int level, int channel, qint64 index, qint64& count) const;
-    const qint16* rms_blocks(int level, int channel, qint64 index, qint64& count) const;
+    const TPeakBlock* blocks(int level, int channel, qint64 index, qint64& count) const
+    {
+        qint64 inChunk = 0;
+        return run(level, channel, index, inChunk, count).blocks + inChunk;
+    }
+    const qint16* rms_blocks(int level, int channel, qint64 index, qint64& count) const
+    {
+        qint64 inChunk = 0;
+        return run(level, channel, index, inChunk, count).rms + inChunk;
+    }
     // The frames block index of level covers (the source's last one fewer)
     qint64 block_frames(int level, qint64 index) const
     {
@@ -188,12 +210,16 @@ public:
     // by their frames)
     TPeakBlock range(int channel, qint64 first, qint64 last, double& meanSquare) const;
 
+    // The value of a code's magnitude, 0 .. MaxCode
+    static float magnitude_value(int magnitude)
+    {
+        return magnitude == 0 ? 0.0f
+            : TPeakCodeTables::Octaves[size_t(magnitude >> 10)] * TPeakCodeTables::Mantissas[size_t(magnitude & 1023)];
+    }
     static float to_value(qint16 code)
     {
         // Clamped: -32768 is never written, but a file may hold anything
-        const int magnitude = std::min(code < 0 ? -int(code) : int(code), MaxCode);
-        const float value = magnitude == 0 ? 0.0f
-            : TPeakCodeTables::Octaves[size_t(magnitude >> 10)] * TPeakCodeTables::Mantissas[size_t(magnitude & 1023)];
+        const float value = magnitude_value(std::min(code < 0 ? -int(code) : int(code), MaxCode));
         return code < 0 ? -value : value;
     }
     // The codes on both sides of value: the smallest code whose value is >=
@@ -206,6 +232,10 @@ public:
     static float max_value() { return to_value(MaxCode); }
 
 private:
+    // The chunk of block index, where in it index is, and how many blocks
+    // follow from there to the chunk's or the level's end
+    const Chunk& run(int level, int channel, qint64 index, qint64& inChunk, qint64& count) const;
+
     uint m_rate{0};
     int m_channelCount{0};
     qint64 m_frameCount{0};

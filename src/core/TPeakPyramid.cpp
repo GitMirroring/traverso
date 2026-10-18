@@ -130,24 +130,14 @@ TPeakLevels::TPeakLevels(uint rate, int channelCount, qint64 frameCount, std::ve
 {
 }
 
-const TPeakBlock* TPeakLevels::blocks(int level, int channel, qint64 index, qint64& count) const
+const TPeakLevels::Chunk& TPeakLevels::run(int level, int channel, qint64 index, qint64& inChunk, qint64& count) const
 {
     Q_ASSERT(index >= 0 && index < block_count(level));
     const Level& l = m_levels[size_t(level)];
     const qint64 chunkBlocks = qint64(1) << l.chunkShift;
-    const qint64 inChunk = index & (chunkBlocks - 1);
+    inChunk = index & (chunkBlocks - 1);
     count = std::min(chunkBlocks - inChunk, l.blockCount - index);
-    return l.chunk(channel, index).blocks + inChunk;
-}
-
-const qint16* TPeakLevels::rms_blocks(int level, int channel, qint64 index, qint64& count) const
-{
-    Q_ASSERT(index >= 0 && index < block_count(level));
-    const Level& l = m_levels[size_t(level)];
-    const qint64 chunkBlocks = qint64(1) << l.chunkShift;
-    const qint64 inChunk = index & (chunkBlocks - 1);
-    count = std::min(chunkBlocks - inChunk, l.blockCount - index);
-    return l.chunk(channel, index).rms + inChunk;
+    return l.chunk(channel, index);
 }
 
 // The blocks that make up the level-0 blocks [first, last), from the
@@ -210,7 +200,7 @@ TPeakBlock TPeakLevels::range(int channel, qint64 first, qint64 last, double& me
         const qint64 offset = l.offset(index);
         combine(result, chunk.blocks[offset]);
         const qint16 code = chunk.rms[offset];
-        const float value = code > 0 ? TPeakCodeTables::Octaves[size_t(code >> 10)] * TPeakCodeTables::Mantissas[size_t(code & 1023)] : 0.0f;
+        const float value = magnitude_value(std::max(int(code), 0));
         sum += double(value * value) * double(block_frames(level, index));
     });
     // The blocks cover these frames together
@@ -399,6 +389,7 @@ void TPeakPyramidBuilder::finish()
 TPeakLevels TPeakPyramidBuilder::levels() const
 {
     std::vector<TPeakLevels::Level> levels;
+    levels.reserve(MaxLevels);
 
     for (int level = 0; level < MaxLevels; ++level) {
         // The channels are appended one after the other, so a snapshot takes
@@ -419,6 +410,9 @@ TPeakLevels TPeakPyramidBuilder::levels() const
             const LevelStore& store = channel.levels[size_t(level)];
             std::vector<const TPeakBlock*> pointers(static_cast<size_t>(chunks));
             std::vector<const qint16*> rms(static_cast<size_t>(chunks));
+            if (snapshot.chunks.empty()) {
+                snapshot.chunks.reserve(size_t(chunks) * m_channels.size());
+            }
             for (qint64 chunk = 0; chunk < chunks; ++chunk) {
                 pointers[size_t(chunk)] = store.published_chunk(chunk);
                 rms[size_t(chunk)] = store.published_rms_chunk(chunk);

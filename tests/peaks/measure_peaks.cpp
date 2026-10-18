@@ -42,7 +42,7 @@ public:
     qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override
     {
         m_buffer.check_capacity(nframes_t(count), uint(channel_count()));
-        const qint64 read = std::min<qint64>(qint64(m_reader.read_from(m_buffer, nframes_t(firstFrame), nframes_t(count))), count);
+        const qint64 read = std::clamp<qint64>(qint64(m_reader.read_from(m_buffer, nframes_t(firstFrame), nframes_t(count))), 0, count);
         for (int c = 0; c < channel_count(); ++c) {
             std::copy_n(m_buffer.get_channel_buffer(uint(c)).get_data(nframes_t(std::max<qint64>(read, 1))), read, channels[c]);
         }
