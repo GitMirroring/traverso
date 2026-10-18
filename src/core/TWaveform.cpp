@@ -28,7 +28,7 @@ QString TWaveform::peak_path(const TBufferedAudioStream* source)
     return path + source->get_name() + ".peaks";
 }
 
-TWaveform::TWaveform(TBufferedAudioStreamReader* source, RequestBuild requestBuild)
+TWaveform::TWaveform(TBufferedAudioStreamReader* source, PeakJobs jobs)
     : m_sourceId(source->get_id())
     , m_fileName(source->get_filename())
     , m_rate(source->get_file_rate())
@@ -37,7 +37,7 @@ TWaveform::TWaveform(TBufferedAudioStreamReader* source, RequestBuild requestBui
     , m_sourceValid(source->get_error() >= 0)
     , m_peakPath(peak_path(source))
     , m_decodeBuffer(std::make_unique<TFileIOBuffer>())
-    , m_requestBuild(std::move(requestBuild))
+    , m_jobs(std::move(jobs))
 {
     // Delivered once per build, also when it finished before it was watched
     connect(&m_build, &QFutureWatcherBase::finished, this, &TWaveform::build_finished);
@@ -132,6 +132,16 @@ void TWaveform::open_or_build()
     switch (status) {
     case TPeakFile::Status::Ok:
         TLOG_D("peaks", "opened {}", m_peakPath.toStdString());
+        if (m_builds == 0) {
+            // Found on disk: its blocks are checked (and read into the page
+            // cache) in DiskIO's idle time before it is used. A file this
+            // session built or checked passes at once.
+            m_verifying = true;
+            m_state = State::Building;
+            m_progress = 0;
+            m_build.setFuture(m_jobs.verify ? m_jobs.verify(m_peakPath, source_info()) : QFuture<TPeakBuildResult>());
+            return;
+        }
         m_state = State::Ready;
         return;
     case TPeakFile::Status::Error:
@@ -150,14 +160,18 @@ void TWaveform::open_or_build()
         return;
     }
 
-    TLOG_I("peaks", "building {} ({})", m_peakPath.toStdString(),
-           status == TPeakFile::Status::Missing ? "no peak file yet" : "the peak file does not match the source");
+    start_build(status == TPeakFile::Status::Missing ? "no peak file yet" : "the peak file does not match the source");
+}
+
+void TWaveform::start_build(const char* reason)
+{
+    TLOG_I("peaks", "building {} ({})", m_peakPath.toStdString(), reason);
     ++m_builds;
     m_state = State::Building;
     m_progress = 0;
     // No build service (a clip without a sheet): a cancelled future, so the
     // watcher reports a failed build
-    m_build.setFuture(m_requestBuild ? m_requestBuild(m_fileName, m_peakPath) : QFuture<TPeakBuildResult>());
+    m_build.setFuture(m_jobs.build ? m_jobs.build(m_fileName, m_peakPath) : QFuture<TPeakBuildResult>());
 }
 
 void TWaveform::build_finished()
@@ -165,6 +179,23 @@ void TWaveform::build_finished()
     // A cancelled build has no result (the project closes, or its DiskIO went)
     const QFuture<TPeakBuildResult> build = m_build.future();
     const TPeakBuildResult result = !build.isCanceled() && build.resultCount() > 0 ? build.result() : TPeakBuildResult{};
+
+    if (m_verifying) {
+        m_verifying = false;
+        if (result.ok) {
+            m_state = State::Ready;
+        } else if (build.isCanceled()) {
+            // Nobody could check it (its DiskIO went): its layout is right,
+            // use it as it is
+            m_state = State::Ready;
+        } else {
+            m_file.close();
+            start_build("the peak file is damaged");
+            return;
+        }
+        emit ready();
+        return;
+    }
 
     if (result.ok) {
         open_or_build();

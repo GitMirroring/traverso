@@ -189,3 +189,55 @@ bool TPeakBuildTask::step(std::chrono::nanoseconds budget)
 
     return true;
 }
+
+
+TPeakVerifyTask::TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected, qint64 sliceBytes)
+    : m_peakPath(std::move(peakPath))
+    , m_expected(expected)
+    , m_sliceBytes(std::max<qint64>(4096, sliceBytes & ~qint64(3)))
+{
+}
+
+bool TPeakVerifyTask::step(std::chrono::nanoseconds budget)
+{
+    if (m_state != State::Waiting && m_state != State::Running) {
+        return false;
+    }
+    if (m_cancelled.load(std::memory_order_relaxed)) {
+        m_state = State::Cancelled;
+        m_file.close();
+        return false;
+    }
+    const auto started = std::chrono::steady_clock::now();
+
+    if (m_state == State::Waiting) {
+        if (m_file.open(m_peakPath, m_expected) != TPeakFile::Status::Ok) {
+            m_error = QStringLiteral("the peak file does not open");
+            m_state = State::Failed;
+            return false;
+        }
+        m_checksum = TPeakFile::checksum_begin();
+        m_state = State::Running;
+    }
+
+    do {
+        const qint64 bytes = std::min(m_sliceBytes, m_file.data_size() - m_position);
+        if (bytes <= 0) {
+            const bool whole = m_file.checksum_matches(m_checksum);
+            m_file.close();
+            if (!whole) {
+                m_error = QStringLiteral("the peak file does not match its checksum");
+                m_state = State::Failed;
+                TLOG_W("peaks", "{} does not match its checksum", m_peakPath.toStdString());
+                return false;
+            }
+            m_progress = 100;
+            m_state = State::Done;
+            return false;
+        }
+        m_checksum = m_file.checksum_add(m_checksum, m_position, bytes);
+        m_position += bytes;
+        m_progress = int(m_position * 100 / std::max<qint64>(1, m_file.data_size()));
+    } while (std::chrono::steady_clock::now() - started < budget);
+    return true;
+}

@@ -26,8 +26,14 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
    QObject job. A waveform never cancels a build; builds are cancelled when
    the project closes.
 5. A **checksum** in the header tells whether the block data is complete.
-   No fsync: the peak file is a cache. Validation (and a sequential read that
-   doubles as a prefetch) runs off the GUI thread.
+   No fsync: the peak file is a cache. A file found on disk is checked in
+   DiskIO's idle time before its waveform is Ready (TPeakVerifyTask, in
+   slices; the sequential read doubles as a prefetch); a damaged one is built
+   again. A file built or checked in this session passes at once.
+7. Peak files are prepared when a clip gets its source and its sheet, not
+   at its first paint: whether a clip is visible does not matter. When peak
+   files must be rebuilt, every sheet's DiskIO builds at once (accepted: it
+   is rare) and as fast as the disk allows while no stream needs reading.
 6. No network file systems for now.
 
 ## 2. File format, version 3

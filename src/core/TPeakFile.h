@@ -70,6 +70,14 @@ public:
     // thread.
     bool verify_checksum() const;
 
+    // The same check in steps (a background task): data_size() bytes of block
+    // data, added in pieces of whole blocks from checksum_begin(), then
+    // compared with checksum_matches()
+    qint64 data_size() const { return m_dataEnd - m_dataStart; }
+    static quint64 checksum_begin();
+    quint64 checksum_add(quint64 checksum, qint64 offset, qint64 bytes) const;
+    bool checksum_matches(quint64 checksum) const;
+
     static constexpr quint32 FormatVersion = 3;
 
 private:

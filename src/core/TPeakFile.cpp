@@ -277,13 +277,28 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
 
 bool TPeakFile::verify_checksum() const
 {
+    return m_map && checksum_matches(checksum_add(checksum_begin(), 0, data_size()));
+}
+
+quint64 TPeakFile::checksum_begin()
+{
+    return ChecksumSeed;
+}
+
+quint64 TPeakFile::checksum_add(quint64 checksum, qint64 offset, qint64 bytes) const
+{
+    Q_ASSERT(m_map && offset >= 0 && offset + bytes <= data_size() && offset % 4 == 0 && bytes % 4 == 0);
+    return add_to_checksum(checksum, m_map + m_dataStart + offset, bytes);
+}
+
+bool TPeakFile::checksum_matches(quint64 checksum) const
+{
     if (!m_map) {
         return false;
     }
     TPeakFileHeader header;
     std::memcpy(&header, m_map, sizeof(header));
-    const quint64 data = add_to_checksum(ChecksumSeed, m_map + m_dataStart, m_dataEnd - m_dataStart);
-    return add_header_to_checksum(data, header) == header.checksum;
+    return add_header_to_checksum(checksum, header) == header.checksum;
 }
 
 void TPeakFile::close()

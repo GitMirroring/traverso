@@ -733,10 +733,15 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
         delete m_waveform;
         m_waveform = nullptr;
         if (m_isReadSourceValid) {
-            // Built in the idle time of this clip's sheet's DiskIO
-            m_waveform = new TWaveform(rs, [this](const QString& audioPath, const QString& peakPath) {
+            // Built and checked in the idle time of this clip's sheet's DiskIO
+            TWaveform::PeakJobs jobs;
+            jobs.build = [this](const QString& audioPath, const QString& peakPath) {
                 return m_sheet ? m_sheet->request_peak_build(audioPath, peakPath) : QFuture<TPeakBuildResult>();
-            });
+            };
+            jobs.verify = [this](const QString& peakPath, const TPeakFile::SourceInfo& expected) {
+                return m_sheet ? m_sheet->request_peak_verify(peakPath, expected) : QFuture<TPeakBuildResult>();
+            };
+            m_waveform = new TWaveform(rs, std::move(jobs));
             if (m_sheet) {
                 m_waveform->prepare();
             }

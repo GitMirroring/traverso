@@ -24,11 +24,11 @@ class TFileIOBuffer;
 /**
  * @brief The waveform of one audio source for its views.
  *
- * Opens the source's peak file (TPeakFile), has it built when it is missing
- * or stale (through the RequestBuild it was given: the sheet's DiskIO builds
- * it in its idle time), and answers column queries (TWaveformColumns) from
- * the pyramid or from the source's samples with a reader of its own. GUI
- * thread only.
+ * Opens the source's peak file (TPeakFile), has a file found on disk checked
+ * against its checksum and a missing or stale one built (through the
+ * PeakJobs it was given: the sheet's DiskIO does both in its idle time), and
+ * answers column queries (TWaveformColumns) from the pyramid or from the
+ * source's samples with a reader of its own. GUI thread only.
  */
 class TWaveform : public QObject, public TWaveformSampleSource
 {
@@ -45,9 +45,13 @@ public:
     // source: the clip's reader. The waveform reads samples with a reader
     // of its own, opened on the first sample query and closed again when
     // unused for a while, so a clip normally holds one open file.
-    // requestBuild starts (or joins) the build of a peak file
-    using RequestBuild = std::function<QFuture<TPeakBuildResult>(const QString& audioPath, const QString& peakPath)>;
-    TWaveform(TBufferedAudioStreamReader* source, RequestBuild requestBuild);
+    // How the peak file gets built or checked: starts or joins the job
+    struct PeakJobs
+    {
+        std::function<QFuture<TPeakBuildResult>(const QString& audioPath, const QString& peakPath)> build;
+        std::function<QFuture<TPeakBuildResult>(const QString& peakPath, const TPeakFile::SourceInfo& expected)> verify;
+    };
+    TWaveform(TBufferedAudioStreamReader* source, PeakJobs jobs);
     // A recording in progress: painted from its peaks as they are recorded
     // (the written part from the peak file), no samples
     explicit TWaveform(std::shared_ptr<TPeakRecording> live);
@@ -90,6 +94,7 @@ private:
     TPeakFile::SourceInfo source_info() const;
     void open_or_build();
     void build_finished();
+    void start_build(const char* reason);
     TBufferedAudioStreamReader* reader();
 
     qint64 m_sourceId{0};
@@ -104,7 +109,8 @@ private:
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;
-    RequestBuild m_requestBuild;
+    PeakJobs m_jobs;
+    bool m_verifying{false};
     QFutureWatcher<TPeakBuildResult> m_build;
     State m_state{State::Building};
     bool m_opened{false};

@@ -287,6 +287,32 @@ int main()
         std::printf("    recording of %lld frames: %d snapshots\n", (long long)signal.frames(), snapshots);
     }
 
+    // Checking a peak file in slices: whole, damaged, missing
+    {
+        const Signal signal = make_signal(2, 250000);
+        reference_file(peakPath, signal, audioPath, 3);
+        const auto expected = TPeakFile::SourceInfo::from_file(audioPath, signal.rate, 2, signal.frames());
+        auto check = [&](const char* what) {
+            TPeakVerifyTask task(peakPath, expected, 4096);
+            int steps = 0;
+            while (task.step(std::chrono::nanoseconds(0))) {
+                ++steps;
+            }
+            CHECK(steps > 1 || task.state() != TPeakVerifyTask::State::Done, "%s: not checked in slices", what);
+            return task.state();
+        };
+        CHECK(check("whole file") == TPeakVerifyTask::State::Done, "a whole peak file fails its check");
+        QByteArray bytes = file_bytes(peakPath);
+        bytes[bytes.size() - 7] = char(bytes[bytes.size() - 7] ^ 0x01);
+        {
+            QFile out(peakPath);
+            CHECK(out.open(QIODevice::WriteOnly | QIODevice::Truncate) && out.write(bytes) == bytes.size(), "rewrite");
+        }
+        CHECK(check("damaged file") == TPeakVerifyTask::State::Failed, "a damaged peak file passes its check");
+        QFile::remove(peakPath);
+        CHECK(check("missing file") == TPeakVerifyTask::State::Failed, "a missing peak file passes its check");
+    }
+
     // Recording memory without and with readers: helpers
     auto record_into = [&](TPeakRecording& recording, const Signal& signal, qint64 from, qint64 to) {
         for (qint64 position = from; position < to;) {

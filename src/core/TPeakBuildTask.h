@@ -99,3 +99,37 @@ private:
     QString m_error;
     int m_progress{0};
 };
+
+/**
+ * @brief Checks the block data of a peak file against its checksum, a slice
+ * at a time (it reads the whole file, which also brings it into the page
+ * cache before the waveform paints from it). Same states as TPeakBuildTask:
+ * Done means the file is whole.
+ */
+class TPeakVerifyTask
+{
+public:
+    using State = TPeakBuildTask::State;
+
+    TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected, qint64 sliceBytes = 4 << 20);
+
+    bool step(std::chrono::nanoseconds budget);
+    void cancel() { m_cancelled.store(true, std::memory_order_relaxed); }
+
+    State state() const { return m_state; }
+    const QString& error() const { return m_error; }
+    int progress() const { return m_progress; }
+
+private:
+    QString m_peakPath;
+    TPeakFile::SourceInfo m_expected;
+    qint64 m_sliceBytes;
+    TPeakFile m_file;
+    quint64 m_checksum{0};
+    qint64 m_position{0};
+
+    std::atomic<bool> m_cancelled{false};
+    State m_state{State::Waiting};
+    QString m_error;
+    int m_progress{0};
+};
