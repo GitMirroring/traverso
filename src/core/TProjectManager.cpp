@@ -171,6 +171,10 @@ void TProjectManager::set_current_project(TProject* project)
 
                 ied().reject_current_hold_actions();
 
+                // Recordings that were undone can not come back once the
+                // project closes: discard them before it is saved
+                m_currentProject->discard_undone_recordings();
+
 //                printf("exit in progress");
                 QString oncloseaction = config().get_property("Project", "onclose", "save").toString();
                 if (m_closeWithoutQuestions && oncloseaction == "ask") {

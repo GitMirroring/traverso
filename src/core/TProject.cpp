@@ -1304,6 +1304,13 @@ uint TProject::get_bitdepth( ) const
     return m_bitDepth;
 }
 
+void TProject::discard_undone_recordings()
+{
+    for (TSheet* sheet : get_sheets()) {
+        sheet->discard_undone_recordings();
+    }
+}
+
 QList<TSheet* > TProject::get_sheets( ) const
 {
     return m_sheets.gui_items();

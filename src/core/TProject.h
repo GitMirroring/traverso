@@ -102,6 +102,8 @@ public :
     QString get_import_dir() const;
     QString get_error_string() const {return m_errorString;}
     QList<TSheet* > get_sheets() const;
+    // Every sheet's undone recording sessions, before the project closes
+    void discard_undone_recordings();
     TSession* get_session(qint64 id);
     QList<TSession*> get_sessions();
     TSession* get_current_session() const ;

@@ -152,6 +152,13 @@ TMainWindow::TMainWindow()
 
     m_instance = this;
 
+    // Core asks through this whether the files of undone recording takes
+    // may go (TResourcesManager::discard_takes())
+    pm().set_discard_question([this](const QString& question) {
+        return QMessageBox::question(this, tr("Discarded Recording"), question, QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+               == QMessageBox::Yes;
+    });
+
     setWindowTitle("Traverso");
     setMinimumSize(400, 300);
     setWindowIcon(QPixmap(":/ui/app/app-logo.svg"));
@@ -851,6 +858,11 @@ void TMainWindow::create_menus()
     action->setShortcut(QKeySequence::Redo);
     m_editToolBar->addAction(action);
     connect(action, &QAction::triggered, this, &TMainWindow::redo);
+
+    // Undo the last recording for good, its takes discarded
+    action = editMenu->addAction(tr("Discard Last Recording"));
+    m_projectMenuToolbarActions.append(action);
+    connect(action, &QAction::triggered, this, &TMainWindow::discard_last_recording);
 
     editMenu->addSeparator();
     m_editToolBar->addSeparator();
@@ -2001,5 +2013,13 @@ TCommand* TMainWindow::redo()
 {
     TContextItem::get_undogroup()->redo();
     return 0;
+}
+
+void TMainWindow::discard_last_recording()
+{
+    auto* sheet = m_project ? dynamic_cast<TSheet*>(m_project->get_current_session()) : nullptr;
+    if (!sheet || !sheet->discard_last_recording()) {
+        tInformUser().information(tr("Nothing to discard: the last edit is not a recording"));
+    }
 }
 

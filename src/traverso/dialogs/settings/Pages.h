@@ -199,6 +199,7 @@ private:
     QCheckBox* m_latencyCompensationCheckBox{nullptr};
     QDoubleSpinBox* m_extraLatencySpinBox{nullptr};
     QLabel* m_driverLatencyLabel{nullptr};
+    QComboBox* m_discardedTakesComboBox{nullptr};
 };
 
 

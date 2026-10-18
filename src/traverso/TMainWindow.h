@@ -262,6 +262,7 @@ private slots:
 
     TCommand* undo();
     TCommand* redo();
+    void discard_last_recording();
 
 };
 

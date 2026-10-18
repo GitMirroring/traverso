@@ -49,6 +49,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDoubleSpinBox>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
 
 
@@ -1080,6 +1081,19 @@ RecordingConfigPage::RecordingConfigPage(QWidget * parent)
     // Another driver (the Audio page) or a measured change
     connect(&audiodevice(), &TAudioDevice::latencyChanged, this, &RecordingConfigPage::show_driver_latency);
     connect(&audiodevice(), &TAudioDevice::started, this, &RecordingConfigPage::show_driver_latency);
+    // The files of takes that were undone and can not come back
+    auto* discardGroup = new QGroupBox(tr("Discarded Recordings"), this);
+    auto* discardLayout = new QHBoxLayout(discardGroup);
+    discardLayout->addWidget(new QLabel(tr("Audio files of undone takes"), discardGroup));
+    m_discardedTakesComboBox = new QComboBox(discardGroup);
+    m_discardedTakesComboBox->addItem(tr("Ask"), "ask");
+    m_discardedTakesComboBox->addItem(tr("Delete"), "delete");
+    m_discardedTakesComboBox->addItem(tr("Keep"), "keep");
+    m_discardedTakesComboBox->setToolTip(tr("What happens to the audio files of recorded takes that were undone and can no longer be "
+                                            "redone: after a new edit, Edit > Discard Last Recording, or when the project closes"));
+    discardLayout->addStretch();
+    discardLayout->addWidget(m_discardedTakesComboBox);
+    verticalLayout->insertWidget(verticalLayout->count() - 1, discardGroup);   // above the spacer
 
     load_config();
 }
@@ -1121,6 +1135,8 @@ void RecordingConfigPage::load_config()
     m_latencyCompensationCheckBox->setChecked(config().get_property("Recording", "LatencyCompensation", true).toBool());
     m_extraLatencySpinBox->setValue(config().get_property("Recording", "ExtraLatency", 0.0).toDouble());
     m_extraLatencySpinBox->setEnabled(m_latencyCompensationCheckBox->isChecked());
+    const int discarded = m_discardedTakesComboBox->findData(config().get_property("Recording", "DiscardedTakes", "ask").toString());
+    m_discardedTakesComboBox->setCurrentIndex(discarded >= 0 ? discarded : 0);
 
     QString wavpackcompression = config().get_property("Recording", "WavpackCompressionType", "fast").toString();
     if (wavpackcompression == "very_high") {
@@ -1146,6 +1162,7 @@ void RecordingConfigPage::save_config()
     config().set_property("Recording", "FileFormat", encodingComboBox->itemData(encodingComboBox->currentIndex()).toString());
     config().set_property("Recording", "LatencyCompensation", m_latencyCompensationCheckBox->isChecked());
     config().set_property("Recording", "ExtraLatency", m_extraLatencySpinBox->value());
+    config().set_property("Recording", "DiscardedTakes", m_discardedTakesComboBox->currentData().toString());
     config().set_property("Recording", "WavpackCompressionType", wavpackCompressionComboBox->itemData(wavpackCompressionComboBox->currentIndex()).toString());
     QString skipwvx = wavpackUseAlmostLosslessCheckBox->isChecked() ? "true" : "false";
     config().set_property("Recording", "WavpackSkipWVX", skipwvx);
@@ -1160,6 +1177,7 @@ void RecordingConfigPage::reset_default_config()
     config().set_property("Recording", "FileFormat", "wav");
     config().set_property("Recording", "LatencyCompensation", true);
     config().set_property("Recording", "ExtraLatency", 0.0);
+    config().set_property("Recording", "DiscardedTakes", "ask");
     config().set_property("Recording", "WavpackCompressionType", "fast");
     config().set_property("Recording", "WavpackSkipWVX", "false");
 

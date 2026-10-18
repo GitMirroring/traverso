@@ -28,6 +28,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 #include "defines.h"
 
+#include <memory>
+#include <vector>
+
 class TProject;
 class TAudioTrack;
 class TBufferedAudioStreamReader;
@@ -128,8 +131,25 @@ public:
 
     QUndoCommand* create_command_split_entities(const QList<TSplitableTimeLineEntity*>& entities, const TTimeRef& splitLocation, const QString& description);
 
+    // The last undo step, if it is a recording session: undone and dropped,
+    // its takes discarded (TResourcesManager::discard_takes()). False when the
+    // last step is something else or a recording runs.
+    bool discard_last_recording();
+    // The recording sessions that are undone: discarded, since they can not
+    // come back once the project closes
+    void discard_undone_recordings();
+
 private:
-    QList<TAudioClip*>	m_recordingClips;
+    QList<TAudioClip*>	m_recordingClips;   // the takes being written
+    // The recording session while it runs (doc/design/recording-session.md):
+    // all its takes and the steps that put them in their tracks; one undo
+    // step when the last take is written
+    QList<TAudioClip*> m_sessionTakes;
+    std::vector<std::unique_ptr<QUndoCommand>> m_sessionSteps;
+    bool m_sessionBounce{false};
+    void start_takes();
+    void split_takes();
+    void push_recording_session();
     TProject*            m_project;
     TAudioDeviceClient*	m_audiodeviceClient{};
     AudioBus*           m_renderBus{};

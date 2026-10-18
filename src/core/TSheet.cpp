@@ -51,6 +51,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBusTrack.h"
 #include "TConfig.h"
 #include "TUndoCommand.h"
+#include "TLog.h"
+#include "TRecordingCommand.h"
+#include "TResourcesManager.h"
 #include "Utils.h"
 #include "TTimeLineRuler.h"
 #include "TTimeLineMarker.h"
@@ -873,6 +876,13 @@ void TSheet::seek_finished()
     TLOG_I("transport", "seek finished, transport at {} ({})", TTimeRef::timeref_to_ms_3(m_transportLocation), get_name());
     set_transport_seeking_state(false);
 
+    // A seek during a recording: the takes end where they are, new ones
+    // start here before the transport rolls again (not rolling now, so the
+    // switch is exact and needs nothing from the audio thread)
+    if (m_resumeTransport && is_recording() && m_readyToRecord && !m_recordingClips.isEmpty()) {
+        split_takes();
+    }
+
     if (m_resumeTransport) {
         start_transport_rolling(false);
         m_resumeTransport = false;
@@ -945,51 +955,12 @@ void TSheet::prepare_recording()
         return;
     }
 
-    QList<TAudioTrack*> armedTracks;
-    QList<TAudioClip*> newClips;
-
-    if (m_bounceTrack->armed()) {
-        armedTracks.append(m_bounceTrack);
-    } else {
-        armedTracks = get_armed_tracks();
-    }
-
-    for(TAudioTrack* track : std::as_const(armedTracks)) {
-        TAudioClip* clip = track->init_recording();
-        if (!clip) {
-            continue;
-        }
-
-        // For autosave purposes, we connect the recordingfinished
-        // signal to the clip_finished_recording() slot, and add this
-        // clip to our recording clip list.
-        // At the time the cliplist is empty, we're sure the recording
-        // session is finished, at which time an autosave makes sense.
-        connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
-        m_recordingClips.append(clip);
-        // The disk belongs to the recording: no peak builds meanwhile
-        m_ioGroup.set_recording(true);
-        newClips.append(clip);
-    }
+    m_sessionBounce = m_bounceTrack->armed();
+    start_takes();
 
     if (m_recordingClips.size() == 0) {
         tInformUser().warning(tr("Failed to create Bounce recording source"));
         return;
-    }
-
-    if (!newClips.isEmpty()) {
-        QString description = m_bounceTrack->armed() ? tr("Bouncing")
-                                                     : tr("Recording to %n Clip(s)", "", m_recordingClips.size());
-
-        // All new clips, on all armed tracks, in one undo step
-        QUndoCommand* command = create_command_mutate_clips(newClips, {}, description);
-
-        if (QUndoStack* undoStack = get_history_stack()) {
-            undoStack->push(command);
-        } else {
-            command->redo();
-            delete command;
-        }
     }
 
     // The recording clips are painted from their peak pyramid, whose finest
@@ -997,6 +968,107 @@ void TSheet::prepare_recording()
     set_hzoom(get_hzoom());
 
     m_readyToRecord = true;
+}
+
+// A take on every armed track at the transport location, in its track at
+// once (it shows as it records); the session's undo step follows when the
+// recording ends (push_recording_session())
+void TSheet::start_takes()
+{
+    QList<TAudioTrack*> armedTracks;
+    if (m_bounceTrack->armed()) {
+        armedTracks.append(m_bounceTrack);
+    } else {
+        armedTracks = get_armed_tracks();
+    }
+
+    QList<TAudioClip*> newClips;
+    for (TAudioTrack* track : std::as_const(armedTracks)) {
+        TAudioClip* clip = track->init_recording();
+        if (!clip) {
+            continue;
+        }
+        // When the list of takes being written is empty, the session is over
+        connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
+        m_recordingClips.append(clip);
+        // The disk belongs to the recording: no peak builds meanwhile
+        m_ioGroup.set_recording(true);
+        newClips.append(clip);
+    }
+    if (newClips.isEmpty()) {
+        return;
+    }
+
+    std::unique_ptr<QUndoCommand> step(create_command_mutate_clips(newClips, {}, QString()));
+    step->redo();
+    m_sessionSteps.push_back(std::move(step));
+    m_sessionTakes.append(newClips);
+}
+
+void TSheet::split_takes()
+{
+    TLOG_I("recording", "seek during the recording: new takes at {}", TTimeRef::timeref_to_ms_3(m_transportLocation));
+    // The running takes are written to their end; their recordingFinished()
+    // comes later, the new takes keep the session going meanwhile
+    const QList<TAudioClip*> running = m_recordingClips;
+    for (TAudioClip* clip : running) {
+        if (clip->recording_state() == TAudioClip::RECORDING) {
+            clip->finish_recording();
+        }
+    }
+    start_takes();
+}
+
+void TSheet::push_recording_session()
+{
+    if (m_sessionTakes.isEmpty()) {
+        return;
+    }
+    const QString description = m_sessionBounce ? tr("Bouncing") : tr("Recording to %n Clip(s)", "", int(m_sessionTakes.size()));
+    auto* command = new TRecordingCommand(resources_manager(), std::move(m_sessionSteps), m_sessionTakes, description);
+    m_sessionSteps.clear();
+    m_sessionTakes.clear();
+    if (QUndoStack* undoStack = get_history_stack()) {
+        // Its first redo does nothing: the takes are in their tracks
+        undoStack->push(command);
+    } else {
+        delete command;   // applied: the takes stay
+    }
+}
+
+bool TSheet::discard_last_recording()
+{
+    QUndoStack* undoStack = get_history_stack();
+    if (!undoStack || is_recording() || !m_recordingClips.isEmpty() || undoStack->index() == 0) {
+        return false;
+    }
+    auto* last = dynamic_cast<const TRecordingCommand*>(undoStack->command(undoStack->index() - 1));
+    if (!last) {
+        return false;
+    }
+    // It makes itself obsolete in this undo, so the stack deletes it;
+    // deleted undone, it discards its takes
+    const_cast<TRecordingCommand*>(last)->discard_on_undo();
+    undoStack->undo();
+    return true;
+}
+
+void TSheet::discard_undone_recordings()
+{
+    QUndoStack* undoStack = get_history_stack();
+    if (!undoStack) {
+        return;
+    }
+    QList<TAudioClip*> takes;
+    for (int i = undoStack->index(); i < undoStack->count(); ++i) {
+        if (auto* session = dynamic_cast<const TRecordingCommand*>(undoStack->command(i))) {
+            takes.append(session->takes());
+            const_cast<TRecordingCommand*>(session)->set_handled();
+        }
+    }
+    if (!takes.isEmpty()) {
+        resources_manager()->discard_takes(takes);
+    }
 }
 
 qreal TSheet::minimum_hzoom() const
@@ -1023,7 +1095,8 @@ void TSheet::clip_finished_recording(TAudioClip * clip)
 
     if (m_recordingClips.isEmpty()) {
         m_ioGroup.set_recording(false);
-        // seems we finished recording completely now
+        // The session is over: one undo step for all its takes
+        push_recording_session();
         // all clips have set their resulting ReadSource
         // length and whatsoever, let's do an autosave:
         m_project->save(true);

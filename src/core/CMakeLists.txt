@@ -32,6 +32,7 @@ add_library(traversocore STATIC
     TBufferedAudioStreamReader.cpp
     TResourcesManager.cpp
     TRecordingLatency.h
+    TRecordingCommand.h TRecordingCommand.cpp
     TBusTrack.cpp
     TSend.cpp
     TSession.cpp

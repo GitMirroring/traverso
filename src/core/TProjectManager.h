@@ -26,6 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 #include <QStringList>
 
+#include <functional>
+
 
 class TProject;
 class TSheet;
@@ -84,6 +86,11 @@ public:
 
     void start(const QString& basepath, const QString& projectname);
 
+    // The application's way to ask whether the files of discarded recording
+    // takes may be deleted (core shows no dialogs). Without one: no.
+    void set_discard_question(std::function<bool(const QString& question)> ask) { m_askDiscard = std::move(ask); }
+    bool ask_discard(const QString& question) const { return m_askDiscard ? m_askDiscard(question) : false; }
+
 
 public slots:
     TCommand* save_project();
@@ -104,6 +111,7 @@ private:
     QFileSystemWatcher*	m_watcher;
     TIOScheduler*   m_readScheduler{nullptr};
     TIOScheduler*   m_writeScheduler{nullptr};
+    std::function<bool(const QString&)> m_askDiscard;
 
     static QUndoGroup	m_undogroup;
 

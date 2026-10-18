@@ -69,6 +69,12 @@ public:
 	QList<TBufferedAudioStreamReader*> get_all_audio_sources() const;
 	QList<TAudioClip*> get_all_clips() const;
 
+    // Takes of a recording that can never come back (TRecordingCommand):
+    // their files are deleted or kept as the user prefers (Recording >
+    // DiscardedTakes: ask, delete, keep). A take whose clip is in a track,
+    // or whose source another clip uses, is left alone.
+    void discard_takes(const QList<TAudioClip*>& takes);
+
 
 private:
 	struct ClipData {
@@ -85,9 +91,15 @@ private:
 		int clipCount;
 	};
 	
+	void delete_takes(const QList<TAudioClip*>& takes);
+
 	TProject* m_project;
 	QHash<qint64, SourceData* >	m_sources;
 	QHash<qint64, ClipData* >	m_clips;
+    // Taken out of the project by discard_takes(), freed with the project:
+    // a clip's reader leaves its DiskIO asynchronously
+    QList<ClipData*> m_retiredClips;
+    QList<SourceData*> m_retiredSources;
 	TBufferedAudioStreamReader*			m_silentReadSource;
 	
 	

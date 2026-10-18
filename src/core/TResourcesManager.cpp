@@ -27,6 +27,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheet.h"
 #include "Utils.h"
 #include "TAudioDevice.h"
+#include "TConfig.h"
+#include "TLog.h"
+#include "TProjectManager.h"
+#include "TWaveform.h"
+
+#include <QFile>
 
 
 
@@ -64,8 +70,72 @@ TResourcesManager::~TResourcesManager()
 		delete data;
 	}
 
+    for (ClipData* data : std::as_const(m_retiredClips)) {
+        delete data->clip;
+        delete data;
+    }
+    for (SourceData* data : std::as_const(m_retiredSources)) {
+        delete data->stream;
+        delete data;
+    }
 }
 
+
+void TResourcesManager::discard_takes(const QList<TAudioClip*>& takes)
+{
+    // Only takes that are out of every track and whose source nothing uses
+    QList<TAudioClip*> discarded;
+    QStringList names;
+    for (TAudioClip* take : takes) {
+        ClipData* clip = m_clips.value(take->get_id());
+        SourceData* source = m_sources.value(take->get_readsource_id());
+        if (!clip || !clip->removed || !source || source->clipCount > 0) {
+            TLOG_I("recording", "keeping take {}: still in use", take->get_name().toStdString());
+            continue;
+        }
+        discarded.append(take);
+        names.append(source->stream->get_name());
+    }
+    if (discarded.isEmpty()) {
+        return;
+    }
+
+    const QString behaviour = config().get_property("Recording", "DiscardedTakes", "ask").toString();
+    bool remove = behaviour == "delete";
+    if (behaviour == "ask") {
+        remove = pm().ask_discard(tr("%n recorded take(s) were undone and can not be brought back anymore:\n\n%1\n\n"
+                                     "Delete their audio files from the project?", "", int(discarded.size()))
+                                  .arg(names.join(QLatin1Char('\n'))));
+    }
+    if (!remove) {
+        TLOG_I("recording", "keeping the files of {} discarded take(s)", discarded.size());
+        return;
+    }
+    delete_takes(discarded);
+}
+
+void TResourcesManager::delete_takes(const QList<TAudioClip*>& takes)
+{
+    for (TAudioClip* take : takes) {
+        ClipData* clip = m_clips.take(take->get_id());
+        SourceData* source = m_sources.take(take->get_readsource_id());
+        if (!clip || !source) {
+            continue;
+        }
+        const QString audioPath = source->stream->get_filename();
+        const QString peakPath = TWaveform::peak_path(source->stream);
+        // Out of the project: neither is saved anymore. The objects stay
+        // until the project closes (see m_retiredClips).
+        m_retiredClips.append(clip);
+        m_retiredSources.append(source);
+        emit sourceRemoved(source->stream);
+
+        const bool audioRemoved = QFile::remove(audioPath);
+        QFile::remove(peakPath);
+        TLOG_I("recording", "discarded take {}: {} {}", take->get_name().toStdString(), audioPath.toStdString(),
+               audioRemoved ? "deleted" : "could not be deleted");
+    }
+}
 
 QDomNode TResourcesManager::get_state( QDomDocument doc )
 {
