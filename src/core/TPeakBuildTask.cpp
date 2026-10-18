@@ -103,8 +103,10 @@ bool TPeakBuildTask::start()
     if (rate == 0 || channels <= 0 || m_reportedFrames <= 0) {
         return fail(QStringLiteral("the source has no audio"));
     }
-    if (channels > MaxChannels) {
-        return fail(QStringLiteral("sources with %1 channels are not supported").arg(channels));
+    if (!supports(channels)) {
+        fail(QStringLiteral("sources with %1 channels are not supported").arg(channels));
+        m_state = State::Unsupported;
+        return false;
     }
     if (!QDir().mkpath(QFileInfo(m_peakPath).absolutePath())) {
         return fail(QStringLiteral("cannot create the peak file directory"));

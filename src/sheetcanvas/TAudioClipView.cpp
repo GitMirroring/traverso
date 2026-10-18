@@ -798,6 +798,11 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
         return;
     case TWaveform::State::Failed:
         return;
+    case TWaveform::State::Unsupported:
+        painter->setPen(themer()->get_color("AudioClip:contour"));
+        painter->setFont(themer()->get_font("AudioClip:fontscale:title"));
+        painter->drawText(QRectF(10, 0, 600, m_height), Qt::AlignVCenter, waveform->message());
+        return;
     case TWaveform::State::Ready:
         break;
     }

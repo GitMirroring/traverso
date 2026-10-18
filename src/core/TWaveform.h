@@ -39,7 +39,8 @@ public:
     {
         Building,
         Ready,
-        Failed
+        Failed,
+        Unsupported     // more channels than a peak file holds: no waveform
     };
 
     // source: the clip's reader. The waveform reads samples with a reader
@@ -66,6 +67,8 @@ public:
     State state();
     int progress() const { return m_progress; }
     int channel_count() const;
+    // Why there is no waveform, for the clip to show (Unsupported)
+    QString message() const;
 
     // Columns for the source time range starting at start, see
     // TWaveformColumns::query(). Source::None while not Ready.

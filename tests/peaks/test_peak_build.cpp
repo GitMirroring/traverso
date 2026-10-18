@@ -483,7 +483,9 @@ int main()
     {
         const Signal three = make_signal(3, 5000);
         TPeakBuildTask task(memory_source(three), audioPath, peakPath);
-        CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Failed, "three channels accepted");
+        CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Unsupported && !task.error().isEmpty(),
+              "three channels accepted");
+        CHECK(!TPeakBuildTask::supports(3) && TPeakBuildTask::supports(2) && TPeakBuildTask::supports(1), "supports()");
         const Signal empty = make_signal(1, 0);
         TPeakBuildTask none(memory_source(empty), audioPath, peakPath);
         CHECK(run(none, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Failed, "empty source accepted");

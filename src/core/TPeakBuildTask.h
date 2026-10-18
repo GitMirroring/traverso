@@ -53,11 +53,13 @@ public:
         Written,    // the part file is complete: publish() next
         Done,       // the peak file is in place
         Failed,     // see error()
+        Unsupported,    // more channels than MaxChannels
         Cancelled
     };
 
     // A source with more channels than this cannot be read (TFileIOBuffer)
     static constexpr int MaxChannels = 2;
+    static bool supports(int channelCount) { return channelCount <= MaxChannels; }
 
     TPeakBuildTask(OpenSource openSource, QString audioPath, QString peakPath,
                    int periodShift = TPeakPyramidBuilder::DefaultPeriodShift, qint64 readFrames = 16384);
