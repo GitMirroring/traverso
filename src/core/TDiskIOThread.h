@@ -109,11 +109,14 @@ private:
     TTimeRef            m_seekTransportLocation;
 	
     void stop_disk_thread();
-    void run_idle_tasks(std::chrono::nanoseconds budget);
+    // Runs idle tasks when no stream needs reading; true while tasks remain
+    void run_idle_tasks_when_idle();
+    bool run_idle_tasks(std::chrono::nanoseconds budget);
 
     QMutex                  m_idleTasksMutex;
     std::deque<IdleTask>    m_idleTasks;
     std::atomic<bool>       m_idleWorkAllowed{true};
+    bool                    m_moreIdleWork{false};   // this thread only
 
 public slots:
     void set_output_sample_rate(uint outputSampleRate);

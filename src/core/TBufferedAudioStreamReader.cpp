@@ -342,7 +342,7 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
     // or after our end location no need to fill the buffers
     if ((transportLocation + m_aboutOneToFourSecondsTime) < m_streamStart ||
         transportLocation > m_streamEnd) {
-        m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
+        m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_WINDOW);
         return;
     }
 

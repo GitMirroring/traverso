@@ -159,7 +159,16 @@ bool TDiskIOThread::do_work( )
     // 1: the owner of this DiskIOThread has put at least 1 value via add_processed_audio_thread_frames(nframes_t nframes)
     // usually before or after a process cycle
     // 2: wake_up() has been called by the owner of this object which essentially does the same thing
-    m_audioThreadProcessedFramesQueue->wait_dequeue(audioThreadProcessedFrames);
+    if (m_moreIdleWork) {
+        // Idle work is waiting: do not sleep until the next audio cycle. (Not
+        // by waking this thread through the queue: the audio thread is its
+        // only producer.)
+        if (!m_audioThreadProcessedFramesQueue->try_dequeue(audioThreadProcessedFrames)) {
+            audioThreadProcessedFrames = 0;
+        }
+    } else {
+        m_audioThreadProcessedFramesQueue->wait_dequeue(audioThreadProcessedFrames);
+    }
 
     auto startTime = TTimeRef::get_nanoseconds_since_epoch();
 
@@ -202,7 +211,7 @@ bool TDiskIOThread::do_work( )
     }
 
     if (!workNeeded) {
-        run_idle_tasks(IdleBudget);
+        run_idle_tasks_when_idle();
         auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
         m_doWorktTime.fetch_add(totalTime);
         return true;
@@ -253,6 +262,11 @@ bool TDiskIOThread::do_work( )
         m_transportLocation = m_seekTransportLocation;
         m_seekRequested.store(false);
         emit seekFinished();
+    } else {
+        // Streams out of their window keep the round above going (they look
+        // whether the transport came close), but they are no reason to
+        // leave the idle work waiting
+        run_idle_tasks_when_idle();
     }
 
     auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
@@ -267,10 +281,24 @@ void TDiskIOThread::add_idle_task(IdleTask task)
     m_idleTasks.push_back(std::move(task));
 }
 
-void TDiskIOThread::run_idle_tasks(std::chrono::nanoseconds budget)
+void TDiskIOThread::run_idle_tasks_when_idle()
+{
+    m_moreIdleWork = false;
+    for (TBufferedAudioStream* stream : std::as_const(m_bufferedAudioStreams)) {
+        if (stream->get_buffer_status().needs_disk_work()) {
+            return;
+        }
+    }
+    // More to do: the next round starts at once instead of at the next audio
+    // cycle, so a build runs as fast as the disk allows; every round looks
+    // at the streams first
+    m_moreIdleWork = run_idle_tasks(IdleBudget);
+}
+
+bool TDiskIOThread::run_idle_tasks(std::chrono::nanoseconds budget)
 {
     if (!m_idleWorkAllowed.load(std::memory_order_relaxed)) {
-        return;
+        return false;
     }
     const auto deadline = std::chrono::steady_clock::now() + budget;
 
@@ -279,7 +307,7 @@ void TDiskIOThread::run_idle_tasks(std::chrono::nanoseconds budget)
         {
             QMutexLocker locker(&m_idleTasksMutex);
             if (m_idleTasks.empty()) {
-                return;
+                return false;
             }
             task = std::move(m_idleTasks.front());
             m_idleTasks.pop_front();
@@ -293,9 +321,11 @@ void TDiskIOThread::run_idle_tasks(std::chrono::nanoseconds budget)
             m_idleTasks.push_front(std::move(task));
         }
         if (std::chrono::steady_clock::now() >= deadline) {
-            return;
+            QMutexLocker locker(&m_idleTasksMutex);
+            return !m_idleTasks.empty();
         }
     }
+    return false;
 }
 
 void TDiskIOThread::add_buffered_audio_stream(TBufferedAudioStream* bufferedAudioStream)

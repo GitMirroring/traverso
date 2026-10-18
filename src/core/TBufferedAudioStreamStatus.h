@@ -36,10 +36,23 @@ public:
         QUEUE_SEEKED_TO_NEW_LOCATION,
         FILL_RTBUFFER_DEQUEUE_FAILURE,
         FILL_RTBUFFER_ENQUEUE_FAILURE,
-        QUEUE_ABOUT_TO_BE_DELETED
+        QUEUE_ABOUT_TO_BE_DELETED,
+        // The transport is far from the stream (before its start, after its
+        // end): nothing to read until it comes closer. Out of sync for the
+        // audio thread, but no work for DiskIO.
+        OUT_OF_WINDOW
     };
 
     inline bool out_of_sync() const {return m_syncStatus.load() != IN_SYNC;}
+
+    // Whether DiskIO has to read for this stream: it is out of sync near the
+    // transport, or its buffers are getting empty. A stream out of its
+    // window has nothing to do, so it does not keep DiskIO from idle work.
+    inline bool needs_disk_work() const
+    {
+        const int status = m_syncStatus.load();
+        return status != OUT_OF_WINDOW && (status != IN_SYNC || m_fillStatus <= 80);
+    }
 
     inline void set_sync_status(int status) {
         m_syncStatus.store(status);
@@ -64,12 +77,13 @@ public:
         case FILL_RTBUFFER_DEQUEUE_FAILURE: return QString("Fill RT buffer dequeue failure");
         case FILL_RTBUFFER_ENQUEUE_FAILURE: return QString("Fill RT buffer enqueue failure");
         case QUEUE_ABOUT_TO_BE_DELETED: return QString("Queue about to be deleted");
+        case OUT_OF_WINDOW: return QString("Out of window");
         default: return QString("Syncstatus invalid");
         }
     }
 
 private:
-    int     m_fillStatus;
+    int     m_fillStatus{0};
     std::atomic<int>     m_syncStatus;
 };
 
