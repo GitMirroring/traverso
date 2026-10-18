@@ -130,6 +130,23 @@ qint64 TPeakPyramidBuilder::complete_periods() const
     return periods;
 }
 
+void TPeakPyramidBuilder::release_periods(qint64 periods)
+{
+    // add_block() never reads a block of an earlier chunk (chunks hold an
+    // even number of blocks), so released chunks are not touched again
+    for (Channel& channel : m_channels) {
+        for (int level = 0; level <= m_periodShift && level < MaxLevels; ++level) {
+            LevelStore& store = channel.levels[size_t(level)];
+            const qint64 releasedBlocks = periods << (m_periodShift - level);
+            const qint64 chunks = std::min<qint64>(releasedBlocks >> store.chunkShift, qint64(store.chunks.size()));
+            for (; store.releasedChunks < chunks; ++store.releasedChunks) {
+                store.pages[size_t(store.releasedChunks >> PageShift)][store.releasedChunks & (PageSize - 1)] = nullptr;
+                store.chunks[size_t(store.releasedChunks)].reset();
+            }
+        }
+    }
+}
+
 void TPeakPyramidBuilder::append(const float* const* channels, qint64 frames)
 {
     Q_ASSERT(!m_finished);

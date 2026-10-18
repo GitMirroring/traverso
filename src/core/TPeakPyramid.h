@@ -131,6 +131,12 @@ public:
     // the thread that appends.
     qint64 complete_periods() const;
 
+    // Frees the storage of levels 0..period_shift() that only holds blocks of
+    // the periods before periods (once they are in the peak file). Only for
+    // the thread that appends, and only when no snapshot names those blocks
+    // anymore: later snapshots name them with null chunks.
+    void release_periods(qint64 periods);
+
     // A snapshot of what is complete now; valid while the builder lives
     TPeakLevels levels() const;
 
@@ -147,6 +153,7 @@ private:
         int chunkShift{MinChunkShift};
         std::vector<std::unique_ptr<TPeakBlock[]>> chunks;          // the writer's
         std::vector<std::unique_ptr<const TPeakBlock*[]>> pages;    // sized once, read by snapshots
+        qint64 releasedChunks{0};
         qint64 count{0};
         std::atomic<qint64> publishedCount{0};
 

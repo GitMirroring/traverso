@@ -108,6 +108,9 @@ public:
     // source: writes the remaining records, the tail and the final header
     TPeakFile::Status finish(const TPeakLevels& levels, const TPeakFile::SourceInfo& source, QString* error = nullptr);
 
+    // Closes an unfinished file: it keeps its unfinished header
+    void close() { m_file.close(); }
+
     int period_shift() const { return m_periodShift; }
     qint64 written_periods() const { return m_writtenPeriods; }
 
