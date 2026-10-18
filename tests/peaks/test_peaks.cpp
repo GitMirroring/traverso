@@ -263,7 +263,16 @@ static void test_file()
         };
         TPeakFile::SourceInfo other = source; other.rate = 44100; expect_invalid(other, "rate");
         other = source; other.channelCount = 1; expect_invalid(other, "channels");
-        other = source; other.frameCount += 1; expect_invalid(other, "frames");
+        other = source; other.frameCount -= 1; expect_invalid(other, "fewer frames");
+
+        // A decoder that reports more frames than it delivers: the file holds
+        // the frames that were really read and is valid for that source
+        other = source; other.frameCount += 1000;
+        TPeakFile longer;
+        CHECK(longer.open(path, other) == TPeakFile::Status::Ok, "frames %lld: over-reported source refused", (long long)frames);
+        CHECK(longer.levels().frame_count() == frames && same_levels(longer.levels(), builder->levels()),
+              "frames %lld: over-reported source reads other levels", (long long)frames);
+        longer.close();
         other = source; other.fileSize += 1; expect_invalid(other, "source size");
         other = source; other.modified += 1; expect_invalid(other, "source time");
     }
@@ -299,6 +308,13 @@ static void test_file()
     expect_damaged(patched(36, 3), "level count");
     expect_damaged(patched(64, 5), "level 0 block count");
     expect_damaged(patched(72, 4), "level 0 offset");
+    // An offset with the top bit set must not wrap past the bounds check
+    {
+        QByteArray copy = bytes;
+        const quint64 huge = (quint64(1) << 63) + 64;
+        std::memcpy(copy.data() + 72, &huge, sizeof(huge));
+        expect_damaged(copy, "level 0 offset beyond the file");
+    }
     expect_damaged(bytes.left(bytes.size() - 8), "truncated file");
     expect_damaged(bytes.left(40), "truncated header");
 

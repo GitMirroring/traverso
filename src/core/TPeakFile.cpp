@@ -210,15 +210,19 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
         return Status::Invalid;
     }
 
+    // A decoder can report more frames than it delivers; the build records
+    // the frames that were really there, so the file may hold fewer
     if (header.rate != expected.rate
             || header.channelCount != quint32(expected.channelCount)
-            || header.frameCount != quint64(expected.frameCount)
+            || expected.frameCount < 0
+            || header.frameCount > quint64(expected.frameCount)
             || header.sourceSize != expected.fileSize
             || header.sourceModified != expected.modified) {
         return Status::Invalid;
     }
+    const qint64 frameCount = qint64(header.frameCount);
 
-    const std::vector<qint64> counts = expected_block_counts(expected.frameCount);
+    const std::vector<qint64> counts = expected_block_counts(frameCount);
     if (header.levelCount != counts.size()) {
         return Status::Invalid;
     }
@@ -228,11 +232,14 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
         TPeakFileLevel entry;
         std::memcpy(&entry, m_map + sizeof(TPeakFileHeader) + level * sizeof(TPeakFileLevel), sizeof(entry));
 
+        // Unsigned throughout: a damaged offset must not wrap past the checks
         const qint64 channelBytes = counts[level] * qint64(sizeof(TPeakBlock));
+        const quint64 levelBytes = quint64(channelBytes) * quint64(expected.channelCount);
         if (entry.blockCount != quint64(counts[level])
                 || entry.offset < header.headerSize
                 || (entry.offset & 7) != 0
-                || qint64(entry.offset) > fileSize - channelBytes * expected.channelCount) {
+                || entry.offset > quint64(fileSize)
+                || quint64(fileSize) - entry.offset < levelBytes) {
             return Status::Invalid;
         }
 
@@ -244,7 +251,7 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
         }
     }
 
-    m_levels = TPeakLevels(expected.rate, expected.channelCount, expected.frameCount, std::move(levels));
+    m_levels = TPeakLevels(expected.rate, expected.channelCount, frameCount, std::move(levels));
     return Status::Ok;
 }
 
