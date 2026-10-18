@@ -90,8 +90,15 @@ void TPeakBuildJob::build()
         while (position < frames && !m_cancelled.load()) {
             const nframes_t toRead = nframes_t(std::min<qint64>(ReadChunk, frames - position));
             const int read = m_source->file_read(buffer, nframes_t(position), toRead);
-            if (read <= 0) {
+            if (read < 0 || (read == 0 && position == 0)) {
                 m_error = QStringLiteral("reading the source failed at frame %1").arg(position);
+                break;
+            }
+            if (read == 0) {
+                // The decoder reported more frames than it delivers (MP3:
+                // one frame short is common); the pyramid ends here
+                TLOG_I("peaks", "{}: the source ends at frame {}, {} frames before the length it reports",
+                       m_peakPath.toStdString(), position, frames - position);
                 break;
             }
             for (uint c = 0; c < channels; ++c) {
