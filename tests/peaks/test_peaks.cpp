@@ -204,12 +204,24 @@ static void test_codes()
         }
         CHECK(TPeakLevels::code_at_or_above(power) == TPeakLevels::OneCode + k * TPeakLevels::CodesPerOctave, "2^%d is a code", k);
     }
-    // Nearest: never more than half a step off
-    for (int i = 0; i <= 20000; ++i) {
-        const float value = float(std::pow(10.0, (-160.0 + i * 0.009) / 20.0));
-        const float nearest = TPeakLevels::to_value(TPeakLevels::code_nearest(value));
-        CHECK(std::fabs(nearest - value) <= value * float(step - 1.0) * 0.5f * 1.0001f, "nearest of %g is %g", value, nearest);
+    // Nearest: one of the two neighbours, the nearer one (silence only below
+    // half the smallest code), and within half a step inside the range
+    for (int i = 0; i <= 230000; ++i) {
+        const float value = float(std::pow(10.0, (-200.0 + i * 0.001) / 20.0));
+        const qint16 code = TPeakLevels::code_nearest(value);
+        const qint16 below = TPeakLevels::code_at_or_below(value);
+        const qint16 above = TPeakLevels::code_at_or_above(value);
+        const double distance = std::fabs(double(TPeakLevels::to_value(code)) - value);
+        CHECK((code == below || code == above) && (code != 0 || value <= TPeakLevels::to_value(1) * 0.5f)
+              && distance <= std::min(std::fabs(double(TPeakLevels::to_value(below)) - value),
+                                      std::fabs(double(TPeakLevels::to_value(above)) - value)),
+              "nearest of %g is %d (%d .. %d)", value, code, below, above);
+        if (value > TPeakLevels::to_value(2) && value < TPeakLevels::max_value()) {
+            CHECK(distance <= value * (step - 1.0) * 0.5 * 1.0001, "nearest of %g is %g", value, TPeakLevels::to_value(code));
+        }
     }
+    CHECK(TPeakLevels::code_nearest(std::ldexp(1.0f, -28)) == 1, "nearest of 2^-28");
+    CHECK(TPeakLevels::code_nearest(0.0f) == 0 && TPeakLevels::code_nearest(std::nanf("")) == 0, "nearest of silence");
     CHECK(TPeakLevels::code_at_or_above(0.0f) == 0 && TPeakLevels::code_at_or_below(0.0f) == 0, "zero");
     // Only 0.0 is silence: a value outward from zero gets at least one step,
     // also below the range (a min rounds down, a max up)
@@ -478,16 +490,21 @@ static void test_file()
     expect_damaged(patched(8, 3), "version 3");
     expect_damaged(patched(8, 4), "version 4");
     expect_damaged(patched(8, 5), "version 5 (the linear codes, no RMS)");
+    // Offsets in TPeakFileHeader: 8 version, 12 byte order, 16 header size,
+    // 28 block frames, 32 codes per octave, 36 period shift, 40 planes,
+    // 44 padding, 48 frame count (TPeakFile.cpp asserts 80 bytes and 48)
+    expect_damaged(patched(32, 512), "codes per octave");
     expect_damaged(patched(40, 1), "planes: min/max only");
     expect_damaged(patched(40, 7), "planes: one more than this version knows");
+    expect_damaged(patched(44, 1), "padding (header checksum)");
     expect_damaged(patched(12, 0x04030201), "byte order");
     expect_damaged(patched(16, 64), "header size");
     expect_damaged(patched(28, 32), "block frames");
     expect_damaged(patched(36, 4), "period shift");
     expect_damaged(patched(36, 1000), "period shift out of range");
-    expect_damaged(patched(40, 0), "frame count 0 (unfinished)");
-    expect_damaged(patched(40, 49000), "frame count with another layout");
-    expect_damaged(patched(40, 49999), "frame count with the same layout (header checksum)");
+    expect_damaged(patched(48, 0), "frame count 0 (unfinished)");
+    expect_damaged(patched(48, 49000), "frame count with another layout");
+    expect_damaged(patched(48, 49999), "frame count with the same layout (header checksum)");
     expect_damaged(bytes.left(bytes.size() - 4), "truncated file");
     expect_damaged(bytes + QByteArray(4, '\0'), "trailing bytes");
     expect_damaged(bytes.left(40), "truncated header");
@@ -668,15 +685,21 @@ static void test_columns()
 // columns from the samples agree with the samples
 static void test_rms()
 {
+    // The RMS is the nearest code: within half a step, plus what float
+    // sums of squares lose (about 1e-6)
     const double step = TPeakCodeMath::octave_fraction(1);
+    const double half = std::sqrt(step) * 1.00001;
     auto within_a_step = [&](qint16 code, double expected) {
         const double value = TPeakLevels::to_value(code);
         if (expected <= TPeakLevels::to_value(1)) {
             return value <= TPeakLevels::to_value(1);
         }
-        return value <= expected * step * 1.000001 && value >= expected / (step * 1.000001);
+        return value <= expected * half && value >= expected / half;
     };
 
+    // Samples beyond the code range count at its top, like min and max
+    const double limitSquare = double(TPeakLevels::max_value()) * TPeakLevels::max_value();
+    auto square = [&](float sample) { return std::min(double(sample) * sample, limitSquare); };
     for (qint64 frames : {qint64(1), qint64(63), qint64(64), qint64(65), qint64(1000), qint64(123457), random_between(200000, 400000)}) {
         const int channelCount = int(random_between(1, 2));
         const Signal signal = make_signal(44100, channelCount, frames);
@@ -690,7 +713,7 @@ static void test_rms()
                     const qint64 last = std::min(first + (qint64(TPeakLevels::BlockFrames) << level), frames);
                     double squares = 0.0;
                     for (qint64 n = first; n < last; ++n) {
-                        squares += double(signal.channels[size_t(c)][size_t(n)]) * signal.channels[size_t(c)][size_t(n)];
+                        squares += square(signal.channels[size_t(c)][size_t(n)]);
                     }
                     const double expected = std::sqrt(squares / double(last - first));
                     CHECK(levels.block_frames(level, k) == last - first, "frames %lld level %d block %lld: %lld frames", (long long)frames,
@@ -704,7 +727,7 @@ static void test_rms()
                 const qint64 first = k << (TPeakLevels::BlockFramesShift + level);
                 double squares = 0.0;
                 for (qint64 n = first; n < frames; ++n) {
-                    squares += double(signal.channels[size_t(c)][size_t(n)]) * signal.channels[size_t(c)][size_t(n)];
+                    squares += square(signal.channels[size_t(c)][size_t(n)]);
                 }
                 CHECK(within_a_step(levels.rms(level, c, k), std::sqrt(squares / double(frames - first))),
                       "frames %lld level %d: the last block's RMS", (long long)frames, level);
@@ -736,8 +759,34 @@ static void test_rms()
                 CHECK(within_a_step(levels.rms(level, 0, i), expected), "sine %g level %d block %d: %.9g", amplitude, level, i,
                       TPeakLevels::to_value(levels.rms(level, 0, i)));
                 const double column = out[size_t(i)].rms;
-                CHECK(column <= expected * step * 1.000001 && column >= expected / (step * 1.000001), "sine %g level %d column %d: %.9g",
+                CHECK(column <= expected * half && column >= expected / half, "sine %g level %d column %d: %.9g",
                       amplitude, level, i, column);
+            }
+        }
+    }
+
+    // A NaN counts as silence, an inf and values past the code range at its
+    // top: the blocks above stay finite
+    {
+        Signal signal{48000, {std::vector<float>(65536, 0.1f)}};
+        signal.channels[0][1000] = std::nanf("");
+        signal.channels[0][30000] = std::numeric_limits<float>::infinity();
+        signal.channels[0][50000] = 1e30f;
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
+        const TPeakLevels levels = builder->levels();
+        const double limit = TPeakLevels::max_value();
+        for (int level = 0; level < levels.level_count(); ++level) {
+            for (qint64 k = 0; k < levels.block_count(level); ++k) {
+                const qint64 first = k << (TPeakLevels::BlockFramesShift + level);
+                const qint64 last = std::min<qint64>(first + (qint64(TPeakLevels::BlockFrames) << level), 65536);
+                double squares = 0.0;
+                for (qint64 n = first; n < last; ++n) {
+                    const double sample = signal.channels[0][size_t(n)];
+                    squares += sample == sample ? std::min(sample * sample, limit * limit) : 0.0;
+                }
+                const double expected = std::sqrt(squares / double(last - first));
+                CHECK(within_a_step(levels.rms(level, 0, k), expected), "broken samples: level %d block %lld: RMS %g expected %g",
+                      level, (long long)k, TPeakLevels::to_value(levels.rms(level, 0, k)), expected);
             }
         }
     }
@@ -823,6 +872,14 @@ static void test_growing_pyramid()
             }
             CHECK(snapshot.block_count(0) >= lastCount, "level 0 shrank");
             lastCount = snapshot.block_count(0);
+            // The frame count covers the blocks named: all of them full
+            // until finish() closes the partial last one
+            if (snapshot.frame_count() < length) {
+                CHECK(snapshot.frame_count() >= snapshot.block_count(0) * TPeakLevels::BlockFrames,
+                      "%lld frames do not cover %lld blocks", (long long)snapshot.frame_count(), (long long)snapshot.block_count(0));
+            } else {
+                CHECK(snapshot.frame_count() > (snapshot.block_count(0) - 1) * TPeakLevels::BlockFrames, "frames after finish");
+            }
             for (int level = 0; level < snapshot.level_count(); ++level) {
                 CHECK(snapshot.block_count(level) <= final.block_count(level), "snapshot level %d has more blocks than the final pyramid", level);
                 for (int i = 0; i < 200; ++i) {
@@ -830,7 +887,8 @@ static void test_growing_pyramid()
                     for (int c = 0; c < 2; ++c) {
                         const TPeakBlock& x = snapshot.block(level, c, k);
                         const TPeakBlock& y = final.block(level, c, k);
-                        CHECK(x.min == y.min && x.max == y.max, "snapshot level %d block %lld differs", level, (long long)k);
+                        CHECK(x.min == y.min && x.max == y.max && snapshot.rms(level, c, k) == final.rms(level, c, k),
+                              "snapshot level %d block %lld differs", level, (long long)k);
                     }
                 }
             }

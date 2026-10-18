@@ -111,7 +111,9 @@ static int magnitude_nearest(float magnitude)
     const float high = above == TPeakLevels::CodesPerOctave ? 2.0f : mantissas[size_t(above)];
     const float low = mantissas[size_t(std::max(above - 1, 0))];
     const int index = (above > 0 && mantissa - low <= high - mantissa) ? above - 1 : above;
-    return std::clamp(octave * TPeakLevels::CodesPerOctave + index, 0, TPeakLevels::MaxCode);
+    // Code 0 is silence, not 2^-28: at the bottom octave's first step the
+    // nearest code is 1
+    return std::clamp(octave * TPeakLevels::CodesPerOctave + index, 1, TPeakLevels::MaxCode);
 }
 
 static void combine(TPeakBlock& into, const TPeakBlock& block)
@@ -322,6 +324,10 @@ void TPeakPyramidBuilder::append(const float* const* channels, qint64 frames)
         return;
     }
 
+    // A square counts a sample at most at the top of the code range, a NaN
+    // as silence: one broken sample (a plugin, a float file) must not take
+    // the RMS of every block above it along (they are made from it)
+    const float limit = TPeakLevels::max_value();
     qint64 position = 0;
     while (position < frames) {
         const int count = int(std::min<qint64>(frames - position, TPeakLevels::BlockFrames - m_blockFill));
@@ -334,7 +340,9 @@ void TPeakPyramidBuilder::append(const float* const* channels, qint64 frames)
             for (int i = 0; i < count; ++i) {
                 low = std::min(low, samples[i]);
                 high = std::max(high, samples[i]);
-                squares += samples[i] * samples[i];
+                const float magnitude = std::fabs(samples[i]);
+                const float bounded = magnitude <= limit ? magnitude : (magnitude > limit ? limit : 0.0f);
+                squares += bounded * bounded;
             }
             m_channels[c].min = low;
             m_channels[c].max = high;
