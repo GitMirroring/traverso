@@ -19,8 +19,11 @@ blind review, as the verification work order asks.
 | 934e290b | verification tests; fix of a wrong stress check |
 | 8bc953c6 | faster encoding and lookups (found by the measurements) |
 | 884f047d | measurement program `tests/peaks/measure_peaks.cpp` |
+| 10d984dc, 098f3180, d7a5a13b, c8a17cd6 | fixes from the blind review (section 8) |
 
-Line numbers refer to 884f047d.
+Line numbers in sections 1 and 2 refer to 884f047d (`git show
+884f047d:<file>`), the state that was verified; section 8 lists what the
+review changed after it.
 
 ## 1. Agreed points
 
@@ -57,7 +60,7 @@ Line numbers refer to 884f047d.
 | Partial last block weighted by its frames | ✓ | `TPeakPyramid.cpp:473`; test `rms` (also a mutation check: weighting the partial block as full makes 35 checks fail) |
 | Column RMS = √(Σ ms × frames / Σ frames); from the samples directly | ✓ | `TPeakPyramid.cpp:200` `range(..., meanSquare)`, `TWaveformColumns.cpp:212`; samples `:303` |
 | Live recording: RMS in the snapshot | ✓ | `TPeakRecording.cpp:178` (memory), `:194` (mapping) |
-| Band in the column painter | ✓, not seen on screen | `TAudioClipView.cpp:861` (darker shade), `:939` (band). Only in fill mode; checked by building and a headless run, not by eye |
+| Band in the column painter | ✓, not seen on screen | `TAudioClipView.cpp:861` (darker shade), `:939` (band). Only in fill mode, and since 098f3180 not for columns from the samples; checked by building and a headless run, not by eye |
 
 The pending value is a double, not a float: the mean square of a level's
 unpaired block, kept exactly until its pair arrives.
@@ -67,7 +70,7 @@ unpaired block, kept exactly until its pair arrives.
 | Point | | Where |
 |---|---|---|
 | One bump to v6; older files Invalid, built again | ✓ | `TPeakFile.h:72`; test `file` (versions 2 to 5 refused) |
-| The header names the planes (min/max, RMS); `end() == fileSize` and the header checksum fit the layout | ✓ | `TPeakFile.cpp:36` (`planes`), `:289`, `:290`, `:308`; test `file` |
+| The header names the planes (min/max, RMS); `end() == fileSize` and the header checksum fit the layout | ✓ (code), test ✗ until 10d984dc | `TPeakFile.cpp:36` (`planes`), `:289`, `:290`, `:308`. The test `file` did *not* cover the checksum at 884f047d: its frame-count cases patched offset 40, which in the 80-byte header is `planes`, so they were refused by the planes check. Found by the review, fixed in 10d984dc (offset 48, padding and codes per octave added). |
 | Recording and build write both planes per period; streaming unchanged | ✓ | `TPeakFile.cpp:454` (records), `:504` (tail); per level min/max of every channel, then the RMS codes, so a period is still one record |
 | More than two channels: `Unsupported` with a message, not `Failed` | ✓ | `TWaveform.h:43`, `TWaveform.cpp:139`, view `TAudioClipView.cpp:801` |
 | BlockFrames is 64 | ✓ | `TPeakPyramid.h:108` |
@@ -142,6 +145,9 @@ all peak tests passed
 
 ## 5. Measurements
 
+Measured at 884f047d. After the review fixes (c8a17cd6): the WAV build 0.95
+s, the column queries 57 / 79 / 301 µs, the same as below.
+
 One hour of stereo pink noise at 48 kHz, hard-limited at −1 dBFS (sox),
 as WAV, FLAC (−5) and MP3 (320 kbit/s). Release builds (GCC 15, -O2),
 `tests/peaks/measure_peaks.cpp` compiled against v5 (master 929ffc19) and
@@ -196,7 +202,10 @@ the length of the recording. CPU: 284 against 564 ms for 80 track-minutes.
 
 ## 6. Code count
 
-Code lines only (no comments, no blank lines), against 929ffc19:
+Code lines only (no comments, no blank lines), against 929ffc19, at
+884f047d (after the review, at c8a17cd6: src +483 −82 net +401, tests
++624 −25 net +599; the review fixes added the per-block NaN rule, the
+recorded-blocks query, the chunk run helper and tests):
 
 | File | added | removed | net |
 |---|---|---|---|
@@ -247,3 +256,29 @@ tests/peaks/test_peaks.cpp
 ```
 
 `git diff 929ffc19..peaks-v6 -- <files>` gives them in one go.
+
+## 8. Blind review (fable-xhigh-reviewer, 2026-10-19)
+
+No critical or high findings. The reviewer built both suites (GCC, and
+Clang with `TRAVERSO_TSAN`): green, 0 TSan warnings. It checked the encoder
+exhaustively over all 276,824,064 floats in [2^-29, 16) (outward rounding,
+smallest/largest code, symmetry, saturation, NaN, inf, denormals, −32768),
+the memory ordering of frames before counts, the RMS weighting in growing,
+finished and capped snapshots, the file offsets against the writer, and
+max_amplitude; all correct.
+
+| # | Severity | Finding | Done |
+|---|---|---|---|
+| 1 | medium | The header tests for the frame count patched offset 40 (`planes` in the v6 header), so the header checksum was not tested, and the report claimed it was | 10d984dc: offset 48; padding and codes per octave tested too; this report corrected |
+| 2 | medium | One NaN sample made a block's mean square NaN and, through the exact parents, the RMS of every block above it (an inf the same with the top code): the band vanished at every zoom | 10d984dc, then c8a17cd6: a level-0 block whose sum of squares is not finite gets its peak, clamped to the code range; per block, not per sample (a guard per sample cost a third of the build time); tests with NaN and ±inf, mutation-checked |
+| 3 | low | `code_nearest()` of a value at 2^-28 gave 0 (silence) instead of code 1 | 10d984dc; the nearest test now sweeps −200 … +30 dB and checks it is the nearer neighbour |
+| 4 | low | With the frames published first, a recording's length could be a block ahead of what a read has: the last column could paint empty for a frame | 098f3180: the length comes from the published blocks |
+| 5 | low | The RMS band was also drawn for columns from the samples, darkening part of the line | 098f3180: no band for sample columns |
+| 6 | low (design) | The query always computes the RMS, also when the band is not drawn (outline mode) | open, for the user: the same choice as deviation 1 |
+| 7 | low | `State::Unsupported` of the build task went through `fail()`, which logged "building failed" as a warning | 098f3180: logged as not built |
+| 8 | low (tests) | The growing-pyramid test did not check the RMS nor the frames covering the blocks; the RMS tests allowed a whole step for a nearest code | 10d984dc |
+| 9 | nits | Duplicated decoding and chunk arithmetic; vectors without reserve; the ten roots recomputed per table entry (+0.18 s per translation unit with Clang); the measurement program in `all`; a negative read in it | d7a5a13b (0.12 s less per translation unit measured) |
+
+Still open after the review: the RMS opt-in (6 and deviation 1), and
+looking at the band on screen (5).
+
