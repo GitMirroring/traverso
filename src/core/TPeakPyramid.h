@@ -105,7 +105,10 @@ class TPeakPyramidBuilder
 {
 public:
     static constexpr int MaxLevels = 40;
-    static constexpr qint64 MaxLevel0Blocks = qint64(1) << 28;   // 2^34 frames, a day at 192 kHz
+    // 2^34 frames, a day at 192 kHz. The audio readers stop sooner, at 2^32
+    // frames (6.2 hours at 192 kHz, 24.8 at 48 kHz): their positions are
+    // 32-bit.
+    static constexpr qint64 MaxLevel0Blocks = qint64(1) << 28;
 
     // A period is 2^periodShift level-0 blocks. Within a period every level
     // L <= periodShift has exactly 2^(periodShift - L) blocks, so all those

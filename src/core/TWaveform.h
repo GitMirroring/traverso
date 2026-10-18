@@ -76,7 +76,8 @@ public:
     TWaveformColumns::Source columns(const TTimeRef& start, const TTimeRef& columnWidth, int count, TWaveformColumn* out);
 
     // The highest |sample| of all channels between start and end (source
-    // time), exact; -1 while not Ready
+    // time), exact; -1 while not Ready or while the peak file is checked:
+    // a damaged file must not set a clip's gain
     float max_amplitude(const TTimeRef& start, const TTimeRef& end);
 
     // The zero crossing of the source nearest to time, at most maxDistance

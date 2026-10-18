@@ -181,13 +181,21 @@ void TWaveform::build_finished()
 
     if (m_verifying) {
         m_verifying = false;
-        // Not damaged, or nobody could check it (its DiskIO went; its layout
-        // is right): it stays in use
-        if (!result.ok && !build.isCanceled()) {
+        if (result.ok) {
+            // The job that answered can be a build that replaced the file
+            // under this mapping (the file was damaged, another waveform of
+            // the source found out first): map what is on disk now
+            if (m_file.open(m_peakPath, source_info()) != TPeakFile::Status::Ok) {
+                start_build("the peak file changed while it was checked");
+            }
+            emit ready();
+        } else if (!build.isCanceled()) {
             m_file.close();
             start_build("the peak file is damaged");
             emit ready();   // the views paint the build instead
         }
+        // Cancelled: nobody could check it (its DiskIO went; its layout is
+        // right), it stays in use
         return;
     }
 
@@ -226,7 +234,7 @@ TWaveformColumns::Source TWaveform::columns(const TTimeRef& start, const TTimeRe
 
 float TWaveform::max_amplitude(const TTimeRef& start, const TTimeRef& end)
 {
-    if (state() != State::Ready || m_live) {
+    if (state() != State::Ready || m_live || m_verifying) {
         return -1.0f;
     }
     return TWaveformColumns::max_amplitude(m_file.levels(), this,

@@ -913,7 +913,7 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
     }
 
     // Exact, from the peak pyramid plus a few samples; -1 while the peak
-    // file is still being built
+    // file is still being built or checked
     audio_sample_t maxamp = m_waveform ? m_waveform->max_amplitude(m_sourceStartLocation, m_sourceEndLocation) : -1.0f;
     if (maxamp < 0.0f) {
         PWARN("AudioClip::normalization: the waveform's peak data is not ready yet");
