@@ -729,6 +729,28 @@ static void test_growing_pyramid()
     }
 }
 
+// The bound of the real maximum: never below it, at most one code step above
+// (when it is inside the code range), exact when samples decide
+static bool within_a_step(float amplitude, float expected)
+{
+    const float step = float(TPeakCodeMath::octave_fraction(1));
+    if (expected <= TPeakLevels::to_value(1)) {
+        return amplitude >= expected && amplitude <= TPeakLevels::to_value(1);
+    }
+    return amplitude >= expected && amplitude <= expected * step * 1.000001f;
+}
+
+static float brute_max(const Signal& signal, qint64 first, qint64 last)
+{
+    float expected = 0.0f;
+    for (qint64 n = std::max<qint64>(first, 0); n < std::min(last, signal.frames()); ++n) {
+        for (const auto& channel : signal.channels) {
+            expected = std::max(expected, std::fabs(channel[size_t(n)]));
+        }
+    }
+    return expected;
+}
+
 static void test_max_amplitude()
 {
     for (int round = 0; round < 400; ++round) {
@@ -746,22 +768,82 @@ static void test_max_amplitude()
         for (int range = 0; range < 10; ++range) {
             const qint64 first = random_between(-100, frames + 100);
             const qint64 last = random_between(first - 10, frames + 200);
-            float expected = 0.0f;
-            for (qint64 n = std::max<qint64>(first, 0); n < std::min(last, frames); ++n) {
-                for (int c = 0; c < channelCount; ++c) {
-                    expected = std::max(expected, std::fabs(signal.channels[size_t(c)][size_t(n)]));
-                }
-            }
+            const float expected = brute_max(signal, first, last);
             memory.reads = 0;
             const float amplitude = TWaveformColumns::max_amplitude(builder->levels(), &memory, first, last);
-            CHECK(amplitude == expected, "round %d range %lld..%lld: %f expected %f", round, (long long)first, (long long)last,
-                  amplitude, expected);
-            // Reads: the two partial blocks plus the candidate blocks
-            const qint64 covered = std::min(last, frames) - std::max<qint64>(first, 0);
-            if (covered > 4 * TPeakLevels::BlockFrames) {
-                CHECK(memory.reads < covered, "round %d: read %lld of %lld frames", round, (long long)memory.reads, (long long)covered);
+            // Saturated (the signal has spikes past +24 dB): exact through the
+            // samples of those blocks
+            if (expected >= TPeakLevels::max_value()) {
+                CHECK(amplitude == expected, "round %d range %lld..%lld: saturated %f expected %f", round, (long long)first,
+                      (long long)last, amplitude, expected);
+                continue;
+            }
+            CHECK(within_a_step(amplitude, expected), "round %d range %lld..%lld: %.9g expected %.9g", round, (long long)first,
+                  (long long)last, amplitude, expected);
+            // Only the two partial blocks at the ends are read
+            CHECK(memory.reads <= 2 * TPeakLevels::BlockFrames, "round %d: read %lld frames", round, (long long)memory.reads);
+        }
+    }
+
+    // A hard-limited signal: every block at the ceiling, still nothing but
+    // the ends is read
+    {
+        Signal signal = make_signal(48000, 2, 500000);
+        for (auto& channel : signal.channels) {
+            for (float& sample : channel) {
+                sample = std::clamp(sample * 10.0f, -0.891f, 0.891f);
             }
         }
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        MemorySource memory(signal);
+        for (int range = 0; range < 50; ++range) {
+            const qint64 first = random_between(0, 250000);
+            const qint64 last = random_between(first + 1, 500000);
+            memory.reads = 0;
+            const float amplitude = TWaveformColumns::max_amplitude(builder->levels(), &memory, first, last);
+            CHECK(within_a_step(amplitude, brute_max(signal, first, last)) && memory.reads <= 2 * TPeakLevels::BlockFrames,
+                  "limited %lld..%lld: %.9g (read %lld)", (long long)first, (long long)last, amplitude, (long long)memory.reads);
+        }
+    }
+
+    // A peak just outside the range, in a block the range shares: not counted
+    {
+        Signal signal{48000, {std::vector<float>(20000)}};
+        for (size_t n = 0; n < signal.channels[0].size(); ++n) {
+            signal.channels[0][n] = float(0.1 * std::sin(double(n) * 0.05));
+        }
+        signal.channels[0][64 * 10 + 5] = 0.99f;     // block 10, before the range
+        signal.channels[0][64 * 200 + 60] = -0.98f;  // block 200, after it
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        MemorySource memory(signal);
+        const qint64 first = 64 * 10 + 20;
+        const qint64 last = 64 * 200 + 40;
+        const float amplitude = TWaveformColumns::max_amplitude(builder->levels(), &memory, first, last);
+        CHECK(within_a_step(amplitude, brute_max(signal, first, last)) && amplitude < 0.9f,
+              "a peak outside the range counted: %.9g", amplitude);
+    }
+
+    // A float source past +24 dB: the saturated blocks are read, exactly
+    {
+        Signal signal = make_signal(48000, 2, 100000);
+        signal.channels[1][77777] = -30.5f;
+        signal.channels[0][1234] = 25.0f;
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        MemorySource memory(signal);
+        CHECK(TWaveformColumns::max_amplitude(builder->levels(), &memory, 1000, 99000) == 30.5f, "saturated source");
+        CHECK(TWaveformColumns::max_amplitude(builder->levels(), &memory, 1000, 70000) == 25.0f, "saturated source, one block");
+    }
+
+    // A signal of 1e-9 (-180 dB), below the code range: still not silence
+    {
+        Signal signal = make_signal(48000, 1, 10000);
+        for (qint64 n = 0; n < signal.frames(); ++n) {
+            signal.channels[0][size_t(n)] = float(1e-9 * std::sin(double(n) * 0.01));
+        }
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        MemorySource memory(signal);
+        const float amplitude = TWaveformColumns::max_amplitude(builder->levels(), &memory, 100, 9000);
+        CHECK(amplitude > 0.0f && within_a_step(amplitude, brute_max(signal, 100, 9000)), "1e-9 signal: %g", amplitude);
     }
 }
 

@@ -58,13 +58,14 @@ float TWaveformColumns::max_amplitude(const TPeakLevels& levels, TWaveformSample
         return max_of_samples(first, last);
     }
 
+    // The partial blocks at both ends hold frames outside the range: their
+    // samples decide
     float amplitude = std::max(max_of_samples(first, firstBlock << TPeakLevels::BlockFramesShift),
                                max_of_samples(lastBlock << TPeakLevels::BlockFramesShift, last));
 
-    // A stored block span contains the real one and is at most one code
-    // step wider, so the real maximum of the blocks is within one step below
-    // the bound, and only blocks whose stored amplitude reaches that can
-    // hold it
+    // The blocks between: the pyramid's bound. A stored max is rounded up and
+    // a min down, so the bound is never below the real maximum and at most
+    // one code step above it
     auto stored_amplitude = [](const TPeakBlock& block) {
         return std::max(std::fabs(TPeakLevels::to_value(block.min)), std::fabs(TPeakLevels::to_value(block.max)));
     };
@@ -72,22 +73,20 @@ float TWaveformColumns::max_amplitude(const TPeakLevels& levels, TWaveformSample
     for (int c = 0; c < channels; ++c) {
         bound = std::max(bound, stored_amplitude(levels.range(c, firstBlock, lastBlock)));
     }
-    // A saturated block (|sample| beyond the stored range) says nothing
-    // about how far beyond, so every saturated block is read
-    const bool saturated = bound >= TPeakLevels::max_value();
-    if (!saturated && bound <= amplitude) {
-        return amplitude;
+    if (bound < TPeakLevels::max_value()) {
+        return std::max(amplitude, bound);
     }
-    const float threshold = saturated ? bound
-        : std::max(amplitude, TPeakLevels::to_value(qint16(TPeakLevels::code_at_or_below(bound) - 1)));
+
+    // Saturated: a block beyond the code range (+24 dB) only says that it is
+    // beyond, so those blocks are read. The others are below every one of them.
     for (qint64 block = firstBlock; block < lastBlock; ++block) {
-        bool candidate = false;
-        for (int c = 0; c < channels && !candidate; ++c) {
-            candidate = stored_amplitude(levels.block(0, c, block)) >= threshold;
+        bool saturated = false;
+        for (int c = 0; c < channels && !saturated; ++c) {
+            saturated = stored_amplitude(levels.block(0, c, block)) >= TPeakLevels::max_value();
         }
-        if (candidate) {
+        if (saturated) {
             const qint64 from = block << TPeakLevels::BlockFramesShift;
-            amplitude = std::max(amplitude, max_of_samples(from, std::min(from + TPeakLevels::BlockFrames, last)));
+            amplitude = std::max(amplitude, max_of_samples(from, from + TPeakLevels::BlockFrames));
         }
     }
     return amplitude;

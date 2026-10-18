@@ -907,7 +907,8 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
         target -= FLT_EPSILON;
     }
 
-    // Exact, from the peak pyramid plus a few samples; -1 while the peak
+    // From the peak pyramid plus a few samples, at most 0.006 dB above the
+    // real peak (the gain is never too high); -1 while the peak
     // file is still being built
     audio_sample_t maxamp = m_waveform ? m_waveform->max_amplitude(m_sourceStartLocation, m_sourceEndLocation) : -1.0f;
     if (maxamp < 0.0f) {
