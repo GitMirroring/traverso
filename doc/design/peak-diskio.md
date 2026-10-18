@@ -47,7 +47,8 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
 - **Header**, written at once with frame count 0 (= unfinished). Finish adds
   the frame count, the source's size and modification time (a recording's
   file is complete only then) and the checksum over all block data in file
-  order. A file with frame count 0 or a checksum mismatch is Invalid and is
+  order and the header itself (a damaged period shift or frame count can
+  keep the file size the same). A file with frame count 0 or a checksum mismatch is Invalid and is
   built again.
 - The file is written in place (no temporary file, no rename): until finish
   its header says unfinished.

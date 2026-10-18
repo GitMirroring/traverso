@@ -249,65 +249,142 @@ static void test_pyramid()
     }
 }
 
+// Writes signal's pyramid as a stream: a record whenever an append completes
+// periods, like a recording or a build does, then finish()
+static bool write_streamed(const QString& path, const Signal& signal, int periodShift, const TPeakFile::SourceInfo& source,
+                           std::unique_ptr<TPeakPyramidBuilder>* builderOut, bool finish = true)
+{
+    auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()), periodShift);
+    TPeakFileWriter writer;
+    QString error;
+    bool ok = writer.open(path, signal.rate, int(signal.channels.size()), periodShift, &error) == TPeakFile::Status::Ok;
+    qint64 position = 0;
+    while (ok && position < signal.frames()) {
+        const qint64 count = std::min(random_between(1, 5000), signal.frames() - position);
+        std::vector<const float*> pointers;
+        for (const auto& channel : signal.channels) {
+            pointers.push_back(channel.data() + position);
+        }
+        builder->append(pointers.data(), count);
+        position += count;
+        if (builder->complete_periods() > writer.written_periods()) {
+            ok = writer.write_periods(builder->levels(), builder->complete_periods(), &error) == TPeakFile::Status::Ok;
+        }
+    }
+    if (ok && finish) {
+        builder->finish();
+        ok = writer.finish(builder->levels(), source, &error) == TPeakFile::Status::Ok;
+    }
+    CHECK(ok, "streamed write: %s", qPrintable(error));
+    *builderOut = std::move(builder);
+    return ok;
+}
+
 static void test_file()
 {
     QTemporaryDir dir;
     CHECK(dir.isValid(), "no temporary directory");
     const QString path = dir.filePath("source.peaks");
 
-    for (qint64 frames : {qint64(0), qint64(1), qint64(64), qint64(1000), qint64(123457)}) {
-        const Signal signal = make_signal(48000, 2, frames);
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
+    // Lengths around the edges of blocks and periods, for several period shifts
+    for (int periodShift : {0, 1, 3, 5, 14}) {
+        const qint64 period = qint64(TPeakLevels::BlockFrames) << periodShift;
+        std::vector<qint64> lengths = {1, 63, 64, 65, 1000, period - 1, period, period + 1, 3 * period - 64, 3 * period + 1, 123457};
+        for (qint64 frames : lengths) {
+            if (frames <= 0 || frames > 2000000) {
+                continue;
+            }
+            const int channelCount = int(random_between(1, 3));
+            const Signal signal = make_signal(48000, channelCount, frames);
+            const TPeakFile::SourceInfo source{48000, channelCount, frames, 1234567, 1760000000000};
 
-        TPeakFile::SourceInfo source{48000, 2, frames, 1234567, 1760000000000};
-        QString error;
-        CHECK(TPeakFile::write(path, builder->levels(), source, &error) == TPeakFile::Status::Ok, "write: %s", qPrintable(error));
+            // In one go and as a stream: the same file
+            const std::unique_ptr<TPeakPyramidBuilder> whole = build(signal, true, true, periodShift);
+            QString error;
+            CHECK(TPeakFile::write(path, whole->levels(), source, &error, periodShift) == TPeakFile::Status::Ok,
+                  "shift %d frames %lld: write: %s", periodShift, (long long)frames, qPrintable(error));
+            QFile oneGo(path);
+            CHECK(oneGo.open(QIODevice::ReadOnly), "reopen");
+            const QByteArray oneGoBytes = oneGo.readAll();
+            oneGo.close();
 
+            std::unique_ptr<TPeakPyramidBuilder> streamed;
+            write_streamed(path, signal, periodShift, source, &streamed);
+            QFile streamedFile(path);
+            CHECK(streamedFile.open(QIODevice::ReadOnly), "reopen");
+            CHECK(streamedFile.readAll() == oneGoBytes, "shift %d frames %lld: streamed file differs", periodShift, (long long)frames);
+            streamedFile.close();
+
+            TPeakFile file;
+            CHECK(file.open(path, source) == TPeakFile::Status::Ok, "shift %d frames %lld: open", periodShift, (long long)frames);
+            CHECK(same_levels(file.levels(), whole->levels()), "shift %d frames %lld: levels differ after reading",
+                  periodShift, (long long)frames);
+            CHECK(file.verify_checksum(), "shift %d frames %lld: checksum", periodShift, (long long)frames);
+            file.close();
+
+            // Another source
+            auto expect_invalid = [&](TPeakFile::SourceInfo other, const char* what) {
+                TPeakFile mismatch;
+                CHECK(mismatch.open(path, other) == TPeakFile::Status::Invalid && !mismatch.is_open(), "frames %lld: %s accepted",
+                      (long long)frames, what);
+            };
+            TPeakFile::SourceInfo other = source; other.rate = 44100; expect_invalid(other, "rate");
+            other = source; other.channelCount = channelCount + 1; expect_invalid(other, "channels");
+            other = source; other.frameCount -= 1; expect_invalid(other, "fewer frames");
+            other = source; other.fileSize += 1; expect_invalid(other, "source size");
+            other = source; other.modified += 1; expect_invalid(other, "source time");
+
+            // A decoder that reports more frames than it delivers: the file holds
+            // the frames that were really read and is valid for that source
+            other = source; other.frameCount += 1000;
+            TPeakFile longer;
+            CHECK(longer.open(path, other) == TPeakFile::Status::Ok && same_levels(longer.levels(), whole->levels()),
+                  "frames %lld: over-reported source", (long long)frames);
+        }
+    }
+
+    // Nothing to write: no file a source could match
+    {
+        const Signal empty = make_signal(48000, 1, 0);
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(empty, false);
+        CHECK(TPeakFile::write(path, builder->levels(), {48000, 1, 0, 1, 1}) == TPeakFile::Status::Invalid, "empty pyramid written");
+    }
+
+    // An unfinished file (a crash, a cancelled build) is refused
+    {
+        const Signal signal = make_signal(44100, 2, 20000);
+        const TPeakFile::SourceInfo source{44100, 2, 20000, 99, 42};
+        std::unique_ptr<TPeakPyramidBuilder> builder;
+        write_streamed(path, signal, 2, source, &builder, false);
         TPeakFile file;
-        CHECK(file.open(path, source) == TPeakFile::Status::Ok, "frames %lld: open", (long long)frames);
-        CHECK(same_levels(file.levels(), builder->levels()), "frames %lld: levels differ after reading", (long long)frames);
-        file.close();
-
-        // Another source
-        auto expect_invalid = [&](TPeakFile::SourceInfo other, const char* what) {
-            TPeakFile mismatch;
-            CHECK(mismatch.open(path, other) == TPeakFile::Status::Invalid && !mismatch.is_open(), "frames %lld: %s accepted",
-                  (long long)frames, what);
-        };
-        TPeakFile::SourceInfo other = source; other.rate = 44100; expect_invalid(other, "rate");
-        other = source; other.channelCount = 1; expect_invalid(other, "channels");
-        other = source; other.frameCount -= 1; expect_invalid(other, "fewer frames");
-
-        // A decoder that reports more frames than it delivers: the file holds
-        // the frames that were really read and is valid for that source
-        other = source; other.frameCount += 1000;
-        TPeakFile longer;
-        CHECK(longer.open(path, other) == TPeakFile::Status::Ok, "frames %lld: over-reported source refused", (long long)frames);
-        CHECK(longer.levels().frame_count() == frames && same_levels(longer.levels(), builder->levels()),
-              "frames %lld: over-reported source reads other levels", (long long)frames);
-        longer.close();
-        other = source; other.fileSize += 1; expect_invalid(other, "source size");
-        other = source; other.modified += 1; expect_invalid(other, "source time");
+        CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "unfinished file accepted");
     }
 
     // Damaged files
     const Signal signal = make_signal(44100, 1, 50000);
-    const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+    const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false, true, 3);
     const TPeakFile::SourceInfo source{44100, 1, 50000, 99, 42};
-    CHECK(TPeakFile::write(path, builder->levels(), source) == TPeakFile::Status::Ok, "write");
+    CHECK(TPeakFile::write(path, builder->levels(), source, nullptr, 3) == TPeakFile::Status::Ok, "write");
 
     QFile original(path);
     CHECK(original.open(QIODevice::ReadOnly), "reopen");
     const QByteArray bytes = original.readAll();
     original.close();
 
-    auto expect_damaged = [&](QByteArray damaged, const char* what) {
+    auto rewrite = [&](const QByteArray& content) {
         QFile out(path);
         CHECK(out.open(QIODevice::WriteOnly | QIODevice::Truncate), "rewrite");
-        out.write(damaged);
+        out.write(content);
         out.close();
+    };
+    // Refused when opening, or (fields that keep the layout the same size)
+    // by the checksum
+    auto expect_damaged = [&](const QByteArray& damaged, const char* what) {
+        rewrite(damaged);
         TPeakFile file;
-        CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "%s accepted", what);
+        const TPeakFile::Status status = file.open(path, source);
+        CHECK(status == TPeakFile::Status::Invalid || (status == TPeakFile::Status::Ok && !file.verify_checksum()),
+              "%s accepted", what);
     };
     auto patched = [&](int offset, quint32 value) {
         QByteArray copy = bytes;
@@ -315,21 +392,31 @@ static void test_file()
         return copy;
     };
     expect_damaged(QByteArray(bytes).replace(0, 1, "X"), "magic");
-    expect_damaged(patched(8, 1), "version");
+    expect_damaged(patched(8, 2), "version 2");
     expect_damaged(patched(12, 0x04030201), "byte order");
+    expect_damaged(patched(16, 64), "header size");
     expect_damaged(patched(28, 32), "block frames");
-    expect_damaged(patched(36, 3), "level count");
-    expect_damaged(patched(64, 5), "level 0 block count");
-    expect_damaged(patched(72, 4), "level 0 offset");
-    // An offset with the top bit set must not wrap past the bounds check
+    expect_damaged(patched(36, 4), "period shift");
+    expect_damaged(patched(36, 1000), "period shift out of range");
+    expect_damaged(patched(40, 0), "frame count 0 (unfinished)");
+    expect_damaged(patched(40, 49999), "frame count with another layout");
+    expect_damaged(bytes.left(bytes.size() - 4), "truncated file");
+    expect_damaged(bytes + QByteArray(4, '\0'), "trailing bytes");
+    expect_damaged(bytes.left(40), "truncated header");
+
+    // Damaged block data opens (the layout is right) but fails the checksum
     {
         QByteArray copy = bytes;
-        const quint64 huge = (quint64(1) << 63) + 64;
-        std::memcpy(copy.data() + 72, &huge, sizeof(huge));
-        expect_damaged(copy, "level 0 offset beyond the file");
+        copy[copy.size() / 2] = char(copy[copy.size() / 2] ^ 0x5a);
+        rewrite(copy);
+        TPeakFile file;
+        CHECK(file.open(path, source) == TPeakFile::Status::Ok && !file.verify_checksum(), "damaged block data passed the checksum");
+        QByteArray zeroed = bytes;
+        std::memset(zeroed.data() + 72, 0, size_t(zeroed.size() - 72));
+        rewrite(zeroed);
+        TPeakFile zeros;
+        CHECK(zeros.open(path, source) == TPeakFile::Status::Ok && !zeros.verify_checksum(), "zeroed block data passed the checksum");
     }
-    expect_damaged(bytes.left(bytes.size() - 8), "truncated file");
-    expect_damaged(bytes.left(40), "truncated header");
 
     TPeakFile missing;
     CHECK(missing.open(dir.filePath("none.peaks"), source) == TPeakFile::Status::Missing, "missing file");
