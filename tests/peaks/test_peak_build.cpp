@@ -104,6 +104,8 @@ static TPeakBuildTask::OpenSource memory_source(const Signal& signal, qint64 ext
     };
 }
 
+// Steps the task to its end and puts the file in place, as the service does
+// (the latter from its thread pool)
 static TPeakBuildTask::State run(TPeakBuildTask& task, std::chrono::nanoseconds budget, int cancelAfterSteps = -1)
 {
     int steps = 0;
@@ -112,7 +114,7 @@ static TPeakBuildTask::State run(TPeakBuildTask& task, std::chrono::nanoseconds 
             task.cancel();
         }
     }
-    return task.state();
+    return task.publish();
 }
 
 static QByteArray file_bytes(const QString& path)
@@ -196,8 +198,8 @@ int main()
         CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Done, "ends early: %s", qPrintable(task.error()));
         TPeakFile file;
         const auto expected = TPeakFile::SourceInfo::from_file(audioPath, signal.rate, 2, signal.frames() + 1152);
-        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && file.levels().frame_count() == signal.frames()
-              && file.verify_checksum(), "ends early: the file does not open for the reported length");
+        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && file.levels().frame_count() == signal.frames(),
+              "ends early: the file does not open for the reported length");
         file.close();
         CHECK(file_bytes(peakPath) == reference_file(referencePath, signal, audioPath, 3), "ends early: file differs");
     }
@@ -285,40 +287,6 @@ int main()
             }
         });
         std::printf("    recording of %lld frames: %d snapshots\n", (long long)signal.frames(), snapshots);
-    }
-
-    // Checking a peak file in slices: whole, damaged, missing
-    {
-        const Signal signal = make_signal(2, 250000);
-        reference_file(peakPath, signal, audioPath, 3);
-        const auto expected = TPeakFile::SourceInfo::from_file(audioPath, signal.rate, 2, signal.frames());
-        auto check = [&](const char* what) {
-            TPeakVerifyTask task(peakPath, expected);
-            int steps = 0;
-            while (task.step(std::chrono::nanoseconds(0))) {
-                ++steps;
-            }
-            CHECK(steps > 1 || task.state() != TPeakVerifyTask::State::Done, "%s: not checked in slices", what);
-            return task.state();
-        };
-        CHECK(check("whole file") == TPeakVerifyTask::State::Done, "a whole peak file fails its check");
-        // Marked, so its next open does not read it again
-        TPeakFile file;
-        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && file.checked(), "a checked file was not marked");
-        file.close();
-        // Damaged and not checked yet: fails and stays unmarked
-        QByteArray bytes = file_bytes(peakPath);
-        bytes[bytes.size() - 7] = char(bytes[bytes.size() - 7] ^ 0x01);
-        bytes[40] = 0;
-        {
-            QFile out(peakPath);
-            CHECK(out.open(QIODevice::WriteOnly | QIODevice::Truncate) && out.write(bytes) == bytes.size(), "rewrite");
-        }
-        CHECK(check("damaged file") == TPeakVerifyTask::State::Failed, "a damaged peak file passes its check");
-        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && !file.checked(), "a damaged file was marked checked");
-        file.close();
-        QFile::remove(peakPath);
-        CHECK(check("missing file") == TPeakVerifyTask::State::Failed, "a missing peak file passes its check");
     }
 
     // Recording memory without and with readers: helpers
@@ -492,6 +460,22 @@ int main()
         task.cancel();
         CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Cancelled, "cancel not honoured");
         CHECK(!QFile::exists(part) && !QFile::exists(peakPath), "a cancelled build left a file behind");
+    }
+
+    // Written but not published yet: the file is not under its name; a
+    // cancel in between leaves nothing behind
+    {
+        const Signal signal = make_signal(1, 100000);
+        QFile::remove(peakPath);
+        TPeakBuildTask task(memory_source(signal), audioPath, peakPath, 2);
+        while (task.step(std::chrono::nanoseconds(0))) {
+        }
+        const QString part = TPeakFileWriter::part_path(peakPath);
+        CHECK(task.state() == TPeakBuildTask::State::Written && QFile::exists(part) && !QFile::exists(peakPath),
+              "a written build is not in its part file");
+        task.cancel();
+        CHECK(task.publish() == TPeakBuildTask::State::Cancelled && !QFile::exists(part) && !QFile::exists(peakPath),
+              "a build cancelled before publishing left a file behind");
     }
 
     // Sources the task refuses

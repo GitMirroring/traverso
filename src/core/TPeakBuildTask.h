@@ -33,12 +33,13 @@ public:
 /**
  * @brief Builds the peak file of one audio source, a slice at a time.
  *
- * Whoever runs it calls step() with a time budget until it returns false.
- * The first step opens the source, so the decoder is opened on the thread
- * that builds. Every complete period goes to the peak file at once and its
- * memory is released, so a build holds about one period of the pyramid.
- * State, error and progress belong to the thread that steps; cancel() may
- * be called from any thread.
+ * Whoever runs it calls step() with a time budget until it returns false,
+ * then publish() when the file is Written. The first step opens the
+ * source, so the decoder is opened on the thread that builds. Every
+ * complete period goes to the peak file at once and its memory is
+ * released, so a build holds about one period of the pyramid. State, error
+ * and progress belong to the thread that steps (and then to the one that
+ * publishes); cancel() may be called from any thread.
  */
 class TPeakBuildTask
 {
@@ -49,7 +50,8 @@ public:
     {
         Waiting,    // not started
         Running,
-        Done,       // the peak file is written
+        Written,    // the part file is complete: publish() next
+        Done,       // the peak file is in place
         Failed,     // see error()
         Cancelled
     };
@@ -63,6 +65,10 @@ public:
 
     // Works until budget is used or the build ends; true while work remains
     bool step(std::chrono::nanoseconds budget);
+    // After step() ended in Written: waits until the file is on the disk and
+    // puts it under its name (TPeakFileWriter::publish()). Blocks, so not
+    // on a thread that serves audio streams.
+    State publish();
     void cancel() { m_cancelled.store(true, std::memory_order_relaxed); }
 
     State state() const { return m_state; }
@@ -93,39 +99,6 @@ private:
     std::vector<const float*> m_constChannels;
     qint64 m_reportedFrames{0};
     qint64 m_position{0};
-
-    std::atomic<bool> m_cancelled{false};
-    State m_state{State::Waiting};
-    QString m_error;
-    int m_progress{0};
-};
-
-/**
- * @brief Checks the block data of a peak file against its checksums, a
- * record at a time (it reads the whole file, which also brings it into the
- * page cache). Same states as TPeakBuildTask: Done means the file is whole,
- * and then the file says so in its header, so it is not read again at its
- * next open.
- */
-class TPeakVerifyTask
-{
-public:
-    using State = TPeakBuildTask::State;
-
-    TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected);
-
-    bool step(std::chrono::nanoseconds budget);
-    void cancel() { m_cancelled.store(true, std::memory_order_relaxed); }
-
-    State state() const { return m_state; }
-    const QString& error() const { return m_error; }
-    int progress() const { return m_progress; }
-
-private:
-    QString m_peakPath;
-    TPeakFile::SourceInfo m_expected;
-    TPeakFile m_file;
-    qint64 m_part{0};
 
     std::atomic<bool> m_cancelled{false};
     State m_state{State::Waiting};

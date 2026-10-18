@@ -85,7 +85,10 @@ TPeakFile::Status TPeakRecording::finish(const QString& audioPath, QString* erro
     }
     const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(
         audioPath, m_builder.rate(), m_builder.channel_count(), m_builder.frame_count());
-    const TPeakFile::Status status = m_writer.finish(m_builder.levels(), source, error);
+    TPeakFile::Status status = m_writer.finish(m_builder.levels(), source, error);
+    if (status == TPeakFile::Status::Ok) {
+        status = TPeakFileWriter::publish(m_peakPath, error);
+    }
     m_writeFailed = status != TPeakFile::Status::Ok;
     if (!m_writeFailed) {
         m_writtenPeriods.store(m_writer.written_periods(), std::memory_order_seq_cst);

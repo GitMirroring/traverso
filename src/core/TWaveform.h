@@ -24,11 +24,11 @@ class TFileIOBuffer;
 /**
  * @brief The waveform of one audio source for its views.
  *
- * Opens the source's peak file (TPeakFile), has a file found on disk checked
- * against its checksums once and a missing or stale one built (through the
- * PeakJobs it was given: the sheet's DiskIO does both in its idle time), and
- * answers column queries (TWaveformColumns) from the pyramid or from the
- * source's samples with a reader of its own. GUI thread only.
+ * Opens the source's peak file (TPeakFile), has a missing or stale one
+ * built (through the request it was given: the sheet's DiskIO builds in
+ * its idle time), and answers column queries (TWaveformColumns) from the
+ * pyramid or from the source's samples with a reader of its own. GUI
+ * thread only.
  */
 class TWaveform : public QObject, public TWaveformSampleSource
 {
@@ -45,13 +45,9 @@ public:
     // source: the clip's reader. The waveform reads samples with a reader
     // of its own, opened on the first sample query and closed again when
     // unused for a while, so a clip normally holds one open file.
-    // How the peak file gets built or checked: starts or joins the job
-    struct PeakJobs
-    {
-        std::function<QFuture<TPeakBuildResult>(const QString& audioPath, const QString& peakPath)> build;
-        std::function<QFuture<TPeakBuildResult>(const QString& peakPath, const TPeakFile::SourceInfo& expected)> verify;
-    };
-    TWaveform(TBufferedAudioStreamReader* source, PeakJobs jobs);
+    // How the peak file gets built: starts or joins the job
+    using RequestBuild = std::function<QFuture<TPeakBuildResult>(const QString& audioPath, const QString& peakPath)>;
+    TWaveform(TBufferedAudioStreamReader* source, RequestBuild build);
     // A recording in progress: painted from its peaks as they are recorded
     // (the written part from the peak file), no samples
     explicit TWaveform(std::shared_ptr<TPeakRecording> live);
@@ -76,8 +72,7 @@ public:
     TWaveformColumns::Source columns(const TTimeRef& start, const TTimeRef& columnWidth, int count, TWaveformColumn* out);
 
     // The highest |sample| of all channels between start and end (source
-    // time), exact; -1 while not Ready or while the peak file is checked:
-    // a damaged file must not set a clip's gain
+    // time), exact; -1 while not Ready
     float max_amplitude(const TTimeRef& start, const TTimeRef& end);
 
     // The zero crossing of the source nearest to time, at most maxDistance
@@ -89,7 +84,7 @@ public:
 
 signals:
     void progress(int percent);
-    // The waveform changed: a build finished, or a damaged file is built again
+    // A build finished
     void ready();
 
 private:
@@ -111,8 +106,7 @@ private:
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;
-    PeakJobs m_jobs;
-    bool m_verifying{false};
+    RequestBuild m_requestBuild;
     QFutureWatcher<TPeakBuildResult> m_build;
     State m_state{State::Building};
     bool m_opened{false};

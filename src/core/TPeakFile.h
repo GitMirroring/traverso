@@ -9,7 +9,7 @@
 #include <QString>
 
 /**
- * @brief Peak file format 4: a TPeakLevels pyramid on disk, written as a
+ * @brief Peak file format 5: a TPeakLevels pyramid on disk, written as a
  * stream, read mapped.
  *
  * The file is a cache of its source: when it is missing, unfinished, from
@@ -22,14 +22,9 @@
  * period, level by level, channel by channel), then a tail with the rest of
  * every level. Every offset follows from the header, so there is no table.
  * The header says unfinished (frame count 0) until TPeakFileWriter::finish()
- * writes the frame count and the source.
- *
- * Every record and the tail end in the checksum of their blocks, so each can
- * be checked on its own; the header has a checksum of its own, which open()
- * checks. A check that found all block data whole can say so in the header
- * (mark_checked()), so a file is read back once, not at every open.
- *
- * Format 4: 3 had one checksum over the whole file and a smaller header.
+ * writes the frame count and the source; it has a checksum, which open()
+ * checks. The block data has none: a file reaches its name only after it
+ * is on the disk (TPeakFileWriter::publish()), so what opens is whole.
  */
 class TPeakFile
 {
@@ -64,48 +59,22 @@ public:
     static Status write(const QString& path, const TPeakLevels& levels, const SourceInfo& source, QString* error = nullptr,
                         int periodShift = TPeakPyramidBuilder::DefaultPeriodShift);
 
-    enum class Access
-    {
-        ReadOnly,       // holds a mapping only, no file descriptor
-        ReadWrite       // to mark_checked() the file; keeps its descriptor
-    };
-
-    // Checks the header, its checksum and the layout, not the block data:
-    // see part_matches()
-    Status open(const QString& path, const SourceInfo& expected, Access access = Access::ReadOnly);
+    // Checks the header, its checksum and the layout. An open peak file
+    // holds a mapping, no file descriptor.
+    Status open(const QString& path, const SourceInfo& expected);
     void close();
 
     bool is_open() const { return m_map != nullptr; }
     // Valid while the file is open
     const TPeakLevels& levels() const { return m_levels; }
 
-    // Whether a check found all block data whole
-    bool checked() const;
-    // Says so in the header (not part of its checksum); needs
-    // Access::ReadWrite. Waits first until the file's data is on the disk:
-    // a check of a file written moments ago can read the page cache, and the
-    // flag must not claim more than the disk has. Not for the GUI thread.
-    bool mark_checked();
-
-    // The block data in parts with a checksum each: the records, then the
-    // tail. Checking a part reads it (which also brings it into the page
-    // cache), so not for the GUI thread.
-    qint64 part_count() const { return m_map ? m_periods + 1 : 0; }
-    bool part_matches(qint64 part) const;
-    // All parts
-    bool verify_checksum() const;
-
-    static constexpr quint32 FormatVersion = 4;
+    static constexpr quint32 FormatVersion = 5;
 
 private:
     Status validate(const SourceInfo& expected, qint64 fileSize);
 
     QFile m_file;
     uchar* m_map{nullptr};
-    bool m_writable{false};
-    qint64 m_periods{0};
-    qint64 m_recordBytes{0};
-    qint64 m_tailEnd{0};    // where the tail's blocks end, its checksum follows
     TPeakLevels m_levels;
 };
 
@@ -113,11 +82,11 @@ private:
  * @brief Writes a peak file as a stream: the header at once, a record as
  * soon as a period is complete, the tail and the final header at the end.
  *
- * The file is written next to its final name (path + ".part") and renamed
- * over it by finish(): a waveform that has the old file mapped keeps
- * reading the old file, a file is never cut short under a mapping. An
- * unfinished part file says so in its header and is removed by close();
- * open() never looks at part files.
+ * The file is written next to its final name (path + ".part"); publish()
+ * waits until it is on the disk and renames it over its name. A waveform
+ * that has the old file mapped keeps reading the old file, a file is never
+ * cut short under a mapping. A part file that was not finished says so in
+ * its header and is removed by close(); open() never looks at part files.
  */
 class TPeakFileWriter
 {
@@ -135,17 +104,24 @@ public:
     TPeakFile::Status write_periods(const TPeakLevels& levels, qint64 periods, QString* error = nullptr);
 
     // levels must be complete (TPeakPyramidBuilder::finish()) and belong to
-    // source: writes the remaining records, the tail and the final header
+    // source: writes the remaining records, the tail and the final header,
+    // and closes the part file, which publish() puts in place
     TPeakFile::Status finish(const TPeakLevels& levels, const TPeakFile::SourceInfo& source, QString* error = nullptr);
 
     // Gives up an unfinished file: the part file is removed
     void close();
 
+    // Waits until the finished part file of path is on the disk and renames
+    // it over path, so a file under its name is always whole, also after a
+    // crash. The wait can take a while on a slow disk: a build does this
+    // from a thread pool, a recording at its stop, when its DiskIO has
+    // nothing else to do. A part file that cannot be published is removed.
+    static TPeakFile::Status publish(const QString& path, QString* error = nullptr);
+
     static QString part_path(const QString& path) { return path + QStringLiteral(".part"); }
 
     // Where the blocks of level (<= periodShift) and channel of record
-    // period start, and where the records before period end (a record ends
-    // in the checksum of its blocks)
+    // period start, and where the records before period end
     static qint64 record_offset(int periodShift, int channelCount, qint64 period, int level, int channel);
     static qint64 records_end(int periodShift, int channelCount, qint64 periods);
 
@@ -154,7 +130,6 @@ public:
 
 private:
     bool write_blocks(const TPeakLevels& levels, int level, int channel, qint64 first, qint64 last);
-    bool write_checksum();
     TPeakFile::Status failed(QString* error);
 
     QFile m_file;
@@ -163,6 +138,5 @@ private:
     int m_channelCount{0};
     int m_periodShift{TPeakPyramidBuilder::DefaultPeriodShift};
     qint64 m_writtenPeriods{0};
-    quint64 m_checksum{0};      // of the record or tail being written
     bool m_finished{false};
 };

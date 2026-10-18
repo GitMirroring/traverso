@@ -3,11 +3,8 @@
 
 #pragma once
 
-#include "TPeakFile.h"
-
 #include <QFuture>
 #include <QHash>
-#include <QSet>
 #include <QString>
 
 class TDiskIOThread;
@@ -21,11 +18,13 @@ struct TPeakBuildResult
 
 /**
  * @brief Runs the peak builds of a project in the idle time of a sheet's
- * DiskIO thread, one job per peak file. (A recording writes its own peak
- * file as it records: TPeakRecording.)
+ * DiskIO thread, one job per peak file. The finished file is put in place
+ * from the global thread pool: that waits until it is on the disk, which
+ * DiskIO must not. (A recording writes its own peak file as it records:
+ * TPeakRecording.)
  *
- * Asking for a peak file that is being built or written returns the running
- * job's future, so every waveform of the same source waits for one job. A
+ * Asking for a peak file that is being built returns the running job's
+ * future, so every waveform of the same source waits for one job. A
  * watcher of the future gets finished() exactly once, also for a job that
  * finished before it watched. Futures are cancelled only by cancel_all(),
  * when the project closes: a waveform that goes away does not cancel.
@@ -38,18 +37,8 @@ class TPeakBuildService
 {
 public:
     QFuture<TPeakBuildResult> build(const QString& audioPath, const QString& peakPath, TDiskIOThread* diskio);
-    // Checks the block data of a peak file found on disk against its
-    // checksums; ok at once for a file built or checked in this session
-    QFuture<TPeakBuildResult> verify(const QString& peakPath, const TPeakFile::SourceInfo& expected, TDiskIOThread* diskio);
     void cancel_all();
 
 private:
-    // The job of peakPath in jobs that is not over yet, or nullptr
-    const QFuture<TPeakBuildResult>* running(QHash<QString, QFuture<TPeakBuildResult>>& jobs, const QString& peakPath);
-
-    // Builds and checks apart: a build must not be answered by a check
-    QHash<QString, QFuture<TPeakBuildResult>> m_builds;
-    QHash<QString, QFuture<TPeakBuildResult>> m_checks;
-    // Peak files built or checked in this session, so whole
-    QSet<QString> m_whole;
+    QHash<QString, QFuture<TPeakBuildResult>> m_jobs;
 };

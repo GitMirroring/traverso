@@ -8,6 +8,7 @@
 #include "TLog.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 
 #include <algorithm>
@@ -132,10 +133,31 @@ bool TPeakBuildTask::finish()
         return fail(error);
     }
     m_progress = 100;
+    m_state = State::Written;
+    release();   // the finished part file stays
+    return false;
+}
+
+TPeakBuildTask::State TPeakBuildTask::publish()
+{
+    if (m_state != State::Written) {
+        return m_state;
+    }
+    if (m_cancelled.load(std::memory_order_relaxed)) {
+        QFile::remove(TPeakFileWriter::part_path(m_peakPath));
+        m_state = State::Cancelled;
+        return m_state;
+    }
+    QString error;
+    if (TPeakFileWriter::publish(m_peakPath, &error) != TPeakFile::Status::Ok) {
+        m_error = error;
+        m_state = State::Failed;
+        TLOG_W("peaks", "publishing {} failed: {}", m_peakPath.toStdString(), error.toStdString());
+        return m_state;
+    }
     m_state = State::Done;
     TLOG_I("peaks", "built {}", m_peakPath.toStdString());
-    release();
-    return false;
+    return m_state;
 }
 
 bool TPeakBuildTask::step(std::chrono::nanoseconds budget)
@@ -187,61 +209,5 @@ bool TPeakBuildTask::step(std::chrono::nanoseconds budget)
         m_progress = int(m_position * 100 / m_reportedFrames);
     } while (std::chrono::steady_clock::now() - started < budget);
 
-    return true;
-}
-
-
-TPeakVerifyTask::TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected)
-    : m_peakPath(std::move(peakPath))
-    , m_expected(expected)
-{
-}
-
-bool TPeakVerifyTask::step(std::chrono::nanoseconds budget)
-{
-    if (m_state != State::Waiting && m_state != State::Running) {
-        return false;
-    }
-    if (m_cancelled.load(std::memory_order_relaxed)) {
-        m_state = State::Cancelled;
-        m_file.close();
-        return false;
-    }
-    const auto started = std::chrono::steady_clock::now();
-
-    if (m_state == State::Waiting) {
-        // Writable to mark it checked; a file on read-only media is checked
-        // all the same
-        TPeakFile::Status status = m_file.open(m_peakPath, m_expected, TPeakFile::Access::ReadWrite);
-        if (status == TPeakFile::Status::Error) {
-            status = m_file.open(m_peakPath, m_expected);
-        }
-        if (status != TPeakFile::Status::Ok) {
-            m_error = QStringLiteral("the peak file does not open");
-            m_state = State::Failed;
-            return false;
-        }
-        m_state = State::Running;
-    }
-
-    do {
-        if (m_part == m_file.part_count()) {
-            // Once per file: on the disk it stays as checked
-            m_file.mark_checked();
-            m_file.close();
-            m_progress = 100;
-            m_state = State::Done;
-            return false;
-        }
-        if (!m_file.part_matches(m_part)) {
-            m_error = QStringLiteral("part %1 of %2 does not match its checksum").arg(m_part).arg(m_file.part_count());
-            TLOG_W("peaks", "{}: {}", m_peakPath.toStdString(), m_error.toStdString());
-            m_file.close();
-            m_state = State::Failed;
-            return false;
-        }
-        ++m_part;
-        m_progress = int(m_part * 100 / m_file.part_count());
-    } while (std::chrono::steady_clock::now() - started < budget);
     return true;
 }

@@ -737,15 +737,10 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
         delete m_waveform;
         m_waveform = nullptr;
         if (m_isReadSourceValid) {
-            // Built and checked in the idle time of this clip's sheet's DiskIO
-            TWaveform::PeakJobs jobs;
-            jobs.build = [this](const QString& audioPath, const QString& peakPath) {
+            // Built in the idle time of this clip's sheet's DiskIO
+            m_waveform = new TWaveform(rs, [this](const QString& audioPath, const QString& peakPath) {
                 return m_sheet ? m_sheet->request_peak_build(audioPath, peakPath) : QFuture<TPeakBuildResult>();
-            };
-            jobs.verify = [this](const QString& peakPath, const TPeakFile::SourceInfo& expected) {
-                return m_sheet ? m_sheet->request_peak_verify(peakPath, expected) : QFuture<TPeakBuildResult>();
-            };
-            m_waveform = new TWaveform(rs, std::move(jobs));
+            });
             if (m_sheet) {
                 m_waveform->prepare();
             }
@@ -913,7 +908,7 @@ float TAudioClip::calculate_normalization_factor(float targetdB)
     }
 
     // Exact, from the peak pyramid plus a few samples; -1 while the peak
-    // file is still being built or checked
+    // file is still being built
     audio_sample_t maxamp = m_waveform ? m_waveform->max_amplitude(m_sourceStartLocation, m_sourceEndLocation) : -1.0f;
     if (maxamp < 0.0f) {
         PWARN("AudioClip::normalization: the waveform's peak data is not ready yet");

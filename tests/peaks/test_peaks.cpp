@@ -273,7 +273,8 @@ static bool write_streamed(const QString& path, const Signal& signal, int period
     }
     if (ok && finish) {
         builder->finish();
-        ok = writer.finish(builder->levels(), source, &error) == TPeakFile::Status::Ok;
+        ok = writer.finish(builder->levels(), source, &error) == TPeakFile::Status::Ok
+             && TPeakFileWriter::publish(path, &error) == TPeakFile::Status::Ok;
     }
     CHECK(ok, "streamed write: %s", qPrintable(error));
     *builderOut = std::move(builder);
@@ -319,7 +320,6 @@ static void test_file()
             CHECK(file.open(path, source) == TPeakFile::Status::Ok, "shift %d frames %lld: open", periodShift, (long long)frames);
             CHECK(same_levels(file.levels(), whole->levels()), "shift %d frames %lld: levels differ after reading",
                   periodShift, (long long)frames);
-            CHECK(file.verify_checksum(), "shift %d frames %lld: checksum", periodShift, (long long)frames);
             file.close();
 
             // Another source
@@ -389,14 +389,12 @@ static void test_file()
         out.write(content);
         out.close();
     };
-    // Refused when opening, or (fields that keep the layout the same size)
-    // by the checksum
+    // Refused when opening, fields that keep the layout the same size by the
+    // header's checksum
     auto expect_damaged = [&](const QByteArray& damaged, const char* what) {
         rewrite(damaged);
         TPeakFile file;
-        const TPeakFile::Status status = file.open(path, source);
-        CHECK(status == TPeakFile::Status::Invalid || (status == TPeakFile::Status::Ok && !file.verify_checksum()),
-              "%s accepted", what);
+        CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "%s accepted", what);
     };
     auto patched = [&](int offset, quint32 value) {
         QByteArray copy = bytes;
@@ -406,70 +404,18 @@ static void test_file()
     expect_damaged(QByteArray(bytes).replace(0, 1, "X"), "magic");
     expect_damaged(patched(8, 2), "version 2");
     expect_damaged(patched(8, 3), "version 3");
+    expect_damaged(patched(8, 4), "version 4");
     expect_damaged(patched(12, 0x04030201), "byte order");
     expect_damaged(patched(16, 64), "header size");
     expect_damaged(patched(28, 32), "block frames");
     expect_damaged(patched(36, 4), "period shift");
     expect_damaged(patched(36, 1000), "period shift out of range");
-    expect_damaged(patched(48, 0), "frame count 0 (unfinished)");
-    expect_damaged(patched(48, 49000), "frame count with another layout");
-    {
-        // The header's own checksum: a frame count with the same layout
-        rewrite(patched(48, 49999));
-        TPeakFile file;
-        CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "a damaged header passed its checksum");
-    }
+    expect_damaged(patched(40, 0), "frame count 0 (unfinished)");
+    expect_damaged(patched(40, 49000), "frame count with another layout");
+    expect_damaged(patched(40, 49999), "frame count with the same layout (header checksum)");
     expect_damaged(bytes.left(bytes.size() - 4), "truncated file");
     expect_damaged(bytes + QByteArray(4, '\0'), "trailing bytes");
     expect_damaged(bytes.left(40), "truncated header");
-
-    // Damaged block data opens (the layout is right) but fails the checksum
-    {
-        QByteArray copy = bytes;
-        copy[copy.size() / 2] = char(copy[copy.size() / 2] ^ 0x5a);
-        rewrite(copy);
-        TPeakFile file;
-        CHECK(file.open(path, source) == TPeakFile::Status::Ok && !file.verify_checksum(), "damaged block data passed the checksum");
-        const qint64 dataStart = TPeakFileWriter::records_end(3, 1, 0);
-        QByteArray zeroed = bytes;
-        std::memset(zeroed.data() + dataStart, 0, size_t(zeroed.size() - dataStart));
-        rewrite(zeroed);
-        TPeakFile zeros;
-        CHECK(zeros.open(path, source) == TPeakFile::Status::Ok && !zeros.verify_checksum(), "zeroed block data passed the checksum");
-        zeros.close();
-
-        // Every record has a checksum of its own: only the damaged one fails
-        const qint64 period = 2;
-        QByteArray one = bytes;
-        const qint64 offset = TPeakFileWriter::record_offset(3, 1, period, 1, 0);
-        one[offset] = char(one[offset] ^ 0x01);
-        rewrite(one);
-        TPeakFile parts;
-        CHECK(parts.open(path, source) == TPeakFile::Status::Ok && parts.part_count() > period + 1, "open for the parts");
-        for (qint64 part = 0; part < parts.part_count(); ++part) {
-            CHECK(parts.part_matches(part) == (part != period), "part %lld of %lld", (long long)part, (long long)parts.part_count());
-        }
-        parts.close();
-        // The tail too
-        QByteArray tail = bytes;
-        tail[tail.size() - 9] = char(tail[tail.size() - 9] ^ 0x01);
-        rewrite(tail);
-        CHECK(parts.open(path, source) == TPeakFile::Status::Ok && !parts.part_matches(parts.part_count() - 1)
-              && parts.part_matches(0), "damage in the tail");
-    }
-
-    // Checked once: the flag is not part of the header's checksum, and it
-    // needs a writable file
-    {
-        rewrite(bytes);
-        TPeakFile file;
-        CHECK(file.open(path, source) == TPeakFile::Status::Ok && !file.checked(), "a new file says checked");
-        CHECK(!file.mark_checked(), "marked through a read-only file");
-        CHECK(file.open(path, source, TPeakFile::Access::ReadWrite) == TPeakFile::Status::Ok && file.mark_checked(), "mark checked");
-        file.close();
-        CHECK(file.open(path, source) == TPeakFile::Status::Ok && file.checked() && file.verify_checksum(),
-              "the checked flag did not stay, or broke the file");
-    }
 
     TPeakFile missing;
     CHECK(missing.open(dir.filePath("none.peaks"), source) == TPeakFile::Status::Missing, "missing file");

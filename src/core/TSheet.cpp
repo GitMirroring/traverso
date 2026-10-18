@@ -1215,8 +1215,3 @@ QFuture<TPeakBuildResult> TSheet::request_peak_build(const QString& audioPath, c
 {
     return m_project->get_peak_builds()->build(audioPath, peakPath, m_readDiskIO);
 }
-
-QFuture<TPeakBuildResult> TSheet::request_peak_verify(const QString& peakPath, const TPeakFile::SourceInfo& expected)
-{
-    return m_project->get_peak_builds()->verify(peakPath, expected, m_readDiskIO);
-}

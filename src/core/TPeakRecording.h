@@ -19,8 +19,8 @@
  * The writer thread appends samples; every complete period goes to the peak
  * file's part file at once, and its memory goes as soon as nobody reads: a
  * recording holds about one period of peaks, whether anything looks at it
- * or not. finish() writes the tail and the header and renames the file into
- * place.
+ * or not. finish() writes the tail and the header, waits until the file is
+ * on the disk and renames it into place.
  *
  * Readers (the GUI thread) read inside read(): the snapshot it hands out
  * names the written periods in a mapping of the file and only the periods
@@ -54,7 +54,9 @@ public:
     // The writer thread. open() before the first append().
     TPeakFile::Status open(QString* error = nullptr);
     void append(const float* const* channels, qint64 frames);
-    // After the audio file is complete (its size and time go into the header)
+    // After the audio file is complete (its size and time go into the
+    // header). Waits until the peak file is on the disk: the recording has
+    // stopped, this thread has nothing else to do.
     TPeakFile::Status finish(const QString& audioPath, QString* error = nullptr);
     // Blocks the writer holds in memory (for tests and diagnostics)
     qint64 memory_blocks() const { return m_builder.allocated_blocks(); }

@@ -780,8 +780,6 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
     case TWaveform::State::Failed:
         return;
     case TWaveform::State::Ready:
-        // A file in use can still turn out damaged and be built again
-        connect(waveform, &TWaveform::ready, this, &TAudioClipView::peak_creation_finished, Qt::UniqueConnection);
         break;
     }
 

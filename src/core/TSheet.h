@@ -71,7 +71,6 @@ public:
     // The peak file of an audio source, built in this sheet's DiskIO idle
     // time (TPeakBuildService)
     QFuture<TPeakBuildResult> request_peak_build(const QString& audioPath, const QString& peakPath);
-    QFuture<TPeakBuildResult> request_peak_verify(const QString& peakPath, const TPeakFile::SourceInfo& expected);
     void add_audio_source_to_diskio(TBufferedAudioStreamReader *source) const;
     void remove_audio_source_from_diskio(TBufferedAudioStreamReader *source) const;
     void add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) const;
