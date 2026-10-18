@@ -30,6 +30,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TResourcesManager.h"
 #include "TBufferedAudioStreamReader.h"
 #include "TFileIOBuffer.h"
+#include "TLog.h"
+#include "TPeakFile.h"
+#include "TPeakPyramid.h"
+#include <QDir>
 #include "TBufferedAudioStreamWriter.h"
 #include "defines.h"
 
@@ -132,6 +136,17 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
 out:
     if (!failedToPrepareWritesource) {
         writesource->finish_export();
+        // This thread works in the background already: write the peak file here
+        if (std::shared_ptr<TPeakPyramidBuilder> pyramid = writesource->get_pyramid()) {
+            QDir().mkpath(QFileInfo(writesource->get_peak_path()).absolutePath());
+            QString error;
+            const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(
+                writesource->get_filename(), pyramid->rate(), pyramid->channel_count(), pyramid->frame_count());
+            if (TPeakFile::write(writesource->get_peak_path(), pyramid->levels(), source, &error, pyramid->period_shift())
+                    != TPeakFile::Status::Ok) {
+                TLOG_W("peaks", "writing {} failed: {}", writesource->get_peak_path().toStdString(), error.toStdString());
+            }
+        }
     }
     delete writesource;
     writesource = nullptr;

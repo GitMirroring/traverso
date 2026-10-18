@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define TPROJECT_H
 
 #include <QString>
+#include <memory>
 #include <QList>
 #include <QDomNode>
 
@@ -39,6 +40,7 @@ class TSheet;
 class TRtTransaction;
 class TTrack;
 class TResourcesManager;
+class TPeakBuildService;
 class TExportSpecification;
 class TAudioDeviceClient;
 class TBusTrack;
@@ -84,6 +86,7 @@ public :
     TTimeRef get_transport_location() const;
 
     TResourcesManager* get_audiosource_manager() const;
+    TPeakBuildService* get_peak_builds() const { return m_peakBuilds.get(); }
     QString get_title() const;
     QString get_engineer() const;
     QString get_description() const;
@@ -164,6 +167,7 @@ private:
 
 
     TResourcesManager*       m_resourcesManager;
+    std::unique_ptr<TPeakBuildService> m_peakBuilds;
     TRtList<TSheet>          m_sheets;
     TSheet*                  m_activeSheet;
     TSession*               m_activeSession;

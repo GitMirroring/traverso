@@ -179,6 +179,29 @@ int main()
         CHECK(file_bytes(peakPath) == reference_file(referencePath, signal, audioPath, 3), "ends early: file differs");
     }
 
+    // A finished recording's pyramid written in slices: the same file
+    for (int round = 0; round < 10; ++round) {
+        const int periodShift = int(random_between(0, 6));
+        const Signal signal = make_signal(int(random_between(1, 2)), random_between(1, 200000));
+        auto pyramid = std::make_shared<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()), periodShift);
+        std::vector<const float*> pointers;
+        for (const auto& channel : signal.channels) {
+            pointers.push_back(channel.data());
+        }
+        pyramid->append(pointers.data(), signal.frames());
+        pyramid->finish();
+        const QByteArray reference = reference_file(referencePath, signal, audioPath, periodShift);
+        TPeakWriteTask task(pyramid, audioPath, peakPath);
+        int steps = 0;
+        while (task.step(std::chrono::nanoseconds(0))) {
+            ++steps;
+        }
+        CHECK(task.state() == TPeakWriteTask::State::Done, "write round %d: %s", round, qPrintable(task.error()));
+        CHECK(file_bytes(peakPath) == reference, "write round %d: file differs from the one-go file", round);
+        CHECK(steps >= std::min<qint64>(pyramid->complete_periods(), 2), "write round %d: %d steps for %lld periods, not sliced",
+              round, steps, (long long)pyramid->complete_periods());
+    }
+
     auto expect_no_file = [&](const Signal& signal, qint64 reported, const char* what) {
         TPeakFile file;
         const auto expected = TPeakFile::SourceInfo::from_file(audioPath, signal.rate, int(signal.channels.size()), reported);
@@ -199,12 +222,17 @@ int main()
         const Signal signal = make_signal(2, 300000);
         QFile::remove(peakPath);
         TPeakBuildTask task(memory_source(signal), audioPath, peakPath, 2, 1024);
-        CHECK(run(task, std::chrono::nanoseconds(0), 50) == TPeakBuildTask::State::Cancelled, "cancel not honoured");
-        expect_no_file(signal, signal.frames(), "cancelled build");
-        // Streamed: the periods completed before the cancel are on disk
-        // (50 slices of 1024 frames, periods of 256 frames)
-        CHECK(QFileInfo(peakPath).size() >= 72 + 150 * (4 + 2 + 1) * 4 * 2, "cancelled build: %lld bytes, the periods were not streamed",
-              (long long)QFileInfo(peakPath).size());
+        for (int steps = 0; steps < 50; ++steps) {
+            task.step(std::chrono::nanoseconds(0));
+        }
+        // Streamed: the periods completed so far are on disk, in the part
+        // file (50 slices of at most 1024 frames, periods of 256 frames)
+        const QString part = TPeakFileWriter::part_path(peakPath);
+        CHECK(QFileInfo(part).size() >= 72 + 40 * (4 + 2 + 1) * 4 * 2, "%lld bytes: the periods were not streamed",
+              (long long)QFileInfo(part).size());
+        task.cancel();
+        CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Cancelled, "cancel not honoured");
+        CHECK(!QFile::exists(part) && !QFile::exists(peakPath), "a cancelled build left a file behind");
     }
 
     // Sources the task refuses

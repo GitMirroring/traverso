@@ -28,7 +28,7 @@ add_library(traversocore STATIC
     TPeakFile.h TPeakFile.cpp
     TPeakPyramid.h TPeakPyramid.cpp
     TWaveformColumns.h TWaveformColumns.cpp
-    TPeakBuilder.h TPeakBuilder.cpp
+    TPeakBuildService.h TPeakBuildService.cpp
     TPeakBuildTask.h TPeakBuildTask.cpp
     TWaveform.h TWaveform.cpp
     TProject.cpp

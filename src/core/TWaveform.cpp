@@ -6,7 +6,6 @@
 #include "TBufferedAudioStreamReader.h"
 #include "TFileIOBuffer.h"
 #include "TLog.h"
-#include "TPeakBuilder.h"
 #include "TPeakPyramid.h"
 #include "TProject.h"
 #include "TProjectManager.h"
@@ -28,7 +27,7 @@ QString TWaveform::peak_path(const TBufferedAudioStream* source)
     return path + source->get_name() + ".peaks";
 }
 
-TWaveform::TWaveform(TBufferedAudioStreamReader* source)
+TWaveform::TWaveform(TBufferedAudioStreamReader* source, RequestBuild requestBuild)
     : m_sourceId(source->get_id())
     , m_fileName(source->get_filename())
     , m_rate(source->get_file_rate())
@@ -37,7 +36,15 @@ TWaveform::TWaveform(TBufferedAudioStreamReader* source)
     , m_sourceValid(source->get_error() >= 0)
     , m_peakPath(peak_path(source))
     , m_decodeBuffer(std::make_unique<TFileIOBuffer>())
+    , m_requestBuild(std::move(requestBuild))
 {
+    // Delivered once per build, also when it finished before it was watched
+    connect(&m_build, &QFutureWatcherBase::finished, this, &TWaveform::build_finished);
+    connect(&m_build, &QFutureWatcherBase::progressValueChanged, this, [this](int percent) {
+        m_progress = percent;
+        emit progress(percent);
+    });
+
     m_closeReader.setSingleShot(true);
     m_closeReader.setInterval(5000);
     connect(&m_closeReader, &QTimer::timeout, this, [this] {
@@ -151,26 +158,28 @@ void TWaveform::open_or_build()
     ++m_builds;
     m_state = State::Building;
     m_progress = 0;
-    m_job = peak_builder().build(m_peakPath, m_sourceId);
-    if (!m_job) {
-        TLOG_W("peaks", "no reader for the source of {}", m_peakPath.toStdString());
-        m_state = State::Failed;
-        return;
-    }
-    connect(m_job.get(), &TPeakBuildJob::progress, this, [this](int percent) {
-        m_progress = percent;
-        emit progress(percent);
-    });
-    connect(m_job.get(), &TPeakBuildJob::finished, this, &TWaveform::build_finished);
+    // No build service (a clip without a sheet): a cancelled future, so the
+    // watcher reports a failed build
+    m_build.setFuture(m_requestBuild ? m_requestBuild(m_fileName, m_peakPath) : QFuture<TPeakBuildResult>());
 }
 
 void TWaveform::build_finished()
 {
-    const bool succeeded = m_job && m_job->succeeded();
-    m_job.reset();
+    // A cancelled build has no result (the project closes, or its DiskIO went)
+    const QFuture<TPeakBuildResult> build = m_build.future();
+    const TPeakBuildResult result = !build.isCanceled() && build.resultCount() > 0 ? build.result() : TPeakBuildResult{};
 
-    if (succeeded) {
+    if (result.ok) {
         open_or_build();
+    } else if (result.kind == TPeakBuildResult::Kind::Write && m_builds == 1) {
+        // Writing a recording's peak file failed: build it from the audio file
+        TLOG_W("peaks", "writing {} failed ({}), building it from the audio file", m_peakPath.toStdString(),
+               result.error.toStdString());
+        m_builds = 0;
+        open_or_build();
+        if (m_state == State::Building) {
+            return;
+        }
     } else {
         m_state = State::Failed;
     }

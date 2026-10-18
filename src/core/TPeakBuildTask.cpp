@@ -189,3 +189,73 @@ bool TPeakBuildTask::step(std::chrono::nanoseconds budget)
 
     return true;
 }
+
+
+TPeakWriteTask::TPeakWriteTask(std::shared_ptr<const TPeakPyramidBuilder> pyramid, QString audioPath, QString peakPath)
+    : m_pyramid(std::move(pyramid))
+    , m_audioPath(std::move(audioPath))
+    , m_peakPath(std::move(peakPath))
+{
+    Q_ASSERT(m_pyramid && m_pyramid->is_finished());
+}
+
+bool TPeakWriteTask::fail(const QString& error)
+{
+    m_error = error;
+    m_state = State::Failed;
+    TLOG_W("peaks", "writing {} failed: {}", m_peakPath.toStdString(), error.toStdString());
+    m_writer.close();
+    m_pyramid.reset();
+    return false;
+}
+
+bool TPeakWriteTask::step(std::chrono::nanoseconds budget)
+{
+    if (m_state != State::Waiting && m_state != State::Running) {
+        return false;
+    }
+    if (m_cancelled.load(std::memory_order_relaxed)) {
+        m_state = State::Cancelled;
+        m_writer.close();
+        m_pyramid.reset();
+        return false;
+    }
+    const auto started = std::chrono::steady_clock::now();
+
+    if (m_state == State::Waiting) {
+        QString error;
+        if (!QDir().mkpath(QFileInfo(m_peakPath).absolutePath())) {
+            return fail(QStringLiteral("cannot create the peak file directory"));
+        }
+        if (m_writer.open(m_peakPath, m_pyramid->rate(), m_pyramid->channel_count(), m_pyramid->period_shift(), &error)
+                != TPeakFile::Status::Ok) {
+            return fail(error);
+        }
+        m_periods = m_pyramid->complete_periods();
+        m_state = State::Running;
+    }
+
+    // One record per round, then the tail and the header in the last one
+    const TPeakLevels levels = m_pyramid->levels();
+    QString error;
+    while (m_writer.written_periods() < m_periods) {
+        if (m_writer.write_periods(levels, m_writer.written_periods() + 1, &error) != TPeakFile::Status::Ok) {
+            return fail(error);
+        }
+        m_progress = int(m_writer.written_periods() * 100 / (m_periods + 1));
+        if (std::chrono::steady_clock::now() - started >= budget) {
+            return true;
+        }
+    }
+
+    const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(
+        m_audioPath, m_pyramid->rate(), m_pyramid->channel_count(), m_pyramid->frame_count());
+    if (m_writer.finish(levels, source, &error) != TPeakFile::Status::Ok) {
+        return fail(error);
+    }
+    m_progress = 100;
+    m_state = State::Done;
+    TLOG_I("peaks", "wrote {}", m_peakPath.toStdString());
+    m_pyramid.reset();   // the memory goes as soon as the file is there
+    return false;
+}

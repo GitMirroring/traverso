@@ -4,11 +4,13 @@
 #include "TPeakFile.h"
 
 #include <QDateTime>
+#include <QDir>
 #include <QFileInfo>
 
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <vector>
 
@@ -285,8 +287,17 @@ void TPeakFile::close()
 
 TPeakFileWriter::~TPeakFileWriter()
 {
-    // An unfinished file keeps its unfinished header
-    m_file.close();
+    close();
+}
+
+void TPeakFileWriter::close()
+{
+    if (m_file.isOpen()) {
+        m_file.close();
+    }
+    if (!m_finished && !m_path.isEmpty()) {
+        QFile::remove(part_path(m_path));
+    }
 }
 
 TPeakFile::Status TPeakFileWriter::failed(QString* error)
@@ -294,7 +305,7 @@ TPeakFile::Status TPeakFileWriter::failed(QString* error)
     if (error) {
         *error = m_file.errorString();
     }
-    m_file.close();
+    close();
     return TPeakFile::Status::Error;
 }
 
@@ -310,7 +321,8 @@ TPeakFile::Status TPeakFileWriter::open(const QString& path, uint rate, int chan
     m_checksum = ChecksumSeed;
     m_finished = false;
 
-    m_file.setFileName(path);
+    m_path = path;
+    m_file.setFileName(part_path(path));
     if (!m_file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         return failed(error);
     }
@@ -365,6 +377,11 @@ TPeakFile::Status TPeakFileWriter::write_periods(const TPeakLevels& levels, qint
             }
         }
     }
+    // Out of QFile's buffer: a record is in the file (and visible to a
+    // mapping of it) as soon as it is written
+    if (!m_file.flush()) {
+        return failed(error);
+    }
     return TPeakFile::Status::Ok;
 }
 
@@ -383,7 +400,7 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
         if (error) {
             *error = QStringLiteral("the pyramid is empty, incomplete or does not belong to the source");
         }
-        m_file.close();
+        close();
         return TPeakFile::Status::Invalid;
     }
 
@@ -428,6 +445,18 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
     m_file.close();
     if (m_file.error() != QFileDevice::NoError) {
         return failed(error);
+    }
+
+    // Replaces an older file at once (POSIX rename): whoever has the old one
+    // mapped keeps reading it
+    std::error_code renameError;
+    std::filesystem::rename(QFile::encodeName(part_path(m_path)).toStdString(), QFile::encodeName(m_path).toStdString(), renameError);
+    if (renameError) {
+        if (error) {
+            *error = QString::fromStdString(renameError.message());
+        }
+        close();
+        return TPeakFile::Status::Error;
     }
     m_finished = true;
     return TPeakFile::Status::Ok;

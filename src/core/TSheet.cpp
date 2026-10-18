@@ -953,6 +953,8 @@ void TSheet::prepare_recording()
         // session is finished, at which time an autosave makes sense.
         connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
         m_recordingClips.append(clip);
+        // The disk belongs to the recording: no peak builds meanwhile
+        m_readDiskIO->set_idle_work_allowed(false);
         newClips.append(clip);
     }
 
@@ -1006,6 +1008,7 @@ void TSheet::clip_finished_recording(TAudioClip * clip)
     }
 
     if (m_recordingClips.isEmpty()) {
+        m_readDiskIO->set_idle_work_allowed(true);
         // seems we finished recording completely now
         // all clips have set their resulting ReadSource
         // length and whatsoever, let's do an autosave:
@@ -1207,3 +1210,14 @@ QUndoCommand* TSheet::create_command_split_entities(const QList<TSplitableTimeLi
 }
 
 //eof
+
+QFuture<TPeakBuildResult> TSheet::request_peak_build(const QString& audioPath, const QString& peakPath)
+{
+    return m_project->get_peak_builds()->build(audioPath, peakPath, m_readDiskIO);
+}
+
+QFuture<TPeakBuildResult> TSheet::request_peak_write(std::shared_ptr<const TPeakPyramidBuilder> pyramid, const QString& audioPath,
+                                                     const QString& peakPath)
+{
+    return m_project->get_peak_builds()->write(std::move(pyramid), audioPath, peakPath, m_readDiskIO);
+}

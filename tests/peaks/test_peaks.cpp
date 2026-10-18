@@ -350,14 +350,26 @@ static void test_file()
         CHECK(TPeakFile::write(path, builder->levels(), {48000, 1, 0, 1, 1}) == TPeakFile::Status::Invalid, "empty pyramid written");
     }
 
-    // An unfinished file (a crash, a cancelled build) is refused
+    // An unfinished write (a crash, a cancelled build) never reaches the
+    // file's name; its part file says unfinished, and is removed when given up
     {
         const Signal signal = make_signal(44100, 2, 20000);
         const TPeakFile::SourceInfo source{44100, 2, 20000, 99, 42};
-        std::unique_ptr<TPeakPyramidBuilder> builder;
-        write_streamed(path, signal, 2, source, &builder, false);
+        QFile::remove(path);
+        auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, 2, 2);
+        std::vector<const float*> pointers{signal.channels[0].data(), signal.channels[1].data()};
+        builder->append(pointers.data(), signal.frames());
+        TPeakFileWriter writer;
+        CHECK(writer.open(path, signal.rate, 2, 2) == TPeakFile::Status::Ok, "open the writer");
+        CHECK(writer.write_periods(builder->levels(), builder->complete_periods()) == TPeakFile::Status::Ok, "write periods");
+        CHECK(!QFile::exists(path) && QFile::exists(TPeakFileWriter::part_path(path)), "unfinished write not in its part file");
+        // What a crash would leave, under the file's name: refused
+        CHECK(QFile::copy(TPeakFileWriter::part_path(path), path), "copy the part file");
         TPeakFile file;
         CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "unfinished file accepted");
+        QFile::remove(path);
+        writer.close();
+        CHECK(!QFile::exists(TPeakFileWriter::part_path(path)), "the part file of a given up write was left behind");
     }
 
     // Damaged files

@@ -46,6 +46,7 @@ public :
     TBufferedAudioStreamStatus& get_buffer_status() final;
     // The peak pyramid of what is written so far, when peaks are processed
     std::shared_ptr<TPeakPyramidBuilder> get_pyramid() const { return m_pyramid; }
+    const QString& get_peak_path() const { return m_peakPath; }
 
     int prepare_export(TExportSpecification* specification);
     int finish_export();

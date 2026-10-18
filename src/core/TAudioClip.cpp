@@ -733,7 +733,10 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
         delete m_waveform;
         m_waveform = nullptr;
         if (m_isReadSourceValid) {
-            m_waveform = new TWaveform(rs);
+            // Built in the idle time of this clip's sheet's DiskIO
+            m_waveform = new TWaveform(rs, [this](const QString& audioPath, const QString& peakPath) {
+                return m_sheet ? m_sheet->request_peak_build(audioPath, peakPath) : QFuture<TPeakBuildResult>();
+            });
         }
     }
 
@@ -763,8 +766,8 @@ void TAudioClip::finish_write_source()
         m_length = TTimeRef();
     }
 
-    // The peak file is being written from this pyramid on the peaks thread;
-    // the view paints from the pyramid until the file opens
+    // The peak file is written from this pyramid in DiskIO's idle time; the
+    // view paints from the pyramid until the file opens
     std::shared_ptr<TPeakPyramidBuilder> pyramid = m_writer->get_pyramid();
 
     m_sheet->remove_audio_source_from_diskio(m_writer);
@@ -776,6 +779,8 @@ void TAudioClip::finish_write_source()
     resources_manager()->set_source_for_clip(this, m_readSource);
 
     if (m_waveform && pyramid) {
+        // Before the waveform first opens its file, so it joins this write
+        m_sheet->request_peak_write(pyramid, m_readSource->get_filename(), TWaveform::peak_path(m_readSource));
         m_waveform->use_until_file_ready(pyramid);
     }
 

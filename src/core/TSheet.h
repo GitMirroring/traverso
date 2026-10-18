@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define SONG_H
 
 #include "TProcessCallBackData.h"
+#include "TPeakBuildService.h"
 #include "TSession.h"
 #include <QDomNode>
 #include "defines.h"
@@ -33,6 +34,7 @@ class TBufferedAudioStreamReader;
 class TBufferedAudioStreamWriter;
 class TAudioClip;
 class TDiskIOThread;
+class TPeakPyramidBuilder;
 class TAudioClipManager;
 class TAudioDeviceClient;
 class AudioBus;
@@ -67,6 +69,11 @@ public:
     int get_audio_track_count() const {return m_audioTracks.gui_items().size();}
 
     TProject* get_project() const {return m_project;}
+    // The peak file of an audio source, built or written in this sheet's
+    // DiskIO idle time (TPeakBuildService)
+    QFuture<TPeakBuildResult> request_peak_build(const QString& audioPath, const QString& peakPath);
+    QFuture<TPeakBuildResult> request_peak_write(std::shared_ptr<const TPeakPyramidBuilder> pyramid, const QString& audioPath,
+                                                 const QString& peakPath);
     void add_audio_source_to_diskio(TBufferedAudioStreamReader *source) const;
     void remove_audio_source_from_diskio(TBufferedAudioStreamReader *source) const;
     void add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) const;

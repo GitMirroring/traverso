@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TResampleAudioWriter.h"
 #include "TLog.h"
-#include "TPeakBuilder.h"
 #include "TPeakPyramid.h"
 #include "TWaveform.h"
 #include "TQueueBufferSlot.h"
@@ -76,12 +75,12 @@ int TBufferedAudioStreamWriter::finish_export()
         m_resampleWriter.reset();
     }
 
-    // The peak file is written from memory on the peaks thread, after the
-    // audio file is complete (its size and time are part of the peak file's
-    // validation); this thread feeds the playback and must not wait for it
+    // The peak file is written from the finished pyramid by whoever owns
+    // the recording (TAudioClip: in DiskIO's idle time), after the audio
+    // file is complete: its size and time are part of the peak file's
+    // validation. This thread feeds the playback and must not wait for it.
     if (m_pyramid) {
         m_pyramid->finish();
-        peak_builder().write(m_peakPath, m_pyramid, m_fileName);
     }
 
     m_exportFinished = true;

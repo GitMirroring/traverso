@@ -127,8 +127,9 @@ public:
     int period_shift() const { return m_periodShift; }
     qint64 frame_count() const { return m_publishedFrames.load(std::memory_order_acquire); }
 
-    // The periods that every level 0..period_shift() has completed. Only for
-    // the thread that appends.
+    // The periods that every level 0..period_shift() has completed. For the
+    // thread that appends, or any thread once a finished pyramid was handed
+    // over to it.
     qint64 complete_periods() const;
 
     // Frees the storage of levels 0..period_shift() that only holds blocks of

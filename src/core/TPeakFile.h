@@ -86,8 +86,11 @@ private:
  * @brief Writes a peak file as a stream: the header at once, a record as
  * soon as a period is complete, the tail and the final header at the end.
  *
- * The file is written in place. Until finish() its header says unfinished,
- * so a crash or a cancelled build leaves a file that open() refuses.
+ * The file is written next to its final name (path + ".part") and renamed
+ * over it by finish(): a waveform that has the old file mapped keeps
+ * reading the old file, a file is never cut short under a mapping. An
+ * unfinished part file says so in its header and is removed by close();
+ * open() never looks at part files.
  */
 class TPeakFileWriter
 {
@@ -108,8 +111,10 @@ public:
     // source: writes the remaining records, the tail and the final header
     TPeakFile::Status finish(const TPeakLevels& levels, const TPeakFile::SourceInfo& source, QString* error = nullptr);
 
-    // Closes an unfinished file: it keeps its unfinished header
-    void close() { m_file.close(); }
+    // Gives up an unfinished file: the part file is removed
+    void close();
+
+    static QString part_path(const QString& path) { return path + QStringLiteral(".part"); }
 
     int period_shift() const { return m_periodShift; }
     qint64 written_periods() const { return m_writtenPeriods; }
@@ -119,6 +124,7 @@ private:
     TPeakFile::Status failed(QString* error);
 
     QFile m_file;
+    QString m_path;
     uint m_rate{0};
     int m_channelCount{0};
     int m_periodShift{TPeakPyramidBuilder::DefaultPeriodShift};

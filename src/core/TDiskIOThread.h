@@ -23,7 +23,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #define T_DISKIO_THREAD_H
 
 #include <QList>
+#include <QMutex>
 #include <QThread>
+
+#include <chrono>
+#include <deque>
+#include <functional>
 
 #include "TTimeRef.h"
 #include "defines.h"
@@ -66,6 +71,17 @@ public:
         m_audioThreadProcessedFramesQueue->try_enqueue(0);
     }
 
+    // Background work for the idle time: when no stream needs data, the
+    // thread spends at most IdleBudget per wakeup on these, one after the
+    // other. A task returns true while it has more to do. Any thread.
+    using IdleTask = std::function<bool(std::chrono::nanoseconds budget)>;
+    void add_idle_task(IdleTask task);
+
+    // false while the sheet records: the disk belongs to the recording
+    void set_idle_work_allowed(bool allowed) { m_idleWorkAllowed.store(allowed, std::memory_order_relaxed); }
+
+    static constexpr std::chrono::milliseconds IdleBudget{3};
+
 protected:
     void run() override;
 
@@ -93,6 +109,11 @@ private:
     TTimeRef            m_seekTransportLocation;
 	
     void stop_disk_thread();
+    void run_idle_tasks(std::chrono::nanoseconds budget);
+
+    QMutex                  m_idleTasksMutex;
+    std::deque<IdleTask>    m_idleTasks;
+    std::atomic<bool>       m_idleWorkAllowed{true};
 
 public slots:
     void set_output_sample_rate(uint outputSampleRate);

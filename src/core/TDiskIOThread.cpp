@@ -202,6 +202,7 @@ bool TDiskIOThread::do_work( )
     }
 
     if (!workNeeded) {
+        run_idle_tasks(IdleBudget);
         auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
         m_doWorktTime.fetch_add(totalTime);
         return true;
@@ -258,6 +259,43 @@ bool TDiskIOThread::do_work( )
     m_doWorktTime.fetch_add(totalTime);
 
     return true;
+}
+
+void TDiskIOThread::add_idle_task(IdleTask task)
+{
+    QMutexLocker locker(&m_idleTasksMutex);
+    m_idleTasks.push_back(std::move(task));
+}
+
+void TDiskIOThread::run_idle_tasks(std::chrono::nanoseconds budget)
+{
+    if (!m_idleWorkAllowed.load(std::memory_order_relaxed)) {
+        return;
+    }
+    const auto deadline = std::chrono::steady_clock::now() + budget;
+
+    while (!m_stopDiskIOThreadRequested.load()) {
+        IdleTask task;
+        {
+            QMutexLocker locker(&m_idleTasksMutex);
+            if (m_idleTasks.empty()) {
+                return;
+            }
+            task = std::move(m_idleTasks.front());
+            m_idleTasks.pop_front();
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const bool more = now < deadline && task(deadline - now);
+        if (more || now >= deadline) {
+            // Not done: it stays first in line
+            QMutexLocker locker(&m_idleTasksMutex);
+            m_idleTasks.push_front(std::move(task));
+        }
+        if (std::chrono::steady_clock::now() >= deadline) {
+            return;
+        }
+    }
 }
 
 void TDiskIOThread::add_buffered_audio_stream(TBufferedAudioStream* bufferedAudioStream)

@@ -37,6 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 #include "TResourcesManager.h"
+#include "TPeakBuildService.h"
 #include "TExportSpecification.h"
 #include "TAudioDevice.h"
 #include "TConfig.h"
@@ -92,6 +93,7 @@ TProject::TProject(const QString& title)
     m_bitDepth = audiodevice().get_bit_depth();
 
     m_resourcesManager = new TResourcesManager(this);
+    m_peakBuilds = std::make_unique<TPeakBuildService>();
     create_history_stack();
 
     m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
@@ -131,6 +133,9 @@ TProject::~TProject()
     PENTERDES;
 
     cpointer().remove_contextitem(this);
+
+    // The peak jobs are not needed anymore
+    m_peakBuilds->cancel_all();
 
     // Need to delete AudioClips/AudioSource first before deleting Sheets
     delete m_resourcesManager;

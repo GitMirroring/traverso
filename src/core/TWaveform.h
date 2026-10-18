@@ -3,28 +3,32 @@
 
 #pragma once
 
+#include "TPeakBuildService.h"
 #include "TPeakFile.h"
 #include "TTimeRef.h"
 #include "TWaveformColumns.h"
 
+#include <QFutureWatcher>
 #include <QObject>
 #include <QTimer>
 #include <QString>
 
+#include <functional>
 #include <memory>
 
 class TBufferedAudioStream;
 class TBufferedAudioStreamReader;
 class TPeakPyramidBuilder;
 class TFileIOBuffer;
-class TPeakBuildJob;
 
 /**
  * @brief The waveform of one audio source for its views.
  *
  * Opens the source's peak file (TPeakFile), has it built when it is missing
- * or stale, and answers column queries (TWaveformColumns) from the pyramid or
- * from the source's samples with a reader of its own. GUI thread only.
+ * or stale (through the RequestBuild it was given: the sheet's DiskIO builds
+ * it in its idle time), and answers column queries (TWaveformColumns) from
+ * the pyramid or from the source's samples with a reader of its own. GUI
+ * thread only.
  */
 class TWaveform : public QObject, public TWaveformSampleSource
 {
@@ -41,7 +45,9 @@ public:
     // source: the clip's reader. The waveform reads samples with a reader
     // of its own, opened on the first sample query and closed again when
     // unused for a while, so a clip normally holds one open file.
-    explicit TWaveform(TBufferedAudioStreamReader* source);
+    // requestBuild starts (or joins) the build of a peak file
+    using RequestBuild = std::function<QFuture<TPeakBuildResult>(const QString& audioPath, const QString& peakPath)>;
+    TWaveform(TBufferedAudioStreamReader* source, RequestBuild requestBuild);
     // A recording in progress: painted from the growing pyramid, no samples
     explicit TWaveform(std::shared_ptr<TPeakPyramidBuilder> live);
     // Where the peak file of an audio source lives
@@ -98,7 +104,8 @@ private:
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;
-    std::shared_ptr<TPeakBuildJob> m_job;
+    RequestBuild m_requestBuild;
+    QFutureWatcher<TPeakBuildResult> m_build;
     State m_state{State::Building};
     bool m_opened{false};
     int m_progress{0};

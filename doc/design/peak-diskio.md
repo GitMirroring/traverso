@@ -18,7 +18,9 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
 3. Builds run in **DiskIO's idle time**: the DiskIO of the sheet whose clip
    asked for the peaks, in its idle branch (no stream needs work), with a
    time budget per tick and a self-wakeup while work remains. While the
-   sheet records, it does not build (flag). No thread of its own.
+   sheet records, it does not build (flag). No thread of its own. First
+   version: at most 3 ms per DiskIO wakeup (one per audio cycle), no
+   self-wakeup.
 4. Results reach the GUI through a `QPromise` driven by the build task and a
    `QFutureWatcher` in `TWaveform`: exactly one `finished` per watcher, no
    QObject job. A waveform never cancels a build; builds are cancelled when
@@ -50,8 +52,15 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
   order and the header itself (a damaged period shift or frame count can
   keep the file size the same). A file with frame count 0 or a checksum mismatch is Invalid and is
   built again.
-- The file is written in place (no temporary file, no rename): until finish
-  its header says unfinished.
+- The file is written as `<name>.part` and renamed over `<name>` by
+  finish (an atomic replace on POSIX). Writing in place cut a file short
+  under a waveform that had it mapped (SIGBUS, found in the first headless
+  run); the rename leaves an existing mapping on the old file. An unfinished
+  part file says so in its header and is removed when the write is given
+  up. Records are flushed as they are written, so a mapping of the growing
+  part file sees them (for the recording view, step 4). Open on Windows:
+  replacing a file that is mapped fails there; such a build reports an
+  error.
 
 In `TPeakLevels` a level L ≤ S has chunks of 2^(S-L) blocks: chunk i is the
 level's part of record i, the last chunk may be in the tail. A level above
@@ -79,5 +88,10 @@ the period (the writer hands the storage over).
 3. DiskIO idle runner, a build service on `TSheet`, `TWaveform` on
    promise/watcher; TPeakBuilder's thread goes.
 4. The recording writer streams; the live view maps the growing file.
+
+Until step 4 a recording's peak file is written from its finished pyramid
+by a write task in the same idle time (`TAudioClip::finish_write_source`
+asks for it before the clip's new waveform first opens the file, so the
+waveform joins it); `TAudioFileCopyConvert` writes on its own thread.
 
 Open: S (14 proposed), the mapping window size for growing files.
