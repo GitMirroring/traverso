@@ -835,8 +835,10 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
         fill_gain(clipLocal, columnWidth, count, gain.data() + first);
     }
 
-    // The wave brush as one premultiplied colour per device row
+    // The wave brush as one premultiplied colour per device row, and darker
+    // for the RMS band inside the envelope
     std::vector<quint32> rowColor(size_t(deviceHeight), 0);
+    std::vector<quint32> rmsRowColor(size_t(deviceHeight), 0);
     if (m_fillwave) {
         QImage strip(1, deviceHeight, QImage::Format_ARGB32_Premultiplied);
         strip.fill(Qt::transparent);
@@ -845,7 +847,13 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
         stripPainter.fillRect(QRectF(0, 0, 1, m_height), m_waveBrush);
         stripPainter.end();
         for (int y = 0; y < deviceHeight; ++y) {
-            rowColor[size_t(y)] = *reinterpret_cast<const quint32*>(strip.constScanLine(y));
+            const quint32 color = *reinterpret_cast<const quint32*>(strip.constScanLine(y));
+            rowColor[size_t(y)] = color;
+            // Premultiplied: the colour channels scaled, the alpha kept
+            const quint32 red = (((color >> 16) & 0xffu) * 166u) >> 8;
+            const quint32 green = (((color >> 8) & 0xffu) * 166u) >> 8;
+            const quint32 blue = ((color & 0xffu) * 166u) >> 8;
+            rmsRowColor[size_t(y)] = (color & 0xff000000u) | (red << 16) | (green << 8) | blue;
         }
     }
 
@@ -873,11 +881,15 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
         for (int i = 0; i < columns; ++i) {
             TWaveformColumn column = data[size_t(i)];
             if (m_mergedView) {
+                // The RMS of all channels together: the mean of their squares
+                float squares = column.rms * column.rms;
                 for (int c = 1; c < channels; ++c) {
                     const TWaveformColumn& other = data[size_t(c) * size_t(columns) + size_t(i)];
                     column.min = std::min(column.min, other.min);
                     column.max = std::max(column.max, other.max);
+                    squares += other.rms * other.rms;
                 }
+                column.rms = std::sqrt(squares / float(channels));
             } else if (drawn > 0) {
                 column = data[size_t(drawn) * size_t(columns) + size_t(i)];
             }
@@ -891,14 +903,19 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
             if (low > high) {
                 std::swap(low, high);
             }
+            const float rms = column.rms * std::fabs(g);
 
-            double yTop, yBottom;
+            double yTop, yBottom, rmsTop, rmsBottom;
             if (m_classicView) {
                 yTop = center - amplitude * high;
                 yBottom = center - amplitude * low;
+                rmsTop = center - amplitude * rms;
+                rmsBottom = center + amplitude * rms;
             } else {
                 yTop = channelBottom - amplitude * std::max(std::fabs(low), std::fabs(high));
                 yBottom = channelBottom;
+                rmsTop = channelBottom - amplitude * rms;
+                rmsBottom = channelBottom;
             }
             top.append(QPointF(i + 0.5, yTop));
             bottom.append(QPointF(i + 0.5, yBottom));
@@ -906,12 +923,15 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
             if (!m_fillwave) {
                 continue;
             }
-            // At least one device pixel, inside the channel
+            // At least one device pixel, inside the channel; the RMS band
+            // (rounded inwards) in its darker colour
             int y0 = std::clamp(int(std::floor(yTop)), channelTop, channelBottom);
             int y1 = std::clamp(std::max(int(std::ceil(yBottom)), y0 + 1), channelTop, channelBottom);
+            const int r0 = std::clamp(int(std::ceil(rmsTop)), channelTop, channelBottom);
+            const int r1 = std::clamp(int(std::floor(rmsBottom)), channelTop, channelBottom);
             for (int y = y0; y < y1; ++y) {
                 quint32* pixel = reinterpret_cast<quint32*>(image.scanLine(y)) + i;
-                const quint32 source = rowColor[size_t(y)];
+                const quint32 source = (y >= r0 && y < r1) ? rmsRowColor[size_t(y)] : rowColor[size_t(y)];
                 const quint32 inverse = 255 - (source >> 24);
                 const quint32 d = *pixel;
                 const quint32 rb = (((d & 0x00ff00ffu) * inverse) >> 8) & 0x00ff00ffu;

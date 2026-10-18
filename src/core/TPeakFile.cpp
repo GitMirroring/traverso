@@ -33,19 +33,30 @@ struct TPeakFileHeader
     quint32 blockFrames;
     quint32 codesPerOctave;     // of the value codes (TPeakLevels)
     quint32 periodShift;
+    quint32 planes;             // what each block has: PlaneMinMax | PlaneRms
+    quint32 padding;            // 0
     quint64 frameCount;     // 0: unfinished
     qint64 sourceSize;
     qint64 sourceModified;
     quint64 checksum;       // of this header with checksum 0
 };
 
-static_assert(sizeof(TPeakFileHeader) == 72 && offsetof(TPeakFileHeader, frameCount) == 40);
+static_assert(sizeof(TPeakFileHeader) == 80 && offsetof(TPeakFileHeader, frameCount) == 48);
 static_assert(sizeof(TPeakBlock) == 4);
+
+// The planes of a block, in the order a record or the tail holds them per
+// level: min/max of every channel, then the RMS codes of every channel.
+// This version writes and reads exactly these.
+static constexpr quint32 PlaneMinMax = 1;
+static constexpr quint32 PlaneRms = 2;
+static constexpr quint32 Planes = PlaneMinMax | PlaneRms;
 
 static constexpr char Magic[8] = {'T', 'R', 'A', 'V', 'P', 'E', 'A', 'K'};
 static constexpr quint32 ByteOrderMark = 0x01020304;   // stored in the writer's byte order
 static constexpr qint64 DataStart = qint64(sizeof(TPeakFileHeader));
 static constexpr qint64 BlockBytes = qint64(sizeof(TPeakBlock));
+static constexpr qint64 RmsBytes = qint64(sizeof(qint16));
+static constexpr qint64 PlanesBytes = BlockBytes + RmsBytes;   // per block and channel
 
 // FNV-1a over 32-bit words. Not a cryptographic hash: it only has to notice
 // a damaged header.
@@ -100,7 +111,9 @@ static std::vector<qint64> expected_block_counts(qint64 frames)
 
 /**
  * Where everything is in a version 6 file: follows from the period shift,
- * the channel count and the block count of every level.
+ * the channel count and the block count of every level. In a record and in
+ * the tail every level holds its min/max of every channel, then its RMS
+ * codes of every channel.
  */
 struct TPeakFileLayout
 {
@@ -116,7 +129,7 @@ struct TPeakFileLayout
         , counts(std::move(blockCounts))
     {
         for (int level = 0; level <= periodShift; ++level) {
-            recordBytes += period_blocks(level) * BlockBytes * channelCount;
+            recordBytes += period_blocks(level) * PlanesBytes * channelCount;
         }
         periods = complete_periods(periodShift, counts);
     }
@@ -139,33 +152,56 @@ struct TPeakFileLayout
     qint64 record_blocks(int level) const { return level <= periodShift ? periods * period_blocks(level) : 0; }
     qint64 tail_blocks(int level) const { return counts[size_t(level)] - record_blocks(level); }
 
-    qint64 record_offset(qint64 period, int level, int channel) const
+    // Where level starts in record period, and its min/max and RMS of channel
+    qint64 record_level(qint64 period, int level) const
     {
         qint64 offset = DataStart + period * recordBytes;
         for (int l = 0; l < level; ++l) {
-            offset += period_blocks(l) * BlockBytes * channelCount;
+            offset += period_blocks(l) * PlanesBytes * channelCount;
         }
-        return offset + channel * period_blocks(level) * BlockBytes;
+        return offset;
+    }
+    qint64 record_offset(qint64 period, int level, int channel) const
+    {
+        return record_level(period, level) + channel * period_blocks(level) * BlockBytes;
+    }
+    qint64 record_rms_offset(qint64 period, int level, int channel) const
+    {
+        return record_level(period, level) + period_blocks(level) * (channelCount * BlockBytes + channel * RmsBytes);
     }
 
     qint64 tail_start() const { return DataStart + periods * recordBytes; }
 
-    qint64 tail_offset(int level, int channel) const
+    // The same for the tail; tail_level(level_count()) is the end of the file
+    qint64 tail_level(int level) const
     {
         qint64 offset = tail_start();
         for (int l = 0; l < level; ++l) {
-            offset += tail_blocks(l) * BlockBytes * channelCount;
+            offset += tail_blocks(l) * PlanesBytes * channelCount;
         }
-        return offset + channel * tail_blocks(level) * BlockBytes;
+        return offset;
+    }
+    qint64 tail_offset(int level, int channel) const
+    {
+        return tail_level(level) + channel * tail_blocks(level) * BlockBytes;
+    }
+    qint64 tail_rms_offset(int level, int channel) const
+    {
+        return tail_level(level) + tail_blocks(level) * (channelCount * BlockBytes + channel * RmsBytes);
     }
 
-    qint64 end() const { return level_count() > 0 ? tail_offset(level_count() - 1, channelCount) : tail_start(); }
+    qint64 end() const { return tail_level(level_count()); }
 };
 
 
 qint64 TPeakFileWriter::record_offset(int periodShift, int channelCount, qint64 period, int level, int channel)
 {
     return TPeakFileLayout(periodShift, channelCount, {}).record_offset(period, level, channel);
+}
+
+qint64 TPeakFileWriter::record_rms_offset(int periodShift, int channelCount, qint64 period, int level, int channel)
+{
+    return TPeakFileLayout(periodShift, channelCount, {}).record_rms_offset(period, level, channel);
 }
 
 qint64 TPeakFileWriter::records_end(int periodShift, int channelCount, qint64 periods)
@@ -250,6 +286,7 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
             || header.blockFrames != quint32(TPeakLevels::BlockFrames)
             || header.codesPerOctave != quint32(TPeakLevels::CodesPerOctave)
             || header.periodShift > quint32(TPeakPyramidBuilder::MaxPeriodShift)
+            || header.planes != Planes
             || header.checksum != header_checksum(header)) {
         return Status::Invalid;
     }
@@ -278,17 +315,21 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
         out.blockCount = layout.counts[size_t(level)];
         for (int channel = 0; channel < expected.channelCount; ++channel) {
             std::vector<const TPeakBlock*> chunks;
+            std::vector<const qint16*> rms;
             if (level <= layout.periodShift) {
                 // One chunk per record, the last one in the tail
                 out.chunkShift = layout.periodShift - level;
                 for (qint64 period = 0; period < layout.periods; ++period) {
                     chunks.push_back(reinterpret_cast<const TPeakBlock*>(m_map + layout.record_offset(period, level, channel)));
+                    rms.push_back(reinterpret_cast<const qint16*>(m_map + layout.record_rms_offset(period, level, channel)));
                 }
             }
             if (layout.tail_blocks(level) > 0) {
                 chunks.push_back(reinterpret_cast<const TPeakBlock*>(m_map + layout.tail_offset(level, channel)));
+                rms.push_back(reinterpret_cast<const qint16*>(m_map + layout.tail_rms_offset(level, channel)));
             }
             out.channels.push_back(std::move(chunks));
+            out.rms.push_back(std::move(rms));
         }
     }
 
@@ -357,6 +398,7 @@ TPeakFile::Status TPeakFileWriter::open(const QString& path, uint rate, int chan
     header.blockFrames = TPeakLevels::BlockFrames;
     header.codesPerOctave = quint32(TPeakLevels::CodesPerOctave);
     header.periodShift = quint32(periodShift);
+    header.planes = Planes;
     // frameCount 0: unfinished
     if (m_file.write(reinterpret_cast<const char*>(&header), sizeof(header)) != qint64(sizeof(header))) {
         return failed(error);
@@ -379,6 +421,21 @@ bool TPeakFileWriter::write_blocks(const TPeakLevels& levels, int level, int cha
     return true;
 }
 
+bool TPeakFileWriter::write_rms(const TPeakLevels& levels, int level, int channel, qint64 first, qint64 last)
+{
+    while (first < last) {
+        qint64 count = 0;
+        const qint16* run = levels.rms_blocks(level, channel, first, count);
+        count = std::min(count, last - first);
+        const qint64 bytes = count * RmsBytes;
+        if (m_file.write(reinterpret_cast<const char*>(run), bytes) != bytes) {
+            return false;
+        }
+        first += count;
+    }
+    return true;
+}
+
 TPeakFile::Status TPeakFileWriter::write_periods(const TPeakLevels& levels, qint64 periods, QString* error)
 {
     Q_ASSERT(m_file.isOpen() && !m_finished);
@@ -391,6 +448,11 @@ TPeakFile::Status TPeakFileWriter::write_periods(const TPeakLevels& levels, qint
             Q_ASSERT(level < levels.level_count() && levels.block_count(level) >= first + blocks);
             for (int channel = 0; channel < m_channelCount; ++channel) {
                 if (!write_blocks(levels, level, channel, first, first + blocks)) {
+                    return failed(error);
+                }
+            }
+            for (int channel = 0; channel < m_channelCount; ++channel) {
+                if (!write_rms(levels, level, channel, first, first + blocks)) {
                     return failed(error);
                 }
             }
@@ -439,6 +501,11 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
                 return failed(error);
             }
         }
+        for (int channel = 0; channel < m_channelCount; ++channel) {
+            if (!write_rms(levels, level, channel, layout.record_blocks(level), layout.counts[size_t(level)])) {
+                return failed(error);
+            }
+        }
     }
     Q_ASSERT(m_file.pos() == layout.end());
 
@@ -452,6 +519,7 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
     header.blockFrames = TPeakLevels::BlockFrames;
     header.codesPerOctave = quint32(TPeakLevels::CodesPerOctave);
     header.periodShift = quint32(m_periodShift);
+    header.planes = Planes;
     header.frameCount = quint64(source.frameCount);
     header.sourceSize = source.fileSize;
     header.sourceModified = source.modified;

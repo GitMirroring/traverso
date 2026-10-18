@@ -80,6 +80,7 @@ private:
     TPeakLevels snapshot();
     void remap(qint64 periods);
     const TPeakBlock* mapped_blocks(qint64 period, int level, int channel) const;
+    const qint16* mapped_rms(qint64 period, int level, int channel) const;
 
     TPeakPyramidBuilder m_builder;
     QString m_peakPath;
@@ -99,8 +100,10 @@ private:
     uchar* m_map{nullptr};
     qint64 m_mappedPeriods{0};
 
-    // Where the blocks of a level start inside a record, per level 0..S
+    // Where the blocks and the RMS codes of a level start inside a record,
+    // per level 0..S
     std::vector<qint64> m_levelOffsets;
+    std::vector<qint64> m_rmsOffsets;
     qint64 m_recordBytes{0};
     qint64 m_dataStart{0};
 };

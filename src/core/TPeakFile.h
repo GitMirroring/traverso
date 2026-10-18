@@ -19,8 +19,9 @@
  *
  * Layout (doc/design/peak-diskio.md): a header of fixed size, then one record
  * per complete period (TPeakPyramidBuilder: the blocks of levels 0..S of that
- * period, level by level, channel by channel), then a tail with the rest of
- * every level. Every offset follows from the header, so there is no table.
+ * period, level by level, per level the min/max of every channel and then
+ * the RMS codes of every channel), then a tail with the rest of every level
+ * in the same order. Every offset follows from the header, so there is no table.
  * The header says unfinished (frame count 0) until TPeakFileWriter::finish()
  * writes the frame count and the source; it has a checksum, which open()
  * checks. The block data has none: a file reaches its name only after it
@@ -120,9 +121,10 @@ public:
 
     static QString part_path(const QString& path) { return path + QStringLiteral(".part"); }
 
-    // Where the blocks of level (<= periodShift) and channel of record
-    // period start, and where the records before period end
+    // Where the blocks (the RMS codes) of level (<= periodShift) and channel
+    // of record period start, and where the records before period end
     static qint64 record_offset(int periodShift, int channelCount, qint64 period, int level, int channel);
+    static qint64 record_rms_offset(int periodShift, int channelCount, qint64 period, int level, int channel);
     static qint64 records_end(int periodShift, int channelCount, qint64 periods);
 
     int period_shift() const { return m_periodShift; }
@@ -130,6 +132,7 @@ public:
 
 private:
     bool write_blocks(const TPeakLevels& levels, int level, int channel, qint64 first, qint64 last);
+    bool write_rms(const TPeakLevels& levels, int level, int channel, qint64 first, qint64 last);
     TPeakFile::Status failed(QString* error);
 
     QFile m_file;

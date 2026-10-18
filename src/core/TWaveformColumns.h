@@ -7,12 +7,13 @@
 #include "TTimeRef.h"
 
 // One drawn column of a waveform: the lowest and highest value of the signal
-// inside the column, 1.0 = full scale. A column without signal (before the
-// start or after the end of the source) has min > max.
+// inside the column and its RMS, 1.0 = full scale. A column without signal
+// (before the start or after the end of the source) has min > max.
 struct TWaveformColumn
 {
     float min;
     float max;
+    float rms;
 
     bool is_empty() const { return min > max; }
 };
@@ -43,7 +44,11 @@ public:
  * - Pyramid otherwise: a level-0 block belongs to the column that holds its
  *   first frame, the column combines its blocks from the coarsest levels that
  *   fit (O(log) per column at any zoom). Values are rounded outwards by at
- *   most one code step (TPeakLevels, 0.0059 dB).
+ *   most one code step (TPeakLevels, 0.0059 dB). The RMS is the root of the
+ *   blocks' mean squares weighted by their frames, within a step.
+ *
+ * From the samples a column's RMS is that of the samples inside it (between
+ * two samples: of the line's values at its edges).
  *
  * No interpolation between pyramid levels: every column shows values that are
  * in the audio, so spikes do not change size while zooming.

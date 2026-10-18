@@ -19,6 +19,7 @@ TPeakRecording::TPeakRecording(uint rate, int channelCount, QString peakPath, in
     m_recordBytes = TPeakFileWriter::records_end(periodShift, channelCount, 1) - m_dataStart;
     for (int level = 0; level <= periodShift; ++level) {
         m_levelOffsets.push_back(TPeakFileWriter::record_offset(periodShift, channelCount, 0, level, 0) - m_dataStart);
+        m_rmsOffsets.push_back(TPeakFileWriter::record_rms_offset(periodShift, channelCount, 0, level, 0) - m_dataStart);
     }
 }
 
@@ -129,6 +130,13 @@ const TPeakBlock* TPeakRecording::mapped_blocks(qint64 period, int level, int ch
                                                + channel * periodBlocks * qint64(sizeof(TPeakBlock)));
 }
 
+const qint16* TPeakRecording::mapped_rms(qint64 period, int level, int channel) const
+{
+    const qint64 periodBlocks = qint64(1) << (m_builder.period_shift() - level);
+    return reinterpret_cast<const qint16*>(m_map + m_dataStart + period * m_recordBytes + m_rmsOffsets[size_t(level)]
+                                           + channel * periodBlocks * qint64(sizeof(qint16)));
+}
+
 TPeakLevels TPeakRecording::snapshot()
 {
     const qint64 written = m_writtenPeriods.load(std::memory_order_seq_cst);
@@ -163,12 +171,15 @@ TPeakLevels TPeakRecording::snapshot()
             out.chunkShift = TPeakPyramidBuilder::MinChunkShift;
             for (int channel = 0; channel < channels; ++channel) {
                 std::vector<const TPeakBlock*> pointers;
+                std::vector<const qint16*> rms;
                 for (qint64 index = 0; index < blockCount;) {
                     qint64 count = 0;
                     pointers.push_back(memory.blocks(level, channel, index, count));
+                    rms.push_back(memory.rms_blocks(level, channel, index, count));
                     index += count;
                 }
                 out.channels.push_back(std::move(pointers));
+                out.rms.push_back(std::move(rms));
             }
         } else {
             // One chunk per period: the written ones from the mapping
@@ -177,15 +188,19 @@ TPeakLevels TPeakRecording::snapshot()
             const qint64 chunks = (blockCount + periodBlocks - 1) / periodBlocks;
             for (int channel = 0; channel < channels; ++channel) {
                 std::vector<const TPeakBlock*> pointers(static_cast<size_t>(chunks));
+                std::vector<const qint16*> rms(static_cast<size_t>(chunks));
                 for (qint64 period = 0; period < chunks; ++period) {
                     if (period < written) {
                         pointers[size_t(period)] = mapped_blocks(period, level, channel);
+                        rms[size_t(period)] = mapped_rms(period, level, channel);
                     } else {
                         qint64 count = 0;
                         pointers[size_t(period)] = memory.blocks(level, channel, period * periodBlocks, count);
+                        rms[size_t(period)] = memory.rms_blocks(level, channel, period * periodBlocks, count);
                     }
                 }
                 out.channels.push_back(std::move(pointers));
+                out.rms.push_back(std::move(rms));
             }
         }
         levels.push_back(std::move(out));

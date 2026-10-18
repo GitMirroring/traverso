@@ -140,7 +140,7 @@ static bool same_levels(const TPeakLevels& a, const TPeakLevels& b)
             for (qint64 k = 0; k < a.block_count(level); ++k) {
                 const TPeakBlock& x = a.block(level, c, k);
                 const TPeakBlock& y = b.block(level, c, k);
-                if (x.min != y.min || x.max != y.max) {
+                if (x.min != y.min || x.max != y.max || a.rms(level, c, k) != b.rms(level, c, k)) {
                     return false;
                 }
             }
@@ -655,6 +655,118 @@ static void test_columns()
     }
 }
 
+// The RMS plane: every stored RMS within one step of the RMS of its frames
+// (computed here from the samples), on every level, the partial last block
+// included; a sine's RMS where blocks hold whole periods; silence is code 0;
+// columns from the samples agree with the samples
+static void test_rms()
+{
+    const double step = TPeakCodeMath::octave_fraction(1);
+    auto within_a_step = [&](qint16 code, double expected) {
+        const double value = TPeakLevels::to_value(code);
+        if (expected <= TPeakLevels::to_value(1)) {
+            return value <= TPeakLevels::to_value(1);
+        }
+        return value <= expected * step * 1.000001 && value >= expected / (step * 1.000001);
+    };
+
+    for (qint64 frames : {qint64(1), qint64(63), qint64(64), qint64(65), qint64(1000), qint64(123457), random_between(200000, 400000)}) {
+        const int channelCount = int(random_between(1, 2));
+        const Signal signal = make_signal(44100, channelCount, frames);
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true, true, int(random_between(0, 14)));
+        const TPeakLevels levels = builder->levels();
+        int checked = 0;
+        for (int level = 0; level < levels.level_count(); ++level) {
+            for (int c = 0; c < channelCount; ++c) {
+                for (qint64 k = 0; k < levels.block_count(level); k += 1 + k / 50) {
+                    const qint64 first = k << (TPeakLevels::BlockFramesShift + level);
+                    const qint64 last = std::min(first + (qint64(TPeakLevels::BlockFrames) << level), frames);
+                    double squares = 0.0;
+                    for (qint64 n = first; n < last; ++n) {
+                        squares += double(signal.channels[size_t(c)][size_t(n)]) * signal.channels[size_t(c)][size_t(n)];
+                    }
+                    const double expected = std::sqrt(squares / double(last - first));
+                    CHECK(levels.block_frames(level, k) == last - first, "frames %lld level %d block %lld: %lld frames", (long long)frames,
+                          level, (long long)k, (long long)levels.block_frames(level, k));
+                    CHECK(within_a_step(levels.rms(level, c, k), expected), "frames %lld level %d block %lld: RMS %.9g expected %.9g",
+                          (long long)frames, level, (long long)k, TPeakLevels::to_value(levels.rms(level, c, k)), expected);
+                    ++checked;
+                }
+                // The partial last block in particular
+                const qint64 k = levels.block_count(level) - 1;
+                const qint64 first = k << (TPeakLevels::BlockFramesShift + level);
+                double squares = 0.0;
+                for (qint64 n = first; n < frames; ++n) {
+                    squares += double(signal.channels[size_t(c)][size_t(n)]) * signal.channels[size_t(c)][size_t(n)];
+                }
+                CHECK(within_a_step(levels.rms(level, c, k), std::sqrt(squares / double(frames - first))),
+                      "frames %lld level %d: the last block's RMS", (long long)frames, level);
+            }
+        }
+        CHECK(checked > 0, "nothing checked");
+    }
+
+    // A sine of amplitude A with 32 frames per period: every block holds
+    // whole periods, so its RMS is A / sqrt(2), and so is a column of one
+    // block, on every level
+    for (const double amplitude : {1e-6, 0.001, 0.25, 1.0, 3.5}) {
+        const qint64 frames = qint64(64) << 12;
+        Signal signal{48000, {std::vector<float>(size_t(frames))}};
+        for (qint64 n = 0; n < frames; ++n) {
+            signal.channels[0][size_t(n)] = float(amplitude * std::sin(2.0 * M_PI * double(n) / 32.0));
+        }
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
+        const TPeakLevels levels = builder->levels();
+        const double expected = amplitude / std::sqrt(2.0);
+        for (int level = 0; level <= 12; ++level) {
+            const qint64 blockFrames = qint64(TPeakLevels::BlockFrames) << level;
+            const int count = int(std::min<qint64>(frames / blockFrames, 64));
+            std::vector<TWaveformColumn> out(static_cast<size_t>(count));
+            const TTimeRef width(uint64_t(blockFrames), signal.rate);
+            CHECK(TWaveformColumns::query(levels, nullptr, TTimeRef(), width, count, out.data()) == TWaveformColumns::Source::Pyramid,
+                  "sine: pyramid");
+            for (int i = 0; i < count; ++i) {
+                CHECK(within_a_step(levels.rms(level, 0, i), expected), "sine %g level %d block %d: %.9g", amplitude, level, i,
+                      TPeakLevels::to_value(levels.rms(level, 0, i)));
+                const double column = out[size_t(i)].rms;
+                CHECK(column <= expected * step * 1.000001 && column >= expected / (step * 1.000001), "sine %g level %d column %d: %.9g",
+                      amplitude, level, i, column);
+            }
+        }
+    }
+
+    // Silence
+    {
+        Signal silence{48000, {std::vector<float>(100000, 0.0f), std::vector<float>(100000, 0.0f)}};
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(silence, true);
+        const TPeakLevels levels = builder->levels();
+        for (int level = 0; level < levels.level_count(); ++level) {
+            for (qint64 k = 0; k < levels.block_count(level); ++k) {
+                CHECK(levels.rms(level, 0, k) == 0 && levels.rms(level, 1, k) == 0, "silence: level %d block %lld", level, (long long)k);
+            }
+        }
+    }
+
+    // Columns from the samples, of exactly 10 frames: the RMS of those frames
+    {
+        const Signal signal = make_signal(48000, 1, 5000);
+        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        MemorySource memory(signal);
+        std::vector<TWaveformColumn> out(400);
+        CHECK(TWaveformColumns::query(builder->levels(), &memory, TTimeRef(), TTimeRef(uint64_t(10), 48000), 400, out.data())
+              == TWaveformColumns::Source::Samples, "samples");
+        for (int i = 0; i < 400; ++i) {
+            double squares = 0.0;
+            for (int n = i * 10; n < i * 10 + 10; ++n) {
+                squares += double(signal.channels[0][size_t(n)]) * signal.channels[0][size_t(n)];
+            }
+            const float expected = float(std::sqrt(squares / 10.0));
+            CHECK(std::fabs(out[size_t(i)].rms - expected) <= expected * 1e-5f, "samples column %d: RMS %.9g expected %.9g", i,
+                  out[size_t(i)].rms, expected);
+        }
+    }
+}
+
 template<typename Test>
 static void run(const char* name, Test test)
 {
@@ -909,6 +1021,7 @@ int main()
     run("file", test_file);
     run("columns", test_columns);
     run("max amplitude", test_max_amplitude);
+    run("rms", test_rms);
     run("growing pyramid", test_growing_pyramid);
     run("zero crossing", test_zero_crossing);
     std::printf("non-empty columns checked: %lld from samples, %lld from the pyramid\n",

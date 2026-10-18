@@ -8,7 +8,7 @@
 #include <limits>
 #include <vector>
 
-static constexpr TWaveformColumn EmptyColumn{std::numeric_limits<float>::max(), std::numeric_limits<float>::lowest()};
+static constexpr TWaveformColumn EmptyColumn{std::numeric_limits<float>::max(), std::numeric_limits<float>::lowest(), 0.0f};
 
 TWaveformColumns::Source TWaveformColumns::source_for(const TPeakLevels& levels, const TTimeRef& columnWidth)
 {
@@ -206,8 +206,10 @@ TWaveformColumns::Source TWaveformColumns::from_pyramid(const TPeakLevels& level
         const qint64 last = first_block_at(start + columnWidth * double(i + 1));
         if (last > first) {
             for (int channel = 0; channel < channels; ++channel) {
-                const TPeakBlock block = levels.range(channel, first, last);
-                out[qsizetype(channel) * count + i] = {TPeakLevels::to_value(block.min), TPeakLevels::to_value(block.max)};
+                double meanSquare = 0.0;
+                const TPeakBlock block = levels.range(channel, first, last, meanSquare);
+                out[qsizetype(channel) * count + i] = {TPeakLevels::to_value(block.min), TPeakLevels::to_value(block.max),
+                                                       float(std::sqrt(meanSquare))};
             }
         }
         first = last;
@@ -292,8 +294,18 @@ TWaveformColumns::Source TWaveformColumns::from_samples(const TPeakLevels& level
             // left edge up to the first frame at or after its right edge
             const qint64 from = std::max(edgeFrame[size_t(i)] + (edgeFraction[size_t(i)] > 0.0 ? 1 : 0), first);
             const qint64 to = std::min(edgeFrame[size_t(i) + 1] + (edgeFraction[size_t(i) + 1] > 0.0 ? 1 : 0) - 1, available);
+            double squares = 0.0;
             for (qint64 frame = from; frame <= to; ++frame) {
                 add(sample(frame));
+                squares += double(sample(frame)) * sample(frame);
+            }
+            if (to >= from) {
+                column.rms = float(std::sqrt(squares / double(to - from + 1)));
+            } else if (hasEntry || hasExit) {
+                // Between two samples: the line's values at the edges
+                const float a = hasEntry ? entry : exit;
+                const float b = hasExit ? exit : entry;
+                column.rms = float(std::sqrt((double(a) * a + double(b) * b) / 2.0));
             }
 
             columns[i] = column;

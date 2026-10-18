@@ -259,7 +259,7 @@ int main()
                     for (qint64 k = 0; k < blocks; k += 1 + k / 7) {
                         const TPeakBlock& a = view.block(level, c, k);
                         const TPeakBlock& b = expected.block(level, c, k);
-                        if (a.min != b.min || a.max != b.max) {
+                        if (a.min != b.min || a.max != b.max || view.rms(level, c, k) != expected.rms(level, c, k)) {
                             wrong = true;
                             CHECK(false, "recording %d: level %d channel %d block %lld differs in snapshot %d", round, level, c,
                                   (long long)k, snapshots);
@@ -307,7 +307,8 @@ int main()
             for (int c = 0; c < view.channel_count(); ++c) {
                 for (qint64 k = 0; k < blocks; ++k) {
                     if (view.block(level, c, k).min != expected.block(level, c, k).min
-                            || view.block(level, c, k).max != expected.block(level, c, k).max) {
+                            || view.block(level, c, k).max != expected.block(level, c, k).max
+                            || view.rms(level, c, k) != expected.rms(level, c, k)) {
                         return false;
                     }
                 }
