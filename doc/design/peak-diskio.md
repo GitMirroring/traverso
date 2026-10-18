@@ -36,15 +36,18 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
    not set a gain). A file built or checked in this session passes at once.
    A file is checked **once**: a passed check sets a flag in the header
    (not part of its checksum), so the next open does not read it again.
-   Only a file older than a few minutes is marked: a check of a file written
-   moments ago can read the page cache instead of the disk.
+   Before it does, the check waits until the file's data is on the disk
+   (fdatasync, once per file, in DiskIO's idle time): a check of a file
+   written moments ago can read the page cache instead of the disk. Builds
+   and recordings still do not sync. A recording's file is checked when its
+   clip first opens it, from the page cache, and then synced and marked.
 6. Peak files are prepared when a clip gets its source and its sheet, not
    at its first paint: whether a clip is visible does not matter. When peak
    files must be rebuilt, every sheet's DiskIO builds at once (accepted: it
    is rare) and as fast as the disk allows while no stream needs reading.
 7. No network file systems for now.
 
-## 2. File format, version 3
+## 2. File format, version 4
 
 ```
 [header, fixed size][record 0][record 1] ... [record n-1][tail]

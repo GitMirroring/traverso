@@ -112,12 +112,6 @@ class TPeakVerifyTask
 public:
     using State = TPeakBuildTask::State;
 
-    // A check reads what the system has, which for a file written moments
-    // ago can be its page cache instead of the disk: only a file this old is
-    // marked as checked (systems write changed pages back within about 30
-    // seconds). A younger file is checked again at its next open.
-    static constexpr std::chrono::minutes SettledAge{5};
-
     TPeakVerifyTask(QString peakPath, TPeakFile::SourceInfo expected);
 
     bool step(std::chrono::nanoseconds budget);

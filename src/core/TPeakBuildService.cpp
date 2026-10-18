@@ -18,18 +18,16 @@ static QFuture<TPeakBuildResult> queue(std::unique_ptr<Task> task, TDiskIOThread
     {
         std::unique_ptr<Task> task;
         QPromise<TPeakBuildResult> promise;
-        bool started{false};
     };
     auto job = std::make_shared<Job>();
     job->task = std::move(task);
+    // Started at once: older Qt versions finish the future of a destroyed
+    // promise only when it was started (DiskIO stops before the first step)
+    job->promise.start();
+    job->promise.setProgressRange(0, 100);
     QFuture<TPeakBuildResult> future = job->promise.future();
 
     diskio->add_idle_task([job](std::chrono::nanoseconds budget) {
-        if (!job->started) {
-            job->started = true;
-            job->promise.start();
-            job->promise.setProgressRange(0, 100);
-        }
         if (job->promise.isCanceled()) {
             job->task->cancel();
         }
@@ -47,9 +45,7 @@ static QFuture<TPeakBuildResult> queue(std::unique_ptr<Task> task, TDiskIOThread
 const QFuture<TPeakBuildResult>* TPeakBuildService::running(QHash<QString, QFuture<TPeakBuildResult>>& jobs,
                                                            const QString& peakPath)
 {
-    // Forget the jobs that are over, the hash stays small that way. (Not
-    // QFuture::isValid(): that tells whether results can be taken; it stays
-    // false until the job started, reportStarted().)
+    // Forget the jobs that are over, the hash stays small that way
     for (auto it = jobs.begin(); it != jobs.end();) {
         if (!it->isFinished()) {
             ++it;

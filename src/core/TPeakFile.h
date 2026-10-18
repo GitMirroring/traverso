@@ -5,12 +5,11 @@
 
 #include "TPeakPyramid.h"
 
-#include <QDateTime>
 #include <QFile>
 #include <QString>
 
 /**
- * @brief Peak file format 3: a TPeakLevels pyramid on disk, written as a
+ * @brief Peak file format 4: a TPeakLevels pyramid on disk, written as a
  * stream, read mapped.
  *
  * The file is a cache of its source: when it is missing, unfinished, from
@@ -29,6 +28,8 @@
  * be checked on its own; the header has a checksum of its own, which open()
  * checks. A check that found all block data whole can say so in the header
  * (mark_checked()), so a file is read back once, not at every open.
+ *
+ * Format 4: 3 had one checksum over the whole file and a smaller header.
  */
 class TPeakFile
 {
@@ -65,8 +66,8 @@ public:
 
     enum class Access
     {
-        ReadOnly,
-        ReadWrite   // to mark_checked() the file
+        ReadOnly,       // holds a mapping only, no file descriptor
+        ReadWrite       // to mark_checked() the file; keeps its descriptor
     };
 
     // Checks the header, its checksum and the layout, not the block data:
@@ -77,12 +78,13 @@ public:
     bool is_open() const { return m_map != nullptr; }
     // Valid while the file is open
     const TPeakLevels& levels() const { return m_levels; }
-    // When the file was last modified, as it was opened
-    const QDateTime& modified() const { return m_modified; }
 
     // Whether a check found all block data whole
     bool checked() const;
-    // Says so in the header (not part of its checksum); needs Access::ReadWrite
+    // Says so in the header (not part of its checksum); needs
+    // Access::ReadWrite. Waits first until the file's data is on the disk:
+    // a check of a file written moments ago can read the page cache, and the
+    // flag must not claim more than the disk has. Not for the GUI thread.
     bool mark_checked();
 
     // The block data in parts with a checksum each: the records, then the
@@ -93,7 +95,7 @@ public:
     // All parts
     bool verify_checksum() const;
 
-    static constexpr quint32 FormatVersion = 3;
+    static constexpr quint32 FormatVersion = 4;
 
 private:
     Status validate(const SourceInfo& expected, qint64 fileSize);
@@ -101,7 +103,6 @@ private:
     QFile m_file;
     uchar* m_map{nullptr};
     bool m_writable{false};
-    QDateTime m_modified;
     qint64 m_periods{0};
     qint64 m_recordBytes{0};
     qint64 m_tailEnd{0};    // where the tail's blocks end, its checksum follows

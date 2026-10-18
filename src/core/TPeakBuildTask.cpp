@@ -226,9 +226,8 @@ bool TPeakVerifyTask::step(std::chrono::nanoseconds budget)
 
     do {
         if (m_part == m_file.part_count()) {
-            if (m_file.modified().msecsTo(QDateTime::currentDateTimeUtc()) >= std::chrono::milliseconds(SettledAge).count()) {
-                m_file.mark_checked();
-            }
+            // Once per file: on the disk it stays as checked
+            m_file.mark_checked();
             m_file.close();
             m_progress = 100;
             m_state = State::Done;

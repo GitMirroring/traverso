@@ -73,11 +73,16 @@ public:
 
     // Background work for the idle time: when no stream needs data, the
     // thread spends at most IdleBudget per wakeup on these, one after the
-    // other. A task returns true while it has more to do. Any thread.
+    // other. A task returns true while it has more to do. Any thread. Adding
+    // one does not wake the thread: the audio thread wakes it every cycle,
+    // also with the transport stopped (a failed driver falls back to the
+    // Dummy driver, which has cycles too).
     using IdleTask = std::function<bool(std::chrono::nanoseconds budget)>;
     void add_idle_task(IdleTask task);
 
-    // false while the sheet records: the disk belongs to the recording
+    // false while the sheet records: the disk belongs to the recording. Per
+    // sheet: the other sheets go on (peak files are rebuilt only after a new
+    // file version or when they are lost, and nobody records then)
     void set_idle_work_allowed(bool allowed) { m_idleWorkAllowed.store(allowed, std::memory_order_relaxed); }
 
     static constexpr std::chrono::milliseconds IdleBudget{3};

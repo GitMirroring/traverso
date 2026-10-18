@@ -405,6 +405,7 @@ static void test_file()
     };
     expect_damaged(QByteArray(bytes).replace(0, 1, "X"), "magic");
     expect_damaged(patched(8, 2), "version 2");
+    expect_damaged(patched(8, 3), "version 3");
     expect_damaged(patched(12, 0x04030201), "byte order");
     expect_damaged(patched(16, 64), "header size");
     expect_damaged(patched(28, 32), "block frames");

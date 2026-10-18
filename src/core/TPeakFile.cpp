@@ -7,6 +7,14 @@
 #include <QDir>
 #include <QFileInfo>
 
+#if defined(Q_OS_WIN)
+#include <io.h>
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
@@ -68,6 +76,19 @@ static quint64 header_checksum(TPeakFileHeader header)
     return add_to_checksum(ChecksumSeed, &header, qint64(sizeof(header)));
 }
 
+// Waits until the data of the open file fd is on the disk
+static bool sync_to_disk(int fd)
+{
+#if defined(Q_OS_WIN)
+    return FlushFileBuffers(HANDLE(_get_osfhandle(fd))) != 0;
+#elif defined(Q_OS_MACOS)
+    // fsync() leaves the data in the drive's cache there
+    return fcntl(fd, F_FULLFSYNC) == 0 || fsync(fd) == 0;
+#else
+    return fdatasync(fd) == 0;
+#endif
+}
+
 // The block count of every level of a complete pyramid over frames frames
 static std::vector<qint64> expected_block_counts(qint64 frames)
 {
@@ -85,7 +106,7 @@ static std::vector<qint64> expected_block_counts(qint64 frames)
 }
 
 /**
- * Where everything is in a version 3 file: follows from the period shift,
+ * Where everything is in a version 4 file: follows from the period shift,
  * the channel count and the block count of every level. A record and the
  * tail end in the checksum of their blocks.
  */
@@ -200,13 +221,13 @@ TPeakFile::Status TPeakFile::open(const QString& path, const SourceInfo& expecte
     if (!m_file.exists()) {
         return Status::Missing;
     }
-    // A writable mapping, so the flag goes into the file that was checked
-    // even when a build replaced the one under its name meanwhile
+    // Writable: the flag goes through this mapping and descriptor into the
+    // file that was checked, also when a build replaced the one under its
+    // name meanwhile
     m_writable = access == Access::ReadWrite;
     if (!m_file.open(m_writable ? QIODevice::ReadWrite : QIODevice::ReadOnly)) {
         return Status::Error;
     }
-    m_modified = m_file.fileTime(QFileDevice::FileModificationTime);
     if (m_file.size() < qint64(sizeof(TPeakFileHeader))) {
         m_file.close();
         return Status::Invalid;
@@ -214,9 +235,11 @@ TPeakFile::Status TPeakFile::open(const QString& path, const SourceInfo& expecte
 
     const qint64 size = m_file.size();
     m_map = m_file.map(0, size);
-    // The mapping does not need the descriptor (QFileDevice::map), so an
-    // open peak file costs no file descriptor
-    m_file.close();
+    // The mapping does not need the descriptor (QFileDevice::map), so a
+    // peak file open for reading costs no file descriptor
+    if (!m_writable) {
+        m_file.close();
+    }
     if (!m_map) {
         return Status::Error;
     }
@@ -302,7 +325,7 @@ bool TPeakFile::checked() const
 
 bool TPeakFile::mark_checked()
 {
-    if (!m_map || !m_writable) {
+    if (!m_map || !m_writable || !sync_to_disk(m_file.handle())) {
         return false;
     }
     const quint32 checked = 1;
@@ -338,6 +361,9 @@ void TPeakFile::close()
     if (m_map) {
         m_file.unmap(m_map);
         m_map = nullptr;
+    }
+    if (m_file.isOpen()) {
+        m_file.close();
     }
     m_writable = false;
     m_levels = TPeakLevels();

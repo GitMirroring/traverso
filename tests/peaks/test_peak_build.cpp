@@ -12,7 +12,6 @@
 #include "TPeakPyramid.h"
 #include "TPeakRecording.h"
 
-#include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
@@ -303,32 +302,21 @@ int main()
             return task.state();
         };
         CHECK(check("whole file") == TPeakVerifyTask::State::Done, "a whole peak file fails its check");
-        // Just written: maybe read from the page cache, so checked again next time
+        // Marked, so its next open does not read it again
         TPeakFile file;
-        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && !file.checked(), "a new file was marked checked");
+        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && file.checked(), "a checked file was not marked");
         file.close();
-        // Written long enough ago: marked, not read again
-        {
-            QFile old(peakPath);
-            CHECK(old.open(QIODevice::ReadWrite)
-                  && old.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-3600), QFileDevice::FileModificationTime),
-                  "age the peak file");
-        }
-        const QByteArray whole = file_bytes(peakPath);
-        CHECK(check("old file") == TPeakVerifyTask::State::Done, "an old peak file fails its check");
-        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && file.checked(), "an old file was not marked checked");
-        file.close();
-        {
-            QFile out(peakPath);
-            CHECK(out.open(QIODevice::WriteOnly | QIODevice::Truncate) && out.write(whole) == whole.size(), "rewrite");
-        }
+        // Damaged and not checked yet: fails and stays unmarked
         QByteArray bytes = file_bytes(peakPath);
         bytes[bytes.size() - 7] = char(bytes[bytes.size() - 7] ^ 0x01);
+        bytes[40] = 0;
         {
             QFile out(peakPath);
             CHECK(out.open(QIODevice::WriteOnly | QIODevice::Truncate) && out.write(bytes) == bytes.size(), "rewrite");
         }
         CHECK(check("damaged file") == TPeakVerifyTask::State::Failed, "a damaged peak file passes its check");
+        CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && !file.checked(), "a damaged file was marked checked");
+        file.close();
         QFile::remove(peakPath);
         CHECK(check("missing file") == TPeakVerifyTask::State::Failed, "a missing peak file passes its check");
     }
