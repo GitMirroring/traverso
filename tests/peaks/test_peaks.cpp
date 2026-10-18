@@ -63,8 +63,8 @@ static Int128 floor_div(Int128 numerator, Int128 denominator)
     return quotient;
 }
 
-// A test signal: noise, a sine, spikes past full scale, and exact multiples
-// of the quantization step
+// A test signal: noise, a sine, spikes past full scale (some past the code
+// range), and values that are codes exactly
 struct Signal
 {
     uint rate;
@@ -83,9 +83,9 @@ static Signal make_signal(uint rate, int channelCount, qint64 frames)
             double value = 0.6 * std::sin(2.0 * M_PI * frequency * double(n) / rate) + noise * (random_unit() * 2.0 - 1.0);
             const double kind = random_unit();
             if (kind < 0.001) {
-                value = (random_unit() * 2.0 - 1.0) * 5.0;   // past +-4.0: clamped
+                value = (random_unit() * 2.0 - 1.0) * 20.0;   // past +-16 (+24 dB): saturated
             } else if (kind < 0.01) {
-                value = double(random_between(-20000, 20000)) / TPeakLevels::ValueScale;
+                value = TPeakLevels::to_value(qint16(random_between(-TPeakLevels::MaxCode, TPeakLevels::MaxCode)));
             }
             signal.channels[size_t(c)][size_t(n)] = float(value);
         }
@@ -123,7 +123,7 @@ static TPeakBlock reference_block(const std::vector<float>& samples, qint64 firs
         low = std::min(low, samples[size_t(n)]);
         high = std::max(high, samples[size_t(n)]);
     }
-    return {TPeakLevels::quantize_min(low), TPeakLevels::quantize_max(high)};
+    return {TPeakLevels::code_at_or_below(low), TPeakLevels::code_at_or_above(high)};
 }
 
 static bool same_levels(const TPeakLevels& a, const TPeakLevels& b)
@@ -149,6 +149,74 @@ static bool same_levels(const TPeakLevels& a, const TPeakLevels& b)
     return true;
 }
 
+
+// The value codes: rounded outwards at every level, monotonic, exact at the
+// octaves, saturated beyond the range
+static void test_codes()
+{
+    float previous = -std::numeric_limits<float>::max();
+    for (int code = -TPeakLevels::MaxCode; code <= TPeakLevels::MaxCode; ++code) {
+        const float value = TPeakLevels::to_value(qint16(code));
+        CHECK(value > previous || code == -TPeakLevels::MaxCode, "code %d: %g not above %g", code, value, previous);
+        previous = value;
+        // A code's own value maps back to it
+        CHECK(TPeakLevels::code_at_or_above(value) == code && TPeakLevels::code_at_or_below(value) == code,
+              "code %d: value %g maps to %d / %d", code, value, TPeakLevels::code_at_or_above(value), TPeakLevels::code_at_or_below(value));
+    }
+    CHECK(TPeakLevels::to_value(qint16(TPeakLevels::OneCode)) == 1.0f, "1.0");
+    CHECK(TPeakLevels::to_value(qint16(TPeakLevels::OneCode + TPeakLevels::CodesPerOctave)) == 2.0f, "2.0");
+    CHECK(TPeakLevels::to_value(qint16(TPeakLevels::OneCode - 3 * TPeakLevels::CodesPerOctave)) == 0.125f, "0.125");
+    CHECK(TPeakLevels::to_value(qint16(-32768)) == -TPeakLevels::max_value(), "-32768 is clamped");
+
+    // A log sweep from -200 dB to +30 dB (beyond the -180 asked for), both
+    // signs: outwards, by at most one step
+    const double step = std::pow(2.0, 1.0 / TPeakLevels::CodesPerOctave);
+    for (int i = 0; i <= 230000; ++i) {
+        const float magnitude = float(std::pow(10.0, (-200.0 + i * 0.001) / 20.0));
+        for (const float value : {magnitude, -magnitude}) {
+            const float above = TPeakLevels::to_value(TPeakLevels::code_at_or_above(value));
+            const float below = TPeakLevels::to_value(TPeakLevels::code_at_or_below(value));
+            if (std::fabs(value) > TPeakLevels::max_value()) {
+                CHECK(std::fabs(above) == TPeakLevels::max_value() || std::fabs(below) == TPeakLevels::max_value(),
+                      "%g: not saturated", value);
+                continue;
+            }
+            CHECK(above >= value && below <= value, "%g: %g .. %g does not contain it", value, below, above);
+            // Within one step, except below the smallest code (silence there)
+            if (std::fabs(value) > TPeakLevels::to_value(2)) {
+                // The tables are floats: a ratio is exact to about 1e-7
+                CHECK(std::fabs(above) <= std::fabs(below) * step * 1.000001 || above == below,
+                      "%g: %g .. %g wider than a step", value, below, above);
+            }
+        }
+    }
+    // Around the powers of two, where the octave changes: just below, at and
+    // just above 2^k, as a max (up) and a min (down)
+    for (int k = -27; k <= 3; ++k) {
+        const float power = std::ldexp(1.0f, k);
+        for (const float value : {std::nextafter(power, 0.0f), power, std::nextafter(power, 16.0f)}) {
+            for (const float signedValue : {value, -value}) {
+                const qint16 above = TPeakLevels::code_at_or_above(signedValue);
+                const qint16 below = TPeakLevels::code_at_or_below(signedValue);
+                CHECK(TPeakLevels::to_value(above) >= signedValue && TPeakLevels::to_value(below) <= signedValue
+                      && above - below <= 1, "2^%d: %g gives %d .. %d", k, signedValue, below, above);
+            }
+        }
+        CHECK(TPeakLevels::code_at_or_above(power) == TPeakLevels::OneCode + k * TPeakLevels::CodesPerOctave, "2^%d is a code", k);
+    }
+    // Nearest: never more than half a step off
+    for (int i = 0; i <= 20000; ++i) {
+        const float value = float(std::pow(10.0, (-160.0 + i * 0.009) / 20.0));
+        const float nearest = TPeakLevels::to_value(TPeakLevels::code_nearest(value));
+        CHECK(std::fabs(nearest - value) <= value * float(step - 1.0) * 0.5f * 1.0001f, "nearest of %g is %g", value, nearest);
+    }
+    CHECK(TPeakLevels::code_at_or_above(0.0f) == 0 && TPeakLevels::code_at_or_below(0.0f) == 0, "zero");
+    CHECK(TPeakLevels::code_at_or_above(1e-30f) == 1 && TPeakLevels::code_at_or_below(1e-30f) == 0, "below the range");
+    CHECK(TPeakLevels::code_at_or_above(20.0f) == TPeakLevels::MaxCode && TPeakLevels::code_at_or_below(-20.0f) == -TPeakLevels::MaxCode,
+          "saturation");
+    CHECK(TPeakLevels::code_at_or_above(std::nanf("")) == 0 && TPeakLevels::code_at_or_below(std::nanf("")) == 0, "NaN");
+    CHECK(TPeakLevels::code_at_or_above(std::numeric_limits<float>::infinity()) == TPeakLevels::MaxCode, "infinity");
+}
 
 static void test_time_conversions()
 {
@@ -554,18 +622,18 @@ static void test_columns()
 
             if (used == TWaveformColumns::Source::Pyramid) {
                 // Against the real samples: every sample is inside its own
-                // column or the one before, within one quantization step
-                const float step = 1.0f / TPeakLevels::ValueScale;
+                // column or the one before (codes are rounded outwards)
+                const float limit = TPeakLevels::max_value();
                 for (qint64 n = 0; n < frames; ++n) {
                     const qint64 i = column_of(Int128(n) * U, start, width, rate);
                     if (i < 1 || i >= count) {
                         continue;
                     }
-                    const float value = std::clamp(samples[size_t(n)], -4.0f, 4.0f);
+                    const float value = std::clamp(samples[size_t(n)], -limit, limit);
                     bool inside = false;
                     for (qint64 j : {i - 1, i}) {
                         const TWaveformColumn& column = out[size_t(c) * size_t(count) + size_t(j)];
-                        inside = inside || (!column.is_empty() && value >= column.min - step && value <= column.max + step);
+                        inside = inside || (!column.is_empty() && value >= column.min && value <= column.max);
                     }
                     CHECK(inside, "round %d: sample %lld not in column %lld or the one before", round, (long long)n, (long long)i);
                 }
@@ -753,6 +821,7 @@ static void test_zero_crossing()
 
 int main()
 {
+    run("codes", test_codes);
     run("time conversions", test_time_conversions);
     run("pyramid", test_pyramid);
     run("file", test_file);

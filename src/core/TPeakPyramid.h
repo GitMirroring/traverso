@@ -5,17 +5,82 @@
 
 #include <QtGlobal>
 
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <memory>
 #include <vector>
 
-// The lowest and highest sample value of a block of frames, scaled by
-// TPeakLevels::ValueScale and rounded outwards, so the stored span always
+// The lowest and highest sample value of a block of frames as value codes
+// (TPeakLevels::to_value()), rounded outwards, so the stored span always
 // contains the real one.
 struct TPeakBlock
 {
     qint16 min;
     qint16 max;
+};
+
+// 2^(i / 1024) for the compiler, without std::exp2 (not constexpr): the
+// binary digits of i / 1024 pick the roots 2^(1/2), 2^(1/4) .. 2^(1/1024),
+// each a square root of the one before (Newton's method)
+struct TPeakCodeMath
+{
+    static constexpr double square_root(double x)   // x in [1, 2]
+    {
+        double root = x;
+        for (int i = 0; i < 32; ++i) {
+            const double next = 0.5 * (root + x / root);
+            if (next == root) {
+                break;
+            }
+            root = next;
+        }
+        return root;
+    }
+
+    // i in [0, 1024)
+    static constexpr double octave_fraction(int i)
+    {
+        double value = 1.0;
+        double root = 2.0;
+        for (int bit = 9; bit >= 0; --bit) {
+            root = square_root(root);
+            if (i & (1 << bit)) {
+                value *= root;
+            }
+        }
+        return value;
+    }
+};
+
+// The decoding tables of the value codes (TPeakLevels), built by the
+// compiler. Code c > 0 is Octaves[c >> 10] * Mantissas[c & 1023]: octave
+// c / 1024 and step c % 1024 within it. Code 0 is silence, -c is the value
+// of c negated. Multiplying by a power of two is exact, so a value is as
+// exact as its mantissa.
+struct TPeakCodeTables
+{
+    static constexpr std::array<float, 1024> Mantissas = [] {
+        std::array<float, 1024> mantissas{};
+        for (int i = 0; i < 1024; ++i) {
+            mantissas[size_t(i)] = float(TPeakCodeMath::octave_fraction(i));
+        }
+        return mantissas;
+    }();
+
+    // 2^(o - 28) for o = 0 .. 31
+    static constexpr std::array<float, 32> Octaves = [] {
+        std::array<float, 32> octaves{};
+        float value = 1.0f;
+        for (int o = 0; o < 28; ++o) {
+            value *= 0.5f;
+        }
+        for (float& octave : octaves) {
+            octave = value;
+            value *= 2.0f;
+        }
+        return octaves;
+    }();
 };
 
 /**
@@ -39,8 +104,16 @@ class TPeakLevels
 public:
     static constexpr int BlockFrames = 64;
     static constexpr int BlockFramesShift = 6;
-    static constexpr float ValueScale = 8192.0f;   // 1.0 = full scale, range +-4.0 (+12 dBFS)
-    static constexpr int MaxValue = 32767;
+
+    // Values (1.0 = full scale) are stored as int16 codes on a log scale:
+    // code 0 is silence, code c > 0 is 2^((c - OneCode) / CodesPerOctave),
+    // -c the same value negated. A step is 1/1024 octave (0.0059 dB) at any
+    // level, from about -168 dB (code 1) to +24 dB (MaxCode); larger values
+    // saturate. Codes compare like their values, so min and max work on
+    // codes.
+    static constexpr int CodesPerOctave = 1024;
+    static constexpr int OneCode = 28 * CodesPerOctave;
+    static constexpr int MaxCode = 32767;
 
     struct Level
     {
@@ -74,9 +147,22 @@ public:
     // from the coarsest levels that fit. first < last <= block_count(0).
     TPeakBlock range(int channel, qint64 first, qint64 last) const;
 
-    static qint16 quantize_min(float value);
-    static qint16 quantize_max(float value);
-    static float to_value(qint16 stored) { return float(stored) / ValueScale; }
+    static float to_value(qint16 code)
+    {
+        // Clamped: -32768 is never written, but a file may hold anything
+        const int magnitude = std::min(code < 0 ? -int(code) : int(code), MaxCode);
+        const float value = magnitude == 0 ? 0.0f
+            : TPeakCodeTables::Octaves[size_t(magnitude >> 10)] * TPeakCodeTables::Mantissas[size_t(magnitude & 1023)];
+        return code < 0 ? -value : value;
+    }
+    // The codes on both sides of value: the smallest code whose value is >=
+    // value, the largest whose value is <= value (MaxCode or -MaxCode when
+    // value is beyond the range: saturated). NaN gives 0.
+    static qint16 code_at_or_above(float value);
+    static qint16 code_at_or_below(float value);
+    // The code whose value is nearest (RMS: no side to keep)
+    static qint16 code_nearest(float value);
+    static float max_value() { return to_value(MaxCode); }
 
 private:
     uint m_rate{0};

@@ -9,7 +9,7 @@
 #include <QString>
 
 /**
- * @brief Peak file format 5: a TPeakLevels pyramid on disk, written as a
+ * @brief Peak file format 6: a TPeakLevels pyramid on disk, written as a
  * stream, read mapped.
  *
  * The file is a cache of its source: when it is missing, unfinished, from
@@ -68,7 +68,7 @@ public:
     // Valid while the file is open
     const TPeakLevels& levels() const { return m_levels; }
 
-    static constexpr quint32 FormatVersion = 5;
+    static constexpr quint32 FormatVersion = 6;
 
 private:
     Status validate(const SourceInfo& expected, qint64 fileSize);

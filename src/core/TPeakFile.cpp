@@ -31,7 +31,7 @@ struct TPeakFileHeader
     quint32 rate;
     quint32 channelCount;
     quint32 blockFrames;
-    quint32 valueScale;
+    quint32 codesPerOctave;     // of the value codes (TPeakLevels)
     quint32 periodShift;
     quint64 frameCount;     // 0: unfinished
     qint64 sourceSize;
@@ -99,7 +99,7 @@ static std::vector<qint64> expected_block_counts(qint64 frames)
 }
 
 /**
- * Where everything is in a version 5 file: follows from the period shift,
+ * Where everything is in a version 6 file: follows from the period shift,
  * the channel count and the block count of every level.
  */
 struct TPeakFileLayout
@@ -248,7 +248,7 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
             || header.byteOrder != ByteOrderMark
             || header.headerSize != sizeof(TPeakFileHeader)
             || header.blockFrames != quint32(TPeakLevels::BlockFrames)
-            || header.valueScale != quint32(TPeakLevels::ValueScale)
+            || header.codesPerOctave != quint32(TPeakLevels::CodesPerOctave)
             || header.periodShift > quint32(TPeakPyramidBuilder::MaxPeriodShift)
             || header.checksum != header_checksum(header)) {
         return Status::Invalid;
@@ -355,7 +355,7 @@ TPeakFile::Status TPeakFileWriter::open(const QString& path, uint rate, int chan
     header.rate = rate;
     header.channelCount = quint32(channelCount);
     header.blockFrames = TPeakLevels::BlockFrames;
-    header.valueScale = quint32(TPeakLevels::ValueScale);
+    header.codesPerOctave = quint32(TPeakLevels::CodesPerOctave);
     header.periodShift = quint32(periodShift);
     // frameCount 0: unfinished
     if (m_file.write(reinterpret_cast<const char*>(&header), sizeof(header)) != qint64(sizeof(header))) {
@@ -450,7 +450,7 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
     header.rate = m_rate;
     header.channelCount = quint32(m_channelCount);
     header.blockFrames = TPeakLevels::BlockFrames;
-    header.valueScale = quint32(TPeakLevels::ValueScale);
+    header.codesPerOctave = quint32(TPeakLevels::CodesPerOctave);
     header.periodShift = quint32(m_periodShift);
     header.frameCount = quint64(source.frameCount);
     header.sourceSize = source.fileSize;

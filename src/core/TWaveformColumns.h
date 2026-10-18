@@ -43,7 +43,7 @@ public:
  * - Pyramid otherwise: a level-0 block belongs to the column that holds its
  *   first frame, the column combines its blocks from the coarsest levels that
  *   fit (O(log) per column at any zoom). Values are rounded outwards by at
- *   most 1 / TPeakLevels::ValueScale.
+ *   most one code step (TPeakLevels, 0.0059 dB).
  *
  * No interpolation between pyramid levels: every column shows values that are
  * in the audio, so spikes do not change size while zooming.

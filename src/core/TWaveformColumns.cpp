@@ -61,10 +61,10 @@ float TWaveformColumns::max_amplitude(const TPeakLevels& levels, TWaveformSample
     float amplitude = std::max(max_of_samples(first, firstBlock << TPeakLevels::BlockFramesShift),
                                max_of_samples(lastBlock << TPeakLevels::BlockFramesShift, last));
 
-    // A stored block span contains the real one and is at most one
-    // quantization step wider, so the real maximum of the blocks is within
-    // one step below the bound, and only blocks whose stored amplitude
-    // reaches that can hold it
+    // A stored block span contains the real one and is at most one code
+    // step wider, so the real maximum of the blocks is within one step below
+    // the bound, and only blocks whose stored amplitude reaches that can
+    // hold it
     auto stored_amplitude = [](const TPeakBlock& block) {
         return std::max(std::fabs(TPeakLevels::to_value(block.min)), std::fabs(TPeakLevels::to_value(block.max)));
     };
@@ -74,11 +74,12 @@ float TWaveformColumns::max_amplitude(const TPeakLevels& levels, TWaveformSample
     }
     // A saturated block (|sample| beyond the stored range) says nothing
     // about how far beyond, so every saturated block is read
-    const bool saturated = bound >= float(TPeakLevels::MaxValue) / TPeakLevels::ValueScale;
+    const bool saturated = bound >= TPeakLevels::max_value();
     if (!saturated && bound <= amplitude) {
         return amplitude;
     }
-    const float threshold = saturated ? bound : std::max(amplitude, bound - 1.0f / TPeakLevels::ValueScale);
+    const float threshold = saturated ? bound
+        : std::max(amplitude, TPeakLevels::to_value(qint16(TPeakLevels::code_at_or_below(bound) - 1)));
     for (qint64 block = firstBlock; block < lastBlock; ++block) {
         bool candidate = false;
         for (int c = 0; c < channels && !candidate; ++c) {
