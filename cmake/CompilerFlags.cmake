@@ -15,6 +15,15 @@ endif()
 # Base warnings and Large File Support (Always active across all build profiles)
 target_compile_options(traverso_compiler_settings INTERFACE -Wall -Wextra -Wno-unused-local-typedefs ${LFS_FLAGS})
 
+# ThreadSanitizer for everything built with these settings, the tests
+# included (the peak tests run threads against the lock-free peak code).
+# For a CI job or by hand, in a build directory of its own.
+option(TRAVERSO_TSAN "Build with ThreadSanitizer" OFF)
+if(TRAVERSO_TSAN)
+    target_compile_options(traverso_compiler_settings INTERFACE -fsanitize=thread -fno-omit-frame-pointer)
+    target_link_options(traverso_compiler_settings INTERFACE -fsanitize=thread)
+endif()
+
 # ---------------------------------------------------------------------------
 # Debian Sid Production Hardening and LTO Optimization (STRICTLY RELEASE ONLY)
 # ---------------------------------------------------------------------------

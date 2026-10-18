@@ -11,6 +11,7 @@
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
 #include "TPeakRecording.h"
+#include "TWaveformColumns.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -136,6 +137,160 @@ static QByteArray reference_file(const QString& path, const Signal& signal, cons
     const auto source = TPeakFile::SourceInfo::from_file(audioPath, signal.rate, int(signal.channels.size()), signal.frames());
     CHECK(TPeakFile::write(path, builder.levels(), source, nullptr, periodShift) == TPeakFile::Status::Ok, "reference write");
     return file_bytes(path);
+}
+
+// The samples of a signal for TWaveformColumns (max_amplitude's ends)
+class SignalSource final : public TWaveformSampleSource
+{
+public:
+    explicit SignalSource(const Signal& signal) : m_signal(signal) {}
+
+    qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override
+    {
+        const qint64 available = std::max<qint64>(0, std::min(count, m_signal.frames() - firstFrame));
+        for (size_t c = 0; c < m_signal.channels.size(); ++c) {
+            std::copy_n(m_signal.channels[c].data() + firstFrame, available, channels[c]);
+        }
+        return available;
+    }
+
+private:
+    const Signal& m_signal;
+};
+
+// Stress test of the lock-free paths: one thread records in buffers of 256
+// frames, the GUI thread meanwhile queries columns at changing zoom over what
+// is recorded, with RMS and max_amplitude. Every column made of blocks the
+// snapshot has equals the finished pyramid's, no block is a poisoned (freed)
+// one, the counts never go back, and the finished file answers the same.
+static void stress_recording(const QString& peakPath, const QString& audioPath)
+{
+    const int shift = 4;   // periods of 1024 frames
+    const Signal signal = make_signal(2, 1024 * 400 + 333);
+    TPeakPyramidBuilder whole(signal.rate, 2, shift);
+    {
+        const float* pointers[2] = {signal.channels[0].data(), signal.channels[1].data()};
+        whole.append(pointers, signal.frames());
+        whole.finish();
+    }
+    const TPeakLevels expected = whole.levels();
+    const double step = TPeakCodeMath::octave_fraction(1);
+
+    QFile::remove(peakPath);
+    TPeakRecording recording(signal.rate, 2, peakPath, shift);
+    CHECK(recording.open() == TPeakFile::Status::Ok, "stress: open");
+    std::atomic<bool> done{false};
+    std::thread writer([&] {
+        std::mt19937_64 random(42);
+        for (qint64 position = 0; position < signal.frames(); position += 256) {
+            const float* pointers[2] = {signal.channels[0].data() + position, signal.channels[1].data() + position};
+            recording.append(pointers, std::min<qint64>(256, signal.frames() - position));
+            if (std::uniform_int_distribution<int>(0, 30)(random) == 0) {
+                std::this_thread::sleep_for(std::chrono::microseconds(100));
+            }
+        }
+        CHECK(recording.finish(audioPath) == TPeakFile::Status::Ok, "stress: finish");
+        done.store(true);
+    });
+
+    const qint64 widths[] = {64, 64 * 3, 64 * 16, 64 * 100 + 7, 64 * 1000};
+    std::vector<TWaveformColumn> got(400);
+    std::vector<TWaveformColumn> want(400);
+    qint64 lastFrames = 0;
+    qint64 lastBlocks = 0;
+    int reads = 0;
+    int compared = 0;
+    bool failed = false;
+    SignalSource source(signal);
+    while ((!done.load() || reads == 0) && !failed) {
+        recording.read([&](const TPeakLevels& view) {
+            ++reads;
+            const qint64 blocks = view.level_count() > 0 ? view.block_count(0) : 0;
+            if (view.frame_count() < lastFrames || blocks < lastBlocks || view.frame_count() < blocks * TPeakLevels::BlockFrames) {
+                CHECK(false, "stress read %d: %lld frames %lld blocks after %lld / %lld", reads, (long long)view.frame_count(),
+                      (long long)blocks, (long long)lastFrames, (long long)lastBlocks);
+                failed = true;
+                return;
+            }
+            lastFrames = view.frame_count();
+            lastBlocks = blocks;
+            if (blocks == 0) {
+                return;
+            }
+            // A freed block (debug builds poison them) has min > max
+            for (int i = 0; i < 8; ++i) {
+                const qint64 k = random_between(0, blocks - 1);
+                for (int c = 0; c < 2; ++c) {
+                    if (view.block(0, c, k).min > view.block(0, c, k).max) {
+                        CHECK(false, "stress read %d: block %lld is poisoned", reads, (long long)k);
+                        failed = true;
+                        return;
+                    }
+                }
+            }
+
+            const qint64 frames = widths[random_between(0, 4)];
+            const TTimeRef width(uint64_t(frames), signal.rate);
+            const int count = int(got.size()) / 2;
+            const TTimeRef start(uint64_t(random_between(0, blocks * TPeakLevels::BlockFrames - 1)), signal.rate);
+            TWaveformColumns::query(view, nullptr, start, width, count, got.data());
+            TWaveformColumns::query(expected, nullptr, start, width, count, want.data());
+            for (int c = 0; c < 2; ++c) {
+                for (int i = 0; i < count; ++i) {
+                    // Only columns the snapshot has all blocks of
+                    if (TTimeRef::frame_at_or_after(start + width * double(i + 1), signal.rate) > blocks * TPeakLevels::BlockFrames) {
+                        break;
+                    }
+                    const TWaveformColumn& a = got[size_t(c * count + i)];
+                    const TWaveformColumn& b = want[size_t(c * count + i)];
+                    if (a.is_empty() != b.is_empty()
+                            || (!a.is_empty() && (a.min != b.min || a.max != b.max
+                                                  || a.rms > b.rms * step * 1.000001 || a.rms < b.rms / (step * 1.000001)))) {
+                        CHECK(false, "stress read %d: column %d of %lld frames: %g..%g rms %g, expected %g..%g rms %g", reads, i,
+                              (long long)frames, a.min, a.max, a.rms, b.min, b.max, b.rms);
+                        failed = true;
+                        return;
+                    }
+                    ++compared;
+                }
+            }
+
+            // Now and then max_amplitude over a stretch of what is recorded
+            if (reads % 16 == 0) {
+                const qint64 first = random_between(0, blocks * TPeakLevels::BlockFrames - 1);
+                const qint64 last = std::min(first + random_between(1, 30000), blocks * TPeakLevels::BlockFrames);
+                float real = 0.0f;
+                for (qint64 n = first; n < last; ++n) {
+                    real = std::max({real, std::fabs(signal.channels[0][size_t(n)]), std::fabs(signal.channels[1][size_t(n)])});
+                }
+                const float amplitude = TWaveformColumns::max_amplitude(view, &source, first, last);
+                if (amplitude < real || amplitude > real * float(step) * 1.000001f) {
+                    CHECK(false, "stress read %d: max_amplitude %g, real %g", reads, amplitude, real);
+                    failed = true;
+                }
+            }
+        });
+    }
+    writer.join();
+    CHECK(compared > 1000, "stress: only %d columns compared in %d reads", compared, reads);
+    std::printf("    stress: %d reads, %d columns compared\n", reads, compared);
+
+    // The finished file answers like the finished pyramid
+    TPeakFile file;
+    CHECK(file.open(peakPath, TPeakFile::SourceInfo::from_file(audioPath, signal.rate, 2, signal.frames())) == TPeakFile::Status::Ok,
+          "stress: open the file");
+    for (const qint64 frames : widths) {
+        const TTimeRef width(uint64_t(frames), signal.rate);
+        const int count = int(got.size()) / 2;
+        TWaveformColumns::query(file.levels(), nullptr, TTimeRef(), width, count, got.data());
+        TWaveformColumns::query(expected, nullptr, TTimeRef(), width, count, want.data());
+        bool same = true;
+        for (int i = 0; i < 2 * count; ++i) {
+            same = same && got[size_t(i)].min == want[size_t(i)].min && got[size_t(i)].max == want[size_t(i)].max
+                   && got[size_t(i)].rms == want[size_t(i)].rms;
+        }
+        CHECK(same, "stress: the file's columns of %lld frames differ", (long long)frames);
+    }
 }
 
 int main()
@@ -288,6 +443,8 @@ int main()
         });
         std::printf("    recording of %lld frames: %d snapshots\n", (long long)signal.frames(), snapshots);
     }
+
+    stress_recording(peakPath, audioPath);
 
     // Recording memory without and with readers: helpers
     auto record_into = [&](TPeakRecording& recording, const Signal& signal, qint64 from, qint64 to) {
