@@ -44,10 +44,12 @@ public:
     void cancel_all();
 
 private:
-    // The job of peakPath that is not over yet, or nullptr
-    const QFuture<TPeakBuildResult>* running(const QString& peakPath);
+    // The job of peakPath in jobs that is not over yet, or nullptr
+    const QFuture<TPeakBuildResult>* running(QHash<QString, QFuture<TPeakBuildResult>>& jobs, const QString& peakPath);
 
-    QHash<QString, QFuture<TPeakBuildResult>> m_jobs;
+    // Builds and checks apart: a build must not be answered by a check
+    QHash<QString, QFuture<TPeakBuildResult>> m_builds;
+    QHash<QString, QFuture<TPeakBuildResult>> m_checks;
     // Peak files built or checked in this session, so whole
     QSet<QString> m_whole;
 };

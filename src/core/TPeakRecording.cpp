@@ -146,7 +146,7 @@ TPeakLevels TPeakRecording::snapshot()
     for (int level = 0; level < memory.level_count(); ++level) {
         qint64 blockCount = memory.block_count(level);
         if (capped) {
-            blockCount = std::min(blockCount, level <= shift ? cappedBlocks >> level : (cappedBlocks >> level));
+            blockCount = std::min(blockCount, cappedBlocks >> level);
         }
         if (blockCount == 0) {
             break;

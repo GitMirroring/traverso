@@ -88,6 +88,7 @@ public:
 
 signals:
     void progress(int percent);
+    // The waveform changed: a build finished, or a damaged file is built again
     void ready();
 
 private:

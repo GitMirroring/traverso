@@ -44,12 +44,13 @@ static QFuture<TPeakBuildResult> queue(std::unique_ptr<Task> task, TDiskIOThread
     return future;
 }
 
-const QFuture<TPeakBuildResult>* TPeakBuildService::running(const QString& peakPath)
+const QFuture<TPeakBuildResult>* TPeakBuildService::running(QHash<QString, QFuture<TPeakBuildResult>>& jobs,
+                                                           const QString& peakPath)
 {
     // Forget the jobs that are over, the hash stays small that way. (Not
     // QFuture::isValid(): that tells whether results can be taken; it stays
     // false until the job started, reportStarted().)
-    for (auto it = m_jobs.begin(); it != m_jobs.end();) {
+    for (auto it = jobs.begin(); it != jobs.end();) {
         if (!it->isFinished()) {
             ++it;
             continue;
@@ -57,21 +58,23 @@ const QFuture<TPeakBuildResult>* TPeakBuildService::running(const QString& peakP
         if (!it->isCanceled() && it->resultCount() > 0 && it->result().ok) {
             m_whole.insert(it.key());
         }
-        it = m_jobs.erase(it);
+        it = jobs.erase(it);
     }
-    const auto it = m_jobs.constFind(peakPath);
-    return it != m_jobs.constEnd() ? &*it : nullptr;
+    const auto it = jobs.constFind(peakPath);
+    return it != jobs.constEnd() ? &*it : nullptr;
 }
 
 QFuture<TPeakBuildResult> TPeakBuildService::build(const QString& audioPath, const QString& peakPath, TDiskIOThread* diskio)
 {
-    if (const QFuture<TPeakBuildResult>* job = running(peakPath)) {
+    // Only a build answers a build: a check of the same file may fail
+    if (const QFuture<TPeakBuildResult>* job = running(m_builds, peakPath)) {
         return *job;
     }
     Q_ASSERT(diskio);
     QFuture<TPeakBuildResult> job = queue(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, peakPath),
                                           diskio);
-    m_jobs.insert(peakPath, job);
+    m_whole.remove(peakPath);
+    m_builds.insert(peakPath, job);
     return job;
 }
 
@@ -79,7 +82,10 @@ QFuture<TPeakBuildResult> TPeakBuildService::verify(const QString& peakPath, con
                                                     TDiskIOThread* diskio)
 {
     // A build or check of this file going on answers the question too
-    if (const QFuture<TPeakBuildResult>* job = running(peakPath)) {
+    if (const QFuture<TPeakBuildResult>* job = running(m_builds, peakPath)) {
+        return *job;
+    }
+    if (const QFuture<TPeakBuildResult>* job = running(m_checks, peakPath)) {
         return *job;
     }
     if (m_whole.contains(peakPath)) {
@@ -87,15 +93,19 @@ QFuture<TPeakBuildResult> TPeakBuildService::verify(const QString& peakPath, con
     }
     Q_ASSERT(diskio);
     QFuture<TPeakBuildResult> job = queue(std::make_unique<TPeakVerifyTask>(peakPath, expected), diskio);
-    m_jobs.insert(peakPath, job);
+    m_checks.insert(peakPath, job);
     return job;
 }
 
 void TPeakBuildService::cancel_all()
 {
-    for (QFuture<TPeakBuildResult>& job : m_jobs) {
+    for (QFuture<TPeakBuildResult>& job : m_builds) {
         job.cancel();
     }
-    m_jobs.clear();
+    for (QFuture<TPeakBuildResult>& job : m_checks) {
+        job.cancel();
+    }
+    m_builds.clear();
+    m_checks.clear();
     m_whole.clear();
 }

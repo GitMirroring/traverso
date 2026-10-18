@@ -729,6 +729,10 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
 
     set_sources_active_state();
 
+    // A source that is being recorded gets no file waveform: until the
+    // recording's finish() renames it, its peak file is the recording's part
+    // file, and a build of it would cut that file short under the live
+    // view's mapping. The recording's own waveform paints meanwhile.
     if (m_recordingStatus == NO_RECORDING) {
         delete m_waveform;
         m_waveform = nullptr;

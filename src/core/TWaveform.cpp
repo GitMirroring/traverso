@@ -103,7 +103,7 @@ TTimeRef TWaveform::recorded_length() const
     }
     // Whole blocks: the waveform ends at the last complete one
     const qint64 frames = (m_live->recorded_frames() >> TPeakLevels::BlockFramesShift) << TPeakLevels::BlockFramesShift;
-    return TTimeRef(nframes_t(frames), m_live->rate());
+    return TTimeRef(uint64_t(frames), m_live->rate());
 }
 
 void TWaveform::prepare()
@@ -132,17 +132,16 @@ void TWaveform::open_or_build()
     switch (status) {
     case TPeakFile::Status::Ok:
         TLOG_D("peaks", "opened {}", m_peakPath.toStdString());
-        if (m_builds == 0) {
-            // Found on disk: its blocks are checked (and read into the page
-            // cache) in DiskIO's idle time before it is used. A file this
-            // session built or checked passes at once.
-            m_verifying = true;
-            m_state = State::Building;
-            m_progress = 0;
-            m_build.setFuture(m_jobs.verify ? m_jobs.verify(m_peakPath, source_info()) : QFuture<TPeakBuildResult>());
-            return;
-        }
         m_state = State::Ready;
+        if (m_builds == 0 && m_jobs.verify) {
+            // Found on disk: shown at once, its blocks are checked (and read
+            // into the page cache) in DiskIO's idle time. A damaged cache file
+            // shows a wrong waveform until it is built again, which is
+            // harmless; waiting with an empty clip is not. A file this session
+            // built or checked passes at once.
+            m_verifying = true;
+            m_build.setFuture(m_jobs.verify(m_peakPath, source_info()));
+        }
         return;
     case TPeakFile::Status::Error:
         TLOG_W("peaks", "cannot open {}", m_peakPath.toStdString());
@@ -182,18 +181,13 @@ void TWaveform::build_finished()
 
     if (m_verifying) {
         m_verifying = false;
-        if (result.ok) {
-            m_state = State::Ready;
-        } else if (build.isCanceled()) {
-            // Nobody could check it (its DiskIO went): its layout is right,
-            // use it as it is
-            m_state = State::Ready;
-        } else {
+        // Not damaged, or nobody could check it (its DiskIO went; its layout
+        // is right): it stays in use
+        if (!result.ok && !build.isCanceled()) {
             m_file.close();
             start_build("the peak file is damaged");
-            return;
+            emit ready();   // the views paint the build instead
         }
-        emit ready();
         return;
     }
 
@@ -247,7 +241,7 @@ TTimeRef TWaveform::nearest_zero_crossing(const TTimeRef& time, const TTimeRef& 
     const qint64 frame = TWaveformColumns::nearest_zero_crossing(
         m_file.levels(), this, TTimeRef::frame_at_or_before(time, m_rate),
         qint64(std::ceil(TTimeRef::to_frames(maxDistance, m_rate))));
-    return frame < 0 ? TTimeRef(TTimeRef::INVALID) : TTimeRef(nframes_t(frame), m_rate);
+    return frame < 0 ? TTimeRef(TTimeRef::INVALID) : TTimeRef(uint64_t(frame), m_rate);
 }
 
 qint64 TWaveform::read(qint64 firstFrame, qint64 count, float* const* channels)

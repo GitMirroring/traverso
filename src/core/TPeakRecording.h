@@ -31,6 +31,9 @@
  * readers: either the writer sees the reader and waits, or the reader sees
  * the count and does not touch that memory.)
  *
+ * Nothing else may write its peak file meanwhile: a source being recorded
+ * gets no file waveform, so no build (TAudioClip::set_audio_source()).
+ *
  * When writing fails (disk full) the recording keeps the peaks it has not
  * written in memory, still reads the written ones from its mapping, and has
  * no peak file afterwards: the waveform builds it from the audio.
