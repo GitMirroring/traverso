@@ -137,17 +137,22 @@ TPeakBuilder::TPeakBuilder()
 
 TPeakBuilder::~TPeakBuilder()
 {
-    {
-        QMutexLocker locker(&m_mutex);
-        for (const std::weak_ptr<TPeakBuildJob>& weak : m_jobs) {
-            if (std::shared_ptr<TPeakBuildJob> job = weak.lock()) {
-                job->cancel();
-            }
-        }
-    }
+    cancel_builds();
     m_thread.quit();
     m_thread.wait();
     delete m_worker;
+}
+
+void TPeakBuilder::cancel_builds()
+{
+    // A write job does not look at the flag: a recording's peak file is
+    // always written
+    QMutexLocker locker(&m_mutex);
+    for (const std::weak_ptr<TPeakBuildJob>& weak : std::as_const(m_jobs)) {
+        if (std::shared_ptr<TPeakBuildJob> job = weak.lock()) {
+            job->cancel();
+        }
+    }
 }
 
 std::shared_ptr<TPeakBuildJob> TPeakBuilder::build(const QString& peakPath, qint64 sourceId)

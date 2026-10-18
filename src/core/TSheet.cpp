@@ -988,9 +988,9 @@ qreal TSheet::minimum_hzoom() const
     if (m_recordingClips.isEmpty()) {
         return TSession::minimum_hzoom();
     }
-    // hzoom counts frames per pixel at 44100 Hz; the recording runs at the
-    // device rate, and get_hzoom() rounds to a power of two, so the limit
-    // is the first power of two with at least one block per pixel
+    // hzoom counts frames per pixel at 44100 Hz and the recording runs at the
+    // device rate: zoom in no further than the first power of two that keeps
+    // at least one block per pixel
     const qreal rate = audiodevice().get_sample_rate();
     qreal limit = 1.0;
     while (limit * rate / 44100.0 < TPeakLevels::BlockFrames) {

@@ -55,9 +55,9 @@ TWaveform::TWaveform(std::shared_ptr<TPeakPyramidBuilder> live)
 
 TWaveform::~TWaveform()
 {
-    if (m_job) {
-        m_job->cancel();
-    }
+    // A running build is not cancelled: other waveforms of the same source
+    // may wait for it (split clips, a clip that recreates its waveform).
+    // Builds are cancelled when the project closes.
     delete m_source;
 }
 

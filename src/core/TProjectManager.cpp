@@ -38,6 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TConfig.h"
 #include "FileHelpers.h"
 #include "TAudioDevice.h"
+#include "TPeakBuilder.h"
 #include "TRtTransaction.h"
 #include "Utils.h"
 #include "Debugger.h"
@@ -117,6 +118,9 @@ void TProjectManager::set_current_project(TProject* project)
                 }
 		
                 oldprojectname = m_currentProject->get_title();
+
+                // The project closes: its peak builds are not needed anymore
+                peak_builder().cancel_builds();
 
                 // this serves as a 'project closed' signal, emiting
                 // a zero pointer as project makes the GUI to delete it's

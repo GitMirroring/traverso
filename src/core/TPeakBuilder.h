@@ -73,6 +73,9 @@ public:
     // Writes a finished pyramid to peakPath on the builder thread; a build()
     // for the same path meanwhile waits for it
     std::shared_ptr<TPeakBuildJob> write(const QString& peakPath, std::shared_ptr<TPeakPyramidBuilder> pyramid, const QString& audioPath);
+    // Cancels the builds (not the writes) that are running or queued, when
+    // the project closes
+    void cancel_builds();
 
 private:
     std::shared_ptr<TPeakBuildJob> queue(const QString& peakPath, TPeakBuildJob* job);
