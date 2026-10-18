@@ -15,7 +15,8 @@ Decisions are the user's (2026-10-18); open points are marked.
 2. A seek during a recording ends the takes at the old location and starts
    new ones at the new location; recording goes on. (Before, the take went
    on growing at its old place, so the audio after the seek sat at the
-   wrong time.) A rate change does the same: open, section 4.
+   wrong time.) A rate change does the same, through the seek that
+   follows every device restart (section 4).
 3. The whole session is one undo step. The takes appear in their tracks as
    they are recorded; the step is pushed when the session ends, and its
    first redo does nothing.
@@ -61,10 +62,22 @@ Decisions are the user's (2026-10-18); open points are marked.
 Recording itself (writers, peaks, DiskIO), the take names, the files of
 takes that are kept, and undo of everything else.
 
-## 4. Open
+## 4. Rate changes
 
-- Rate change during a recording: the device restarts; whether the
-  transport keeps rolling over a restart and where the take switch can
-  happen is to be checked in the code and at runtime.
+A change of the device's rate restarts the device, and
+`TSheet::audiodevice_params_changed()` then seeks one buffer ahead so
+DiskIO refills its buffers at the new rate. While recording, that seek
+ends the takes and starts new ones (decision 2): their writers and peak
+recordings take the device's rate when they start, so the new takes are
+written at the new rate. Before, the take went on with audio at the new
+rate in a file of the old one. Follows from the code; not tested at
+runtime yet.
+
+## 5. Open
+
 - The explicit discard needs the recording to be the last step; a discard
   of an older session (with edits after it) is not offered.
+- Runtime tests: a recording with a seek in it (one undo step, takes at
+  both places), undo plus a new edit (the question), Discard Last
+  Recording, closing the project with a recording undone, a rate change
+  while recording.
