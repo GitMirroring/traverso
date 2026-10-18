@@ -1215,9 +1215,3 @@ QFuture<TPeakBuildResult> TSheet::request_peak_build(const QString& audioPath, c
 {
     return m_project->get_peak_builds()->build(audioPath, peakPath, m_readDiskIO);
 }
-
-QFuture<TPeakBuildResult> TSheet::request_peak_write(std::shared_ptr<const TPeakPyramidBuilder> pyramid, const QString& audioPath,
-                                                     const QString& peakPath)
-{
-    return m_project->get_peak_builds()->write(std::move(pyramid), audioPath, peakPath, m_readDiskIO);
-}

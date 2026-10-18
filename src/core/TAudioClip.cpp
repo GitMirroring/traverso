@@ -649,7 +649,7 @@ int TAudioClip::init_recording()
 
     // Painted from the growing pyramid until the recording is finished
     delete m_waveform;
-    m_waveform = new TWaveform(m_writer->get_pyramid());
+    m_waveform = new TWaveform(m_writer->get_peaks());
 
     m_sheet->add_audio_source_to_diskio(m_writer);
 
@@ -766,10 +766,6 @@ void TAudioClip::finish_write_source()
         m_length = TTimeRef();
     }
 
-    // The peak file is written from this pyramid in DiskIO's idle time; the
-    // view paints from the pyramid until the file opens
-    std::shared_ptr<TPeakPyramidBuilder> pyramid = m_writer->get_pyramid();
-
     m_sheet->remove_audio_source_from_diskio(m_writer);
 
     m_writer = nullptr;
@@ -777,12 +773,6 @@ void TAudioClip::finish_write_source()
     m_recordingStatus = NO_RECORDING;
 
     resources_manager()->set_source_for_clip(this, m_readSource);
-
-    if (m_waveform && pyramid) {
-        // Before the waveform first opens its file, so it joins this write
-        m_sheet->request_peak_write(pyramid, m_readSource->get_filename(), TWaveform::peak_path(m_readSource));
-        m_waveform->use_until_file_ready(pyramid);
-    }
 
     emit recordingFinished(this);
 }

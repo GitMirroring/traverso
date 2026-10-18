@@ -7,6 +7,7 @@
 #include "TFileIOBuffer.h"
 #include "TLog.h"
 #include "TPeakPyramid.h"
+#include "TPeakRecording.h"
 #include "TProject.h"
 #include "TProjectManager.h"
 #include "TResourcesManager.h"
@@ -53,7 +54,7 @@ TWaveform::TWaveform(TBufferedAudioStreamReader* source, RequestBuild requestBui
     });
 }
 
-TWaveform::TWaveform(std::shared_ptr<TPeakPyramidBuilder> live)
+TWaveform::TWaveform(std::shared_ptr<TPeakRecording> live)
     : m_live(std::move(live))
     , m_state(State::Ready)
     , m_opened(true)
@@ -95,13 +96,6 @@ TBufferedAudioStreamReader* TWaveform::reader()
     return m_source;
 }
 
-void TWaveform::use_until_file_ready(std::shared_ptr<TPeakPyramidBuilder> pyramid)
-{
-    if (m_state != State::Ready) {
-        m_live = std::move(pyramid);
-    }
-}
-
 TTimeRef TWaveform::recorded_length() const
 {
     if (!m_live) {
@@ -134,8 +128,6 @@ void TWaveform::open_or_build()
     case TPeakFile::Status::Ok:
         TLOG_D("peaks", "opened {}", m_peakPath.toStdString());
         m_state = State::Ready;
-        // A finished recording's pyramid is only needed until the file opens
-        m_live.reset();
         return;
     case TPeakFile::Status::Error:
         TLOG_W("peaks", "cannot open {}", m_peakPath.toStdString());
@@ -171,19 +163,9 @@ void TWaveform::build_finished()
 
     if (result.ok) {
         open_or_build();
-    } else if (result.kind == TPeakBuildResult::Kind::Write && m_builds == 1) {
-        // Writing a recording's peak file failed: build it from the audio file
-        TLOG_W("peaks", "writing {} failed ({}), building it from the audio file", m_peakPath.toStdString(),
-               result.error.toStdString());
-        m_builds = 0;
-        open_or_build();
-        if (m_state == State::Building) {
-            return;
-        }
     } else {
         m_state = State::Failed;
     }
-    m_live.reset();
     emit ready();
 }
 

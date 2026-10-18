@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TResampleAudioWriter.h"
 #include "TLog.h"
 #include "TPeakPyramid.h"
+#include "TPeakRecording.h"
 #include "TWaveform.h"
 #include "TQueueBufferSlot.h"
 #include "TFileIOBuffer.h"
@@ -75,12 +76,14 @@ int TBufferedAudioStreamWriter::finish_export()
         m_resampleWriter.reset();
     }
 
-    // The peak file is written from the finished pyramid by whoever owns
-    // the recording (TAudioClip: in DiskIO's idle time), after the audio
-    // file is complete: its size and time are part of the peak file's
-    // validation. This thread feeds the playback and must not wait for it.
-    if (m_pyramid) {
-        m_pyramid->finish();
+    // The peaks are on disk already except for the last period: the tail
+    // and the header follow once the audio file is complete (its size and
+    // time are part of the peak file's validation)
+    if (m_peaks) {
+        QString error;
+        if (m_peaks->finish(m_fileName, &error) != TPeakFile::Status::Ok) {
+            TLOG_W("peaks", "finishing {} failed: {}", m_peaks->peak_path().toStdString(), error.toStdString());
+        }
     }
 
     m_exportFinished = true;
@@ -100,11 +103,11 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
         slot->read_buffer(targetChannelBuffer, chan, nframes);
     }
 
-    if (m_pyramid) {
+    if (m_peaks) {
         for (uint chan = 0; chan < m_channelCount; ++chan) {
             m_peakChannels[chan] = fileIOBuffer.get_channel_buffer(chan).get_data(nframes);
         }
-        m_pyramid->append(m_peakChannels.data(), nframes);
+        m_peaks->append(m_peakChannels.data(), nframes);
     }
 
     nframes_t writtenFrames = m_resampleWriter->write_planar(fileIOBuffer, nframes);
@@ -185,10 +188,14 @@ void TBufferedAudioStreamWriter::set_process_peaks(bool process)
         return;
     }
 
-    Q_ASSERT(!m_pyramid);
+    Q_ASSERT(!m_peaks);
     Q_ASSERT(m_channelCount > 0);
-    m_pyramid = std::make_shared<TPeakPyramidBuilder>(audiodevice().get_sample_rate(), int(m_channelCount));
-    m_peakPath = TWaveform::peak_path(this);
+    m_peaks = std::make_shared<TPeakRecording>(audiodevice().get_sample_rate(), int(m_channelCount), TWaveform::peak_path(this));
+    QString error;
+    if (m_peaks->open(&error) != TPeakFile::Status::Ok) {
+        // Painted from memory meanwhile; built from the audio afterwards
+        TLOG_W("peaks", "cannot write {}: {}", m_peaks->peak_path().toStdString(), error.toStdString());
+    }
     m_peakChannels.assign(m_channelCount, nullptr);
 }
 

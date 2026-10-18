@@ -16,7 +16,7 @@ add_test(NAME peaks COMMAND traverso_peak_test)
 
 # Headless test of the sliced peak build: the same file as the whole pyramid,
 # sources that end early, fail or are cancelled
-add_executable(traverso_peak_build_test test_peak_build.cpp ${TRAVERSO_PEAK_SOURCES} ${CMAKE_SOURCE_DIR}/src/core/TPeakBuildTask.cpp)
+add_executable(traverso_peak_build_test test_peak_build.cpp ${TRAVERSO_PEAK_SOURCES} ${CMAKE_SOURCE_DIR}/src/core/TPeakBuildTask.cpp ${CMAKE_SOURCE_DIR}/src/core/TPeakRecording.cpp)
 target_include_directories(traverso_peak_build_test PRIVATE ${CMAKE_SOURCE_DIR}/src/core)
 target_link_libraries(traverso_peak_build_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
 add_test(NAME peak_build COMMAND traverso_peak_build_test)

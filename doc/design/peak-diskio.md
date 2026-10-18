@@ -89,9 +89,16 @@ the period (the writer hands the storage over).
    promise/watcher; TPeakBuilder's thread goes.
 4. The recording writer streams; the live view maps the growing file.
 
-Until step 4 a recording's peak file is written from its finished pyramid
-by a write task in the same idle time (`TAudioClip::finish_write_source`
-asks for it before the clip's new waveform first opens the file, so the
-waveform joins it); `TAudioFileCopyConvert` writes on its own thread.
+A recording streams through `TPeakRecording`: the writer thread appends,
+writes every complete period to the part file at once and publishes the
+count; the GUI's snapshots read the written periods from a mapping of the
+part file (remapped as it grows, new mapping before the old one goes) and
+the rest from memory. A period's memory is freed only after the GUI's
+mapping covers it: each `levels()` call tells the writer which periods the
+previous snapshot read from the mapping only. `finish_export()` writes the
+tail and the header and renames the file; the clip's next waveform opens it.
+When writing fails the recording keeps its peaks in memory and the waveform
+builds the file from the audio afterwards. `TAudioFileCopyConvert` streams
+the same way.
 
 Open: S (14 proposed), the mapping window size for growing files.

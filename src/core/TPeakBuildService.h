@@ -7,28 +7,19 @@
 #include <QHash>
 #include <QString>
 
-#include <memory>
-
 class TDiskIOThread;
-class TPeakPyramidBuilder;
 
-// The outcome of a peak build or write, for TWaveform
+// The outcome of a peak build, for TWaveform
 struct TPeakBuildResult
 {
-    enum class Kind
-    {
-        Build,      // from the audio file
-        Write       // from a finished recording's pyramid
-    };
-
-    Kind kind{Kind::Build};
     bool ok{false};
     QString error;
 };
 
 /**
- * @brief Runs the peak builds and writes of a project in the idle time of a
- * sheet's DiskIO thread, one job per peak file.
+ * @brief Runs the peak builds of a project in the idle time of a sheet's
+ * DiskIO thread, one job per peak file. (A recording writes its own peak
+ * file as it records: TPeakRecording.)
  *
  * Asking for a peak file that is being built or written returns the running
  * job's future, so every waveform of the same source waits for one job. A
@@ -44,9 +35,6 @@ class TPeakBuildService
 {
 public:
     QFuture<TPeakBuildResult> build(const QString& audioPath, const QString& peakPath, TDiskIOThread* diskio);
-    // pyramid must be finished and its audio file complete
-    QFuture<TPeakBuildResult> write(std::shared_ptr<const TPeakPyramidBuilder> pyramid, const QString& audioPath,
-                                    const QString& peakPath, TDiskIOThread* diskio);
     void cancel_all();
 
 private:

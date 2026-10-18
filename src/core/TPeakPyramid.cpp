@@ -111,7 +111,7 @@ TPeakPyramidBuilder::TPeakPyramidBuilder(uint rate, int channelCount, int period
             store.chunkShift = std::max(periodShift - level, MinChunkShift);
             const qint64 maxBlocks = std::max<qint64>(1, MaxLevel0Blocks >> level);
             const qint64 maxChunks = (maxBlocks + (qint64(1) << store.chunkShift) - 1) >> store.chunkShift;
-            store.pages = std::vector<std::unique_ptr<const TPeakBlock*[]>>(size_t((maxChunks + PageSize - 1) >> PageShift));
+            store.pages = std::vector<std::unique_ptr<std::atomic<const TPeakBlock*>[]>>(size_t((maxChunks + PageSize - 1) >> PageShift));
         }
     }
 }
@@ -140,7 +140,7 @@ void TPeakPyramidBuilder::release_periods(qint64 periods)
             const qint64 releasedBlocks = periods << (m_periodShift - level);
             const qint64 chunks = std::min<qint64>(releasedBlocks >> store.chunkShift, qint64(store.chunks.size()));
             for (; store.releasedChunks < chunks; ++store.releasedChunks) {
-                store.pages[size_t(store.releasedChunks >> PageShift)][store.releasedChunks & (PageSize - 1)] = nullptr;
+                store.pages[size_t(store.releasedChunks >> PageShift)][store.releasedChunks & (PageSize - 1)].store(nullptr, std::memory_order_relaxed);
                 store.chunks[size_t(store.releasedChunks)].reset();
             }
         }
@@ -255,11 +255,11 @@ void TPeakPyramidBuilder::add_block(Channel& channel, int level, TPeakBlock bloc
             return;
         }
         if (!store.pages[page]) {
-            store.pages[page] = std::make_unique<const TPeakBlock*[]>(size_t(PageSize));
+            store.pages[page] = std::make_unique<std::atomic<const TPeakBlock*>[]>(size_t(PageSize));
         }
         // Not zeroed: a block is written before its count is published
         store.chunks.emplace_back(new TPeakBlock[size_t(1) << store.chunkShift]);
-        store.pages[page][chunkIndex & (PageSize - 1)] = store.chunks.back().get();
+        store.pages[page][chunkIndex & (PageSize - 1)].store(store.chunks.back().get(), std::memory_order_relaxed);
     }
 
     store.chunks[size_t(chunkIndex)][inChunk] = block;

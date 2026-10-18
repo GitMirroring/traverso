@@ -11,12 +11,11 @@
 // A task of DiskIO's idle time that drives task and reports through a
 // promise. A promise destroyed unfinished (DiskIO stops) cancels and
 // finishes its future.
-template <typename Task>
-static QFuture<TPeakBuildResult> queue(std::unique_ptr<Task> task, TPeakBuildResult::Kind kind, TDiskIOThread* diskio)
+static QFuture<TPeakBuildResult> queue(std::unique_ptr<TPeakBuildTask> task, TDiskIOThread* diskio)
 {
     struct Job
     {
-        std::unique_ptr<Task> task;
+        std::unique_ptr<TPeakBuildTask> task;
         QPromise<TPeakBuildResult> promise;
         bool started{false};
     };
@@ -24,7 +23,7 @@ static QFuture<TPeakBuildResult> queue(std::unique_ptr<Task> task, TPeakBuildRes
     job->task = std::move(task);
     QFuture<TPeakBuildResult> future = job->promise.future();
 
-    diskio->add_idle_task([job, kind](std::chrono::nanoseconds budget) {
+    diskio->add_idle_task([job](std::chrono::nanoseconds budget) {
         if (!job->started) {
             job->started = true;
             job->promise.start();
@@ -36,7 +35,7 @@ static QFuture<TPeakBuildResult> queue(std::unique_ptr<Task> task, TPeakBuildRes
         const bool more = job->task->step(budget);
         job->promise.setProgressValue(job->task->progress());
         if (!more) {
-            job->promise.addResult(TPeakBuildResult{kind, job->task->state() == TPeakBuildTask::State::Done, job->task->error()});
+            job->promise.addResult(TPeakBuildResult{job->task->state() == TPeakBuildTask::State::Done, job->task->error()});
             job->promise.finish();
         }
         return more;
@@ -63,18 +62,7 @@ QFuture<TPeakBuildResult> TPeakBuildService::build(const QString& audioPath, con
     }
     Q_ASSERT(diskio);
     QFuture<TPeakBuildResult> job = queue(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, peakPath),
-                                          TPeakBuildResult::Kind::Build, diskio);
-    m_jobs.insert(peakPath, job);
-    return job;
-}
-
-QFuture<TPeakBuildResult> TPeakBuildService::write(std::shared_ptr<const TPeakPyramidBuilder> pyramid, const QString& audioPath,
-                                                   const QString& peakPath, TDiskIOThread* diskio)
-{
-    Q_ASSERT(diskio);
-    // A recording's file never has another job: its source is new
-    QFuture<TPeakBuildResult> job = queue(std::make_unique<TPeakWriteTask>(std::move(pyramid), audioPath, peakPath),
-                                          TPeakBuildResult::Kind::Write, diskio);
+                                          diskio);
     m_jobs.insert(peakPath, job);
     return job;
 }

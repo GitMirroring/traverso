@@ -9,6 +9,7 @@
 #include "TPeakBuildTask.h"
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
+#include "TPeakRecording.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -19,6 +20,7 @@
 #include <cstdio>
 #include <memory>
 #include <random>
+#include <thread>
 #include <vector>
 
 static int s_failures = 0;
@@ -179,27 +181,87 @@ int main()
         CHECK(file_bytes(peakPath) == reference_file(referencePath, signal, audioPath, 3), "ends early: file differs");
     }
 
-    // A finished recording's pyramid written in slices: the same file
-    for (int round = 0; round < 10; ++round) {
-        const int periodShift = int(random_between(0, 6));
-        const Signal signal = make_signal(int(random_between(1, 2)), random_between(1, 200000));
-        auto pyramid = std::make_shared<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()), periodShift);
-        std::vector<const float*> pointers;
-        for (const auto& channel : signal.channels) {
-            pointers.push_back(channel.data());
-        }
-        pyramid->append(pointers.data(), signal.frames());
-        pyramid->finish();
+    // A recording: the writer thread streams periods to the part file while
+    // the GUI thread reads snapshots from the mapping and memory; every block
+    // a snapshot names is right, and the finished file is the one-go file
+    for (int round = 0; round < 6; ++round) {
+        const int periodShift = int(random_between(0, 4));
+        const Signal signal = make_signal(int(random_between(1, 2)), random_between(200000, 600000));
         const QByteArray reference = reference_file(referencePath, signal, audioPath, periodShift);
-        TPeakWriteTask task(pyramid, audioPath, peakPath);
-        int steps = 0;
-        while (task.step(std::chrono::nanoseconds(0))) {
-            ++steps;
+        TPeakPyramidBuilder whole(signal.rate, int(signal.channels.size()), periodShift);
+        {
+            std::vector<const float*> pointers;
+            for (const auto& channel : signal.channels) {
+                pointers.push_back(channel.data());
+            }
+            whole.append(pointers.data(), signal.frames());
+            whole.finish();
         }
-        CHECK(task.state() == TPeakWriteTask::State::Done, "write round %d: %s", round, qPrintable(task.error()));
-        CHECK(file_bytes(peakPath) == reference, "write round %d: file differs from the one-go file", round);
-        CHECK(steps >= std::min<qint64>(pyramid->complete_periods(), 2), "write round %d: %d steps for %lld periods, not sliced",
-              round, steps, (long long)pyramid->complete_periods());
+        const TPeakLevels expected = whole.levels();
+
+        QFile::remove(peakPath);
+        TPeakRecording recording(signal.rate, int(signal.channels.size()), peakPath, periodShift);
+        CHECK(recording.open() == TPeakFile::Status::Ok, "recording %d: open", round);
+        std::atomic<bool> done{false};
+        TPeakFile::Status finished = TPeakFile::Status::Error;
+        std::thread writer([&] {
+            std::mt19937_64 random(round);
+            qint64 position = 0;
+            while (position < signal.frames()) {
+                const qint64 count = std::min<qint64>(std::uniform_int_distribution<qint64>(1, 3000)(random), signal.frames() - position);
+                std::vector<const float*> pointers;
+                for (const auto& channel : signal.channels) {
+                    pointers.push_back(channel.data() + position);
+                }
+                recording.append(pointers.data(), count);
+                position += count;
+                if (std::uniform_int_distribution<int>(0, 50)(random) == 0) {
+                    std::this_thread::sleep_for(std::chrono::microseconds(200));
+                }
+            }
+            finished = recording.finish(audioPath);
+            done.store(true);
+        });
+
+        int snapshots = 0;
+        bool wrong = false;
+        while (!done.load() || snapshots == 0) {
+            const TPeakLevels view = recording.levels();
+            ++snapshots;
+            for (int level = 0; level < view.level_count() && !wrong; ++level) {
+                // Blocks of a growing pyramid equal the finished one's, except a
+                // last block that finish() may still promote
+                const qint64 blocks = std::min(view.block_count(level), expected.block_count(level) - 1);
+                for (int c = 0; c < view.channel_count() && !wrong; ++c) {
+                    for (qint64 k = 0; k < blocks; k += 1 + k / 7) {
+                        const TPeakBlock& a = view.block(level, c, k);
+                        const TPeakBlock& b = expected.block(level, c, k);
+                        if (a.min != b.min || a.max != b.max) {
+                            wrong = true;
+                            CHECK(false, "recording %d: level %d channel %d block %lld differs in snapshot %d", round, level, c,
+                                  (long long)k, snapshots);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        writer.join();
+        CHECK(finished == TPeakFile::Status::Ok, "recording %d: finish", round);
+        CHECK(file_bytes(peakPath) == reference, "recording %d: the streamed file differs from the one-go file", round);
+        CHECK(!QFile::exists(TPeakFileWriter::part_path(peakPath)), "recording %d: part file left", round);
+        // After finish the snapshot is the whole pyramid, records from the renamed file
+        const TPeakLevels last = recording.levels();
+        CHECK(last.level_count() == expected.level_count() && last.frame_count() == expected.frame_count(), "recording %d: final view", round);
+        for (int level = 0; level < last.level_count(); ++level) {
+            for (qint64 k = 0; k < last.block_count(level); ++k) {
+                if (last.block(level, 0, k).min != expected.block(level, 0, k).min) {
+                    CHECK(false, "recording %d: final view level %d block %lld", round, level, (long long)k);
+                    break;
+                }
+            }
+        }
+        std::printf("    recording of %lld frames: %d snapshots\n", (long long)signal.frames(), snapshots);
     }
 
     auto expect_no_file = [&](const Signal& signal, qint64 reported, const char* what) {

@@ -116,6 +116,11 @@ public:
 
     static QString part_path(const QString& path) { return path + QStringLiteral(".part"); }
 
+    // Where the blocks of level (<= periodShift) and channel of record
+    // period start, and how many bytes all records before period take
+    static qint64 record_offset(int periodShift, int channelCount, qint64 period, int level, int channel);
+    static qint64 records_end(int periodShift, int channelCount, qint64 periods);
+
     int period_shift() const { return m_periodShift; }
     qint64 written_periods() const { return m_writtenPeriods; }
 

@@ -18,7 +18,7 @@
 
 class TBufferedAudioStream;
 class TBufferedAudioStreamReader;
-class TPeakPyramidBuilder;
+class TPeakRecording;
 class TFileIOBuffer;
 
 /**
@@ -48,15 +48,12 @@ public:
     // requestBuild starts (or joins) the build of a peak file
     using RequestBuild = std::function<QFuture<TPeakBuildResult>(const QString& audioPath, const QString& peakPath)>;
     TWaveform(TBufferedAudioStreamReader* source, RequestBuild requestBuild);
-    // A recording in progress: painted from the growing pyramid, no samples
-    explicit TWaveform(std::shared_ptr<TPeakPyramidBuilder> live);
+    // A recording in progress: painted from its peaks as they are recorded
+    // (the written part from the peak file), no samples
+    explicit TWaveform(std::shared_ptr<TPeakRecording> live);
     // Where the peak file of an audio source lives
     static QString peak_path(const TBufferedAudioStream* source);
     ~TWaveform();
-
-    // A recording that just finished: its pyramid serves the columns until
-    // the peak file written from it opens
-    void use_until_file_ready(std::shared_ptr<TPeakPyramidBuilder> pyramid);
 
     // How far the waveform of a recording in progress reaches: whole peak
     // blocks published by the builder (the clip's length runs ahead of it)
@@ -100,7 +97,7 @@ private:
     bool m_sourceValid{false};
     TBufferedAudioStreamReader* m_source{nullptr};   // only while samples are read
     QTimer m_closeReader;
-    std::shared_ptr<TPeakPyramidBuilder> m_live;
+    std::shared_ptr<TPeakRecording> m_live;
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;

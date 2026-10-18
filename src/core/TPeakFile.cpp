@@ -144,6 +144,17 @@ struct TPeakFileLayout
 };
 
 
+qint64 TPeakFileWriter::record_offset(int periodShift, int channelCount, qint64 period, int level, int channel)
+{
+    return TPeakFileLayout(periodShift, channelCount, {}).record_offset(period, level, channel);
+}
+
+qint64 TPeakFileWriter::records_end(int periodShift, int channelCount, qint64 periods)
+{
+    return DataStart + periods * TPeakFileLayout(periodShift, channelCount, {}).recordBytes;
+}
+
+
 TPeakFile::SourceInfo TPeakFile::SourceInfo::from_file(const QString& sourcePath, uint rate, int channelCount, qint64 frameCount)
 {
     const QFileInfo info(sourcePath);
