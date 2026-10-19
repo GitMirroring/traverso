@@ -67,9 +67,8 @@ public:
 
     // Works until budget is used or the build ends; true while work remains
     bool step(std::chrono::nanoseconds budget);
-    // After step() ended in Written: waits until the file is on the disk and
-    // puts it under its name (TPeakFileWriter::publish()). Blocks, so not
-    // on a thread that serves audio streams.
+    // After step() ended in Written: puts the file under its name
+    // (TPeakFileWriter::publish())
     State publish();
     void cancel() { m_cancelled.store(true, std::memory_order_relaxed); }
 

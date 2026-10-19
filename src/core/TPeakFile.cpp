@@ -7,14 +7,6 @@
 #include <QDir>
 #include <QFileInfo>
 
-#if defined(Q_OS_WIN)
-#include <io.h>
-#include <windows.h>
-#else
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
@@ -78,19 +70,6 @@ static quint64 header_checksum(TPeakFileHeader header)
 {
     header.checksum = 0;
     return add_to_checksum(ChecksumSeed, &header, qint64(sizeof(header)));
-}
-
-// Waits until the data of the open file fd is on the disk
-static bool sync_to_disk(int fd)
-{
-#if defined(Q_OS_WIN)
-    return FlushFileBuffers(HANDLE(_get_osfhandle(fd))) != 0;
-#elif defined(Q_OS_MACOS)
-    // fsync() leaves the data in the drive's cache there
-    return fcntl(fd, F_FULLFSYNC) == 0 || fsync(fd) == 0;
-#else
-    return fdatasync(fd) == 0;
-#endif
 }
 
 // The block count of every level of a complete pyramid over frames frames
@@ -539,23 +518,16 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
 TPeakFile::Status TPeakFileWriter::publish(const QString& path, QString* error)
 {
     const QString part = part_path(path);
-    QFile file(part);
-    // Open for writing: that is what every system's sync wants
-    if (!file.open(QIODevice::ReadWrite) || !sync_to_disk(file.handle())) {
-        if (error) {
-            *error = file.isOpen() ? QStringLiteral("cannot sync %1 to the disk").arg(part) : file.errorString();
-        }
-        file.close();
-        QFile::remove(part);
-        return TPeakFile::Status::Error;
-    }
-    file.close();
 
     // Replaces an older file at once (POSIX rename): whoever has the old one
-    // mapped keeps reading it. On Windows replacing a file that is mapped
-    // fails; such a build reports an error and the file is built again later.
+    // mapped keeps reading it. On Windows a file that is mapped can be
+    // neither renamed nor replaced: the caller releases its own mapping of
+    // the part file first (TPeakStream::publish()), and a build that meets
+    // an old file another process has mapped reports an error and is built
+    // again later. Paths go through Qt's std::filesystem conversion: native
+    // wide names on Windows, so no character is lost.
     std::error_code renameError;
-    std::filesystem::rename(QFile::encodeName(part).toStdString(), QFile::encodeName(path).toStdString(), renameError);
+    std::filesystem::rename(QFileInfo(part).filesystemFilePath(), QFileInfo(path).filesystemFilePath(), renameError);
     if (renameError) {
         if (error) {
             *error = QString::fromStdString(renameError.message());

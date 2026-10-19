@@ -24,8 +24,10 @@
  * in the same order. Every offset follows from the header, so there is no table.
  * The header says unfinished (frame count 0) until TPeakFileWriter::finish()
  * writes the frame count and the source; it has a checksum, which open()
- * checks. The block data has none: a file reaches its name only after it
- * is on the disk (TPeakFileWriter::publish()), so what opens is whole.
+ * checks. The block data has none: a file reaches its name only when it is
+ * complete (TPeakFileWriter::publish()), so what opens is whole. Peak files
+ * are a cache: they are not synced to the disk, a file damaged by a power
+ * loss shows a wrong waveform until it is built again.
  */
 class TPeakFile
 {
@@ -84,7 +86,7 @@ private:
  * soon as a period is complete, the tail and the final header at the end.
  *
  * The file is written next to its final name (path + ".part"); publish()
- * waits until it is on the disk and renames it over its name. A waveform
+ * renames it over its name once it is complete. A waveform
  * that has the old file mapped keeps reading the old file, a file is never
  * cut short under a mapping. A part file that was not finished says so in
  * its header and is removed by close(); open() never looks at part files.
@@ -112,11 +114,11 @@ public:
     // Gives up an unfinished file: the part file is removed
     void close();
 
-    // Waits until the finished part file of path is on the disk and renames
-    // it over path, so a file under its name is always whole, also after a
-    // crash. The wait can take a while on a slow disk: a build does this
-    // from a thread pool, a recording at its stop, when its DiskIO has
-    // nothing else to do. A part file that cannot be published is removed.
+    // Renames the finished part file of path over path, so a file under its
+    // name is always complete. Not synced to the disk: a peak file is a
+    // cache. Nothing in this process may have the part file mapped (Windows
+    // cannot rename it then). A part file that cannot be published is
+    // removed.
     static TPeakFile::Status publish(const QString& path, QString* error = nullptr);
 
     static QString part_path(const QString& path) { return path + QStringLiteral(".part"); }
