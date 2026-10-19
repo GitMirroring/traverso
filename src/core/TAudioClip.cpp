@@ -490,6 +490,12 @@ int TAudioClip::process(TProcessCallBackData &processData)
         return 0;
     }
 
+    // A take being finished has no file to read yet, and no length: a seek
+    // during the recording rolls the transport on before it is done
+    if (m_recordingStatus != NO_RECORDING) {
+        return 0;
+    }
+
     if (!m_isReadSourceValid) {
         return -1;
     }

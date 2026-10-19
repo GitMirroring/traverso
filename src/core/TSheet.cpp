@@ -878,9 +878,15 @@ void TSheet::seek_finished()
 
     // A seek during a recording: the takes end where they are, new ones
     // start here before the transport rolls again (not rolling now, so the
-    // switch is exact and needs nothing from the audio thread)
-    if (m_resumeTransport && is_recording() && m_readyToRecord && !m_recordingClips.isEmpty()) {
+    // switch is exact). Also when no take runs: tracks armed again after a
+    // seek without armed tracks record from the next seek on.
+    if (m_resumeTransport && is_recording() && m_readyToRecord) {
         split_takes();
+        // The new takes reach their tracks through the audio thread's queue:
+        // rolling starts through the same queue, behind them, so the first
+        // cycle records into them
+        tsmp().post_rt_task([this]() { start_transport_rolling(true); });
+        m_resumeTransport = false;
     }
 
     if (m_resumeTransport) {
