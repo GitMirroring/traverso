@@ -1025,7 +1025,17 @@ void TSheet::push_recording_session()
         return;
     }
     const QString description = m_sessionBounce ? tr("Bouncing") : tr("Recording to %n Clip(s)", "", int(m_sessionTakes.size()));
-    auto* command = new TRecordingCommand(resources_manager(), std::move(m_sessionSteps), m_sessionTakes, description);
+    // Queued on the resources manager: the stack is in the middle of a push
+    // or an undo when it drops the session, and the call is dropped if the
+    // project goes first
+    QPointer<TResourcesManager> resources = resources_manager();
+    auto discard = [resources](const QList<TAudioClip*>& takes) {
+        if (resources) {
+            QMetaObject::invokeMethod(resources.data(), [resources, takes] { resources->discard_takes(takes); },
+                                      Qt::QueuedConnection);
+        }
+    };
+    auto* command = new TRecordingCommand(std::move(discard), std::move(m_sessionSteps), m_sessionTakes, description);
     m_sessionSteps.clear();
     m_sessionTakes.clear();
     if (QUndoStack* undoStack = get_history_stack()) {
@@ -1039,16 +1049,16 @@ void TSheet::push_recording_session()
 bool TSheet::discard_last_recording()
 {
     QUndoStack* undoStack = get_history_stack();
-    if (!undoStack || is_recording() || !m_recordingClips.isEmpty() || undoStack->index() == 0) {
+    if (!undoStack || is_recording() || !m_recordingClips.isEmpty()) {
         return false;
     }
-    auto* last = dynamic_cast<const TRecordingCommand*>(undoStack->command(undoStack->index() - 1));
+    TRecordingCommand* last = TRecordingCommand::last_discardable(*undoStack);
     if (!last) {
         return false;
     }
     // It makes itself obsolete in this undo, so the stack deletes it;
     // deleted undone, it discards its takes
-    const_cast<TRecordingCommand*>(last)->discard_on_undo();
+    last->discard_on_undo();
     undoStack->undo();
     return true;
 }

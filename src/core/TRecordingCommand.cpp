@@ -3,14 +3,12 @@
 
 #include "TRecordingCommand.h"
 
-#include "TResourcesManager.h"
+#include <QUndoStack>
 
-#include <QMetaObject>
-
-TRecordingCommand::TRecordingCommand(TResourcesManager* resources, std::vector<std::unique_ptr<QUndoCommand>> steps,
+TRecordingCommand::TRecordingCommand(Discard discard, std::vector<std::unique_ptr<QUndoCommand>> steps,
                                      QList<TAudioClip*> takes, const QString& text)
     : QUndoCommand(text)
-    , m_resources(resources)
+    , m_discard(std::move(discard))
     , m_steps(std::move(steps))
     , m_takes(std::move(takes))
 {
@@ -18,14 +16,11 @@ TRecordingCommand::TRecordingCommand(TResourcesManager* resources, std::vector<s
 
 TRecordingCommand::~TRecordingCommand()
 {
-    if (m_applied || m_handled || m_takes.isEmpty() || !m_resources) {
+    if (m_applied || m_handled || m_takes.isEmpty() || !m_discard) {
         return;
     }
-    // Dropped from the stack while undone: the takes can never come back.
-    // Queued on the resources manager, so the call is dropped if the
-    // project goes first.
-    TResourcesManager* resources = m_resources;
-    QMetaObject::invokeMethod(resources, [resources, takes = m_takes] { resources->discard_takes(takes); }, Qt::QueuedConnection);
+    // Dropped from the stack while undone: the takes can never come back
+    m_discard(m_takes);
 }
 
 void TRecordingCommand::redo()
@@ -50,4 +45,13 @@ void TRecordingCommand::undo()
     if (m_discardOnUndo) {
         setObsolete(true);
     }
+}
+
+TRecordingCommand* TRecordingCommand::last_discardable(const QUndoStack& stack)
+{
+    if (stack.index() == 0 || stack.index() != stack.count()) {
+        return nullptr;
+    }
+    auto* last = dynamic_cast<const TRecordingCommand*>(stack.command(stack.index() - 1));
+    return const_cast<TRecordingCommand*>(last);
 }
