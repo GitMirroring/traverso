@@ -45,6 +45,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TShortCutManager.h"
 #include <QDomDocument>
 #include <QUrl>
+#include <QCheckBox>
+#include <QDoubleSpinBox>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QLabel>
 
 
 /****************************************/
@@ -1050,7 +1055,45 @@ RecordingConfigPage::RecordingConfigPage(QWidget * parent)
     connect(encodingComboBox, &QComboBox::activated, this, &RecordingConfigPage::encoding_index_changed);
     connect(useResamplingCheckBox, &QCheckBox::checkStateChanged, this, &RecordingConfigPage::use_onthefly_resampling_checkbox_changed);
 
+    // Takes line up with what was heard while recording
+    // (doc/design/recording-latency.md)
+    auto* latencyGroup = new QGroupBox(tr("Latency Compensation"), this);
+    auto* latencyLayout = new QGridLayout(latencyGroup);
+    m_latencyCompensationCheckBox = new QCheckBox(tr("Compensate recordings for latency"), latencyGroup);
+    m_latencyCompensationCheckBox->setToolTip(tr("Places a recorded take where it was played: earlier by the time from "
+                                                 "hearing the playback to the played sound coming in (capture plus playback latency)"));
+    m_extraLatencySpinBox = new QDoubleSpinBox(latencyGroup);
+    m_extraLatencySpinBox->setRange(-50.0, 50.0);
+    m_extraLatencySpinBox->setDecimals(2);
+    m_extraLatencySpinBox->setSingleStep(0.1);
+    m_extraLatencySpinBox->setSuffix(tr(" ms"));
+    m_extraLatencySpinBox->setToolTip(tr("Added to what the driver reports, for the converters and external gear. "
+                                         "Find it with a loopback: record a click played out, and adjust until the "
+                                         "recorded click lines up with the original"));
+    m_driverLatencyLabel = new QLabel(latencyGroup);
+    latencyLayout->addWidget(m_latencyCompensationCheckBox, 0, 0, 1, 2);
+    latencyLayout->addWidget(new QLabel(tr("Extra latency"), latencyGroup), 1, 0);
+    latencyLayout->addWidget(m_extraLatencySpinBox, 1, 1);
+    latencyLayout->addWidget(m_driverLatencyLabel, 2, 0, 1, 2);
+    connect(m_latencyCompensationCheckBox, &QCheckBox::toggled, m_extraLatencySpinBox, &QWidget::setEnabled);
+    verticalLayout->insertWidget(verticalLayout->count() - 1, latencyGroup);   // above the spacer
+    show_driver_latency();
+
     load_config();
+}
+
+void RecordingConfigPage::show_driver_latency()
+{
+    const uint rate = audiodevice().get_sample_rate();
+    if (rate == 0) {
+        m_driverLatencyLabel->setText(tr("The driver reports no latency (no device running)"));
+        return;
+    }
+    auto ms = [rate](nframes_t frames) { return QString::number(double(frames) * 1000.0 / rate, 'f', 2); };
+    const nframes_t capture = audiodevice().get_capture_latency_frames();
+    const nframes_t playback = audiodevice().get_playback_latency_frames();
+    m_driverLatencyLabel->setText(tr("The driver reports: capture %1 ms, playback %2 ms, together %3 ms")
+                                  .arg(ms(capture), ms(playback), ms(capture + playback)));
 }
 
 void RecordingConfigPage::load_config()
@@ -1070,6 +1113,10 @@ void RecordingConfigPage::load_config()
     } else {
         encoding_index_changed(0);
     }
+
+    m_latencyCompensationCheckBox->setChecked(config().get_property("Recording", "LatencyCompensation", true).toBool());
+    m_extraLatencySpinBox->setValue(config().get_property("Recording", "ExtraLatency", 0.0).toDouble());
+    m_extraLatencySpinBox->setEnabled(m_latencyCompensationCheckBox->isChecked());
 
     QString wavpackcompression = config().get_property("Recording", "WavpackCompressionType", "fast").toString();
     if (wavpackcompression == "very_high") {
@@ -1093,6 +1140,8 @@ void RecordingConfigPage::save_config()
     config().set_property("Conversion", "RTResamplingQuality", ontheflyResampleComboBox->currentData().toInt());
     config().set_property("Conversion", "ExportResamplingConverterType", exportDefaultResampleQualityComboBox->currentIndex());
     config().set_property("Recording", "FileFormat", encodingComboBox->itemData(encodingComboBox->currentIndex()).toString());
+    config().set_property("Recording", "LatencyCompensation", m_latencyCompensationCheckBox->isChecked());
+    config().set_property("Recording", "ExtraLatency", m_extraLatencySpinBox->value());
     config().set_property("Recording", "WavpackCompressionType", wavpackCompressionComboBox->itemData(wavpackCompressionComboBox->currentIndex()).toString());
     QString skipwvx = wavpackUseAlmostLosslessCheckBox->isChecked() ? "true" : "false";
     config().set_property("Recording", "WavpackSkipWVX", skipwvx);
@@ -1105,6 +1154,8 @@ void RecordingConfigPage::reset_default_config()
                           TAudioResampler::default_realtime_quality(TBufferedAudioStreamReader::configured_backend()));
     config().set_property("Conversion", "ExportResamplingConverterType", 1);
     config().set_property("Recording", "FileFormat", "wav");
+    config().set_property("Recording", "LatencyCompensation", true);
+    config().set_property("Recording", "ExtraLatency", 0.0);
     config().set_property("Recording", "WavpackCompressionType", "fast");
     config().set_property("Recording", "WavpackSkipWVX", "false");
 

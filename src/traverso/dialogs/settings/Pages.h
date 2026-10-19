@@ -23,6 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QWidget>
 
+class QCheckBox;
+class QDoubleSpinBox;
+class QLabel;
+
 #include "ui_AudioDriverConfigPage.h"
 #if defined (Q_OS_MAC)
 #include "TCoreAudioDriver.h"
@@ -188,6 +192,13 @@ public:
 private slots:
 	void encoding_index_changed(int index);
 	void use_onthefly_resampling_checkbox_changed(int state);
+
+private:
+    void show_driver_latency();
+
+    QCheckBox* m_latencyCompensationCheckBox{nullptr};
+    QDoubleSpinBox* m_extraLatencySpinBox{nullptr};
+    QLabel* m_driverLatencyLabel{nullptr};
 };
 
 
