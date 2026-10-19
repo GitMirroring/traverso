@@ -1077,7 +1077,9 @@ RecordingConfigPage::RecordingConfigPage(QWidget * parent)
     latencyLayout->addWidget(m_driverLatencyLabel, 2, 0, 1, 2);
     connect(m_latencyCompensationCheckBox, &QCheckBox::toggled, m_extraLatencySpinBox, &QWidget::setEnabled);
     verticalLayout->insertWidget(verticalLayout->count() - 1, latencyGroup);   // above the spacer
-    show_driver_latency();
+    // Another driver (the Audio page) or a measured change
+    connect(&audiodevice(), &TAudioDevice::latencyChanged, this, &RecordingConfigPage::show_driver_latency);
+    connect(&audiodevice(), &TAudioDevice::started, this, &RecordingConfigPage::show_driver_latency);
 
     load_config();
 }
@@ -1098,6 +1100,8 @@ void RecordingConfigPage::show_driver_latency()
 
 void RecordingConfigPage::load_config()
 {
+    show_driver_latency();
+
     bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
     if (useResampling) {
         use_onthefly_resampling_checkbox_changed(Qt::Checked);
