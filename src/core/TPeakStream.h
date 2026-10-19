@@ -14,13 +14,17 @@
 #include <vector>
 
 /**
- * @brief The peaks of a recording in progress, streamed to its peak file.
+ * @brief Peaks streamed to their peak file as they are made: those of a
+ * recording in progress (fed by its writer) or of a build (fed by
+ * TPeakBuildTask from a decoder).
  *
- * The writer thread appends samples; every complete period goes to the peak
- * file's part file at once, and its memory goes as soon as nobody reads: a
- * recording holds about one period of peaks, whether anything looks at it
- * or not. finish() writes the tail and the header and renames the file
- * into place.
+ * The writing thread appends samples; every complete period goes to the
+ * peak file's part file at once, and its memory goes as soon as nobody
+ * reads: a stream holds about one period of peaks, whether anything looks
+ * at it or not. finish() writes the tail and the header; publish(), on the
+ * reading thread, then puts the file under its name. (The reading thread
+ * holds the mapping of the part file, and Windows renames no file that is
+ * mapped: publish() lets go of the mapping first.)
  *
  * Readers (the GUI thread) read inside read(): the snapshot it hands out
  * names the written periods in a mapping of the file and only the periods
@@ -32,17 +36,19 @@
  * the count and does not touch that memory.)
  *
  * Nothing else may write its peak file meanwhile: a source being recorded
- * gets no file waveform, so no build (TAudioClip::set_audio_source()).
+ * gets no file waveform, so no build (TAudioClip::set_audio_source()), and
+ * the builds of a peak file share one job (TPeakBuildService).
  *
- * When writing fails (disk full) the recording keeps the peaks it has not
+ * When writing fails (disk full) a recording keeps the peaks it has not
  * written in memory, still reads the written ones from its mapping, and has
- * no peak file afterwards: the waveform builds it from the audio.
+ * no peak file afterwards: the waveform builds it from the audio. A build
+ * fails then (write_failed()).
  */
 class TPeakStream
 {
 public:
     TPeakStream(uint rate, int channelCount, QString peakPath,
-                   int periodShift = TPeakPyramidBuilder::DefaultPeriodShift);
+                int periodShift = TPeakPyramidBuilder::DefaultPeriodShift);
     ~TPeakStream();
 
     uint rate() const { return m_builder.rate(); }
@@ -57,8 +63,20 @@ public:
     TPeakFile::Status open(QString* error = nullptr);
     void append(const float* const* channels, qint64 frames);
     // After the audio file is complete (its size and time go into the
-    // header)
+    // header): the part file is complete, publish() follows
     TPeakFile::Status finish(const QString& audioPath, QString* error = nullptr);
+    // Gives up the part file (a build that failed or was cancelled)
+    void abandon();
+    // Writing the part file failed: there will be no peak file
+    bool write_failed() const { return m_writeFailed; }
+
+    // The reading thread, after finish() (which happened before, through the
+    // signal or join that told the reader): lets go of the mapping and puts
+    // the finished file under its name. A read() afterwards maps the file
+    // under its name.
+    TPeakFile::Status publish(QString* error = nullptr);
+    // The reading thread: lets go of the mapping of the part file
+    void release_mapping();
     // Blocks the writer holds in memory (for tests and diagnostics)
     qint64 memory_blocks() const { return m_builder.allocated_blocks(); }
 

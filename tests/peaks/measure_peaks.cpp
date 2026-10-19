@@ -62,10 +62,12 @@ private:
 static int build(const QString& audio, const QString& peaks)
 {
     QFile::remove(peaks);
-    TPeakBuildTask task(TPeakBuildTask::audio_file(audio), audio, peaks);
+    TResampleAudioReader reader(audio);
+    TPeakBuildTask task(TPeakBuildTask::audio_file(audio), audio,
+                        std::make_shared<TPeakStream>(reader.get_file_rate(), int(reader.get_num_channels()), peaks));
     QElapsedTimer timer;
     timer.start();
-    while (task.step(std::chrono::milliseconds(100))) {
+    while (task.step()) {
     }
     const qint64 stepped = timer.elapsed();
     task.publish();

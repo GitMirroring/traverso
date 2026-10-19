@@ -174,7 +174,7 @@ void TWaveform::start_build(const char* reason)
     m_progress = 0;
     // No build service (a clip without a sheet): a cancelled future, so the
     // watcher reports a failed build
-    m_build.setFuture(m_requestBuild ? m_requestBuild(m_fileName, m_peakPath) : QFuture<TPeakBuildResult>());
+    m_build.setFuture(m_requestBuild ? m_requestBuild(m_fileName, m_peakPath, m_rate, m_channelCount) : QFuture<TPeakBuildResult>());
 }
 
 void TWaveform::build_finished()

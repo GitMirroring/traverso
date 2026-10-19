@@ -37,7 +37,12 @@ static QFuture<TPeakBuildResult> queue(std::unique_ptr<TPeakBuildTask> task, TDi
         if (job->promise.isCanceled()) {
             job->task->cancel();
         }
-        if (job->task->step(budget)) {
+        const auto started = std::chrono::steady_clock::now();
+        bool more = job->task->step();
+        while (more && std::chrono::steady_clock::now() - started < budget) {
+            more = job->task->step();
+        }
+        if (more) {
             job->promise.setProgressValue(job->task->progress());
             return true;
         }
@@ -59,7 +64,8 @@ static QFuture<TPeakBuildResult> queue(std::unique_ptr<TPeakBuildTask> task, TDi
     return future;
 }
 
-QFuture<TPeakBuildResult> TPeakBuildService::build(const QString& audioPath, const QString& peakPath, TDiskIOThread* diskio)
+QFuture<TPeakBuildResult> TPeakBuildService::build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
+                                                   TDiskIOThread* diskio)
 {
     // Forget the jobs that are over, the hash stays small that way
     for (auto it = m_jobs.begin(); it != m_jobs.end();) {
@@ -70,7 +76,8 @@ QFuture<TPeakBuildResult> TPeakBuildService::build(const QString& audioPath, con
         return *running;
     }
     Q_ASSERT(diskio);
-    QFuture<TPeakBuildResult> job = queue(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, peakPath),
+    auto stream = std::make_shared<TPeakStream>(rate, channelCount, peakPath);
+    QFuture<TPeakBuildResult> job = queue(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream),
                                           diskio);
     m_jobs.insert(peakPath, job);
     return job;

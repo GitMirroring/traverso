@@ -5,12 +5,12 @@
 
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
+#include "TPeakStream.h"
 #include "TWaveformColumns.h"
 
 #include <QString>
 
 #include <atomic>
-#include <chrono>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -31,15 +31,19 @@ public:
 };
 
 /**
- * @brief Builds the peak file of one audio source, a slice at a time.
+ * @brief Builds the peak file of one audio source into a TPeakStream, one
+ * read at a time.
  *
- * Whoever runs it calls step() with a time budget until it returns false,
- * then publish() when the file is Written. The first step opens the
- * source, so the decoder is opened on the thread that builds. Every
- * complete period goes to the peak file at once and its memory is
- * released, so a build holds about one period of the pyramid. State, error
- * and progress belong to the thread that steps (and then to the one that
- * publishes); cancel() may be called from any thread.
+ * Whoever runs it calls step() until it returns false; each step reads
+ * about a fifth of a second of the source (a reader's refill, so the steps
+ * of a DiskIO round take about as long as each other). The first step
+ * opens the source, so the decoder is opened on the thread that builds.
+ * Every complete period goes to the part file at once, so a build holds
+ * about one period of the pyramid, and a reader of the stream sees the
+ * waveform grow. When the steps end in Written, publish() on the stream's
+ * reading thread puts the file under its name. State, error and progress
+ * belong to the thread that steps (and then to the one that publishes);
+ * cancel() may be called from any thread.
  */
 class TPeakBuildTask
 {
@@ -61,21 +65,24 @@ public:
     static constexpr int MaxChannels = 2;
     static bool supports(int channelCount) { return channelCount <= MaxChannels; }
 
-    TPeakBuildTask(OpenSource openSource, QString audioPath, QString peakPath,
-                   int periodShift = TPeakPyramidBuilder::DefaultPeriodShift, qint64 readFrames = 16384);
+    // stream: where the peaks go, at the rate and channel count the source
+    // must have (its waveform knows them). readFrames: frames per step, 0
+    // for a fifth of a second of the source.
+    TPeakBuildTask(OpenSource openSource, QString audioPath, std::shared_ptr<TPeakStream> stream, qint64 readFrames = 0);
     ~TPeakBuildTask();
 
-    // Works until budget is used or the build ends; true while work remains
-    bool step(std::chrono::nanoseconds budget);
-    // After step() ended in Written: puts the file under its name
-    // (TPeakFileWriter::publish())
+    // One read of the source into the stream; true while work remains
+    bool step();
+    // After step() ended in Written, on the stream's reading thread: puts
+    // the file under its name (TPeakStream::publish())
     State publish();
     void cancel() { m_cancelled.store(true, std::memory_order_relaxed); }
 
     State state() const { return m_state; }
     const QString& error() const { return m_error; }
     int progress() const { return m_progress; }
-    const QString& peak_path() const { return m_peakPath; }
+    const QString& peak_path() const { return m_stream->peak_path(); }
+    const std::shared_ptr<TPeakStream>& stream() const { return m_stream; }
 
     // Opens an audio file with Traverso's decoders, at the file's own rate
     static OpenSource audio_file(const QString& fileName);
@@ -88,13 +95,10 @@ private:
 
     OpenSource m_openSource;
     QString m_audioPath;
-    QString m_peakPath;
-    int m_periodShift;
+    std::shared_ptr<TPeakStream> m_stream;
     qint64 m_readFrames;
 
     std::unique_ptr<TPeakBuildSource> m_source;
-    std::unique_ptr<TPeakPyramidBuilder> m_builder;
-    TPeakFileWriter m_writer;
     std::vector<std::vector<float>> m_samples;
     std::vector<float*> m_channels;
     std::vector<const float*> m_constChannels;

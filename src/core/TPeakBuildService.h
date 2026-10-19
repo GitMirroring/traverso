@@ -35,7 +35,9 @@ struct TPeakBuildResult
 class TPeakBuildService
 {
 public:
-    QFuture<TPeakBuildResult> build(const QString& audioPath, const QString& peakPath, TDiskIOThread* diskio);
+    // rate, channelCount: the source's, as its waveform knows them
+    QFuture<TPeakBuildResult> build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
+                                    TDiskIOThread* diskio);
     void cancel_all();
 
 private:

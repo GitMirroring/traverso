@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of TPeakBuildTask: a build in slices writes the same peak
-// file as the whole pyramid written in one go, whatever the slice sizes and
-// budgets; sources that end early, fail, have too many channels or are
-// cancelled leave no valid file behind.
+// Headless test of TPeakBuildTask and TPeakStream: a build in slices writes
+// the same peak file as the whole pyramid written in one go, whatever the
+// slice sizes; sources that end early, fail, have too many channels or are
+// cancelled leave no valid file behind; a recording or a build read while
+// it streams shows the right peaks.
 
 #include "TBufferedAudioStreamStatus.h"
 #include "TPeakBuildTask.h"
@@ -105,17 +106,24 @@ static TPeakBuildTask::OpenSource memory_source(const Signal& signal, qint64 ext
     };
 }
 
-// Steps the task to its end and puts the file in place, as the service does
-// (the latter from its thread pool)
-static TPeakBuildTask::State run(TPeakBuildTask& task, std::chrono::nanoseconds budget, int cancelAfterSteps = -1)
+// Steps the task to its end and puts the file in place, as DiskIO and the
+// service do (the latter on the stream's reading thread)
+static TPeakBuildTask::State run(TPeakBuildTask& task, int cancelAfterSteps = -1)
 {
     int steps = 0;
-    while (task.step(budget)) {
+    while (task.step()) {
         if (++steps == cancelAfterSteps) {
             task.cancel();
         }
     }
     return task.publish();
+}
+
+// The stream a build of signal writes into
+static std::shared_ptr<TPeakStream> stream_for(const Signal& signal, const QString& peakPath,
+                                               int periodShift = TPeakPyramidBuilder::DefaultPeriodShift)
+{
+    return std::make_shared<TPeakStream>(signal.rate, int(signal.channels.size()), peakPath, periodShift);
 }
 
 static QByteArray file_bytes(const QString& path)
@@ -159,11 +167,12 @@ private:
 };
 
 // Stress test of the lock-free paths: one thread records in buffers of 256
-// frames, the GUI thread meanwhile queries columns at changing zoom over what
-// is recorded, with RMS and max_amplitude. Every column made of blocks the
-// snapshot has equals the finished pyramid's, no block is a poisoned (freed)
-// one, the counts never go back, and the finished file answers the same.
-static void stress_recording(const QString& peakPath, const QString& audioPath)
+// frames (or builds from a decoder, in steps), the GUI thread meanwhile
+// queries columns at changing zoom over what is there, with RMS and
+// max_amplitude. Every column made of blocks the snapshot has equals the
+// finished pyramid's, no block is a poisoned (freed) one, the counts never
+// go back, and the finished file answers the same.
+static void stress_stream(const QString& peakPath, const QString& audioPath, bool build)
 {
     const int shift = 4;   // periods of 1024 frames
     const Signal signal = make_signal(2, 1024 * 400 + 333);
@@ -177,11 +186,25 @@ static void stress_recording(const QString& peakPath, const QString& audioPath)
     const double step = TPeakCodeMath::octave_fraction(1);
 
     QFile::remove(peakPath);
-    TPeakStream recording(signal.rate, 2, peakPath, shift);
-    CHECK(recording.open() == TPeakFile::Status::Ok, "stress: open");
+    const std::shared_ptr<TPeakStream> stream = stream_for(signal, peakPath, shift);
+    TPeakStream& recording = *stream;
+    TPeakBuildTask task(memory_source(signal), audioPath, stream, 1000);
+    if (!build) {
+        CHECK(recording.open() == TPeakFile::Status::Ok, "stress: open");
+    }
     std::atomic<bool> done{false};
     std::thread writer([&] {
         std::mt19937_64 random(42);
+        if (build) {
+            while (task.step()) {
+                if (std::uniform_int_distribution<int>(0, 30)(random) == 0) {
+                    std::this_thread::sleep_for(std::chrono::microseconds(100));
+                }
+            }
+            CHECK(task.state() == TPeakBuildTask::State::Written, "stress: build %s", qPrintable(task.error()));
+            done.store(true);
+            return;
+        }
         for (qint64 position = 0; position < signal.frames(); position += 256) {
             const float* pointers[2] = {signal.channels[0].data() + position, signal.channels[1].data() + position};
             recording.append(pointers, std::min<qint64>(256, signal.frames() - position));
@@ -276,7 +299,14 @@ static void stress_recording(const QString& peakPath, const QString& audioPath)
     }
     writer.join();
     CHECK(compared > 1000, "stress: only %d columns compared in %d reads", compared, reads);
-    std::printf("    stress: %d reads, %d columns compared\n", reads, compared);
+    std::printf("    stress (%s): %d reads, %d columns compared\n", build ? "build" : "recording", reads, compared);
+
+    // Under its name from the reading thread, as the clip or the service does
+    if (build) {
+        CHECK(task.publish() == TPeakBuildTask::State::Done, "stress: publish the build: %s", qPrintable(task.error()));
+    } else {
+        CHECK(recording.publish() == TPeakFile::Status::Ok, "stress: publish");
+    }
 
     // The finished file answers like the finished pyramid
     TPeakFile file;
@@ -329,7 +359,7 @@ int main()
     const QString referencePath = dir.filePath("reference.peaks");
     const QString peakPath = dir.filePath("sub/dir/built.peaks");   // the task creates the directory
 
-    // Slices, budgets and period shifts do not change the file
+    // Slices and period shifts do not change the file
     for (int round = 0; round < 40; ++round) {
         const int periodShift = int(random_between(0, 14));
         const qint64 period = qint64(TPeakLevels::BlockFrames) << periodShift;
@@ -340,9 +370,10 @@ int main()
         const Signal signal = make_signal(int(random_between(1, 2)), frames);
         const QByteArray reference = reference_file(referencePath, signal, audioPath, periodShift);
 
-        TPeakBuildTask task(memory_source(signal), audioPath, peakPath, periodShift, random_between(64, 40000));
-        const auto budget = random_between(0, 1) ? std::chrono::nanoseconds(0) : std::chrono::nanoseconds(std::chrono::milliseconds(50));
-        CHECK(run(task, budget) == TPeakBuildTask::State::Done, "round %d: %s", round, qPrintable(task.error()));
+        // Sometimes the default slice, a fifth of a second
+        const qint64 readFrames = random_between(0, 3) == 0 ? 0 : random_between(64, 40000);
+        TPeakBuildTask task(memory_source(signal), audioPath, stream_for(signal, peakPath, periodShift), readFrames);
+        CHECK(run(task) == TPeakBuildTask::State::Done, "round %d: %s", round, qPrintable(task.error()));
         CHECK(task.progress() == 100, "round %d: progress %d", round, task.progress());
         CHECK(file_bytes(peakPath) == reference, "round %d shift %d frames %lld: file differs from the one-go file",
               round, periodShift, (long long)frames);
@@ -352,8 +383,8 @@ int main()
     // what was read and opens for the reported length
     {
         const Signal signal = make_signal(2, 100000);
-        TPeakBuildTask task(memory_source(signal, 1152), audioPath, peakPath, 3);
-        CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Done, "ends early: %s", qPrintable(task.error()));
+        TPeakBuildTask task(memory_source(signal, 1152), audioPath, stream_for(signal, peakPath, 3));
+        CHECK(run(task) == TPeakBuildTask::State::Done, "ends early: %s", qPrintable(task.error()));
         TPeakFile file;
         const auto expected = TPeakFile::SourceInfo::from_file(audioPath, signal.rate, 2, signal.frames() + 1152);
         CHECK(file.open(peakPath, expected) == TPeakFile::Status::Ok && file.levels().frame_count() == signal.frames(),
@@ -430,9 +461,12 @@ int main()
         }
         writer.join();
         CHECK(finished == TPeakFile::Status::Ok, "recording %d: finish", round);
+        CHECK(QFile::exists(TPeakFileWriter::part_path(peakPath)) && !QFile::exists(peakPath),
+              "recording %d: finished but not published, the file is in its part file", round);
+        CHECK(recording.publish() == TPeakFile::Status::Ok, "recording %d: publish", round);
         CHECK(file_bytes(peakPath) == reference, "recording %d: the streamed file differs from the one-go file", round);
         CHECK(!QFile::exists(TPeakFileWriter::part_path(peakPath)), "recording %d: part file left", round);
-        // After finish the snapshot is the whole pyramid, records from the renamed file
+        // After publishing the snapshot is the whole pyramid, records from the renamed file
         recording.read([&](const TPeakLevels& last) {
             CHECK(last.level_count() == expected.level_count() && last.frame_count() == expected.frame_count(), "recording %d: final view", round);
             for (int level = 0; level < last.level_count(); ++level) {
@@ -447,7 +481,8 @@ int main()
         std::printf("    recording of %lld frames: %d snapshots\n", (long long)signal.frames(), snapshots);
     }
 
-    stress_recording(peakPath, audioPath);
+    stress_stream(peakPath, audioPath, false);
+    stress_stream(peakPath, audioPath, true);
 
     // Recording memory without and with readers: helpers
     auto record_into = [&](TPeakStream& recording, const Signal& signal, qint64 from, qint64 to) {
@@ -507,6 +542,7 @@ int main()
               "no reader: %lld blocks in memory after 36 periods, %lld after 12 (all: %lld)",
               (long long)afterThirtySix, (long long)afterTwelve, (long long)all);
         CHECK(recording.finish(audioPath) == TPeakFile::Status::Ok, "no reader: finish");
+        CHECK(recording.publish() == TPeakFile::Status::Ok, "no reader: publish");
         CHECK(file_bytes(peakPath) == reference_file(referencePath, signal, audioPath, shift), "no reader: file differs");
     }
 
@@ -600,8 +636,8 @@ int main()
     {
         const Signal signal = make_signal(1, 200000);
         QFile::remove(peakPath);
-        TPeakBuildTask task(memory_source(signal, 0, 150000), audioPath, peakPath, 2);
-        CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Failed, "read error not reported");
+        TPeakBuildTask task(memory_source(signal, 0, 150000), audioPath, stream_for(signal, peakPath, 2));
+        CHECK(run(task) == TPeakBuildTask::State::Failed, "read error not reported");
         expect_no_file(signal, signal.frames(), "read error");
     }
 
@@ -609,9 +645,9 @@ int main()
     {
         const Signal signal = make_signal(2, 300000);
         QFile::remove(peakPath);
-        TPeakBuildTask task(memory_source(signal), audioPath, peakPath, 2, 1024);
+        TPeakBuildTask task(memory_source(signal), audioPath, stream_for(signal, peakPath, 2), 1024);
         for (int steps = 0; steps < 50; ++steps) {
-            task.step(std::chrono::nanoseconds(0));
+            task.step();
         }
         // Streamed: the periods completed so far are on disk, in the part
         // file (50 slices of at most 1024 frames, periods of 256 frames)
@@ -619,7 +655,7 @@ int main()
         CHECK(QFileInfo(part).size() >= TPeakFileWriter::records_end(2, 2, 40), "%lld bytes: the periods were not streamed",
               (long long)QFileInfo(part).size());
         task.cancel();
-        CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Cancelled, "cancel not honoured");
+        CHECK(run(task) == TPeakBuildTask::State::Cancelled, "cancel not honoured");
         CHECK(!QFile::exists(part) && !QFile::exists(peakPath), "a cancelled build left a file behind");
     }
 
@@ -628,8 +664,8 @@ int main()
     {
         const Signal signal = make_signal(1, 100000);
         QFile::remove(peakPath);
-        TPeakBuildTask task(memory_source(signal), audioPath, peakPath, 2);
-        while (task.step(std::chrono::nanoseconds(0))) {
+        TPeakBuildTask task(memory_source(signal), audioPath, stream_for(signal, peakPath, 2));
+        while (task.step()) {
         }
         const QString part = TPeakFileWriter::part_path(peakPath);
         CHECK(task.state() == TPeakBuildTask::State::Written && QFile::exists(part) && !QFile::exists(peakPath),
@@ -642,21 +678,25 @@ int main()
     // Sources the task refuses
     {
         const Signal three = make_signal(3, 5000);
-        TPeakBuildTask task(memory_source(three), audioPath, peakPath);
-        CHECK(run(task, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Unsupported && !task.error().isEmpty(),
-              "three channels accepted");
+        TPeakBuildTask task(memory_source(three), audioPath, stream_for(three, peakPath));
+        CHECK(run(task) == TPeakBuildTask::State::Unsupported && !task.error().isEmpty(), "three channels accepted");
         CHECK(!TPeakBuildTask::supports(3) && TPeakBuildTask::supports(2) && TPeakBuildTask::supports(1), "supports()");
         const Signal empty = make_signal(1, 0);
-        TPeakBuildTask none(memory_source(empty), audioPath, peakPath);
-        CHECK(run(none, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Failed, "empty source accepted");
+        TPeakBuildTask none(memory_source(empty), audioPath, stream_for(empty, peakPath));
+        CHECK(run(none) == TPeakBuildTask::State::Failed, "empty source accepted");
         TPeakBuildTask unreadable([](QString* error) -> std::unique_ptr<TPeakBuildSource> {
             *error = QStringLiteral("no decoder");
             return nullptr;
-        }, audioPath, peakPath);
-        CHECK(run(unreadable, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Failed && unreadable.error() == "no decoder",
-              "unopenable source");
-        TPeakBuildTask missing(TPeakBuildTask::audio_file(dir.filePath("none.wav")), audioPath, peakPath);
-        CHECK(run(missing, std::chrono::nanoseconds(0)) == TPeakBuildTask::State::Failed, "missing audio file accepted");
+        }, audioPath, std::make_shared<TPeakStream>(48000, 1, peakPath));
+        CHECK(run(unreadable) == TPeakBuildTask::State::Failed && unreadable.error() == "no decoder", "unopenable source");
+        TPeakBuildTask missing(TPeakBuildTask::audio_file(dir.filePath("none.wav")), audioPath, std::make_shared<TPeakStream>(48000, 1, peakPath));
+        CHECK(run(missing) == TPeakBuildTask::State::Failed, "missing audio file accepted");
+        // A source that is not what its waveform expects (it changed): no file
+        const Signal signal = make_signal(2, 5000);
+        QFile::remove(peakPath);
+        TPeakBuildTask other(memory_source(signal), audioPath, std::make_shared<TPeakStream>(44100, 2, peakPath));
+        CHECK(run(other) == TPeakBuildTask::State::Failed && !QFile::exists(peakPath)
+                  && !QFile::exists(TPeakFileWriter::part_path(peakPath)), "a source of another rate accepted");
     }
 
     if (s_failures) {

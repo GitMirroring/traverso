@@ -86,15 +86,41 @@ TPeakFile::Status TPeakStream::finish(const QString& audioPath, QString* error)
     }
     const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(
         audioPath, m_builder.rate(), m_builder.channel_count(), m_builder.frame_count());
-    TPeakFile::Status status = m_writer.finish(m_builder.levels(), source, error);
-    if (status == TPeakFile::Status::Ok) {
-        status = TPeakFileWriter::publish(m_peakPath, error);
-    }
+    const TPeakFile::Status status = m_writer.finish(m_builder.levels(), source, error);
     m_writeFailed = status != TPeakFile::Status::Ok;
     if (!m_writeFailed) {
         m_writtenPeriods.store(m_writer.written_periods(), std::memory_order_seq_cst);
     }
     return status;
+}
+
+void TPeakStream::abandon()
+{
+    m_writer.close();
+    m_writeFailed = true;
+}
+
+void TPeakStream::release_mapping()
+{
+    if (m_map) {
+        m_mapFile->unmap(m_map);
+        m_map = nullptr;
+    }
+    m_mapFile.reset();
+    m_mappedPeriods = 0;
+}
+
+TPeakFile::Status TPeakStream::publish(QString* error)
+{
+    // Windows renames no file that is mapped, and this thread maps it
+    release_mapping();
+    if (m_writeFailed) {
+        if (error) {
+            *error = QStringLiteral("the peak file could not be written");
+        }
+        return TPeakFile::Status::Error;
+    }
+    return TPeakFileWriter::publish(m_peakPath, error);
 }
 
 void TPeakStream::remap(qint64 periods)

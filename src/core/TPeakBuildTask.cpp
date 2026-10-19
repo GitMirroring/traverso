@@ -7,9 +7,7 @@
 #include "TFileIOBuffer.h"
 #include "TLog.h"
 
-#include <QDir>
 #include <QFile>
-#include <QFileInfo>
 
 #include <algorithm>
 
@@ -58,13 +56,13 @@ TPeakBuildTask::OpenSource TPeakBuildTask::audio_file(const QString& fileName)
     };
 }
 
-TPeakBuildTask::TPeakBuildTask(OpenSource openSource, QString audioPath, QString peakPath, int periodShift, qint64 readFrames)
+TPeakBuildTask::TPeakBuildTask(OpenSource openSource, QString audioPath, std::shared_ptr<TPeakStream> stream, qint64 readFrames)
     : m_openSource(std::move(openSource))
     , m_audioPath(std::move(audioPath))
-    , m_peakPath(std::move(peakPath))
-    , m_periodShift(periodShift)
-    , m_readFrames(std::max<qint64>(TPeakLevels::BlockFrames, readFrames))
+    , m_stream(std::move(stream))
+    , m_readFrames(readFrames)
 {
+    Q_ASSERT(m_stream);
 }
 
 TPeakBuildTask::~TPeakBuildTask() = default;
@@ -74,19 +72,18 @@ bool TPeakBuildTask::fail(const QString& error, State state)
     m_error = error;
     m_state = state;
     if (state == State::Unsupported) {
-        TLOG_I("peaks", "{} is not built: {}", m_peakPath.toStdString(), error.toStdString());
+        TLOG_I("peaks", "{} is not built: {}", peak_path().toStdString(), error.toStdString());
     } else {
-        TLOG_W("peaks", "building {} failed: {}", m_peakPath.toStdString(), error.toStdString());
+        TLOG_W("peaks", "building {} failed: {}", peak_path().toStdString(), error.toStdString());
     }
+    // What is left of an unfinished peak file goes
+    m_stream->abandon();
     release();
     return false;
 }
 
 void TPeakBuildTask::release()
 {
-    // What is left of an unfinished peak file says unfinished in its header
-    m_writer.close();
-    m_builder.reset();
     m_source.reset();
     m_samples.clear();
     m_channels.clear();
@@ -110,14 +107,19 @@ bool TPeakBuildTask::start()
     if (!supports(channels)) {
         return fail(QStringLiteral("sources with %1 channels are not supported").arg(channels), State::Unsupported);
     }
-    if (!QDir().mkpath(QFileInfo(m_peakPath).absolutePath())) {
-        return fail(QStringLiteral("cannot create the peak file directory"));
+    if (rate != m_stream->rate() || channels != m_stream->channel_count()) {
+        return fail(QStringLiteral("the source has %1 Hz and %2 channels, its waveform expects %3 Hz and %4")
+                        .arg(rate).arg(channels).arg(m_stream->rate()).arg(m_stream->channel_count()));
     }
-    if (m_writer.open(m_peakPath, rate, channels, m_periodShift, &error) != TPeakFile::Status::Ok) {
+    if (m_stream->open(&error) != TPeakFile::Status::Ok) {
         return fail(error);
     }
 
-    m_builder = std::make_unique<TPeakPyramidBuilder>(rate, channels, m_periodShift);
+    // A fifth of a second: what a reader reads at least per refill
+    if (m_readFrames <= 0) {
+        m_readFrames = qint64(rate) / 5;
+    }
+    m_readFrames = std::max<qint64>(TPeakLevels::BlockFrames, m_readFrames);
     m_samples.assign(size_t(channels), std::vector<float>(size_t(m_readFrames)));
     for (std::vector<float>& samples : m_samples) {
         m_channels.push_back(samples.data());
@@ -129,11 +131,8 @@ bool TPeakBuildTask::start()
 
 bool TPeakBuildTask::finish()
 {
-    m_builder->finish();
-    const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(
-        m_audioPath, m_builder->rate(), m_builder->channel_count(), m_builder->frame_count());
     QString error;
-    if (m_writer.finish(m_builder->levels(), source, &error) != TPeakFile::Status::Ok) {
+    if (m_stream->finish(m_audioPath, &error) != TPeakFile::Status::Ok) {
         return fail(error);
     }
     m_progress = 100;
@@ -148,70 +147,62 @@ TPeakBuildTask::State TPeakBuildTask::publish()
         return m_state;
     }
     if (m_cancelled.load(std::memory_order_relaxed)) {
-        QFile::remove(TPeakFileWriter::part_path(m_peakPath));
+        m_stream->release_mapping();
+        QFile::remove(TPeakFileWriter::part_path(peak_path()));
         m_state = State::Cancelled;
         return m_state;
     }
     QString error;
-    if (TPeakFileWriter::publish(m_peakPath, &error) != TPeakFile::Status::Ok) {
+    if (m_stream->publish(&error) != TPeakFile::Status::Ok) {
         m_error = error;
         m_state = State::Failed;
-        TLOG_W("peaks", "publishing {} failed: {}", m_peakPath.toStdString(), error.toStdString());
+        TLOG_W("peaks", "publishing {} failed: {}", peak_path().toStdString(), error.toStdString());
         return m_state;
     }
     m_state = State::Done;
-    TLOG_I("peaks", "built {}", m_peakPath.toStdString());
+    TLOG_I("peaks", "built {}", peak_path().toStdString());
     return m_state;
 }
 
-bool TPeakBuildTask::step(std::chrono::nanoseconds budget)
+bool TPeakBuildTask::step()
 {
     if (m_state != State::Waiting && m_state != State::Running) {
         return false;
     }
-    const auto started = std::chrono::steady_clock::now();
+    if (m_cancelled.load(std::memory_order_relaxed)) {
+        m_state = State::Cancelled;
+        TLOG_D("peaks", "build of {} cancelled", peak_path().toStdString());
+        m_stream->abandon();
+        release();
+        return false;
+    }
+    if (m_state == State::Waiting && !start()) {
+        return false;
+    }
 
-    do {
-        if (m_cancelled.load(std::memory_order_relaxed)) {
-            m_state = State::Cancelled;
-            TLOG_D("peaks", "build of {} cancelled", m_peakPath.toStdString());
-            release();
-            return false;
-        }
-        if (m_state == State::Waiting && !start()) {
-            return false;
-        }
+    const qint64 toRead = std::min(m_readFrames, m_reportedFrames - m_position);
+    const qint64 read = m_source->read(m_position, toRead, m_channels.data());
+    if (read < 0 || (read == 0 && m_position == 0)) {
+        return fail(QStringLiteral("reading the source failed at frame %1").arg(m_position));
+    }
+    if (read == 0) {
+        // The source reported more frames than it delivers (MP3: one
+        // frame short is common); the pyramid ends here
+        TLOG_I("peaks", "{}: the source ends at frame {}, {} frames before the length it reports",
+               peak_path().toStdString(), m_position, m_reportedFrames - m_position);
+        return finish();
+    }
 
-        const qint64 toRead = std::min(m_readFrames, m_reportedFrames - m_position);
-        if (toRead <= 0) {
-            return finish();
-        }
-        const qint64 read = m_source->read(m_position, toRead, m_channels.data());
-        if (read < 0 || (read == 0 && m_position == 0)) {
-            return fail(QStringLiteral("reading the source failed at frame %1").arg(m_position));
-        }
-        if (read == 0) {
-            // The source reported more frames than it delivers (MP3: one
-            // frame short is common); the pyramid ends here
-            TLOG_I("peaks", "{}: the source ends at frame {}, {} frames before the length it reports",
-                   m_peakPath.toStdString(), m_position, m_reportedFrames - m_position);
-            return finish();
-        }
-
-        m_builder->append(m_constChannels.data(), std::min(read, toRead));
-        m_position += std::min(read, toRead);
-
-        // A complete period goes to the file, and out of memory
-        const qint64 periods = m_builder->complete_periods();
-        if (periods > m_writer.written_periods()) {
-            QString error;
-            if (m_writer.write_periods(m_builder->levels(), periods, &error) != TPeakFile::Status::Ok) {
-                return fail(error);
-            }
-            m_builder->release_periods(periods);
-        }
-        m_progress = int(m_position * 100 / m_reportedFrames);
-    } while (std::chrono::steady_clock::now() - started < budget);
-
+    // Complete periods go to the part file at once, and out of memory once
+    // no reader holds them (TPeakStream)
+    m_stream->append(m_constChannels.data(), std::min(read, toRead));
+    if (m_stream->write_failed()) {
+        return fail(QStringLiteral("writing the peak file failed"));
+    }
+    m_position += std::min(read, toRead);
+    m_progress = int(m_position * 100 / m_reportedFrames);
+    if (m_position >= m_reportedFrames) {
+        return finish();
+    }
     return true;
 }

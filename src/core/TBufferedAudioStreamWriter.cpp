@@ -78,7 +78,8 @@ int TBufferedAudioStreamWriter::finish_export()
 
     // The peaks are on disk already except for the last period: the tail
     // and the header follow once the audio file is complete (its size and
-    // time are part of the peak file's validation)
+    // time are part of the peak file's validation). The clip puts the file
+    // under its name (TAudioClip::finish_write_source()).
     if (m_peaks) {
         QString error;
         if (m_peaks->finish(m_fileName, &error) != TPeakFile::Status::Ok) {

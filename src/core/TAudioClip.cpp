@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TRtTransaction.h"
 #include "TProjectManager.h"
 #include "TPeakPyramid.h"
+#include "TPeakStream.h"
 #include "TWaveform.h"
 #include "TProject.h"
 #include "Utils.h"
@@ -738,8 +739,8 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
         m_waveform = nullptr;
         if (m_isReadSourceValid) {
             // Built in the idle time of this clip's sheet's DiskIO
-            m_waveform = new TWaveform(rs, [this](const QString& audioPath, const QString& peakPath) {
-                return m_sheet ? m_sheet->request_peak_build(audioPath, peakPath) : QFuture<TPeakBuildResult>();
+            m_waveform = new TWaveform(rs, [this](const QString& audioPath, const QString& peakPath, uint rate, int channelCount) {
+                return m_sheet ? m_sheet->request_peak_build(audioPath, peakPath, rate, channelCount) : QFuture<TPeakBuildResult>();
             });
             if (m_sheet) {
                 m_waveform->prepare();
@@ -764,6 +765,16 @@ void TAudioClip::finish_write_source()
 
     Q_ASSERT(m_readSource);
     Q_ASSERT(this->thread() == QThread::currentThread());
+
+    // The writer completed the recording's peak file on DiskIO; it gets its
+    // name here, on the thread whose recording waveform has it mapped
+    // (TPeakStream::publish()), before the file waveform opens it
+    if (const std::shared_ptr<TPeakStream> peaks = m_writer->get_peaks(); peaks && !peaks->write_failed()) {
+        QString error;
+        if (peaks->publish(&error) != TPeakFile::Status::Ok) {
+            TLOG_W("peaks", "publishing {} failed: {}", peaks->peak_path().toStdString(), error.toStdString());
+        }
+    }
 
     if (m_readSource->set_file(m_writer->get_filename()) < 0) {
         PERROR("Setting file for ReadSource failed after finishing recording");
