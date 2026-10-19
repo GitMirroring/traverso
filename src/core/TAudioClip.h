@@ -140,6 +140,10 @@ private:
 
     TTimeRef m_sourceEndLocation;
     TTimeRef m_sourceStartLocation;
+    // While recording: the frames the take's file starts before what was
+    // heard (TRecordingLatency), and the frames captured so far
+    qint64 m_captureCompensation{0};
+    qint64 m_capturedFrames{0};
     TTimeRef m_sourceLength;
     TTimeRef m_length;
 

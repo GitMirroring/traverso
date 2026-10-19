@@ -582,7 +582,14 @@ void TAudioClipView::update_recording(qint64 nowNanoseconds)
     if (drawn > m_clip->get_length()) {
         drawn = m_clip->get_length();
     }
-    TTimeRef painted = m_clip->get_waveform() ? m_clip->get_waveform()->recorded_length() : drawn;
+    // The waveform's end in clip time: what is recorded past the source
+    // start (the latency compensation)
+    TTimeRef painted = drawn;
+    if (TWaveform* waveform = m_clip->get_waveform()) {
+        const TTimeRef recorded = waveform->recorded_length();
+        const TTimeRef sourceStart = m_clip->get_source_start_location();
+        painted = recorded > sourceStart ? recorded - sourceStart : TTimeRef();
+    }
     if (painted > drawn) {
         painted = drawn;
     }

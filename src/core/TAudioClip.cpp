@@ -45,6 +45,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProject.h"
 #include "Utils.h"
 #include "TConfig.h"
+#include "TRecordingLatency.h"
 #include "TAudioPluginChain.h"
 #include "GainEnvelope.h"
 #include "TInputEventDispatcher.h"
@@ -585,7 +586,11 @@ void TAudioClip::process_capture(TProcessCallBackData &processData)
     processData.set_ringbuffer_write_bus(bus);
     nframes_t written = m_writer->ringbuffer_write(processData);
 
-    m_length.add_frames(written, get_rate());
+    // The take grows past the frames its source start skips only
+    const qint64 before = TRecordingLatency::visible_frames(m_capturedFrames, m_captureCompensation);
+    m_capturedFrames += written;
+    const qint64 after = TRecordingLatency::visible_frames(m_capturedFrames, m_captureCompensation);
+    m_length.add_frames(nframes_t(after - before), get_rate());
 
     nframes_t toWrite = processData.get_nframes_to_process();
     if (written != toWrite) {
@@ -607,7 +612,17 @@ int TAudioClip::init_recording()
         return -1;
     }
 
-    m_sourceStartLocation = TTimeRef();
+    // What is played comes in the capture plus the playback latency after
+    // the moment it belongs to: the take starts that far into its file, so
+    // it lines up with what was heard (doc/design/recording-latency.md)
+    const uint rate = audiodevice().get_sample_rate();
+    m_captureCompensation = TRecordingLatency::compensation_frames(
+        audiodevice().get_capture_latency_frames(), audiodevice().get_playback_latency_frames(),
+        config().get_property("Recording", "ExtraLatency", 0.0).toDouble(), rate,
+        bus->get_bus_type() == AudioBus::BusIsHardware, config().get_property("Recording", "LatencyCompensation", true).toBool());
+    m_capturedFrames = 0;
+    m_sourceStartLocation = TTimeRef(uint64_t(m_captureCompensation), rate);
+    TLOG_I("recording", "{}: compensating {} frames of latency", m_name.toStdString(), m_captureCompensation);
     m_isTake = true;
     m_recordingStatus = RECORDING;
 
@@ -734,7 +749,12 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
     // NOTE: don't change, audio recording (finish_writesource()) assumes there is checked for length == 0 !!!
     if (m_length == TTimeRef()) {
         m_sourceEndLocation = rs->get_length();
-        m_length = m_sourceEndLocation;
+        // A take shorter than its latency compensation keeps all of it
+        if (m_sourceStartLocation >= m_sourceEndLocation) {
+            m_sourceStartLocation = TTimeRef();
+            m_readSource->set_source_start_location(m_sourceStartLocation);
+        }
+        m_length = m_sourceEndLocation - m_sourceStartLocation;
     }
 
     set_sources_active_state();
