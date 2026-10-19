@@ -1,0 +1,111 @@
+<!--
+SPDX-FileCopyrightText: 2026 Remon Sijrier
+SPDX-License-Identifier: GPL-2.0-or-later
+-->
+
+# Latency compensation for recordings (plan, 2026-10-19)
+
+Task of the user, 2026-10-19: compensate recordings for latency.
+
+## 1. The problem
+
+A take is placed at the transport position where recording started, and
+every frame the audio thread captures goes to the timeline position the
+transport has in that cycle. But a performer plays to what they hear, and
+what they hear comes out late; what they play goes in late too:
+
+- cycle k processes transport position P;
+- its output leaves the device L_out later (playback latency: the queued
+  periods plus what the driver measures, `get_playback_latency_frames()`);
+- the performer plays the note that belongs to P when they hear P;
+- the input buffer of a cycle holds what arrived L_in before the cycle
+  started (capture latency: one period plus what the driver measures).
+
+So the sample captured while the transport is at Q belongs to the timeline
+at Q − (L_in + L_out). Today every take sits L_in + L_out late: 3 periods
+or more (with 256 frames at 48 kHz, ALSA: about 16 ms plus the
+converters), audible against the material it was played to.
+
+## 2. The compensation
+
+A take is shifted earlier by L = L_in + L_out (+ the user's extra
+latency, section 4):
+
+- The clip stays at the position where recording started, with its source
+  start at L frames: the file holds everything that was captured, the clip
+  begins with the frame that belongs to that position. The first L frames
+  were captured before anything could be heard; they stay in the file and
+  can be revealed by trimming the clip's left edge.
+- The clip's length on the timeline is the frames written minus L, during
+  the recording (the audio thread counts) and after it (from the file).
+- At the end, the last L frames of what was played arrive after the
+  transport stopped, and are not recorded. That is a few milliseconds
+  after the end of what the performer played to; Ardour does the same.
+
+No negative positions (recording from 0 works), no extra frames to write,
+no change in the writers, the file format or the peak files. The source
+start is the same mechanism as a left-trimmed clip, so playback, waveform
+and project file need nothing new.
+
+Not compensated:
+- takes from a software input (the bounce track records the master in the
+  same cycle; an internal bus is aligned already): L is 0;
+- the latency of plugins on the tracks heard while recording (Traverso has
+  no plugin delay compensation).
+
+## 3. What each driver reports
+
+`TAudioDriver` gets `get_capture_latency_frames()`, next to the existing
+`get_playback_latency_frames()`; `TAudioDevice::get_recording_latency_frames()`
+adds both.
+
+| Driver | Capture latency | Source |
+|---|---|---|
+| ALSA | one period | the input of a cycle is the period captured before it |
+| JACK | the input port's capture latency range (max) | `jack_port_get_latency_range(JackCaptureLatency)` in the latency callback, like the playback side |
+| PipeWire | what the capture stream reports (delay + queued + buffered) | measured already, now used |
+| PortAudio | the stream's input latency | `Pa_GetStreamInfo()->inputLatency` |
+| CoreAudio | one period | device and safety-offset properties not read yet (no Mac to test) |
+| Dummy | one period | captures silence |
+
+None of these knows the converters' latency (about 0.5–2 ms) or external
+gear: that is the extra latency of section 4.
+
+## 4. Settings
+
+Recording settings page:
+- Latency compensation: on (default) / off. Off places takes as today
+  (for e.g. aligning to an external clock).
+- Extra latency in ms (default 0, may be negative), added to what the
+  driver reports. Measured with a loopback: play a click out, record it
+  back in, and adjust until the recorded click lines up.
+- The latency the driver reports now, as a read-only line (capture,
+  playback, total).
+
+The compensation is fixed when a take starts (also a take started by a
+seek during the recording).
+
+## 5. Steps on branch `recording-latency`
+
+1. `get_capture_latency_frames()` per driver, `get_recording_latency_frames()`
+   on the device; the latency shown in the info widget becomes the whole
+   round trip.
+2. A pure function for the compensation (driver latencies, extra
+   milliseconds, rate, hardware input, on/off → frames), with a test.
+3. `TAudioClip::init_recording()` sets the source start; `process_capture()`
+   lengthens the clip only past the first L frames; `set_audio_source()`
+   computes a new clip's length from its source start; the recording view
+   compares the waveform in clip time.
+4. The settings.
+5. Tests: the pure function; the length progression of a take (frames
+   written vs length) as a pure step too; the app headless (the Dummy
+   driver: a take starts with its source start set). The real check needs
+   the user: a loopback recording against a click (section 6).
+
+## 6. Runtime test for the user
+
+Connect an output to an input (cable, or the interface's loopback). Put a
+click (a short sharp sample) on a track, arm a second track on that input,
+record. Without compensation the recorded click is L late; with it, it
+should sit on the original within about 1 ms (the converters). Adjust the
+extra latency until it does; that number belongs to the interface.
