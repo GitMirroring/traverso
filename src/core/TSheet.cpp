@@ -1025,9 +1025,25 @@ void TSheet::split_takes()
     start_takes();
 }
 
+// A take that got no frames (stopped at once, or within the latency
+// compensation): nothing to keep and nothing to ask. Out of its track and
+// the session's takes; the removal joins the session's steps, so its undo
+// and redo leave the take out as well. Its empty file goes at the next save.
+void TSheet::drop_empty_take(TAudioClip* clip)
+{
+    TLOG_I("recording", "take {} got no frames, dropped", clip->get_name().toStdString());
+    std::unique_ptr<QUndoCommand> step(create_command_mutate_clips({}, {clip}, QString()));
+    step->redo();
+    m_sessionSteps.push_back(std::move(step));
+    m_sessionTakes.removeAll(clip);
+    resources_manager()->drop_empty_take(clip);
+}
+
 void TSheet::push_recording_session()
 {
     if (m_sessionTakes.isEmpty()) {
+        // Nothing recorded (every take was empty): no undo step
+        m_sessionSteps.clear();
         return;
     }
     const QString description = m_sessionBounce ? tr("Bouncing") : tr("Recording to %n Clip(s)", "", int(m_sessionTakes.size()));
@@ -1107,6 +1123,10 @@ void TSheet::clip_finished_recording(TAudioClip * clip)
 {
     if (!m_recordingClips.removeAll(clip)) {
         //		PERROR("clip %s was not in recording clip list, cannot remove it!", QS_C(clip->get_name()));
+    }
+
+    if (clip->is_empty_take()) {
+        drop_empty_take(clip);
     }
 
     if (m_recordingClips.isEmpty()) {

@@ -151,6 +151,7 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
     }
 
     nframes_t writtenFrames = m_resampleWriter->write_planar(fileIOBuffer, nframes);
+    m_writtenFrames += writtenFrames;
 
     if (writtenFrames != nframes) {
         PERROR(QString("Export write failure! Requested: %1, Written: %2").arg(nframes).arg(writtenFrames));

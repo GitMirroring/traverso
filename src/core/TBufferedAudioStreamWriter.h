@@ -57,6 +57,10 @@ public :
     void set_frames_to_drop(qint64 frames) { m_framesToDrop = frames; }
 
     bool is_recording() const { return m_isRecording; }
+    // The frames in the file, after the dropped ones. Written by the
+    // writer's steps; read after exportFinished() (queued), when the writing
+    // is over
+    qint64 get_written_frames() const { return m_writtenFrames; }
 
 private:
     std::unique_ptr<TResampleAudioWriter>           m_resampleWriter;
@@ -71,6 +75,7 @@ private:
     bool            m_peaksAreRead{false};
     bool            m_exportFinished{false};
     qint64          m_framesToDrop{0};   // the writer's steps once it is added
+    qint64          m_writtenFrames{0};
 
     TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
 

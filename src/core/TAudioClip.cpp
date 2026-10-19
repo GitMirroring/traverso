@@ -807,11 +807,12 @@ void TAudioClip::finish_write_source()
         m_sheet->post_process_peaks(peaks);
     }
 
+    // No frames in the file: stopped at once, or within the latency
+    // compensation (the writer dropped everything)
+    m_emptyTake = m_writer->get_written_frames() == 0;
     if (m_readSource->set_file(m_writer->get_filename()) < 0) {
-        if (m_capturedFrames <= m_captureCompensation) {
-            // Stopped within the latency compensation: the writer dropped
-            // everything, the file has no frames
-            TLOG_W("recording", "{}: shorter than the latency compensation, nothing recorded", m_name.toStdString());
+        if (m_emptyTake) {
+            TLOG_W("recording", "{}: no frames recorded", m_name.toStdString());
         } else {
             PERROR("Setting file for ReadSource failed after finishing recording");
         }

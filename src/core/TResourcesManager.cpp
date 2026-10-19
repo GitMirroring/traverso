@@ -120,6 +120,11 @@ void TResourcesManager::discard_takes(const QList<TAudioClip*>& takes)
     delete_takes(discarded);
 }
 
+void TResourcesManager::drop_empty_take(TAudioClip* take)
+{
+    delete_takes({take});
+}
+
 void TResourcesManager::delete_takes(const QList<TAudioClip*>& takes)
 {
     for (TAudioClip* take : takes) {

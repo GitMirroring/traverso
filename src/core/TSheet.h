@@ -150,6 +150,7 @@ private:
     void start_takes();
     void split_takes();
     void push_recording_session();
+    void drop_empty_take(TAudioClip* clip);
     TProject*            m_project;
     TAudioDeviceClient*	m_audiodeviceClient{};
     AudioBus*           m_renderBus{};

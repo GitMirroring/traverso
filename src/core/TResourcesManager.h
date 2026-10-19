@@ -77,6 +77,8 @@ public:
     // them (delete_discarded_files()): a project file saved before still
     // names them, and stays right if the project closes unsaved.
     void discard_takes(const QList<TAudioClip*>& takes);
+    // A take with no frames, out of its track: deleted without asking
+    void drop_empty_take(TAudioClip* take);
     // After the project file was written; what could not be deleted is
     // tried again at the next save
     void delete_discarded_files();

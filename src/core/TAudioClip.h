@@ -114,6 +114,8 @@ public:
     bool is_locked() const {return m_isLocked;}
     bool has_sheet() const;
     bool is_readsource_invalid() const {return !m_isReadSourceValid;}
+    // A finished take whose writer put no frames in its file
+    bool is_empty_take() const {return m_emptyTake;}
 
     bool operator<(const TAudioClip &other){
         return this->get_location_start() < other.get_location_start();
@@ -150,6 +152,7 @@ private:
     TTimeRef m_length;
 
     bool            m_isTake;
+    bool            m_emptyTake{false};
     bool            m_isLocked;
     bool            m_isReadSourceValid{false};
     bool            m_isMoving;
