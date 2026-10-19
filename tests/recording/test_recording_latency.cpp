@@ -19,8 +19,9 @@ static void check(bool ok, const char* what)
 
 int main()
 {
-    // Capture plus playback: ALSA with 256 frames and 3 periods queues 2 for
-    // playback and captures 1
+    // Capture plus playback, with the numbers ALSA reports at 256 frames
+    // and 3 periods (2 queued for playback, 1 captured); what the drivers
+    // report is not tested here
     check(TRecordingLatency::compensation_frames(256, 512, 0.0, 48000, true, true) == 768, "capture plus playback");
     // The user's extra latency in milliseconds, also below zero
     check(TRecordingLatency::compensation_frames(256, 512, 1.0, 48000, true, true) == 768 + 48, "plus 1 ms");
@@ -49,7 +50,9 @@ int main()
     remaining = 512;
     check(TRecordingLatency::frames_to_drop(remaining, 256) == 256 && TRecordingLatency::frames_to_drop(remaining, 256) == 256
           && remaining == 0 && TRecordingLatency::frames_to_drop(remaining, 256) == 0, "exactly two buffers");
-    // What the clip shows and what the file holds stay the same length
+    // What the clip shows and what the file holds stay the same length: the
+    // clip's count (visible_frames) against the writer's (frames_to_drop),
+    // both per buffer as process_capture() and rb_file_write() count them
     qint64 captured = 0;
     qint64 written = 0;
     remaining = 700;

@@ -170,9 +170,11 @@ public:
     // From the start of a process cycle until the first frame of its buffer
     // leaves the output, as the driver knows it. Any thread
     TTimeRef get_playback_latency() const;
-    // How late a recorded frame comes in against what was heard when it was
-    // played: capture plus playback latency, in frames of the device's rate
-    // (TRecordingLatency). Any thread
+    // The driver's capture latency (how long ago the first frame of a
+    // cycle's input came in) and playback latency (until the first frame of
+    // its output leaves), in frames of the device's rate. Together they are
+    // how late a recorded frame comes in against what was heard when it was
+    // played (TRecordingLatency). Any thread
     nframes_t get_capture_latency_frames() const;
     nframes_t get_playback_latency_frames() const;
 

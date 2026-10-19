@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of TTimeRef conversions that have no rounding slack:
-// nanoseconds to universal frames.
+// Headless test of TTimeRef conversions: nanoseconds to universal frames
+// (no rounding slack), and milliseconds to universal frames (rounded to the
+// nearest, exact for the values checked).
 
 #include "TTimeRef.h"
 

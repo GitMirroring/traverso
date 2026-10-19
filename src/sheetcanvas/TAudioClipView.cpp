@@ -572,10 +572,12 @@ void TAudioClipView::update_recording(qint64 nowNanoseconds)
     }
 
     // Drawn up to the play head, which shows what is heard now: what is
-    // played now is recorded there. The clip's length runs ahead of it by
-    // the output latency (the audio thread counts frames that are not heard
-    // yet). The waveform follows a little behind, as DiskIO fills the
-    // pyramid; repaint from where it was painted up to the play head.
+    // played now is recorded there. No further than the clip's length,
+    // which counts what was captured past the latency compensation: with it
+    // the length stays behind the play head by the capture (and extra)
+    // latency, without it runs ahead by the output latency. The waveform
+    // follows a little behind, as DiskIO fills the pyramid; repaint from
+    // where it was painted up to the play head.
     const TTimeRef heard = m_sv->get_sheet()->get_heard_transport_location(nowNanoseconds);
     const TTimeRef start = m_clip->get_location_start();
     TTimeRef drawn = heard > start ? heard - start : TTimeRef();
