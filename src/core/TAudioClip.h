@@ -141,9 +141,11 @@ private:
     TTimeRef m_sourceEndLocation;
     TTimeRef m_sourceStartLocation;
     // While recording: the frames the writer drops before what was heard
-    // (TRecordingLatency), and the frames captured so far
+    // (TRecordingLatency), the frames captured so far, and their rate (the
+    // device's, which the source's rate need not be until the file is read)
     qint64 m_captureCompensation{0};
     qint64 m_capturedFrames{0};
+    uint m_captureRate{0};
     TTimeRef m_sourceLength;
     TTimeRef m_length;
 

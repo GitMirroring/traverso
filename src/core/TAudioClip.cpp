@@ -590,7 +590,7 @@ void TAudioClip::process_capture(TProcessCallBackData &processData)
     const qint64 before = TRecordingLatency::visible_frames(m_capturedFrames, m_captureCompensation);
     m_capturedFrames += written;
     const qint64 after = TRecordingLatency::visible_frames(m_capturedFrames, m_captureCompensation);
-    m_length.add_frames(nframes_t(after - before), get_rate());
+    m_length.add_frames(nframes_t(after - before), m_captureRate);
 
     nframes_t toWrite = processData.get_nframes_to_process();
     if (written != toWrite) {
@@ -621,6 +621,7 @@ int TAudioClip::init_recording()
         config().get_property("Recording", "ExtraLatency", 0.0).toDouble(), rate,
         bus->get_bus_type() == AudioBus::BusIsHardware, config().get_property("Recording", "LatencyCompensation", true).toBool());
     m_capturedFrames = 0;
+    m_captureRate = rate;
     m_sourceStartLocation = TTimeRef();
     TLOG_I("recording", "{}: compensating {} frames of latency", m_name.toStdString(), m_captureCompensation);
     m_isTake = true;
@@ -801,7 +802,13 @@ void TAudioClip::finish_write_source()
     }
 
     if (m_readSource->set_file(m_writer->get_filename()) < 0) {
-        PERROR("Setting file for ReadSource failed after finishing recording");
+        if (m_capturedFrames <= m_captureCompensation) {
+            // Stopped within the latency compensation: the writer dropped
+            // everything, the file has no frames
+            TLOG_W("recording", "{}: shorter than the latency compensation, nothing recorded", m_name.toStdString());
+        } else {
+            PERROR("Setting file for ReadSource failed after finishing recording");
+        }
     } else {
         m_sheet->add_audio_source_to_diskio(m_readSource);
         // re-inits the lenght from the audiofile due calling rsm->set_source_for_clip()
