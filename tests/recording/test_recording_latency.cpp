@@ -39,6 +39,26 @@ int main()
     check(TRecordingLatency::visible_frames(1024, 768) == 256, "past it");
     check(TRecordingLatency::visible_frames(1024, 0) == 1024, "no compensation");
 
+    // The writer drops the compensation over the first buffers: whole ones,
+    // then part of one, then nothing
+    qint64 remaining = 700;
+    check(TRecordingLatency::frames_to_drop(remaining, 256) == 256 && remaining == 444, "a whole buffer");
+    check(TRecordingLatency::frames_to_drop(remaining, 256) == 256 && remaining == 188, "another whole buffer");
+    check(TRecordingLatency::frames_to_drop(remaining, 256) == 188 && remaining == 0, "part of a buffer");
+    check(TRecordingLatency::frames_to_drop(remaining, 256) == 0 && remaining == 0, "nothing more");
+    remaining = 512;
+    check(TRecordingLatency::frames_to_drop(remaining, 256) == 256 && TRecordingLatency::frames_to_drop(remaining, 256) == 256
+          && remaining == 0 && TRecordingLatency::frames_to_drop(remaining, 256) == 0, "exactly two buffers");
+    // What the clip shows and what the file holds stay the same length
+    qint64 captured = 0;
+    qint64 written = 0;
+    remaining = 700;
+    for (int cycle = 0; cycle < 10; ++cycle) {
+        captured += 256;
+        written += 256 - TRecordingLatency::frames_to_drop(remaining, 256);
+        check(TRecordingLatency::visible_frames(captured, 700) == written, "clip length equals the file");
+    }
+
     if (failures) {
         std::printf("%d check(s) failed\n", failures);
         return 1;

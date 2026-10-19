@@ -29,23 +29,39 @@ converters), audible against the material it was played to.
 ## 2. The compensation
 
 A take is shifted earlier by L = L_in + L_out (+ the user's extra
-latency, section 4):
+latency, section 4), by dropping its first L frames (the user's choice,
+2026-10-19):
 
-- The clip stays at the position where recording started, with its source
-  start at L frames: the file holds everything that was captured, the clip
-  begins with the frame that belongs to that position. The first L frames
-  were captured before anything could be heard; they stay in the file and
-  can be revealed by trimming the clip's left edge.
-- The clip's length on the timeline is the frames written minus L, during
-  the recording (the audio thread counts) and after it (from the file).
+- The clip stays at the position where recording started; its writer does
+  not write the first L frames, audio and peaks alike. They came in before
+  anything could be heard. The file starts with the frame that belongs to
+  the take's position: the file is what the clip shows, nothing is hidden,
+  and the file lines up in any other program too.
+- The drop happens on the DiskIO thread when a slot is written
+  (`TBufferedAudioStreamWriter::rb_file_write()`): whole slots are skipped,
+  in the slot the drop ends in the rest moves to the front (once per take).
+  The audio thread is not touched. A counter that goes to zero; checking
+  it costs one comparison per slot afterwards. (Should more of these
+  per-slot requests come, a list of pending requests keeps it O(1).)
+- The clip's length during the recording counts the frames past the first
+  L, the same count the writer keeps, so clip and file stay the same
+  length; after the recording it comes from the file as before.
 - At the end, the last L frames of what was played arrive after the
-  transport stopped, and are not recorded. That is a few milliseconds
-  after the end of what the performer played to; Ardour does the same.
+  transport stopped, and are not recorded: a few milliseconds after the
+  end of what the performer played to. Ardour does the same.
 
-No negative positions (recording from 0 works), no extra frames to write,
-no change in the writers, the file format or the peak files. The source
-start is the same mechanism as a left-trimmed clip, so playback, waveform
-and project file need nothing new.
+Considered and not taken: keeping all frames and giving the clip a source
+start of L (a hidden offset; the frames before the punch-in could be
+revealed by trimming, but the clip would carry an exception in its length
+and in the recording view). A wrong L is corrected the same way in both:
+by moving the clip.
+
+No negative positions (recording from 0 works), no change in the file
+format or the peak files.
+
+A take shorter than L has an empty file: it shows as a clip without a
+readable source. Dropping such takes belongs to the recording session
+(open).
 
 Not compensated:
 - takes from a software input (the bounce track records the master in the
@@ -92,19 +108,17 @@ seek during the recording).
    round trip.
 2. A pure function for the compensation (driver latencies, extra
    milliseconds, rate, hardware input, on/off → frames), with a test.
-3. `TAudioClip::init_recording()` sets the source start; `process_capture()`
-   lengthens the clip only past the first L frames; `set_audio_source()`
-   computes a new clip's length from its source start; the recording view
-   compares the waveform in clip time.
+3. `TAudioClip::init_recording()` gives the writer L to drop;
+   `process_capture()` lengthens the clip only past the first L frames.
 4. The settings.
-5. Tests: the pure function; the length progression of a take (frames
-   written vs length) as a pure step too; the app headless (the Dummy
-   driver: a take starts with its source start set). The real check needs
+5. Tests: the pure functions (the compensation, the frames a slot drops,
+   the clip length equal to the file's); the app headless. The real check needs
    the user: a loopback recording against a click (section 6).
 
 Status 2026-10-19 (branch `recording-latency`, on master 9c8e3fa2): steps
-1–4 done. Tested: the compensation and a take's length as pure functions
-(ctest `recording_latency`), `TTimeRef::from_milliseconds()` (ctest
+1–4 done, reworked to dropping frames the same day. Tested: the
+compensation, the drop per slot and the clip length against the file as
+pure functions (ctest `recording_latency`), `TTimeRef::from_milliseconds()` (ctest
 `timeref`), builds with GCC and Clang, the app starts headless. Not tested:
 a real recording (no loopback here); PortAudio and JACK capture latency
 (no such device here). The branch touches the recording settings page,

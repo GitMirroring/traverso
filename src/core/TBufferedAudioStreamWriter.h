@@ -52,6 +52,9 @@ public :
 
     void set_process_peaks(bool process);
     void set_recording(bool rec);
+    // Before the writer joins its DiskIO: the first frames are not written
+    // (latency compensation, TRecordingLatency)
+    void set_frames_to_drop(qint64 frames) { m_framesToDrop = frames; }
 
     bool is_recording() const { return m_isRecording; }
 
@@ -67,6 +70,7 @@ private:
     // post-processed in DiskIO's idle time (an import does it at once)
     bool            m_peaksAreRead{false};
     bool            m_exportFinished{false};
+    qint64          m_framesToDrop{0};   // DiskIO thread once the writer joined it
 
     TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
 

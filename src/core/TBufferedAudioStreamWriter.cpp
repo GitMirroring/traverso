@@ -27,6 +27,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TPeakCache.h"
 #include "TPeakPyramid.h"
 #include "TPeakStream.h"
+#include "TRecordingLatency.h"
+
+#include <cstring>
 #include "TWaveform.h"
 #include "TQueueBufferSlot.h"
 #include "TFileIOBuffer.h"
@@ -111,11 +114,28 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
 {
     nframes_t nframes = slot->get_buffer_size();
 
+    // The first frames of a recording came in before anything could be
+    // heard: they are dropped, audio and peaks alike, so the file starts with
+    // the frame that belongs to the take's position
+    const nframes_t drop = nframes_t(TRecordingLatency::frames_to_drop(m_framesToDrop, nframes));
+    if (drop == nframes) {
+        return int(nframes);
+    }
+
     fileIOBuffer.check_capacity(nframes * m_channelCount, m_channelCount);
 
     for (uint chan = 0; chan < m_channelCount; ++chan) {
         TAudioBuffer& targetChannelBuffer = fileIOBuffer.get_channel_buffer(chan);
         slot->read_buffer(targetChannelBuffer, chan, nframes);
+    }
+
+    // Once per take: the buffer the dropped frames end in
+    if (drop > 0) {
+        for (uint chan = 0; chan < m_channelCount; ++chan) {
+            audio_sample_t* data = fileIOBuffer.get_channel_buffer(chan).get_data(nframes);
+            std::memmove(data, data + drop, size_t(nframes - drop) * sizeof(audio_sample_t));
+        }
+        nframes -= drop;
     }
 
     if (m_peaks && !m_peaks->write_failed()) {

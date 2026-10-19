@@ -586,7 +586,7 @@ void TAudioClip::process_capture(TProcessCallBackData &processData)
     processData.set_ringbuffer_write_bus(bus);
     nframes_t written = m_writer->ringbuffer_write(processData);
 
-    // The take grows past the frames its source start skips only
+    // The take grows past the frames the writer drops only
     const qint64 before = TRecordingLatency::visible_frames(m_capturedFrames, m_captureCompensation);
     m_capturedFrames += written;
     const qint64 after = TRecordingLatency::visible_frames(m_capturedFrames, m_captureCompensation);
@@ -613,15 +613,15 @@ int TAudioClip::init_recording()
     }
 
     // What is played comes in the capture plus the playback latency after
-    // the moment it belongs to: the take starts that far into its file, so
-    // it lines up with what was heard (doc/design/recording-latency.md)
+    // the moment it belongs to: the writer drops that many frames first, so
+    // the take lines up with what was heard (doc/design/recording-latency.md)
     const uint rate = audiodevice().get_sample_rate();
     m_captureCompensation = TRecordingLatency::compensation_frames(
         audiodevice().get_capture_latency_frames(), audiodevice().get_playback_latency_frames(),
         config().get_property("Recording", "ExtraLatency", 0.0).toDouble(), rate,
         bus->get_bus_type() == AudioBus::BusIsHardware, config().get_property("Recording", "LatencyCompensation", true).toBool());
     m_capturedFrames = 0;
-    m_sourceStartLocation = rate > 0 ? TTimeRef(uint64_t(m_captureCompensation), rate) : TTimeRef();
+    m_sourceStartLocation = TTimeRef();
     TLOG_I("recording", "{}: compensating {} frames of latency", m_name.toStdString(), m_captureCompensation);
     m_isTake = true;
     m_recordingStatus = RECORDING;
@@ -671,6 +671,7 @@ int TAudioClip::init_recording()
     }
     m_writer->set_process_peaks( true );
     m_writer->set_recording( true );
+    m_writer->set_frames_to_drop(m_captureCompensation);
 
     // Painted from level 0 of its peak file until the recording is finished
     delete m_waveform;
@@ -749,12 +750,7 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
     // NOTE: don't change, audio recording (finish_writesource()) assumes there is checked for length == 0 !!!
     if (m_length == TTimeRef()) {
         m_sourceEndLocation = rs->get_length();
-        // A take shorter than its latency compensation keeps all of it
-        if (m_sourceStartLocation >= m_sourceEndLocation) {
-            m_sourceStartLocation = TTimeRef();
-            m_readSource->set_source_start_location(m_sourceStartLocation);
-        }
-        m_length = m_sourceEndLocation - m_sourceStartLocation;
+        m_length = m_sourceEndLocation;
     }
 
     set_sources_active_state();

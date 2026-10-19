@@ -16,8 +16,9 @@
  * playback latency later, and what they play reaches a cycle's input the
  * capture latency later still. So a frame captured while the transport is
  * at Q belongs to the timeline at Q minus both. A take stays where the
- * recording started, with its source start at the compensation: its first
- * frames came in before anything could be heard.
+ * recording started and its writer drops the first frames, as many as the
+ * compensation: they came in before anything could be heard. The file then
+ * starts with the frame that belongs to the take's position.
  */
 struct TRecordingLatency
 {
@@ -35,10 +36,19 @@ struct TRecordingLatency
         return std::max<qint64>(0, captureFrames + playbackFrames + extra);
     }
 
-    // A take's length on the timeline once written frames are in its file:
-    // what lies past the compensation
-    static qint64 visible_frames(qint64 written, qint64 compensation)
+    // A take's length on the timeline once frames were captured: what lies
+    // past the compensation
+    static qint64 visible_frames(qint64 captured, qint64 compensation)
     {
-        return std::max<qint64>(0, written - compensation);
+        return std::max<qint64>(0, captured - compensation);
+    }
+
+    // The frames of a buffer of frames the writer drops, while remaining are
+    // still to be dropped; remaining goes down by them
+    static qint64 frames_to_drop(qint64& remaining, qint64 frames)
+    {
+        const qint64 drop = std::clamp<qint64>(remaining, 0, frames);
+        remaining -= drop;
+        return drop;
     }
 };
