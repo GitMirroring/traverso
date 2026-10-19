@@ -142,6 +142,9 @@ void TJackDriver::add_channel(AudioChannel* channel)
     if (channel->get_type() == AudioChannel::ChannelIsOutput && !m_latencyReferencePort.load(std::memory_order_relaxed)) {
         m_latencyReferencePort.store(pcpair->jackport, std::memory_order_release);
     }
+    if (channel->get_type() == AudioChannel::ChannelIsInput && !m_captureLatencyReferencePort.load(std::memory_order_relaxed)) {
+        m_captureLatencyReferencePort.store(pcpair->jackport, std::memory_order_release);
+    }
 
 
     if (is_running()) {
@@ -242,7 +245,29 @@ void TJackDriver::_latency_callback(jack_latency_callback_mode_t mode, void* arg
 {
     if (mode == JackPlaybackLatency) {
         static_cast<TJackDriver*>(arg)->update_playback_latency();
+    } else if (mode == JackCaptureLatency) {
+        static_cast<TJackDriver*>(arg)->update_capture_latency();
     }
+}
+
+// The way from the physical input to this client's input port, as JACK
+// measured it
+void TJackDriver::update_capture_latency()
+{
+    jack_port_t* port = m_captureLatencyReferencePort.load(std::memory_order_acquire);
+    if (!port) {
+        return;
+    }
+
+    jack_latency_range_t range;
+    jack_port_get_latency_range(port, JackCaptureLatency, &range);
+    m_captureFrameLatency.store(range.max, std::memory_order_relaxed);
+}
+
+nframes_t TJackDriver::get_capture_latency_frames() const
+{
+    const nframes_t portLatency = m_captureFrameLatency.load(std::memory_order_relaxed);
+    return portLatency > 0 ? portLatency : m_framesPerCycle;
 }
 
 // The way from this client's output port to the physical output, as JACK

@@ -54,6 +54,8 @@ public:
     static TTimeRef seconds_to_timeref(double seconds);
     // Exact for any qint64 (truncates towards zero), e.g. for elapsed time
     static TTimeRef from_nanoseconds(qint64 nanoseconds);
+    // A duration in milliseconds (a setting), like seconds_to_timeref()
+    static TTimeRef from_milliseconds(double milliseconds);
     static QTime timeref_to_qtime(const TTimeRef& ref);
 
 

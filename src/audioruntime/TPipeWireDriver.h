@@ -60,6 +60,7 @@ public:
     }
 
     nframes_t get_playback_latency_frames() const override;
+    nframes_t get_capture_latency_frames() const override;
 
 protected:
     int _run_cycle() override;

@@ -92,6 +92,11 @@ TTimeRef TTimeRef::from_nanoseconds(qint64 nanoseconds)
     return TTimeRef(seconds * UNIVERSAL_SAMPLE_RATE + rest * UNIVERSAL_SAMPLE_RATE / nanosecondsPerSecond);
 }
 
+TTimeRef TTimeRef::from_milliseconds(double milliseconds)
+{
+    return seconds_to_timeref(milliseconds / 1000.0);
+}
+
 TTimeRef TTimeRef::max_length()
 {
     return TTimeRef(LLONG_MAX);

@@ -1176,14 +1176,25 @@ TTimeRef TAudioDevice::get_playback_latency() const
     return TTimeRef(frames, m_rate);
 }
 
+nframes_t TAudioDevice::get_capture_latency_frames() const
+{
+    return m_driver ? m_driver->get_capture_latency_frames() : m_bufferSize;
+}
+
+nframes_t TAudioDevice::get_playback_latency_frames() const
+{
+    return m_driver ? m_driver->get_playback_latency_frames() : m_bufferSize;
+}
+
 QString TAudioDevice::get_driver_latency_in_ms()
 {
-    if(!m_driver) {
+    if(!m_driver || m_rate == 0) {
         return QString("xx ms");
     }
 
-
-    return QString::number( (double(m_driver->get_roundtrip_latency()) / audiodevice().get_sample_rate()) * 1000, 'f', 2 ).append(" ms");
+    // The round trip: from an input through Traverso to an output
+    const nframes_t frames = m_driver->get_capture_latency_frames() + m_driver->get_playback_latency_frames();
+    return QString::number(double(frames) * 1000.0 / m_rate, 'f', 2).append(" ms");
 }
 
 void TAudioDevice::set_driver_properties(QHash< QString, QVariant > & properties)

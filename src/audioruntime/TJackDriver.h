@@ -70,15 +70,18 @@ public:
     }
 
     nframes_t get_playback_latency_frames() const override;
+    nframes_t get_capture_latency_frames() const override;
 
 private:
-    // The output port whose playback latency stands for all of them: the
-    // first one registered. Written in the GUI thread, read in JACK's
-    // latency callback thread
+    // The output (input) port whose playback (capture) latency stands for
+    // all of them: the first one registered. Written in the GUI thread, read
+    // in JACK's latency callback thread
     std::atomic<jack_port_t*> m_latencyReferencePort{nullptr};
+    std::atomic<jack_port_t*> m_captureLatencyReferencePort{nullptr};
 
     static void _latency_callback(jack_latency_callback_mode_t mode, void* arg);
     void update_playback_latency();
+    void update_capture_latency();
 
     struct PortChannelPair {
         PortChannelPair() {

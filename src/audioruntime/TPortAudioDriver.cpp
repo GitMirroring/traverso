@@ -65,6 +65,18 @@ nframes_t TPortAudioDriver::get_playback_latency_frames() const
     return TAudioDriver::get_playback_latency_frames();
 }
 
+// The input latency of the open stream, the same way (not verified at
+// runtime either)
+nframes_t TPortAudioDriver::get_capture_latency_frames() const
+{
+    if (m_paStream) {
+        if (const PaStreamInfo* info = Pa_GetStreamInfo(m_paStream)) {
+            return nframes_t(info->inputLatency * m_frameRate + 0.5);
+        }
+    }
+    return TAudioDriver::get_capture_latency_frames();
+}
+
 int TPortAudioDriver::_read(nframes_t nframes)
 {
     Q_ASSERT(m_captureChannels.size() > 0);

@@ -6,6 +6,7 @@
 
 #include "TTimeRef.h"
 
+#include <cmath>
 #include <cstdio>
 
 static int failures = 0;
@@ -74,6 +75,10 @@ int main()
         const TTimeRef beforeZero = TTimeRef::common_frame_at_or_before(negative, 44100, 48000);
         check(beforeZero == TTimeRef(qint64(-94080)), "before zero: the common frame before, not after");
     }
+    // Milliseconds (settings), also below zero
+    check(TTimeRef::from_milliseconds(1.0).universal_frame() == rate / 1000, "one millisecond");
+    check(TTimeRef::from_milliseconds(-2.5).universal_frame() == -(rate / 1000) * 5 / 2, "minus 2.5 ms");
+    check(std::llround(TTimeRef::to_frames(TTimeRef::from_milliseconds(10.0), 48000)) == 480, "10 ms at 48 kHz");
 
     if (failures) {
         std::printf("%d check(s) failed\n", failures);

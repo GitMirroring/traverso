@@ -78,15 +78,17 @@ public:
         return true;
     }
 
-    int get_roundtrip_latency() const {
-        return int(m_playbackFrameLatency.load(std::memory_order_relaxed) + m_captureFrameLatency.load(std::memory_order_relaxed));
-    }
-
     // Frames from the start of a process cycle until the first frame of the
     // buffer processed in that cycle leaves the output: the period of
     // buffering plus what the driver measured. Any thread
     virtual nframes_t get_playback_latency_frames() const {
         return m_framesPerCycle + m_playbackFrameLatency.load(std::memory_order_relaxed);
+    }
+    // Frames from when the first frame of a cycle's input buffer came in
+    // until the cycle starts: the period it was captured in plus what the
+    // driver measured. Any thread
+    virtual nframes_t get_capture_latency_frames() const {
+        return m_framesPerCycle + m_captureFrameLatency.load(std::memory_order_relaxed);
     }
 
     TAudioDriverReadWriteCallBack read;

@@ -303,6 +303,14 @@ nframes_t TPipeWireDriver::get_playback_latency_frames() const
     return measured > 0 ? measured : m_framesPerCycle;
 }
 
+// pw_stream_get_time() in process_callback(): how long ago the oldest frame
+// of the buffer the callback reads came in
+nframes_t TPipeWireDriver::get_capture_latency_frames() const
+{
+    const nframes_t measured = m_captureFrameLatency.load(std::memory_order_relaxed);
+    return measured > 0 ? measured : m_framesPerCycle;
+}
+
 // Called in RT thread from PipeWire server
 int TPipeWireDriver::process_callback()
 {
