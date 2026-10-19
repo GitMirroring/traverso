@@ -75,6 +75,10 @@ private:
     struct pw_stream *m_captureStream{nullptr};
     struct pw_stream_events m_captureStreamEvents;
 
+    // The graph time (pw_time.ticks) of the cycle the capture buffer was
+    // taken in: written by the capture callback, read by the playback one
+    std::atomic<uint64_t> m_captureTicks{0};
+
     QSocketNotifier *m_notifier{nullptr};
 
     int setup_failed(const QString& message);

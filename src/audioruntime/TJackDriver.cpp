@@ -235,6 +235,7 @@ int TJackDriver::start( )
     emit driverSetupMessage("Jack", tr("Succesfully connected to jack server!"), TAudioDevice::DRIVER_SETUP_SUCCESS);
 
     update_playback_latency();
+    update_capture_latency();
 
     m_running = 1;
     return 1;

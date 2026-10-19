@@ -53,13 +53,17 @@ TPortAudioDriver::~TPortAudioDriver( )
     Pa_Terminate();
 }
 
-// PortAudio reports the output latency of the open stream in seconds.
-// Not verified at runtime: no PortAudio device was available
+// PortAudio reports the output latency of the open stream in seconds; a
+// host API that reports none gets the base class's estimate, as JACK and
+// PipeWire do. Not verified at runtime: no PortAudio device was available
 nframes_t TPortAudioDriver::get_playback_latency_frames() const
 {
     if (m_paStream) {
         if (const PaStreamInfo* info = Pa_GetStreamInfo(m_paStream)) {
-            return nframes_t(info->outputLatency * m_frameRate + 0.5);
+            const nframes_t frames = nframes_t(info->outputLatency * m_frameRate + 0.5);
+            if (frames > 0) {
+                return frames;
+            }
         }
     }
     return TAudioDriver::get_playback_latency_frames();
@@ -71,7 +75,10 @@ nframes_t TPortAudioDriver::get_capture_latency_frames() const
 {
     if (m_paStream) {
         if (const PaStreamInfo* info = Pa_GetStreamInfo(m_paStream)) {
-            return nframes_t(info->inputLatency * m_frameRate + 0.5);
+            const nframes_t frames = nframes_t(info->inputLatency * m_frameRate + 0.5);
+            if (frames > 0) {
+                return frames;
+            }
         }
     }
     return TAudioDriver::get_capture_latency_frames();
