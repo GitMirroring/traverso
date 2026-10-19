@@ -102,6 +102,14 @@ seek during the recording).
    driver: a take starts with its source start set). The real check needs
    the user: a loopback recording against a click (section 6).
 
+Status 2026-10-19 (branch `recording-latency`, on master 9c8e3fa2): steps
+1–4 done. Tested: the compensation and a take's length as pure functions
+(ctest `recording_latency`), `TTimeRef::from_milliseconds()` (ctest
+`timeref`), builds with GCC and Clang, the app starts headless. Not tested:
+a real recording (no loopback here); PortAudio and JACK capture latency
+(no such device here). The branch touches the recording settings page,
+like `recording-session`: a small merge conflict there.
+
 ## 6. Runtime test for the user
 
 Connect an output to an input (cable, or the interface's loopback). Put a
