@@ -63,7 +63,7 @@ adds both.
 |---|---|---|
 | ALSA | one period | the input of a cycle is the period captured before it |
 | JACK | the input port's capture latency range (max) | `jack_port_get_latency_range(JackCaptureLatency)` in the latency callback, like the playback side |
-| PipeWire | what the capture stream reports (delay + queued + buffered) | measured already, now used |
+| PipeWire | what the capture stream reports (delay + queued + buffered) | measured already, now used; whether it includes the quantum being read is not verified (the loopback test tells) |
 | PortAudio | the stream's input latency | `Pa_GetStreamInfo()->inputLatency` |
 | CoreAudio | one period | device and safety-offset properties not read yet (no Mac to test) |
 | Dummy | one period | captures silence |

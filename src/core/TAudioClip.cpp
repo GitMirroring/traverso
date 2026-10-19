@@ -621,7 +621,7 @@ int TAudioClip::init_recording()
         config().get_property("Recording", "ExtraLatency", 0.0).toDouble(), rate,
         bus->get_bus_type() == AudioBus::BusIsHardware, config().get_property("Recording", "LatencyCompensation", true).toBool());
     m_capturedFrames = 0;
-    m_sourceStartLocation = TTimeRef(uint64_t(m_captureCompensation), rate);
+    m_sourceStartLocation = rate > 0 ? TTimeRef(uint64_t(m_captureCompensation), rate) : TTimeRef();
     TLOG_I("recording", "{}: compensating {} frames of latency", m_name.toStdString(), m_captureCompensation);
     m_isTake = true;
     m_recordingStatus = RECORDING;
