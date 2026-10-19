@@ -15,7 +15,7 @@
 #include "TPeakBuildTask.h"
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
-#include "TPeakRecording.h"
+#include "TPeakStream.h"
 #include "TWaveformColumns.h"
 
 #include <QElapsedTimer>
@@ -154,9 +154,9 @@ static int record(const QString& dir)
     // Bytes of one block: min/max, and from format 6 on the RMS code
     const qint64 blockBytes = qint64(sizeof(TPeakBlock)) + (TPeakFile::FormatVersion >= 6 ? 2 : 0);
 
-    std::vector<std::unique_ptr<TPeakRecording>> recordings;
+    std::vector<std::unique_ptr<TPeakStream>> recordings;
     for (int t = 0; t < tracks; ++t) {
-        recordings.push_back(std::make_unique<TPeakRecording>(rate, 1, dir + QStringLiteral("/track-%1.peaks").arg(t)));
+        recordings.push_back(std::make_unique<TPeakStream>(rate, 1, dir + QStringLiteral("/track-%1.peaks").arg(t)));
         if (recordings.back()->open() != TPeakFile::Status::Ok) {
             std::printf("cannot open the recording's peak file\n");
             return 1;

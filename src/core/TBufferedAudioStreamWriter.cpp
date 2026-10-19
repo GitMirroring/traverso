@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TResampleAudioWriter.h"
 #include "TLog.h"
 #include "TPeakPyramid.h"
-#include "TPeakRecording.h"
+#include "TPeakStream.h"
 #include "TWaveform.h"
 #include "TQueueBufferSlot.h"
 #include "TFileIOBuffer.h"
@@ -190,7 +190,7 @@ void TBufferedAudioStreamWriter::set_process_peaks(bool process)
 
     Q_ASSERT(!m_peaks);
     Q_ASSERT(m_channelCount > 0);
-    m_peaks = std::make_shared<TPeakRecording>(audiodevice().get_sample_rate(), int(m_channelCount), TWaveform::peak_path(this));
+    m_peaks = std::make_shared<TPeakStream>(audiodevice().get_sample_rate(), int(m_channelCount), TWaveform::peak_path(this));
     QString error;
     if (m_peaks->open(&error) != TPeakFile::Status::Ok) {
         // Painted from memory meanwhile; built from the audio afterwards

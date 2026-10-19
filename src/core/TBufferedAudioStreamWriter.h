@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProcessCallBackData.h"
 
 class TExportSpecification;
-class TPeakRecording;
+class TPeakStream;
 class TResampleAudioWriter;
 class AudioBus;
 class TFileIOBuffer;
@@ -45,7 +45,7 @@ public :
 
     TBufferedAudioStreamStatus& get_buffer_status() final;
     // The peaks of this recording, streamed to its peak file
-    std::shared_ptr<TPeakRecording> get_peaks() const { return m_peaks; }
+    std::shared_ptr<TPeakStream> get_peaks() const { return m_peaks; }
 
     int prepare_export(TExportSpecification* specification);
     int finish_export();
@@ -57,7 +57,7 @@ public :
 
 private:
     std::unique_ptr<TResampleAudioWriter>           m_resampleWriter;
-    std::shared_ptr<TPeakRecording>                 m_peaks;
+    std::shared_ptr<TPeakStream>                 m_peaks;
     std::vector<const float*>                       m_peakChannels;
 
     nframes_t       m_sampleRate;

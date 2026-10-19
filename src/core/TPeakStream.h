@@ -38,12 +38,12 @@
  * written in memory, still reads the written ones from its mapping, and has
  * no peak file afterwards: the waveform builds it from the audio.
  */
-class TPeakRecording
+class TPeakStream
 {
 public:
-    TPeakRecording(uint rate, int channelCount, QString peakPath,
+    TPeakStream(uint rate, int channelCount, QString peakPath,
                    int periodShift = TPeakPyramidBuilder::DefaultPeriodShift);
-    ~TPeakRecording();
+    ~TPeakStream();
 
     uint rate() const { return m_builder.rate(); }
     int channel_count() const { return m_builder.channel_count(); }

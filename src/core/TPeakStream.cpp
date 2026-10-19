@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "TPeakRecording.h"
+#include "TPeakStream.h"
 
 #include "TLog.h"
 
@@ -10,7 +10,7 @@
 
 #include <algorithm>
 
-TPeakRecording::TPeakRecording(uint rate, int channelCount, QString peakPath, int periodShift)
+TPeakStream::TPeakStream(uint rate, int channelCount, QString peakPath, int periodShift)
     : m_builder(rate, channelCount, periodShift)
     , m_peakPath(std::move(peakPath))
 {
@@ -23,14 +23,14 @@ TPeakRecording::TPeakRecording(uint rate, int channelCount, QString peakPath, in
     }
 }
 
-TPeakRecording::~TPeakRecording()
+TPeakStream::~TPeakStream()
 {
     if (m_map) {
         m_mapFile->unmap(m_map);
     }
 }
 
-TPeakFile::Status TPeakRecording::open(QString* error)
+TPeakFile::Status TPeakStream::open(QString* error)
 {
     if (!QDir().mkpath(QFileInfo(m_peakPath).absolutePath())) {
         if (error) {
@@ -45,7 +45,7 @@ TPeakFile::Status TPeakRecording::open(QString* error)
     return status;
 }
 
-void TPeakRecording::append(const float* const* channels, qint64 frames)
+void TPeakStream::append(const float* const* channels, qint64 frames)
 {
     m_builder.append(channels, frames);
     if (m_writeFailed) {
@@ -75,7 +75,7 @@ void TPeakRecording::append(const float* const* channels, qint64 frames)
     }
 }
 
-TPeakFile::Status TPeakRecording::finish(const QString& audioPath, QString* error)
+TPeakFile::Status TPeakStream::finish(const QString& audioPath, QString* error)
 {
     m_builder.finish();
     if (m_writeFailed) {
@@ -97,7 +97,7 @@ TPeakFile::Status TPeakRecording::finish(const QString& audioPath, QString* erro
     return status;
 }
 
-void TPeakRecording::remap(qint64 periods)
+void TPeakStream::remap(qint64 periods)
 {
     // The part file grows; after finish() it has its final name. The new
     // mapping comes first: when it fails, the old one stays.
@@ -123,21 +123,21 @@ void TPeakRecording::remap(qint64 periods)
     m_mappedPeriods = periods;
 }
 
-const TPeakBlock* TPeakRecording::mapped_blocks(qint64 period, int level, int channel) const
+const TPeakBlock* TPeakStream::mapped_blocks(qint64 period, int level, int channel) const
 {
     const qint64 periodBlocks = qint64(1) << (m_builder.period_shift() - level);
     return reinterpret_cast<const TPeakBlock*>(m_map + m_dataStart + period * m_recordBytes + m_levelOffsets[size_t(level)]
                                                + channel * periodBlocks * qint64(sizeof(TPeakBlock)));
 }
 
-const qint16* TPeakRecording::mapped_rms(qint64 period, int level, int channel) const
+const qint16* TPeakStream::mapped_rms(qint64 period, int level, int channel) const
 {
     const qint64 periodBlocks = qint64(1) << (m_builder.period_shift() - level);
     return reinterpret_cast<const qint16*>(m_map + m_dataStart + period * m_recordBytes + m_rmsOffsets[size_t(level)]
                                            + channel * periodBlocks * qint64(sizeof(qint16)));
 }
 
-TPeakLevels TPeakRecording::snapshot()
+TPeakLevels TPeakStream::snapshot()
 {
     const qint64 written = m_writtenPeriods.load(std::memory_order_seq_cst);
     if (written > m_mappedPeriods) {

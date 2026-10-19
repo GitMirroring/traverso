@@ -10,7 +10,7 @@
 #include "TPeakBuildTask.h"
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
-#include "TPeakRecording.h"
+#include "TPeakStream.h"
 #include "TWaveformColumns.h"
 
 #include <QFile>
@@ -177,7 +177,7 @@ static void stress_recording(const QString& peakPath, const QString& audioPath)
     const double step = TPeakCodeMath::octave_fraction(1);
 
     QFile::remove(peakPath);
-    TPeakRecording recording(signal.rate, 2, peakPath, shift);
+    TPeakStream recording(signal.rate, 2, peakPath, shift);
     CHECK(recording.open() == TPeakFile::Status::Ok, "stress: open");
     std::atomic<bool> done{false};
     std::thread writer([&] {
@@ -381,7 +381,7 @@ int main()
         const TPeakLevels expected = whole.levels();
 
         QFile::remove(peakPath);
-        TPeakRecording recording(signal.rate, int(signal.channels.size()), peakPath, periodShift);
+        TPeakStream recording(signal.rate, int(signal.channels.size()), peakPath, periodShift);
         CHECK(recording.open() == TPeakFile::Status::Ok, "recording %d: open", round);
         std::atomic<bool> done{false};
         TPeakFile::Status finished = TPeakFile::Status::Error;
@@ -450,7 +450,7 @@ int main()
     stress_recording(peakPath, audioPath);
 
     // Recording memory without and with readers: helpers
-    auto record_into = [&](TPeakRecording& recording, const Signal& signal, qint64 from, qint64 to) {
+    auto record_into = [&](TPeakStream& recording, const Signal& signal, qint64 from, qint64 to) {
         for (qint64 position = from; position < to;) {
             const qint64 count = std::min<qint64>(1024, to - position);
             std::vector<const float*> pointers;
@@ -496,7 +496,7 @@ int main()
         const qint64 period = qint64(TPeakLevels::BlockFrames) << shift;
         const Signal signal = make_signal(2, period * 36 + period / 2);
         QFile::remove(peakPath);
-        TPeakRecording recording(signal.rate, 2, peakPath, shift);
+        TPeakStream recording(signal.rate, 2, peakPath, shift);
         CHECK(recording.open() == TPeakFile::Status::Ok, "no reader: open");
         record_into(recording, signal, 0, period * 12 + period / 2);
         const qint64 afterTwelve = recording.memory_blocks();
@@ -518,7 +518,7 @@ int main()
         const auto expected = whole_pyramid(signal, shift);
         const TPeakLevels expectedLevels = expected->levels();
         QFile::remove(peakPath);
-        TPeakRecording recording(signal.rate, 1, peakPath, shift);
+        TPeakStream recording(signal.rate, 1, peakPath, shift);
         CHECK(recording.open() == TPeakFile::Status::Ok, "paused reader: open");
         const qint64 third = (signal.frames() / 3) & ~qint64(63);
         record_into(recording, signal, 0, third);
@@ -558,7 +558,7 @@ int main()
             QFile blocker(blocked);   // a file where the directory would be
             CHECK(blocker.open(QIODevice::WriteOnly), "write failure: blocker");
         }
-        TPeakRecording recording(signal.rate, 1, blocked + "/x.peaks", 2);
+        TPeakStream recording(signal.rate, 1, blocked + "/x.peaks", 2);
         CHECK(recording.open() != TPeakFile::Status::Ok, "write failure: opened");
         record_into(recording, signal, 0, signal.frames());
         bool right = false;
@@ -574,7 +574,7 @@ int main()
         const Signal signal = make_signal(1, 200000);
         const auto expected = whole_pyramid(signal, shift);
         QFile::remove(peakPath);
-        TPeakRecording recording(signal.rate, 1, peakPath, shift);
+        TPeakStream recording(signal.rate, 1, peakPath, shift);
         CHECK(recording.open() == TPeakFile::Status::Ok, "remap failure: open");
         record_into(recording, signal, 0, signal.frames() / 4);
         qint64 mappedBlocks = 0;

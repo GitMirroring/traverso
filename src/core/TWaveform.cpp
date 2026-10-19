@@ -8,7 +8,7 @@
 #include "TLog.h"
 #include "TPeakBuildTask.h"
 #include "TPeakPyramid.h"
-#include "TPeakRecording.h"
+#include "TPeakStream.h"
 #include "TProject.h"
 #include "TProjectManager.h"
 #include "TResourcesManager.h"
@@ -55,7 +55,7 @@ TWaveform::TWaveform(TBufferedAudioStreamReader* source, RequestBuild build)
     });
 }
 
-TWaveform::TWaveform(std::shared_ptr<TPeakRecording> live)
+TWaveform::TWaveform(std::shared_ptr<TPeakStream> live)
     : m_live(std::move(live))
     , m_state(State::Ready)
     , m_opened(true)

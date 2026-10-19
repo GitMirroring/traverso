@@ -18,7 +18,7 @@
 
 class TBufferedAudioStream;
 class TBufferedAudioStreamReader;
-class TPeakRecording;
+class TPeakStream;
 class TFileIOBuffer;
 
 /**
@@ -51,7 +51,7 @@ public:
     TWaveform(TBufferedAudioStreamReader* source, RequestBuild build);
     // A recording in progress: painted from its peaks as they are recorded
     // (the written part from the peak file), no samples
-    explicit TWaveform(std::shared_ptr<TPeakRecording> live);
+    explicit TWaveform(std::shared_ptr<TPeakStream> live);
     // Where the peak file of an audio source lives
     static QString peak_path(const TBufferedAudioStream* source);
     ~TWaveform();
@@ -106,7 +106,7 @@ private:
     bool m_sourceValid{false};
     TBufferedAudioStreamReader* m_source{nullptr};   // only while samples are read
     QTimer m_closeReader;
-    std::shared_ptr<TPeakRecording> m_live;
+    std::shared_ptr<TPeakStream> m_live;
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;
