@@ -25,7 +25,8 @@ Decisions are the user's (2026-10-18); open points are marked.
    - the session's step leaves the undo stack while undone (a new edit
      dropped the redo branch),
    - the explicit action Edit > Discard Last Recording (the last step must
-     be the recording),
+     be the recording, with nothing undone after it: undone edits could
+     otherwise bring its takes back after their files are gone),
    - the project closes with the step undone.
    The setting Recording > Discarded recordings chooses what happens to
    their files: ask (the default), delete, keep.
@@ -46,9 +47,21 @@ Decisions are the user's (2026-10-18); open points are marked.
   transport rolls again, `clip_finished_recording()` pushes the session's
   step once the last take is written.
 - `TRecordingCommand` (QUndoCommand): the session's step. Undo and redo
-  run the steps; when it is destroyed undone, it hands its takes to
-  `TResourcesManager::discard_takes()` (queued: the stack is in the middle
-  of a push then).
+  run the steps; when it is destroyed undone, it hands its takes to a
+  discard function. The sheet's queues them to
+  `TResourcesManager::discard_takes()`: the stack is in the middle of a push
+  then. It has no other dependencies and is tested headless (ctest
+  `recording_command`): first redo, undo and redo, dropped undone, handled,
+  the explicit discard with and without edits after it.
+- A take that got no frames (stopped at once, or within the latency
+  compensation of branch `recording-latency`) is dropped when it finishes,
+  without asking: out of its track and the session's takes, the removal
+  joins the session's steps, and its empty file goes at the save that
+  follows. A session of only empty takes leaves no undo step.
+- A seek during a recording starts new takes also when none run (all
+  tracks were disarmed at the previous seek), and the transport rolls on
+  through the audio thread's queue, behind the new takes, so their first
+  cycle is recorded.
 - `TResourcesManager::discard_takes()`: applies the setting. Deleting
   takes the clips and sources out of the project (they are not saved
   anymore) and keeps the objects until the project closes: a clip's reader
@@ -79,6 +92,22 @@ rate in a file of the old one. Follows from the code; not tested at
 runtime yet.
 
 ## 5. Open
+
+Found by the review (Fable, 2026-10-19 evening), not changed:
+- Restore project from backup: a backup saved before a discard names
+  takes whose files the discard deleted. The restore itself saves and
+  closes the project first, which deletes the files of discarded takes.
+  Options: delete to the trash instead of for good, or warn in the restore
+  dialog (user's decision).
+- A source is "in use" when a clip in a track uses it. A clip of the same
+  source on another sheet that is undone at that moment does not count: its
+  redo would bring back a clip without its file. Rare.
+- The start of a recording (not a seek) has the race fixed for the seek: the
+  takes reach the audio thread through its queue, rolling starts at once,
+  and the first cycle may miss them. Legacy, unchanged.
+- At project close, the discard question comes before "Save project?"; it
+  says the files go "when the project is saved", which stays true when the
+  answer to saving is no.
 
 - The explicit discard needs the recording to be the last step; a discard
   of an older session (with edits after it) is not offered.
