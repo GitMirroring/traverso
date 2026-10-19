@@ -519,17 +519,11 @@ int TProject::save_from_template_to_project_file(const QString& templateFile, co
 
     e.setAttribute("title", projectName);
 
-    QFile data( saveFileName );
-
-    if (!data.open( QIODevice::WriteOnly ) ) {
-        QString errorstring = TFileHelper::fileerror_to_string(data.error());
-        tInformUser().critical( tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(saveFileName).arg(errorstring) );
+    QString errorstring;
+    if (!TFileHelper::save_document(doc, saveFileName, &errorstring)) {
+        tInformUser().critical( tr("Couldn't write the Project properties file! (File %1. Reason: %2)").arg(saveFileName).arg(errorstring) );
         return -1;
     }
-
-    QTextStream stream(&data);
-    doc.save(stream, 4);
-    data.close();
 
     return 1;
 }
@@ -541,18 +535,12 @@ int TProject::save(bool autosave)
     QDomDocument doc("Project");
     QString fileName = m_rootDir + "/project.tpf";
 
-    QFile data( fileName );
-
-    if (!data.open( QIODevice::WriteOnly ) ) {
-        QString errorstring = TFileHelper::fileerror_to_string(data.error());
-        tInformUser().critical( tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(fileName).arg(errorstring) );
+    get_state(doc);
+    QString errorstring;
+    if (!TFileHelper::save_document(doc, fileName, &errorstring)) {
+        tInformUser().critical( tr("Couldn't write the Project properties file! (File %1. Reason: %2)").arg(fileName).arg(errorstring) );
         return -1;
     }
-
-    get_state(doc);
-    QTextStream stream(&data);
-    doc.save(stream, 4);
-    data.close();
 
     if (!autosave) {
         tInformUser().information( tr("Project %1 saved ").arg(m_name) );

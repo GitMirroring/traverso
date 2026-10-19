@@ -286,16 +286,11 @@ int TProjectConverter::save_converted_document()
 	QFile backup(filename);
 	backup.copy(m_rootdir + "/projectv" + QString::number(m_projectfileversion) + "backup.tpf");
 	
-	QFile savefile( filename );
-
-	if (!savefile.open( QIODevice::WriteOnly ) ) {
-		QString errorstring = TFileHelper::fileerror_to_string(savefile.error());
-		TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "%s", QS_C(tr("Couldn't open Project properties file for writing! (File %1. Reason: %2)").arg(filename).arg(errorstring)));
+	QString errorstring;
+	if (!TFileHelper::save_document(m_document, filename, &errorstring)) {
+		TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "%s", QS_C(tr("Couldn't write the Project properties file! (File %1. Reason: %2)").arg(filename).arg(errorstring)));
 		return -1;
 	}
-	
-	QTextStream stream(&savefile);
-	m_document.save(stream, 4);
 	TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "%s", QS_C(tr("Project %1 converted").arg(m_projectname)));
 	emit message(tr("Saving converted project.tpf file.... Done!"));
 	

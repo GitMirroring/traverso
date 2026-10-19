@@ -31,6 +31,9 @@ $Id: FileHelpers.cpp,v 1.10 2007/11/05 15:49:30 r_sijrier Exp $
 #include <Utils.h>
 #include <QObject>
 #include <QFile>
+#include <QSaveFile>
+#include <QTextStream>
+#include <QDomDocument>
 
 
 // delete file/dir pName if it is a directory, calls itself recursively
@@ -187,6 +190,30 @@ int TFileHelper::copy_recursively(const QString& pNameFrom, const QString& pName
 #endif
 
 	return -1;
+}
+
+bool TFileHelper::save_document(const QDomDocument& doc, const QString& fileName, QString* error)
+{
+    QSaveFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        if (error) {
+            *error = fileerror_to_string(file.error());
+        }
+        return false;
+    }
+    QTextStream stream(&file);
+    doc.save(stream, 4);
+    stream.flush();
+    if (stream.status() != QTextStream::Ok) {
+        file.cancelWriting();
+    }
+    if (!file.commit()) {
+        if (error) {
+            *error = file.errorString();
+        }
+        return false;
+    }
+    return true;
 }
 
 QString TFileHelper::fileerror_to_string(int error)
