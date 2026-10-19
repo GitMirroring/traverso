@@ -21,6 +21,8 @@ add_library(traversocore STATIC
     TCurveSnapshot.h TCurveSnapshot.cpp
     TFadeShape.h TFadeShape.cpp
     TDiskIOThread.cpp
+    TDiskIOTask.h
+    TDiskIOPlanner.h TDiskIOPlanner.cpp
     TFadeCurve.cpp
     FileHelpers.cpp
     TInformUser.cpp
