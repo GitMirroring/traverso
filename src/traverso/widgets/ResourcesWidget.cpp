@@ -365,6 +365,14 @@ void ResourcesWidget::remove_source(TBufferedAudioStreamReader * source)
 	}
 
 	m_sourceindices.remove(source->get_id());
+	// Its clips' items are its children: they go with it
+	for (auto it = m_clipindices.begin(); it != m_clipindices.end();) {
+		if (it.value()->QTreeWidgetItem::parent() == item) {
+			it = m_clipindices.erase(it);
+		} else {
+			++it;
+		}
+	}
 	sourcesTreeWidget->takeTopLevelItem(sourcesTreeWidget->indexOfTopLevelItem(item));
 	delete item;
 }

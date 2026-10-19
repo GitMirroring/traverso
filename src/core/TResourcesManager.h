@@ -77,7 +77,8 @@ public:
     // them (delete_discarded_files()): a project file saved before still
     // names them, and stays right if the project closes unsaved.
     void discard_takes(const QList<TAudioClip*>& takes);
-    // After the project file was written
+    // After the project file was written; what could not be deleted is
+    // tried again at the next save
     void delete_discarded_files();
 
 
@@ -102,7 +103,8 @@ private:
 	QHash<qint64, SourceData* >	m_sources;
 	QHash<qint64, ClipData* >	m_clips;
     // Taken out of the project by discard_takes(), freed with the project:
-    // a clip's reader leaves its DiskIO asynchronously
+    // a clip's reader leaves its DiskIO asynchronously (and DiskIO deletes
+    // a reader it had)
     QList<ClipData*> m_retiredClips;
     QList<SourceData*> m_retiredSources;
     QStringList m_discardedFiles;

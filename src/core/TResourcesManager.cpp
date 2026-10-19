@@ -65,6 +65,16 @@ TResourcesManager::~TResourcesManager()
 		delete data;
 	}
 
+    // As above, and before any clip goes: a take's reader was referenced at
+    // its creation, and its clip's destructor hands it to DiskIO, which
+    // deletes it (then it may be gone already)
+    for (SourceData* data : std::as_const(m_retiredSources)) {
+        if (!data->stream->ref()) {
+            delete data->stream;
+        }
+        delete data;
+    }
+
     for(ClipData* data : std::as_const(m_clips)) {
 		delete data->clip;
 		delete data;
@@ -72,10 +82,6 @@ TResourcesManager::~TResourcesManager()
 
     for (ClipData* data : std::as_const(m_retiredClips)) {
         delete data->clip;
-        delete data;
-    }
-    for (SourceData* data : std::as_const(m_retiredSources)) {
-        delete data->stream;
         delete data;
     }
 }
@@ -140,13 +146,17 @@ void TResourcesManager::delete_takes(const QList<TAudioClip*>& takes)
 
 void TResourcesManager::delete_discarded_files()
 {
+    QStringList kept;
     for (const QString& path : std::as_const(m_discardedFiles)) {
         if (QFile::exists(path)) {
             const bool removed = QFile::remove(path);
-            TLOG_I("recording", "{} {}", path.toStdString(), removed ? "deleted" : "could not be deleted");
+            TLOG_I("recording", "{} {}", path.toStdString(), removed ? "deleted" : "could not be deleted, tried again at the next save");
+            if (!removed) {
+                kept << path;
+            }
         }
     }
-    m_discardedFiles.clear();
+    m_discardedFiles = kept;
 }
 
 QDomNode TResourcesManager::get_state( QDomDocument doc )
