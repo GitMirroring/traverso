@@ -358,7 +358,7 @@ static bool write_streamed(const QString& path, const Signal& signal, int period
     if (ok && finish) {
         builder->finish();
         ok = writer.finish(builder->levels(), source, &error) == TPeakFile::Status::Ok
-             && TPeakFileWriter::publish(path, &error) == TPeakFile::Status::Ok;
+             && TPeakFileWriter::publish(writer.part_path(), path, &error) == TPeakFile::Status::Ok;
     }
     CHECK(ok, "streamed write: %s", qPrintable(error));
     *builderOut = std::move(builder);
@@ -446,14 +446,24 @@ static void test_file()
         TPeakFileWriter writer;
         CHECK(writer.open(path, signal.rate, 2, 2) == TPeakFile::Status::Ok, "open the writer");
         CHECK(writer.write_periods(builder->levels(), builder->complete_periods()) == TPeakFile::Status::Ok, "write periods");
-        CHECK(!QFile::exists(path) && QFile::exists(TPeakFileWriter::part_path(path)), "unfinished write not in its part file");
+        CHECK(!QFile::exists(path) && QFile::exists(writer.part_path()), "unfinished write not in its part file");
         // What a crash would leave, under the file's name: refused
-        CHECK(QFile::copy(TPeakFileWriter::part_path(path), path), "copy the part file");
+        CHECK(QFile::copy(writer.part_path(), path), "copy the part file");
         TPeakFile file;
         CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "unfinished file accepted");
         QFile::remove(path);
         writer.close();
-        CHECK(!QFile::exists(TPeakFileWriter::part_path(path)), "the part file of a given up write was left behind");
+        CHECK(!QFile::exists(writer.part_path()), "the part file of a given up write was left behind");
+        // Every writer its own part file: two writers of one peak file (two
+        // Traverso instances, an old and a new build) do not share one
+        TPeakFileWriter other;
+        TPeakFileWriter third;
+        CHECK(other.open(path, signal.rate, 2, 2) == TPeakFile::Status::Ok && third.open(path, signal.rate, 2, 2) == TPeakFile::Status::Ok
+                  && other.part_path() != third.part_path() && QFile::exists(other.part_path()) && QFile::exists(third.part_path()),
+              "two writers of one file share a part file");
+        other.close();
+        CHECK(!QFile::exists(other.part_path()) && QFile::exists(third.part_path()), "closing one writer removed the other's part file");
+        third.close();
     }
 
     // Damaged files

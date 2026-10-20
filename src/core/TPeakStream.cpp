@@ -130,7 +130,7 @@ TPeakFile::Status TPeakStream::publish(QString* error)
         }
         return TPeakFile::Status::Error;
     }
-    const TPeakFile::Status status = TPeakFileWriter::publish(m_peakPath, error);
+    const TPeakFile::Status status = TPeakFileWriter::publish(m_writer.part_path(), m_peakPath, error);
     m_published = status == TPeakFile::Status::Ok;
     return status;
 }
@@ -139,7 +139,7 @@ void TPeakStream::remap(qint64 periods)
 {
     // The part file grows; after finish() it has its final name. The new
     // mapping comes first: when it fails, the old one stays.
-    auto file = std::make_unique<QFile>(TPeakFileWriter::part_path(m_peakPath));
+    auto file = std::make_unique<QFile>(m_writer.part_path());
     if (!file->exists()) {
         // Under its name only once published: before that a file there is
         // not this stream's (an older one, while a build that failed removed

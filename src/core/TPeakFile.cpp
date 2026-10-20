@@ -3,12 +3,14 @@
 
 #include "TPeakFile.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
 #include <QTimeZone>
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -222,7 +224,7 @@ TPeakFile::Status TPeakFile::write(const QString& path, const TPeakLevels& level
     if (status != Status::Ok) {
         return status;
     }
-    return TPeakFileWriter::publish(path, error);
+    return TPeakFileWriter::publish(writer.part_path(), path, error);
 }
 
 TPeakFile::Status TPeakFile::open(const QString& path, const SourceInfo& expected)
@@ -339,8 +341,8 @@ void TPeakFileWriter::close()
     if (m_file.isOpen()) {
         m_file.close();
     }
-    if (!m_finished && !m_path.isEmpty()) {
-        QFile::remove(part_path(m_path));
+    if (!m_finished && !m_partPath.isEmpty()) {
+        QFile::remove(m_partPath);
     }
 }
 
@@ -365,7 +367,10 @@ TPeakFile::Status TPeakFileWriter::open(const QString& path, uint rate, int chan
     m_finished = false;
 
     m_path = path;
-    m_file.setFileName(part_path(path));
+    // Per process and per writer (see part_path())
+    static std::atomic<quint64> writers{0};
+    m_partPath = path + QStringLiteral(".%1-%2.part").arg(QCoreApplication::applicationPid()).arg(writers.fetch_add(1) + 1);
+    m_file.setFileName(m_partPath);
     if (!m_file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         return failed(error);
     }
@@ -519,10 +524,8 @@ TPeakFile::Status TPeakFileWriter::finish(const TPeakLevels& levels, const TPeak
     return TPeakFile::Status::Ok;
 }
 
-TPeakFile::Status TPeakFileWriter::publish(const QString& path, QString* error)
+TPeakFile::Status TPeakFileWriter::publish(const QString& part, const QString& path, QString* error)
 {
-    const QString part = part_path(path);
-
     // Replaces an older file at once (POSIX rename): whoever has the old one
     // mapped keeps reading it. On Windows a file that is mapped can be
     // neither renamed nor replaced: the caller releases its own mapping of

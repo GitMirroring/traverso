@@ -14,6 +14,7 @@
 #include "TPeakStream.h"
 #include "TWaveformColumns.h"
 
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
@@ -466,11 +467,11 @@ int main()
         }
         writer.join();
         CHECK(finished == TPeakFile::Status::Ok, "recording %d: finish", round);
-        CHECK(QFile::exists(TPeakFileWriter::part_path(peakPath)) && !QFile::exists(peakPath),
+        CHECK(QFile::exists(recording.part_path()) && !QFile::exists(peakPath),
               "recording %d: finished but not published, the file is in its part file", round);
         CHECK(recording.publish() == TPeakFile::Status::Ok, "recording %d: publish", round);
         CHECK(file_bytes(peakPath) == reference, "recording %d: the streamed file differs from the one-go file", round);
-        CHECK(!QFile::exists(TPeakFileWriter::part_path(peakPath)), "recording %d: part file left", round);
+        CHECK(!QFile::exists(recording.part_path()), "recording %d: part file left", round);
         // After publishing the snapshot is the whole pyramid, records from the renamed file
         recording.read([&](const TPeakLevels& last) {
             CHECK(last.level_count() == expected.level_count() && last.frame_count() == expected.frame_count(), "recording %d: final view", round);
@@ -662,6 +663,7 @@ int main()
         CHECK(recording.memory_blocks() < heldMemory, "paused reader: memory not freed after the read (%lld, held %lld)",
               (long long)recording.memory_blocks(), (long long)heldMemory);
         CHECK(recording.finish(audioPath) == TPeakFile::Status::Ok, "paused reader: finish");
+        CHECK(recording.publish() == TPeakFile::Status::Ok, "paused reader: publish");
     }
 
     // The part file cannot be written: peaks stay in memory, no peak file
@@ -694,7 +696,7 @@ int main()
         record_into(recording, signal, 0, signal.frames() / 4);
         qint64 mappedBlocks = 0;
         recording.read([&](const TPeakLevels& view) { mappedBlocks = view.block_count(0); });
-        QFile::remove(TPeakFileWriter::part_path(peakPath));   // the writer keeps writing to the unlinked file
+        QFile::remove(recording.part_path());   // the writer keeps writing to the unlinked file
         // An older peak file of another signal under the name, big enough for
         // the mapping: not this stream's, it is not published
         reference_file(peakPath, make_signal(1, 400000), audioPath, shift);
@@ -733,7 +735,7 @@ int main()
         }
         // Streamed: the periods completed so far are on disk, in the part
         // file (50 slices of at most 1024 frames, periods of 256 frames)
-        const QString part = TPeakFileWriter::part_path(peakPath);
+        const QString part = task.stream()->part_path();
         CHECK(QFileInfo(part).size() >= TPeakFileWriter::records_end(2, 2, 40), "%lld bytes: the periods were not streamed",
               (long long)QFileInfo(part).size());
         task.cancel();
@@ -749,7 +751,7 @@ int main()
         TPeakBuildTask task(memory_source(signal), audioPath, stream_for(signal, peakPath, 2));
         while (task.step()) {
         }
-        const QString part = TPeakFileWriter::part_path(peakPath);
+        const QString part = task.stream()->part_path();
         CHECK(task.state() == TPeakBuildTask::State::Written && QFile::exists(part) && !QFile::exists(peakPath),
               "a written build is not in its part file");
         task.cancel();
@@ -776,9 +778,13 @@ int main()
         // A source that is not what its waveform expects (it changed): no file
         const Signal signal = make_signal(2, 5000);
         QFile::remove(peakPath);
+        const QDir peakDir(QFileInfo(peakPath).absolutePath());
+        const QStringList partFilter{QFileInfo(peakPath).fileName() + QStringLiteral(".*.part")};
+        const QStringList partsBefore = peakDir.entryList(partFilter);
         TPeakBuildTask other(memory_source(signal), audioPath, std::make_shared<TPeakStream>(44100, 2, peakPath));
-        CHECK(run(other) == TPeakBuildTask::State::Failed && !QFile::exists(peakPath)
-                  && !QFile::exists(TPeakFileWriter::part_path(peakPath)), "a source of another rate accepted");
+        CHECK(run(other) == TPeakBuildTask::State::Failed && !QFile::exists(peakPath) && peakDir.entryList(partFilter) == partsBefore,
+              "a source of another rate accepted");
+        CHECK(partsBefore.isEmpty(), "part files left by the cases before: %s", qPrintable(partsBefore.join(QLatin1Char(' '))));
     }
 
     if (s_failures) {

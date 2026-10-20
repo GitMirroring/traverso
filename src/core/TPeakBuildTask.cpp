@@ -148,7 +148,7 @@ TPeakBuildTask::State TPeakBuildTask::publish()
     }
     if (m_cancelled.load(std::memory_order_relaxed)) {
         m_stream->release_mapping();
-        QFile::remove(TPeakFileWriter::part_path(peak_path()));
+        QFile::remove(m_stream->part_path());
         m_state = State::Cancelled;
         return m_state;
     }

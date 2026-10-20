@@ -54,6 +54,9 @@ public:
     uint rate() const { return m_builder.rate(); }
     int channel_count() const { return m_builder.channel_count(); }
     const QString& peak_path() const { return m_peakPath; }
+    // The part file it writes (TPeakFileWriter::part_path()): known after
+    // open(); a reading thread asks only after it saw periods or finish()
+    const QString& part_path() const { return m_writer.part_path(); }
     // Frames recorded so far (any thread)
     qint64 recorded_frames() const { return m_builder.frame_count(); }
     // Level-0 blocks recorded so far (any thread): a read() now has them

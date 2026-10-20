@@ -120,14 +120,18 @@ public:
     // Gives up an unfinished file: the part file is removed
     void close();
 
-    // Renames the finished part file of path over path, so a file under its
+    // Renames the finished part file partPath over path, so a file under its
     // name is always complete. Not synced to the disk: a peak file is a
     // cache. Nothing in this process may have the part file mapped (Windows
     // cannot rename it then). A part file that cannot be published is
     // removed.
-    static TPeakFile::Status publish(const QString& path, QString* error = nullptr);
+    static TPeakFile::Status publish(const QString& partPath, const QString& path, QString* error = nullptr);
 
-    static QString part_path(const QString& path) { return path + QStringLiteral(".part"); }
+    // The part file this writer writes (path.<pid>-<n>.part, chosen by
+    // open()): one per writer, so two writers of the same peak file (two
+    // Traverso instances on the shared cache, or an old and a new build of a
+    // project that was opened again) never write into each other's part file
+    const QString& part_path() const { return m_partPath; }
 
     // Where the blocks (the RMS codes) of level (<= periodShift) and channel
     // of record period start, and where the records before period end
@@ -145,6 +149,7 @@ private:
 
     QFile m_file;
     QString m_path;
+    QString m_partPath;
     uint m_rate{0};
     int m_channelCount{0};
     int m_periodShift{TPeakPyramidBuilder::DefaultPeriodShift};
