@@ -213,7 +213,6 @@ private:
 
     int create(int sheetcount, int numtracks);
     int create_audiosources_dir();
-    int create_peakfiles_dir();
 
     // The setup the project saves and starts the audio device with: read
     // from the project file, the global defaults for what it does not have

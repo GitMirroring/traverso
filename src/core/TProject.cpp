@@ -165,10 +165,6 @@ int TProject::create(int sheetcount, int numtracks)
         return -1;
     }
 
-    if (create_peakfiles_dir() < 0) {
-        return -1;
-    }
-
     if (create_audiosources_dir() < 0) {
         return -1;
     }
@@ -215,20 +211,6 @@ int TProject::create_audiosources_dir()
 
 }
 
-int TProject::create_peakfiles_dir()
-{
-    QDir dir;
-    QString peaksDir = m_rootDir + "/peakfiles/";
-
-    if (!dir.mkdir(peaksDir)) {
-        tInformUser().critical(tr("Cannot create dir %1").arg(peaksDir));
-        return -1;
-    }
-
-    return 1;
-}
-
-
 int TProject::load(const QString& projectfile)
 {
     PENTER;
@@ -253,8 +235,10 @@ int TProject::load(const QString& projectfile)
 
     // Check if important directories still exist!
     QDir dir;
-    if (!dir.exists(m_rootDir + "/peakfiles")) {
-        create_peakfiles_dir();
+    // Peak files live in the user's peak cache (TPeakCache) now; an old
+    // project's directory is the user's to remove
+    if (dir.exists(m_rootDir + "/peakfiles")) {
+        TLOG_I("project", "old peak files in {} are no longer used and can be removed", (m_rootDir + "/peakfiles").toStdString());
     }
     if (!dir.exists(m_rootDir + "/audiosources")) {
         create_audiosources_dir();
