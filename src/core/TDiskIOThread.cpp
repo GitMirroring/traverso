@@ -113,9 +113,6 @@ TDiskIOThread::TDiskIOThread()
 
     moveToThread(this);
     start();
-
-    int maxThreads = QThread::idealThreadCount() / 2;
-    QThreadPool::globalInstance()->setMaxThreadCount(maxThreads > 0 ? maxThreads : 1);
 }
 
 TDiskIOThread::~TDiskIOThread()
