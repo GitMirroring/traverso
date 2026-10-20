@@ -4,6 +4,7 @@
 set(TRAVERSO_PEAK_SOURCES
     ${CMAKE_SOURCE_DIR}/src/core/TPeakPyramid.cpp
     ${CMAKE_SOURCE_DIR}/src/core/TPeakFile.cpp
+    ${CMAKE_SOURCE_DIR}/src/core/TPeakCache.cpp
     ${CMAKE_SOURCE_DIR}/src/core/TWaveformColumns.cpp
 )
 
@@ -20,6 +21,14 @@ add_executable(traverso_peak_build_test test_peak_build.cpp ${TRAVERSO_PEAK_SOUR
 target_include_directories(traverso_peak_build_test PRIVATE ${CMAKE_SOURCE_DIR}/src/core)
 target_link_libraries(traverso_peak_build_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
 add_test(NAME peak_build COMMAND traverso_peak_build_test)
+
+# Headless test of the peak cache: the key, marking use, the files in use,
+# the eviction; the format version, the source time tolerance, a recording
+# written where its waveform looks
+add_executable(traverso_peak_cache_test test_peak_cache.cpp ${TRAVERSO_PEAK_SOURCES} ${CMAKE_SOURCE_DIR}/src/core/TPeakStream.cpp)
+target_include_directories(traverso_peak_cache_test PRIVATE ${CMAKE_SOURCE_DIR}/src/core)
+target_link_libraries(traverso_peak_cache_test PRIVATE traverso_compiler_settings traversosupport Qt6::Core)
+add_test(NAME peak_cache COMMAND traverso_peak_cache_test)
 
 # Benchmark of the column query and the envelope painting, not part of ctest.
 # Build it in Release.

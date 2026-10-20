@@ -85,6 +85,7 @@ private:
     QFile m_file;
     uchar* m_map{nullptr};
     TPeakLevels m_levels;
+    bool m_registered{false};   // with TPeakCache, while open
 };
 
 /**

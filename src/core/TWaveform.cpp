@@ -7,6 +7,7 @@
 #include "TFileIOBuffer.h"
 #include "TLog.h"
 #include "TPeakBuildTask.h"
+#include "TPeakCache.h"
 #include "TPeakPyramid.h"
 #include "TPeakStream.h"
 #include "TProject.h"
@@ -18,15 +19,8 @@
 
 QString TWaveform::peak_path(const TBufferedAudioStream* source)
 {
-    // Next to the project's audio sources, like the old peak files
-    QString path;
-    if (TProject* project = pm().get_project()) {
-        path = project->get_root_dir() + "/peakfiles/";
-    } else {
-        path = source->get_dir();
-        path.replace("audiosources", "peakfiles");
-    }
-    return path + source->get_name() + ".peaks";
+    // In the user's peak cache, named after the audio file's path
+    return TPeakCache::path_for(source->get_filename());
 }
 
 TWaveform::TWaveform(TBufferedAudioStreamReader* source, RequestBuild build)
@@ -145,6 +139,8 @@ void TWaveform::open_or_build()
     switch (status) {
     case TPeakFile::Status::Ok:
         TLOG_D("peaks", "opened {}", m_peakPath.toStdString());
+        // Used now: the cache keeps what is used
+        TPeakCache::touch(m_peakPath);
         m_state = State::Ready;
         return;
     case TPeakFile::Status::Error:

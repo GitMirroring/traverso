@@ -3,6 +3,8 @@
 
 #include "TPeakFile.h"
 
+#include "TPeakCache.h"
+
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
@@ -255,7 +257,11 @@ TPeakFile::Status TPeakFile::open(const QString& path, const SourceInfo& expecte
     const Status status = validate(expected, size);
     if (status != Status::Ok) {
         close();
+        return status;
     }
+    // In use: the cache's eviction leaves it alone
+    TPeakCache::opened(path);
+    m_registered = true;
     return status;
 }
 
@@ -328,6 +334,10 @@ void TPeakFile::close()
         m_map = nullptr;
     }
     m_levels = TPeakLevels();
+    if (m_registered) {
+        TPeakCache::closed(m_file.fileName());
+        m_registered = false;
+    }
 }
 
 

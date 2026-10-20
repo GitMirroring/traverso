@@ -108,6 +108,7 @@ signals:
     void projectFileVersionMismatch(QString,QString);
 
 private slots:
+    void apply_peak_cache_settings();
     void project_dir_rename_detected(const QString& dirname);
 };
 

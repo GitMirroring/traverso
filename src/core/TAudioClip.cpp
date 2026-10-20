@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TRtTransaction.h"
 #include "TProjectManager.h"
 #include "TPeakPyramid.h"
+#include "TPeakCache.h"
 #include "TPeakStream.h"
 #include "TWaveform.h"
 #include "TProject.h"
@@ -773,6 +774,10 @@ void TAudioClip::finish_write_source()
         QString error;
         if (peaks->publish(&error) != TPeakFile::Status::Ok) {
             TLOG_W("peaks", "publishing {} failed: {}", peaks->peak_path().toStdString(), error.toStdString());
+        } else {
+            // A new file in the cache: used now, and the cache within its limit
+            TPeakCache::touch(peaks->peak_path());
+            TPeakCache::evict_later();
         }
     }
 

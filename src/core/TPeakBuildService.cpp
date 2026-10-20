@@ -4,6 +4,7 @@
 #include "TPeakBuildService.h"
 
 #include "TDiskIOThread.h"
+#include "TPeakCache.h"
 #include "TPeakBuildTask.h"
 
 #include <QPromise>
@@ -42,7 +43,11 @@ public:
             if (state->promise.isCanceled()) {
                 task.cancel();
             }
-            task.publish();
+            if (task.publish() == TPeakBuildTask::State::Done) {
+                // A new file in the cache: used now, and the cache within its limit
+                TPeakCache::touch(task.peak_path());
+                TPeakCache::evict_later();
+            }
             state->promise.addResult(TPeakBuildResult{task.state() == TPeakBuildTask::State::Done, task.error()});
             state->promise.finish();
         }, Qt::QueuedConnection);

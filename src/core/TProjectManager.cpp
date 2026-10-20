@@ -36,6 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 #include "TConfig.h"
+#include "TPeakCache.h"
 #include "FileHelpers.h"
 #include "TAudioDevice.h"
 #include "TPeakBuildService.h"
@@ -65,6 +66,20 @@ TProjectManager::TProjectManager()
 	cpointer().add_contextitem(this);
 	
     connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &TProjectManager::project_dir_rename_detected);
+
+    // The peak cache, before any project asks for a peak file; and once
+    // after the start, the cache within its limit
+    apply_peak_cache_settings();
+    connect(&config(), &TConfig::configChanged, this, &TProjectManager::apply_peak_cache_settings);
+    TPeakCache::evict_later();
+}
+
+// Peaks/cachedir (empty: the platform's cache location) and
+// Peaks/cachelimit (MB, 0: no limit)
+void TProjectManager::apply_peak_cache_settings()
+{
+    TPeakCache::set_directory(config().get_property("Peaks", "cachedir", "").toString());
+    TPeakCache::set_limit(config().get_property("Peaks", "cachelimit", 10240).toLongLong() << 20);
 }
 
 /**

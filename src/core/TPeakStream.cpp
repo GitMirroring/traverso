@@ -3,6 +3,8 @@
 
 #include "TPeakStream.h"
 
+#include "TPeakCache.h"
+
 #include "TLog.h"
 
 #include <QDir>
@@ -14,6 +16,10 @@ TPeakStream::TPeakStream(uint rate, int channelCount, QString peakPath, int peri
     : m_builder(rate, channelCount, periodShift)
     , m_peakPath(std::move(peakPath))
 {
+    // In use as long as it lives (also its file after finish(), which its
+    // mapping may hold): the cache's eviction leaves it alone. (A peak file
+    // younger than an hour stays anyway.)
+    TPeakCache::opened(m_peakPath);
     // The record layout is fixed by the period shift and the channel count
     m_dataStart = TPeakFileWriter::records_end(periodShift, channelCount, 0);
     m_recordBytes = TPeakFileWriter::records_end(periodShift, channelCount, 1) - m_dataStart;
@@ -28,6 +34,7 @@ TPeakStream::~TPeakStream()
     if (m_map) {
         m_mapFile->unmap(m_map);
     }
+    TPeakCache::closed(m_peakPath);
 }
 
 TPeakFile::Status TPeakStream::open(QString* error)
