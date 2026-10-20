@@ -143,3 +143,92 @@ peaks in memory and the waveform builds the file from the audio
 afterwards. `TAudioFileCopyConvert` streams the same way.
 
 Open: S (14 proposed), the mapping window size for growing files.
+
+## The peak cache (2026-10-20)
+
+User work order of 2026-10-19, with the adjustments agreed that evening.
+
+**Where.** Peak files are no longer kept in `<project>/peakfiles/`. There
+is one cache directory per user, `TPeakCache::directory()`: the platform's
+cache location plus `/peaks`.
+
+| Platform | Directory |
+|---|---|
+| Linux | `~/.cache/Traverso/Traverso/peaks` |
+| macOS | `~/Library/Caches/Traverso/Traverso/peaks` |
+| Windows | `%LOCALAPPDATA%/Traverso/Traverso/cache/peaks` (not roamed, right for a cache) |
+
+The setting `Peaks/cachedir` moves the cache, for instance to another disk.
+This gives:
+- projects on a NAS or a read-only medium build their peaks locally;
+- the same source in two projects has one peak file;
+- project folders and their backups hold no cache;
+- recordings to a hard disk write their peaks to the system disk;
+- the space for peaks is bounded.
+
+**The key.** The name is `<hash>-<name>.peaks`:
+- `<hash>`: the first 32 hex digits of SHA-256 over the source's canonical
+  path, in UTF-8 and NFC (macOS can hand out decomposed names);
+- `<name>`: the file name, at most 40 characters, any character outside
+  `A-Z a-z 0-9 . _ -` replaced by `_`, so it stays readable for debugging
+  and valid on every file system (Windows' reserved names cannot occur
+  behind the hash).
+
+It is the path, not the file name, because two projects can each have a
+`take1.wav`. The canonical path resolves symlinks, so a symlink and its file
+share the peak file. A recorded file does not exist yet when its recording
+starts; its directory's canonical path plus its name give the key it will
+have once it exists. Validation is unchanged: the header compares rate,
+channels, frames and the source's size and time. A different file at the
+same path makes the peak file Invalid, and it is rebuilt.
+
+The source's time may differ by up to 2000 ms. Network shares and FAT or
+exFAT round times to 1 or 2 seconds, and without the tolerance a project
+there could rebuild its peaks on every open.
+
+A consequence: moving or renaming a project, or mounting a share somewhere
+else, changes the keys, and the peak files are built again. With format 6 a
+build takes about 1 s per hour of WAV on a local SSD. A project on a NAS is
+network-bound: an hour of mono float WAV (~690 MB) takes 6–7 s to read over
+gigabit.
+
+**Use and eviction.**
+- **Last use.** A peak file's mtime records its last use: `touch()` after
+  every successful open, after a build and after a recording. atime is
+  useless, since many systems mount with noatime or relatime.
+- **Limit.** `Peaks/cachelimit` in MB, default 10240; 0 means no limit.
+- **When.** After every successful build or recording, and once at
+  startup, on the global thread pool, one eviction at a time.
+- **Order.** Least recently used first, until the cache is within its
+  limit. What is left alone:
+  - the files this process has open, counted per file name (`TPeakFile`
+    open, and a `TPeakStream` for its lifetime);
+  - peak files younger than an hour, built or opened just now (otherwise a
+    limit below the working set would remove a file before its waveform
+    opens it, and rebuild it forever; the limit is a soft bound);
+  - part files younger than a day, from a build or recording that may still
+    run, also in another Traverso.
+- **Leftovers.** Older part files are left over from a crash and go,
+  whatever the limit.
+- **Failures.** A file that cannot be removed is skipped (on Windows, one
+  that another Traverso has mapped).
+- **Other instances.** On Linux and macOS a file another instance has
+  mapped can go: its mapping stays valid until that instance closes it.
+- **Comparing names.** Files are compared by file name, not by path:
+  std::filesystem and Qt write separators differently on Windows.
+
+**Several instances.** A part file is named per process
+(`<peak>.<pid>.part`). Two instances building the same peak file each write
+their own part file, and each rename puts a complete file in place. With one
+shared part name, each would truncate the other's file.
+
+**Version.** The magic is still `TRAVPEAK`. Versions are counted from 2:
+legacy was `TRAVPF` 1.5, and `TRAVPEAK` 3 to 6 only existed in development
+branches. Reusing 2 is safe because the location is new: early-development
+version-2 files lie in project `peakfiles/` directories that are no longer
+read, and their header size and checksum differ anyway.
+
+**Old peak directories.** `<project>/peakfiles/` is no longer read or
+written, and is not removed automatically: it is in the user's project
+folder. Opening a project that has one logs once that it can be removed.
+New projects no longer get one.
