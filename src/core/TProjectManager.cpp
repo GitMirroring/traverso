@@ -29,6 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QFileSystemWatcher>
 #include <QTextStream>
 
+#include <algorithm>
+
 #include "TProject.h"
 #include "TSheet.h"
 #include "TContextPointer.h"
@@ -78,8 +80,20 @@ TProjectManager::TProjectManager()
 // Peaks/cachelimit (MB, 0: no limit)
 void TProjectManager::apply_peak_cache_settings()
 {
-    TPeakCache::set_directory(config().get_property("Peaks", "cachedir", "").toString());
-    TPeakCache::set_limit(config().get_property("Peaks", "cachelimit", 10240).toLongLong() << 20);
+    QString directory = config().get_property("Peaks", "cachedir", "").toString();
+    if (!directory.isEmpty()) {
+        directory = QFileInfo(directory).absoluteFilePath();
+    }
+    TPeakCache::set_directory(directory);
+
+    // MB; what is not a number, or below 0, is the default; at most 1 EB
+    constexpr qint64 DefaultLimit = 10240;
+    bool number = false;
+    qint64 megabytes = config().get_property("Peaks", "cachelimit", DefaultLimit).toLongLong(&number);
+    if (!number || megabytes < 0) {
+        megabytes = DefaultLimit;
+    }
+    TPeakCache::set_limit(std::min<qint64>(megabytes, qint64(1) << 40) << 20);
 }
 
 /**
