@@ -40,7 +40,13 @@ DiskIO for the whole project is a later step.
      (then it runs the round alone, so DiskIO always gets on). A round of one step
      runs on the DiskIO thread without the hand-over to the pool.
 4. After the round: a seek round reports `seekFinished`; idle tasks that are
-   done are deleted (a build reports its result then, see §5).
+   done are handed back (`retire()`, a build reports its result then, see
+   §5) and deleted.
+
+A seek that comes in during a round is taken at the next round. Idle steps
+of the running round that have not started yet give way to it; a read that
+runs already finishes first, so a seek waits at most one step (a fifth of a
+second of a source, longer on a slow share).
 
 The work is a `TDiskIOTask` (`needs_work()`, `step()`, `is_done()`):
 - **A reader** has work when it is out of sync or its ring is at 80% or

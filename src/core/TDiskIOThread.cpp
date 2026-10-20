@@ -258,28 +258,42 @@ bool TDiskIOThread::do_round()
     const TDiskIOPlanner::Round plan = m_planner.plan(streams, seek, int(idle.size()),
                                                       m_idleWorkAllowed.load(std::memory_order_relaxed));
 
-    std::vector<TDiskIOTask*> round;
+    // Idle steps that have not started yet give way to a seek that comes in
+    // meanwhile (they get their step in a later round); a read that runs
+    // already finishes first
+    struct Step
+    {
+        TDiskIOTask* task;
+        bool idle;
+    };
+    std::vector<Step> round;
     round.reserve(plan.streams.size() + size_t(plan.idleSteps));
     for (const int index : plan.streams) {
-        round.push_back(m_streams[size_t(index)].get());
+        round.push_back(Step{m_streams[size_t(index)].get(), false});
     }
     for (int i = 0; i < plan.idleSteps; ++i) {
-        round.push_back(idle[size_t(i)]);
+        round.push_back(Step{idle[size_t(i)], true});
     }
+    auto run = [this](const Step& step) {
+        if (!(step.idle && m_seekRequested.load(std::memory_order_relaxed))) {
+            step.task->step();
+        }
+    };
 
     if (round.size() == 1) {
         // Nothing to share: no hand-over to the pool
-        round.front()->step();
+        run(round.front());
     } else if (!round.empty()) {
-        // The pool runs the steps; the round ends when the last one is done. A task takes its steps on different threads from
-        // round to round: the steps see what this thread wrote before the
-        // round, this thread (and the next round) sees what they wrote.
-        // blockingMap synchronises inside Qt; these two atomics say so in a
-        // way a thread sanitizer sees too.
+        // The pool runs the steps; the round ends when the last one is done. A
+        // task takes its steps on different threads from round to round: the
+        // steps see what this thread wrote before the round, this thread (and
+        // the next round) sees what they wrote. blockingMap synchronises
+        // inside Qt; these two atomics say so in a way a thread sanitizer
+        // sees too.
         m_roundStarted.fetch_add(1, std::memory_order_release);
-        QtConcurrent::blockingMap(round, [this](TDiskIOTask* task) {
+        QtConcurrent::blockingMap(round, [this, &run](const Step& step) {
             m_roundStarted.load(std::memory_order_acquire);
-            task->step();
+            run(step);
             m_stepsDone.fetch_add(1, std::memory_order_release);
         });
         m_stepsDone.load(std::memory_order_acquire);
