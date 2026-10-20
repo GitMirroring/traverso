@@ -44,7 +44,7 @@ public :
     int rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer);
 
     TBufferedAudioStreamStatus& get_buffer_status() final;
-    // The peaks of this recording, streamed to its peak file
+    // The peaks of this recording, streamed to its peak file as level 0
     std::shared_ptr<TPeakStream> get_peaks() const { return m_peaks; }
 
     int prepare_export(TExportSpecification* specification);
@@ -63,8 +63,8 @@ private:
     nframes_t       m_sampleRate;
     bool            m_processPeaks;
     bool            m_isRecording;
-    // A recording: its peaks are read while they are written (the clip
-    // publishes them on the GUI thread, which maps them)
+    // A recording: its peaks are read while they are written, and
+    // post-processed in DiskIO's idle time (an import does it at once)
     bool            m_peaksAreRead{false};
     bool            m_exportFinished{false};
 

@@ -5,30 +5,30 @@
 
 #include "TPeakPyramid.h"
 
+#include <QByteArray>
 #include <QFile>
 #include <QString>
 
+#include <vector>
+
 /**
- * @brief Peak file (TRAVPEAK version 2, the layout development called
- * version 6): a TPeakLevels pyramid on disk, written as a
- * stream, read mapped.
+ * @brief Peak file (TRAVPEAK version 3): a TPeakLevels pyramid on disk, read
+ * mapped. TPeakStream writes it.
  *
  * The file is a cache of its source: when it is missing, unfinished, from
  * another version, or does not match the source (rate, channels, frames, file
  * size, modification time), open() says so and the caller rebuilds it. An
  * open peak file holds a mapping, not a file descriptor.
  *
- * Layout (doc/design/peak-diskio.md): a header of fixed size, then one record
- * per complete period (TPeakPyramidBuilder: the blocks of levels 0..S of that
- * period, level by level, per level the min/max of every channel and then
- * the RMS codes of every channel), then a tail with the rest of every level
- * in the same order. Every offset follows from the header, so there is no table.
- * The header says unfinished (frame count 0) until TPeakFileWriter::finish()
- * writes the frame count and the source; it has a checksum, which open()
- * checks. The block data has none: a file reaches its name only when it is
- * complete (TPeakFileWriter::publish()), so what opens is whole. Peak files
- * are a cache: they are not synced to the disk, a file damaged by a power
- * loss shows a wrong waveform until it is built again.
+ * Layout (doc/design/peak-records.md): a header of fixed size, then the
+ * records of every level, level 0 first, one record per block (the min/max
+ * of every channel, then the RMS of every channel). Every offset follows
+ * from the frame count, so there is no table. The header is written last;
+ * until then it is zero, so an unfinished file is Invalid. It has a
+ * checksum, which open() checks. The records have none: a file reaches its
+ * name only when it is complete, so what opens is whole. Peak files are a
+ * cache: they are not synced to the disk, a file damaged by a power loss
+ * shows a wrong waveform until it is built again.
  */
 class TPeakFile
 {
@@ -59,13 +59,9 @@ public:
     TPeakFile(const TPeakFile&) = delete;
     TPeakFile& operator=(const TPeakFile&) = delete;
 
-    // Writes a complete pyramid (TPeakPyramidBuilder::finish()) in one go
-    static Status write(const QString& path, const TPeakLevels& levels, const SourceInfo& source, QString* error = nullptr,
-                        int periodShift = TPeakPyramidBuilder::DefaultPeriodShift);
-
-    // Checks the header, its checksum and the layout. An open peak file
-    // holds a mapping, no file descriptor, and is registered with the peak
-    // cache while it is open (TPeakCache::opened()), so the cache's eviction
+    // Checks the header, its checksum and the size. An open peak file holds
+    // a mapping, no file descriptor, and is registered with the peak cache
+    // while it is open (TPeakCache::opened()), so the cache's eviction
     // leaves it alone: every open() anywhere touches that registry.
     Status open(const QString& path, const SourceInfo& expected);
     void close();
@@ -75,12 +71,26 @@ public:
     const TPeakLevels& levels() const { return m_levels; }
 
     // Magic TRAVPEAK, version counted from 2 (the format after legacy TRAVPF
-    // 1.5; TRAVPEAK 3 to 6 only existed in development branches, in project
-    // directories that are not read any more). Every format change counts up.
-    static constexpr quint32 FormatVersion = 2;
+    // 1.5; version 2 had the levels in periods). Every format change counts up.
+    static constexpr quint32 FormatVersion = 3;
     // How far the source's time may be from the one in the header: network
     // shares and FAT round times to 1 or 2 seconds
     static constexpr qint64 SourceTimeTolerance = 2000;   // ms
+
+    // The layout, for TPeakStream: the header's size, a record's size, the
+    // blocks of every level of a pyramid over frames frames
+    static constexpr qint64 HeaderBytes = 72;
+    static qint64 record_bytes(int channelCount) { return qint64(TPeakLevels::record_codes(channelCount)) * qint64(sizeof(qint16)); }
+    static std::vector<qint64> block_counts(qint64 frames);
+    // The header of the finished file of source
+    static QByteArray header(const SourceInfo& source);
+
+    // Renames the finished part file over path, so a file under its name is
+    // always complete. Not synced to the disk: a peak file is a cache. On
+    // Windows a file that another program holds open for a moment (a virus
+    // scanner, the indexer) cannot be renamed: it tries again a few times.
+    // A part file that cannot be renamed is removed.
+    static Status publish(const QString& partPath, const QString& path, QString* error = nullptr);
 
 private:
     Status validate(const SourceInfo& expected, qint64 fileSize);
@@ -89,75 +99,4 @@ private:
     uchar* m_map{nullptr};
     TPeakLevels m_levels;
     bool m_registered{false};   // with TPeakCache, while open
-};
-
-/**
- * @brief Writes a peak file as a stream: the header at once, a record as
- * soon as a period is complete, the tail and the final header at the end.
- *
- * The file is written next to its final name, in a part file of its own
- * (part_path()); publish() renames it over its name once it is complete. A
- * waveform
- * that has the old file mapped keeps reading the old file, a file is never
- * cut short under a mapping. A part file that was not finished says so in
- * its header and is removed by close(); open() never looks at part files.
- */
-class TPeakFileWriter
-{
-public:
-    TPeakFileWriter() = default;
-    ~TPeakFileWriter();
-    TPeakFileWriter(const TPeakFileWriter&) = delete;
-    TPeakFileWriter& operator=(const TPeakFileWriter&) = delete;
-
-    TPeakFile::Status open(const QString& path, uint rate, int channelCount,
-                           int periodShift = TPeakPyramidBuilder::DefaultPeriodShift, QString* error = nullptr);
-
-    // Writes the records of the periods [written_periods(), periods); levels
-    // must hold them (TPeakPyramidBuilder::complete_periods())
-    TPeakFile::Status write_periods(const TPeakLevels& levels, qint64 periods, QString* error = nullptr);
-
-    // levels must be complete (TPeakPyramidBuilder::finish()) and belong to
-    // source: writes the remaining records, the tail and the final header,
-    // and closes the part file, which publish() puts in place
-    TPeakFile::Status finish(const TPeakLevels& levels, const TPeakFile::SourceInfo& source, QString* error = nullptr);
-
-    // Gives up an unfinished file: the part file is removed
-    void close();
-
-    // Renames the finished part file partPath over path, so a file under its
-    // name is always complete. Not synced to the disk: a peak file is a
-    // cache. Nothing in this process may have the part file mapped (Windows
-    // cannot rename it then). A part file that cannot be published is
-    // removed.
-    static TPeakFile::Status publish(const QString& partPath, const QString& path, QString* error = nullptr);
-
-    // The part file this writer writes (path.<pid>-<n>.part, chosen by
-    // open()): one per writer, so two writers of the same peak file (two
-    // Traverso instances on the shared cache, or an old and a new build of a
-    // project that was opened again) never write into each other's part file
-    const QString& part_path() const { return m_partPath; }
-
-    // Where the blocks (the RMS codes) of level (<= periodShift) and channel
-    // of record period start, and where the records before period end
-    static qint64 record_offset(int periodShift, int channelCount, qint64 period, int level, int channel);
-    static qint64 record_rms_offset(int periodShift, int channelCount, qint64 period, int level, int channel);
-    static qint64 records_end(int periodShift, int channelCount, qint64 periods);
-
-    int period_shift() const { return m_periodShift; }
-    qint64 written_periods() const { return m_writtenPeriods; }
-
-private:
-    bool write_blocks(const TPeakLevels& levels, int level, int channel, qint64 first, qint64 last);
-    bool write_rms(const TPeakLevels& levels, int level, int channel, qint64 first, qint64 last);
-    TPeakFile::Status failed(QString* error);
-
-    QFile m_file;
-    QString m_path;
-    QString m_partPath;
-    uint m_rate{0};
-    int m_channelCount{0};
-    int m_periodShift{TPeakPyramidBuilder::DefaultPeriodShift};
-    qint64 m_writtenPeriods{0};
-    bool m_finished{false};
 };

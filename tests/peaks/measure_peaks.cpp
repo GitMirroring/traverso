@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 // Measurements of the peak files on real audio, not part of ctest. Build it
-// in Release. Written against the API that peak format 5 and 6 share, so the
-// same file measures both (doc/design/peaks-v6-report.md).
+// in Release (doc/design/peaks-v6-report.md, doc/design/peak-records.md).
 //
 //   measure_peaks build <audio> <peaks>    build the peak file: time, size
 //   measure_peaks max <audio> <peaks>      max_amplitude over the whole source
 //   measure_peaks query <audio> <peaks>    2000 columns at three zooms
-//   measure_peaks record <dir>             8 mono tracks, 10 minutes: memory
+//   measure_peaks record <dir>             8 mono tracks, 10 minutes: time
 
 #include "ResampleAudioReader.h"
 #include "TFileIOBuffer.h"
@@ -69,14 +68,12 @@ static int build(const QString& audio, const QString& peaks)
     timer.start();
     while (task.step()) {
     }
-    const qint64 stepped = timer.elapsed();
-    task.publish();
     if (task.state() != TPeakBuildTask::State::Done) {
         std::printf("build failed: %s\n", qPrintable(task.error()));
         return 1;
     }
-    std::printf("format %u build %lld ms (publish %lld ms) size %lld bytes\n", TPeakFile::FormatVersion, (long long)stepped,
-                (long long)(timer.elapsed() - stepped), (long long)QFileInfo(peaks).size());
+    std::printf("format %u build %lld ms (level 0 and post-processing) size %lld bytes\n", TPeakFile::FormatVersion,
+                (long long)timer.elapsed(), (long long)QFileInfo(peaks).size());
     return 0;
 }
 
@@ -153,8 +150,15 @@ static int record(const QString& dir)
     const int tracks = 8;
     const qint64 frames = qint64(rate) * 600;
     const qint64 buffer = 1024;
-    // Bytes of one block: min/max, and from format 6 on the RMS code
-    const qint64 blockBytes = qint64(sizeof(TPeakBlock)) + 2;   // min/max and the RMS code
+
+    // A stand-in for the recorded audio files: their size and time go into the headers
+    const QString audio = dir + QStringLiteral("/take.wav");
+    QFile take(audio);
+    if (!take.open(QIODevice::WriteOnly) || take.write("audio") != 5) {
+        std::printf("cannot write %s\n", qPrintable(audio));
+        return 1;
+    }
+    take.close();
 
     std::vector<std::unique_ptr<TPeakStream>> recordings;
     for (int t = 0; t < tracks; ++t) {
@@ -167,7 +171,6 @@ static int record(const QString& dir)
     std::vector<float> samples(static_cast<size_t>(buffer));
     std::mt19937 random(3);
     std::uniform_real_distribution<float> noise(-0.5f, 0.5f);
-    qint64 peakBlocks = 0;
     QElapsedTimer timer;
     timer.start();
     for (qint64 position = 0; position < frames; position += buffer) {
@@ -175,19 +178,19 @@ static int record(const QString& dir)
             sample = noise(random);
         }
         const float* channels[1] = {samples.data()};
-        qint64 blocks = 0;
         for (auto& recording : recordings) {
             recording->append(channels, buffer);
-            blocks += recording->memory_blocks();
         }
-        peakBlocks = std::max(peakBlocks, blocks);
     }
-    const qint64 elapsed = timer.elapsed();
+    const qint64 recorded = timer.elapsed();
+    timer.start();
     for (auto& recording : recordings) {
-        recording->finish(dir + QStringLiteral("/none.wav"));
+        recording->finish(audio);
+        while (recording->post_process()) {
+        }
     }
-    std::printf("format %u record %d mono tracks x 10 min: at most %lld blocks = %.1f KB of peaks in memory (%lld ms)\n",
-                TPeakFile::FormatVersion, tracks, (long long)peakBlocks, double(peakBlocks * blockBytes) / 1024.0, (long long)elapsed);
+    std::printf("format %u record %d mono tracks x 10 min: level 0 %lld ms, post-processing %lld ms (no peaks in memory)\n",
+                TPeakFile::FormatVersion, tracks, (long long)recorded, (long long)timer.elapsed());
     return 0;
 }
 

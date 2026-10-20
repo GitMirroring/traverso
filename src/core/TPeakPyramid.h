@@ -7,8 +7,6 @@
 
 #include <algorithm>
 #include <array>
-#include <atomic>
-#include <memory>
 #include <vector>
 
 // The lowest and highest sample value of a block of frames as value codes
@@ -100,21 +98,20 @@ struct TPeakCodeTables
  * @brief Read-only view on a min/max and RMS pyramid of one audio source.
  *
  * Level 0 holds one block per BlockFrames frames of the source, at the
- * source's own sample rate. Every block has its min/max (TPeakBlock) and,
- * in an array of its own, the RMS of its frames as a code (nearest; a
- * level-0 block with a NaN or an inf sample gets its peak instead); a
- * parent's RMS is the root of its children's mean squares weighted by
- * their frames. Block k of level L covers the frames
- * [k * BlockFrames * 2^L, (k + 1) * BlockFrames * 2^L), and is the combination
- * of blocks 2k and 2k + 1 of level L - 1. The last block of a level may cover
- * fewer frames. A level may miss its last block while a recording grows (a
- * block is only added when both its children are complete).
+ * source's own sample rate. Every block has its min/max (TPeakBlock) and the
+ * RMS of its frames as a code (nearest; a level-0 block with a NaN or an inf
+ * sample gets its peak instead); a parent's RMS is the root of its children's
+ * mean squares weighted by their frames. Block k of level L covers the frames
+ * [k * BlockFrames * 2^L, (k + 1) * BlockFrames * 2^L), and is the
+ * combination of blocks 2k and 2k + 1 of level L - 1. The last block of a
+ * level may cover fewer frames; a level has half the blocks of the one below,
+ * rounded up, up to a level of one block.
  *
- * The blocks of a level live in chunks of 2^chunkShift blocks: one chunk
- * for a mapped file, many for a growing pyramid (which never moves a block).
- * The view does not own the data: TPeakPyramidBuilder (memory) and TPeakFile
- * (mapped file) do. A view taken from a growing pyramid is a snapshot: the
- * blocks it names never change, and its frame count covers them.
+ * Every level is an array of records, one per block: the min and max code of
+ * every channel, then the RMS code of every channel (record_codes()). The view
+ * does not own them: TPeakFile (a mapped file) and TPeakStream (the level-0
+ * records of a file being written, copied) do. A level may hold a window of
+ * its blocks only, [first, count): a view of a file being written.
  */
 class TPeakLevels
 {
@@ -132,32 +129,15 @@ public:
     static constexpr int OneCode = 28 * CodesPerOctave;
     static constexpr int MaxCode = 32767;
 
-    // A chunk's min/max and RMS codes, side by side so one lookup finds both
-    struct Chunk
-    {
-        const TPeakBlock* blocks;
-        const qint16* rms;
-    };
+    // The codes of a record: min and max of every channel, then the RMS of
+    // every channel
+    static constexpr int record_codes(int channelCount) { return 3 * channelCount; }
 
     struct Level
     {
-        qint64 blockCount{0};
-        int chunkShift{62};            // 62: everything in one chunk
-        qint64 chunkCount{0};          // per channel
-        std::vector<Chunk> chunks;     // channel by channel: [channel * chunkCount + chunk]
-
-        // Appends the next channel's chunks; every channel has as many
-        void add_channel(const std::vector<const TPeakBlock*>& blocks, const std::vector<const qint16*>& rms)
-        {
-            Q_ASSERT(blocks.size() == rms.size() && (chunks.empty() || qint64(blocks.size()) == chunkCount));
-            chunkCount = qint64(blocks.size());
-            chunks.reserve(chunks.size() + blocks.size());
-            for (size_t i = 0; i < blocks.size(); ++i) {
-                chunks.push_back({blocks[i], rms[i]});
-            }
-        }
-        const Chunk& chunk(int channel, qint64 index) const { return chunks[size_t(channel * chunkCount + (index >> chunkShift))]; }
-        qint64 offset(qint64 index) const { return index & ((qint64(1) << chunkShift) - 1); }
+        const qint16* records{nullptr};   // the records of the blocks [first, count)
+        qint64 first{0};
+        qint64 count{0};                  // the blocks of the level
     };
 
     TPeakLevels() = default;
@@ -170,31 +150,13 @@ public:
     // 0 when there is no pyramid (yet); frame_count() and rate() still tell
     // about the source then
     int level_count() const { return int(m_levels.size()); }
-    qint64 block_count(int level) const { return m_levels[size_t(level)].blockCount; }
-    const TPeakBlock& block(int level, int channel, qint64 index) const
+    qint64 block_count(int level) const { return m_levels[size_t(level)].count; }
+    TPeakBlock block(int level, int channel, qint64 index) const
     {
-        Q_ASSERT(index >= 0 && index < block_count(level));
-        const Level& l = m_levels[size_t(level)];
-        return l.chunk(channel, index).blocks[l.offset(index)];
+        const qint16* codes = record(level, index);
+        return {codes[2 * channel], codes[2 * channel + 1]};
     }
-    qint16 rms(int level, int channel, qint64 index) const
-    {
-        Q_ASSERT(index >= 0 && index < block_count(level));
-        const Level& l = m_levels[size_t(level)];
-        return l.chunk(channel, index).rms[l.offset(index)];
-    }
-    // The blocks (RMS codes) from index on that follow each other in memory:
-    // their start and how many (at least 1 when index < block_count(level))
-    const TPeakBlock* blocks(int level, int channel, qint64 index, qint64& count) const
-    {
-        qint64 inChunk = 0;
-        return run(level, channel, index, inChunk, count).blocks + inChunk;
-    }
-    const qint16* rms_blocks(int level, int channel, qint64 index, qint64& count) const
-    {
-        qint64 inChunk = 0;
-        return run(level, channel, index, inChunk, count).rms + inChunk;
-    }
+    qint16 rms(int level, int channel, qint64 index) const { return record(level, index)[2 * m_channelCount + channel]; }
     // The frames block index of level covers (the source's last one fewer)
     qint64 block_frames(int level, qint64 index) const
     {
@@ -232,138 +194,15 @@ public:
     static float max_value() { return to_value(MaxCode); }
 
 private:
-    // The chunk of block index, where in it index is, and how many blocks
-    // follow from there to the chunk's or the level's end
-    const Chunk& run(int level, int channel, qint64 index, qint64& inChunk, qint64& count) const;
+    const qint16* record(int level, qint64 index) const
+    {
+        const Level& l = m_levels[size_t(level)];
+        Q_ASSERT(index >= l.first && index < l.count);
+        return l.records + (index - l.first) * record_codes(m_channelCount);
+    }
 
     uint m_rate{0};
     int m_channelCount{0};
     qint64 m_frameCount{0};
     std::vector<Level> m_levels;
-};
-
-/**
- * @brief Builds a TPeakLevels pyramid from samples, in chunks of any size.
- *
- * The same code serves a background import (whole file) and a recording
- * (buffer by buffer): every level grows as soon as its blocks are complete.
- * finish() closes the last partial blocks.
- *
- * One thread appends; any thread may take levels() meanwhile: a block is
- * written once, then its level's count is published (release), and a reader's
- * snapshot (acquire) only names blocks below that count. Blocks never move
- * (chunked storage) and live until the builder is destroyed. No locks.
- *
- * The storage of a level L <= period_shift() is chunked per period (or in
- * chunks of several whole periods), so a period's blocks of one level and
- * channel follow each other in memory.
- */
-class TPeakPyramidBuilder
-{
-public:
-    static constexpr int MaxLevels = 40;
-    // 2^34 frames, a day at 192 kHz. The audio readers stop sooner, at 2^32
-    // frames (6.2 hours at 192 kHz, 24.8 at 48 kHz): their positions are
-    // 32-bit.
-    static constexpr qint64 MaxLevel0Blocks = qint64(1) << 28;
-
-    // A period is 2^periodShift level-0 blocks. Within a period every level
-    // L <= periodShift has exactly 2^(periodShift - L) blocks, so all those
-    // levels complete it at the same moment: the record of a peak file.
-    static constexpr int DefaultPeriodShift = 14;   // 2^20 frames, ~22 s at 48 kHz
-    static constexpr int MaxPeriodShift = 24;
-    // Storage chunks hold at least 2^MinChunkShift blocks (4 KB)
-    static constexpr int MinChunkShift = 10;
-
-    TPeakPyramidBuilder(uint rate, int channelCount, int periodShift = DefaultPeriodShift);
-
-    // channels[c] points to frames samples of channel c
-    void append(const float* const* channels, qint64 frames);
-    void finish();
-
-    bool is_finished() const { return m_finished; }
-    uint rate() const { return m_rate; }
-    int channel_count() const { return int(m_channels.size()); }
-    int period_shift() const { return m_periodShift; }
-    qint64 frame_count() const { return m_publishedFrames.load(std::memory_order_acquire); }
-    // The level-0 blocks every channel has published (any thread): what a
-    // snapshot taken now names at least. The frame count can be a block
-    // ahead of it (it is published first).
-    qint64 published_blocks() const;
-
-    // The periods that every level 0..period_shift() has completed. For the
-    // thread that appends, or any thread once a finished pyramid was handed
-    // over to it.
-    qint64 complete_periods() const;
-
-    // Frees the storage of levels 0..period_shift() that only holds blocks of
-    // the periods before periods (once they are in the peak file). Only for
-    // the thread that appends, and only when no snapshot that names those
-    // blocks is in use anymore: later snapshots name them with null chunks.
-    void release_periods(qint64 periods);
-    // Blocks of storage allocated and not released. Only for the thread that
-    // appends.
-    qint64 allocated_blocks() const;
-
-    // A snapshot of what is complete now; valid while the builder lives
-    TPeakLevels levels() const;
-
-private:
-    // The published chunk pointers live in pages of PageSize pointers. The
-    // page directory is sized once and a page is allocated before its first
-    // chunk is published, so nothing a snapshot reads ever moves, and the
-    // pointers cost memory only for the chunks that exist.
-    static constexpr int PageShift = 6;
-    static constexpr qint64 PageSize = qint64(1) << PageShift;
-
-    struct LevelStore
-    {
-        int chunkShift{MinChunkShift};
-        std::vector<std::unique_ptr<TPeakBlock[]>> chunks;          // the writer's
-        std::vector<std::unique_ptr<qint16[]>> rmsChunks;           // the same chunks' RMS codes
-        // Sized once, read by snapshots. Atomic entries: release_periods()
-        // clears the entries of released chunks while a snapshot may read them
-        std::vector<std::unique_ptr<std::atomic<const TPeakBlock*>[]>> pages;
-        std::vector<std::unique_ptr<std::atomic<const qint16*>[]>> rmsPages;
-        qint64 releasedChunks{0};
-        qint64 count{0};
-        std::atomic<qint64> publishedCount{0};
-        // The last block while it has no pair yet: its mean square before
-        // rounding and its frames, so a parent is made from exact values
-        double pendingMeanSquare{0.0};
-        qint64 pendingFrames{0};
-
-        const TPeakBlock& at(qint64 index) const
-        {
-            return chunks[size_t(index >> chunkShift)][index & ((qint64(1) << chunkShift) - 1)];
-        }
-        const TPeakBlock* published_chunk(qint64 chunk) const
-        {
-            return pages[size_t(chunk >> PageShift)][chunk & (PageSize - 1)].load(std::memory_order_relaxed);
-        }
-        const qint16* published_rms_chunk(qint64 chunk) const
-        {
-            return rmsPages[size_t(chunk >> PageShift)][chunk & (PageSize - 1)].load(std::memory_order_relaxed);
-        }
-    };
-
-    struct Channel
-    {
-        float min;
-        float max;
-        float sumSquares;
-        std::vector<LevelStore> levels;   // MaxLevels, so nothing ever resizes
-    };
-
-    void add_block(Channel& channel, int level, TPeakBlock block, double meanSquare, qint64 frames);
-    void close_partial_block();
-
-    uint m_rate;
-    int m_periodShift;
-    std::vector<Channel> m_channels;
-    qint64 m_frameCount{0};
-    std::atomic<qint64> m_publishedFrames{0};
-    int m_blockFill{0};   // frames in the current level-0 block
-    bool m_finished{false};
-    bool m_full{false};
 };

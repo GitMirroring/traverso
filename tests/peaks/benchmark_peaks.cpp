@@ -7,9 +7,11 @@
 
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
+#include "TPeakStream.h"
 #include "TWaveformColumns.h"
 
 #include <QElapsedTimer>
+#include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QImage>
@@ -80,8 +82,19 @@ int main(int argc, char** argv)
 {
     QGuiApplication app(argc, argv);
 
-    // Build
-    TPeakPyramidBuilder builder(Rate, Channels);
+    // Build: level 0 appended, then post-processed
+    QTemporaryDir dir;
+    const QString path = dir.filePath("bench.peaks");
+    const QString audio = dir.filePath("bench.wav");
+    {
+        QFile take(audio);
+        if (!take.open(QIODevice::WriteOnly) || take.write("audio") != 5) {
+            std::printf("cannot write %s\n", qPrintable(audio));
+            return 1;
+        }
+    }
+    TPeakStream stream(Rate, Channels, path);
+    stream.open();
     std::vector<float> chunk(size_t(65536) * Channels);
     QElapsedTimer timer;
     double generateMs = 0.0;
@@ -97,22 +110,36 @@ int main(int argc, char** argv)
         generateMs += double(timer.nsecsElapsed()) / 1e6;
         const float* pointers[Channels] = {chunk.data(), chunk.data() + 65536};
         timer.start();
-        builder.append(pointers, count);
+        stream.append(pointers, count);
         appendMs += double(timer.nsecsElapsed()) / 1e6;
     }
     timer.start();
-    builder.finish();
+    stream.finish(audio);
     appendMs += double(timer.nsecsElapsed()) / 1e6;
-    std::printf("build: 1 h 48 kHz stereo, pyramid %.0f ms (%.0fx real time), signal generation %.0f ms (not counted)\n",
+    std::printf("build: 1 h 48 kHz stereo, level 0 %.0f ms (%.0fx real time), signal generation %.0f ms (not counted)\n",
                 appendMs, 3600000.0 / appendMs, generateMs);
 
-    QTemporaryDir dir;
-    const QString path = dir.filePath("bench.peaks");
-    const TPeakFile::SourceInfo source{Rate, Channels, Frames, 1, 1};
-    const double writeMs = best_ms(1, [&] { TPeakFile::write(path, builder.levels(), source); });
+    // The waveform of a recording zoomed out over the whole hour: all of
+    // level 0 read and its columns, on every full repaint until the file has
+    // its levels
+    std::vector<qint16> records;
+    std::vector<TWaveformColumn> liveColumns(size_t(Columns) * Channels);
+    const qint64 blocks = (Frames + 63) / 64;
+    const TTimeRef wholeWidth(qint64(std::llround(double(Frames) / Columns * double(TTimeRef::UNIVERSAL_SAMPLE_RATE) / Rate)));
+    const double liveMs = best_ms(5, [&] {
+        const TPeakLevels live = stream.read(0, blocks, records);
+        TWaveformColumns::query(live, nullptr, TTimeRef(), wholeWidth, Columns, liveColumns.data());
+    });
+
+    timer.start();
+    while (stream.post_process()) {
+    }
+    const double postMs = double(timer.nsecsElapsed()) / 1e6;
+    const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(audio, Rate, Channels, Frames);
     TPeakFile file;
     const double openMs = best_ms(1, [&] { file.open(path, source); });
-    std::printf("file: write %.0f ms, %.1f MB, open + validate %.3f ms\n", writeMs, double(QFileInfo(path).size()) / 1e6, openMs);
+    std::printf("file: post-processing %.0f ms, %.1f MB, open + validate %.3f ms\n", postMs, double(QFileInfo(path).size()) / 1e6, openMs);
+    std::printf("live (level 0 only), the whole hour in %d columns: %.2f ms per repaint\n", Columns, liveMs);
 
     // Query and paint
     GeneratedSource generated;

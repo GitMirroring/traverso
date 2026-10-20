@@ -8,7 +8,6 @@
 
 #include "TPeakCache.h"
 #include "TPeakFile.h"
-#include "TPeakPyramid.h"
 #include "TPeakStream.h"
 
 #include <QCoreApplication>
@@ -55,20 +54,27 @@ static std::chrono::seconds age_of(const QString& path)
     return std::chrono::duration_cast<std::chrono::seconds>(std::filesystem::file_time_type::clock::now() - time);
 }
 
-// A small peak file of the audio file audioPath, as a build writes it
+// A small peak file of the audio file audioPath, as a build writes it.
+// modifiedShift: the audio file's time is then moved back by that many ms,
+// as if the header held a time that far off.
 static void write_peaks(const QString& peakPath, const QString& audioPath, qint64 modifiedShift = 0)
 {
-    TPeakPyramidBuilder builder(48000, 1, 2);
     std::vector<float> samples(5000);
     for (size_t n = 0; n < samples.size(); ++n) {
         samples[n] = float(n % 100) / 100.0f - 0.5f;
     }
     const float* channels[1] = {samples.data()};
-    builder.append(channels, qint64(samples.size()));
-    builder.finish();
-    TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(audioPath, 48000, 1, qint64(samples.size()));
-    source.modified += modifiedShift;
-    CHECK(TPeakFile::write(peakPath, builder.levels(), source, nullptr, 2) == TPeakFile::Status::Ok, "write %s", qPrintable(peakPath));
+    TPeakStream stream(48000, 1, peakPath);
+    CHECK(stream.open() == TPeakFile::Status::Ok, "open %s", qPrintable(peakPath));
+    stream.append(channels, qint64(samples.size()));
+    CHECK(stream.finish(audioPath) == TPeakFile::Status::Ok, "finish %s", qPrintable(peakPath));
+    while (stream.post_process()) {
+    }
+    CHECK(stream.published(), "write %s: %s", qPrintable(peakPath), qPrintable(stream.error()));
+    if (modifiedShift != 0) {
+        const std::filesystem::path audio = QFileInfo(audioPath).filesystemFilePath();
+        std::filesystem::last_write_time(audio, std::filesystem::last_write_time(audio) - std::chrono::milliseconds(modifiedShift));
+    }
 }
 
 int main()
@@ -177,7 +183,7 @@ int main()
         // published goes with it
         QString part;
         {
-            TPeakStream stream(48000, 1, TPeakCache::directory() + QStringLiteral("/streaming.peaks"), 2);
+            TPeakStream stream(48000, 1, TPeakCache::directory() + QStringLiteral("/streaming.peaks"));
             CHECK(TPeakCache::open_files().contains(QStringLiteral("streaming.peaks")), "a stream is not registered");
             CHECK(stream.open() == TPeakFile::Status::Ok, "stream: open");
             part = stream.part_path();
@@ -191,8 +197,8 @@ int main()
 
         // A writer never takes a part file that is there already (two
         // machines on one cache can have the same process id)
-        TPeakFileWriter firstWriter;
-        CHECK(firstWriter.open(TPeakCache::directory() + QStringLiteral("/shared.peaks"), 48000, 1, 2) == TPeakFile::Status::Ok, "writer");
+        TPeakStream firstWriter(48000, 1, TPeakCache::directory() + QStringLiteral("/shared.peaks"));
+        CHECK(firstWriter.open() == TPeakFile::Status::Ok, "writer");
         const QString firstPart = firstWriter.part_path();
         const qsizetype dash = firstPart.lastIndexOf(QLatin1Char('-'));
         const quint64 n = firstPart.mid(dash + 1).chopped(5).toULongLong();
@@ -201,8 +207,8 @@ int main()
             taken << firstPart.left(dash + 1) + QString::number(k) + QStringLiteral(".part");
             write_file(taken.last(), 3);
         }
-        TPeakFileWriter secondWriter;
-        CHECK(secondWriter.open(TPeakCache::directory() + QStringLiteral("/shared.peaks"), 48000, 1, 2) == TPeakFile::Status::Ok
+        TPeakStream secondWriter(48000, 1, TPeakCache::directory() + QStringLiteral("/shared.peaks"));
+        CHECK(secondWriter.open() == TPeakFile::Status::Ok
                   && !taken.contains(secondWriter.part_path()), "a writer took a part file that was there: %s",
               qPrintable(secondWriter.part_path()));
         for (const QString& path : std::as_const(taken)) {
@@ -272,7 +278,7 @@ int main()
         TPeakCache::set_limit(qint64(10240) << 20);
     }
 
-    // The format: TRAVPEAK version 2; an older TRAVPEAK version and a legacy
+    // The format: TRAVPEAK version 3; another TRAVPEAK version and a legacy
     // file (TRAVPF 1.5) are Invalid and get rebuilt
     {
         TPeakCache::set_directory(cache);
@@ -280,8 +286,8 @@ int main()
         write_peaks(peaks, takeB);
         const auto source = TPeakFile::SourceInfo::from_file(takeB, 48000, 1, 5000);
         TPeakFile file;
-        CHECK(TPeakFile::FormatVersion == 2, "format version %u", TPeakFile::FormatVersion);
-        CHECK(file.open(peaks, source) == TPeakFile::Status::Ok, "a version 2 file does not open");
+        CHECK(TPeakFile::FormatVersion == 3, "format version %u", TPeakFile::FormatVersion);
+        CHECK(file.open(peaks, source) == TPeakFile::Status::Ok, "a version 3 file does not open");
         file.close();
         QFile patch(peaks);
         CHECK(patch.open(QIODevice::ReadWrite) && patch.seek(8), "patch");
@@ -300,15 +306,16 @@ int main()
     // not more
     {
         const QString peaks = TPeakCache::path_for(takeB);
-        const auto source = TPeakFile::SourceInfo::from_file(takeB, 48000, 1, 5000);
         TPeakFile file;
         for (const qint64 shift : {qint64(1999), qint64(-1999), qint64(2000), qint64(-2000)}) {
             write_peaks(peaks, takeB, shift);
+            const auto source = TPeakFile::SourceInfo::from_file(takeB, 48000, 1, 5000);
             CHECK(file.open(peaks, source) == TPeakFile::Status::Ok, "a source time %lld ms off is refused", (long long)shift);
             file.close();
         }
         for (const qint64 shift : {qint64(2001), qint64(-2001), qint64(60000)}) {
             write_peaks(peaks, takeB, shift);
+            const auto source = TPeakFile::SourceInfo::from_file(takeB, 48000, 1, 5000);
             CHECK(file.open(peaks, source) == TPeakFile::Status::Invalid, "a source time %lld ms off is taken", (long long)shift);
         }
     }
@@ -318,7 +325,7 @@ int main()
     {
         const QString audio = dir.filePath("a/recorded.wav");
         const QString peaks = TPeakCache::path_for(audio);   // before the file exists, as a recording asks
-        TPeakStream recording(48000, 1, peaks, 2);
+        TPeakStream recording(48000, 1, peaks);
         CHECK(recording.open() == TPeakFile::Status::Ok, "recording: open");
         CHECK(QFile::exists(recording.part_path()) && recording.part_path().startsWith(
                   peaks + QStringLiteral(".%1-").arg(QCoreApplication::applicationPid())), "recording: the part file is not per process");
@@ -327,7 +334,9 @@ int main()
         recording.append(channels, qint64(samples.size()));
         write_file(audio, 1234);   // the recorded audio file, complete
         CHECK(recording.finish(audio) == TPeakFile::Status::Ok, "recording: finish");
-        CHECK(recording.publish() == TPeakFile::Status::Ok, "recording: publish");
+        while (recording.post_process()) {
+        }
+        CHECK(recording.published(), "recording: post-processing");
         TPeakFile file;
         CHECK(file.open(TPeakCache::path_for(audio), TPeakFile::SourceInfo::from_file(audio, 48000, 1, qint64(samples.size())))
                   == TPeakFile::Status::Ok, "the recorded file's waveform would build again");

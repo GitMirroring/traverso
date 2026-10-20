@@ -1230,3 +1230,8 @@ TPeakBuild TSheet::request_peak_build(const QString& audioPath, const QString& p
 {
     return m_project->get_peak_builds()->build(audioPath, peakPath, rate, channelCount, m_readDiskIO);
 }
+
+void TSheet::post_process_peaks(std::shared_ptr<TPeakStream> recorded)
+{
+    m_project->get_peak_builds()->post_process(std::move(recorded), m_readDiskIO);
+}

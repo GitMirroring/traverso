@@ -40,7 +40,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TRtTransaction.h"
 #include "TProjectManager.h"
 #include "TPeakPyramid.h"
-#include "TPeakCache.h"
 #include "TPeakStream.h"
 #include "TWaveform.h"
 #include "TProject.h"
@@ -649,7 +648,7 @@ int TAudioClip::init_recording()
     m_writer->set_process_peaks( true );
     m_writer->set_recording( true );
 
-    // Painted from the growing pyramid until the recording is finished
+    // Painted from level 0 of its peak file until the recording is finished
     delete m_waveform;
     m_waveform = new TWaveform(m_writer->get_peaks());
 
@@ -731,10 +730,10 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
 
     set_sources_active_state();
 
-    // A source that is being recorded gets no file waveform: until the
-    // recording's finish() renames it, its peak file is the recording's part
-    // file, and a build of it would cut that file short under the live
-    // view's mapping. The recording's own waveform paints meanwhile.
+    // A source that is being recorded gets no file waveform: its peak file is
+    // the recording's part file until post-processing renames it, and a
+    // build of it would be a second writer of the same peak file. The
+    // recording's own waveform paints meanwhile.
     if (m_recordingStatus == NO_RECORDING) {
         delete m_waveform;
         m_waveform = nullptr;
@@ -767,18 +766,12 @@ void TAudioClip::finish_write_source()
     Q_ASSERT(m_readSource);
     Q_ASSERT(this->thread() == QThread::currentThread());
 
-    // The writer completed the recording's peak file on DiskIO; it gets its
-    // name here, on the thread whose recording waveform has it mapped
-    // (TPeakStream::publish()), before the file waveform opens it
+    // The writer completed level 0 of the recording's peak file on DiskIO;
+    // the levels above it follow in the read DiskIO's idle time. Asked for
+    // before the file waveform below asks for its peak file: that one joins
+    // the job and shows level 0 meanwhile.
     if (const std::shared_ptr<TPeakStream> peaks = m_writer->get_peaks(); peaks && !peaks->write_failed()) {
-        QString error;
-        if (peaks->publish(&error) != TPeakFile::Status::Ok) {
-            TLOG_W("peaks", "publishing {} failed: {}", peaks->peak_path().toStdString(), error.toStdString());
-        } else {
-            // A new file in the cache: used now, and the cache within its limit
-            TPeakCache::touch(peaks->peak_path());
-            TPeakCache::evict_later();
-        }
+        m_sheet->post_process_peaks(peaks);
     }
 
     if (m_readSource->set_file(m_writer->get_filename()) < 0) {

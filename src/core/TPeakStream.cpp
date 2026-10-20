@@ -7,259 +7,392 @@
 
 #include "TLog.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
-TPeakStream::TPeakStream(uint rate, int channelCount, QString peakPath, int periodShift)
-    : m_builder(rate, channelCount, periodShift)
-    , m_peakPath(std::move(peakPath))
+// Level-0 blocks per post-processing step: a fraction of a millisecond of
+// work, and a read of 96 KB of a stereo file (mostly from the page cache)
+static constexpr qint64 PostProcessBlocks = qint64(1) << 14;
+// Records of a level collected before they are written
+static constexpr qint64 FlushRecords = qint64(1) << 14;
+
+// Post-processing: every level above level 0, made from level 0 in one pass
+struct TPeakStream::PostProcess
 {
-    // In use as long as it lives (also its file after finish(), which its
-    // mapping may hold): the cache's eviction leaves it alone. (A peak file
-    // younger than an hour stays anyway.)
+    struct Level
+    {
+        qint64 count{0};
+        qint64 offset{0};               // where its records start in the file
+        // A block waiting for its pair: min/max codes, mean squares, frames
+        std::vector<qint16> pending;
+        std::vector<double> pendingSquares;
+        qint64 pendingFrames{0};
+        bool hasPending{false};
+        std::vector<qint16> out;        // records not written yet
+        qint64 written{0};
+    };
+    std::vector<Level> levels;
+    qint64 next{0};                     // the next level-0 block to read
+    std::vector<qint16> input;
+    std::vector<double> squares;
+};
+
+TPeakStream::TPeakStream(uint rate, int channelCount, QString peakPath)
+    : m_rate(rate)
+    , m_channelCount(channelCount)
+    , m_peakPath(std::move(peakPath))
+    , m_min(size_t(channelCount), std::numeric_limits<float>::max())
+    , m_max(size_t(channelCount), std::numeric_limits<float>::lowest())
+    , m_sumSquares(size_t(channelCount), 0.0f)
+{
+    Q_ASSERT(rate > 0 && channelCount > 0);
+    // In use as long as it lives: the cache's eviction leaves it alone. (A
+    // peak file younger than an hour stays anyway.)
     TPeakCache::opened(m_peakPath);
-    // The record layout is fixed by the period shift and the channel count
-    m_dataStart = TPeakFileWriter::records_end(periodShift, channelCount, 0);
-    m_recordBytes = TPeakFileWriter::records_end(periodShift, channelCount, 1) - m_dataStart;
-    for (int level = 0; level <= periodShift; ++level) {
-        m_levelOffsets.push_back(TPeakFileWriter::record_offset(periodShift, channelCount, 0, level, 0) - m_dataStart);
-        m_rmsOffsets.push_back(TPeakFileWriter::record_rms_offset(periodShift, channelCount, 0, level, 0) - m_dataStart);
-    }
 }
 
 TPeakStream::~TPeakStream()
 {
-    if (m_map) {
-        m_mapFile->unmap(m_map);
-    }
     // A part file that never got its name (a build whose project went
-    // first, a stream nobody published) is of no use to anyone
-    if (!m_published && !m_writer.part_path().isEmpty()) {
-        QFile::remove(m_writer.part_path());
+    // first, a recording that was not post-processed) is of no use to anyone
+    m_file.close();
+    if (!published() && !m_partPath.isEmpty()) {
+        QFile::remove(m_partPath);
     }
     TPeakCache::closed(m_peakPath);
+}
+
+bool TPeakStream::fail(const QString& error)
+{
+    m_failed = true;
+    m_error = error;
+    m_file.close();
+    return false;
+}
+
+void TPeakStream::abandon()
+{
+    m_file.close();
+    m_post.reset();
+    if (!published() && !m_partPath.isEmpty()) {
+        QFile::remove(m_partPath);
+    }
+    m_failed = true;
 }
 
 TPeakFile::Status TPeakStream::open(QString* error)
 {
     if (!QDir().mkpath(QFileInfo(m_peakPath).absolutePath())) {
-        if (error) {
-            *error = QStringLiteral("cannot create the peak file directory");
+        fail(QStringLiteral("cannot create the peak file directory"));
+    } else {
+        // Per process and per writer, and never one that is there already:
+        // two writers of the same peak file (two Traverso instances, or an
+        // old and a new build of a project that was opened again) never
+        // write into each other's part file, and on a cache shared by two
+        // machines a process id can come twice
+        static std::atomic<quint64> writers{0};
+        bool opened = false;
+        for (int attempt = 0; attempt < 100 && !opened; ++attempt) {
+            m_partPath = m_peakPath + QStringLiteral(".%1-%2.part").arg(QCoreApplication::applicationPid()).arg(writers.fetch_add(1) + 1);
+            m_file.setFileName(m_partPath);
+            opened = m_file.open(QIODevice::WriteOnly | QIODevice::NewOnly);
+            if (!opened && !QFile::exists(m_partPath)) {
+                break;   // not because it exists: no other name helps
+            }
         }
-        m_writeFailed = true;
-        return TPeakFile::Status::Error;
+        // The header comes last: zeros until then, so an unfinished file is Invalid
+        const QByteArray zeros(int(TPeakFile::HeaderBytes), '\0');
+        if (!opened) {
+            m_partPath.clear();
+            fail(m_file.errorString());
+        } else if (m_file.write(zeros) != zeros.size()) {
+            fail(m_file.errorString());
+        }
     }
-    const TPeakFile::Status status = m_writer.open(m_peakPath, m_builder.rate(), m_builder.channel_count(),
-                                                   m_builder.period_shift(), error);
-    m_writeFailed = status != TPeakFile::Status::Ok;
-    return status;
+    if (m_failed && error) {
+        *error = m_error;
+    }
+    return m_failed ? TPeakFile::Status::Error : TPeakFile::Status::Ok;
 }
 
 void TPeakStream::append(const float* const* channels, qint64 frames)
 {
-    // One thread appends at a time: a build moves between pool threads from
-    // round to round (the round's hand-over orders them), never two at once
-    [[maybe_unused]] const bool busy = m_appending.exchange(true, std::memory_order_acquire);
-    Q_ASSERT_X(!busy, "TPeakStream::append", "two threads append at once");
-    struct Appending
-    {
-        std::atomic<bool>& flag;
-        ~Appending() { flag.store(false, std::memory_order_release); }
-    } appending{m_appending};
-
-    m_builder.append(channels, frames);
-    if (m_writeFailed) {
+    if (m_failed) {
         return;
     }
 
-    const qint64 periods = m_builder.complete_periods();
-    if (periods > m_writer.written_periods()) {
-        QString error;
-        if (m_writer.write_periods(m_builder.levels(), periods, &error) != TPeakFile::Status::Ok) {
-            // Keep everything in memory from here on; no peak file. Periods
-            // already released live on in the reader's mapping of the part
-            // file, which close() removes: on POSIX the mapping keeps the
-            // data, on Windows the removal fails and leaves the part file.
-            TLOG_W("peaks", "writing {} failed: {}", m_peakPath.toStdString(), error.toStdString());
-            m_writeFailed = true;
-            m_writer.close();
-            return;
+    qint64 position = 0;
+    while (position < frames) {
+        const int count = int(std::min<qint64>(frames - position, TPeakLevels::BlockFrames - m_blockFill));
+        for (int c = 0; c < m_channelCount; ++c) {
+            const float* samples = channels[c] + position;
+            float low = m_min[size_t(c)];
+            float high = m_max[size_t(c)];
+            float squares = m_sumSquares[size_t(c)];
+            for (int i = 0; i < count; ++i) {
+                low = std::min(low, samples[i]);
+                high = std::max(high, samples[i]);
+                squares += samples[i] * samples[i];
+            }
+            m_min[size_t(c)] = low;
+            m_max[size_t(c)] = high;
+            m_sumSquares[size_t(c)] = squares;
         }
-        m_writtenPeriods.store(periods, std::memory_order_seq_cst);
+        position += count;
+        m_blockFill += count;
+        if (m_blockFill == TPeakLevels::BlockFrames) {
+            close_block();
+        }
     }
+    m_frames += frames;
 
-    // Free the written periods while nobody reads (see the class comment);
-    // with a read going on the next append tries again
-    if (m_readers.load(std::memory_order_seq_cst) == 0) {
-        m_builder.release_periods(m_writer.written_periods());
+    if (!write_records()) {
+        TLOG_W("peaks", "writing {} failed, no peak file: {}", m_peakPath.toStdString(), m_error.toStdString());
     }
+}
+
+void TPeakStream::close_block()
+{
+    if (m_blockFill == 0) {
+        return;
+    }
+    // Min and max of every channel, then the RMS of every channel; a partial
+    // last block weighs its own frames
+    for (int c = 0; c < m_channelCount; ++c) {
+        m_records.push_back(TPeakLevels::code_at_or_below(m_min[size_t(c)]));
+        m_records.push_back(TPeakLevels::code_at_or_above(m_max[size_t(c)]));
+    }
+    for (int c = 0; c < m_channelCount; ++c) {
+        double meanSquare = double(m_sumSquares[size_t(c)]) / double(m_blockFill);
+        if (!std::isfinite(meanSquare)) {
+            // A NaN, an inf or a square too large for a float among the
+            // samples: this block gets its peak (min and max leave NaN out),
+            // clamped to the code range, so the blocks above, made from it,
+            // stay finite. One broken sample (a plugin, a float file) does not
+            // take the RMS of the whole source along.
+            const float low = m_min[size_t(c)];
+            const float high = m_max[size_t(c)];
+            const float peak = low <= high ? std::max(std::fabs(low), std::fabs(high)) : 0.0f;
+            const double bounded = std::min(peak, TPeakLevels::max_value());
+            meanSquare = bounded * bounded;
+        }
+        m_records.push_back(TPeakLevels::code_nearest(float(std::sqrt(meanSquare))));
+        m_min[size_t(c)] = std::numeric_limits<float>::max();
+        m_max[size_t(c)] = std::numeric_limits<float>::lowest();
+        m_sumSquares[size_t(c)] = 0.0f;
+    }
+    m_blockFill = 0;
+}
+
+bool TPeakStream::write_records()
+{
+    if (m_records.empty()) {
+        return true;
+    }
+    // Out of QFile's buffer too: a reader reads the file
+    const qint64 bytes = qint64(m_records.size() * sizeof(qint16));
+    if (m_file.write(reinterpret_cast<const char*>(m_records.data()), bytes) != bytes || !m_file.flush()) {
+        return fail(m_file.errorString());
+    }
+    m_records.clear();
+    m_writtenFrames.store(m_frames - m_blockFill, std::memory_order_release);
+    return true;
 }
 
 TPeakFile::Status TPeakStream::finish(const QString& audioPath, QString* error)
 {
-    m_builder.finish();
-    if (m_writeFailed) {
+    if (!m_failed) {
+        close_block();
+        if (write_records() && m_frames == 0) {
+            fail(QStringLiteral("no audio"));
+        }
+    }
+    if (m_failed) {
+        // No peak file: the waveform builds it from the audio
+        abandon();
         if (error) {
-            *error = QStringLiteral("the peak file could not be written");
+            *error = m_error;
         }
         return TPeakFile::Status::Error;
     }
-    const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(
-        audioPath, m_builder.rate(), m_builder.channel_count(), m_builder.frame_count());
-    const TPeakFile::Status status = m_writer.finish(m_builder.levels(), source, error);
-    m_writeFailed = status != TPeakFile::Status::Ok;
-    if (!m_writeFailed) {
-        m_writtenPeriods.store(m_writer.written_periods(), std::memory_order_seq_cst);
+    m_file.close();
+    m_source = TPeakFile::SourceInfo::from_file(audioPath, m_rate, m_channelCount, m_frames);
+    return TPeakFile::Status::Ok;
+}
+
+bool TPeakStream::post_process()
+{
+    if (m_failed || published()) {
+        return false;
     }
-    return status;
-}
+    auto failed = [this](const QString& error) {
+        fail(error);
+        abandon();
+        return false;
+    };
+    const int codes = TPeakLevels::record_codes(m_channelCount);
+    const qint64 recordBytes = TPeakFile::record_bytes(m_channelCount);
 
-void TPeakStream::abandon()
-{
-    m_writer.close();
-    m_writeFailed = true;
-}
-
-void TPeakStream::release_mapping()
-{
-    if (m_map) {
-        m_mapFile->unmap(m_map);
-        m_map = nullptr;
-    }
-    m_mapFile.reset();
-    m_mappedPeriods = 0;
-}
-
-TPeakFile::Status TPeakStream::publish(QString* error)
-{
-    // Windows renames no file that is mapped, and this thread maps it
-    release_mapping();
-    if (m_writeFailed) {
-        if (error) {
-            *error = QStringLiteral("the peak file could not be written");
+    if (!m_post) {
+        m_file.setFileName(m_partPath);
+        if (!m_file.open(QIODevice::ReadWrite)) {
+            return failed(m_file.errorString());
         }
-        return TPeakFile::Status::Error;
-    }
-    const TPeakFile::Status status = TPeakFileWriter::publish(m_writer.part_path(), m_peakPath, error);
-    m_published = status == TPeakFile::Status::Ok;
-    return status;
-}
-
-void TPeakStream::remap(qint64 periods)
-{
-    // The part file grows; after finish() it has its final name. The new
-    // mapping comes first: when it fails, the old one stays.
-    auto file = std::make_unique<QFile>(m_writer.part_path());
-    if (!file->exists()) {
-        // Under its name only once published: before that a file there is
-        // not this stream's (an older one, while a build that failed removed
-        // its part file); the snapshot ends where the mapping ends then
-        if (!m_published) {
-            return;
+        m_post = std::make_unique<PostProcess>();
+        m_post->squares.resize(size_t(m_channelCount));
+        qint64 offset = TPeakFile::HeaderBytes;
+        for (const qint64 count : TPeakFile::block_counts(m_frames)) {
+            PostProcess::Level level;
+            level.count = count;
+            level.offset = offset;
+            level.pending.resize(size_t(2 * m_channelCount));
+            level.pendingSquares.resize(size_t(m_channelCount));
+            m_post->levels.push_back(std::move(level));
+            offset += count * recordBytes;
         }
-        file->setFileName(m_peakPath);
     }
-    const qint64 size = m_dataStart + periods * m_recordBytes;
-    if (!file->open(QIODevice::ReadOnly) || file->size() < size) {
-        return;
-    }
-    uchar* map = file->map(0, size);
-    // A mapping does not need the descriptor
-    file->close();
-    if (!map) {
-        return;
-    }
-    if (m_map) {
-        m_mapFile->unmap(m_map);
-    }
-    m_mapFile = std::move(file);
-    m_map = map;
-    m_mappedPeriods = periods;
-}
+    PostProcess& post = *m_post;
 
-const TPeakBlock* TPeakStream::mapped_blocks(qint64 period, int level, int channel) const
-{
-    const qint64 periodBlocks = qint64(1) << (m_builder.period_shift() - level);
-    return reinterpret_cast<const TPeakBlock*>(m_map + m_dataStart + period * m_recordBytes + m_levelOffsets[size_t(level)]
-                                               + channel * periodBlocks * qint64(sizeof(TPeakBlock)));
-}
-
-const qint16* TPeakStream::mapped_rms(qint64 period, int level, int channel) const
-{
-    const qint64 periodBlocks = qint64(1) << (m_builder.period_shift() - level);
-    return reinterpret_cast<const qint16*>(m_map + m_dataStart + period * m_recordBytes + m_rmsOffsets[size_t(level)]
-                                           + channel * periodBlocks * qint64(sizeof(qint16)));
-}
-
-TPeakLevels TPeakStream::snapshot()
-{
-    const qint64 written = m_writtenPeriods.load(std::memory_order_seq_cst);
-    if (written > m_mappedPeriods) {
-        remap(written);
-    }
-
-    const TPeakLevels memory = m_builder.levels();
-    const int shift = m_builder.period_shift();
-    const int channels = memory.channel_count();
-
-    // Written periods may only be read from the mapping. When it does not
-    // reach them all yet (a failed remap), the snapshot ends where it does.
-    const bool capped = m_mappedPeriods < written;
-    const qint64 cappedBlocks = m_mappedPeriods << shift;   // level 0
-
-    std::vector<TPeakLevels::Level> levels;
-    for (int level = 0; level < memory.level_count(); ++level) {
-        qint64 blockCount = memory.block_count(level);
-        if (capped) {
-            blockCount = std::min(blockCount, cappedBlocks >> level);
+    const qint64 blocks = post.levels.front().count;
+    if (post.next < blocks) {
+        const qint64 count = std::min(PostProcessBlocks, blocks - post.next);
+        post.input.resize(size_t(count * codes));
+        const qint64 bytes = count * recordBytes;
+        if (!m_file.seek(TPeakFile::HeaderBytes + post.next * recordBytes)
+                || m_file.read(reinterpret_cast<char*>(post.input.data()), bytes) != bytes) {
+            return failed(QStringLiteral("cannot read level 0: %1").arg(m_file.errorString()));
         }
-        if (blockCount == 0) {
-            break;
-        }
-
-        TPeakLevels::Level out;
-        out.blockCount = blockCount;
-        if (level > shift) {
-            // Not in records: memory only, in the builder's chunks (of
-            // MinChunkShift blocks above the period shift), never freed
-            out.chunkShift = TPeakPyramidBuilder::MinChunkShift;
-            for (int channel = 0; channel < channels; ++channel) {
-                std::vector<const TPeakBlock*> pointers;
-                std::vector<const qint16*> rms;
-                for (qint64 index = 0; index < blockCount;) {
-                    qint64 count = 0;
-                    pointers.push_back(memory.blocks(level, channel, index, count));
-                    rms.push_back(memory.rms_blocks(level, channel, index, count));
-                    index += count;
-                }
-                out.add_channel(pointers, rms);
+        for (qint64 i = 0; i < count; ++i) {
+            // The RMS codes decoded: the levels above add their squares
+            const qint16* record = post.input.data() + i * codes;
+            for (int c = 0; c < m_channelCount; ++c) {
+                const double rms = TPeakLevels::magnitude_value(std::max(int(record[2 * m_channelCount + c]), 0));
+                post.squares[size_t(c)] = rms * rms;
             }
-        } else {
-            // One chunk per period: the written ones from the mapping
-            out.chunkShift = shift - level;
-            const qint64 periodBlocks = qint64(1) << out.chunkShift;
-            const qint64 chunks = (blockCount + periodBlocks - 1) / periodBlocks;
-            for (int channel = 0; channel < channels; ++channel) {
-                std::vector<const TPeakBlock*> pointers(static_cast<size_t>(chunks));
-                std::vector<const qint16*> rms(static_cast<size_t>(chunks));
-                for (qint64 period = 0; period < chunks; ++period) {
-                    if (period < written) {
-                        pointers[size_t(period)] = mapped_blocks(period, level, channel);
-                        rms[size_t(period)] = mapped_rms(period, level, channel);
-                    } else {
-                        qint64 count = 0;
-                        pointers[size_t(period)] = memory.blocks(level, channel, period * periodBlocks, count);
-                        rms[size_t(period)] = memory.rms_blocks(level, channel, period * periodBlocks, count);
-                    }
-                }
-                out.add_channel(pointers, rms);
+            const qint64 first = (post.next + i) << TPeakLevels::BlockFramesShift;
+            if (!add_block(0, record, post.squares.data(), std::min<qint64>(TPeakLevels::BlockFrames, m_frames - first))) {
+                return failed(m_error);
             }
         }
-        levels.push_back(std::move(out));
+        post.next += count;
+        return true;
     }
 
-    const qint64 frames = capped ? std::min(memory.frame_count(), cappedBlocks * TPeakLevels::BlockFrames) : memory.frame_count();
-    return TPeakLevels(memory.rate(), channels, frames, std::move(levels));
+    // A level with an odd number of blocks has a last block without a pair:
+    // it covers the end of the source alone, so it moves up as it is
+    for (int level = 0; level + 1 < int(post.levels.size()); ++level) {
+        PostProcess::Level& l = post.levels[size_t(level)];
+        if (l.hasPending) {
+            l.hasPending = false;
+            if (!add_block(level + 1, l.pending.data(), l.pendingSquares.data(), l.pendingFrames)) {
+                return failed(m_error);
+            }
+        }
+    }
+    for (int level = 1; level < int(post.levels.size()); ++level) {
+        if (!write_level(level)) {
+            return failed(m_error);
+        }
+        Q_ASSERT(post.levels[size_t(level)].written == post.levels[size_t(level)].count);
+    }
+
+    // The header last: the file is complete now
+    const QByteArray header = TPeakFile::header(m_source);
+    if (!m_file.seek(0) || m_file.write(header) != header.size() || !m_file.flush()) {
+        return failed(m_file.errorString());
+    }
+    m_file.close();
+    m_post.reset();
+
+    QString error;
+    if (TPeakFile::publish(m_partPath, m_peakPath, &error) != TPeakFile::Status::Ok) {
+        return failed(QStringLiteral("cannot rename the part file: %1").arg(error));
+    }
+    m_published.store(true, std::memory_order_release);
+    return false;
+}
+
+bool TPeakStream::add_block(int level, const qint16* minMax, const double* meanSquares, qint64 frames)
+{
+    PostProcess::Level& l = m_post->levels[size_t(level)];
+    if (level > 0) {
+        // Every stored RMS is rounded once, from the mean squares of the
+        // decoded level-0 codes
+        l.out.insert(l.out.end(), minMax, minMax + 2 * m_channelCount);
+        for (int c = 0; c < m_channelCount; ++c) {
+            l.out.push_back(TPeakLevels::code_nearest(float(std::sqrt(meanSquares[c]))));
+        }
+        if (qint64(l.out.size()) >= FlushRecords * TPeakLevels::record_codes(m_channelCount) && !write_level(level)) {
+            return false;
+        }
+    }
+    if (level + 1 == int(m_post->levels.size())) {
+        return true;
+    }
+    if (!l.hasPending) {
+        std::copy_n(minMax, 2 * m_channelCount, l.pending.begin());
+        std::copy_n(meanSquares, m_channelCount, l.pendingSquares.begin());
+        l.pendingFrames = frames;
+        l.hasPending = true;
+        return true;
+    }
+
+    // The pair makes the block above it
+    l.hasPending = false;
+    const qint64 pairFrames = l.pendingFrames + frames;
+    for (int c = 0; c < m_channelCount; ++c) {
+        l.pending[size_t(2 * c)] = std::min(l.pending[size_t(2 * c)], minMax[2 * c]);
+        l.pending[size_t(2 * c + 1)] = std::max(l.pending[size_t(2 * c + 1)], minMax[2 * c + 1]);
+        l.pendingSquares[size_t(c)] = (l.pendingSquares[size_t(c)] * double(l.pendingFrames) + meanSquares[c] * double(frames))
+                                      / double(pairFrames);
+    }
+    return add_block(level + 1, l.pending.data(), l.pendingSquares.data(), pairFrames);
+}
+
+bool TPeakStream::write_level(int level)
+{
+    PostProcess::Level& l = m_post->levels[size_t(level)];
+    if (l.out.empty()) {
+        return true;
+    }
+    const qint64 bytes = qint64(l.out.size() * sizeof(qint16));
+    if (!m_file.seek(l.offset + l.written * TPeakFile::record_bytes(m_channelCount))
+            || m_file.write(reinterpret_cast<const char*>(l.out.data()), bytes) != bytes) {
+        return fail(m_file.errorString());
+    }
+    l.written += qint64(l.out.size()) / TPeakLevels::record_codes(m_channelCount);
+    l.out.clear();
+    return true;
+}
+
+TPeakLevels TPeakStream::read(qint64 first, qint64 last, std::vector<qint16>& records) const
+{
+    const qint64 frames = written_frames();
+    const qint64 blocks = (frames + TPeakLevels::BlockFrames - 1) >> TPeakLevels::BlockFramesShift;
+    first = std::clamp<qint64>(first, 0, blocks);
+    last = std::clamp(last, first, blocks);
+    const qint64 recordBytes = TPeakFile::record_bytes(m_channelCount);
+    records.resize(size_t((last - first) * TPeakLevels::record_codes(m_channelCount)));
+
+    if (last > first) {
+        // Opened per read, so no handle stays open that keeps Windows from
+        // renaming the file. Once renamed, from its name: level 0 is in the
+        // same place.
+        QFile file(m_partPath);
+        bool opened = file.open(QIODevice::ReadOnly);
+        if (!opened && published()) {
+            file.setFileName(m_peakPath);
+            opened = file.open(QIODevice::ReadOnly);
+        }
+        const qint64 bytes = (last - first) * recordBytes;
+        const qint64 read = opened && file.seek(TPeakFile::HeaderBytes + first * recordBytes)
+            ? file.read(reinterpret_cast<char*>(records.data()), bytes) : 0;
+        last = first + std::max<qint64>(read, 0) / recordBytes;
+    }
+    return TPeakLevels(m_rate, m_channelCount, frames, {TPeakLevels::Level{records.data(), first, last}});
 }

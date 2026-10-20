@@ -9,89 +9,91 @@
 
 #include <QPromise>
 
-// A build in DiskIO's idle time, one read per round. When it is over (or
-// DiskIO goes first) DiskIO hands it back (retire()), and the rest happens on
-// the GUI thread, where the service lives and which reads the stream: the
-// file gets its name there (TPeakStream::publish() lets go of the GUI's
-// mapping first, Windows renames no mapped file), then the future
-// finishes, so a waveform that opens the file finds it. Posted to the
-// service: when the project goes first, the call goes with it (the promise
-// then cancels its future).
+// A build (or a recording's post-processing) in DiskIO's idle time, one
+// step per round. The last step puts the file under its name. When the task
+// is over (or DiskIO goes first) DiskIO hands it back (retire()), on its own
+// thread or on the one that deletes it: the future finishes then, and a
+// waveform that opens the file finds it.
 class TPeakBuildJob final : public TDiskIOTask
 {
 public:
-    struct State
-    {
-        std::unique_ptr<TPeakBuildTask> task;
-        QPromise<TPeakBuildResult> promise;
-    };
-
-    TPeakBuildJob(std::shared_ptr<State> state, QObject* service) : m_state(std::move(state)), m_service(service) {}
+    TPeakBuildJob(std::unique_ptr<TPeakBuildTask> task, QPromise<TPeakBuildResult> promise)
+        : m_task(std::move(task)), m_promise(std::move(promise)) {}
 
     void retire() override
     {
-        QMetaObject::invokeMethod(m_service, [state = m_state] {
-            TPeakBuildTask& task = *state->task;
-            if (task.state() == TPeakBuildTask::State::Waiting || task.state() == TPeakBuildTask::State::Running) {
-                // DiskIO went before the build ended (its sheet was deleted):
-                // cancelled, the waveform asks again
-                task.cancel();
-                state->promise.future().cancel();
-                state->promise.finish();
-                return;
-            }
-            if (state->promise.isCanceled()) {
-                task.cancel();
-            }
-            if (task.publish() == TPeakBuildTask::State::Done) {
-                // A new file in the cache: used now, and the cache within its limit
-                TPeakCache::touch(task.peak_path());
-                TPeakCache::evict_later();
-            }
-            state->promise.addResult(TPeakBuildResult{task.state() == TPeakBuildTask::State::Done, task.error()});
-            state->promise.finish();
-        }, Qt::QueuedConnection);
+        const TPeakBuildTask::State state = m_task->state();
+        if (state == TPeakBuildTask::State::Waiting || state == TPeakBuildTask::State::Running) {
+            // DiskIO went before the build ended (its sheet was deleted):
+            // cancelled, the waveform asks again
+            m_task->cancel();
+            m_promise.future().cancel();
+            m_promise.finish();
+            return;
+        }
+        if (state == TPeakBuildTask::State::Done) {
+            // A new file in the cache: used now, and the cache within its limit
+            TPeakCache::touch(m_task->peak_path());
+            TPeakCache::evict_later();
+        }
+        m_promise.addResult(TPeakBuildResult{state == TPeakBuildTask::State::Done, m_task->error()});
+        m_promise.finish();
     }
 
     bool step() override
     {
-        if (m_state->promise.isCanceled()) {
-            m_state->task->cancel();
+        if (m_promise.isCanceled()) {
+            m_task->cancel();
         }
-        m_state->task->step();
-        m_state->promise.setProgressValue(m_state->task->progress());
-        const TPeakBuildTask::State state = m_state->task->state();
-        return state == TPeakBuildTask::State::Waiting || state == TPeakBuildTask::State::Running;
+        const bool more = m_task->step();
+        m_promise.setProgressValue(m_task->progress());
+        return more;
     }
 
 private:
-    std::shared_ptr<State> m_state;
-    QObject* m_service;
+    std::unique_ptr<TPeakBuildTask> m_task;
+    QPromise<TPeakBuildResult> m_promise;
 };
+
+TPeakBuild TPeakBuildService::add_job(std::unique_ptr<TPeakBuildTask> task, TDiskIOThread* diskio)
+{
+    Q_ASSERT(diskio);
+    const std::shared_ptr<TPeakStream> stream = task->stream();
+    QPromise<TPeakBuildResult> promise;
+    // Started at once: older Qt versions finish the future of a destroyed
+    // promise only when it was started (DiskIO can go before the first step)
+    promise.start();
+    promise.setProgressRange(0, 100);
+    QFuture<TPeakBuildResult> job = promise.future();
+    diskio->add_idle_task(std::make_unique<TPeakBuildJob>(std::move(task), std::move(promise)));
+    m_jobs.insert(stream->peak_path(), Job{job, stream});
+    return TPeakBuild{job, stream};
+}
+
+void TPeakBuildService::forget_finished()
+{
+    // The hash stays small that way
+    for (auto it = m_jobs.begin(); it != m_jobs.end();) {
+        it = it->future.isFinished() ? m_jobs.erase(it) : std::next(it);
+    }
+}
 
 TPeakBuild TPeakBuildService::build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
                                     TDiskIOThread* diskio)
 {
-    // Forget the jobs that are over, the hash stays small that way
-    for (auto it = m_jobs.begin(); it != m_jobs.end();) {
-        it = it->future.isFinished() ? m_jobs.erase(it) : std::next(it);
-    }
+    forget_finished();
     const auto running = m_jobs.constFind(peakPath);
     if (running != m_jobs.constEnd()) {
         return TPeakBuild{running->future, running->stream.lock()};
     }
-    Q_ASSERT(diskio);
     auto stream = std::make_shared<TPeakStream>(rate, channelCount, peakPath);
-    auto state = std::make_shared<TPeakBuildJob::State>();
-    state->task = std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream);
-    // Started at once: older Qt versions finish the future of a destroyed
-    // promise only when it was started (DiskIO can go before the first step)
-    state->promise.start();
-    state->promise.setProgressRange(0, 100);
-    QFuture<TPeakBuildResult> job = state->promise.future();
-    diskio->add_idle_task(std::make_unique<TPeakBuildJob>(std::move(state), this));
-    m_jobs.insert(peakPath, Job{job, stream});
-    return TPeakBuild{job, stream};
+    return add_job(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream), diskio);
+}
+
+void TPeakBuildService::post_process(std::shared_ptr<TPeakStream> recorded, TDiskIOThread* diskio)
+{
+    forget_finished();
+    add_job(std::make_unique<TPeakBuildTask>(std::move(recorded)), diskio);
 }
 
 void TPeakBuildService::cancel_all()

@@ -15,6 +15,7 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 class TBufferedAudioStream;
 class TBufferedAudioStreamReader;
@@ -49,8 +50,8 @@ public:
     // How the peak file gets built: starts or joins the job
     using RequestBuild = std::function<TPeakBuild(const QString& audioPath, const QString& peakPath, uint rate, int channelCount)>;
     TWaveform(TBufferedAudioStreamReader* source, RequestBuild build);
-    // A recording in progress: painted from its peaks as they are recorded
-    // (the written part from the peak file), no samples
+    // A recording in progress: painted from level 0 of its peak file as it
+    // is written, no samples
     explicit TWaveform(std::shared_ptr<TPeakStream> live);
     // Where the peak file of an audio source lives
     static QString peak_path(const TBufferedAudioStream* source);
@@ -95,6 +96,10 @@ signals:
 
 private:
     TPeakFile::SourceInfo source_info() const;
+    // From a recording's or a build's level 0
+    TWaveformColumns::Source stream_columns(const TPeakStream& stream, TWaveformSampleSource* samples,
+                                            const TTimeRef& start, const TTimeRef& columnWidth, int count,
+                                            TWaveformColumn* out);
     void open_or_build();
     void build_finished();
     void start_build(const char* reason);
@@ -111,6 +116,7 @@ private:
     std::shared_ptr<TPeakStream> m_live;
     // The peaks of the running build, until its file opens
     std::shared_ptr<TPeakStream> m_building;
+    std::vector<qint16> m_streamRecords;
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;

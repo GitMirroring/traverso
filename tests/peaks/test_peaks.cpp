@@ -1,17 +1,20 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of the peak pyramid, the peak file and the waveform columns.
+// Headless test of the peak pyramid, the peak file, its stream and the
+// waveform columns.
 // Everything is compared with brute force over the samples, computed in a
 // different way than the code under test (per sample instead of per column,
 // 128-bit integer time math instead of TTimeRef).
 
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
+#include "TPeakStream.h"
 #include "TWaveformColumns.h"
 
 #include <QElapsedTimer>
 #include <QFile>
+#include <QFileInfo>
 #include <QTemporaryDir>
 
 #include <algorithm>
@@ -93,25 +96,64 @@ static Signal make_signal(uint rate, int channelCount, qint64 frames)
     return signal;
 }
 
-static std::unique_ptr<TPeakPyramidBuilder> build(const Signal& signal, bool randomChunks, bool finish = true,
-                                                  int periodShift = TPeakPyramidBuilder::DefaultPeriodShift)
+static QTemporaryDir* s_dir = nullptr;
+static int s_files = 0;
+
+// An audio file for a peak file to belong to (its size and time)
+static QString make_audio_file()
 {
-    auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()), periodShift);
-    qint64 position = 0;
-    while (position < signal.frames()) {
-        const qint64 chunk = randomChunks ? random_between(1, 3000) : signal.frames();
-        const qint64 count = std::min(chunk, signal.frames() - position);
+    const QString path = s_dir->filePath(QStringLiteral("%1.wav").arg(++s_files));
+    QFile file(path);
+    CHECK(file.open(QIODevice::WriteOnly) && file.write("audio") == 5, "write %s", qPrintable(path));
+    return path;
+}
+
+// Appends signal to stream, in random chunks or in one go
+static void append(TPeakStream& stream, const Signal& signal, bool randomChunks, qint64 from = 0, qint64 to = -1)
+{
+    qint64 position = from;
+    const qint64 end = to < 0 ? signal.frames() : to;
+    while (position < end) {
+        const qint64 count = std::min(randomChunks ? random_between(1, 3000) : end, end - position);
         std::vector<const float*> pointers;
         for (const auto& channel : signal.channels) {
             pointers.push_back(channel.data() + position);
         }
-        builder->append(pointers.data(), count);
+        stream.append(pointers.data(), count);
         position += count;
     }
-    if (finish) {
-        builder->finish();
+}
+
+// The pyramid of signal, made the way every peak file is made: level 0
+// appended to a TPeakStream, post-processed, then opened. No levels for a
+// signal without frames (there is no file then).
+struct Built
+{
+    QString path;
+    QString audioPath;
+    TPeakFile::SourceInfo source;
+    TPeakFile file;
+    const TPeakLevels& levels() const { return file.levels(); }
+};
+
+static std::unique_ptr<Built> build(const Signal& signal, bool randomChunks)
+{
+    auto built = std::make_unique<Built>();
+    built->audioPath = make_audio_file();
+    built->path = s_dir->filePath(QStringLiteral("%1.peaks").arg(++s_files));
+    TPeakStream stream(signal.rate, int(signal.channels.size()), built->path);
+    CHECK(stream.open() == TPeakFile::Status::Ok, "open the stream");
+    append(stream, signal, randomChunks);
+    if (stream.finish(built->audioPath) != TPeakFile::Status::Ok) {
+        CHECK(signal.frames() == 0, "finish: %s", qPrintable(stream.error()));
+        return built;
     }
-    return builder;
+    while (stream.post_process()) {
+    }
+    CHECK(stream.published(), "post-processing: %s", qPrintable(stream.error()));
+    built->source = TPeakFile::SourceInfo::from_file(built->audioPath, signal.rate, int(signal.channels.size()), signal.frames());
+    CHECK(built->file.open(built->path, built->source) == TPeakFile::Status::Ok, "open %s", qPrintable(built->path));
+    return built;
 }
 
 // Brute force: the quantized min/max of the frames [first, last)
@@ -138,8 +180,8 @@ static bool same_levels(const TPeakLevels& a, const TPeakLevels& b)
         }
         for (int c = 0; c < a.channel_count(); ++c) {
             for (qint64 k = 0; k < a.block_count(level); ++k) {
-                const TPeakBlock& x = a.block(level, c, k);
-                const TPeakBlock& y = b.block(level, c, k);
+                const TPeakBlock x = a.block(level, c, k);
+                const TPeakBlock y = b.block(level, c, k);
                 if (x.min != y.min || x.max != y.max || a.rms(level, c, k) != b.rms(level, c, k)) {
                     return false;
                 }
@@ -262,24 +304,13 @@ static void test_pyramid()
     for (qint64 frames : lengths) {
         for (int channelCount = 1; channelCount <= 3; ++channelCount) {
             const Signal signal = make_signal(s_rates[random_between(0, std::size(s_rates) - 1)], channelCount, frames);
-            const std::unique_ptr<TPeakPyramidBuilder> whole = build(signal, false);
-            // Any period shift stores the same pyramid
-            const int periodShift = int(random_between(0, 16));
-            const std::unique_ptr<TPeakPyramidBuilder> chunked = build(signal, true, true, periodShift);
-            const TPeakLevels levels = chunked->levels();
+            const std::unique_ptr<Built> whole = build(signal, false);
+            // Appended in chunks of any size: the same pyramid
+            const std::unique_ptr<Built> chunked = build(signal, true);
+            const TPeakLevels& levels = chunked->levels();
 
-            CHECK(same_levels(whole->levels(), levels), "frames %lld shift %d: chunked differs from one append",
-                  (long long)frames, periodShift);
+            CHECK(same_levels(whole->levels(), levels), "frames %lld: chunked differs from one append", (long long)frames);
             CHECK(levels.frame_count() == frames, "frames %lld", (long long)frames);
-
-            // Complete periods: every level 0..shift has all its blocks of them
-            qint64 periods = std::numeric_limits<qint64>::max();
-            for (int level = 0; level <= periodShift; ++level) {
-                const qint64 blocks = level < levels.level_count() ? levels.block_count(level) : 0;
-                periods = std::min(periods, blocks >> (periodShift - level));
-            }
-            CHECK(chunked->complete_periods() == periods, "frames %lld shift %d: %lld complete periods, expected %lld",
-                  (long long)frames, periodShift, (long long)chunked->complete_periods(), (long long)periods);
 
             // Level structure: ceil halving down to one block
             qint64 expected = (frames + 63) / 64;
@@ -297,7 +328,7 @@ static void test_pyramid()
                 for (int c = 0; c < channelCount && levels.block_count(level) == expected; ++c) {
                     for (qint64 k = 0; k < expected; ++k) {
                         const TPeakBlock reference = reference_block(signal.channels[size_t(c)], k * size, std::min(frames, (k + 1) * size));
-                        const TPeakBlock& block = levels.block(level, c, k);
+                        const TPeakBlock block = levels.block(level, c, k);
                         CHECK(block.min == reference.min && block.max == reference.max,
                               "frames %lld level %d channel %d block %lld: %d..%d expected %d..%d", (long long)frames, level, c,
                               (long long)k, block.min, block.max, reference.min, reference.max);
@@ -306,13 +337,18 @@ static void test_pyramid()
                 expected = (expected + 1) / 2;
             }
 
-            // Ranges, on the finished pyramid and on one that is still growing
-            const std::unique_ptr<TPeakPyramidBuilder> partial = build(signal, true, false);
-            for (const TPeakLevels& view : {levels, partial->levels()}) {
-                if (view.level_count() == 0) {
+            // Ranges, on the finished pyramid and on level 0 of a stream that is
+            // still written (a view of level 0 only)
+            TPeakStream growing(signal.rate, channelCount, s_dir->filePath(QStringLiteral("%1.peaks").arg(++s_files)));
+            CHECK(growing.open() == TPeakFile::Status::Ok, "open a growing stream");
+            append(growing, signal, true);
+            std::vector<qint16> records;
+            const TPeakLevels growingLevels = growing.read(0, (frames + 63) / 64, records);
+            for (const TPeakLevels* view : {&levels, &growingLevels}) {
+                if (view->level_count() == 0 || view->block_count(0) == 0) {
                     continue;
                 }
-                const qint64 blocks = view.block_count(0);
+                const qint64 blocks = view->block_count(0);
                 for (int round = 0; round < 300; ++round) {
                     const qint64 first = random_between(0, blocks - 1);
                     const qint64 last = random_between(first + 1, blocks);
@@ -323,159 +359,121 @@ static void test_pyramid()
                         reference.min = std::min(reference.min, levels.block(0, c, k).min);
                         reference.max = std::max(reference.max, levels.block(0, c, k).max);
                     }
-                    const TPeakBlock range = view.range(c, first, last);
+                    const TPeakBlock range = view->range(c, first, last);
                     CHECK(range.min == reference.min && range.max == reference.max,
                           "frames %lld range %lld..%lld (%s)", (long long)frames, (long long)first, (long long)last,
-                          view.level_count() == levels.level_count() ? "finished" : "growing");
+                          view == &levels ? "finished" : "growing");
                 }
             }
         }
     }
 }
 
-// Writes signal's pyramid as a stream: a record whenever an append completes
-// periods, like a recording or a build does, then finish()
-static bool write_streamed(const QString& path, const Signal& signal, int periodShift, const TPeakFile::SourceInfo& source,
-                           std::unique_ptr<TPeakPyramidBuilder>* builderOut, bool finish = true)
+static QByteArray file_bytes(const QString& path)
 {
-    auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, int(signal.channels.size()), periodShift);
-    TPeakFileWriter writer;
-    QString error;
-    bool ok = writer.open(path, signal.rate, int(signal.channels.size()), periodShift, &error) == TPeakFile::Status::Ok;
-    qint64 position = 0;
-    while (ok && position < signal.frames()) {
-        const qint64 count = std::min(random_between(1, 5000), signal.frames() - position);
-        std::vector<const float*> pointers;
-        for (const auto& channel : signal.channels) {
-            pointers.push_back(channel.data() + position);
-        }
-        builder->append(pointers.data(), count);
-        position += count;
-        if (builder->complete_periods() > writer.written_periods()) {
-            ok = writer.write_periods(builder->levels(), builder->complete_periods(), &error) == TPeakFile::Status::Ok;
-        }
-    }
-    if (ok && finish) {
-        builder->finish();
-        ok = writer.finish(builder->levels(), source, &error) == TPeakFile::Status::Ok
-             && TPeakFileWriter::publish(writer.part_path(), path, &error) == TPeakFile::Status::Ok;
-    }
-    CHECK(ok, "streamed write: %s", qPrintable(error));
-    *builderOut = std::move(builder);
-    return ok;
+    QFile file(path);
+    CHECK(file.open(QIODevice::ReadOnly), "read %s", qPrintable(path));
+    return file.readAll();
 }
 
 static void test_file()
 {
-    QTemporaryDir dir;
-    CHECK(dir.isValid(), "no temporary directory");
-    const QString path = dir.filePath("source.peaks");
+    // Lengths around the edges of blocks and of level sizes
+    for (qint64 frames : {qint64(1), qint64(63), qint64(64), qint64(65), qint64(1000), qint64(64 * 1024 - 1), qint64(64 * 1024),
+                          qint64(64 * 1024 + 1), qint64(123457), random_between(1, 2000000)}) {
+        const int channelCount = int(random_between(1, 3));
+        const Signal signal = make_signal(48000, channelCount, frames);
 
-    // Lengths around the edges of blocks and periods, for several period shifts
-    for (int periodShift : {0, 1, 3, 5, 14}) {
-        const qint64 period = qint64(TPeakLevels::BlockFrames) << periodShift;
-        std::vector<qint64> lengths = {1, 63, 64, 65, 1000, period - 1, period, period + 1, 3 * period - 64, 3 * period + 1, 123457};
-        for (qint64 frames : lengths) {
-            if (frames <= 0 || frames > 2000000) {
-                continue;
+        // Appended in chunks or in one go: the same records (the headers name
+        // audio files of their own)
+        const std::unique_ptr<Built> whole = build(signal, false);
+        const std::unique_ptr<Built> chunked = build(signal, true);
+        CHECK(file_bytes(whole->path).mid(int(TPeakFile::HeaderBytes)) == file_bytes(chunked->path).mid(int(TPeakFile::HeaderBytes)),
+              "frames %lld: the files differ", (long long)frames);
+        const qint64 records = [&] {
+            qint64 sum = 0;
+            for (const qint64 count : TPeakFile::block_counts(frames)) {
+                sum += count;
             }
-            const int channelCount = int(random_between(1, 3));
-            const Signal signal = make_signal(48000, channelCount, frames);
-            const TPeakFile::SourceInfo source{48000, channelCount, frames, 1234567, 1760000000000};
+            return sum;
+        }();
+        CHECK(QFileInfo(whole->path).size() == TPeakFile::HeaderBytes + records * TPeakFile::record_bytes(channelCount),
+              "frames %lld: file size", (long long)frames);
 
-            // In one go and as a stream: the same file
-            const std::unique_ptr<TPeakPyramidBuilder> whole = build(signal, true, true, periodShift);
-            QString error;
-            CHECK(TPeakFile::write(path, whole->levels(), source, &error, periodShift) == TPeakFile::Status::Ok,
-                  "shift %d frames %lld: write: %s", periodShift, (long long)frames, qPrintable(error));
-            QFile oneGo(path);
-            CHECK(oneGo.open(QIODevice::ReadOnly), "reopen");
-            const QByteArray oneGoBytes = oneGo.readAll();
-            oneGo.close();
+        // Another source
+        const TPeakFile::SourceInfo source = whole->source;
+        auto expect_invalid = [&](TPeakFile::SourceInfo other, const char* what) {
+            TPeakFile mismatch;
+            CHECK(mismatch.open(whole->path, other) == TPeakFile::Status::Invalid && !mismatch.is_open(), "frames %lld: %s accepted",
+                  (long long)frames, what);
+        };
+        TPeakFile::SourceInfo other = source; other.rate = 44100; expect_invalid(other, "rate");
+        other = source; other.channelCount = channelCount + 1; expect_invalid(other, "channels");
+        other = source; other.frameCount -= 1; expect_invalid(other, "fewer frames");
+        other = source; other.fileSize += 1; expect_invalid(other, "source size");
+        other = source; other.modified += TPeakFile::SourceTimeTolerance + 1; expect_invalid(other, "source time beyond the tolerance");
 
-            std::unique_ptr<TPeakPyramidBuilder> streamed;
-            write_streamed(path, signal, periodShift, source, &streamed);
-            QFile streamedFile(path);
-            CHECK(streamedFile.open(QIODevice::ReadOnly), "reopen");
-            CHECK(streamedFile.readAll() == oneGoBytes, "shift %d frames %lld: streamed file differs", periodShift, (long long)frames);
-            streamedFile.close();
-
-            TPeakFile file;
-            CHECK(file.open(path, source) == TPeakFile::Status::Ok, "shift %d frames %lld: open", periodShift, (long long)frames);
-            CHECK(same_levels(file.levels(), whole->levels()), "shift %d frames %lld: levels differ after reading",
-                  periodShift, (long long)frames);
-            file.close();
-
-            // Another source
-            auto expect_invalid = [&](TPeakFile::SourceInfo other, const char* what) {
-                TPeakFile mismatch;
-                CHECK(mismatch.open(path, other) == TPeakFile::Status::Invalid && !mismatch.is_open(), "frames %lld: %s accepted",
-                      (long long)frames, what);
-            };
-            TPeakFile::SourceInfo other = source; other.rate = 44100; expect_invalid(other, "rate");
-            other = source; other.channelCount = channelCount + 1; expect_invalid(other, "channels");
-            other = source; other.frameCount -= 1; expect_invalid(other, "fewer frames");
-            other = source; other.fileSize += 1; expect_invalid(other, "source size");
-            other = source; other.modified += TPeakFile::SourceTimeTolerance + 1; expect_invalid(other, "source time beyond the tolerance");
-
-            // A decoder that reports more frames than it delivers: the file holds
-            // the frames that were really read and is valid for that source
-            other = source; other.frameCount += 1000;
-            TPeakFile longer;
-            CHECK(longer.open(path, other) == TPeakFile::Status::Ok && same_levels(longer.levels(), whole->levels()),
-                  "frames %lld: over-reported source", (long long)frames);
-        }
+        // A decoder that reports more frames than it delivers: the file holds
+        // the frames that were really read and is valid for that source
+        other = source; other.frameCount += 1000;
+        TPeakFile longer;
+        CHECK(longer.open(whole->path, other) == TPeakFile::Status::Ok && same_levels(longer.levels(), whole->levels()),
+              "frames %lld: over-reported source", (long long)frames);
     }
 
     // Nothing to write: no file a source could match
     {
         const Signal empty = make_signal(48000, 1, 0);
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(empty, false);
-        CHECK(TPeakFile::write(path, builder->levels(), {48000, 1, 0, 1, 1}) == TPeakFile::Status::Invalid, "empty pyramid written");
+        const std::unique_ptr<Built> built = build(empty, false);
+        CHECK(!QFile::exists(built->path) && built->levels().level_count() == 0, "a peak file without audio");
     }
 
-    // An unfinished write (a crash, a cancelled build) never reaches the
-    // file's name; its part file says unfinished, and is removed when given up
+    // A crash before the header (while level 0 is written, or during
+    // post-processing) leaves a part file whose header is zero: refused
+    // under the file's name. A stream that is given up removes its part file.
     {
-        const Signal signal = make_signal(44100, 2, 20000);
-        const TPeakFile::SourceInfo source{44100, 2, 20000, 99, 42};
-        QFile::remove(path);
-        auto builder = std::make_unique<TPeakPyramidBuilder>(signal.rate, 2, 2);
-        std::vector<const float*> pointers{signal.channels[0].data(), signal.channels[1].data()};
-        builder->append(pointers.data(), signal.frames());
-        TPeakFileWriter writer;
-        CHECK(writer.open(path, signal.rate, 2, 2) == TPeakFile::Status::Ok, "open the writer");
-        CHECK(writer.write_periods(builder->levels(), builder->complete_periods()) == TPeakFile::Status::Ok, "write periods");
-        CHECK(!QFile::exists(path) && QFile::exists(writer.part_path()), "unfinished write not in its part file");
-        // What a crash would leave, under the file's name: refused
-        CHECK(QFile::copy(writer.part_path(), path), "copy the part file");
-        TPeakFile file;
-        CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "unfinished file accepted");
-        QFile::remove(path);
-        writer.close();
-        CHECK(!QFile::exists(writer.part_path()), "the part file of a given up write was left behind");
-        // Every writer its own part file: two writers of one peak file (two
+        const Signal signal = make_signal(44100, 2, 200000);
+        const QString audio = make_audio_file();
+        const QString path = s_dir->filePath(QStringLiteral("%1.peaks").arg(++s_files));
+        const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(audio, 44100, 2, signal.frames());
+        TPeakStream stream(44100, 2, path);
+        CHECK(stream.open() == TPeakFile::Status::Ok, "open");
+        append(stream, signal, true);
+        CHECK(!QFile::exists(path) && QFile::exists(stream.part_path()), "level 0 not in its part file");
+        auto refused_as_crash = [&](const char* when) {
+            CHECK(QFile::copy(stream.part_path(), path), "copy the part file");
+            TPeakFile file;
+            CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "a file left %s accepted", when);
+            QFile::remove(path);
+        };
+        refused_as_crash("while level 0 is written");
+        CHECK(stream.finish(audio) == TPeakFile::Status::Ok, "finish");
+        refused_as_crash("after level 0");
+        CHECK(stream.post_process(), "post-processing in more than one step");
+        refused_as_crash("halfway post-processing");
+        // Given up halfway (the project closes): no file, no part file
+        stream.abandon();
+        CHECK(!stream.post_process() && !stream.published() && !QFile::exists(path) && !QFile::exists(stream.part_path()),
+              "a stream given up halfway post-processing left a file");
+
+        // Every stream its own part file: two writers of one peak file (two
         // Traverso instances, an old and a new build) do not share one
-        TPeakFileWriter other;
-        TPeakFileWriter third;
-        CHECK(other.open(path, signal.rate, 2, 2) == TPeakFile::Status::Ok && third.open(path, signal.rate, 2, 2) == TPeakFile::Status::Ok
+        TPeakStream other(44100, 2, path);
+        TPeakStream third(44100, 2, path);
+        CHECK(other.open() == TPeakFile::Status::Ok && third.open() == TPeakFile::Status::Ok
                   && other.part_path() != third.part_path() && QFile::exists(other.part_path()) && QFile::exists(third.part_path()),
               "two writers of one file share a part file");
-        other.close();
-        CHECK(!QFile::exists(other.part_path()) && QFile::exists(third.part_path()), "closing one writer removed the other's part file");
-        third.close();
+        other.abandon();
+        CHECK(!QFile::exists(other.part_path()) && QFile::exists(third.part_path()), "giving up one stream removed the other's part file");
     }
 
     // Damaged files
     const Signal signal = make_signal(44100, 1, 50000);
-    const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false, true, 3);
-    const TPeakFile::SourceInfo source{44100, 1, 50000, 99, 42};
-    CHECK(TPeakFile::write(path, builder->levels(), source, nullptr, 3) == TPeakFile::Status::Ok, "write");
-
-    QFile original(path);
-    CHECK(original.open(QIODevice::ReadOnly), "reopen");
-    const QByteArray bytes = original.readAll();
-    original.close();
+    const std::unique_ptr<Built> built = build(signal, false);
+    const QString path = built->path;
+    const TPeakFile::SourceInfo source = built->source;
+    built->file.close();
+    const QByteArray bytes = file_bytes(path);
 
     auto rewrite = [&](const QByteArray& content) {
         QFile out(path);
@@ -496,31 +494,28 @@ static void test_file()
         return copy;
     };
     expect_damaged(QByteArray(bytes).replace(0, 1, "X"), "magic");
-    expect_damaged(patched(8, 6), "version 6 (development)");
-    expect_damaged(patched(8, 3), "version 3");
+    expect_damaged(patched(8, 2), "version 2 (periods)");
     expect_damaged(patched(8, 4), "version 4");
-    expect_damaged(patched(8, 5), "version 5 (the linear codes, no RMS)");
+    expect_damaged(patched(8, 6), "version 6 (development)");
     // Offsets in TPeakFileHeader: 8 version, 12 byte order, 16 header size,
-    // 28 block frames, 32 codes per octave, 36 period shift, 40 planes,
-    // 44 padding, 48 frame count (TPeakFile.cpp asserts 80 bytes and 48)
-    expect_damaged(patched(32, 512), "codes per octave");
-    expect_damaged(patched(40, 1), "planes: min/max only");
-    expect_damaged(patched(40, 7), "planes: one more than this version knows");
-    expect_damaged(patched(44, 1), "padding (header checksum)");
+    // 20 rate, 24 channels, 28 block frames, 32 codes per octave, 36 planes,
+    // 40 frame count (TPeakFile.cpp asserts 72 bytes and 40)
     expect_damaged(patched(12, 0x04030201), "byte order");
     expect_damaged(patched(16, 64), "header size");
     expect_damaged(patched(28, 32), "block frames");
-    expect_damaged(patched(36, 4), "period shift");
-    expect_damaged(patched(36, 1000), "period shift out of range");
-    expect_damaged(patched(48, 0), "frame count 0 (unfinished)");
-    expect_damaged(patched(48, 49000), "frame count with another layout");
-    expect_damaged(patched(48, 49999), "frame count with the same layout (header checksum)");
-    expect_damaged(bytes.left(bytes.size() - 4), "truncated file");
-    expect_damaged(bytes + QByteArray(4, '\0'), "trailing bytes");
+    expect_damaged(patched(32, 512), "codes per octave");
+    expect_damaged(patched(36, 1), "planes: min/max only");
+    expect_damaged(patched(36, 7), "planes: one more than this version knows");
+    expect_damaged(patched(40, 0), "frame count 0");
+    expect_damaged(patched(40, 49000), "frame count with another layout");
+    expect_damaged(patched(40, 49999), "frame count with the same layout (header checksum)");
+    expect_damaged(QByteArray(int(TPeakFile::HeaderBytes), '\0') + bytes.mid(int(TPeakFile::HeaderBytes)), "a header of zeros (unfinished)");
+    expect_damaged(bytes.left(bytes.size() - 6), "truncated file");
+    expect_damaged(bytes + QByteArray(6, '\0'), "trailing bytes");
     expect_damaged(bytes.left(40), "truncated header");
 
     TPeakFile missing;
-    CHECK(missing.open(dir.filePath("none.peaks"), source) == TPeakFile::Status::Missing, "missing file");
+    CHECK(missing.open(s_dir->filePath("none.peaks"), source) == TPeakFile::Status::Missing, "missing file");
 }
 
 class MemorySource : public TWaveformSampleSource
@@ -566,7 +561,7 @@ static void test_columns()
         const int channelCount = int(random_between(1, 2));
         const qint64 frames = random_between(0, 4) == 0 ? random_between(0, 200) : random_between(1, 80000);
         const Signal signal = make_signal(rate, channelCount, frames);
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
+        const std::unique_ptr<Built> builder = build(signal, true);
         const TPeakLevels levels = builder->levels();
 
         // Frames per column, log-uniform from 1/20 to 100000, sometimes right at the threshold
@@ -695,23 +690,25 @@ static void test_columns()
 // columns from the samples agree with the samples
 static void test_rms()
 {
-    // The RMS is the nearest code: within half a step, plus what float
-    // sums of squares lose (about 1e-6)
+    // The RMS of level 0 is the nearest code: within half a step, plus what
+    // float sums of squares lose (about 1e-6). The levels above come from
+    // the decoded level-0 codes, rounded once more: within a step.
     const double step = TPeakCodeMath::octave_fraction(1);
     const double half = std::sqrt(step) * 1.00001;
-    auto within_a_step = [&](qint16 code, double expected) {
+    auto within_a_step = [&](qint16 code, double expected, int level) {
         const double value = TPeakLevels::to_value(code);
         if (expected <= TPeakLevels::to_value(1)) {
             return value <= TPeakLevels::to_value(1);
         }
-        return value <= expected * half && value >= expected / half;
+        const double bound = level == 0 ? half : step * 1.00001;
+        return value <= expected * bound && value >= expected / bound;
     };
 
     auto square = [&](float sample) { return double(sample) * sample; };
     for (qint64 frames : {qint64(1), qint64(63), qint64(64), qint64(65), qint64(1000), qint64(123457), random_between(200000, 400000)}) {
         const int channelCount = int(random_between(1, 2));
         const Signal signal = make_signal(44100, channelCount, frames);
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true, true, int(random_between(0, 14)));
+        const std::unique_ptr<Built> builder = build(signal, true);
         const TPeakLevels levels = builder->levels();
         int checked = 0;
         for (int level = 0; level < levels.level_count(); ++level) {
@@ -726,7 +723,7 @@ static void test_rms()
                     const double expected = std::sqrt(squares / double(last - first));
                     CHECK(levels.block_frames(level, k) == last - first, "frames %lld level %d block %lld: %lld frames", (long long)frames,
                           level, (long long)k, (long long)levels.block_frames(level, k));
-                    CHECK(within_a_step(levels.rms(level, c, k), expected), "frames %lld level %d block %lld: RMS %.9g expected %.9g",
+                    CHECK(within_a_step(levels.rms(level, c, k), expected, level), "frames %lld level %d block %lld: RMS %.9g expected %.9g",
                           (long long)frames, level, (long long)k, TPeakLevels::to_value(levels.rms(level, c, k)), expected);
                     ++checked;
                 }
@@ -737,7 +734,7 @@ static void test_rms()
                 for (qint64 n = first; n < frames; ++n) {
                     squares += square(signal.channels[size_t(c)][size_t(n)]);
                 }
-                CHECK(within_a_step(levels.rms(level, c, k), std::sqrt(squares / double(frames - first))),
+                CHECK(within_a_step(levels.rms(level, c, k), std::sqrt(squares / double(frames - first)), level),
                       "frames %lld level %d: the last block's RMS", (long long)frames, level);
             }
         }
@@ -753,7 +750,7 @@ static void test_rms()
         for (qint64 n = 0; n < frames; ++n) {
             signal.channels[0][size_t(n)] = float(amplitude * std::sin(2.0 * M_PI * double(n) / 32.0));
         }
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
+        const std::unique_ptr<Built> builder = build(signal, true);
         const TPeakLevels levels = builder->levels();
         const double expected = amplitude / std::sqrt(2.0);
         for (int level = 0; level <= 12; ++level) {
@@ -764,10 +761,11 @@ static void test_rms()
             CHECK(TWaveformColumns::query(levels, nullptr, TTimeRef(), width, count, out.data()) == TWaveformColumns::Source::Pyramid,
                   "sine: pyramid");
             for (int i = 0; i < count; ++i) {
-                CHECK(within_a_step(levels.rms(level, 0, i), expected), "sine %g level %d block %d: %.9g", amplitude, level, i,
+                CHECK(within_a_step(levels.rms(level, 0, i), expected, level), "sine %g level %d block %d: %.9g", amplitude, level, i,
                       TPeakLevels::to_value(levels.rms(level, 0, i)));
                 const double column = out[size_t(i)].rms;
-                CHECK(column <= expected * half && column >= expected / half, "sine %g level %d column %d: %.9g",
+                const double bound = level == 0 ? half : step * 1.00001;
+                CHECK(column <= expected * bound && column >= expected / bound, "sine %g level %d column %d: %.9g",
                       amplitude, level, i, column);
             }
         }
@@ -780,7 +778,7 @@ static void test_rms()
         signal.channels[0][1000] = std::nanf("");
         signal.channels[0][30000] = std::numeric_limits<float>::infinity();
         signal.channels[0][50000] = -std::numeric_limits<float>::infinity();
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
+        const std::unique_ptr<Built> builder = build(signal, true);
         const TPeakLevels levels = builder->levels();
         // Level-0 mean squares as the rule says, then weighted up
         std::vector<double> level0(65536 / 64);
@@ -801,7 +799,7 @@ static void test_rms()
                     sum += level0[size_t(b)];
                 }
                 const double expected = std::sqrt(sum / double(last - first));
-                CHECK(std::isfinite(TPeakLevels::to_value(levels.rms(level, 0, k))) && within_a_step(levels.rms(level, 0, k), expected),
+                CHECK(std::isfinite(TPeakLevels::to_value(levels.rms(level, 0, k))) && within_a_step(levels.rms(level, 0, k), expected, level),
                       "broken samples: level %d block %lld: RMS %g expected %g", level, (long long)k,
                       TPeakLevels::to_value(levels.rms(level, 0, k)), expected);
             }
@@ -811,7 +809,7 @@ static void test_rms()
     // Silence
     {
         Signal silence{48000, {std::vector<float>(100000, 0.0f), std::vector<float>(100000, 0.0f)}};
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(silence, true);
+        const std::unique_ptr<Built> builder = build(silence, true);
         const TPeakLevels levels = builder->levels();
         for (int level = 0; level < levels.level_count(); ++level) {
             for (qint64 k = 0; k < levels.block_count(level); ++k) {
@@ -823,7 +821,7 @@ static void test_rms()
     // Columns from the samples, of exactly 10 frames: the RMS of those frames
     {
         const Signal signal = make_signal(48000, 1, 5000);
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        const std::unique_ptr<Built> builder = build(signal, false);
         MemorySource memory(signal);
         std::vector<TWaveformColumn> out(400);
         CHECK(TWaveformColumns::query(builder->levels(), &memory, TTimeRef(), TTimeRef(uint64_t(10), 48000), 400, out.data())
@@ -850,76 +848,108 @@ static void run(const char* name, Test test)
     std::printf("%-18s %s (%lld ms)\n", name, s_failures == failuresBefore ? "ok" : "FAILED", (long long)timer.elapsed());
 }
 
-// One thread appends, another takes snapshots meanwhile: every block a
-// snapshot names must already have its final value, and ranges over a
-// snapshot must agree with the finished pyramid
-static void test_growing_pyramid()
+// One thread appends buffers of 256 frames to a stream (an audio cycle of a
+// recording), another reads level 0 below the count meanwhile, as the
+// waveform of a recording does: every record read has its final value and
+// the count only grows. Once post-processed, the finished file's columns
+// equal the ones from level 0 alone: min and max exactly, the RMS within a
+// step.
+static void test_live_read()
 {
-    const qint64 frames = 3000000;   // 46875 blocks: level 0 spans a chunk boundary (65536) only with more, so also test that
-    for (qint64 length : {frames, qint64(70000) * 64 + 17}) {
+    for (qint64 length : {qint64(3000000), qint64(70000) * 64 + 17}) {
         const Signal signal = make_signal(48000, 2, length);
-        const std::unique_ptr<TPeakPyramidBuilder> reference = build(signal, false);
-        const TPeakLevels final = reference->levels();
+        const std::unique_ptr<Built> reference = build(signal, false);
+        const TPeakLevels& final = reference->levels();
 
-        TPeakPyramidBuilder growing(48000, 2);
+        const QString audio = make_audio_file();
+        const QString path = s_dir->filePath(QStringLiteral("%1.peaks").arg(++s_files));
+        TPeakStream stream(48000, 2, path);
+        CHECK(stream.open() == TPeakFile::Status::Ok, "open");
         std::atomic<bool> done{false};
         std::thread writer([&] {
-            qint64 position = 0;
-            std::mt19937_64 random(7);
-            while (position < length) {
-                const qint64 count = std::min<qint64>(std::uniform_int_distribution<qint64>(1, 4096)(random), length - position);
+            for (qint64 position = 0; position < length; position += 256) {
                 const float* pointers[2] = {signal.channels[0].data() + position, signal.channels[1].data() + position};
-                growing.append(pointers, count);
-                position += count;
-                std::this_thread::yield();
+                stream.append(pointers, std::min<qint64>(256, length - position));
+                if ((position & 8191) == 0) {
+                    std::this_thread::yield();
+                }
             }
-            growing.finish();
+            stream.finish(audio);
             done.store(true);
         });
 
-        int snapshots = 0;
-        qint64 lastCount = 0;
+        int reads = 0;
+        qint64 lastFrames = 0;
         bool finished = false;
+        std::vector<qint16> records;
         while (!finished) {
-            finished = done.load();   // one more snapshot after the writer is done
-            const TPeakLevels snapshot = growing.levels();
-            ++snapshots;
-            if (snapshot.level_count() == 0) {
+            finished = done.load();   // one more read after the writer is done
+            const qint64 frames = stream.written_frames();
+            CHECK(frames >= lastFrames, "the count went back from %lld to %lld", (long long)lastFrames, (long long)frames);
+            CHECK(frames == length || frames % TPeakLevels::BlockFrames == 0, "%lld frames: a partial block before finish()",
+                  (long long)frames);
+            lastFrames = frames;
+            const qint64 blocks = (frames + TPeakLevels::BlockFrames - 1) / TPeakLevels::BlockFrames;
+            if (blocks == 0) {
                 continue;
             }
-            CHECK(snapshot.block_count(0) >= lastCount, "level 0 shrank");
-            lastCount = snapshot.block_count(0);
-            // The frame count covers the blocks named: all of them full
-            // until finish() closes the partial last one
-            if (snapshot.frame_count() < length) {
-                CHECK(snapshot.frame_count() >= snapshot.block_count(0) * TPeakLevels::BlockFrames,
-                      "%lld frames do not cover %lld blocks", (long long)snapshot.frame_count(), (long long)snapshot.block_count(0));
-            } else {
-                CHECK(snapshot.frame_count() > (snapshot.block_count(0) - 1) * TPeakLevels::BlockFrames, "frames after finish");
-            }
-            for (int level = 0; level < snapshot.level_count(); ++level) {
-                CHECK(snapshot.block_count(level) <= final.block_count(level), "snapshot level %d has more blocks than the final pyramid", level);
-                for (int i = 0; i < 200; ++i) {
-                    const qint64 k = random_between(0, snapshot.block_count(level) - 1);
-                    for (int c = 0; c < 2; ++c) {
-                        const TPeakBlock& x = snapshot.block(level, c, k);
-                        const TPeakBlock& y = final.block(level, c, k);
-                        CHECK(x.min == y.min && x.max == y.max && snapshot.rms(level, c, k) == final.rms(level, c, k),
-                              "snapshot level %d block %lld differs", level, (long long)k);
-                    }
+            // A window, sometimes past the count: it ends there
+            const qint64 first = random_between(0, blocks - 1);
+            const qint64 last = random_between(first + 1, blocks + 10);
+            const TPeakLevels live = stream.read(first, last, records);
+            ++reads;
+            CHECK(live.level_count() == 1 && live.frame_count() >= frames && live.block_count(0) >= std::min(last, blocks)
+                      && live.block_count(0) <= last, "window %lld..%lld of %lld blocks: %lld", (long long)first, (long long)last,
+                  (long long)blocks, (long long)live.block_count(0));
+            for (qint64 k = first; k < live.block_count(0); ++k) {
+                for (int c = 0; c < 2; ++c) {
+                    const TPeakBlock x = live.block(0, c, k);
+                    const TPeakBlock y = final.block(0, c, k);
+                    CHECK(x.min == y.min && x.max == y.max && live.rms(0, c, k) == final.rms(0, c, k), "block %lld differs", (long long)k);
                 }
             }
-            for (int i = 0; i < 50; ++i) {
-                const qint64 first = random_between(0, snapshot.block_count(0) - 1);
-                const qint64 last = random_between(first + 1, snapshot.block_count(0));
-                const TPeakBlock x = snapshot.range(0, first, last);
-                const TPeakBlock y = final.range(0, first, last);
-                CHECK(x.min == y.min && x.max == y.max, "snapshot range %lld..%lld differs", (long long)first, (long long)last);
+            if (live.block_count(0) > first) {
+                const qint64 a = random_between(first, live.block_count(0) - 1);
+                const qint64 b = random_between(a + 1, live.block_count(0));
+                const TPeakBlock x = live.range(1, a, b);
+                const TPeakBlock y = final.range(1, a, b);
+                CHECK(x.min == y.min && x.max == y.max, "range %lld..%lld differs", (long long)a, (long long)b);
             }
         }
         writer.join();
-        CHECK(same_levels(growing.levels(), final), "the grown pyramid differs from the one-shot one");
-        std::printf("    growing pyramid of %lld frames: %d snapshots\n", (long long)length, snapshots);
+        CHECK(stream.written_frames() == length, "%lld frames written", (long long)stream.written_frames());
+
+        while (stream.post_process()) {
+        }
+        CHECK(stream.published(), "post-processing: %s", qPrintable(stream.error()));
+        TPeakFile file;
+        CHECK(file.open(path, TPeakFile::SourceInfo::from_file(audio, 48000, 2, length)) == TPeakFile::Status::Ok
+                  && same_levels(file.levels(), final), "the finished file differs from the one built at once");
+
+        // Level 0 alone (still read through the stream, from the file's
+        // name now) against the finished file, at any zoom
+        const qint64 blocks = (length + 63) / 64;
+        const TPeakLevels live = stream.read(0, blocks, records);
+        CHECK(live.block_count(0) == blocks, "level 0 after the rename: %lld blocks", (long long)live.block_count(0));
+        const double step = TPeakCodeMath::octave_fraction(1) * 1.00001;
+        for (int round = 0; round < 40; ++round) {
+            const double framesPerColumn = std::exp(std::log(64.0) + random_unit() * (std::log(200000.0) - std::log(64.0)));
+            const TTimeRef width(qint64(std::llround(framesPerColumn * double(U) / 48000.0)));
+            const int count = int(random_between(1, 300));
+            const TTimeRef start(uint64_t(random_between(0, length)), 48000);
+            std::vector<TWaveformColumn> a(size_t(count) * 2);
+            std::vector<TWaveformColumn> b(size_t(count) * 2);
+            CHECK(TWaveformColumns::query(live, nullptr, start, width, count, a.data()) == TWaveformColumns::Source::Pyramid
+                      && TWaveformColumns::query(file.levels(), nullptr, start, width, count, b.data()) == TWaveformColumns::Source::Pyramid,
+                  "pyramid columns");
+            for (size_t i = 0; i < a.size(); ++i) {
+                const bool rmsClose = (a[i].rms <= TPeakLevels::to_value(1) && b[i].rms <= TPeakLevels::to_value(1))
+                    || (b[i].rms <= a[i].rms * step && b[i].rms >= a[i].rms / step);
+                CHECK(a[i].min == b[i].min && a[i].max == b[i].max && rmsClose,
+                      "column %zu: live %g..%g rms %g, file %g..%g rms %g", i, a[i].min, a[i].max, a[i].rms, b[i].min, b[i].max, b[i].rms);
+            }
+        }
+        std::printf("    live stream of %lld frames: %d reads while writing\n", (long long)length, reads);
     }
 }
 
@@ -956,7 +986,7 @@ static void test_max_amplitude()
         if (frames > 0 && random_between(0, 2) == 0) {
             signal.channels[0][size_t(random_between(0, frames - 1))] = random_between(0, 1) ? 3.9f : -3.9f;
         }
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, true);
+        const std::unique_ptr<Built> builder = build(signal, true);
         MemorySource memory(signal);
 
         for (int range = 0; range < 10; ++range) {
@@ -988,7 +1018,7 @@ static void test_max_amplitude()
                 sample = std::clamp(sample * 10.0f, -0.891f, 0.891f);
             }
         }
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        const std::unique_ptr<Built> builder = build(signal, false);
         MemorySource memory(signal);
         for (int range = 0; range < 50; ++range) {
             const qint64 first = random_between(0, 250000);
@@ -1008,7 +1038,7 @@ static void test_max_amplitude()
         }
         signal.channels[0][64 * 10 + 5] = 0.99f;     // block 10, before the range
         signal.channels[0][64 * 200 + 60] = -0.98f;  // block 200, after it
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        const std::unique_ptr<Built> builder = build(signal, false);
         MemorySource memory(signal);
         const qint64 first = 64 * 10 + 20;
         const qint64 last = 64 * 200 + 40;
@@ -1022,7 +1052,7 @@ static void test_max_amplitude()
         Signal signal = make_signal(48000, 2, 100000);
         signal.channels[1][77777] = -30.5f;
         signal.channels[0][1234] = 25.0f;
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        const std::unique_ptr<Built> builder = build(signal, false);
         MemorySource memory(signal);
         CHECK(TWaveformColumns::max_amplitude(builder->levels(), &memory, 1000, 99000) == 30.5f, "saturated source");
         CHECK(TWaveformColumns::max_amplitude(builder->levels(), &memory, 1000, 70000) == 25.0f, "saturated source, one block");
@@ -1034,7 +1064,7 @@ static void test_max_amplitude()
         for (qint64 n = 0; n < signal.frames(); ++n) {
             signal.channels[0][size_t(n)] = float(1e-9 * std::sin(double(n) * 0.01));
         }
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        const std::unique_ptr<Built> builder = build(signal, false);
         MemorySource memory(signal);
         const float amplitude = TWaveformColumns::max_amplitude(builder->levels(), &memory, 100, 9000);
         CHECK(amplitude > 0.0f && within_a_step(amplitude, brute_max(signal, 100, 9000)), "1e-9 signal: %g", amplitude);
@@ -1057,7 +1087,7 @@ static void test_zero_crossing()
                 }
             }
         }
-        const std::unique_ptr<TPeakPyramidBuilder> builder = build(signal, false);
+        const std::unique_ptr<Built> builder = build(signal, false);
         MemorySource memory(signal);
 
         for (int probe = 0; probe < 10; ++probe) {
@@ -1097,6 +1127,10 @@ static void test_zero_crossing()
 
 int main()
 {
+    QTemporaryDir dir;
+    CHECK(dir.isValid(), "no temporary directory");
+    s_dir = &dir;
+
     run("codes", test_codes);
     run("time conversions", test_time_conversions);
     run("pyramid", test_pyramid);
@@ -1104,7 +1138,7 @@ int main()
     run("columns", test_columns);
     run("max amplitude", test_max_amplitude);
     run("rms", test_rms);
-    run("growing pyramid", test_growing_pyramid);
+    run("live read", test_live_read);
     run("zero crossing", test_zero_crossing);
     std::printf("non-empty columns checked: %lld from samples, %lld from the pyramid\n",
                 (long long)s_checkedColumns[int(TWaveformColumns::Source::Samples)],

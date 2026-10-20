@@ -77,22 +77,23 @@ int TBufferedAudioStreamWriter::finish_export()
         m_resampleWriter.reset();
     }
 
-    // The peaks are on disk already except for the last period: the tail
-    // and the header follow once the audio file is complete (its size and
-    // time are part of the peak file's validation). The clip puts the file
-    // under its name (TAudioClip::finish_write_source()).
+    // Level 0 of the peaks is on disk already but for its last block; the
+    // header follows once the audio file is complete (its size and time are
+    // part of the peak file's validation). A recording's peaks are
+    // post-processed in DiskIO's idle time (TAudioClip::finish_write_source());
+    // an import or a merge does it here, nobody reads its peaks meanwhile.
     if (m_peaks) {
         QString error;
         if (m_peaks->finish(m_fileName, &error) != TPeakFile::Status::Ok) {
             TLOG_W("peaks", "finishing {} failed: {}", m_peaks->peak_path().toStdString(), error.toStdString());
         } else if (!m_peaksAreRead) {
-            // An import or a merge: nobody reads its peaks while it writes
-            // them, so the file gets its name here (no mapping to let go of)
-            if (m_peaks->publish(&error) == TPeakFile::Status::Ok) {
+            while (m_peaks->post_process()) {
+            }
+            if (m_peaks->published()) {
                 TPeakCache::touch(m_peaks->peak_path());
                 TPeakCache::evict_later();
             } else {
-                TLOG_W("peaks", "publishing {} failed: {}", m_peaks->peak_path().toStdString(), error.toStdString());
+                TLOG_W("peaks", "post-processing {} failed: {}", m_peaks->peak_path().toStdString(), m_peaks->error().toStdString());
             }
         }
     }
@@ -211,7 +212,7 @@ void TBufferedAudioStreamWriter::set_process_peaks(bool process)
     m_peaks = std::make_shared<TPeakStream>(audiodevice().get_sample_rate(), int(m_channelCount), TWaveform::peak_path(this));
     QString error;
     if (m_peaks->open(&error) != TPeakFile::Status::Ok) {
-        // Painted from memory meanwhile; built from the audio afterwards
+        // No waveform meanwhile; built from the audio afterwards
         TLOG_W("peaks", "cannot write {}: {}", m_peaks->peak_path().toStdString(), error.toStdString());
     }
     m_peakChannels.assign(m_channelCount, nullptr);

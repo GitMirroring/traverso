@@ -31,19 +31,17 @@ public:
 };
 
 /**
- * @brief Builds the peak file of one audio source into a TPeakStream, one
- * read at a time.
+ * @brief Makes the peak file of one audio source in a TPeakStream, one step
+ * at a time: a build reads the source into level 0, then post-processes;
+ * a recording's stream (level 0 complete) is post-processed only.
  *
  * Whoever runs it calls step() until it returns false; each step reads
  * about a fifth of a second of the source (a reader's refill, so the steps
- * of a DiskIO round take about as long as each other). The first step
- * opens the source, so the decoder is opened on the thread that builds.
- * Every complete period goes to the part file at once, so a build holds
- * about one period of the pyramid, and a reader of the stream sees the
- * waveform grow. When the steps end in Written, publish() on the stream's
- * reading thread puts the file under its name. State, error and progress
- * belong to the thread that steps (and then to the one that publishes);
- * cancel() may be called from any thread.
+ * of a DiskIO round take about as long as each other), or post-processes a
+ * piece. The first step opens the source, so the decoder is opened on the
+ * thread that builds. A reader of the stream sees the waveform grow. The
+ * last step puts the file under its name. State, error and progress belong
+ * to the thread that steps; cancel() may be called from any thread.
  */
 class TPeakBuildTask
 {
@@ -54,7 +52,6 @@ public:
     {
         Waiting,    // not started
         Running,
-        Written,    // the part file is complete: publish() next
         Done,       // the peak file is in place
         Failed,     // see error()
         Unsupported,    // more channels than MaxChannels
@@ -69,13 +66,13 @@ public:
     // must have (its waveform knows them). readFrames: frames per step, 0
     // for a fifth of a second of the source.
     TPeakBuildTask(OpenSource openSource, QString audioPath, std::shared_ptr<TPeakStream> stream, qint64 readFrames = 0);
+    // A recording's stream after its finish(): post-processing only
+    explicit TPeakBuildTask(std::shared_ptr<TPeakStream> recorded);
     ~TPeakBuildTask();
 
-    // One read of the source into the stream; true while work remains
+    // One read of the source into the stream, or a piece of
+    // post-processing; true while work remains
     bool step();
-    // After step() ended in Written, on the stream's reading thread: puts
-    // the file under its name (TPeakStream::publish())
-    State publish();
     void cancel() { m_cancelled.store(true, std::memory_order_relaxed); }
 
     State state() const { return m_state; }
@@ -89,7 +86,7 @@ public:
 
 private:
     bool start();
-    bool finish();
+    bool read_source();
     bool fail(const QString& error, State state = State::Failed);
     void release();
 
