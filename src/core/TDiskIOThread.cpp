@@ -28,6 +28,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QtConcurrent>
 #include <QThreadPool>
 
+#include <algorithm>
+
 #include <samplerate.h>
 
 #if defined (Q_OS_LINUX)
@@ -75,13 +77,22 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 
 #endif // endif Q_OS_LINUX
 
-/** \class TDiskIOThread
- *	\brief handles all the read's and write's of TBufferedAudioStreams
- *
- *	Each Sheet class has it's own TDiskIOThread instance (one for Reading one for Writing)
- * 	The TDiskIOThread manages all the TBufferedAudioStream related to a Sheet, and makes sure the RingBuffers
- * 	from the TBufferedAudioStream are processed in time. (It at least tries very hard)
- */
+// A stream as a task of a round: whether it needs work, and its step,
+// which reads (or writes) all it can at once
+class TDiskIOThread::StreamTask final : public TDiskIOTask
+{
+public:
+    StreamTask(TDiskIOThread& diskio, TBufferedAudioStream* stream) : m_diskio(diskio), m_stream(stream) {}
+
+    bool needs_work() const override { return m_diskio.stream_needs_work(m_stream); }
+    void step() override { m_diskio.stream_step(m_stream); }
+
+    TBufferedAudioStream* stream() const { return m_stream; }
+
+private:
+    TDiskIOThread& m_diskio;
+    TBufferedAudioStream* m_stream;
+};
 
 
 void TDiskIOThread::run()
@@ -111,12 +122,29 @@ void TDiskIOThread::run()
     }
 #endif
 
-    while(do_work()) {
+    bool moreWork = false;
+    while (true) {
+        // The tick: the audio thread wakes this thread every cycle (also
+        // with the transport stopped). After a round with idle work the next
+        // one follows at once; the wakeups that came meanwhile are taken.
+        nframes_t frames;
+        if (!moreWork) {
+            m_audioThreadProcessedFramesQueue->wait_dequeue(frames);
+        }
+        while (m_audioThreadProcessedFramesQueue->try_dequeue(frames)) {
+        }
 
+        take_requests();
+        if (m_stopDiskIOThreadRequested.load()) {
+            break;
+        }
+
+        const trav_time_t startTime = TTimeRef::get_nanoseconds_since_epoch();
+        moreWork = do_round();
+        m_doWorktTime.fetch_add(TTimeRef::get_nanoseconds_since_epoch() - startTime);
     }
 
     TLOG_I("diskio", "stopped");
-
 }
 
 
@@ -150,34 +178,8 @@ TDiskIOThread::~TDiskIOThread()
     stop_disk_thread();
 }
 
-bool TDiskIOThread::do_work( )
+void TDiskIOThread::take_requests()
 {
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::do_work", "NOT running in DiskIO thread");
-
-    nframes_t audioThreadProcessedFrames;
-    // Here we wait (block) till at least one of the following has happened:
-    // 1: the owner of this DiskIOThread has put at least 1 value via add_processed_audio_thread_frames(nframes_t nframes)
-    // usually before or after a process cycle
-    // 2: wake_up() has been called by the owner of this object which essentially does the same thing
-    if (m_moreIdleWork) {
-        // Idle work is waiting: do not sleep until the next audio cycle. (Not
-        // by waking this thread through the queue: the audio thread is its
-        // only producer.)
-        if (!m_audioThreadProcessedFramesQueue->try_dequeue(audioThreadProcessedFrames)) {
-            audioThreadProcessedFrames = 0;
-        }
-    } else {
-        m_audioThreadProcessedFramesQueue->wait_dequeue(audioThreadProcessedFrames);
-    }
-
-    auto startTime = TTimeRef::get_nanoseconds_since_epoch();
-
-    nframes_t totalFrames = audioThreadProcessedFrames;
-    while(m_audioThreadProcessedFramesQueue->try_dequeue(audioThreadProcessedFrames)) {
-        totalFrames += audioThreadProcessedFrames;
-    }
-    Q_UNUSED(totalFrames);
-
     TBufferedAudioStream* stream;
     while (m_streamsToBeAdded->try_dequeue(stream)) {
         private_add_to_work(stream);
@@ -186,146 +188,129 @@ bool TDiskIOThread::do_work( )
         private_remove_from_work(stream);
     }
 
-    if (m_stopDiskIOThreadRequested.load()) {
-        return false;
+    QMutexLocker locker(&m_pendingIdleTasksMutex);
+    for (std::unique_ptr<TDiskIOTask>& task : m_pendingIdleTasks) {
+        m_idleTasks.push_back(std::move(task));
     }
+    m_pendingIdleTasks.clear();
+}
+
+bool TDiskIOThread::do_round()
+{
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::do_round", "NOT running in DiskIO thread");
 
     if (m_resampleQualityChanged) {
-        for (auto stream : std::as_const(m_bufferedAudioStreams)) {
-            stream->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
+        for (const std::unique_ptr<StreamTask>& task : m_streams) {
+            task->stream()->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
         }
         m_resampleQualityChanged = false;
     }
 
-    const bool seekRequested = m_seekRequested.load();
-
-    bool workNeeded = seekRequested;
-    if (!workNeeded) {
-        for (auto stream : std::as_const(m_bufferedAudioStreams)) {
-            TBufferedAudioStreamStatus& status = stream->get_buffer_status();
-            if (status.out_of_sync() || status.get_fill_status() <= 80) {
-                workNeeded = true;
-                break;
-            }
-        }
-    }
-
-    if (!workNeeded) {
-        run_idle_tasks_when_idle();
-        auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
-        m_doWorktTime.fetch_add(totalTime);
-        return true;
-    }
-
-    const nframes_t bufferSize = seekRequested ? audiodevice().get_buffer_size() : 0;
-    const bool sampleRateChanged = m_sampleRateChanged;
-    const uint outputSampleRate = m_outputSampleRate;
-    const int resampleQuality = m_resampleQuality;
-    const TTimeRef seekTransportLocation = m_seekTransportLocation;
-    const TTimeRef transportLocation = m_transportLocation;
-
-    if (seekRequested) {
+    const bool seek = m_seekRequested.load();
+    m_round.seek = seek;
+    m_round.seekLocation = m_seekTransportLocation;
+    m_round.transportLocation = TTimeRef(m_transportLocation.load(std::memory_order_relaxed));
+    m_round.sampleRateChanged = m_sampleRateChanged;
+    m_round.outputRate = m_outputSampleRate;
+    m_round.resampleQuality = m_resampleQuality;
+    m_round.bufferSize = seek ? audiodevice().get_buffer_size() : 0;
+    if (seek) {
         TLOG_D("diskio", "seek requested, seeking");
     }
 
-    QtConcurrent::blockingMap(m_bufferedAudioStreams, [this, seekRequested, bufferSize, sampleRateChanged, outputSampleRate, resampleQuality, seekTransportLocation, transportLocation](TBufferedAudioStream* stream) {
-
-        static thread_local TFileIOBuffer threadLocalFileDecodeBuffer;
-
-        if (seekRequested) {
-            if (sampleRateChanged) {
-                stream->set_output_rate_and_convertor_type(outputSampleRate, resampleQuality);
-                stream->prepare_rt_buffers(bufferSize);
-            }
-            stream->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, seekTransportLocation);
+    // What every stream needs, the idle tasks that have work
+    std::vector<TDiskIOPlanner::Stream> streams;
+    streams.reserve(m_streams.size());
+    for (const std::unique_ptr<StreamTask>& task : m_streams) {
+        TBufferedAudioStream* stream = task->stream();
+        streams.push_back(TDiskIOPlanner::Stream{task->needs_work(), stream->counts_for_fill(),
+                                                 stream->get_buffer_status().get_fill_status()});
+    }
+    std::vector<TDiskIOTask*> idle;
+    for (const std::unique_ptr<TDiskIOTask>& task : m_idleTasks) {
+        if (task->needs_work()) {
+            idle.push_back(task.get());
         }
+    }
 
-        TBufferedAudioStreamStatus& status = stream->get_buffer_status();
+    m_planner.set_threads(QThreadPool::globalInstance()->maxThreadCount() + 1);
+    m_planner.set_idle_limit(m_idleLimit.load(std::memory_order_relaxed));
+    const TDiskIOPlanner::Round plan = m_planner.plan(streams, seek, int(idle.size()),
+                                                      m_idleWorkAllowed.load(std::memory_order_relaxed));
 
-        if (!seekRequested && status.out_of_sync()) {
-            stream->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, transportLocation);
-        }
-        else if (status.get_fill_status() <= 80) {
-            stream->process_realtime_buffers(threadLocalFileDecodeBuffer);
-        }
+    std::vector<TDiskIOTask*> round;
+    round.reserve(plan.streams.size() + size_t(plan.idleSteps));
+    for (const int index : plan.streams) {
+        round.push_back(m_streams[size_t(index)].get());
+    }
+    for (int i = 0; i < plan.idleSteps; ++i) {
+        round.push_back(idle[size_t(i)]);
+    }
 
-        int currentFillStatus = status.get_fill_status();
-        if (!status.out_of_sync()) {
-            if (currentFillStatus < m_bufferFillStatus.load(std::memory_order_relaxed)) {
-                m_bufferFillStatus.store(currentFillStatus, std::memory_order_relaxed);
-            }
-        }
-     });
+    if (!round.empty()) {
+        // The pool and this thread share the steps; the round ends when the
+        // last one is done
+        QtConcurrent::blockingMap(round, [](TDiskIOTask* task) { task->step(); });
+    }
 
-    if (seekRequested) {
+    if (seek) {
         m_sampleRateChanged = false;
-        m_transportLocation = m_seekTransportLocation;
+        m_transportLocation.store(m_seekTransportLocation.universal_frame(), std::memory_order_relaxed);
         m_seekRequested.store(false);
         emit seekFinished();
+    }
+
+    // The emptiest stream in sync, for the GUI
+    for (const std::unique_ptr<StreamTask>& task : m_streams) {
+        TBufferedAudioStreamStatus& status = task->stream()->get_buffer_status();
+        if (!status.out_of_sync() && status.get_fill_status() < m_bufferFillStatus.load(std::memory_order_relaxed)) {
+            m_bufferFillStatus.store(status.get_fill_status(), std::memory_order_relaxed);
+        }
+    }
+
+    // Idle tasks that are over go (a build reports its result then)
+    std::erase_if(m_idleTasks, [](const std::unique_ptr<TDiskIOTask>& task) { return task->is_done(); });
+
+    return plan.continueWithoutTick;
+}
+
+bool TDiskIOThread::stream_needs_work(TBufferedAudioStream* stream) const
+{
+    return stream->needs_disk_work(m_round.transportLocation);
+}
+
+void TDiskIOThread::stream_step(TBufferedAudioStream* stream)
+{
+    static thread_local TFileIOBuffer threadLocalFileDecodeBuffer;
+    const Round& round = m_round;
+
+    if (round.seek) {
+        if (round.sampleRateChanged) {
+            stream->set_output_rate_and_convertor_type(round.outputRate, round.resampleQuality);
+            stream->prepare_rt_buffers(round.bufferSize);
+        }
+        stream->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, round.seekLocation);
+        // The seek fills part of the ring; the rest at once
+        TBufferedAudioStreamStatus& status = stream->get_buffer_status();
+        if (!status.out_of_sync() && status.get_fill_status() <= TDiskIOPlanner::IdleStartThreshold) {
+            stream->process_realtime_buffers(threadLocalFileDecodeBuffer);
+        }
+        return;
+    }
+
+    // Out of sync: seek to where the transport is (a reader whose window the
+    // transport entered); otherwise read or write all there is room for
+    if (stream->get_buffer_status().out_of_sync()) {
+        stream->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, round.transportLocation);
     } else {
-        // Streams out of their window keep the round above going (they look
-        // whether the transport came close), but they are no reason to
-        // leave the idle work waiting
-        run_idle_tasks_when_idle();
+        stream->process_realtime_buffers(threadLocalFileDecodeBuffer);
     }
-
-    auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
-    m_doWorktTime.fetch_add(totalTime);
-
-    return true;
 }
 
-void TDiskIOThread::add_idle_task(IdleTask task)
+void TDiskIOThread::add_idle_task(std::unique_ptr<TDiskIOTask> task)
 {
-    QMutexLocker locker(&m_idleTasksMutex);
-    m_idleTasks.push_back(std::move(task));
-}
-
-void TDiskIOThread::run_idle_tasks_when_idle()
-{
-    m_moreIdleWork = false;
-    for (TBufferedAudioStream* stream : std::as_const(m_bufferedAudioStreams)) {
-        if (stream->get_buffer_status().needs_disk_work()) {
-            return;
-        }
-    }
-    // More to do: the next round starts at once instead of at the next audio
-    // cycle, so a build runs as fast as the disk allows; every round looks
-    // at the streams first
-    m_moreIdleWork = run_idle_tasks(IdleBudget);
-}
-
-bool TDiskIOThread::run_idle_tasks(std::chrono::nanoseconds budget)
-{
-    if (!m_idleWorkAllowed.load(std::memory_order_relaxed)) {
-        return false;
-    }
-    const auto deadline = std::chrono::steady_clock::now() + budget;
-
-    while (!m_stopDiskIOThreadRequested.load()) {
-        IdleTask task;
-        {
-            QMutexLocker locker(&m_idleTasksMutex);
-            if (m_idleTasks.empty()) {
-                return false;
-            }
-            task = std::move(m_idleTasks.front());
-            m_idleTasks.pop_front();
-        }
-
-        const auto now = std::chrono::steady_clock::now();
-        const bool more = now < deadline && task(deadline - now);
-        if (more || now >= deadline) {
-            // Not done: it stays first in line
-            QMutexLocker locker(&m_idleTasksMutex);
-            m_idleTasks.push_front(std::move(task));
-        }
-        if (std::chrono::steady_clock::now() >= deadline) {
-            QMutexLocker locker(&m_idleTasksMutex);
-            return !m_idleTasks.empty();
-        }
-    }
-    return false;
+    QMutexLocker locker(&m_pendingIdleTasksMutex);
+    m_pendingIdleTasks.push_back(std::move(task));
 }
 
 void TDiskIOThread::add_buffered_audio_stream(TBufferedAudioStream* bufferedAudioStream)
@@ -348,9 +333,11 @@ void TDiskIOThread::private_add_to_work(TBufferedAudioStream *bufferedAudioStrea
 {
     PENTER2;
     Q_ASSERT(this->thread() == QThread::currentThread());
-    Q_ASSERT(!m_bufferedAudioStreams.contains(bufferedAudioStream));
+    Q_ASSERT(std::none_of(m_streams.begin(), m_streams.end(), [bufferedAudioStream](const std::unique_ptr<StreamTask>& task) {
+        return task->stream() == bufferedAudioStream;
+    }));
 
-    m_bufferedAudioStreams.append(bufferedAudioStream);
+    m_streams.push_back(std::make_unique<StreamTask>(*this, bufferedAudioStream));
 }
 
 void TDiskIOThread::remove_buffered_audio_stream(TBufferedAudioStream *bufferedAudioStream)
@@ -365,7 +352,9 @@ void TDiskIOThread::private_remove_from_work(TBufferedAudioStream *bufferedAudio
     PENTER2;
 
     Q_ASSERT(this->thread() == QThread::currentThread());
-    m_bufferedAudioStreams.removeAll(bufferedAudioStream);
+    std::erase_if(m_streams, [bufferedAudioStream](const std::unique_ptr<StreamTask>& task) {
+        return task->stream() == bufferedAudioStream;
+    });
 
     // FIXME
     // Review the deletion of TBufferedAudioStreams and non-active TBufferedAudioStreams that should only
@@ -410,14 +399,14 @@ void TDiskIOThread::stop_disk_thread( )
 {
     PENTER;
 
-    // Stop any processing in do_work()
+    // Stop any processing in the round loop
     m_stopDiskIOThreadRequested.store(true);
 
     // this function is called from the DiskIO destructor
-    // most likely we're waiting on an empty blocking queue so do_work() will never be called
+    // most likely we're waiting on an empty blocking queue so the loop will never go on
     // so make sure we wake up the thread by adding an item to the queue
     // Since we are disconnected from the audio processing callback it's safe to do so.
-    wakeup(); // make do_work() leave the TDiskIOThread::run()
+    wakeup(); // make the loop leave TDiskIOThread::run()
 
     if (!wait(1000)) { // give time for the TDiskIOThread::run() to actually finish
         terminate();

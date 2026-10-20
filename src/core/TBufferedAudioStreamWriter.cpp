@@ -181,6 +181,11 @@ void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileIOB
     }
 }
 
+bool TBufferedAudioStreamWriter::needs_disk_work(const TTimeRef& /*transportLocation*/)
+{
+    return m_rtBufferSlotsQueue->size_approx() > 0 || (!m_isRecording && !m_exportFinished);
+}
+
 void TBufferedAudioStreamWriter::set_process_peaks(bool process)
 {
     m_processPeaks = process;

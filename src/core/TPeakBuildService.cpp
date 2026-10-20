@@ -6,63 +6,72 @@
 #include "TDiskIOThread.h"
 #include "TPeakBuildTask.h"
 
+#include <QCoreApplication>
 #include <QPromise>
-#include <QThreadPool>
 
-// A build driven in DiskIO's idle time that reports through a promise. A
-// promise destroyed unfinished (DiskIO stops) cancels and finishes its
-// future.
-static QFuture<TPeakBuildResult> queue(std::unique_ptr<TPeakBuildTask> task, TDiskIOThread* diskio)
+// A build in DiskIO's idle time, one read per round. When it is over (or
+// DiskIO goes) DiskIO deletes it, and the rest happens on the GUI thread,
+// which reads the stream: the file gets its name there (TPeakStream::publish()
+// lets go of the GUI's mapping first, Windows renames no mapped file), then
+// the future finishes, so a waveform that opens the file finds it.
+class TPeakBuildJob final : public TDiskIOTask
 {
-    struct Job
+public:
+    struct State
     {
         std::unique_ptr<TPeakBuildTask> task;
         QPromise<TPeakBuildResult> promise;
-
-        void report()
-        {
-            promise.addResult(TPeakBuildResult{task->state() == TPeakBuildTask::State::Done, task->error()});
-            promise.finish();
-        }
     };
-    auto job = std::make_shared<Job>();
-    job->task = std::move(task);
-    // Started at once: older Qt versions finish the future of a destroyed
-    // promise only when it was started (DiskIO stops before the first step)
-    job->promise.start();
-    job->promise.setProgressRange(0, 100);
-    QFuture<TPeakBuildResult> future = job->promise.future();
 
-    diskio->add_idle_task([job](std::chrono::nanoseconds budget) {
-        if (job->promise.isCanceled()) {
-            job->task->cancel();
-        }
-        const auto started = std::chrono::steady_clock::now();
-        bool more = job->task->step();
-        while (more && std::chrono::steady_clock::now() - started < budget) {
-            more = job->task->step();
-        }
-        if (more) {
-            job->promise.setProgressValue(job->task->progress());
-            return true;
-        }
-        if (job->task->state() == TPeakBuildTask::State::Written) {
-            // Putting the file in place waits until it is on the disk, a
-            // while on a slow disk: not on DiskIO, which serves the streams
-            QThreadPool::globalInstance()->start([job] {
-                if (job->promise.isCanceled()) {
-                    job->task->cancel();
-                }
-                job->task->publish();
-                job->report();
-            });
+    explicit TPeakBuildJob(std::shared_ptr<State> state) : m_state(std::move(state)) {}
+
+    ~TPeakBuildJob() override
+    {
+        std::shared_ptr<State> state = std::move(m_state);
+        auto finish = [state] {
+            TPeakBuildTask& task = *state->task;
+            if (task.state() == TPeakBuildTask::State::Waiting || task.state() == TPeakBuildTask::State::Running) {
+                // DiskIO went before the build ended (its sheet was deleted):
+                // cancelled, the waveform asks again
+                task.cancel();
+                state->promise.future().cancel();
+                state->promise.finish();
+                return;
+            }
+            if (state->promise.isCanceled()) {
+                task.cancel();
+            }
+            task.publish();
+            state->promise.addResult(TPeakBuildResult{task.state() == TPeakBuildTask::State::Done, task.error()});
+            state->promise.finish();
+        };
+        if (QCoreApplication* app = QCoreApplication::instance()) {
+            QMetaObject::invokeMethod(app, std::move(finish), Qt::QueuedConnection);
         } else {
-            job->report();
+            finish();
         }
-        return false;
-    });
-    return future;
-}
+    }
+
+    bool needs_work() const override { return !is_done(); }
+
+    void step() override
+    {
+        if (m_state->promise.isCanceled()) {
+            m_state->task->cancel();
+        }
+        m_state->task->step();
+        m_state->promise.setProgressValue(m_state->task->progress());
+    }
+
+    bool is_done() const override
+    {
+        const TPeakBuildTask::State state = m_state->task->state();
+        return state != TPeakBuildTask::State::Waiting && state != TPeakBuildTask::State::Running;
+    }
+
+private:
+    std::shared_ptr<State> m_state;
+};
 
 QFuture<TPeakBuildResult> TPeakBuildService::build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
                                                    TDiskIOThread* diskio)
@@ -76,9 +85,15 @@ QFuture<TPeakBuildResult> TPeakBuildService::build(const QString& audioPath, con
         return *running;
     }
     Q_ASSERT(diskio);
-    auto stream = std::make_shared<TPeakStream>(rate, channelCount, peakPath);
-    QFuture<TPeakBuildResult> job = queue(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream),
-                                          diskio);
+    auto state = std::make_shared<TPeakBuildJob::State>();
+    state->task = std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath,
+                                                   std::make_shared<TPeakStream>(rate, channelCount, peakPath));
+    // Started at once: older Qt versions finish the future of a destroyed
+    // promise only when it was started (DiskIO can go before the first step)
+    state->promise.start();
+    state->promise.setProgressRange(0, 100);
+    QFuture<TPeakBuildResult> job = state->promise.future();
+    diskio->add_idle_task(std::make_unique<TPeakBuildJob>(std::move(state)));
     m_jobs.insert(peakPath, job);
     return job;
 }

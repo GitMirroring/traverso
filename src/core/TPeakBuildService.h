@@ -18,9 +18,10 @@ struct TPeakBuildResult
 
 /**
  * @brief Runs the peak builds of a project in the idle time of a sheet's
- * DiskIO thread, one job per peak file. The finished file is put in place
- * from the global thread pool. (A recording writes its own peak file as it
- * records: TPeakStream.)
+ * read DiskIO thread, one job per peak file, one read per DiskIO round. The
+ * finished file is put in place on the GUI thread, which reads the build's
+ * stream, before the future finishes. (A recording writes its own peak file
+ * as it records: TPeakStream.)
  *
  * Asking for a peak file that is being built returns the running job's
  * future, so every waveform of the same source waits for one job. A

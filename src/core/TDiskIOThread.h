@@ -22,14 +22,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #ifndef T_DISKIO_THREAD_H
 #define T_DISKIO_THREAD_H
 
-#include <QList>
 #include <QMutex>
 #include <QThread>
 
-#include <chrono>
+#include <atomic>
 #include <deque>
-#include <functional>
+#include <memory>
+#include <vector>
 
+#include "TDiskIOPlanner.h"
+#include "TDiskIOTask.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -37,6 +39,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class TBufferedAudioStream;
 
+/**
+ * @brief Reads and writes the buffered audio streams of a sheet, and runs
+ * background work (peak builds) in its idle time (doc/design/diskio-rounds.md).
+ *
+ * Each sheet has two: one for its readers and their idle work, one for its
+ * writers (recordings), so a slow read never holds up writing what was
+ * recorded. Both run the same loop: wait for the audio thread's tick (it
+ * wakes them every cycle), then rounds. A round asks every task whether it
+ * needs work, lets TDiskIOPlanner pick the order (streams first, the
+ * emptiest first, then idle tasks on the threads left) and runs one step of
+ * each in parallel, on the global thread pool and on this thread. Between
+ * rounds, never during one: seeks, streams added and removed, new idle
+ * tasks, rate changes. Nothing is timed: the kernel schedules, DiskIO only
+ * knows the order.
+ */
 class TDiskIOThread : public QThread
 {
 	Q_OBJECT
@@ -45,8 +62,9 @@ public:
     TDiskIOThread();
     ~TDiskIOThread();
 	
+    // The audio thread, every cycle
     void set_transport_location(const TTimeRef& transportLocation) {
-        m_transportLocation = transportLocation;
+        m_transportLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
     }
 
     void set_seek_transport_location(const TTimeRef& transportLocation) {
@@ -71,34 +89,31 @@ public:
         m_audioThreadProcessedFramesQueue->try_enqueue(0);
     }
 
-    // Background work for the idle time: when no stream needs data, the
-    // thread spends at most IdleBudget per wakeup on these, one after the
-    // other. A task returns true while it has more to do. Any thread. Adding
-    // one does not wake the thread: the audio thread wakes it every cycle,
-    // also with the transport stopped (a failed driver falls back to the
-    // Dummy driver, which has cycles too).
-    using IdleTask = std::function<bool(std::chrono::nanoseconds budget)>;
-    void add_idle_task(IdleTask task);
+    // Background work for the idle time; DiskIO owns the task until it is
+    // done (and deletes it then, or when DiskIO goes). Any thread. Picked up
+    // at the next tick: without a running driver (not even the Dummy one)
+    // DiskIO is not woken and idle tasks do not run.
+    void add_idle_task(std::unique_ptr<TDiskIOTask> task);
 
     // false while the sheet records: the disk belongs to the recording. Per
     // sheet: the other sheets go on (peak files are rebuilt only after a new
     // file version or when they are lost, and nobody records then)
     void set_idle_work_allowed(bool allowed) { m_idleWorkAllowed.store(allowed, std::memory_order_relaxed); }
-
-    static constexpr std::chrono::milliseconds IdleBudget{3};
+    // At most this many idle tasks per round (1 on a disk that seeks). Any thread.
+    void set_idle_limit(int limit) { m_idleLimit.store(limit, std::memory_order_relaxed); }
 
 protected:
     void run() override;
 
 private:
+    class StreamTask;
+
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>      m_audioThreadProcessedFramesQueue;
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>   m_streamsToBeAdded;
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>   m_streamsToBeRemoved;
 
     std::atomic<bool>   m_seekRequested;
     std::atomic<bool>   m_stopDiskIOThreadRequested;
-
-    QList<TBufferedAudioStream*>	m_bufferedAudioStreams;
 
     std::atomic<int>    m_bufferFillStatus;
     std::atomic<trav_time_t> m_doWorktTime;
@@ -110,28 +125,44 @@ private:
 
     uint                m_outputSampleRate{};
 
-    TTimeRef            m_transportLocation;
+    std::atomic<qint64> m_transportLocation{0};     // universal frames
     TTimeRef            m_seekTransportLocation;
-	
-    void stop_disk_thread();
-    // Runs idle tasks when no stream needs reading; true while tasks remain
-    void run_idle_tasks_when_idle();
-    bool run_idle_tasks(std::chrono::nanoseconds budget);
 
-    QMutex                  m_idleTasksMutex;
-    std::deque<IdleTask>    m_idleTasks;
-    std::atomic<bool>       m_idleWorkAllowed{true};
-    bool                    m_moreIdleWork{false};   // this thread only
+    // What the steps of the current round need to know (this thread writes
+    // it before the round, the steps only read it)
+    struct Round
+    {
+        bool seek{false};
+        TTimeRef seekLocation;
+        TTimeRef transportLocation;
+        bool sampleRateChanged{false};
+        uint outputRate{0};
+        int resampleQuality{0};
+        nframes_t bufferSize{0};
+    };
+    Round m_round;
+
+    TDiskIOPlanner m_planner;
+    std::vector<std::unique_ptr<StreamTask>> m_streams;     // this thread
+    std::deque<std::unique_ptr<TDiskIOTask>> m_idleTasks;   // this thread
+    QMutex m_pendingIdleTasksMutex;
+    std::vector<std::unique_ptr<TDiskIOTask>> m_pendingIdleTasks;
+    std::atomic<bool> m_idleWorkAllowed{true};
+    std::atomic<int> m_idleLimit{1};
+
+    void stop_disk_thread();
+    // Between rounds: streams added and removed, new idle tasks
+    void take_requests();
+    // One round; true when the next one follows without waiting for the tick
+    bool do_round();
+    bool stream_needs_work(TBufferedAudioStream* stream) const;
+    void stream_step(TBufferedAudioStream* stream);
+    void private_add_to_work(TBufferedAudioStream* bufferedAudioStream);
+    void private_remove_from_work(TBufferedAudioStream* bufferedAudioStream);
 
 public slots:
     void set_output_sample_rate(uint outputSampleRate);
     void set_resample_quality(int quality);
-
-private slots:
-    bool do_work();
-
-    void private_add_to_work(TBufferedAudioStream* bufferedAudioStream);
-    void private_remove_from_work(TBufferedAudioStream* bufferedAudioStream);
 
 signals:
 	void seekFinished();

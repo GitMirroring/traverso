@@ -340,8 +340,7 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
 
     // If the transport location lies (much) in front of our start location
     // or after our end location no need to fill the buffers
-    if ((transportLocation + m_aboutOneToFourSecondsTime) < m_streamStart ||
-        transportLocation > m_streamEnd) {
+    if (!transport_in_window(transportLocation)) {
         m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_WINDOW);
         return;
     }
@@ -432,6 +431,25 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
     m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::QUEUE_SEEKED_TO_NEW_LOCATION);
 
     process_realtime_buffers(fileDecodeBuffer);
+}
+
+bool TBufferedAudioStreamReader::transport_in_window(const TTimeRef& transportLocation) const
+{
+    return !((transportLocation + m_aboutOneToFourSecondsTime) < m_streamStart || transportLocation > m_streamEnd);
+}
+
+bool TBufferedAudioStreamReader::needs_disk_work(const TTimeRef& transportLocation)
+{
+    TBufferedAudioStreamStatus& status = get_buffer_status();
+    if (status.get_sync_status() == TBufferedAudioStreamStatus::OUT_OF_WINDOW) {
+        return transport_in_window(transportLocation);
+    }
+    return status.needs_disk_work();
+}
+
+bool TBufferedAudioStreamReader::counts_for_fill()
+{
+    return get_buffer_status().get_sync_status() != TBufferedAudioStreamStatus::OUT_OF_WINDOW;
 }
 
 void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDecodeBuffer)
