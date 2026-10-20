@@ -164,8 +164,9 @@ private:
     void take_requests();
     // One round; true when the next one follows without waiting for the tick
     bool do_round();
-    bool stream_needs_work(TBufferedAudioStream* stream) const;
-    void stream_step(TBufferedAudioStream* stream);
+    void stream_step(StreamTask& task);
+    // The lowest fill of a stream in sync since the GUI last asked
+    void report_fill(int fill);
     void private_add_to_work(TBufferedAudioStream* bufferedAudioStream);
     void private_remove_from_work(TBufferedAudioStream* bufferedAudioStream);
 

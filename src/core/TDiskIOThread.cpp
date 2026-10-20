@@ -80,21 +80,26 @@ const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
 
 #endif // endif Q_OS_LINUX
 
-// A stream as a task of a round: whether it needs work, and its step,
-// which reads (or writes) all it can at once
+// A stream as a task of a round: what it told the round (whether it needs
+// work), and its step, which reads (or writes) all it can at once
 class TDiskIOThread::StreamTask final : public TDiskIOTask
 {
 public:
     StreamTask(TDiskIOThread& diskio, TBufferedAudioStream* stream) : m_diskio(diskio), m_stream(stream) {}
 
-    bool needs_work() const override { return m_diskio.stream_needs_work(m_stream); }
-    void step() override { m_diskio.stream_step(m_stream); }
+    // The stream's state as the current round looked at it (do_round())
+    void set_state(const TDiskIOPlanner::Stream& state) { m_state = state; }
+    const TDiskIOPlanner::Stream& state() const { return m_state; }
+
+    bool needs_work() const override { return m_state.needsWork; }
+    void step() override { m_diskio.stream_step(*this); }
 
     TBufferedAudioStream* stream() const { return m_stream; }
 
 private:
     TDiskIOThread& m_diskio;
     TBufferedAudioStream* m_stream;
+    TDiskIOPlanner::Stream m_state;
 };
 
 
@@ -225,7 +230,8 @@ bool TDiskIOThread::do_round()
     std::vector<TDiskIOPlanner::Stream> streams;
     streams.reserve(m_streams.size());
     for (const std::unique_ptr<StreamTask>& task : m_streams) {
-        streams.push_back(task->stream()->disk_state(m_round.transportLocation));
+        task->set_state(task->stream()->disk_state(m_round.transportLocation));
+        streams.push_back(task->state());
     }
     std::vector<TDiskIOTask*> idle;
     for (const std::unique_ptr<TDiskIOTask>& task : m_idleTasks) {
@@ -282,15 +288,18 @@ bool TDiskIOThread::do_round()
     return plan.continueWithoutTick;
 }
 
-bool TDiskIOThread::stream_needs_work(TBufferedAudioStream* stream) const
+void TDiskIOThread::report_fill(int fill)
 {
-    return stream->disk_state(m_round.transportLocation).needsWork;
+    int lowest = m_bufferFillStatus.load(std::memory_order_relaxed);
+    while (fill < lowest && !m_bufferFillStatus.compare_exchange_weak(lowest, fill, std::memory_order_relaxed)) {
+    }
 }
 
-void TDiskIOThread::stream_step(TBufferedAudioStream* stream)
+void TDiskIOThread::stream_step(StreamTask& task)
 {
     static thread_local TFileIOBuffer threadLocalFileDecodeBuffer;
     const Round& round = m_round;
+    TBufferedAudioStream* stream = task.stream();
 
     if (round.seek) {
         if (round.sampleRateChanged) {
@@ -300,8 +309,12 @@ void TDiskIOThread::stream_step(TBufferedAudioStream* stream)
         stream->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, round.seekLocation);
         // The seek fills part of the ring; the rest at once
         TBufferedAudioStreamStatus& status = stream->get_buffer_status();
-        if (!status.out_of_sync() && status.get_fill_status() <= TDiskIOPlanner::IdleStartThreshold) {
+        const int fill = status.get_fill_status();
+        if (!status.out_of_sync() && fill <= TDiskIOPlanner::IdleStartThreshold) {
             stream->process_realtime_buffers(threadLocalFileDecodeBuffer);
+        }
+        if (!status.out_of_sync()) {
+            report_fill(fill);
         }
         return;
     }
@@ -314,12 +327,11 @@ void TDiskIOThread::stream_step(TBufferedAudioStream* stream)
         stream->process_realtime_buffers(threadLocalFileDecodeBuffer);
     }
 
-    // The emptiest stream in sync after its step, for the GUI
-    TBufferedAudioStreamStatus& status = stream->get_buffer_status();
-    const int fill = status.get_fill_status();
-    int lowest = m_bufferFillStatus.load(std::memory_order_relaxed);
-    while (!status.out_of_sync() && fill < lowest
-           && !m_bufferFillStatus.compare_exchange_weak(lowest, fill, std::memory_order_relaxed)) {
+    // For the GUI: the emptiest stream in sync, with the fill it had when
+    // the round looked at it (its low point, before this step refilled or
+    // flushed it)
+    if (!stream->m_bufferstatus.out_of_sync()) {
+        report_fill(task.state().fill);
     }
 }
 
