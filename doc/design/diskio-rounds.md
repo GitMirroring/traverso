@@ -102,10 +102,10 @@ setting `DiskIO/IdleLimit` overrides the limit (0 means: from the disk).
 
 ## 5. Peak builds and their waveform
 
-- **One streaming path.** `TPeakStream` (formerly `TPeakRecording`) is the
-  builder, the part file writer, the mapping of the written periods, and
-  the snapshot for readers. A recording feeds it from its writer, a build
-  from a decoder (`TPeakBuildTask`).
+- **One path** (since 2026-10-20: doc/design/peak-records.md). `TPeakStream`
+  appends level 0 to the part file and post-processes the levels above it.
+  A recording feeds it from its writer, a build from a decoder
+  (`TPeakBuildTask`).
 - **The waveform grows.** All clips of a source share one build and one
   stream (`TPeakBuildService`, one job per peak file). While a waveform is
   Building, it answers column queries from what is built so far and
@@ -114,21 +114,17 @@ setting `DiskIO/IdleLimit` overrides the limit (0 means: from the disk).
 - **Limitation:** a build goes from the start of the source to its end, so
   the middle of a long source appears only when the build gets there.
   Putting visible clips first is a later refinement.
-- **The rename happens on the GUI thread.** The GUI holds the stream's
-  mapping of the part file, and Windows renames no file that is mapped.
-  So the order is:
-  1. the build's last DiskIO step completes the part file;
-  2. on the GUI thread (posted when DiskIO deletes the finished task), the
-     stream lets go of the mapping and renames the file
-     (`TPeakStream::publish()`);
-  3. the future finishes, so a waveform that opens the file finds it.
-  A recording does the same in `TAudioClip::finish_write_source()`.
-  A crash in between leaves a complete part file, which is never opened;
-  the next open builds again.
+- **The rename happens in DiskIO.** Nobody maps the part file (the GUI
+  reads level 0 with plain reads), so the last post-processing step renames
+  it, also on Windows. Then DiskIO hands the finished job back
+  (`retire()`), its future finishes, and a waveform that opens the file
+  finds it. A recording's post-processing is such a job too, asked for by
+  `TAudioClip::finish_write_source()`. A crash in between leaves a part
+  file, which is never opened; the next open builds again.
 - **No fsync for peak files** (decided by the user, 2026-10-19). Peak
   files are a cache: a file damaged by a power loss shows a wrong waveform
   until it is built again. What stays:
-  - the header is written last (frame count 0 means unfinished);
+  - the header is written last (zero until then: unfinished);
   - a file gets its name only once it is complete;
   - an unfinished part file is removed;
   - `TPeakFile::open()` never reads part files.
@@ -137,8 +133,7 @@ setting `DiskIO/IdleLimit` overrides the limit (0 means: from the disk).
   runs `step()`, possibly another one each round. The round's hand-over
   gives the happens-before: blockingMap synchronises inside Qt, and two
   atomics around the round make it visible to a thread sanitizer too. The
-  GUI reads through `read()`, with the stream's protocol of published
-  counts and readers.
+  GUI reads the level-0 records below the stream's published count.
 
 ## 6. Measured
 

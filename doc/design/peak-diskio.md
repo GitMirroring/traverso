@@ -57,6 +57,10 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
 
 ## 2. File format, version 6 (TRAVPEAK version 2 since 2026-10-20, the same layout)
 
+> Superseded on 2026-10-20 by TRAVPEAK version 3, records per level, level 0
+> first, post-processed: doc/design/peak-records.md. Sections 2 to 4 describe
+> the period layout that went.
+
 Version 6 (2026-10-18) stores values as log codes and adds an RMS plane:
 doc/design/peak-redesign.md section 6.
 
