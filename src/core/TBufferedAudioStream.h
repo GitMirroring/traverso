@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 #include "TBufferedAudioStreamStatus.h"
+#include "TDiskIOPlanner.h"
 #include "TFileIOBuffer.h"
 #include "TTimeRef.h"
 #include "defines.h"
@@ -95,11 +96,9 @@ private:
     virtual void process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer) = 0;
     virtual void rb_seek_to_transport_location(TFileIOBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) = 0;
     virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
-    // Whether DiskIO's next round has to read or write for this stream, the
-    // transport being at transportLocation
-    virtual bool needs_disk_work(const TTimeRef& transportLocation) = 0;
-    // Whether the stream's fill decides about DiskIO's idle work: a reader
-    // that can have work (TDiskIOPlanner::Stream)
-    virtual bool counts_for_fill() = 0;
+    // What DiskIO's next round needs to know of this stream, the transport
+    // being at transportLocation: whether it has work, whether its fill
+    // decides about the idle work, its fill (one look at its buffers)
+    virtual TDiskIOPlanner::Stream disk_state(const TTimeRef& transportLocation) = 0;
 };
 

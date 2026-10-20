@@ -181,9 +181,11 @@ void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileIOB
     }
 }
 
-bool TBufferedAudioStreamWriter::needs_disk_work(const TTimeRef& /*transportLocation*/)
+TDiskIOPlanner::Stream TBufferedAudioStreamWriter::disk_state(const TTimeRef& /*transportLocation*/)
 {
-    return m_rtBufferSlotsQueue->size_approx() > 0 || (!m_isRecording && !m_exportFinished);
+    // The fill is the free part: the fullest queue goes first
+    const bool work = m_rtBufferSlotsQueue->size_approx() > 0 || (!m_isRecording && !m_exportFinished);
+    return TDiskIOPlanner::Stream{work, false, get_buffer_status().get_fill_status()};
 }
 
 void TBufferedAudioStreamWriter::set_process_peaks(bool process)

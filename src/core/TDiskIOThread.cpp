@@ -225,9 +225,7 @@ bool TDiskIOThread::do_round()
     std::vector<TDiskIOPlanner::Stream> streams;
     streams.reserve(m_streams.size());
     for (const std::unique_ptr<StreamTask>& task : m_streams) {
-        TBufferedAudioStream* stream = task->stream();
-        streams.push_back(TDiskIOPlanner::Stream{task->needs_work(), stream->counts_for_fill(),
-                                                 stream->get_buffer_status().get_fill_status()});
+        streams.push_back(task->stream()->disk_state(m_round.transportLocation));
     }
     std::vector<TDiskIOTask*> idle;
     for (const std::unique_ptr<TDiskIOTask>& task : m_idleTasks) {
@@ -250,7 +248,10 @@ bool TDiskIOThread::do_round()
         round.push_back(idle[size_t(i)]);
     }
 
-    if (!round.empty()) {
+    if (round.size() == 1) {
+        // Nothing to share: no hand-over to the pool
+        round.front()->step();
+    } else if (!round.empty()) {
         // The pool and this thread share the steps; the round ends when the
         // last one is done
         QtConcurrent::blockingMap(round, [](TDiskIOTask* task) { task->step(); });
@@ -263,14 +264,6 @@ bool TDiskIOThread::do_round()
         emit seekFinished();
     }
 
-    // The emptiest stream in sync, for the GUI
-    for (const std::unique_ptr<StreamTask>& task : m_streams) {
-        TBufferedAudioStreamStatus& status = task->stream()->get_buffer_status();
-        if (!status.out_of_sync() && status.get_fill_status() < m_bufferFillStatus.load(std::memory_order_relaxed)) {
-            m_bufferFillStatus.store(status.get_fill_status(), std::memory_order_relaxed);
-        }
-    }
-
     // Idle tasks that are over go (a build reports its result then)
     std::erase_if(m_idleTasks, [](const std::unique_ptr<TDiskIOTask>& task) { return task->is_done(); });
 
@@ -279,7 +272,7 @@ bool TDiskIOThread::do_round()
 
 bool TDiskIOThread::stream_needs_work(TBufferedAudioStream* stream) const
 {
-    return stream->needs_disk_work(m_round.transportLocation);
+    return stream->disk_state(m_round.transportLocation).needsWork;
 }
 
 void TDiskIOThread::stream_step(TBufferedAudioStream* stream)
@@ -307,6 +300,14 @@ void TDiskIOThread::stream_step(TBufferedAudioStream* stream)
         stream->rb_seek_to_transport_location(threadLocalFileDecodeBuffer, round.transportLocation);
     } else {
         stream->process_realtime_buffers(threadLocalFileDecodeBuffer);
+    }
+
+    // The emptiest stream in sync after its step, for the GUI
+    TBufferedAudioStreamStatus& status = stream->get_buffer_status();
+    const int fill = status.get_fill_status();
+    int lowest = m_bufferFillStatus.load(std::memory_order_relaxed);
+    while (!status.out_of_sync() && fill < lowest
+           && !m_bufferFillStatus.compare_exchange_weak(lowest, fill, std::memory_order_relaxed)) {
     }
 }
 
