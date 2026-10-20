@@ -695,6 +695,9 @@ int main()
         qint64 mappedBlocks = 0;
         recording.read([&](const TPeakLevels& view) { mappedBlocks = view.block_count(0); });
         QFile::remove(TPeakFileWriter::part_path(peakPath));   // the writer keeps writing to the unlinked file
+        // An older peak file of another signal under the name, big enough for
+        // the mapping: not this stream's, it is not published
+        reference_file(peakPath, make_signal(1, 400000), audioPath, shift);
         record_into(recording, signal, signal.frames() / 4, signal.frames() / 2);
         bool right = false;
         qint64 blocks = 0;

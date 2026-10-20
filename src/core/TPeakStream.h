@@ -114,8 +114,12 @@ private:
     // only while there are none
     std::atomic<int> m_readers{0};
 
+    // The writing thread is in append() (one at a time)
+    std::atomic<bool> m_appending{false};
+
     // Reading thread. QFileDevice::unmap() needs the object that mapped.
     std::unique_ptr<QFile> m_mapFile;
+    bool m_published{false};    // publish() put the file under its name
     uchar* m_map{nullptr};
     qint64 m_mappedPeriods{0};
 

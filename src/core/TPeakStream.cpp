@@ -47,6 +47,16 @@ TPeakFile::Status TPeakStream::open(QString* error)
 
 void TPeakStream::append(const float* const* channels, qint64 frames)
 {
+    // One thread appends at a time: a build moves between pool threads from
+    // round to round (the round's hand-over orders them), never two at once
+    [[maybe_unused]] const bool busy = m_appending.exchange(true, std::memory_order_acquire);
+    Q_ASSERT_X(!busy, "TPeakStream::append", "two threads append at once");
+    struct Appending
+    {
+        std::atomic<bool>& flag;
+        ~Appending() { flag.store(false, std::memory_order_release); }
+    } appending{m_appending};
+
     m_builder.append(channels, frames);
     if (m_writeFailed) {
         return;
@@ -120,7 +130,9 @@ TPeakFile::Status TPeakStream::publish(QString* error)
         }
         return TPeakFile::Status::Error;
     }
-    return TPeakFileWriter::publish(m_peakPath, error);
+    const TPeakFile::Status status = TPeakFileWriter::publish(m_peakPath, error);
+    m_published = status == TPeakFile::Status::Ok;
+    return status;
 }
 
 void TPeakStream::remap(qint64 periods)
@@ -129,6 +141,12 @@ void TPeakStream::remap(qint64 periods)
     // mapping comes first: when it fails, the old one stays.
     auto file = std::make_unique<QFile>(TPeakFileWriter::part_path(m_peakPath));
     if (!file->exists()) {
+        // Under its name only once published: before that a file there is
+        // not this stream's (an older one, while a build that failed removed
+        // its part file); the snapshot ends where the mapping ends then
+        if (!m_published) {
+            return;
+        }
         file->setFileName(m_peakPath);
     }
     const qint64 size = m_dataStart + periods * m_recordBytes;
