@@ -5,7 +5,8 @@
 
 #include <algorithm>
 
-TDiskIOPlanner::Round TDiskIOPlanner::plan(const std::vector<Stream>& streams, bool seek, int idleTasks, bool idleAllowed)
+TDiskIOPlanner::Round TDiskIOPlanner::plan(const std::vector<Stream>& streams, bool seek, int idleTasks, bool idleAllowed,
+                                           int threads, int idleLimit)
 {
     Round round;
 
@@ -34,8 +35,8 @@ TDiskIOPlanner::Round TDiskIOPlanner::plan(const std::vector<Stream>& streams, b
 
     m_idleRunning = m_idleRunning ? lowest >= ResumeThreshold : lowest > IdleStartThreshold;
     if (m_idleRunning && idleAllowed && idleTasks > 0) {
-        const int free = m_threads - int(round.streams.size());
-        round.idleSteps = std::clamp(free, 0, std::min(m_idleLimit, idleTasks));
+        const int free = std::max(threads, 1) - int(round.streams.size());
+        round.idleSteps = std::clamp(free, 0, std::min(std::max(idleLimit, 1), idleTasks));
     }
     round.continueWithoutTick = round.idleSteps > 0;
     return round;

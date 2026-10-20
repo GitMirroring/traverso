@@ -53,24 +53,17 @@ public:
         bool continueWithoutTick{false};
     };
 
-    // threads: how many steps can run at the same time (the pool's threads)
-    void set_threads(int threads) { m_threads = threads > 0 ? threads : 1; }
-    // At most this many idle tasks per round (1 on a disk that seeks)
-    void set_idle_limit(int limit) { m_idleLimit = limit > 0 ? limit : 1; }
-    int threads() const { return m_threads; }
-    int idle_limit() const { return m_idleLimit; }
-
     // seek: every stream takes a step (they all seek) and no idle work
     // runs; the idle work waits until the readers are above the start
     // threshold again. idleTasks: the idle tasks that need work now.
-    // idleAllowed: false while recording.
-    Round plan(const std::vector<Stream>& streams, bool seek, int idleTasks, bool idleAllowed);
+    // idleAllowed: false while recording. threads: how many steps can run
+    // at the same time (the pool's threads). idleLimit: at most this many
+    // idle tasks per round (1 on a disk that seeks).
+    Round plan(const std::vector<Stream>& streams, bool seek, int idleTasks, bool idleAllowed, int threads, int idleLimit);
 
     // Whether idle work may run as far as the readers' fill goes
     bool idle_running() const { return m_idleRunning; }
 
 private:
-    int m_threads{1};
-    int m_idleLimit{1};
     bool m_idleRunning{false};
 };

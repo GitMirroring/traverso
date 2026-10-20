@@ -188,10 +188,10 @@ bool TDiskIOThread::do_round()
     // blockingMap() starts the round on the pool and waits: the pool's
     // threads do the work, this thread takes part only when the pool is busy
     // (it runs the round then alone, so DiskIO always gets on)
-    m_planner.set_threads(QThreadPool::globalInstance()->maxThreadCount());
-    m_planner.set_idle_limit(m_idleLimit.load(std::memory_order_relaxed));
     const TDiskIOPlanner::Round plan = m_planner.plan(streams, seek, int(idle.size()),
-                                                      m_idleWorkAllowed.load(std::memory_order_relaxed));
+                                                      m_idleWorkAllowed.load(std::memory_order_relaxed),
+                                                      QThreadPool::globalInstance()->maxThreadCount(),
+                                                      m_idleLimit.load(std::memory_order_relaxed));
 
     // Idle steps that have not started yet give way to a seek that comes in
     // meanwhile (they get their step in a later round); a read that runs
