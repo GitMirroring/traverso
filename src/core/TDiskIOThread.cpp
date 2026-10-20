@@ -35,51 +35,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <samplerate.h>
 
 #if defined (Q_OS_LINUX)
-
-#include <unistd.h>
+// idle_limit_for(): the block device of a directory
 #include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
-
-#if defined(__i386__)
-# define __NR_ioprio_set	289
-# define __NR_ioprio_get	290
-# define IOPRIO_SUPPORT		1
-#elif defined(__ppc__) || defined(__powerpc__) || defined(__PPC__)
-# define __NR_ioprio_set	273
-# define __NR_ioprio_get	274
-# define IOPRIO_SUPPORT		1
-#elif defined(__x86_64__)
-# define __NR_ioprio_set	251
-# define __NR_ioprio_get	252
-# define IOPRIO_SUPPORT		1
-#elif defined(__ia64__)
-# define __NR_ioprio_set	1274
-# define __NR_ioprio_get	1275
-# define IOPRIO_SUPPORT		1
-#else
-# define IOPRIO_SUPPORT		0
 #endif
-
-enum {
-    IOPRIO_CLASS_NONE,
-    IOPRIO_CLASS_RT,
-    IOPRIO_CLASS_BE,
-    IOPRIO_CLASS_IDLE,
-};
-
-enum {
-    IOPRIO_WHO_PROCESS = 1,
-    IOPRIO_WHO_PGRP,
-    IOPRIO_WHO_USER,
-};
-
-const char *to_prio[] = { "none", "realtime", "best-effort", "idle", };
-#define IOPRIO_CLASS_SHIFT	13
-#define IOPRIO_PRIO_MASK	0xff
-
-#endif // endif Q_OS_LINUX
 
 // A stream as a task of a round: what it told the round (whether it needs
 // work), and its step, which reads (or writes) all it can at once
@@ -107,29 +67,6 @@ private:
 void TDiskIOThread::run()
 {
     TLog::name_thread("diskio");
-#if defined(Q_OS_LINUX)
-    // struct sched_param param;
-    // param.sched_priority = 40;
-    // if (pthread_setschedparam (pthread_self(), SCHED_FIFO, &param) != 0) {}
-
-    if (IOPRIO_SUPPORT) {
-        // When using the cfq scheduler we are able to set the priority of the io for what it's worth though :-)
-        int ioprio = 0, ioprio_class = IOPRIO_CLASS_RT;
-        int value = syscall(__NR_ioprio_set, IOPRIO_WHO_PROCESS, getpid(), ioprio | ioprio_class << IOPRIO_CLASS_SHIFT);
-
-        if (value == -1) {
-            ioprio_class = IOPRIO_CLASS_BE;
-            value = syscall(__NR_ioprio_set, IOPRIO_WHO_PROCESS, getpid(), ioprio | ioprio_class << IOPRIO_CLASS_SHIFT);
-        }
-
-        if (value == 0) {
-            ioprio = syscall (__NR_ioprio_get, IOPRIO_WHO_PROCESS, getpid());
-            ioprio_class = ioprio >> IOPRIO_CLASS_SHIFT;
-            ioprio = ioprio & IOPRIO_PRIO_MASK;
-            TLOG_I("diskio", "prioritized disk I/O: {} prio {} (only effective with the cfq scheduler)", to_prio[ioprio_class], ioprio);
-        }
-    }
-#endif
 
     bool moreWork = false;
     while (true) {
