@@ -159,7 +159,9 @@ cache location plus `/peaks`.
 | macOS | `~/Library/Caches/Traverso/Traverso/peaks` |
 | Windows | `%LOCALAPPDATA%/Traverso/Traverso/cache/peaks` (not roamed, right for a cache) |
 
-The setting `Peaks/cachedir` moves the cache, for instance to another disk.
+The setting `Peaks/cachedir` moves the cache, for instance to another local
+disk. The cache is always local, never on a network share (decided
+2026-10-20); nothing checks that, the setting is the user's.
 This gives:
 - projects on a NAS or a read-only medium build their peaks locally;
 - the same source in two projects has one peak file;
