@@ -1047,8 +1047,10 @@ void TSheet::update_idle_limit()
 {
     const int setting = config().get_property("DiskIO", "IdleLimit", 0).toInt();
     const int limit = setting > 0 ? setting : TDiskIOThread::idle_limit_for(get_audio_sources_dir());
-    m_readDiskIO->set_idle_limit(limit);
-    TLOG_I("diskio", "{} peak builds at a time{}", limit, setting > 0 ? " (setting)" : "");
+    if (limit != m_readDiskIO->idle_limit()) {
+        m_readDiskIO->set_idle_limit(limit);
+        TLOG_I("diskio", "{} peak builds at a time{}", limit, setting > 0 ? " (setting)" : "");
+    }
 }
 
 

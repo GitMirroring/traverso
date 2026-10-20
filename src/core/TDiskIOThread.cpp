@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 #include <QFile>
+#include <QFileInfo>
 #include <QtConcurrent>
 #include <QThreadPool>
 
@@ -369,10 +370,20 @@ void TDiskIOThread::stream_step(StreamTask& task)
 int TDiskIOThread::idle_limit_for(const QString& directory)
 {
 #if defined(Q_OS_LINUX)
-    // The block device of the directory's file system; a partition has no
-    // queue of its own, its disk is the directory above it
+    // The block device of the directory's file system (of the nearest
+    // existing directory above it: a new project's directories may not be
+    // there yet); a partition has no queue of its own, its disk is the
+    // directory above it
+    QString existing = QFileInfo(directory).absoluteFilePath();
+    while (!QFileInfo::exists(existing)) {
+        const QString parent = QFileInfo(existing).absolutePath();
+        if (parent == existing) {
+            break;
+        }
+        existing = parent;
+    }
     struct stat info;
-    if (stat(QFile::encodeName(directory).constData(), &info) == 0) {
+    if (stat(QFile::encodeName(existing).constData(), &info) == 0) {
         const QString device = QStringLiteral("/sys/dev/block/%1:%2").arg(major(info.st_dev)).arg(minor(info.st_dev));
         for (const QString& queue : {device + QStringLiteral("/queue/rotational"), device + QStringLiteral("/../queue/rotational")}) {
             QFile file(queue);
