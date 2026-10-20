@@ -154,7 +154,7 @@ static int record(const QString& dir)
     const qint64 frames = qint64(rate) * 600;
     const qint64 buffer = 1024;
     // Bytes of one block: min/max, and from format 6 on the RMS code
-    const qint64 blockBytes = qint64(sizeof(TPeakBlock)) + (TPeakFile::FormatVersion >= 6 ? 2 : 0);
+    const qint64 blockBytes = qint64(sizeof(TPeakBlock)) + 2;   // min/max and the RMS code
 
     std::vector<std::unique_ptr<TPeakStream>> recordings;
     for (int t = 0; t < tracks; ++t) {

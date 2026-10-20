@@ -55,7 +55,7 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
    is rare) and as fast as the disk allows while no stream needs reading.
 7. No network file systems for now.
 
-## 2. File format, version 6
+## 2. File format, version 6 (TRAVPEAK version 2 since 2026-10-20, the same layout)
 
 Version 6 (2026-10-18) stores values as log codes and adds an RMS plane:
 doc/design/peak-redesign.md section 6.
@@ -87,7 +87,8 @@ doc/design/peak-redesign.md section 6.
   count 0 or a header that does not match its checksum is Invalid at open
   and is built again.
 - The file is written as `<name>.part`, synced and renamed over `<name>` by
-  publish (an atomic replace on POSIX). Writing in place cut a file short
+  publish (an atomic replace on POSIX). (Since 2026-10-20: not synced, and a
+  part file per writer, see "The peak cache".) Writing in place cut a file short
   under a waveform that had it mapped (SIGBUS, found in the first headless
   run); the rename leaves an existing mapping on the old file. An unfinished
   part file says so in its header and is removed when the write is given
@@ -178,7 +179,7 @@ It is the path, not the file name, because two projects can each have a
 `take1.wav`. The canonical path resolves symlinks, so a symlink and its file
 share the peak file. A recorded file does not exist yet when its recording
 starts; its directory's canonical path plus its name give the key it will
-have once it exists. Validation is unchanged: the header compares rate,
+have once it exists. Validation is unchanged but for the tolerance below: the header compares rate,
 channels, frames and the source's size and time. A different file at the
 same path makes the peak file Invalid, and it is rebuilt.
 
@@ -187,7 +188,7 @@ exFAT round times to 1 or 2 seconds, and without the tolerance a project
 there could rebuild its peaks on every open.
 
 A consequence: moving or renaming a project, or mounting a share somewhere
-else, changes the keys, and the peak files are built again. With format 6 a
+else, changes the keys, and the peak files are built again. With this format a
 build takes about 1 s per hour of WAV on a local SSD. A project on a NAS is
 network-bound: an hour of mono float WAV (~690 MB) takes 6–7 s to read over
 gigabit.
@@ -205,11 +206,16 @@ gigabit.
     open, and a `TPeakStream` for its lifetime);
   - peak files younger than an hour, built or opened just now (otherwise a
     limit below the working set would remove a file before its waveform
-    opens it, and rebuild it forever; the limit is a soft bound);
+    opens it, and the waveform would fail for the session; the limit is a
+    soft bound);
+  - files that changed since the scan (published again or used meanwhile:
+    every removal looks at the time once more);
   - part files younger than a day, from a build or recording that may still
     run, also in another Traverso.
 - **Leftovers.** Older part files are left over from a crash and go,
-  whatever the limit.
+  unless the limit is 0 (then the cache is not managed at all). A part file
+  that never got its name goes when its stream goes (a build whose project
+  closed first).
 - **Failures.** A file that cannot be removed is skipped (on Windows, one
   that another Traverso has mapped).
 - **Other instances.** On Linux and macOS a file another instance has
@@ -217,10 +223,15 @@ gigabit.
 - **Comparing names.** Files are compared by file name, not by path:
   std::filesystem and Qt write separators differently on Windows.
 
-**Several instances.** A part file is named per process
-(`<peak>.<pid>.part`). Two instances building the same peak file each write
-their own part file, and each rename puts a complete file in place. With one
-shared part name, each would truncate the other's file.
+**Several writers.** A part file is named per process and per writer
+(`<peak>.<pid>-<n>.part`), and a writer never takes a name that is there
+already (two machines sharing a cache directory can have the same process
+id). Two writers of the same peak file (two instances, or an old and a new
+build of a project opened again) each write their own part file, and each
+rename puts a complete file in place. With one shared part name, each would
+truncate the other's file. Imports and merges publish their peak file as
+soon as it is complete (nobody reads it meanwhile); recordings and builds
+publish on the GUI thread.
 
 **Version.** The magic is still `TRAVPEAK`. Versions are counted from 2:
 legacy was `TRAVPF` 1.5, and `TRAVPEAK` 3 to 6 only existed in development

@@ -9,7 +9,8 @@
 #include <QString>
 
 /**
- * @brief Peak file format 6: a TPeakLevels pyramid on disk, written as a
+ * @brief Peak file (TRAVPEAK version 2, the layout development called
+ * version 6): a TPeakLevels pyramid on disk, written as a
  * stream, read mapped.
  *
  * The file is a cache of its source: when it is missing, unfinished, from
@@ -63,7 +64,9 @@ public:
                         int periodShift = TPeakPyramidBuilder::DefaultPeriodShift);
 
     // Checks the header, its checksum and the layout. An open peak file
-    // holds a mapping, no file descriptor.
+    // holds a mapping, no file descriptor, and is registered with the peak
+    // cache while it is open (TPeakCache::opened()), so the cache's eviction
+    // leaves it alone: every open() anywhere touches that registry.
     Status open(const QString& path, const SourceInfo& expected);
     void close();
 
@@ -92,8 +95,9 @@ private:
  * @brief Writes a peak file as a stream: the header at once, a record as
  * soon as a period is complete, the tail and the final header at the end.
  *
- * The file is written next to its final name (path + ".part"); publish()
- * renames it over its name once it is complete. A waveform
+ * The file is written next to its final name, in a part file of its own
+ * (part_path()); publish() renames it over its name once it is complete. A
+ * waveform
  * that has the old file mapped keeps reading the old file, a file is never
  * cut short under a mapping. A part file that was not finished says so in
  * its header and is removed by close(); open() never looks at part files.
