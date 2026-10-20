@@ -31,8 +31,10 @@ struct TPeakCacheState
 
 static TPeakCacheState& cache_state()
 {
-    static TPeakCacheState state;
-    return state;
+    // Never destroyed: after exit() (Ctrl+C) the static destructors run
+    // before the project's clips close their peak files
+    static TPeakCacheState* state = new TPeakCacheState;
+    return *state;
 }
 
 // The file name of an audio file, kept readable for debugging: at most 40
