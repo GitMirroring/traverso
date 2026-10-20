@@ -114,6 +114,10 @@ int main()
         check(!streams.continueWithoutTick && streams.streams.size() == 1, "only streams: wait for the tick");
         const TDiskIOPlanner::Round nothing = planner.plan({reader(100)}, false, 0, true);
         check(nothing.streams.empty() && nothing.idleSteps == 0 && !nothing.continueWithoutTick, "nothing: wait");
+        // Idle tasks that wait (behind the hysteresis, or while recording)
+        // are no reason to go on: the thread would spin
+        check(!planner.plan({reader(50)}, false, 2, true).continueWithoutTick, "idle work held back: wait for the tick");
+        check(!planner.plan({reader(100)}, false, 2, false).continueWithoutTick, "recording: wait for the tick");
     }
     {
         // Writers: only those with something to write, no fill rule
