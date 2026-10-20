@@ -17,7 +17,9 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
    recording, its switch to the file at stop and the stop-time write go.
 3. Builds run in **DiskIO's idle time**: the DiskIO of the sheet whose clip
    asked for the peaks, in its idle branch (no stream needs work), with a
-   time budget per tick and a self-wakeup while work remains. While the
+   time budget per tick and a self-wakeup while work remains. (Since
+   2026-10-20 a build is an idle task of DiskIO's round loop, one read per
+   round, no time budget: doc/design/diskio-rounds.md.) While the
    sheet records, it does not build (flag). No thread of its own. First
    version: at most 3 ms per DiskIO wakeup (one per audio cycle), no
    self-wakeup. The other sheets of the project go on building while one
@@ -27,9 +29,12 @@ Follow-up of `peak-redesign.md` after the review of the peak classes
    `QFutureWatcher` in `TWaveform`: exactly one `finished` per watcher, no
    QObject job. A waveform never cancels a build; builds are cancelled when
    the project closes.
-5. A peak file reaches its name only after it is **on the disk**: the
-   finished part file is synced (fdatasync) and then renamed over its name
-   (`TPeakFileWriter::publish()`). So a file under its name is always
+5. (Changed 2026-10-20 by the user's decision: peak files are a cache and
+   are not synced any more; publish() only renames, on the GUI thread that
+   holds the mapping: doc/design/diskio-rounds.md §5. What follows is the
+   design as it was.) A peak file reaches its name only after it is **on
+   the disk**: the finished part file is synced (fdatasync) and then
+   renamed over its name (`TPeakFileWriter::publish()`). So a file under its name is always
    whole, also after a crash, and nothing checks block data afterwards: the
    header keeps a checksum (72 bytes, cheap, catches a damaged field that
    keeps the layout the same size), the blocks have none. A build publishes
@@ -110,12 +115,14 @@ release them at once; a recording when no read is going on (section 4).
    headless tests (all frame counts around period edges, damaged files,
    sources that end early, many S). The existing build and write jobs use the
    new writer unchanged in behaviour.
-2. A resumable build task (`step(budget)`), core-free, with tests.
+2. A resumable build task (`step(budget)`; since 2026-10-20 `step()`, one
+   read), core-free, with tests.
 3. DiskIO idle runner, a build service on `TSheet`, `TWaveform` on
    promise/watcher; TPeakBuilder's thread goes.
 4. The recording writer streams; the live view maps the growing file.
 
-A recording streams through `TPeakRecording`: the writer thread appends,
+A recording streams through `TPeakRecording` (since 2026-10-20
+`TPeakStream`, which builds stream through as well): the writer thread appends,
 writes every complete period to the part file at once and publishes the
 count. A reader (the GUI) reads inside `read()`: its snapshot names the
 written periods in a mapping of the part file (remapped as it grows, new

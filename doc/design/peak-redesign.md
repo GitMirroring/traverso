@@ -93,7 +93,8 @@ and by `TPeakFile` (mapped file). `TWaveformColumns` only knows this view.
 ### 3.3 `TPeakFile` (format v2)
 
 (The current format is 6, streamed per period: doc/design/peak-diskio.md
-for the layout, section 6 here for the values and sizes.)
+for the layout, section 6 here for the values and sizes. Peak files are not
+synced to the disk: they are a cache, doc/design/diskio-rounds.md §5.)
 
 One file per source, `<source name>.peaks` in `peakfiles/`. Written with
 `QSaveFile` (never a half-written cache), read with `QFile::map()` (the OS

@@ -7,7 +7,8 @@ SPDX-License-Identifier: GPL-2.0-or-later
 
 Branch `peaks-v6` on master 929ffc19 (= peak-diskio 76733210 plus the
 recording play head fix, which is not part of v6). Verified before the
-blind review, as the verification work order asks.
+blind review, as the verification work order asks. (`TPeakRecording`,
+named below, is `TPeakStream` since 2026-10-20.)
 
 | Commit | What |
 |---|---|
@@ -159,7 +160,8 @@ v6. Page cache warm.
 |---|---|---|
 | 43,200,136 bytes | 64,800,176 bytes | 1.50 |
 
-**Build** (decode, pyramid, write, sync and rename):
+**Build** (decode, pyramid, write, sync and rename; since 2026-10-20 peak
+files are not synced any more, doc/design/diskio-rounds.md):
 
 | | v5 | v6 |
 |---|---|---|
