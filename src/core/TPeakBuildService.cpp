@@ -53,21 +53,15 @@ public:
         }, Qt::QueuedConnection);
     }
 
-    bool needs_work() const override { return !is_done(); }
-
-    void step() override
+    bool step() override
     {
         if (m_state->promise.isCanceled()) {
             m_state->task->cancel();
         }
         m_state->task->step();
         m_state->promise.setProgressValue(m_state->task->progress());
-    }
-
-    bool is_done() const override
-    {
         const TPeakBuildTask::State state = m_state->task->state();
-        return state != TPeakBuildTask::State::Waiting && state != TPeakBuildTask::State::Running;
+        return state == TPeakBuildTask::State::Waiting || state == TPeakBuildTask::State::Running;
     }
 
 private:

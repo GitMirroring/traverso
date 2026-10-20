@@ -46,8 +46,8 @@ class TBufferedAudioStream;
  * Each sheet has two: one for its readers and their idle work, one for its
  * writers (recordings), so a slow read never holds up writing what was
  * recorded. Both run the same loop: wait for the audio thread's tick (it
- * wakes them every cycle), then rounds. A round asks every task whether it
- * needs work, lets TDiskIOPlanner pick the order (streams first, the
+ * wakes them every cycle), then rounds. A round asks every stream what it
+ * needs, lets TDiskIOPlanner pick the order (streams first, the
  * emptiest first, then idle tasks on the threads left) and runs one step of
  * each in parallel on the global thread pool (this thread waits, and runs
  * the round itself when the pool is busy). Between
@@ -112,8 +112,6 @@ protected:
     void run() override;
 
 private:
-    class StreamTask;
-
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>      m_audioThreadProcessedFramesQueue;
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>   m_streamsToBeAdded;
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>   m_streamsToBeRemoved;
@@ -153,7 +151,7 @@ private:
     std::atomic<quint64> m_stepsDone{0};
 
     TDiskIOPlanner m_planner;
-    std::vector<std::unique_ptr<StreamTask>> m_streams;     // this thread
+    std::vector<TBufferedAudioStream*> m_streams;           // this thread
     std::deque<std::unique_ptr<TDiskIOTask>> m_idleTasks;   // this thread
     QMutex m_pendingIdleTasksMutex;
     std::vector<std::unique_ptr<TDiskIOTask>> m_pendingIdleTasks;
@@ -165,9 +163,9 @@ private:
     void take_requests();
     // One round; true when the next one follows without waiting for the tick
     bool do_round();
-    void stream_step(StreamTask& task);
-    // The lowest fill of a stream in sync since the GUI last asked
-    void report_fill(int fill);
+    // One step of a stream; fill: what it had when the round looked at it.
+    // Returns the fill to show for it (-1: out of sync, nothing to show).
+    int stream_step(TBufferedAudioStream& stream, int fill);
     void private_add_to_work(TBufferedAudioStream* bufferedAudioStream);
     void private_remove_from_work(TBufferedAudioStream* bufferedAudioStream);
 

@@ -32,15 +32,16 @@ DiskIO for the whole project is a later step.
 3. One round (`do_round()`):
    - every stream reports its state in one call (`disk_state()`: whether it
      has work, whether its fill counts, its fill);
-   - every idle task says whether it has work;
+   - every idle task has work (until its step says it is over);
    - `TDiskIOPlanner` decides the order;
    - one step of each runs with one `QtConcurrent::blockingMap`, spread
      over the global pool. In Qt 6 `blockingMap()` starts the work on the
      pool and waits: the DiskIO thread takes part only when the pool is busy
      (then it runs the round alone, so DiskIO always gets on). A round of one step
      runs on the DiskIO thread without the hand-over to the pool.
-4. After the round: a seek round reports `seekFinished`; idle tasks that are
-   done are handed back (`retire()`, a build reports its result then, see
+4. After the round: the GUI's fill meter takes the emptiest stream in sync;
+   a seek round reports `seekFinished`; idle tasks that are over are handed
+   back (`retire()`, a build reports its result then, see
    §5) and deleted.
 
 A seek that comes in during a round is taken at the next round. Idle steps
@@ -48,7 +49,8 @@ of the running round that have not started yet give way to it; a read that
 runs already finishes first, so a seek waits at most one step (a fifth of a
 second of a source, longer on a slow share).
 
-The work is a `TDiskIOTask` (`needs_work()`, `step()`, `is_done()`):
+Streams tell the round what they need (`disk_state()`); background work is
+a `TDiskIOTask`, whose `step()` says when it is over:
 - **A reader** has work when it is out of sync or its ring is at 80% or
   less. A reader **out of its window** (the transport far from its clip) has
   work only once the transport comes within its window, and then it seeks.
