@@ -486,7 +486,7 @@ static void test_file()
         return copy;
     };
     expect_damaged(QByteArray(bytes).replace(0, 1, "X"), "magic");
-    expect_damaged(patched(8, 2), "version 2");
+    expect_damaged(patched(8, 6), "version 6 (development)");
     expect_damaged(patched(8, 3), "version 3");
     expect_damaged(patched(8, 4), "version 4");
     expect_damaged(patched(8, 5), "version 5 (the linear codes, no RMS)");

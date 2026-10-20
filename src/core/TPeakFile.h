@@ -71,7 +71,10 @@ public:
     // Valid while the file is open
     const TPeakLevels& levels() const { return m_levels; }
 
-    static constexpr quint32 FormatVersion = 6;
+    // Magic TRAVPEAK, version counted from 2 (the format after legacy TRAVPF
+    // 1.5; TRAVPEAK 3 to 6 only existed in development branches, in project
+    // directories that are not read any more). Every format change counts up.
+    static constexpr quint32 FormatVersion = 2;
 
 private:
     Status validate(const SourceInfo& expected, qint64 fileSize);
