@@ -184,6 +184,16 @@ TDiskIOThread::~TDiskIOThread()
 {
     PENTERDES;
     stop_disk_thread();
+
+    // Background tasks that did not get to their end are handed back too
+    // (the thread is gone: this one may touch its lists)
+    QMutexLocker locker(&m_pendingIdleTasksMutex);
+    for (const std::unique_ptr<TDiskIOTask>& task : m_pendingIdleTasks) {
+        task->retire();
+    }
+    for (const std::unique_ptr<TDiskIOTask>& task : m_idleTasks) {
+        task->retire();
+    }
 }
 
 void TDiskIOThread::take_requests()
@@ -283,7 +293,14 @@ bool TDiskIOThread::do_round()
     }
 
     // Idle tasks that are over go (a build reports its result then)
-    std::erase_if(m_idleTasks, [](const std::unique_ptr<TDiskIOTask>& task) { return task->is_done(); });
+    for (auto it = m_idleTasks.begin(); it != m_idleTasks.end();) {
+        if ((*it)->is_done()) {
+            (*it)->retire();
+            it = m_idleTasks.erase(it);
+        } else {
+            ++it;
+        }
+    }
 
     return plan.continueWithoutTick;
 }

@@ -25,4 +25,9 @@ public:
     // True when the task is over (background tasks only; streams never
     // finish): DiskIO deletes it after the round
     virtual bool is_done() const { return false; }
+    // DiskIO hands a background task back right before it deletes it: when
+    // it is done (on the DiskIO thread, after the round), or when DiskIO
+    // goes first (on the thread that deletes DiskIO). Reporting a result
+    // belongs here, not in the destructor.
+    virtual void retire() {}
 };

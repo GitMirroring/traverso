@@ -5,6 +5,7 @@
 
 #include <QFuture>
 #include <QHash>
+#include <QObject>
 #include <QString>
 
 #include <memory>
@@ -39,12 +40,13 @@ struct TPeakBuild
  * watcher of the future gets finished() exactly once, also for a job that
  * finished before it watched. Futures are cancelled only by cancel_all(),
  * when the project closes: a waveform that goes away does not cancel.
- * GUI thread only.
+ * GUI thread only: finished builds report through it (a QObject of the
+ * GUI thread).
  *
  * Never wait for one of these futures (waitForFinished(), result() before
  * finished): the job runs in DiskIO's idle time, not in a thread pool.
  */
-class TPeakBuildService
+class TPeakBuildService : public QObject
 {
 public:
     // rate, channelCount: the source's, as its waveform knows them
