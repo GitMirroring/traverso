@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBufferedAudioStream.h"
 #include "Debugger.h"
 
+#include <QFile>
 #include <QtConcurrent>
 #include <QThreadPool>
 
@@ -35,7 +36,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #if defined (Q_OS_LINUX)
 
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 
 #if defined(__i386__)
@@ -305,6 +308,38 @@ void TDiskIOThread::stream_step(TBufferedAudioStream* stream)
     } else {
         stream->process_realtime_buffers(threadLocalFileDecodeBuffer);
     }
+}
+
+int TDiskIOThread::idle_limit_for(const QString& directory)
+{
+#if defined(Q_OS_LINUX)
+    // The block device of the directory's file system; a partition has no
+    // queue of its own, its disk is the directory above it
+    struct stat info;
+    if (stat(QFile::encodeName(directory).constData(), &info) == 0) {
+        const QString device = QStringLiteral("/sys/dev/block/%1:%2").arg(major(info.st_dev)).arg(minor(info.st_dev));
+        for (const QString& queue : {device + QStringLiteral("/queue/rotational"), device + QStringLiteral("/../queue/rotational")}) {
+            QFile file(queue);
+            if (file.open(QIODevice::ReadOnly)) {
+                const QByteArray rotational = file.readAll().trimmed();
+                if (rotational == "0") {
+                    return QThread::idealThreadCount();
+                }
+                if (rotational == "1") {
+                    return 1;
+                }
+            }
+        }
+    }
+    // Unknown (a file system without a block device of its own, like a
+    // btrfs subvolume or a network share): as if it seeks
+    return 1;
+#else
+    // Windows (seek penalty, IOCTL_STORAGE_QUERY_PROPERTY) and macOS (IOKit
+    // "Medium Type") could tell; not done yet, so as if it seeks
+    Q_UNUSED(directory);
+    return 1;
+#endif
 }
 
 void TDiskIOThread::add_idle_task(std::unique_ptr<TDiskIOTask> task)

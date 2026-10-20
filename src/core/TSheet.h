@@ -202,6 +202,7 @@ private slots:
     void prepare_recording();
     void clip_finished_recording(TAudioClip* clip);
     void config_changed();
+    void update_idle_limit();
 };
 
 #endif // SONG_H

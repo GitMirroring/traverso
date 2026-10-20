@@ -101,6 +101,10 @@ public:
     void set_idle_work_allowed(bool allowed) { m_idleWorkAllowed.store(allowed, std::memory_order_relaxed); }
     // At most this many idle tasks per round (1 on a disk that seeks). Any thread.
     void set_idle_limit(int limit) { m_idleLimit.store(limit, std::memory_order_relaxed); }
+    // The idle limit for sources in directory: 1 on a hard disk, which a
+    // second read at the same time sends seeking; as many as there are
+    // threads on an SSD. Known on Linux only; elsewhere, and when in doubt, 1.
+    static int idle_limit_for(const QString& directory);
 
 protected:
     void run() override;

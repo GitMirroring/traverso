@@ -133,6 +133,7 @@ void TSheet::init()
     m_readDiskIO = new TDiskIOThread();
     m_readDiskIO->set_output_sample_rate(audiodevice().get_sample_rate());
     m_readDiskIO->set_resample_quality(converter_type);
+    update_idle_limit();
 
     connect(m_readDiskIO, &TDiskIOThread::seekFinished, this, &TSheet::seek_finished, Qt::QueuedConnection);
 
@@ -1036,6 +1037,18 @@ void TSheet::config_changed()
     if (m_readDiskIO->get_resample_quality() != quality) {
         m_readDiskIO->set_resample_quality(quality);
     }
+    update_idle_limit();
+}
+
+// How many peak builds may read at the same time: from the kind of disk the
+// audio sources are on, unless the setting says (DiskIO/IdleLimit, 0: from
+// the disk)
+void TSheet::update_idle_limit()
+{
+    const int setting = config().get_property("DiskIO", "IdleLimit", 0).toInt();
+    const int limit = setting > 0 ? setting : TDiskIOThread::idle_limit_for(get_audio_sources_dir());
+    m_readDiskIO->set_idle_limit(limit);
+    TLOG_I("diskio", "{} peak builds at a time{}", limit, setting > 0 ? " (setting)" : "");
 }
 
 
