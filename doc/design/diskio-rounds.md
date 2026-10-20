@@ -35,7 +35,9 @@ DiskIO for the whole project is a later step.
    - every idle task says whether it has work;
    - `TDiskIOPlanner` decides the order;
    - one step of each runs with one `QtConcurrent::blockingMap`, spread
-     over the global pool and the DiskIO thread itself. A round of one step
+     over the global pool. In Qt 6 `blockingMap()` starts the work on the
+     pool and waits: the DiskIO thread takes part only when the pool is busy
+     (then it runs the round alone, so DiskIO always gets on). A round of one step
      runs on the DiskIO thread without the hand-over to the pool.
 4. After the round: a seek round reports `seekFinished`; idle tasks that are
    done are deleted (a build reports its result then, see §5).
@@ -61,7 +63,7 @@ The work is a `TDiskIOTask` (`needs_work()`, `step()`, `is_done()`):
 headless (ctest `diskio_planner`, mutation-checked). Per round it decides:
 - **The streams that need work, the emptiest first.** `blockingMap` starts
   at the front.
-- **Idle tasks on the threads that are left** (pool plus one), never more
+- **Idle tasks on the threads that are left** (the pool's), never more
   than the idle limit, and only while the hysteresis allows it:
   - idle work starts when the emptiest reader that counts is above
     `IdleStartThreshold` (80%, the threshold a reader gets a step at);
@@ -135,7 +137,7 @@ setting `DiskIO/IdleLimit` overrides the limit (0 means: from the disk).
 Release build, headless app on the Dummy driver, timed from the log's first
 "building" to its last "built". The project copies have no peak files.
 
-| Project | Before (idle loop, 3 ms per tick) | Rounds, tmpfs (limit 1) | Rounds, NVMe SSD (limit 12, 7 threads: pool of 6 + DiskIO) |
+| Project | Before (idle loop, 3 ms per tick) | Rounds, tmpfs (limit 1) | Rounds, NVMe SSD (limit 12, a pool of 6 threads) |
 |---|---|---|---|
 | Bendictus, 6 sources (180 MB WAV) | 0.25 s | 0.25 s | 0.13 s |
 | Pirates, 22 sources, 175 clips | 0.44–0.70 s | 0.45–0.53 s | 0.25 s |

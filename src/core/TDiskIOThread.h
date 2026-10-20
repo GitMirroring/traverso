@@ -49,7 +49,8 @@ class TBufferedAudioStream;
  * wakes them every cycle), then rounds. A round asks every task whether it
  * needs work, lets TDiskIOPlanner pick the order (streams first, the
  * emptiest first, then idle tasks on the threads left) and runs one step of
- * each in parallel, on the global thread pool and on this thread. Between
+ * each in parallel on the global thread pool (this thread waits, and runs
+ * the round itself when the pool is busy). Between
  * rounds, never during one: seeks, streams added and removed, new idle
  * tasks, rate changes. Nothing is timed: the kernel schedules, DiskIO only
  * knows the order.

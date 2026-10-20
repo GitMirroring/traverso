@@ -234,7 +234,10 @@ bool TDiskIOThread::do_round()
         }
     }
 
-    m_planner.set_threads(QThreadPool::globalInstance()->maxThreadCount() + 1);
+    // blockingMap() starts the round on the pool and waits: the pool's
+    // threads do the work, this thread takes part only when the pool is busy
+    // (it runs the round then alone, so DiskIO always gets on)
+    m_planner.set_threads(QThreadPool::globalInstance()->maxThreadCount());
     m_planner.set_idle_limit(m_idleLimit.load(std::memory_order_relaxed));
     const TDiskIOPlanner::Round plan = m_planner.plan(streams, seek, int(idle.size()),
                                                       m_idleWorkAllowed.load(std::memory_order_relaxed));
@@ -252,8 +255,7 @@ bool TDiskIOThread::do_round()
         // Nothing to share: no hand-over to the pool
         round.front()->step();
     } else if (!round.empty()) {
-        // The pool and this thread share the steps; the round ends when the
-        // last one is done. A task takes its steps on different threads from
+        // The pool runs the steps; the round ends when the last one is done. A task takes its steps on different threads from
         // round to round: the steps see what this thread wrote before the
         // round, this thread (and the next round) sees what they wrote.
         // blockingMap synchronises inside Qt; these two atomics say so in a
@@ -454,10 +456,11 @@ void TDiskIOThread::stop_disk_thread( )
     // Since we are disconnected from the audio processing callback it's safe to do so.
     wakeup(); // make the loop leave TDiskIOThread::run()
 
-    if (!wait(1000)) { // give time for the TDiskIOThread::run() to actually finish
-        terminate();
-        wait();
-    }
+    // Until the running round is over: its steps run on pool threads and use
+    // the tasks this object owns. A round always ends (every step is one
+    // read or write); killing the thread would leave the steps running on
+    // deleted tasks.
+    wait();
 }
 
 void TDiskIOThread::set_resample_quality(int quality)

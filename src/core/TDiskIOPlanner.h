@@ -53,7 +53,7 @@ public:
         bool continueWithoutTick{false};
     };
 
-    // threads: the pool's threads plus the DiskIO thread itself
+    // threads: how many steps can run at the same time (the pool's threads)
     void set_threads(int threads) { m_threads = threads > 0 ? threads : 1; }
     // At most this many idle tasks per round (1 on a disk that seeks)
     void set_idle_limit(int limit) { m_idleLimit = limit > 0 ? limit : 1; }
