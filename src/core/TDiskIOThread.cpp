@@ -253,8 +253,18 @@ bool TDiskIOThread::do_round()
         round.front()->step();
     } else if (!round.empty()) {
         // The pool and this thread share the steps; the round ends when the
-        // last one is done
-        QtConcurrent::blockingMap(round, [](TDiskIOTask* task) { task->step(); });
+        // last one is done. A task takes its steps on different threads from
+        // round to round: the steps see what this thread wrote before the
+        // round, this thread (and the next round) sees what they wrote.
+        // blockingMap synchronises inside Qt; these two atomics say so in a
+        // way a thread sanitizer sees too.
+        m_roundStarted.fetch_add(1, std::memory_order_release);
+        QtConcurrent::blockingMap(round, [this](TDiskIOTask* task) {
+            m_roundStarted.load(std::memory_order_acquire);
+            task->step();
+            m_stepsDone.fetch_add(1, std::memory_order_release);
+        });
+        m_stepsDone.load(std::memory_order_acquire);
     }
 
     if (seek) {

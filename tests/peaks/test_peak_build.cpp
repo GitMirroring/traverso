@@ -68,12 +68,13 @@ static Signal make_signal(int channelCount, qint64 frames)
 }
 
 // A source in memory that can report more frames than it has, fail at a
-// frame, and deliver less than asked per read
+// frame, and deliver less than asked per read. Its own random numbers: it
+// is read on the building thread.
 class MemoryBuildSource final : public TPeakBuildSource
 {
 public:
-    MemoryBuildSource(const Signal& signal, qint64 extraReported, qint64 failAt)
-        : m_signal(signal), m_extraReported(extraReported), m_failAt(failAt) {}
+    MemoryBuildSource(const Signal& signal, qint64 extraReported, qint64 failAt, quint64 seed)
+        : m_signal(signal), m_extraReported(extraReported), m_failAt(failAt), m_random(seed) {}
 
     uint rate() const override { return m_signal.rate; }
     int channel_count() const override { return int(m_signal.channels.size()); }
@@ -85,7 +86,8 @@ public:
             return -1;
         }
         // Sometimes less than asked, like a decoder at a frame boundary
-        const qint64 wanted = random_between(0, 3) == 0 ? random_between(1, count) : count;
+        auto between = [this](qint64 low, qint64 high) { return std::uniform_int_distribution<qint64>(low, high)(m_random); };
+        const qint64 wanted = between(0, 3) == 0 ? between(1, count) : count;
         const qint64 frames = std::max<qint64>(0, std::min(wanted, m_signal.frames() - firstFrame));
         for (size_t c = 0; c < m_signal.channels.size(); ++c) {
             std::copy_n(m_signal.channels[c].data() + firstFrame, frames, channels[c]);
@@ -97,12 +99,15 @@ private:
     const Signal& m_signal;
     qint64 m_extraReported;
     qint64 m_failAt;
+    std::mt19937_64 m_random;
 };
 
 static TPeakBuildTask::OpenSource memory_source(const Signal& signal, qint64 extraReported = 0, qint64 failAt = -1)
 {
-    return [&signal, extraReported, failAt](QString*) -> std::unique_ptr<TPeakBuildSource> {
-        return std::make_unique<MemoryBuildSource>(signal, extraReported, failAt);
+    // Seeded here: the source is opened on the building thread
+    const quint64 seed = s_random();
+    return [&signal, extraReported, failAt, seed](QString*) -> std::unique_ptr<TPeakBuildSource> {
+        return std::make_unique<MemoryBuildSource>(signal, extraReported, failAt, seed);
     };
 }
 

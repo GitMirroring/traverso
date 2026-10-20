@@ -146,6 +146,10 @@ private:
     };
     Round m_round;
 
+    // The hand-over between this thread and the round's steps (do_round())
+    std::atomic<quint64> m_roundStarted{0};
+    std::atomic<quint64> m_stepsDone{0};
+
     TDiskIOPlanner m_planner;
     std::vector<std::unique_ptr<StreamTask>> m_streams;     // this thread
     std::deque<std::unique_ptr<TDiskIOTask>> m_idleTasks;   // this thread

@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
+#include <QTimeZone>
 
 #include <algorithm>
 #include <cstddef>
@@ -197,7 +198,9 @@ TPeakFile::SourceInfo TPeakFile::SourceInfo::from_file(const QString& sourcePath
     source.channelCount = channelCount;
     source.frameCount = frameCount;
     source.fileSize = info.size();
-    source.modified = info.lastModified().toMSecsSinceEpoch();
+    // In UTC: the same milliseconds, without a time zone lookup (libc's
+    // time zone state is shared by every thread that asks)
+    source.modified = info.lastModified(QTimeZone::UTC).toMSecsSinceEpoch();
     return source;
 }
 
