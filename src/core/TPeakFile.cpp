@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <limits>
@@ -282,7 +283,7 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
             || expected.frameCount < 0
             || header.frameCount > quint64(expected.frameCount)
             || header.sourceSize != expected.fileSize
-            || header.sourceModified != expected.modified) {
+            || std::abs(header.sourceModified - expected.modified) > SourceTimeTolerance) {
         return Status::Invalid;
     }
 

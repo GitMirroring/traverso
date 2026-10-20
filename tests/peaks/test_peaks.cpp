@@ -416,7 +416,7 @@ static void test_file()
             other = source; other.channelCount = channelCount + 1; expect_invalid(other, "channels");
             other = source; other.frameCount -= 1; expect_invalid(other, "fewer frames");
             other = source; other.fileSize += 1; expect_invalid(other, "source size");
-            other = source; other.modified += 1; expect_invalid(other, "source time");
+            other = source; other.modified += TPeakFile::SourceTimeTolerance + 1; expect_invalid(other, "source time beyond the tolerance");
 
             // A decoder that reports more frames than it delivers: the file holds
             // the frames that were really read and is valid for that source

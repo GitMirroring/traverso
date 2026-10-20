@@ -75,6 +75,9 @@ public:
     // 1.5; TRAVPEAK 3 to 6 only existed in development branches, in project
     // directories that are not read any more). Every format change counts up.
     static constexpr quint32 FormatVersion = 2;
+    // How far the source's time may be from the one in the header: network
+    // shares and FAT round times to 1 or 2 seconds
+    static constexpr qint64 SourceTimeTolerance = 2000;   // ms
 
 private:
     Status validate(const SourceInfo& expected, qint64 fileSize);
