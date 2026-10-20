@@ -70,7 +70,7 @@ public:
     TProject* get_project() const {return m_project;}
     // The peak file of an audio source, built in this sheet's DiskIO idle
     // time (TPeakBuildService)
-    QFuture<TPeakBuildResult> request_peak_build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount);
+    TPeakBuild request_peak_build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount);
     void add_audio_source_to_diskio(TBufferedAudioStreamReader *source) const;
     void remove_audio_source_from_diskio(TBufferedAudioStreamReader *source) const;
     void add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) const;

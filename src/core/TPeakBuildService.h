@@ -7,13 +7,24 @@
 #include <QHash>
 #include <QString>
 
+#include <memory>
+
 class TDiskIOThread;
+class TPeakStream;
 
 // The outcome of a peak build, for TWaveform
 struct TPeakBuildResult
 {
     bool ok{false};
     QString error;
+};
+
+// A build, and the peaks it streams as it goes (read() them on the GUI
+// thread to show the waveform growing)
+struct TPeakBuild
+{
+    QFuture<TPeakBuildResult> future;
+    std::shared_ptr<TPeakStream> stream;
 };
 
 /**
@@ -37,10 +48,16 @@ class TPeakBuildService
 {
 public:
     // rate, channelCount: the source's, as its waveform knows them
-    QFuture<TPeakBuildResult> build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
-                                    TDiskIOThread* diskio);
+    TPeakBuild build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount, TDiskIOThread* diskio);
     void cancel_all();
 
 private:
-    QHash<QString, QFuture<TPeakBuildResult>> m_jobs;
+    // The stream is not kept alive here: the build holds it while it runs,
+    // the waveforms while they show it
+    struct Job
+    {
+        QFuture<TPeakBuildResult> future;
+        std::weak_ptr<TPeakStream> stream;
+    };
+    QHash<QString, Job> m_jobs;
 };

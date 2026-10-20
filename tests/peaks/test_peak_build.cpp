@@ -522,6 +522,80 @@ int main()
         return builder;
     };
 
+    // A build read as it goes, as a waveform shows it growing: after every
+    // step the columns over what is built are the finished pyramid's, the
+    // columns past it are empty; published, the file gives the same columns
+    {
+        const int shift = 2;
+        const Signal signal = make_signal(2, 300000 + 77);
+        const auto whole = whole_pyramid(signal, shift);
+        const double step = TPeakCodeMath::octave_fraction(1);
+        QFile::remove(peakPath);
+        const std::shared_ptr<TPeakStream> stream = stream_for(signal, peakPath, shift);
+        TPeakBuildTask task(memory_source(signal), audioPath, stream, 20000);
+        const qint64 columnFrames = 1024;
+        const TTimeRef width(uint64_t(columnFrames), signal.rate);
+        const int count = int((signal.frames() + columnFrames - 1) / columnFrames);
+        std::vector<TWaveformColumn> got(size_t(count) * 2);
+        std::vector<TWaveformColumn> want(size_t(count) * 2);
+        TWaveformColumns::query(whole->levels(), nullptr, TTimeRef(), width, count, want.data());
+        auto same = [&](const TWaveformColumn& a, const TWaveformColumn& b) {
+            return a.min == b.min && a.max == b.max && a.rms <= b.rms * step * 1.000001 && a.rms >= b.rms / (step * 1.000001);
+        };
+        int steps = 0;
+        int growing = 0;
+        bool right = true;
+        qint64 lastBuilt = 0;
+        while (task.step() && right) {
+            ++steps;
+            stream->read([&](const TPeakLevels& view) {
+                const qint64 built = view.level_count() > 0 ? view.block_count(0) * TPeakLevels::BlockFrames : 0;
+                right = right && built >= lastBuilt;
+                if (built > lastBuilt) {
+                    ++growing;
+                }
+                lastBuilt = built;
+                TWaveformColumns::query(view, nullptr, TTimeRef(), width, count, got.data());
+                for (int c = 0; c < 2 && right; ++c) {
+                    for (int i = 0; i < count && right; ++i) {
+                        const TWaveformColumn& a = got[size_t(c * count + i)];
+                        if ((i + 1) * columnFrames <= built) {
+                            right = !a.is_empty() && same(a, want[size_t(c * count + i)]);
+                        } else if (i * columnFrames >= built) {
+                            right = a.is_empty();
+                        }
+                        if (!right) {
+                            CHECK(false, "growing build, step %d: column %d of channel %d with %lld frames built", steps, i, c,
+                                  (long long)built);
+                        }
+                    }
+                }
+            });
+        }
+        CHECK(task.state() == TPeakBuildTask::State::Written, "growing build: %s", qPrintable(task.error()));
+        CHECK(growing > 5, "growing build: the waveform grew only %d times in %d steps", growing, steps);
+        CHECK(task.publish() == TPeakBuildTask::State::Done, "growing build: publish: %s", qPrintable(task.error()));
+        TPeakFile file;
+        CHECK(file.open(peakPath, TPeakFile::SourceInfo::from_file(audioPath, signal.rate, 2, signal.frames())) == TPeakFile::Status::Ok,
+              "growing build: the file does not open");
+        TWaveformColumns::query(file.levels(), nullptr, TTimeRef(), width, count, got.data());
+        bool fileSame = true;
+        for (int i = 0; i < 2 * count; ++i) {
+            fileSame = fileSame && got[size_t(i)].min == want[size_t(i)].min && got[size_t(i)].max == want[size_t(i)].max
+                       && got[size_t(i)].rms == want[size_t(i)].rms;
+        }
+        CHECK(fileSame, "growing build: the file's columns differ from the whole pyramid's");
+        // The stream reads the published file now (its mapping followed the name)
+        bool streamSame = true;
+        stream->read([&](const TPeakLevels& view) {
+            TWaveformColumns::query(view, nullptr, TTimeRef(), width, count, got.data());
+            for (int i = 0; i < 2 * count; ++i) {
+                streamSame = streamSame && same(got[size_t(i)], want[size_t(i)]);
+            }
+        });
+        CHECK(streamSame, "growing build: the stream after publishing differs");
+    }
+
     // Nothing reads: the written periods leave memory anyway. The memory does
     // not grow with the length: after 36 periods about what it was after 12
     // (the current period plus one chunk of 1024 blocks per level; a level

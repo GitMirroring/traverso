@@ -73,35 +73,35 @@ private:
     std::shared_ptr<State> m_state;
 };
 
-QFuture<TPeakBuildResult> TPeakBuildService::build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
-                                                   TDiskIOThread* diskio)
+TPeakBuild TPeakBuildService::build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
+                                    TDiskIOThread* diskio)
 {
     // Forget the jobs that are over, the hash stays small that way
     for (auto it = m_jobs.begin(); it != m_jobs.end();) {
-        it = it->isFinished() ? m_jobs.erase(it) : std::next(it);
+        it = it->future.isFinished() ? m_jobs.erase(it) : std::next(it);
     }
     const auto running = m_jobs.constFind(peakPath);
     if (running != m_jobs.constEnd()) {
-        return *running;
+        return TPeakBuild{running->future, running->stream.lock()};
     }
     Q_ASSERT(diskio);
+    auto stream = std::make_shared<TPeakStream>(rate, channelCount, peakPath);
     auto state = std::make_shared<TPeakBuildJob::State>();
-    state->task = std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath,
-                                                   std::make_shared<TPeakStream>(rate, channelCount, peakPath));
+    state->task = std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream);
     // Started at once: older Qt versions finish the future of a destroyed
     // promise only when it was started (DiskIO can go before the first step)
     state->promise.start();
     state->promise.setProgressRange(0, 100);
     QFuture<TPeakBuildResult> job = state->promise.future();
     diskio->add_idle_task(std::make_unique<TPeakBuildJob>(std::move(state)));
-    m_jobs.insert(peakPath, job);
-    return job;
+    m_jobs.insert(peakPath, Job{job, stream});
+    return TPeakBuild{job, stream};
 }
 
 void TPeakBuildService::cancel_all()
 {
-    for (QFuture<TPeakBuildResult>& job : m_jobs) {
-        job.cancel();
+    for (Job& job : m_jobs) {
+        job.future.cancel();
     }
     m_jobs.clear();
 }

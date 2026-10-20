@@ -47,8 +47,7 @@ public:
     // of its own, opened on the first sample query and closed again when
     // unused for a while, so a clip normally holds one open file.
     // How the peak file gets built: starts or joins the job
-    using RequestBuild = std::function<QFuture<TPeakBuildResult>(const QString& audioPath, const QString& peakPath, uint rate,
-                                                                 int channelCount)>;
+    using RequestBuild = std::function<TPeakBuild(const QString& audioPath, const QString& peakPath, uint rate, int channelCount)>;
     TWaveform(TBufferedAudioStreamReader* source, RequestBuild build);
     // A recording in progress: painted from its peaks as they are recorded
     // (the written part from the peak file), no samples
@@ -72,7 +71,9 @@ public:
     QString message() const;
 
     // Columns for the source time range starting at start, see
-    // TWaveformColumns::query(). Source::None while not Ready.
+    // TWaveformColumns::query(). While Building: from the peaks built so
+    // far, empty columns past them. Source::None while Failed or
+    // Unsupported.
     TWaveformColumns::Source columns(const TTimeRef& start, const TTimeRef& columnWidth, int count, TWaveformColumn* out);
 
     // The highest |sample| of all channels between start and end (source
@@ -108,6 +109,8 @@ private:
     TBufferedAudioStreamReader* m_source{nullptr};   // only while samples are read
     QTimer m_closeReader;
     std::shared_ptr<TPeakStream> m_live;
+    // The peaks of the running build, until its file opens
+    std::shared_ptr<TPeakStream> m_building;
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;

@@ -76,8 +76,9 @@ TAudioClipView::TAudioClipView(TSheetView* sv, TAudioTrackView* parent, TAudioCl
 
     TAudioClipView::load_theme_data();
 
-    m_waitingForPeaks = false;
-    m_progress = 0;
+    m_buildRepaint.setSingleShot(true);
+    m_buildRepaint.setInterval(100);
+    connect(&m_buildRepaint, &QTimer::timeout, this, [this] { update(); });
 
     if (m_clip->has_fade_in()) {
         add_new_fade_curve_view(m_clip->get_fade_in());
@@ -192,20 +193,7 @@ void TAudioClipView::paint(QPainter* painter, const QStyleOptionGraphicsItem *op
     int channels = m_clip->get_channel_count();
 
     if (channels > 0) {
-        if (m_waitingForPeaks) {
-            PMESG("Waiting for peaks!");
-            // Hmm, do we paint here something?
-            // Progress info, I think so....
-            painter->setPen(Qt::black);
-            QRect r(10, 0, 150, m_height);
-            painter->setFont( themer()->get_font("AudioClip:fontscale:title") );
-            QString si;
-            si.setNum((int)m_progress);
-            if (m_progress == 100) m_progress = 0;
-            QString buildProcess = "Building Peaks: " + si + "%";
-            painter->drawText(r, Qt::AlignVCenter, buildProcess);
-
-        } else if (m_clip->recording_state() != TAudioClip::FINISHING_RECORDING) {
+        if (m_clip->recording_state() != TAudioClip::FINISHING_RECORDING) {
             draw_columns(painter, option->exposedRect.x(), int(pixelcount));
             //                        PROFILE_END("draw peaks");
         }
@@ -378,15 +366,16 @@ void TAudioClipView::create_clipinfo_string()
     painter.drawText(QRectF(0, 0, clipInfoWidth, m_infoAreaHeight), clipinfoString);
 }
 
-void TAudioClipView::update_progress_info( int progress )
+void TAudioClipView::build_progressed()
 {
-    m_progress = progress;
-    update(10, 0, 150, m_height);
+    if (!m_buildRepaint.isActive()) {
+        m_buildRepaint.start();
+    }
 }
 
 void TAudioClipView::peak_creation_finished()
 {
-    m_waitingForPeaks = false;
+    m_buildRepaint.stop();
     update();
 }
 
@@ -788,14 +777,13 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
 
     switch (waveform->state()) {
     case TWaveform::State::Building:
-        if (!m_waitingForPeaks) {
-            m_waitingForPeaks = true;
-            m_progress = waveform->progress();
-            connect(waveform, qOverload<int>(&TWaveform::progress), this, &TAudioClipView::update_progress_info, Qt::UniqueConnection);
-            connect(waveform, &TWaveform::ready, this, &TAudioClipView::peak_creation_finished, Qt::UniqueConnection);
-            update();
-        }
-        return;
+        // The waveform grows as the peaks are built: what is there now,
+        // empty columns past it. (A build goes from the start of the source
+        // to its end, so the middle of a long source comes when the build
+        // gets there.)
+        connect(waveform, qOverload<int>(&TWaveform::progress), this, &TAudioClipView::build_progressed, Qt::UniqueConnection);
+        connect(waveform, &TWaveform::ready, this, &TAudioClipView::peak_creation_finished, Qt::UniqueConnection);
+        break;
     case TWaveform::State::Failed:
         return;
     case TWaveform::State::Unsupported:

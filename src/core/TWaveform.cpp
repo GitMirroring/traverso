@@ -174,11 +174,17 @@ void TWaveform::start_build(const char* reason)
     m_progress = 0;
     // No build service (a clip without a sheet): a cancelled future, so the
     // watcher reports a failed build
-    m_build.setFuture(m_requestBuild ? m_requestBuild(m_fileName, m_peakPath, m_rate, m_channelCount) : QFuture<TPeakBuildResult>());
+    const TPeakBuild build = m_requestBuild ? m_requestBuild(m_fileName, m_peakPath, m_rate, m_channelCount) : TPeakBuild{};
+    m_building = build.stream;
+    m_build.setFuture(build.future);
 }
 
 void TWaveform::build_finished()
 {
+    // The build's peaks go once the file is open (or the build failed): read
+    // no more from them. Another build started below brings its own.
+    const std::shared_ptr<TPeakStream> built = std::move(m_building);
+
     // A cancelled build has no result (the project closes, or its DiskIO went)
     const QFuture<TPeakBuildResult> build = m_build.future();
     const TPeakBuildResult result = !build.isCanceled() && build.resultCount() > 0 ? build.result() : TPeakBuildResult{};
@@ -202,7 +208,16 @@ void TWaveform::build_finished()
 
 TWaveformColumns::Source TWaveform::columns(const TTimeRef& start, const TTimeRef& columnWidth, int count, TWaveformColumn* out)
 {
-    if (state() != State::Ready) {
+    const State current = state();
+    if (current == State::Building && m_building) {
+        // What is built so far (the samples of the source are all there)
+        TWaveformColumns::Source source = TWaveformColumns::Source::None;
+        m_building->read([&](const TPeakLevels& levels) {
+            source = TWaveformColumns::query(levels, this, start, columnWidth, count, out);
+        });
+        return source;
+    }
+    if (current != State::Ready) {
         return TWaveformColumns::Source::None;
     }
     if (m_live) {

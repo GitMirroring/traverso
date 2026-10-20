@@ -77,10 +77,10 @@ private:
     QPolygonF 	m_polygon;
     QPixmap 	m_clipInfo;
 
-    float m_progress;
     int m_peakloadingcount{};
+    // While the peaks build: a repaint at most ten times a second
+    QTimer m_buildRepaint;
 
-    bool m_waitingForPeaks;
     bool m_mergedView{};
     bool m_classicView{};
     bool m_paintWithOutline{};
@@ -142,7 +142,7 @@ public slots:
     TCommand* edit_properties();
 
 private slots:
-    void update_progress_info(int progress);
+    void build_progressed();
     void peak_creation_finished();
     void start_recording();
     void finish_recording();
