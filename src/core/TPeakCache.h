@@ -43,7 +43,8 @@ public:
     static qint64 limit();
 
     // Where the peak file of the audio file sourcePath lives. The audio file
-    // need not exist yet (a recording), its directory must.
+    // need not exist yet (a recording), its directory must. Empty for a path
+    // without a file name.
     static QString path_for(const QString& sourcePath);
 
     // Marks a peak file as used now. A cache that cannot be written (read
@@ -58,9 +59,10 @@ public:
 
     // Removes the least recently used peak files until the cache is within
     // its limit. Leaves the files named in inUse, peak files younger than
-    // an hour (just built, not opened yet), and part files younger than a
-    // day (a build or recording going on, maybe in another Traverso); older
-    // part files are left from a crash and go. A file that cannot be
+    // an hour (just built, not opened yet: removed, its waveform would fail
+    // for the session), files that changed since the scan, and part files
+    // younger than a day (a build or recording going on, maybe in another
+    // Traverso); older part files are left from a crash and go. A file that cannot be
     // removed (Windows: mapped by another Traverso) is skipped. On Linux
     // and macOS a file another Traverso has mapped can go: its mapping stays
     // valid until that one closes it. Limit 0: nothing goes.

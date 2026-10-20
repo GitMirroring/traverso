@@ -75,6 +75,19 @@ int main()
 {
     QTemporaryDir dir;
     CHECK(dir.isValid(), "no temporary directory");
+
+#if defined(Q_OS_LINUX)
+    // The default: the platform's cache location of the application plus
+    // /peaks (only here, where the cache home can be pointed at the
+    // temporary directory)
+    qputenv("XDG_CACHE_HOME", QFile::encodeName(dir.filePath("xdg")));
+    QCoreApplication::setOrganizationName(QStringLiteral("Traverso"));
+    QCoreApplication::setApplicationName(QStringLiteral("Traverso"));
+    TPeakCache::set_directory(QString());
+    CHECK(TPeakCache::directory() == dir.filePath("xdg/Traverso/Traverso/peaks") && QFileInfo(TPeakCache::directory()).isDir(),
+          "the default cache directory is %s", qPrintable(TPeakCache::directory()));
+#endif
+
     const QString cache = dir.filePath("cache/peaks");
     TPeakCache::set_directory(cache);
     CHECK(TPeakCache::directory() == cache && QFileInfo(cache).isDir(), "the cache directory is not made");
@@ -93,15 +106,24 @@ int main()
         CHECK(QFileInfo(peaks).absolutePath() == cache && peaks.endsWith("-take1.wav.peaks"), "%s", qPrintable(peaks));
         CHECK(QFileInfo(peaks).fileName().size() == 32 + 1 + 9 + 6, "the name is not hash-name.peaks: %s", qPrintable(peaks));
         CHECK(TPeakCache::path_for(dir.filePath("a/../a/take1.wav")) == peaks, "a path with .. gives another peak file");
-        QFile::link(takeA, dir.filePath("b/link.wav"));
+        CHECK(TPeakCache::path_for(QString()).isEmpty() && TPeakCache::path_for(dir.filePath("a/")).isEmpty(),
+              "a path without a file name gives a peak file");
+#if !defined(Q_OS_WIN)
+        // (QFile::link() makes a shortcut on Windows, not a symlink)
+        CHECK(QFile::link(takeA, dir.filePath("b/link.wav")), "symlink");
         CHECK(TPeakCache::path_for(dir.filePath("b/link.wav")) == peaks, "a symlink gives another peak file than its file");
-        QFile::link(dir.filePath("a"), dir.filePath("alink"));
+        CHECK(QFile::link(dir.filePath("a"), dir.filePath("alink")), "directory symlink");
         CHECK(TPeakCache::path_for(dir.filePath("alink/take1.wav")) == peaks, "a symlinked directory gives another peak file");
+#endif
     }
     {
         // A recording: the file is not there yet, its directory is; the key
         // stays when the file appears
+#if defined(Q_OS_WIN)
+        const QString recording = dir.filePath("a/take2.wav");
+#else
         const QString recording = dir.filePath("alink/take2.wav");
+#endif
         const QString before = TPeakCache::path_for(recording);
         CHECK(QFileInfo(before).absolutePath() == cache && before.endsWith("-take2.wav.peaks"), "%s", qPrintable(before));
         write_file(dir.filePath("a/take2.wav"), 10);
@@ -142,6 +164,51 @@ int main()
         second.close();
         CHECK(!TPeakCache::open_files().contains(QFileInfo(peaks).fileName()), "a closed file stays registered");
         TPeakCache::touch(dir.filePath("none.peaks"));   // no file: no error, no crash
+
+        // A file that does not open is not registered
+        const QString broken = TPeakCache::directory() + QStringLiteral("/broken.peaks");
+        write_file(broken, 500);
+        TPeakFile invalid;
+        CHECK(invalid.open(broken, TPeakFile::SourceInfo::from_file(takeA, 48000, 1, 5000)) == TPeakFile::Status::Invalid
+                  && !TPeakCache::open_files().contains(QStringLiteral("broken.peaks")), "an invalid file is registered");
+        QFile::remove(broken);
+
+        // A stream is registered for its lifetime; a part file it never
+        // published goes with it
+        QString part;
+        {
+            TPeakStream stream(48000, 1, TPeakCache::directory() + QStringLiteral("/streaming.peaks"), 2);
+            CHECK(TPeakCache::open_files().contains(QStringLiteral("streaming.peaks")), "a stream is not registered");
+            CHECK(stream.open() == TPeakFile::Status::Ok, "stream: open");
+            part = stream.part_path();
+            std::vector<float> samples(5000, 0.5f);
+            const float* channels[1] = {samples.data()};
+            stream.append(channels, qint64(samples.size()));
+            CHECK(stream.finish(takeA) == TPeakFile::Status::Ok && QFile::exists(part), "stream: finish");
+        }
+        CHECK(!TPeakCache::open_files().contains(QStringLiteral("streaming.peaks")), "a stream stays registered");
+        CHECK(!QFile::exists(part), "an unpublished part file stayed after its stream");
+
+        // A writer never takes a part file that is there already (two
+        // machines on one cache can have the same process id)
+        TPeakFileWriter firstWriter;
+        CHECK(firstWriter.open(TPeakCache::directory() + QStringLiteral("/shared.peaks"), 48000, 1, 2) == TPeakFile::Status::Ok, "writer");
+        const QString firstPart = firstWriter.part_path();
+        const qsizetype dash = firstPart.lastIndexOf(QLatin1Char('-'));
+        const quint64 n = firstPart.mid(dash + 1).chopped(5).toULongLong();
+        QStringList taken;
+        for (quint64 k = n + 1; k <= n + 5; ++k) {
+            taken << firstPart.left(dash + 1) + QString::number(k) + QStringLiteral(".part");
+            write_file(taken.last(), 3);
+        }
+        TPeakFileWriter secondWriter;
+        CHECK(secondWriter.open(TPeakCache::directory() + QStringLiteral("/shared.peaks"), 48000, 1, 2) == TPeakFile::Status::Ok
+                  && !taken.contains(secondWriter.part_path()), "a writer took a part file that was there: %s",
+              qPrintable(secondWriter.part_path()));
+        for (const QString& path : std::as_const(taken)) {
+            CHECK(QFileInfo(path).size() == 3, "a part file that was there was cut short");
+            QFile::remove(path);
+        }
     }
 
     // Eviction
@@ -181,11 +248,17 @@ int main()
         CHECK(QFile::exists(recent), "more was removed than the limit needs");
         CHECK(QFile::exists(fresh) && QFile::exists(other), "a fresh file or a file that is not a peak file was removed");
 
+        // A time in the future (another clock, a copied file) is not young
+        const QString future = file("9-future.peaks", 10, hours(0));
+        std::filesystem::last_write_time(QFileInfo(future).filesystemFilePath(),
+                                         std::filesystem::file_time_type::clock::now() + hours(5000));
+
         // Over the limit with only fresh and used files left: they stay
         TPeakCache::set_limit(1);
         TPeakCache::evict({QStringLiteral("1-oldest.peaks")});
         CHECK(QFile::exists(oldest) && QFile::exists(fresh) && QFile::exists(youngPart), "a used, fresh or young file was removed");
         CHECK(!QFile::exists(recent), "an unused file of 5 hours stayed over the limit");
+        CHECK(!QFile::exists(future), "a file with a time in the future is never removed");
 
         // In the background, with the files this process has open
         file("8-later.peaks", 10, hours(30));

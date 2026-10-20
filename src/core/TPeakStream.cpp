@@ -34,6 +34,11 @@ TPeakStream::~TPeakStream()
     if (m_map) {
         m_mapFile->unmap(m_map);
     }
+    // A part file that never got its name (a build whose project went
+    // first, a stream nobody published) is of no use to anyone
+    if (!m_published && !m_writer.part_path().isEmpty()) {
+        QFile::remove(m_writer.part_path());
+    }
     TPeakCache::closed(m_peakPath);
 }
 

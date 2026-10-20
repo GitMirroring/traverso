@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TResampleAudioWriter.h"
 #include "TLog.h"
+#include "TPeakCache.h"
 #include "TPeakPyramid.h"
 #include "TPeakStream.h"
 #include "TWaveform.h"
@@ -84,6 +85,15 @@ int TBufferedAudioStreamWriter::finish_export()
         QString error;
         if (m_peaks->finish(m_fileName, &error) != TPeakFile::Status::Ok) {
             TLOG_W("peaks", "finishing {} failed: {}", m_peaks->peak_path().toStdString(), error.toStdString());
+        } else if (!m_peaksAreRead) {
+            // An import or a merge: nobody reads its peaks while it writes
+            // them, so the file gets its name here (no mapping to let go of)
+            if (m_peaks->publish(&error) == TPeakFile::Status::Ok) {
+                TPeakCache::touch(m_peaks->peak_path());
+                TPeakCache::evict_later();
+            } else {
+                TLOG_W("peaks", "publishing {} failed: {}", m_peaks->peak_path().toStdString(), error.toStdString());
+            }
         }
     }
 
@@ -210,6 +220,9 @@ void TBufferedAudioStreamWriter::set_process_peaks(bool process)
 void TBufferedAudioStreamWriter::set_recording(bool rec)
 {
     m_isRecording = rec;
+    if (rec) {
+        m_peaksAreRead = true;
+    }
 }
 
 TBufferedAudioStreamStatus& TBufferedAudioStreamWriter::get_buffer_status()

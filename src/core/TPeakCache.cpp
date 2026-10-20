@@ -96,6 +96,9 @@ QString TPeakCache::path_for(const QString& sourcePath)
     // canonical path and its name give the same key it gets once it exists.
     // In NFC: macOS can hand out file names decomposed.
     const QFileInfo info(sourcePath);
+    if (info.fileName().isEmpty()) {
+        return QString();
+    }
     QString key = info.canonicalFilePath();
     if (key.isEmpty()) {
         const QString directory = QFileInfo(info.absolutePath()).canonicalFilePath();
@@ -178,6 +181,9 @@ void TPeakCache::evict(const QSet<QString>& inUse)
             continue;
         }
         const qint64 size = qint64(it->file_size(entryError));
+        if (entryError) {
+            continue;
+        }
         const std::filesystem::file_time_type time = it->last_write_time(entryError);
         if (entryError) {
             continue;
@@ -190,6 +196,12 @@ void TPeakCache::evict(const QSet<QString>& inUse)
     int removed = 0;
     qint64 removedBytes = 0;
     auto remove = [&](const Entry& entry) {
+        // Not if it changed since the scan: published again, or used (its
+        // waveform would find no file, and fail for the session)
+        std::error_code timeError;
+        if (std::filesystem::last_write_time(entry.path, timeError) != entry.time || timeError) {
+            return;
+        }
         std::error_code removeError;
         if (std::filesystem::remove(entry.path, removeError) && !removeError) {
             total -= entry.size;
@@ -211,7 +223,10 @@ void TPeakCache::evict(const QSet<QString>& inUse)
         if (total <= limitBytes) {
             break;
         }
-        if (entry.part || inUse.contains(entry.name) || now - entry.time < std::chrono::hours(1)) {
+        // Young: built or used within the hour. (A time in the future, a
+        // share with another clock or a copied file, is not young.)
+        const bool young = entry.time <= now && now - entry.time < std::chrono::hours(1);
+        if (entry.part || inUse.contains(entry.name) || young) {
             continue;
         }
         remove(entry);

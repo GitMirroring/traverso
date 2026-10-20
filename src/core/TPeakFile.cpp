@@ -95,7 +95,7 @@ static std::vector<qint64> expected_block_counts(qint64 frames)
 }
 
 /**
- * Where everything is in a version 6 file: follows from the period shift,
+ * Where everything is in a peak file: follows from the period shift,
  * the channel count and the block count of every level. In a record and in
  * the tail every level holds its min/max of every channel, then its RMS
  * codes of every channel.
@@ -377,11 +377,21 @@ TPeakFile::Status TPeakFileWriter::open(const QString& path, uint rate, int chan
     m_finished = false;
 
     m_path = path;
-    // Per process and per writer (see part_path())
+    // Per process and per writer (see part_path()), and never one that is
+    // there already: on a cache shared by two machines a process id can
+    // come twice, and a part file in use must not be cut short
     static std::atomic<quint64> writers{0};
-    m_partPath = path + QStringLiteral(".%1-%2.part").arg(QCoreApplication::applicationPid()).arg(writers.fetch_add(1) + 1);
-    m_file.setFileName(m_partPath);
-    if (!m_file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    bool opened = false;
+    for (int attempt = 0; attempt < 100 && !opened; ++attempt) {
+        m_partPath = path + QStringLiteral(".%1-%2.part").arg(QCoreApplication::applicationPid()).arg(writers.fetch_add(1) + 1);
+        m_file.setFileName(m_partPath);
+        opened = m_file.open(QIODevice::WriteOnly | QIODevice::NewOnly);
+        if (!opened && !QFile::exists(m_partPath)) {
+            break;   // not because it exists: no other name helps
+        }
+    }
+    if (!opened) {
+        m_partPath.clear();
         return failed(error);
     }
 

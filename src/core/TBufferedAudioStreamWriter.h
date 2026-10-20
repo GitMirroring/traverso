@@ -63,6 +63,9 @@ private:
     nframes_t       m_sampleRate;
     bool            m_processPeaks;
     bool            m_isRecording;
+    // A recording: its peaks are read while they are written (the clip
+    // publishes them on the GUI thread, which maps them)
+    bool            m_peaksAreRead{false};
     bool            m_exportFinished{false};
 
     TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
