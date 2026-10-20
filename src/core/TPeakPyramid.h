@@ -111,7 +111,7 @@ struct TPeakCodeTables
  * every channel, then the RMS code of every channel (record_codes()). The view
  * does not own them: TPeakFile (a mapped file) and TPeakStream (the level-0
  * records of a file being written, copied) do. A level may hold a window of
- * its blocks only, [first, count): a view of a file being written.
+ * its blocks only, [first, end): a view of a file being written.
  */
 class TPeakLevels
 {
@@ -135,9 +135,9 @@ public:
 
     struct Level
     {
-        const qint16* records{nullptr};   // the records of the blocks [first, count)
+        const qint16* records{nullptr};   // the records of the blocks [first, end)
         qint64 first{0};
-        qint64 count{0};                  // the blocks of the level
+        qint64 end{0};                    // the level's blocks end here
     };
 
     TPeakLevels() = default;
@@ -150,7 +150,9 @@ public:
     // 0 when there is no pyramid (yet); frame_count() and rate() still tell
     // about the source then
     int level_count() const { return int(m_levels.size()); }
-    qint64 block_count(int level) const { return m_levels[size_t(level)].count; }
+    // Where the level's blocks end: its block count (for a window, the
+    // blocks it reaches)
+    qint64 block_count(int level) const { return m_levels[size_t(level)].end; }
     TPeakBlock block(int level, int channel, qint64 index) const
     {
         const qint16* codes = record(level, index);
@@ -197,7 +199,7 @@ private:
     const qint16* record(int level, qint64 index) const
     {
         const Level& l = m_levels[size_t(level)];
-        Q_ASSERT(index >= l.first && index < l.count);
+        Q_ASSERT(index >= l.first && index < l.end);
         return l.records + (index - l.first) * record_codes(m_channelCount);
     }
 

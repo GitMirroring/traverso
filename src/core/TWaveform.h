@@ -126,5 +126,5 @@ private:
     bool m_opened{false};
     int m_progress{0};
     int m_builds{0};
-    int m_cancelledBuilds{0};
+    int m_retries{0};
 };

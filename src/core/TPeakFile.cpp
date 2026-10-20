@@ -7,7 +7,6 @@
 
 #include <QDateTime>
 #include <QFileInfo>
-#include <QThread>
 #include <QTimeZone>
 
 #include <cstddef>
@@ -25,7 +24,7 @@ struct TPeakFileHeader
     quint32 channelCount;
     quint32 blockFrames;
     quint32 codesPerOctave;     // of the value codes (TPeakLevels)
-    quint32 planes;             // what each record has: PlaneMinMax | PlaneRms
+    quint32 recordContents;     // what a record has: RecordMinMax | RecordRms
     quint64 frameCount;
     qint64 sourceSize;
     qint64 sourceModified;
@@ -36,9 +35,9 @@ static_assert(sizeof(TPeakFileHeader) == TPeakFile::HeaderBytes && offsetof(TPea
 
 // What a record holds, in this order: min/max of every channel, then the
 // RMS codes of every channel. This version writes and reads exactly these.
-static constexpr quint32 PlaneMinMax = 1;
-static constexpr quint32 PlaneRms = 2;
-static constexpr quint32 Planes = PlaneMinMax | PlaneRms;
+static constexpr quint32 RecordMinMax = 1;
+static constexpr quint32 RecordRms = 2;
+static constexpr quint32 RecordContents = RecordMinMax | RecordRms;
 
 static constexpr char Magic[8] = {'T', 'R', 'A', 'V', 'P', 'E', 'A', 'K'};
 static constexpr quint32 ByteOrderMark = 0x01020304;   // stored in the writer's byte order
@@ -85,7 +84,7 @@ QByteArray TPeakFile::header(const SourceInfo& source)
     header.channelCount = quint32(source.channelCount);
     header.blockFrames = TPeakLevels::BlockFrames;
     header.codesPerOctave = quint32(TPeakLevels::CodesPerOctave);
-    header.planes = Planes;
+    header.recordContents = RecordContents;
     header.frameCount = quint64(source.frameCount);
     header.sourceSize = source.fileSize;
     header.sourceModified = source.modified;
@@ -161,7 +160,7 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
             || header.headerSize != sizeof(TPeakFileHeader)
             || header.blockFrames != quint32(TPeakLevels::BlockFrames)
             || header.codesPerOctave != quint32(TPeakLevels::CodesPerOctave)
-            || header.planes != Planes
+            || header.recordContents != RecordContents
             || header.checksum != header_checksum(header)) {
         return Status::Invalid;
     }
@@ -211,25 +210,15 @@ void TPeakFile::close()
 TPeakFile::Status TPeakFile::publish(const QString& part, const QString& path, QString* error)
 {
     // Replaces an older file at once (POSIX rename): whoever has the old one
-    // mapped keeps reading it. On Windows a file that is mapped can be
-    // neither renamed nor replaced: a build that meets an old file another
-    // process has mapped reports an error and is built again later. Paths go
-    // through Qt's std::filesystem conversion: native wide names on Windows,
-    // so no character is lost.
+    // mapped keeps reading it. On Windows a file that is open or mapped can
+    // be neither renamed nor replaced. Paths go through Qt's std::filesystem
+    // conversion: native wide names on Windows, so no character is lost.
     std::error_code renameError;
     std::filesystem::rename(QFileInfo(part).filesystemFilePath(), QFileInfo(path).filesystemFilePath(), renameError);
-#if defined(Q_OS_WIN)
-    for (int attempt = 0; renameError && attempt < 5; ++attempt) {
-        QThread::msleep(50);
-        renameError.clear();
-        std::filesystem::rename(QFileInfo(part).filesystemFilePath(), QFileInfo(path).filesystemFilePath(), renameError);
-    }
-#endif
     if (renameError) {
         if (error) {
             *error = QString::fromStdString(renameError.message());
         }
-        QFile::remove(part);
         return Status::Error;
     }
     return Status::Ok;

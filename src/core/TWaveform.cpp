@@ -187,10 +187,12 @@ void TWaveform::build_finished()
 
     if (result.ok) {
         open_or_build();
-    } else if (build.isCanceled() && m_cancelledBuilds++ == 0) {
-        // Not failed but cancelled: the DiskIO that ran it went (its sheet
-        // was deleted) while this waveform's clip lives on. Ask once more.
-        TLOG_I("peaks", "the build of {} was cancelled, asking again", m_peakPath.toStdString());
+    } else if (m_retries++ == 0) {
+        // Once more: the DiskIO that ran it went (its sheet was deleted)
+        // while this waveform's clip lives on, or a recording's
+        // post-processing failed (its peaks are built from the audio then)
+        TLOG_I("peaks", "the build of {} {}, asking again", m_peakPath.toStdString(),
+               build.isCanceled() ? "was cancelled" : "failed");
         m_builds = 0;
         open_or_build();
         if (m_state == State::Building) {

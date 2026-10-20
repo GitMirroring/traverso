@@ -5,10 +5,9 @@
 
 #include "TPeakCache.h"
 
-#include "TLog.h"
-
 #include <QCoreApplication>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFileInfo>
 
 #include <algorithm>
@@ -16,9 +15,9 @@
 #include <limits>
 
 // Level-0 blocks per post-processing step: a fraction of a millisecond of
-// work, and a read of 96 KB of a stereo file (mostly from the page cache)
+// work, and a read of 192 KB of a stereo file (mostly from the page cache)
 static constexpr qint64 PostProcessBlocks = qint64(1) << 14;
-// Records of a level collected before they are written
+// Records of a level collected before they are written (192 KB of stereo)
 static constexpr qint64 FlushRecords = qint64(1) << 14;
 
 // Post-processing: every level above level 0, made from level 0 in one pass
@@ -40,6 +39,8 @@ struct TPeakStream::PostProcess
     qint64 next{0};                     // the next level-0 block to read
     std::vector<qint16> input;
     std::vector<double> squares;
+    bool written{false};                // the file is complete, its name is next
+    QElapsedTimer renaming;
 };
 
 TPeakStream::TPeakStream(uint rate, int channelCount, QString peakPath)
@@ -150,10 +151,7 @@ void TPeakStream::append(const float* const* channels, qint64 frames)
         }
     }
     m_frames += frames;
-
-    if (!write_records()) {
-        TLOG_W("peaks", "writing {} failed, no peak file: {}", m_peakPath.toStdString(), m_error.toStdString());
-    }
+    write_records();
 }
 
 void TPeakStream::close_block()
@@ -197,7 +195,7 @@ bool TPeakStream::write_records()
     // Out of QFile's buffer too: a reader reads the file
     const qint64 bytes = qint64(m_records.size() * sizeof(qint16));
     if (m_file.write(reinterpret_cast<const char*>(m_records.data()), bytes) != bytes || !m_file.flush()) {
-        return fail(m_file.errorString());
+        return fail(m_file.errorString());   // nothing written from here on
     }
     m_records.clear();
     m_writtenFrames.store(m_frames - m_blockFill, std::memory_order_release);
@@ -283,36 +281,51 @@ bool TPeakStream::post_process()
         return true;
     }
 
-    // A level with an odd number of blocks has a last block without a pair:
-    // it covers the end of the source alone, so it moves up as it is
-    for (int level = 0; level + 1 < int(post.levels.size()); ++level) {
-        PostProcess::Level& l = post.levels[size_t(level)];
-        if (l.hasPending) {
-            l.hasPending = false;
-            if (!add_block(level + 1, l.pending.data(), l.pendingSquares.data(), l.pendingFrames)) {
-                return failed(m_error);
+    if (!post.written) {
+        // A level with an odd number of blocks has a last block without a
+        // pair: it covers the end of the source alone, so it moves up as it is
+        for (int level = 0; level + 1 < int(post.levels.size()); ++level) {
+            PostProcess::Level& l = post.levels[size_t(level)];
+            if (l.hasPending) {
+                l.hasPending = false;
+                if (!add_block(level + 1, l.pending.data(), l.pendingSquares.data(), l.pendingFrames)) {
+                    return failed(m_error);
+                }
             }
         }
-    }
-    for (int level = 1; level < int(post.levels.size()); ++level) {
-        if (!write_level(level)) {
-            return failed(m_error);
+        for (int level = 1; level < int(post.levels.size()); ++level) {
+            if (!write_level(level)) {
+                return failed(m_error);
+            }
+            Q_ASSERT(post.levels[size_t(level)].written == post.levels[size_t(level)].count);
         }
-        Q_ASSERT(post.levels[size_t(level)].written == post.levels[size_t(level)].count);
+
+        // The header last: the file is complete now
+        const QByteArray header = TPeakFile::header(m_source);
+        if (!m_file.seek(0) || m_file.write(header) != header.size() || !m_file.flush()) {
+            return failed(m_file.errorString());
+        }
+        m_file.close();
+        post.written = true;
     }
 
-    // The header last: the file is complete now
-    const QByteArray header = TPeakFile::header(m_source);
-    if (!m_file.seek(0) || m_file.write(header) != header.size() || !m_file.flush()) {
-        return failed(m_file.errorString());
-    }
-    m_file.close();
-    m_post.reset();
-
+    // Its name. Windows renames no file that is open: the waveform of a
+    // recording opens it for a moment per repaint, a virus scanner or the
+    // indexer may too. A refused rename is tried again in the next steps
+    // (not in a sleep: the step is part of a DiskIO round), for a while.
     QString error;
     if (TPeakFile::publish(m_partPath, m_peakPath, &error) != TPeakFile::Status::Ok) {
+#if defined(Q_OS_WIN)
+        if (!post.renaming.isValid()) {
+            post.renaming.start();
+        }
+        if (post.renaming.elapsed() < 2000) {
+            return true;
+        }
+#endif
         return failed(QStringLiteral("cannot rename the part file: %1").arg(error));
     }
+    m_post.reset();
     m_published.store(true, std::memory_order_release);
     return false;
 }

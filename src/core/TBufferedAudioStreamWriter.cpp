@@ -83,9 +83,12 @@ int TBufferedAudioStreamWriter::finish_export()
     // post-processed in DiskIO's idle time (TAudioClip::finish_write_source());
     // an import or a merge does it here, nobody reads its peaks meanwhile.
     if (m_peaks) {
+        const bool failedBefore = m_peaks->write_failed();   // said so then
         QString error;
         if (m_peaks->finish(m_fileName, &error) != TPeakFile::Status::Ok) {
-            TLOG_W("peaks", "finishing {} failed: {}", m_peaks->peak_path().toStdString(), error.toStdString());
+            if (!failedBefore) {
+                TLOG_W("peaks", "finishing {} failed: {}", m_peaks->peak_path().toStdString(), error.toStdString());
+            }
         } else if (!m_peaksAreRead) {
             while (m_peaks->post_process()) {
             }
@@ -115,11 +118,16 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
         slot->read_buffer(targetChannelBuffer, chan, nframes);
     }
 
-    if (m_peaks) {
+    if (m_peaks && !m_peaks->write_failed()) {
         for (uint chan = 0; chan < m_channelCount; ++chan) {
             m_peakChannels[chan] = fileIOBuffer.get_channel_buffer(chan).get_data(nframes);
         }
         m_peaks->append(m_peakChannels.data(), nframes);
+        if (m_peaks->write_failed()) {
+            // Once: the peaks stop, the recording goes on
+            TLOG_W("peaks", "writing {} failed, it is built from the audio later: {}", m_peaks->peak_path().toStdString(),
+                   m_peaks->error().toStdString());
+        }
     }
 
     nframes_t writtenFrames = m_resampleWriter->write_planar(fileIOBuffer, nframes);

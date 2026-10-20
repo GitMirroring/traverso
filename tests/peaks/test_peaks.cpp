@@ -12,6 +12,7 @@
 #include "TPeakStream.h"
 #include "TWaveformColumns.h"
 
+#include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
@@ -456,6 +457,25 @@ static void test_file()
         CHECK(!stream.post_process() && !stream.published() && !QFile::exists(path) && !QFile::exists(stream.part_path()),
               "a stream given up halfway post-processing left a file");
 
+        // A rename that cannot happen (a directory under the file's name):
+        // publish() leaves the part file to its caller, post-processing gives
+        // up and removes it (on Windows after trying for a while)
+        {
+            const QString blocked = s_dir->filePath(QStringLiteral("%1.peaks").arg(++s_files));
+            CHECK(QDir().mkpath(blocked + "/inside"), "a directory under the peak file's name");
+            TPeakStream renamed(44100, 2, blocked);
+            CHECK(renamed.open() == TPeakFile::Status::Ok, "open");
+            append(renamed, signal, false);
+            CHECK(renamed.finish(audio) == TPeakFile::Status::Ok, "finish");
+            const QString part = renamed.part_path();
+            CHECK(TPeakFile::publish(part, blocked) != TPeakFile::Status::Ok && QFile::exists(part), "publish() removed the part file");
+            int steps = 0;
+            while (renamed.post_process() && ++steps < 100000) {
+            }
+            CHECK(!renamed.published() && renamed.write_failed() && !QFile::exists(part) && QFileInfo(blocked).isDir(),
+                  "a refused rename: published %d, part file left %d", renamed.published(), QFile::exists(part));
+        }
+
         // Every stream its own part file: two writers of one peak file (two
         // Traverso instances, an old and a new build) do not share one
         TPeakStream other(44100, 2, path);
@@ -498,14 +518,14 @@ static void test_file()
     expect_damaged(patched(8, 4), "version 4");
     expect_damaged(patched(8, 6), "version 6 (development)");
     // Offsets in TPeakFileHeader: 8 version, 12 byte order, 16 header size,
-    // 20 rate, 24 channels, 28 block frames, 32 codes per octave, 36 planes,
+    // 20 rate, 24 channels, 28 block frames, 32 codes per octave, 36 record contents,
     // 40 frame count (TPeakFile.cpp asserts 72 bytes and 40)
     expect_damaged(patched(12, 0x04030201), "byte order");
     expect_damaged(patched(16, 64), "header size");
     expect_damaged(patched(28, 32), "block frames");
     expect_damaged(patched(32, 512), "codes per octave");
-    expect_damaged(patched(36, 1), "planes: min/max only");
-    expect_damaged(patched(36, 7), "planes: one more than this version knows");
+    expect_damaged(patched(36, 1), "record contents: min/max only");
+    expect_damaged(patched(36, 7), "record contents: one more than this version knows");
     expect_damaged(patched(40, 0), "frame count 0");
     expect_damaged(patched(40, 49000), "frame count with another layout");
     expect_damaged(patched(40, 49999), "frame count with the same layout (header checksum)");

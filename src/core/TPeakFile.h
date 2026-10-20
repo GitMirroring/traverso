@@ -86,10 +86,8 @@ public:
     static QByteArray header(const SourceInfo& source);
 
     // Renames the finished part file over path, so a file under its name is
-    // always complete. Not synced to the disk: a peak file is a cache. On
-    // Windows a file that another program holds open for a moment (a virus
-    // scanner, the indexer) cannot be renamed: it tries again a few times.
-    // A part file that cannot be renamed is removed.
+    // always complete. Not synced to the disk: a peak file is a cache. A part
+    // file that cannot be renamed stays: the caller tries again or gives up.
     static Status publish(const QString& partPath, const QString& path, QString* error = nullptr);
 
 private:

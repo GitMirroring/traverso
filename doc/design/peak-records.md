@@ -48,11 +48,14 @@ the peak cache and the DiskIO rounds stay as they were.
    - The RMS comes from the mean squares of the decoded level-0 codes,
      weighted by frames, rounded once: within one code step (0.0059 dB) at
      every level. The user accepted this as invisible.
-   - Each level collects its records and writes them at its offset, so the
-     memory stays at a few hundred KB.
+   - Each level collects up to 16384 records and then writes them at its
+     offset: about 1.5 MB for an hour of stereo, freed when it is done.
    - At the end: the header, then the rename to the peak file's name
-     (`TPeakFile::publish()`, on Windows a few retries against a scanner or
-     the indexer holding the file).
+     (`TPeakFile::publish()`). Windows renames no file that is open, and the
+     waveform of a recording opens it for a moment per repaint (a virus
+     scanner or the indexer may too): there a refused rename is tried again
+     in the next steps, for two seconds, never in a sleep inside a round.
+     The part file stays meanwhile.
 
 Who calls what:
 
@@ -65,7 +68,9 @@ Who calls what:
 **Write failure** (a full cache disk) never affects the recording: the
 stream stops writing, the count freezes, the log says it once. `finish()`
 removes the part file; there is no post-processing, and the waveform builds
-the file from the audio afterwards.
+the file from the audio afterwards. (On Windows a removal while the
+waveform reads fails; the part file then goes with the cache's eviction of
+part files older than a day.)
 
 ## 3. Reading
 
@@ -77,13 +82,19 @@ the file from the audio afterwards.
 - **Accepted interim cost:** zoomed far out over a long take, this reads all
   of level 0 in view, 16 MB per channel-hour at 48 kHz, mostly from the
   page cache, on every full repaint. Measured: one hour of stereo in 3840
-  columns, 14.8 ms per repaint (0.8 ms from the finished file). It ends with
-  post-processing.
+  columns, 14.8 ms per repaint (0.57 ms from the finished file). It ends
+  with post-processing.
+- **Between the rename and the published flag** a read can find the part
+  file gone and the flag not yet set: that repaint shows no waveform, and
+  the job's end repaints right after it. Accepted.
 - **After the stop** the recording's file waveform asks for its peak file,
   finds the post-processing job of the same file and joins it: it shows
   level 0 until the job is done, then it maps the finished file. Once
   renamed, a read through the stream reads level 0 from the file's name (it
-  is in the same place).
+  is in the same place). When the job ends in the moment between the
+  waveform's open and its request, the waveform builds the file again from
+  the audio: a wasted build, the result is the same. When post-processing
+  fails, the waveform builds once from the audio.
 - **A finished file** is mapped (`TPeakFile`): every level an array of
   records. Columns take the middle of a column from the highest level that
   fits and the edges from the levels below; `max_amplitude()` is the bound
