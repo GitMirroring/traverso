@@ -29,15 +29,15 @@ static void check(bool ok, const char* what)
     }
 }
 
-// A sweep from 500 to 6000 Hz in 20 ms with a Hann window, one per second
+// A sweep from 500 Hz to high in 20 ms with a Hann window, one per second
 static constexpr double SweepSeconds = 0.020;
 static constexpr int SweepCount = 12;
 
-static std::vector<float> sweep(uint rate)
+static std::vector<float> sweep(uint rate, double high)
 {
     const int n = int(std::lround(SweepSeconds * rate));
     std::vector<float> s(size_t(n), 0.0f);
-    const double k = (6000.0 - 500.0) / SweepSeconds;
+    const double k = (high - 500.0) / SweepSeconds;
     for (int i = 0; i < n; ++i) {
         const double t = double(i) / rate;
         const double w = 0.5 - 0.5 * std::cos(2.0 * M_PI * i / (n - 1));
@@ -173,13 +173,19 @@ int main()
     QTemporaryDir dir;
     check(dir.isValid(), "a temporary directory");
 
+    // The common pairs, the lowest and highest rates, the largest drop
+    // after a seek (11025 -> 64000: 2559 frames), and equal rates, which
+    // read the file as it is
     struct Case { uint fileRate; uint outputRate; };
-    const Case cases[] = {{44100, 48000}, {48000, 44100}, {96000, 48000}, {22050, 48000}};
+    const Case cases[] = {{44100, 48000}, {48000, 44100}, {96000, 48000}, {22050, 48000}, {44100, 96000},
+                          {88200, 48000}, {8000, 48000}, {192000, 44100}, {11025, 64000}, {48000, 48000}};
     // libsamplerate's numbers, as the settings pass them: best, fastest, linear
     const int qualities[] = {0, 2, 4};
 
     for (const Case& c : cases) {
-        const std::vector<float> s = sweep(c.fileRate);
+        // Below both Nyquist frequencies, so the sweep is the same at either rate
+        const double high = std::min(6000.0, 0.4 * std::min(c.fileRate, c.outputRate));
+        const std::vector<float> s = sweep(c.fileRate, high);
         std::vector<float> file(size_t(std::lround((sweep_start(SweepCount - 1) + 1.5) * c.fileRate)), 0.0f);
         for (int k = 0; k < SweepCount; ++k) {
             std::copy(s.begin(), s.end(), file.begin() + long(std::lround(sweep_start(k) * c.fileRate)));
@@ -187,7 +193,7 @@ int main()
         const QString path = dir.filePath(QString("sweeps-%1.wav").arg(c.fileRate));
         check(write_wav(path, c.fileRate, file), "writing the sweeps");
 
-        const std::vector<float> tpl = sweep(c.outputRate);
+        const std::vector<float> tpl = sweep(c.outputRate, high);
         for (int quality : qualities) {
             for (Pattern pattern : {Pattern::Buffers, Pattern::Stream, Pattern::Seek}) {
                 nframes_t first = 0;
