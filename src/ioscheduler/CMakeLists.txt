@@ -18,11 +18,13 @@ target_link_libraries(traversoioscheduler PRIVATE traverso_compiler_settings)
 # not link
 target_include_directories(traversoioscheduler PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Direct dependencies only, all private: consumers link what they use
-# themselves
+# Its headers include support (TTimeRef, the wake semaphore) and Qt Core
+# (QObject): public, so a consumer links the scheduler alone. Qt Concurrent
+# is used inside only.
 target_link_libraries(traversoioscheduler
-    PRIVATE
+    PUBLIC
         traversosupport
         Qt6::Core
+    PRIVATE
         Qt6::Concurrent
 )
