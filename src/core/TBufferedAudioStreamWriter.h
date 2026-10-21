@@ -70,13 +70,12 @@ private:
 
     TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
 
-    friend class TDiskIOThread;
     void process_realtime_buffers(TFileIOBuffer &fileIOBuffer) final;
     void rb_seek_to_transport_location(TFileIOBuffer&, const TTimeRef &/*transportLocation*/) final {}
     void set_output_rate_and_convertor_type(int /*outputRate*/, int /*converterType*/) final {}
     // Something to write (it is recorded audio: as soon as it is there), or
     // the recording stopped and the file is not finished yet
-    TDiskIOPlanner::Stream disk_state(const TTimeRef& transportLocation) final;
+    TIOPlanner::Stream disk_state(const TTimeRef& transportLocation) final;
 
 signals:
     void exportFinished();

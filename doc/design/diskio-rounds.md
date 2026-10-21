@@ -9,6 +9,10 @@ User work order of 2026-10-19 ("DiskIO met één rondelus voor readers,
 writers en peakbuilds"), executed in the version agreed with the user. This
 describes what branch `peaks-v6` does now.
 
+Since 2026-10-21 DiskIO is the library `traversoioscheduler` (src/ioscheduler):
+`TIOScheduler` (was `TDiskIOThread`), `TIOPlanner`, `TIOTask`, and the streams
+implement `TIOStream`. The rounds described here are unchanged.
+
 ## 1. Threads
 
 Each sheet keeps **two** DiskIO threads:
@@ -23,7 +27,7 @@ DiskIO for the whole project is a later step.
 
 ## 2. The loop
 
-`TDiskIOThread::run()`:
+`TIOScheduler::run()`:
 1. Wait for the tick. The audio thread wakes DiskIO every cycle, also with
    the transport stopped. After a round with idle work the next round
    follows without waiting.
@@ -33,7 +37,7 @@ DiskIO for the whole project is a later step.
    - every stream reports its state in one call (`disk_state()`: whether it
      has work, whether its fill counts, its fill);
    - every idle task has work (until its step says it is over);
-   - `TDiskIOPlanner` decides the order;
+   - `TIOPlanner` decides the order;
    - one step of each runs with one `QtConcurrent::blockingMap`, spread
      over the global pool. In Qt 6 `blockingMap()` starts the work on the
      pool and waits: the DiskIO thread takes part only when the pool is busy
@@ -50,7 +54,7 @@ runs already finishes first, so a seek waits at most one step (a fifth of a
 second of a source, longer on a slow share).
 
 Streams tell the round what they need (`disk_state()`); background work is
-a `TDiskIOTask`, whose `step()` says when it is over:
+a `TIOTask`, whose `step()` says when it is over:
 - **A reader** has work when it is out of sync or its ring is at 80% or
   less. A reader **out of its window** (the transport far from its clip) has
   work only once the transport comes within its window, and then it seeks.
@@ -67,7 +71,7 @@ a `TDiskIOTask`, whose `step()` says when it is over:
 
 ## 3. The planner
 
-`TDiskIOPlanner` is pure: no threads, no streams, no device. It is tested
+`TIOPlanner` is pure: no threads, no streams, no device. It is tested
 headless (ctest `diskio_planner`, mutation-checked). Per round it decides:
 - **The streams that need work, the emptiest first.** `blockingMap` starts
   at the front.

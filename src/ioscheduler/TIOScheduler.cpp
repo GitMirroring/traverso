@@ -19,11 +19,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TDiskIOThread.h"
+#include "TIOScheduler.h"
 
-#include "TAudioDevice.h"
-#include "TBufferedAudioStream.h"
+#include "TIOStream.h"
 #include "Debugger.h"
+#include "TLog.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -32,8 +32,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <algorithm>
 
-#include <samplerate.h>
-
 #if defined (Q_OS_LINUX)
 // idle_limit_for(): the block device of a directory
 #include <sys/stat.h>
@@ -41,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <sys/types.h>
 #endif
 
-void TDiskIOThread::run()
+void TIOScheduler::run()
 {
     TLog::name_thread("diskio");
 
@@ -72,18 +70,18 @@ void TDiskIOThread::run()
 
 
 
-TDiskIOThread::TDiskIOThread()
+TIOScheduler::TIOScheduler()
 {
     m_audioThreadProcessedFramesQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>(64);
-    m_streamsToBeAdded = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>(512);
-    m_streamsToBeRemoved = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TBufferedAudioStream*>>(512);
+    m_streamsToBeAdded = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TIOStream*>>(512);
+    m_streamsToBeRemoved = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TIOStream*>>(512);
 
     m_seekRequested.store(false);
     m_stopDiskIOThreadRequested.store(false);
     m_outputSampleRate = 0;
     m_sampleRateChanged = false;
     m_resampleQualityChanged = false;
-    m_resampleQuality = SRC_SINC_FASTEST;
+    m_resampleQuality = 0;   // the owner sets it before streams come
     m_bufferFillStatus = 0;
     m_doWorktTime.store(0);
     m_lastCpuReadTime = TTimeRef::get_nanoseconds_since_epoch();
@@ -92,7 +90,7 @@ TDiskIOThread::TDiskIOThread()
     start();
 }
 
-TDiskIOThread::~TDiskIOThread()
+TIOScheduler::~TIOScheduler()
 {
     PENTERDES;
     stop_disk_thread();
@@ -100,17 +98,17 @@ TDiskIOThread::~TDiskIOThread()
     // Background tasks that did not get to their end are handed back too
     // (the thread is gone: this one may touch its lists)
     QMutexLocker locker(&m_pendingIdleTasksMutex);
-    for (const std::unique_ptr<TDiskIOTask>& task : m_pendingIdleTasks) {
+    for (const std::unique_ptr<TIOTask>& task : m_pendingIdleTasks) {
         task->retire();
     }
-    for (const std::unique_ptr<TDiskIOTask>& task : m_idleTasks) {
+    for (const std::unique_ptr<TIOTask>& task : m_idleTasks) {
         task->retire();
     }
 }
 
-void TDiskIOThread::take_requests()
+void TIOScheduler::take_requests()
 {
-    TBufferedAudioStream* stream;
+    TIOStream* stream;
     while (m_streamsToBeAdded->try_dequeue(stream)) {
         private_add_to_work(stream);
     }
@@ -119,18 +117,18 @@ void TDiskIOThread::take_requests()
     }
 
     QMutexLocker locker(&m_pendingIdleTasksMutex);
-    for (std::unique_ptr<TDiskIOTask>& task : m_pendingIdleTasks) {
+    for (std::unique_ptr<TIOTask>& task : m_pendingIdleTasks) {
         m_idleTasks.push_back(std::move(task));
     }
     m_pendingIdleTasks.clear();
 }
 
-bool TDiskIOThread::do_round()
+bool TIOScheduler::do_round()
 {
     Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::do_round", "NOT running in DiskIO thread");
 
     if (m_resampleQualityChanged) {
-        for (TBufferedAudioStream* stream : m_streams) {
+        for (TIOStream* stream : m_streams) {
             stream->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
         }
         m_resampleQualityChanged = false;
@@ -143,23 +141,23 @@ bool TDiskIOThread::do_round()
     m_round.sampleRateChanged = m_sampleRateChanged;
     m_round.outputRate = m_outputSampleRate;
     m_round.resampleQuality = m_resampleQuality;
-    m_round.bufferSize = seek ? audiodevice().get_buffer_size() : 0;
+    m_round.bufferSize = seek ? m_bufferSize.load(std::memory_order_relaxed) : 0;
     if (seek) {
         TLOG_D("diskio", "seek requested, seeking");
     }
 
     // What every stream needs; an idle task has work until its step says
     // it is over
-    std::vector<TDiskIOPlanner::Stream> streams;
+    std::vector<TIOPlanner::Stream> streams;
     streams.reserve(m_streams.size());
-    for (TBufferedAudioStream* stream : m_streams) {
+    for (TIOStream* stream : m_streams) {
         streams.push_back(stream->disk_state(m_round.transportLocation));
     }
 
     // blockingMap() starts the round on the pool and waits: the pool's
     // threads do the work, this thread takes part only when the pool is busy
     // (it runs the round then alone, so DiskIO always gets on)
-    const TDiskIOPlanner::Round plan = m_planner.plan(streams, seek, int(m_idleTasks.size()),
+    const TIOPlanner::Round plan = m_planner.plan(streams, seek, int(m_idleTasks.size()),
                                                       m_idleWorkAllowed.load(std::memory_order_relaxed),
                                                       QThreadPool::globalInstance()->maxThreadCount(),
                                                       m_idleLimit.load(std::memory_order_relaxed));
@@ -171,8 +169,8 @@ bool TDiskIOThread::do_round()
     // already finishes first.
     struct Step
     {
-        TBufferedAudioStream* stream{nullptr};
-        TDiskIOTask* idle{nullptr};
+        TIOStream* stream{nullptr};
+        TIOTask* idle{nullptr};
         int fill{-1};
         bool over{false};
     };
@@ -186,7 +184,11 @@ bool TDiskIOThread::do_round()
     }
     auto run = [this](Step& step) {
         if (step.stream) {
-            step.fill = stream_step(*step.stream, step.fill);
+            // The fill to show: after a seek what the seek filled, otherwise
+            // what the stream had when the round looked at it (its low point,
+            // before this step refilled or flushed it); none out of sync
+            const int fill = step.stream->step(m_round);
+            step.fill = fill < 0 ? -1 : (m_round.seek ? fill : step.fill);
         } else if (!m_seekRequested.load(std::memory_order_relaxed)) {
             step.over = !step.idle->step();
         }
@@ -234,47 +236,14 @@ bool TDiskIOThread::do_round()
     for (const Step& step : round) {
         if (step.over) {
             step.idle->retire();
-            std::erase_if(m_idleTasks, [&step](const std::unique_ptr<TDiskIOTask>& task) { return task.get() == step.idle; });
+            std::erase_if(m_idleTasks, [&step](const std::unique_ptr<TIOTask>& task) { return task.get() == step.idle; });
         }
     }
 
     return plan.continueWithoutTick;
 }
 
-int TDiskIOThread::stream_step(TBufferedAudioStream& stream, int fill)
-{
-    static thread_local TFileIOBuffer threadLocalFileDecodeBuffer;
-    const Round& round = m_round;
-    TBufferedAudioStreamStatus& status = stream.get_buffer_status();
-
-    if (round.seek) {
-        if (round.sampleRateChanged) {
-            stream.set_output_rate_and_convertor_type(round.outputRate, round.resampleQuality);
-            stream.prepare_rt_buffers(round.bufferSize);
-        }
-        stream.rb_seek_to_transport_location(threadLocalFileDecodeBuffer, round.seekLocation);
-        // The seek fills part of the ring; the rest at once
-        const int seekFill = status.get_fill_status();
-        if (!status.out_of_sync() && seekFill <= TDiskIOPlanner::IdleStartThreshold) {
-            stream.process_realtime_buffers(threadLocalFileDecodeBuffer);
-        }
-        return status.out_of_sync() ? -1 : seekFill;
-    }
-
-    // Out of sync: seek to where the transport is (a reader whose window the
-    // transport entered); otherwise read or write all there is room for
-    if (status.out_of_sync()) {
-        stream.rb_seek_to_transport_location(threadLocalFileDecodeBuffer, round.transportLocation);
-    } else {
-        stream.process_realtime_buffers(threadLocalFileDecodeBuffer);
-    }
-
-    // The fill it had when the round looked at it: its low point, before
-    // this step refilled or flushed it
-    return status.out_of_sync() ? -1 : fill;
-}
-
-int TDiskIOThread::idle_limit_for(const QString& directory)
+int TIOScheduler::idle_limit_for(const QString& directory)
 {
 #if defined(Q_OS_LINUX)
     // The block device of the directory's file system (of the nearest
@@ -316,64 +285,63 @@ int TDiskIOThread::idle_limit_for(const QString& directory)
 #endif
 }
 
-void TDiskIOThread::add_idle_task(std::unique_ptr<TDiskIOTask> task)
+void TIOScheduler::add_idle_task(std::unique_ptr<TIOTask> task)
 {
     QMutexLocker locker(&m_pendingIdleTasksMutex);
     m_pendingIdleTasks.push_back(std::move(task));
 }
 
-void TDiskIOThread::add_buffered_audio_stream(TBufferedAudioStream* bufferedAudioStream)
+void TIOScheduler::add_stream(TIOStream* stream)
 {
     PENTER2;
 
-    Q_ASSERT(bufferedAudioStream);
-    if (bufferedAudioStream->get_channel_count() == 0) {
-        PMESG("TDiskIOThread::add_buffered_audio_stream: Buffered Audio Stream has no channels, not adding it to queue");
+    Q_ASSERT(stream);
+    if (stream->get_channel_count() == 0) {
+        PMESG("TIOScheduler::add_stream: the stream has no channels, not adding it");
         return;
     }
 
-    bufferedAudioStream->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
-    bufferedAudioStream->prepare_rt_buffers(audiodevice().get_buffer_size());
+    stream->set_output_rate_and_convertor_type(int(m_outputSampleRate), m_resampleQuality);
+    stream->prepare_rt_buffers(m_bufferSize.load(std::memory_order_relaxed));
 
-    m_streamsToBeAdded->wait_enqueue(bufferedAudioStream);
+    m_streamsToBeAdded->wait_enqueue(stream);
 }
 
-void TDiskIOThread::private_add_to_work(TBufferedAudioStream *bufferedAudioStream)
+void TIOScheduler::private_add_to_work(TIOStream* stream)
 {
     PENTER2;
     Q_ASSERT(this->thread() == QThread::currentThread());
-    Q_ASSERT(std::find(m_streams.begin(), m_streams.end(), bufferedAudioStream) == m_streams.end());
+    Q_ASSERT(std::find(m_streams.begin(), m_streams.end(), stream) == m_streams.end());
 
-    m_streams.push_back(bufferedAudioStream);
+    m_streams.push_back(stream);
 }
 
-void TDiskIOThread::remove_buffered_audio_stream(TBufferedAudioStream *bufferedAudioStream)
+void TIOScheduler::remove_stream(TIOStream* stream)
 {
     PENTER2;
 
-    m_streamsToBeRemoved->wait_enqueue(bufferedAudioStream);
+    m_streamsToBeRemoved->wait_enqueue(stream);
 }
 
-void TDiskIOThread::private_remove_from_work(TBufferedAudioStream *bufferedAudioStream)
+void TIOScheduler::private_remove_from_work(TIOStream* stream)
 {
     PENTER2;
 
     Q_ASSERT(this->thread() == QThread::currentThread());
-    std::erase(m_streams, bufferedAudioStream);
+    std::erase(m_streams, stream);
 
     // FIXME
-    // Review the deletion of TBufferedAudioStreams and non-active TBufferedAudioStreams that should only
-    // be removed from DiskIO but not deleted.
-    bufferedAudioStream->m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
-    bufferedAudioStream->delete_queue_buffers();
-    delete bufferedAudioStream;
+    // Review the deletion of streams, and of non-active streams that should
+    // only be removed from the scheduler but not deleted.
+    stream->retire();
+    delete stream;
 }
 
 /**
  *
- * @return Returns the CPU time consumed by the TDiskIOThread thread
+ * @return Returns the CPU time consumed by the TIOScheduler thread
  */
-bool TDiskIOThread::get_cpu_time(float &time)
+bool TIOScheduler::get_cpu_time(float &time)
 {
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
 
@@ -392,12 +360,12 @@ bool TDiskIOThread::get_cpu_time(float &time)
  * @return The status in procentual amount of the smallest remaining space in the writebuffers
  *		that could be used to write 'recording' data too.
  */
-int TDiskIOThread::get_buffers_fill_status( )
+int TIOScheduler::get_buffers_fill_status( )
 {
     return m_bufferFillStatus.exchange(100);
 }
 
-void TDiskIOThread::stop_disk_thread( )
+void TIOScheduler::stop_disk_thread( )
 {
     PENTER;
 
@@ -408,7 +376,7 @@ void TDiskIOThread::stop_disk_thread( )
     // most likely we're waiting on an empty blocking queue so the loop will never go on
     // so make sure we wake up the thread by adding an item to the queue
     // Since we are disconnected from the audio processing callback it's safe to do so.
-    wakeup(); // make the loop leave TDiskIOThread::run()
+    wakeup(); // make the loop leave TIOScheduler::run()
 
     // Until the running round is over: its steps run on pool threads and use
     // the tasks this object owns. A round always ends (every step is one
@@ -417,13 +385,13 @@ void TDiskIOThread::stop_disk_thread( )
     wait();
 }
 
-void TDiskIOThread::set_resample_quality(int quality)
+void TIOScheduler::set_resample_quality(int quality)
 {
     m_resampleQuality = quality;
     m_resampleQualityChanged = true;
 }
 
-void TDiskIOThread::set_output_sample_rate(uint outputSampleRate)
+void TIOScheduler::set_output_sample_rate(uint outputSampleRate)
 {
     TLOG_I("diskio", "output sample rate {}", outputSampleRate);
     m_outputSampleRate = outputSampleRate;

@@ -20,9 +20,6 @@ add_library(traversocore STATIC
     TCurveNode.cpp
     TCurveSnapshot.h TCurveSnapshot.cpp
     TFadeShape.h TFadeShape.cpp
-    TDiskIOThread.cpp
-    TDiskIOTask.h
-    TDiskIOPlanner.h TDiskIOPlanner.cpp
     TFadeCurve.cpp
     FileHelpers.cpp
     TInformUser.cpp
@@ -79,6 +76,7 @@ target_link_libraries(traversocore
         traversoaudioruntime
         traversoaudiofileio
         traversowaveform
+        traversoioscheduler
         Qt6::Widgets
         Qt6::Gui
         Qt6::Xml

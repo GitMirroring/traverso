@@ -3,7 +3,7 @@
 
 #include "TPeakBuildService.h"
 
-#include "TDiskIOThread.h"
+#include "TIOScheduler.h"
 #include "TPeakCache.h"
 #include "TPeakBuildTask.h"
 #include "TPeakStream.h"
@@ -17,7 +17,7 @@
 // is over (or DiskIO goes first) DiskIO hands it back (retire()), on its own
 // thread or on the one that deletes it: the future finishes then, and a
 // waveform that opens the file finds it.
-class TPeakBuildJob final : public TDiskIOTask
+class TPeakBuildJob final : public TIOTask
 {
 public:
     TPeakBuildJob(std::unique_ptr<TPeakBuildTask> task, QPromise<TPeakBuildResult> promise)
@@ -58,9 +58,9 @@ private:
     QPromise<TPeakBuildResult> m_promise;
 };
 
-TPeakBuild TPeakBuildService::add_job(std::unique_ptr<TPeakBuildTask> task, TDiskIOThread* diskio)
+TPeakBuild TPeakBuildService::add_job(std::unique_ptr<TPeakBuildTask> task, TIOScheduler* scheduler)
 {
-    Q_ASSERT(diskio);
+    Q_ASSERT(scheduler);
     const std::shared_ptr<TPeakStream> stream = task->stream();
     QPromise<TPeakBuildResult> promise;
     // Started at once: older Qt versions finish the future of a destroyed
@@ -68,7 +68,7 @@ TPeakBuild TPeakBuildService::add_job(std::unique_ptr<TPeakBuildTask> task, TDis
     promise.start();
     promise.setProgressRange(0, 100);
     QFuture<TPeakBuildResult> job = promise.future();
-    diskio->add_idle_task(std::make_unique<TPeakBuildJob>(std::move(task), std::move(promise)));
+    scheduler->add_idle_task(std::make_unique<TPeakBuildJob>(std::move(task), std::move(promise)));
     m_jobs.insert(stream->peak_path(), Job{job, stream});
     return TPeakBuild{job, stream};
 }
@@ -82,7 +82,7 @@ void TPeakBuildService::forget_finished()
 }
 
 TPeakBuild TPeakBuildService::build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
-                                    TDiskIOThread* diskio)
+                                    TIOScheduler* scheduler)
 {
     forget_finished();
     const auto running = m_jobs.constFind(peakPath);
@@ -92,14 +92,14 @@ TPeakBuild TPeakBuildService::build(const QString& audioPath, const QString& pea
     }
     TLOG_I("peaks", "building {}", peakPath.toStdString());
     auto stream = std::make_shared<TPeakStream>(rate, channelCount, peakPath);
-    return add_job(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream), diskio);
+    return add_job(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream), scheduler);
 }
 
-void TPeakBuildService::post_process(std::shared_ptr<TPeakStream> recorded, TDiskIOThread* diskio)
+void TPeakBuildService::post_process(std::shared_ptr<TPeakStream> recorded, TIOScheduler* scheduler)
 {
     forget_finished();
     TLOG_I("peaks", "post-processing {}", recorded->peak_path().toStdString());
-    add_job(std::make_unique<TPeakBuildTask>(std::move(recorded)), diskio);
+    add_job(std::make_unique<TPeakBuildTask>(std::move(recorded)), scheduler);
 }
 
 void TPeakBuildService::cancel_all()

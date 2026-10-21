@@ -115,6 +115,42 @@ void TBufferedAudioStream::prepare_rt_buffers(nframes_t bufferSize)
     // printf("AudioSource::::prepare_rt_buffers: rtBufferSlotsQueue slot count %zu\n", m_rtBufferSlotsQueue->size_approx());
 }
 
+int TBufferedAudioStream::step(const StepInfo& info)
+{
+    // One decode buffer per thread that steps (the scheduler's, its pool's)
+    static thread_local TFileIOBuffer fileIOBuffer;
+    TBufferedAudioStreamStatus& status = get_buffer_status();
+
+    if (info.seek) {
+        if (info.sampleRateChanged) {
+            set_output_rate_and_convertor_type(int(info.outputRate), info.resampleQuality);
+            prepare_rt_buffers(info.bufferSize);
+        }
+        rb_seek_to_transport_location(fileIOBuffer, info.seekLocation);
+        // The seek fills part of the ring; the rest at once
+        const int seekFill = status.get_fill_status();
+        if (!status.out_of_sync() && seekFill <= TIOPlanner::IdleStartThreshold) {
+            process_realtime_buffers(fileIOBuffer);
+        }
+        return status.out_of_sync() ? -1 : seekFill;
+    }
+
+    // Out of sync: seek to where the transport is (a reader whose window the
+    // transport entered); otherwise read or write all there is room for
+    if (status.out_of_sync()) {
+        rb_seek_to_transport_location(fileIOBuffer, info.transportLocation);
+    } else {
+        process_realtime_buffers(fileIOBuffer);
+    }
+    return status.out_of_sync() ? -1 : status.get_fill_status();
+}
+
+void TBufferedAudioStream::retire()
+{
+    m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
+    delete_queue_buffers();
+}
+
 void TBufferedAudioStream::delete_queue_buffers()
 {
     Q_ASSERT(m_bufferstatus.get_sync_status() == TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);

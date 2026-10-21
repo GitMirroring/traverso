@@ -438,13 +438,13 @@ bool TBufferedAudioStreamReader::transport_in_window(const TTimeRef& transportLo
     return !((transportLocation + m_aboutOneToFourSecondsTime) < m_streamStart || transportLocation > m_streamEnd);
 }
 
-TDiskIOPlanner::Stream TBufferedAudioStreamReader::disk_state(const TTimeRef& transportLocation)
+TIOPlanner::Stream TBufferedAudioStreamReader::disk_state(const TTimeRef& transportLocation)
 {
     TBufferedAudioStreamStatus& status = get_buffer_status();
     if (status.get_sync_status() == TBufferedAudioStreamStatus::OUT_OF_WINDOW) {
-        return TDiskIOPlanner::Stream{transport_in_window(transportLocation), false, status.get_fill_status()};
+        return TIOPlanner::Stream{transport_in_window(transportLocation), false, status.get_fill_status()};
     }
-    return TDiskIOPlanner::Stream{status.needs_disk_work(), true, status.get_fill_status()};
+    return TIOPlanner::Stream{status.needs_disk_work(), true, status.get_fill_status()};
 }
 
 void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDecodeBuffer)

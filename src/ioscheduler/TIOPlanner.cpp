@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "TDiskIOPlanner.h"
+#include "TIOPlanner.h"
 
 #include <algorithm>
 
-TDiskIOPlanner::Round TDiskIOPlanner::plan(const std::vector<Stream>& streams, bool seek, int idleTasks, bool idleAllowed,
+TIOPlanner::Round TIOPlanner::plan(const std::vector<Stream>& streams, bool seek, int idleTasks, bool idleAllowed,
                                            int threads, int idleLimit)
 {
     Round round;

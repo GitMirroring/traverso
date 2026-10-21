@@ -12,10 +12,10 @@
  * a round take about as long as each other. step() runs on a pool thread or
  * on the DiskIO thread itself, at most once per round.
  */
-class TDiskIOTask
+class TIOTask
 {
 public:
-    virtual ~TDiskIOTask() = default;
+    virtual ~TIOTask() = default;
     // One unit of work, about one reader read; false when the task is over
     // (DiskIO hands it back and deletes it after the round)
     virtual bool step() = 0;

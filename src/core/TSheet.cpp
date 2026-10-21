@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "ResampleAudioReader.h"
 #include "TAudioClip.h"
 #include "TExportSpecification.h"
-#include "TDiskIOThread.h"
+#include "TIOScheduler.h"
 #include "TBufferedAudioStreamReader.h"
 #include "TBufferedAudioStreamWriter.h"
 #include "TAudioClipManager.h"
@@ -110,8 +110,8 @@ TSheet::~TSheet()
 {
     PENTERDES;
 
-    delete m_readDiskIO;
-    delete m_writeDiskIO;
+    delete m_readScheduler;
+    delete m_writeScheduler;
     delete m_masterOutBusTrack;
     delete m_renderBus;
     delete m_clipRenderBus;
@@ -130,14 +130,16 @@ void TSheet::init()
     set_transport_stop_requested_state(false);
 
     int converter_type = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
-    m_readDiskIO = new TDiskIOThread();
-    m_readDiskIO->set_output_sample_rate(audiodevice().get_sample_rate());
-    m_readDiskIO->set_resample_quality(converter_type);
+    m_readScheduler = new TIOScheduler();
+    m_readScheduler->set_output_sample_rate(audiodevice().get_sample_rate());
+    m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
+    m_readScheduler->set_resample_quality(converter_type);
     update_idle_limit();
 
-    connect(m_readDiskIO, &TDiskIOThread::seekFinished, this, &TSheet::seek_finished, Qt::QueuedConnection);
+    connect(m_readScheduler, &TIOScheduler::seekFinished, this, &TSheet::seek_finished, Qt::QueuedConnection);
 
-    m_writeDiskIO = new TDiskIOThread();
+    m_writeScheduler = new TIOScheduler();
+    m_writeScheduler->set_buffer_size(audiodevice().get_buffer_size());
 
     m_audioClipManager = new TAudioClipManager(this);
     set_related_context_item( m_audioClipManager );
@@ -498,11 +500,11 @@ int TSheet::process(TProcessCallBackData &processData)
 {
     // DiskIO always needs a wakeup call in case we're
     // seeking or want to seek
-    m_readDiskIO->wakeup();
+    m_readScheduler->wakeup();
     // Write DiskIO goes to sleep if we're transport rolling == false
     // however, after recording it needs to run a little longer to finish
     // the write sources export. For now just wake it up all the time
-    m_writeDiskIO->wakeup();
+    m_writeScheduler->wakeup();
 
     if (transport_locate_requested()) {
         TLOG_RT_D("transport", "starting the seek");
@@ -556,7 +558,7 @@ int TSheet::process(TProcessCallBackData &processData)
 
     // update the transport location
     m_transportLocation.add_frames(nframes, audiodevice().get_sample_rate());
-    m_readDiskIO->set_transport_location(m_transportLocation);
+    m_readScheduler->set_transport_location(m_transportLocation);
 
     if (!processResult) {
         return 0;
@@ -578,8 +580,8 @@ int TSheet::process(TProcessCallBackData &processData)
         }
     }
 
-    m_readDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
-    m_writeDiskIO->add_processed_audio_thread_frames(processData.get_nframes_to_process());
+    m_readScheduler->add_processed_audio_thread_frames(processData.get_nframes_to_process());
+    m_writeScheduler->add_processed_audio_thread_frames(processData.get_nframes_to_process());
 
     return 1;
 }
@@ -610,7 +612,9 @@ void TSheet::audiodevice_params_changed()
     // We need to seek to a different position then the current one,
     // else the seek won't happen at all :)
     auto outputRate = audiodevice().get_sample_rate();
-    m_readDiskIO->set_output_sample_rate(outputRate);
+    m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
+    m_writeScheduler->set_buffer_size(audiodevice().get_buffer_size());
+    m_readScheduler->set_output_sample_rate(outputRate);
     set_transport_location(m_transportLocation + TTimeRef(audiodevice().get_buffer_size(), outputRate));
 }
 
@@ -850,7 +854,7 @@ void TSheet::rt_inititate_seek()
     set_transport_locate_requested_state(false);
 
     // only sets a boolean flag and the new seek location, save to call
-    m_readDiskIO->set_seek_transport_location(m_seekTransportLocation);
+    m_readScheduler->set_seek_transport_location(m_seekTransportLocation);
 }
 
 void TSheet::seek_finished()
@@ -955,7 +959,7 @@ void TSheet::prepare_recording()
         connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
         m_recordingClips.append(clip);
         // The disk belongs to the recording: no peak builds meanwhile
-        m_readDiskIO->set_idle_work_allowed(false);
+        m_readScheduler->set_idle_work_allowed(false);
         newClips.append(clip);
     }
 
@@ -1009,7 +1013,7 @@ void TSheet::clip_finished_recording(TAudioClip * clip)
     }
 
     if (m_recordingClips.isEmpty()) {
-        m_readDiskIO->set_idle_work_allowed(true);
+        m_readScheduler->set_idle_work_allowed(true);
         // seems we finished recording completely now
         // all clips have set their resulting ReadSource
         // length and whatsoever, let's do an autosave:
@@ -1034,8 +1038,8 @@ void TSheet::set_transport_location(TTimeRef location)
 void TSheet::config_changed()
 {
     int quality = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
-    if (m_readDiskIO->get_resample_quality() != quality) {
-        m_readDiskIO->set_resample_quality(quality);
+    if (m_readScheduler->get_resample_quality() != quality) {
+        m_readScheduler->set_resample_quality(quality);
     }
     update_idle_limit();
 }
@@ -1046,9 +1050,9 @@ void TSheet::config_changed()
 void TSheet::update_idle_limit()
 {
     const int setting = config().get_property("DiskIO", "IdleLimit", 0).toInt();
-    const int limit = setting > 0 ? setting : TDiskIOThread::idle_limit_for(get_audio_sources_dir());
-    if (limit != m_readDiskIO->idle_limit()) {
-        m_readDiskIO->set_idle_limit(limit);
+    const int limit = setting > 0 ? setting : TIOScheduler::idle_limit_for(get_audio_sources_dir());
+    if (limit != m_readScheduler->idle_limit()) {
+        m_readScheduler->set_idle_limit(limit);
         TLOG_I("diskio", "{} peak builds at a time{}", limit, setting > 0 ? " (setting)" : "");
     }
 }
@@ -1071,39 +1075,39 @@ TAudioTrack * TSheet::get_audio_track_for_index(int index)
 }
 
 void TSheet::add_audio_source_to_diskio(TBufferedAudioStreamReader *source) const {
-    m_readDiskIO->add_buffered_audio_stream(source);
+    m_readScheduler->add_stream(source);
 }
 
 void TSheet::remove_audio_source_from_diskio(TBufferedAudioStreamReader *source) const {
-    m_readDiskIO->remove_buffered_audio_stream(source);
+    m_readScheduler->remove_stream(source);
 }
 
 void TSheet::add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) const {
-    m_writeDiskIO->add_buffered_audio_stream(source);
+    m_writeScheduler->add_stream(source);
 }
 
 void TSheet::remove_audio_source_from_diskio(TBufferedAudioStreamWriter *source) const {
-    m_writeDiskIO->remove_buffered_audio_stream(source);
+    m_writeScheduler->remove_stream(source);
 }
 
 int TSheet::get_read_diskio_buffers_fill_status()
 {
-    return m_readDiskIO->get_buffers_fill_status();
+    return m_readScheduler->get_buffers_fill_status();
 }
 
 int TSheet::get_write_diskio_buffers_fill_status()
 {
-    return m_writeDiskIO->get_buffers_fill_status();
+    return m_writeScheduler->get_buffers_fill_status();
 }
 
 bool TSheet::get_read_diskio_cpu_time(float &time)
 {
-    return m_readDiskIO->get_cpu_time(time);
+    return m_readScheduler->get_cpu_time(time);
 }
 
 bool TSheet::get_write_diskio_cpu_time(float &time)
 {
-    return m_writeDiskIO->get_cpu_time(time);
+    return m_writeScheduler->get_cpu_time(time);
 }
 
 QList<TAudioTrack *> TSheet::get_solo_tracks() const
@@ -1228,10 +1232,10 @@ QUndoCommand* TSheet::create_command_split_entities(const QList<TSplitableTimeLi
 
 TPeakBuild TSheet::request_peak_build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount)
 {
-    return m_project->get_peak_builds()->build(audioPath, peakPath, rate, channelCount, m_readDiskIO);
+    return m_project->get_peak_builds()->build(audioPath, peakPath, rate, channelCount, m_readScheduler);
 }
 
 void TSheet::post_process_peaks(std::shared_ptr<TPeakStream> recorded)
 {
-    m_project->get_peak_builds()->post_process(std::move(recorded), m_readDiskIO);
+    m_project->get_peak_builds()->post_process(std::move(recorded), m_readScheduler);
 }

@@ -17,9 +17,9 @@
  * does not flicker on and off around one threshold).
  *
  * Pure: no threads, no streams, no audio device, so it is tested headless.
- * TDiskIOThread asks it once per round, on its own thread.
+ * TIOScheduler asks it once per round, on its own thread.
  */
-class TDiskIOPlanner
+class TIOPlanner
 {
 public:
     // Idle work starts when the emptiest reader is above this (percent of

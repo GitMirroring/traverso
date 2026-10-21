@@ -104,14 +104,13 @@ private:
     friend class TProjectConverter;
 
     // re-implemented only to be called by DiskIO
-    friend class TDiskIOThread;
     void process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer) final;
     void rb_seek_to_transport_location(TFileIOBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) final;
     void set_output_rate_and_convertor_type(int outputRate, int converterType) final;
     // Out of its window, a reader needs work when the transport came close
     // (it seeks then) and its fill does not count; otherwise it needs work
     // when it is out of sync or getting empty
-    TDiskIOPlanner::Stream disk_state(const TTimeRef& transportLocation) final;
+    TIOPlanner::Stream disk_state(const TTimeRef& transportLocation) final;
     // The transport is near enough to fill the buffers: from about one to
     // four seconds before the stream's start (spread per reader) to its end
     bool transport_in_window(const TTimeRef& transportLocation) const;

@@ -22,8 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 #include "TBufferedAudioStreamStatus.h"
-#include "TDiskIOPlanner.h"
 #include "TFileIOBuffer.h"
+#include "TIOStream.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -33,8 +33,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class TQueueBufferSlot;
 
-/// The base class for AudioSources like ReadSource and WriteSource
-class TBufferedAudioStream : public QObject
+/// The base class for AudioSources like ReadSource and WriteSource: the
+/// streams TIOScheduler reads and writes
+class TBufferedAudioStream : public QObject, public TIOStream
 {
     Q_OBJECT
 
@@ -54,7 +55,7 @@ public :
     qint64 get_id() const {return m_id;}
     qint64 get_orig_sheet_id() const {return m_origSheetId;}
     uint get_sample_rate() const;
-    uint get_channel_count() const {return m_channelCount;}
+    uint get_channel_count() const override {return m_channelCount;}
     uint get_bit_depth() const;
 
     virtual TBufferedAudioStreamStatus& get_buffer_status() = 0;
@@ -84,21 +85,17 @@ protected:
     uint 		m_rate{};
     int         m_wasRecording;
 
+public:
+    // TIOStream: the scheduler's step, and the ring buffers it makes and frees
+    int step(const StepInfo& info) override;
+    void prepare_rt_buffers(nframes_t bufferSize) override;
+    void retire() override;
+
 private:
-    // Creation and deletion of the RT buffers can only happen if we know
-    // these buffers are not accessed by the audio thread.
-    // DiskIO is used to synchronize communication between audio thread and the
-    // other threads so let DiskIO prepare and delete the buffers since it 'knows'
-    // when it is save to do so
-    friend class TDiskIOThread;
-    void prepare_rt_buffers(nframes_t bufferSize);
     void delete_queue_buffers();
+    // What a step does, in the reader or the writer: read or write all there
+    // is room for, or seek
     virtual void process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer) = 0;
     virtual void rb_seek_to_transport_location(TFileIOBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) = 0;
-    virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
-    // What DiskIO's next round needs to know of this stream, the transport
-    // being at transportLocation: whether it has work, whether its fill
-    // decides about the idle work, its fill (one look at its buffers)
-    virtual TDiskIOPlanner::Stream disk_state(const TTimeRef& transportLocation) = 0;
 };
 

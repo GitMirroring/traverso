@@ -60,7 +60,7 @@ A round, in this order:
    - peak post-processing and peak builds;
    - imports and merges (the next work order).
 
-`TDiskIOPlanner` gets two flags per stream: it seeks, and it is parked. It
+`TIOPlanner` gets two flags per stream: it seeks, and it is parked. It
 stays pure and tested headless.
 
 The audio thread wakes DiskIO once per cycle, from the project, not once
@@ -121,7 +121,7 @@ is a song); driving all songs is an option of the project's policy. Today
 ## 8. Where it lives
 
 A library `traversoioscheduler` in `src/ioscheduler` (decided 2026-10-21):
-`TIOScheduler` (today `TDiskIOThread`), `TIOPlanner`, `TIOTask` and the
+`TIOScheduler` (formerly `TDiskIOThread`), `TIOPlanner`, `TIOTask` and the
 stream interface `TIOStream`, linking `traversosupport` and Qt Core only.
 The readers and writers in core implement `TIOStream`; their decode buffer
 is `thread_local` in core. The name says what it does: it plans and hands

@@ -9,7 +9,7 @@
 
 #include <memory>
 
-class TDiskIOThread;
+class TIOScheduler;
 class TPeakBuildTask;
 class TPeakStream;
 
@@ -48,15 +48,15 @@ class TPeakBuildService
 {
 public:
     // rate, channelCount: the source's, as its waveform knows them
-    TPeakBuild build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount, TDiskIOThread* diskio);
+    TPeakBuild build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount, TIOScheduler* scheduler);
     // A recording's peaks after TPeakStream::finish(): the levels above level
     // 0 and the file's name. Before the recording's file waveform asks for
     // its peak file, so that one joins this job.
-    void post_process(std::shared_ptr<TPeakStream> recorded, TDiskIOThread* diskio);
+    void post_process(std::shared_ptr<TPeakStream> recorded, TIOScheduler* scheduler);
     void cancel_all();
 
 private:
-    TPeakBuild add_job(std::unique_ptr<TPeakBuildTask> task, TDiskIOThread* diskio);
+    TPeakBuild add_job(std::unique_ptr<TPeakBuildTask> task, TIOScheduler* scheduler);
     void forget_finished();
 
     // The stream is not kept alive here: the job holds it while it runs,
