@@ -80,9 +80,6 @@ public :
         return this->get_sort_index() < other.get_sort_index();
     }
 
-
-    TAudioTrack* next = nullptr;
-
     void clip_position_changed(TAudioClip* clip);
 
 

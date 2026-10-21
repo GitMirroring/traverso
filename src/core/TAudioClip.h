@@ -127,8 +127,6 @@ public:
 
     void removed_from_track();
 
-    TAudioClip* next = nullptr;
-
 private:
     TRtList<TFadeCurve>             m_fades;
     TSheet*                         m_sheet;

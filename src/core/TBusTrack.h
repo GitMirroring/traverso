@@ -44,8 +44,6 @@ public:
         return this->get_sort_index() < other.get_sort_index();
     }
 
-    TBusTrack* next = nullptr;
-
 protected:
     int m_channelCount{};
 
