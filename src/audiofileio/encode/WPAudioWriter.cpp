@@ -228,7 +228,8 @@ nframes_t WPAudioWriter::write_private(void* buffer, nframes_t frameCount)
         for (nframes_t s = 0; s < totalSamples; s++) {
             switch (dataFormat) {
             case TraversoDAW::DataFormat::PCM_S8:
-                m_tmp_buffer[s] = static_cast<int32_t>(static_cast<int8_t*>(buffer)[s]);
+                // Unsigned, around 128, as gdither writes 8 bits (GDither8bit)
+                m_tmp_buffer[s] = static_cast<int32_t>(static_cast<uint8_t*>(buffer)[s]) - 128;
                 break;
 
             case TraversoDAW::DataFormat::PCM_16:
@@ -237,13 +238,10 @@ nframes_t WPAudioWriter::write_private(void* buffer, nframes_t frameCount)
                 break;
 
             case TraversoDAW::DataFormat::PCM_24:
-            {
-                // Safely extract 3-byte packed PCM24 samples into standard 32-bit containers
-                uint8_t* pcm24Ptr = static_cast<uint8_t*>(buffer) + (3 * s);
-                int32_t val = (pcm24Ptr[0] << 8) | (pcm24Ptr[1] << 16) | (pcm24Ptr[2] << 24);
-                m_tmp_buffer[s] = val >> 8; // Preserve original sign bit extension
-            }
-            break;
+                // In the upper 24 bits of a 32 bit word, as gdither writes it
+                // (GDither32bit); WavPack takes it in the lower 24
+                m_tmp_buffer[s] = static_cast<int32_t*>(buffer)[s] >> 8;
+                break;
 
             default:
                 m_tmp_buffer[s] = 0;
