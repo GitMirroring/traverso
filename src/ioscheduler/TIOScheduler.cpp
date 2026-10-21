@@ -145,9 +145,11 @@ bool TIOScheduler::do_round()
     }
 
     // A new rate is taken by the next seek (the owner seeks after it)
-    const bool seek = m_seekRequested.load();
+    // A seek is taken at the start of a round; the location is written
+    // before the flag
+    const bool seek = m_seekRequested.exchange(false, std::memory_order_acquire);
     m_round.seek = seek;
-    m_round.seekLocation = m_seekTransportLocation;
+    m_round.seekLocation = TTimeRef(m_seekLocation.load(std::memory_order_relaxed));
     m_round.transportLocation = TTimeRef(m_transportLocation.load(std::memory_order_relaxed));
     m_round.sampleRateChanged = seek && m_rateChanged.exchange(false);
     m_round.outputRate = get_output_rate();
@@ -237,8 +239,8 @@ bool TIOScheduler::do_round()
     }
 
     if (seek) {
-        m_transportLocation.store(m_seekTransportLocation.universal_frame(), std::memory_order_relaxed);
-        m_seekRequested.store(false);
+        // Where the streams seeked to
+        m_transportLocation.store(m_round.seekLocation.universal_frame(), std::memory_order_relaxed);
         emit seekFinished();
     }
 
@@ -344,9 +346,9 @@ bool TIOScheduler::get_cpu_time(float &time)
 {
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
 
-    time = (m_doWorktTime.load()  / float(currentTime - m_lastCpuReadTime)) * 100;
+    // exchange: what the scheduler thread adds meanwhile counts next time
+    time = (m_doWorktTime.exchange(0) / float(currentTime - m_lastCpuReadTime)) * 100;
 
-    m_doWorktTime.store(0);
     m_lastCpuReadTime = currentTime;
 
     return true;

@@ -109,6 +109,12 @@ TAudioClip::~TAudioClip()
         Q_ASSERT(m_sheet);
         m_sheet->remove_audio_source_from_diskio(m_readSource);
     }
+    // A project closed while a recording still finished its file (between
+    // finish_recording() and finish_write_source())
+    if (m_writer) {
+        Q_ASSERT(m_sheet);
+        m_sheet->remove_audio_source_from_diskio(m_writer);
+    }
 
     delete m_waveform;
 }

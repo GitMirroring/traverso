@@ -78,9 +78,11 @@ public:
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
     }
+    // One seek at a time: the owner asks for the next only after
+    // seekFinished (TSheet::initiate_seek_start())
     void set_seek_transport_location(const TTimeRef& transportLocation) {
-        m_seekTransportLocation = transportLocation;
-        m_seekRequested.store(true);
+        m_seekLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
+        m_seekRequested.store(true, std::memory_order_release);
     }
 
     // The owner's thread. A stream to read or write. remove_stream()
@@ -153,7 +155,7 @@ private:
 
     std::atomic<bool> m_seekRequested{false};
     std::atomic<qint64> m_transportLocation{0};     // universal frames
-    TTimeRef m_seekTransportLocation;
+    std::atomic<qint64> m_seekLocation{0};          // universal frames
 
     std::atomic<uint> m_outputRate{0};
     std::atomic<int> m_resampleQuality{0};          // the owner sets it before streams come

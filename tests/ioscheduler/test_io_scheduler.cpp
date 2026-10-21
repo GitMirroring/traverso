@@ -13,6 +13,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <cstdio>
 #include <memory>
 #include <thread>
@@ -44,7 +45,12 @@ public:
         if (m_stepMicroseconds > 0) {
             std::this_thread::sleep_for(std::chrono::microseconds(m_stepMicroseconds));
         }
+        m_lastTransport.store(info.transportLocation.universal_frame());
         if (info.seek) {
+            m_lastSeek.store(info.seekLocation.universal_frame());
+            if (m_onSeek) {
+                m_onSeek();
+            }
             m_seeks.fetch_add(1);
             if (info.sampleRateChanged) {
                 m_rateChanges.fetch_add(1);
@@ -69,6 +75,9 @@ public:
     std::atomic<int> m_prepared{0};
     std::atomic<int> m_retired{0};
     std::atomic<int> m_stepsAfterRetire{0};
+    std::atomic<qint64> m_lastTransport{0};
+    std::atomic<qint64> m_lastSeek{0};
+    std::function<void()> m_onSeek;
 };
 
 // A task of a number of steps, sleeping a while in each; it counts into
@@ -209,6 +218,28 @@ int main(int argc, char** argv)
         check(a.m_rateChanges.load() == 1 && finished.load() == 2, "a seek without a new rate keeps the rate");
         scheduler.remove_stream(&a);
         scheduler.remove_stream(&b);
+    }
+
+    // A seek asked for while a seek round runs is not lost: the next round
+    // serves it, and the transport goes on from where the streams seeked to
+    {
+        TIOScheduler scheduler;
+        scheduler.set_buffer_size(256);
+        FakeStream a(true, 50);
+        scheduler.add_stream(&a);
+        a.m_onSeek = [&] {
+            if (a.m_seeks.load() == 0) {
+                scheduler.set_seek_transport_location(TTimeRef(qint64(5000)));
+            }
+        };
+        scheduler.set_seek_transport_location(TTimeRef(qint64(1000)));
+        scheduler.dispatch();
+        check(a.m_seeks.load() == 1 && a.m_lastSeek.load() == 1000, "the first seek");
+        scheduler.dispatch();
+        check(a.m_seeks.load() == 2 && a.m_lastSeek.load() == 5000, "the seek asked for during the round comes next");
+        scheduler.dispatch();
+        check(a.m_lastTransport.load() == 5000, "the transport goes on from the last seek");
+        scheduler.remove_stream(&a);
     }
 
     if (failures) {

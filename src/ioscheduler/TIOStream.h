@@ -42,7 +42,8 @@ public:
     // The ring buffers are made and freed only where the audio thread does
     // not use them: the scheduler knows when that is
     virtual void prepare_rt_buffers(nframes_t bufferSize) = 0;
-    // The scheduler hands the stream back right before it deletes it: the
-    // ring buffers go
+    // The scheduler hands the stream back when it takes it out, between two
+    // rounds: the ring buffers go. Its owner deletes it once remove_stream()
+    // returned.
     virtual void retire() = 0;
 };
