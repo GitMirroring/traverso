@@ -135,11 +135,13 @@ void TSheet::init()
     m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
     m_readScheduler->set_resample_quality(converter_type);
     update_idle_limit();
+    m_readScheduler->start();
 
     connect(m_readScheduler, &TIOScheduler::seekFinished, this, &TSheet::seek_finished, Qt::QueuedConnection);
 
     m_writeScheduler = new TIOScheduler();
     m_writeScheduler->set_buffer_size(audiodevice().get_buffer_size());
+    m_writeScheduler->start();
 
     m_audioClipManager = new TAudioClipManager(this);
     set_related_context_item( m_audioClipManager );
@@ -498,13 +500,10 @@ void TSheet::solo_track(TTrack *track)
 //
 int TSheet::process(TProcessCallBackData &processData)
 {
-    // DiskIO always needs a wakeup call in case we're
-    // seeking or want to seek
-    m_readScheduler->wakeup();
-    // Write DiskIO goes to sleep if we're transport rolling == false
-    // however, after recording it needs to run a little longer to finish
-    // the write sources export. For now just wake it up all the time
-    m_writeScheduler->wakeup();
+    // The schedulers are woken every cycle, also with the transport
+    // stopped: a seek, or a writer that finishes its file after recording
+    m_readScheduler->tick();
+    m_writeScheduler->tick();
 
     if (transport_locate_requested()) {
         TLOG_RT_D("transport", "starting the seek");
@@ -580,8 +579,9 @@ int TSheet::process(TProcessCallBackData &processData)
         }
     }
 
-    m_readScheduler->add_processed_audio_thread_frames(processData.get_nframes_to_process());
-    m_writeScheduler->add_processed_audio_thread_frames(processData.get_nframes_to_process());
+    // Once more now that this cycle took from the rings
+    m_readScheduler->tick();
+    m_writeScheduler->tick();
 
     return 1;
 }
@@ -1079,7 +1079,9 @@ void TSheet::add_audio_source_to_diskio(TBufferedAudioStreamReader *source) cons
 }
 
 void TSheet::remove_audio_source_from_diskio(TBufferedAudioStreamReader *source) const {
+    // Once the scheduler let go of it
     m_readScheduler->remove_stream(source);
+    delete source;
 }
 
 void TSheet::add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) const {
@@ -1087,7 +1089,9 @@ void TSheet::add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) cons
 }
 
 void TSheet::remove_audio_source_from_diskio(TBufferedAudioStreamWriter *source) const {
+    // Once the scheduler let go of it
     m_writeScheduler->remove_stream(source);
+    delete source;
 }
 
 int TSheet::get_read_diskio_buffers_fill_status()

@@ -7,3 +7,10 @@
 add_executable(traverso_io_planner_test test_io_planner.cpp)
 target_link_libraries(traverso_io_planner_test PRIVATE traverso_compiler_settings traversoioscheduler)
 add_test(NAME io_planner COMMAND traverso_io_planner_test)
+
+# Headless test of the scheduler with streams and tasks of its own: rounds
+# without a driver, a stream removed while rounds run on the loop thread,
+# the end with tasks running, a seek and a new rate. Links the library only.
+add_executable(traverso_io_scheduler_test test_io_scheduler.cpp)
+target_link_libraries(traverso_io_scheduler_test PRIVATE traverso_compiler_settings traversoioscheduler traversosupport Qt6::Core)
+add_test(NAME io_scheduler COMMAND traverso_io_scheduler_test)

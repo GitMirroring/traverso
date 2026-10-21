@@ -39,66 +39,25 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <sys/types.h>
 #endif
 
-void TIOScheduler::run()
-{
-    TLog::name_thread("diskio");
-
-    bool moreWork = false;
-    while (true) {
-        // The tick: the audio thread wakes this thread every cycle (also
-        // with the transport stopped). After a round with idle work the next
-        // one follows at once; the wakeups that came meanwhile are taken.
-        nframes_t frames;
-        if (!moreWork) {
-            m_audioThreadProcessedFramesQueue->wait_dequeue(frames);
-        }
-        while (m_audioThreadProcessedFramesQueue->try_dequeue(frames)) {
-        }
-
-        take_requests();
-        if (m_stopRequested.load()) {
-            break;
-        }
-
-        const trav_time_t startTime = TTimeRef::get_nanoseconds_since_epoch();
-        moreWork = do_round();
-        m_doWorktTime.fetch_add(TTimeRef::get_nanoseconds_since_epoch() - startTime);
-    }
-
-    TLOG_I("diskio", "stopped");
-}
-
-
-
 TIOScheduler::TIOScheduler()
+    : m_lastCpuReadTime(TTimeRef::get_nanoseconds_since_epoch())
 {
-    m_audioThreadProcessedFramesQueue = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>(64);
-    m_streamsToBeAdded = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TIOStream*>>(512);
-    m_streamsToBeRemoved = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TIOStream*>>(512);
-
-    m_seekRequested.store(false);
-    m_stopRequested.store(false);
-    m_outputSampleRate = 0;
-    m_sampleRateChanged = false;
-    m_resampleQualityChanged = false;
-    m_resampleQuality = 0;   // the owner sets it before streams come
-    m_bufferFillStatus = 0;
-    m_doWorktTime.store(0);
-    m_lastCpuReadTime = TTimeRef::get_nanoseconds_since_epoch();
-
-    moveToThread(this);
-    start();
 }
 
 TIOScheduler::~TIOScheduler()
 {
     PENTERDES;
-    stop_thread();
 
-    // Background tasks that did not get to their end are handed back too
-    // (the thread is gone: this one may touch its lists)
-    QMutexLocker locker(&m_pendingIdleTasksMutex);
-    for (const std::unique_ptr<TIOTask>& task : m_pendingIdleTasks) {
+    // No new work, the loop wakes and ends (a round that runs ends first:
+    // its steps use the streams and tasks), then the tasks that are left go
+    // back to their owners
+    m_stopRequested.store(true);
+    if (m_loop) {
+        m_wake.signal();
+        m_loop->wait();
+    }
+    Q_ASSERT_X(m_streams.empty() && m_streamsToAdd.empty(), "TIOScheduler", "streams are still registered");
+    for (const std::unique_ptr<TIOTask>& task : m_tasksToAdd) {
         task->retire();
     }
     for (const std::unique_ptr<TIOTask>& task : m_idleTasks) {
@@ -106,41 +65,93 @@ TIOScheduler::~TIOScheduler()
     }
 }
 
-void TIOScheduler::take_requests()
+void TIOScheduler::start()
 {
-    TIOStream* stream;
-    while (m_streamsToBeAdded->try_dequeue(stream)) {
-        private_add_to_work(stream);
-    }
-    while (m_streamsToBeRemoved->try_dequeue(stream)) {
-        private_remove_from_work(stream);
+    Q_ASSERT(!m_loop);
+    m_loop.reset(QThread::create([this] { loop(); }));
+    m_loop->start();
+}
+
+bool TIOScheduler::on_loop_thread() const
+{
+    return m_loop ? QThread::currentThread() == m_loop.get() : QThread::currentThread() == thread();
+}
+
+void TIOScheduler::loop()
+{
+    TLog::name_thread("diskio");
+
+    bool more = false;
+    while (true) {
+        // The wake: the audio thread's tick every cycle (also with the
+        // transport stopped), or a request. After a round with idle work the
+        // next one follows at once; the wakes that came meanwhile are taken.
+        if (!more) {
+            m_wake.wait();
+        }
+        while (m_wake.tryWait()) {
+        }
+        if (m_stopRequested.load()) {
+            break;
+        }
+
+        const trav_time_t startTime = TTimeRef::get_nanoseconds_since_epoch();
+        more = dispatch();
+        m_doWorktTime.fetch_add(TTimeRef::get_nanoseconds_since_epoch() - startTime);
     }
 
-    QMutexLocker locker(&m_pendingIdleTasksMutex);
-    for (std::unique_ptr<TIOTask>& task : m_pendingIdleTasks) {
+    TLOG_I("diskio", "stopped");
+}
+
+bool TIOScheduler::dispatch()
+{
+    take_requests();
+    return do_round();
+}
+
+void TIOScheduler::take_requests()
+{
+    Q_ASSERT_X(on_loop_thread(), "TIOScheduler::take_requests", "not on the loop thread");
+
+    std::lock_guard locker(m_requestsMutex);
+    for (TIOStream* stream : m_streamsToAdd) {
+        Q_ASSERT(std::find(m_streams.begin(), m_streams.end(), stream) == m_streams.end());
+        m_streams.push_back(stream);
+    }
+    m_streamsToAdd.clear();
+    // The ring buffers go here, where the audio thread does not use them;
+    // the owner deletes the stream once remove_stream() returns
+    for (TIOStream* stream : m_streamsToRemove) {
+        std::erase(m_streams, stream);
+        stream->retire();
+    }
+    m_streamsToRemove.clear();
+    for (std::unique_ptr<TIOTask>& task : m_tasksToAdd) {
         m_idleTasks.push_back(std::move(task));
     }
-    m_pendingIdleTasks.clear();
+    m_tasksToAdd.clear();
+    m_taken = m_requested;
+    m_requestsTaken.notify_all();
 }
 
 bool TIOScheduler::do_round()
 {
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "TIOScheduler::do_round", "not on the scheduler's thread");
+    Q_ASSERT_X(on_loop_thread(), "TIOScheduler::do_round", "not on the loop thread");
 
-    if (m_resampleQualityChanged) {
+    if (m_qualityChanged.exchange(false)) {
         for (TIOStream* stream : m_streams) {
-            stream->set_output_rate_and_convertor_type(m_outputSampleRate, m_resampleQuality);
+            stream->set_output_rate_and_convertor_type(int(get_output_rate()), get_resample_quality());
         }
-        m_resampleQualityChanged = false;
     }
 
+    // A new rate is taken by the next seek (the owner seeks after it)
     const bool seek = m_seekRequested.load();
     m_round.seek = seek;
     m_round.seekLocation = m_seekTransportLocation;
     m_round.transportLocation = TTimeRef(m_transportLocation.load(std::memory_order_relaxed));
-    m_round.sampleRateChanged = m_sampleRateChanged;
-    m_round.outputRate = m_outputSampleRate;
-    m_round.resampleQuality = m_resampleQuality;
+    m_round.sampleRateChanged = seek && m_rateChanged.exchange(false);
+    m_round.outputRate = get_output_rate();
+    m_round.resampleQuality = get_resample_quality();
     m_round.bufferSize = seek ? m_bufferSize.load(std::memory_order_relaxed) : 0;
     if (seek) {
         TLOG_D("diskio", "seek requested, seeking");
@@ -226,7 +237,6 @@ bool TIOScheduler::do_round()
     }
 
     if (seek) {
-        m_sampleRateChanged = false;
         m_transportLocation.store(m_seekTransportLocation.universal_frame(), std::memory_order_relaxed);
         m_seekRequested.store(false);
         emit seekFinished();
@@ -287,8 +297,8 @@ int TIOScheduler::idle_limit_for(const QString& directory)
 
 void TIOScheduler::add_idle_task(std::unique_ptr<TIOTask> task)
 {
-    QMutexLocker locker(&m_pendingIdleTasksMutex);
-    m_pendingIdleTasks.push_back(std::move(task));
+    std::lock_guard locker(m_requestsMutex);
+    m_tasksToAdd.push_back(std::move(task));
 }
 
 void TIOScheduler::add_stream(TIOStream* stream)
@@ -301,40 +311,29 @@ void TIOScheduler::add_stream(TIOStream* stream)
         return;
     }
 
-    stream->set_output_rate_and_convertor_type(int(m_outputSampleRate), m_resampleQuality);
+    stream->set_output_rate_and_convertor_type(int(get_output_rate()), get_resample_quality());
     stream->prepare_rt_buffers(m_bufferSize.load(std::memory_order_relaxed));
 
-    m_streamsToBeAdded->wait_enqueue(stream);
-}
-
-void TIOScheduler::private_add_to_work(TIOStream* stream)
-{
-    PENTER2;
-    Q_ASSERT(this->thread() == QThread::currentThread());
-    Q_ASSERT(std::find(m_streams.begin(), m_streams.end(), stream) == m_streams.end());
-
-    m_streams.push_back(stream);
+    std::lock_guard locker(m_requestsMutex);
+    m_streamsToAdd.push_back(stream);
 }
 
 void TIOScheduler::remove_stream(TIOStream* stream)
 {
     PENTER2;
 
-    m_streamsToBeRemoved->wait_enqueue(stream);
-}
-
-void TIOScheduler::private_remove_from_work(TIOStream* stream)
-{
-    PENTER2;
-
-    Q_ASSERT(this->thread() == QThread::currentThread());
-    std::erase(m_streams, stream);
-
-    // FIXME
-    // Review the deletion of streams, and of non-active streams that should
-    // only be removed from the scheduler but not deleted.
-    stream->retire();
-    delete stream;
+    std::unique_lock locker(m_requestsMutex);
+    m_streamsToRemove.push_back(stream);
+    if (!m_loop) {
+        // No loop: this thread is the only one
+        locker.unlock();
+        take_requests();
+        return;
+    }
+    // Until the loop took it, between two rounds: no step of it runs after
+    const quint64 request = ++m_requested;
+    m_wake.signal();
+    m_requestsTaken.wait(locker, [this, request] { return m_taken >= request; });
 }
 
 /**
@@ -365,36 +364,15 @@ int TIOScheduler::get_buffers_fill_status( )
     return m_bufferFillStatus.exchange(100);
 }
 
-void TIOScheduler::stop_thread()
-{
-    PENTER;
-
-    // Stop any processing in the round loop
-    m_stopRequested.store(true);
-
-    // this function is called from the scheduler's destructor
-    // most likely we're waiting on an empty blocking queue so the loop will never go on
-    // so make sure we wake up the thread by adding an item to the queue
-    // Since we are disconnected from the audio processing callback it's safe to do so.
-    wakeup(); // make the loop leave TIOScheduler::run()
-
-    // Until the running round is over: its steps run on pool threads and use
-    // the tasks this object owns. A round always ends (every step is one
-    // read or write); killing the thread would leave the steps running on
-    // deleted tasks.
-    wait();
-}
-
 void TIOScheduler::set_resample_quality(int quality)
 {
-    m_resampleQuality = quality;
-    m_resampleQualityChanged = true;
+    m_resampleQuality.store(quality);
+    m_qualityChanged.store(true);
 }
 
 void TIOScheduler::set_output_sample_rate(uint outputSampleRate)
 {
     TLOG_I("diskio", "output sample rate {}", outputSampleRate);
-    m_outputSampleRate = outputSampleRate;
-    m_sampleRateChanged = true;
+    m_outputRate.store(outputSampleRate);
+    m_rateChanged.store(true);
 }
-

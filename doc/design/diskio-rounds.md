@@ -27,12 +27,18 @@ DiskIO for the whole project is a later step.
 
 ## 2. The loop
 
-`TIOScheduler::run()`:
-1. Wait for the tick. The audio thread wakes DiskIO every cycle, also with
-   the transport stopped. After a round with idle work the next round
-   follows without waiting.
+`TIOScheduler` is a `QObject` of the GUI thread with a loop thread of its
+own (`start()`); a test calls `dispatch()`, one turn of the loop, without
+it. The loop (`loop()`):
+1. Wait for a wake: the audio thread's `tick()` every cycle, also with the
+   transport stopped, or a request. One semaphore, any number of wakers,
+   the audio thread never blocks. After a round with idle work the next
+   round follows without waiting.
 2. Take the requests, between rounds and never during a step: streams added
-   and removed, new idle tasks, a seek, a rate or quality change.
+   and removed, new idle tasks (one mutex). A seek, a rate or a quality
+   change are atomics the round reads. `remove_stream()` returns once the
+   loop has let go of the stream (`retire()` frees its ring buffers); its
+   owner deletes it then, on the GUI thread.
 3. One round (`do_round()`):
    - every stream reports its state in one call (`disk_state()`: whether it
      has work, whether its fill counts, its fill);
@@ -40,9 +46,10 @@ DiskIO for the whole project is a later step.
    - `TIOPlanner` decides the order;
    - one step of each runs with one `QtConcurrent::blockingMap`, spread
      over the global pool. In Qt 6 `blockingMap()` starts the work on the
-     pool and waits: the DiskIO thread takes part only when the pool is busy
-     (then it runs the round alone, so DiskIO always gets on). A round of one step
-     runs on the DiskIO thread without the hand-over to the pool.
+     pool and waits: the loop thread takes part only when the pool is busy
+     (then it runs the round alone, so the scheduler always gets on). A
+     round of one step runs on the loop thread without the hand-over to the
+     pool.
 4. After the round: the GUI's fill meter takes the emptiest stream in sync;
    a seek round reports `seekFinished`; idle tasks that are over are handed
    back (`retire()`, a build reports its result then, see

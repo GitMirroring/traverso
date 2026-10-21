@@ -21,12 +21,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include <QMutex>
+#include <QObject>
 #include <QThread>
 
 #include <atomic>
+#include <condition_variable>
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "TIOPlanner.h"
@@ -35,7 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 #include "defines.h"
 
-#include "cameron/readerwritercircularbuffer.h"
+#include "cameron/atomicops.h"
 
 /**
  * @brief Reads and writes the buffered audio streams of a sheet, and runs
@@ -43,60 +45,65 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  *
  * Each sheet has two: one for its readers and their idle work, one for its
  * writers (recordings), so a slow read never holds up writing what was
- * recorded. Both run the same loop: wait for the audio thread's tick (it
- * wakes them every cycle), then rounds. A round asks every stream what it
- * needs, lets TIOPlanner pick the order (streams first, the
- * emptiest first, then idle tasks on the threads left) and runs one step of
- * each in parallel on the global thread pool (this thread waits, and runs
- * the round itself when the pool is busy). Between
- * rounds, never during one: seeks, streams added and removed, new idle
- * tasks, rate changes. Nothing is timed: the kernel schedules, the scheduler only
- * knows the order.
+ * recorded. Both run the same loop on a thread of their own: wait for a
+ * wake (the audio thread's tick every cycle, or a request), then rounds
+ * (dispatch()). A round asks every stream what it needs, lets TIOPlanner
+ * pick the order (streams first, the emptiest first, then idle tasks on the
+ * threads left) and runs one step of each in parallel on the global thread
+ * pool (the loop waits, and runs the round itself when the pool is busy).
+ * Between rounds, never during one: seeks, streams added and removed, new
+ * idle tasks, rate changes. Nothing is timed: the kernel schedules, the
+ * scheduler only knows the order.
+ *
+ * The object lives on the thread that made it (the GUI thread); only its
+ * loop runs on the loop thread. Without start() there is no loop: a test
+ * calls dispatch() itself.
  */
-class TIOScheduler : public QThread
+class TIOScheduler : public QObject
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public:
     TIOScheduler();
+    // Stops the loop and hands back the tasks that are left. The streams
+    // must have been removed before.
     ~TIOScheduler();
-	
-    // The audio thread, every cycle
+
+    // Starts the loop thread, once the owner has set the rate, the buffer
+    // size and the quality
+    void start();
+
+    // The audio thread, every cycle: wakes the loop, never blocks
+    void tick() { m_wake.signal(); }
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
     }
-
     void set_seek_transport_location(const TTimeRef& transportLocation) {
         m_seekTransportLocation = transportLocation;
         m_seekRequested.store(true);
     }
 
-    // A stream to read or write; removed, the scheduler deletes it
+    // The owner's thread. A stream to read or write. remove_stream()
+    // returns once the loop has let go of the stream (it called retire());
+    // the owner deletes it then.
     void add_stream(TIOStream* stream);
     void remove_stream(TIOStream* stream);
 
-    bool get_cpu_time(float &time);
-    int get_buffers_fill_status();
-    uint get_output_rate() {return m_outputSampleRate;}
-    // The audio device's buffer size: the ring buffers of new streams, and
-    // of all streams after a seek with a new rate. Any thread.
-    void set_buffer_size(nframes_t bufferSize) { m_bufferSize.store(bufferSize, std::memory_order_relaxed); }
-	int get_resample_quality() {return m_resampleQuality;}
-
-    void add_processed_audio_thread_frames(nframes_t nframes)
-    {
-        m_audioThreadProcessedFramesQueue->try_enqueue(nframes);
-    }
-    void wakeup()
-    {
-        m_audioThreadProcessedFramesQueue->try_enqueue(0);
-    }
-
     // Background work for the idle time; the scheduler owns the task until
-    // it is done (and deletes it then, or when it goes). Any thread. Picked up
-    // at the next tick: without a running driver (not even the Dummy one)
-    // the scheduler is not woken and idle tasks do not run.
+    // it is done (and deletes it then, or when it goes). Any thread. Picked
+    // up at the next wake: without a running driver (not even the Dummy
+    // one) the loop is not woken every cycle and idle tasks wait.
     void add_idle_task(std::unique_ptr<TIOTask> task);
+
+    // Any thread. The output rate takes effect at the next seek (the
+    // owner seeks after changing it), the quality at the next round.
+    void set_output_sample_rate(uint outputSampleRate);
+    void set_resample_quality(int quality);
+    // The audio device's buffer size: the ring buffers of new streams, and
+    // of all streams after a seek with a new rate
+    void set_buffer_size(nframes_t bufferSize) { m_bufferSize.store(bufferSize, std::memory_order_relaxed); }
+    uint get_output_rate() const { return m_outputRate.load(std::memory_order_relaxed); }
+    int get_resample_quality() const { return m_resampleQuality.load(std::memory_order_relaxed); }
 
     // false while the sheet records: the disk belongs to the recording. Per
     // sheet: the other sheets go on (peak files are rebuilt only after a new
@@ -110,58 +117,65 @@ public:
     // threads on an SSD. Known on Linux only; elsewhere, and when in doubt, 1.
     static int idle_limit_for(const QString& directory);
 
-protected:
-    void run() override;
+    // The GUI's meters
+    bool get_cpu_time(float &time);
+    int get_buffers_fill_status();
+
+    // One turn of the loop: the requests that came, then a round. True when
+    // the next turn follows without waiting for a wake. On the loop thread,
+    // or on the owner's thread when there is no loop (a test).
+    bool dispatch();
+
+signals:
+    void seekFinished();
 
 private:
-    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<nframes_t>>      m_audioThreadProcessedFramesQueue;
-    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TIOStream*>>   m_streamsToBeAdded;
-    std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TIOStream*>>   m_streamsToBeRemoved;
-
-    std::atomic<bool>   m_seekRequested;
-    std::atomic<bool>   m_stopRequested;
-
-    std::atomic<int>    m_bufferFillStatus;
-    std::atomic<trav_time_t> m_doWorktTime;
-    trav_time_t         m_lastCpuReadTime;
-
-    int                 m_resampleQuality;
-    bool                m_resampleQualityChanged;
-    bool                m_sampleRateChanged;
-
-    uint                m_outputSampleRate{};
-    std::atomic<nframes_t> m_bufferSize{0};
-
-    std::atomic<qint64> m_transportLocation{0};     // universal frames
-    TTimeRef            m_seekTransportLocation;
-
-    // What the steps of the current round need to know
-    TIOStream::StepInfo m_round;
-
-    // The hand-over between this thread and the round's steps (do_round())
-    std::atomic<quint64> m_roundStarted{0};
-    std::atomic<quint64> m_stepsDone{0};
-
-    TIOPlanner m_planner;
-    std::vector<TIOStream*> m_streams;                      // this thread
-    std::deque<std::unique_ptr<TIOTask>> m_idleTasks;   // this thread
-    QMutex m_pendingIdleTasksMutex;
-    std::vector<std::unique_ptr<TIOTask>> m_pendingIdleTasks;
-    std::atomic<bool> m_idleWorkAllowed{true};
-    std::atomic<int> m_idleLimit{1};
-
-    void stop_thread();
+    void loop();
     // Between rounds: streams added and removed, new idle tasks
     void take_requests();
     // One round; true when the next one follows without waiting for the tick
     bool do_round();
-    void private_add_to_work(TIOStream* stream);
-    void private_remove_from_work(TIOStream* stream);
+    bool on_loop_thread() const;
 
-public slots:
-    void set_output_sample_rate(uint outputSampleRate);
-    void set_resample_quality(int quality);
+    std::unique_ptr<QThread> m_loop;
+    moodycamel::spsc_sema::LightweightSemaphore m_wake;
+    std::atomic<bool> m_stopRequested{false};
 
-signals:
-	void seekFinished();
+    // The owner's requests, taken between rounds (std::mutex: a thread
+    // sanitizer sees it, Qt's own here is not built for one)
+    std::mutex m_requestsMutex;
+    std::condition_variable m_requestsTaken;
+    std::vector<TIOStream*> m_streamsToAdd;
+    std::vector<TIOStream*> m_streamsToRemove;
+    std::vector<std::unique_ptr<TIOTask>> m_tasksToAdd;
+    quint64 m_requested{0};
+    quint64 m_taken{0};
+
+    std::atomic<bool> m_seekRequested{false};
+    std::atomic<qint64> m_transportLocation{0};     // universal frames
+    TTimeRef m_seekTransportLocation;
+
+    std::atomic<uint> m_outputRate{0};
+    std::atomic<int> m_resampleQuality{0};          // the owner sets it before streams come
+    std::atomic<bool> m_rateChanged{false};
+    std::atomic<bool> m_qualityChanged{false};
+    std::atomic<nframes_t> m_bufferSize{0};
+
+    std::atomic<int> m_bufferFillStatus{0};
+    std::atomic<trav_time_t> m_doWorktTime{0};
+    trav_time_t m_lastCpuReadTime;
+
+    // What the steps of the current round need to know
+    TIOStream::StepInfo m_round;
+
+    // The hand-over between the loop and the round's steps (do_round())
+    std::atomic<quint64> m_roundStarted{0};
+    std::atomic<quint64> m_stepsDone{0};
+
+    // The loop's
+    TIOPlanner m_planner;
+    std::vector<TIOStream*> m_streams;
+    std::deque<std::unique_ptr<TIOTask>> m_idleTasks;
+    std::atomic<bool> m_idleWorkAllowed{true};
+    std::atomic<int> m_idleLimit{1};
 };
