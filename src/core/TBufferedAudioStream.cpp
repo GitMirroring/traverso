@@ -123,7 +123,7 @@ int TBufferedAudioStream::step(const StepInfo& info)
 
     if (info.seek) {
         if (info.sampleRateChanged) {
-            set_output_rate_and_convertor_type(int(info.outputRate), info.resampleQuality);
+            set_output_rate_and_resampler(int(info.outputRate), info.resampler);
             prepare_rt_buffers(info.bufferSize);
         }
         rb_seek_to_transport_location(fileIOBuffer, info.seekLocation);

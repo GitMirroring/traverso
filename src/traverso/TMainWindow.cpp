@@ -29,7 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "PlayHeadMove.h"
 #include "TProject.h"
 #include "TBufferedAudioStreamReader.h"
-#include "ResampleAudioReader.h"
 #include "TSheet.h"
 #include "TTrack.h"
 #include "TVUMonitor.h"
@@ -968,15 +967,16 @@ void TMainWindow::create_menus()
     action = m_encodingMenu->addAction(QStringLiteral("WAVE-64"));
     action->setData(QStringLiteral("w64"));
     connect(action, &QAction::triggered, this, &TMainWindow::change_recording_format_to_wav64);
-    // Submenu: Resample Quality
+    // Submenu: Resample Quality, the qualities of the resampler in use
     m_resampleQualityMenu = settingsMenu->addMenu(tr("Resample &Quality"));
     m_resampleQualityMenu->setToolTipsVisible(true);
-    for (int convertorType : TResampleAudioReader::get_convertor_types()) {
-        action = m_resampleQualityMenu->addAction(TResampleAudioReader::get_convertor_type_name(convertorType));
-        action->setData(convertorType);
-        action->setToolTip(TResampleAudioReader::get_convertor_type_description(convertorType));
-        connect(action, &QAction::triggered, this, [this, action, convertorType] {
-            config().set_property("Conversion", "RTResamplingConverterType", convertorType);
+    const TAudioResampler::BackendType resampler = TBufferedAudioStreamReader::configured_backend();
+    for (int quality : TAudioResampler::qualities(resampler)) {
+        action = m_resampleQualityMenu->addAction(TAudioResampler::quality_name(resampler, quality));
+        action->setData(quality);
+        action->setToolTip(TAudioResampler::quality_description(resampler, quality));
+        connect(action, &QAction::triggered, this, [this, action, quality] {
+            config().set_property("Conversion", "RTResamplingQuality", quality);
             save_config_and_emit_message(tr("Changed resample quality to: %1").arg(action->text()));
         });
     }
@@ -1332,7 +1332,7 @@ void TMainWindow::config_changed()
         }
     }
 
-    int quality = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
+    int quality = TBufferedAudioStreamReader::configured_resampler().quality;
     actions = m_resampleQualityMenu->actions();
 
     bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();

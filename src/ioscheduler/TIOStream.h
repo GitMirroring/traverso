@@ -15,6 +15,16 @@
 class TIOStream
 {
 public:
+    // The resampler of a stream that reads at another rate than its file's:
+    // a TAudioResampler backend and one of its qualities, as the owner chose
+    // them; the scheduler only hands them on
+    struct Resampler
+    {
+        int backend{0};
+        int quality{0};
+        bool operator==(const Resampler&) const = default;
+    };
+
     // What a step needs to know of the round: the scheduler writes it before
     // the round, the steps only read it
     struct StepInfo
@@ -24,7 +34,7 @@ public:
         TTimeRef transportLocation;
         bool sampleRateChanged{false};
         uint outputRate{0};
-        int resampleQuality{0};
+        Resampler resampler;
         nframes_t bufferSize{0};
     };
 
@@ -37,7 +47,7 @@ public:
     // One step: a seek, back in sync, or read or write all there is room
     // for. The fill to show for it, -1 for nothing (out of sync).
     virtual int step(const StepInfo& info) = 0;
-    virtual void set_output_rate_and_convertor_type(int outputRate, int converterType) = 0;
+    virtual void set_output_rate_and_resampler(int outputRate, const Resampler& resampler) = 0;
     virtual uint get_channel_count() const = 0;
     // The ring buffers are made and freed only where the audio thread does
     // not use them: the scheduler knows when that is

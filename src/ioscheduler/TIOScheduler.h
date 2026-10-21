@@ -129,14 +129,14 @@ public:
     void add_idle_task(std::unique_ptr<TIOTask> task);
 
     // Any thread. The output rate takes effect at the next seek (the
-    // owner seeks after changing it), the quality at the next round.
+    // owner seeks after changing it), the resampler at the next round.
     void set_output_sample_rate(uint outputSampleRate);
-    void set_resample_quality(int quality);
+    void set_resampler(const TIOStream::Resampler& resampler);
     // The audio device's buffer size: the ring buffers of new streams, and
     // of all streams after a seek with a new rate
     void set_buffer_size(nframes_t bufferSize) { m_bufferSize.store(bufferSize, std::memory_order_relaxed); }
     uint get_output_rate() const { return m_outputRate.load(std::memory_order_relaxed); }
-    int get_resample_quality() const { return m_resampleQuality.load(std::memory_order_relaxed); }
+    TIOStream::Resampler get_resampler() const { return m_resampler.load(std::memory_order_relaxed); }
 
     // false while the sheet records: the disk belongs to the recording. Per
     // sheet: the other sheets go on (peak files are rebuilt only after a new
@@ -191,9 +191,9 @@ private:
     std::atomic<qint64> m_seekLocation{0};          // universal frames
 
     std::atomic<uint> m_outputRate{0};
-    std::atomic<int> m_resampleQuality{0};          // the owner sets it before streams come
+    std::atomic<TIOStream::Resampler> m_resampler{};  // the owner sets it before streams come
     std::atomic<bool> m_rateChanged{false};
-    std::atomic<bool> m_qualityChanged{false};
+    std::atomic<bool> m_resamplerChanged{false};
     std::atomic<nframes_t> m_bufferSize{0};
 
     std::atomic<int> m_bufferFillStatus{0};

@@ -199,28 +199,7 @@ p, li { white-space: pre-wrap; }
            <number>0</number>
           </property>
           <item>
-           <widget class="QComboBox" name="ontheflyResampleComboBox" >
-            <item>
-             <property name="text" >
-              <string>Best</string>
-             </property>
-            </item>
-            <item>
-             <property name="text" >
-              <string>High</string>
-             </property>
-            </item>
-            <item>
-             <property name="text" >
-              <string>Medium</string>
-             </property>
-            </item>
-            <item>
-             <property name="text" >
-              <string>Fast</string>
-             </property>
-            </item>
-           </widget>
+           <widget class="QComboBox" name="ontheflyResampleComboBox" />
           </item>
           <item>
            <widget class="QComboBox" name="exportDefaultResampleQualityComboBox" >

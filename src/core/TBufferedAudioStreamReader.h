@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
+#include "TAudioResampler.h"
 #include "TBufferedAudioStream.h"
 #include "TProcessCallBackData.h"
 
@@ -50,6 +51,14 @@ public :
     };
 	
     TBufferedAudioStreamReader* deep_copy();
+
+    // The resampler backend of the settings (Conversion/Resampler: soxr or
+    // libsamplerate), for on-the-fly reading and for exports
+    static TAudioResampler::BackendType configured_backend();
+    // The resampler of on-the-fly reading: the backend and its quality
+    // (Conversion/RTResamplingQuality, the backend's own number; another
+    // number is the backend's default)
+    static Resampler configured_resampler();
 	
 	int set_state( const QDomNode& node );
 	QDomNode get_state(QDomDocument doc);
@@ -106,7 +115,7 @@ private:
     // re-implemented only to be called by DiskIO
     void process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer) final;
     void rb_seek_to_transport_location(TFileIOBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) final;
-    void set_output_rate_and_convertor_type(int outputRate, int converterType) final;
+    void set_output_rate_and_resampler(int outputRate, const Resampler& resampler) final;
     // Out of its window, a reader needs work when the transport came close
     // (it seeks then) and its fill does not count; otherwise it needs work
     // when it is out of sync or getting empty

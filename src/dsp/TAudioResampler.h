@@ -2,6 +2,8 @@
 
 #include "TAudioBuffer.h"
 #include "defines.h"
+#include <QList>
+#include <QString>
 #include <memory>
 
 class ResampleBackend {
@@ -21,8 +23,25 @@ public:
         LIBSOXR
     };
 
-    // The ratio stays: another ratio is another resampler (soxr cannot
-    // change it once it ran)
+    // The qualities of a backend, best first, in its own numbers:
+    // libsamplerate's sinc converter types (SRC_SINC_BEST_QUALITY ...
+    // SRC_SINC_FASTEST), soxr's recipes (SOXR_VHQ ... SOXR_QQ). A quality of
+    // one backend means nothing to the other.
+    static QList<int> qualities(BackendType backend);
+    static QString quality_name(BackendType backend, int quality);
+    static QString quality_description(BackendType backend, int quality);
+    // For files written (exports, conversions): soxr's own default (20 bit),
+    // libsamplerate's medium sinc
+    static int default_quality(BackendType backend);
+    // For on-the-fly reading, many files at a time: soxr's 16 bit medium,
+    // libsamplerate's fastest sinc
+    static int default_realtime_quality(BackendType backend);
+    // As the settings name them: "soxr", "libsamplerate"; another name is soxr
+    static QString backend_name(BackendType backend);
+    static BackendType backend_from_name(const QString& name);
+
+    // quality: one of qualities(backend). The ratio stays: another ratio is
+    // another resampler (soxr cannot change it once it ran).
     TAudioResampler(BackendType backend, double srcRatio, int quality, long blockSize);
     ~TAudioResampler();
 

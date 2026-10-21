@@ -39,7 +39,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheet.h"
 #include "TProject.h"
 #include "TAudioTrack.h"
-#include "ResampleAudioReader.h"
 #include "TAudioClip.h"
 #include "TExportSpecification.h"
 #include "TIOScheduler.h"
@@ -129,11 +128,10 @@ void TSheet::init()
     set_transport_locate_requested_state(false);
     set_transport_stop_requested_state(false);
 
-    int converter_type = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
     m_readScheduler = new TIOScheduler();
     m_readScheduler->set_output_sample_rate(audiodevice().get_sample_rate());
     m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
-    m_readScheduler->set_resample_quality(converter_type);
+    m_readScheduler->set_resampler(TBufferedAudioStreamReader::configured_resampler());
     update_idle_limit();
     m_readScheduler->start();
 
@@ -1037,9 +1035,9 @@ void TSheet::set_transport_location(TTimeRef location)
 
 void TSheet::config_changed()
 {
-    int quality = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
-    if (m_readScheduler->get_resample_quality() != quality) {
-        m_readScheduler->set_resample_quality(quality);
+    const TIOStream::Resampler resampler = TBufferedAudioStreamReader::configured_resampler();
+    if (m_readScheduler->get_resampler() != resampler) {
+        m_readScheduler->set_resampler(resampler);
     }
     update_idle_limit();
 }

@@ -129,12 +129,12 @@ static const char* pattern_name(Pattern p)
 // Seek, the stream pattern from 3.3 s on; SeekCommon, from 3 s on, a frame
 // of both rates (nothing to drop). Returns the output and its first frame
 // on the file's timeline.
-static std::vector<float> read_all(const QString& path, uint outputRate, int quality, Pattern pattern, nframes_t& first,
-                                   nframes_t fileFrames, uint fileRate)
+static std::vector<float> read_all(const QString& path, uint outputRate, TAudioResampler::BackendType backend, int quality,
+                                   Pattern pattern, nframes_t& first, nframes_t fileFrames, uint fileRate)
 {
     TResampleAudioReader reader(path);
     reader.set_output_rate(outputRate);
-    reader.set_converter_type(quality);
+    reader.set_resampler(backend, quality);
 
     // The length and the frames are the file's, at any output rate; the
     // frames at the output rate end where the file ends
@@ -195,8 +195,8 @@ int main()
     struct Case { uint fileRate; uint outputRate; };
     const Case cases[] = {{44100, 48000}, {48000, 44100}, {96000, 48000}, {22050, 48000}, {44100, 96000},
                           {88200, 48000}, {8000, 48000}, {192000, 44100}, {11025, 64000}, {48000, 48000}};
-    // libsamplerate's numbers, as the settings pass them: best, fastest, linear
-    const int qualities[] = {0, 2, 4};
+    const TAudioResampler::BackendType backends[] = {TAudioResampler::BackendType::LIBSOXR,
+                                                     TAudioResampler::BackendType::LIBSAMPLERATE};
 
     for (const Case& c : cases) {
         // Below both Nyquist frequencies, so the sweep is the same at either rate
@@ -213,10 +213,12 @@ int main()
         check(write_wav(path, c.fileRate, file), "writing the sweeps");
 
         const std::vector<float> tpl = sweep(c.outputRate, high);
-        for (int quality : qualities) {
+        // Every quality of every backend
+        for (TAudioResampler::BackendType backend : backends) {
+        for (int quality : TAudioResampler::qualities(backend)) {
             for (Pattern pattern : {Pattern::Buffers, Pattern::Stream, Pattern::Seek, Pattern::SeekCommon}) {
                 nframes_t first = 0;
-                const std::vector<float> out = read_all(path, c.outputRate, quality, pattern, first, nframes_t(file.size()), c.fileRate);
+                const std::vector<float> out = read_all(path, c.outputRate, backend, quality, pattern, first, nframes_t(file.size()), c.fileRate);
                 double worst = 0.0;
                 int found = 0;
                 for (int k = 0; k < SweepCount; ++k) {
@@ -234,8 +236,9 @@ int main()
                     }
                 }
                 char what[200];
-                std::snprintf(what, sizeof(what), "%u -> %u Hz, quality %d, %s: every sweep in place (worst %+.2f frames, %d sweeps)",
-                              c.fileRate, c.outputRate, quality, pattern_name(pattern), worst, found);
+                std::snprintf(what, sizeof(what), "%u -> %u Hz, %s %s, %s: every sweep in place (worst %+.2f frames, %d sweeps)",
+                              c.fileRate, c.outputRate, qPrintable(TAudioResampler::backend_name(backend)),
+                              qPrintable(TAudioResampler::quality_name(backend, quality)), pattern_name(pattern), worst, found);
                 const bool ok = found >= SweepCount - 4 && std::fabs(worst) <= 0.05;
                 check(ok, what);
                 if (ok) {
@@ -243,11 +246,13 @@ int main()
                 }
             }
         }
+        }
     }
 
     // The end of the file: a sweep that ends 3 ms before it is whole in the
     // output, through the flush of the resampler, read in one go or in
     // pieces of 100 frames (the flush goes on over several reads)
+    for (TAudioResampler::BackendType backend : backends) {
     for (const nframes_t piece : {nframes_t(0), nframes_t(100)}) {
     for (const Case& c : {Case{44100, 48000}, Case{48000, 44100}, Case{96000, 48000}}) {
         const std::vector<float> s = sweep(c.fileRate, 6000.0);
@@ -259,7 +264,7 @@ int main()
 
         TResampleAudioReader reader(path);
         reader.set_output_rate(c.outputRate);
-        reader.set_converter_type(2);
+        reader.set_resampler(backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t frames = reader.get_nframes();
         TFileIOBuffer buffer;
         std::vector<float> out;
@@ -286,8 +291,9 @@ int main()
         const double whole = match / energy;
 
         char what[200];
-        std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: the sweep 3 ms before the end in place and whole (%+.2f frames, %.3f)",
-                      c.fileRate, c.outputRate, piece ? "in pieces" : "in one go", offset, whole);
+        std::snprintf(what, sizeof(what), "%u -> %u Hz, %s, %s: the sweep 3 ms before the end in place and whole (%+.2f frames, %.3f)",
+                      c.fileRate, c.outputRate, qPrintable(TAudioResampler::backend_name(backend)), piece ? "in pieces" : "in one go",
+                      offset, whole);
         const bool ok = !std::isnan(offset) && std::fabs(offset) <= 0.05 && whole > 0.99;
         check(ok, what);
         if (ok) {
@@ -313,7 +319,7 @@ int main()
         check(write_wav(tonePath, c.fileRate, tone), "writing the tone");
         TResampleAudioReader toneReader(tonePath);
         toneReader.set_output_rate(c.outputRate);
-        toneReader.set_converter_type(2);
+        toneReader.set_resampler(backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t toneFrames = toneReader.get_nframes();
         buffer.check_capacity(toneFrames, 1);
         buffer.silence_buffers();
@@ -333,13 +339,15 @@ int main()
         for (nframes_t i = 0; i < left; ++i) {
             worstDiff = std::max(worstDiff, std::fabs(data[i] - sequential[last + i]));
         }
-        std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: a seek %u frames before the end, %u to drop, reads them (%u, %.5f off)",
-                      c.fileRate, c.outputRate, piece ? "after pieces" : "after one go", left, period - 1, read, double(worstDiff));
+        std::snprintf(what, sizeof(what), "%u -> %u Hz, %s, %s: a seek %u frames before the end, %u to drop, reads them (%u, %.5f off)",
+                      c.fileRate, c.outputRate, qPrintable(TAudioResampler::backend_name(backend)),
+                      piece ? "after pieces" : "after one go", left, period - 1, read, double(worstDiff));
         const bool lastOk = left < period - 1 && read == left && worstDiff < 0.01f;
         check(lastOk, what);
         if (lastOk) {
             std::printf("ok:   %s\n", what);
         }
+    }
     }
     }
 

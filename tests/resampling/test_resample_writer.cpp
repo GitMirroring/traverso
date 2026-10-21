@@ -103,16 +103,24 @@ int main()
     // Float, and PCM as an export or a recording describes it (24 bits:
     // three bytes a sample, dithered into 32 bit words); WAV through
     // sndfile, and WavPack. Not 8 bits in a WAV: sndfile has no signed 8 bit
-    // WAV, and the writer does not open.
+    // WAV, and the writer does not open. soxr, and libsamplerate.
     const TraversoDAW::WriterType wav = TraversoDAW::WriterType::SNDFILE;
     const TraversoDAW::WriterType wavpack = TraversoDAW::WriterType::WAVPACK;
-    struct Case { uint inputRate; uint fileRate; TraversoDAW::DataFormat format; TraversoDAW::WriterType writer; };
+    const TAudioResampler::BackendType src = TAudioResampler::BackendType::LIBSAMPLERATE;
+    struct Case {
+        uint inputRate;
+        uint fileRate;
+        TraversoDAW::DataFormat format;
+        TraversoDAW::WriterType writer;
+        TAudioResampler::BackendType backend{TAudioResampler::BackendType::LIBSOXR};
+    };
     for (const Case c : {Case{48000, 44100, TraversoDAW::DataFormat::FLOAT, wav}, Case{44100, 48000, TraversoDAW::DataFormat::FLOAT, wav},
                          Case{96000, 48000, TraversoDAW::DataFormat::FLOAT, wav}, Case{48000, 44100, TraversoDAW::DataFormat::PCM_24, wav},
                          Case{48000, 48000, TraversoDAW::DataFormat::PCM_24, wav}, Case{48000, 44100, TraversoDAW::DataFormat::FLOAT, wavpack},
                          Case{48000, 44100, TraversoDAW::DataFormat::PCM_24, wavpack}, Case{48000, 48000, TraversoDAW::DataFormat::PCM_24, wavpack},
                          Case{48000, 48000, TraversoDAW::DataFormat::PCM_16, wav}, Case{48000, 48000, TraversoDAW::DataFormat::PCM_16, wavpack},
-                         Case{48000, 48000, TraversoDAW::DataFormat::PCM_S8, wavpack}}) {
+                         Case{48000, 48000, TraversoDAW::DataFormat::PCM_S8, wavpack},
+                         Case{48000, 44100, TraversoDAW::DataFormat::FLOAT, wav, src}, Case{44100, 48000, TraversoDAW::DataFormat::PCM_24, wav, src}}) {
         // The input: sweeps, the last one ending 3 ms before the end
         const std::vector<float> s = sweep(c.inputRate);
         const nframes_t inputFrames = nframes_t(std::lround((sweep_start(SweepCount - 1) + SweepSeconds + 0.003) * c.inputRate));
@@ -141,11 +149,13 @@ int main()
         settings.bitDepth = bits;
         settings.ditherType = GDitherNone;
         settings.ditherSize = ditherSize;
-        settings.sampleRateConversionQuality = 2;
+        settings.resampler = c.backend;
+        settings.resampleQuality = TAudioResampler::default_quality(c.backend);
 
-        const QByteArray formatText = QString("%1 %2").arg(c.writer == wavpack ? "wavpack" : "wav", formatName).toLatin1();
+        const QString backend = TAudioResampler::backend_name(c.backend);
+        const QByteArray formatText = QString("%1 %2, %3").arg(c.writer == wavpack ? "wavpack" : "wav", formatName, backend).toLatin1();
         const char* format = formatText.constData();
-        const QString path = dir.filePath(QString("written-%1-%2-%3.%4").arg(c.inputRate).arg(c.fileRate).arg(formatName)
+        const QString path = dir.filePath(QString("written-%1-%2-%3-%4.%5").arg(c.inputRate).arg(c.fileRate).arg(formatName, backend)
                                               .arg(c.writer == wavpack ? "wv" : "wav"));
         {
             TResampleAudioWriter writer(settings);

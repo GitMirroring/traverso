@@ -45,12 +45,9 @@ bool TResampleAudioWriter::open(const QString& filename, uint inputSampleRate)
     m_resamplers.clear();
     if (m_inputSampleRate != m_outputSampleRate) {
         double ratio = double(m_outputSampleRate) / m_inputSampleRate;
-        TAudioResampler::BackendType backend = TAudioResampler::BackendType::LIBSOXR;
-        int quality = m_settings.sampleRateConversionQuality;
-
         for (uint chn = 0; chn < m_channelCount; ++chn) {
             m_resamplers.push_back(std::make_unique<TAudioResampler>(
-                backend, ratio, quality, m_settings.blockSize
+                m_settings.resampler, ratio, m_settings.resampleQuality, m_settings.blockSize
                 ));
         }
     }

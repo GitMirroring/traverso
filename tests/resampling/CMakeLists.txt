@@ -5,6 +5,9 @@
 # way the stream reader reads them, must stay where they belong
 add_executable(traverso_resample_reader_test test_resample_reader.cpp)
 target_link_libraries(traverso_resample_reader_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
+# Optimised also in a debug build: unoptimised, the correlations of the
+# analysis take most of its time (every quality of both backends)
+target_compile_options(traverso_resample_reader_test PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-O2>)
 add_test(NAME resample_reader COMMAND traverso_resample_reader_test)
 
 # Headless test of the resampling writer: sweeps written at another rate,

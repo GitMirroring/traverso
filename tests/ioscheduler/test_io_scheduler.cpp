@@ -57,7 +57,7 @@ public:
         m_steps.fetch_add(1);
         return m_fill;
     }
-    void set_output_rate_and_convertor_type(int outputRate, int) override { m_rate.store(uint(outputRate)); }
+    void set_output_rate_and_resampler(int outputRate, const Resampler&) override { m_rate.store(uint(outputRate)); }
     uint get_channel_count() const override { return 1; }
     void prepare_rt_buffers(nframes_t) override { m_prepared.fetch_add(1); }
     void retire() override { m_retired.fetch_add(1); }

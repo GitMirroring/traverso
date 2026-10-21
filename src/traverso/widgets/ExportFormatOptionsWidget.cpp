@@ -24,7 +24,7 @@
 #include "TAudioDevice.h"
 #include "TConfig.h"
 #include "TExportSpecification.h"
-#include "ResampleAudioReader.h"
+#include "TBufferedAudioStreamReader.h"
 
 
 RELAYTOOL_WAVPACK;
@@ -52,13 +52,15 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
         sampleRateComboBox->addItem(local.toString(sampleRate), sampleRate);
     }
 
-    for (int convertorType : TResampleAudioReader::get_convertor_types()) {
-        resampleQualityComboBox->addItem(TResampleAudioReader::get_convertor_type_name(convertorType), convertorType);
+    // The qualities of the resampler in use
+    const TAudioResampler::BackendType resampler = TBufferedAudioStreamReader::configured_backend();
+    for (int quality : TAudioResampler::qualities(resampler)) {
+        resampleQualityComboBox->addItem(TAudioResampler::quality_name(resampler, quality), quality);
     }
 
     resampleQualityComboBox->setToolTipDuration(4000);
-    connect(resampleQualityComboBox, &QComboBox::currentIndexChanged, this, [this]() {
-        resampleQualityComboBox->setToolTip(TResampleAudioReader::get_convertor_type_description(resampleQualityComboBox->currentIndex()));
+    connect(resampleQualityComboBox, &QComboBox::currentIndexChanged, this, [this, resampler]() {
+        resampleQualityComboBox->setToolTip(TAudioResampler::quality_description(resampler, resampleQualityComboBox->currentData().toInt()));
     });
 
 	audioTypeComboBox->addItem("WAV", "wav");
@@ -192,9 +194,10 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
     checked = config().get_property("ExportFormatOptionsWidget", "normalizeCheckBox", "false").toBool();
 	normalizeCheckBox->setChecked(checked);
 	
-    index = config().get_property("ExportFormatOptionsWidget", "resampleQualityComboBox", "1").toInt();
-	index = resampleQualityComboBox->findData(index);
-	resampleQualityComboBox->setCurrentIndex(index >= 0 ? index : 1);
+    // The backend's own number (resampleQualityComboBox had libsamplerate's)
+    const int defaultQuality = TAudioResampler::default_quality(TBufferedAudioStreamReader::configured_backend());
+    index = resampleQualityComboBox->findData(config().get_property("ExportFormatOptionsWidget", "resampleQuality", defaultQuality).toInt());
+    resampleQualityComboBox->setCurrentIndex(index >= 0 ? index : resampleQualityComboBox->findData(defaultQuality));
 
     bool ok;
     int bitDepth = config().get_property("ExportFormatOptionsWidget", "fileFormatComboBox", QVariant::fromValue(TraversoDAW::DataFormat::PCM_16)).toInt(&ok);
@@ -219,7 +222,7 @@ ExportFormatOptionsWidget::~ ExportFormatOptionsWidget( )
     config().set_property("ExportFormatOptionsWidget", "audioTypeComboBox", audioTypeComboBox->itemData(audioTypeComboBox->currentIndex()).toString());
     config().set_property("ExportFormatOptionsWidget", "normalizeCheckBox", normalizeCheckBox->isChecked());
     config().set_property("ExportFormatOptionsWidget", "skipWVXCheckBox", skipWVXCheckBox->isChecked());
-    config().set_property("ExportFormatOptionsWidget", "resampleQualityComboBox", resampleQualityComboBox->itemData(resampleQualityComboBox->currentIndex()).toString());
+    config().set_property("ExportFormatOptionsWidget", "resampleQuality", resampleQualityComboBox->currentData().toInt());
     config().set_property("ExportFormatOptionsWidget", "fileFormatComboBox", dataFormatComboBox->itemData(dataFormatComboBox->currentIndex()).toInt());
 }
 
@@ -368,7 +371,7 @@ void ExportFormatOptionsWidget::get_format_options(TExportSpecification* spec)
 
     spec->set_channel_count(channelComboBox->itemData(channelComboBox->currentIndex()).toUInt());
     spec->set_sample_rate(sampleRateComboBox->itemData(sampleRateComboBox->currentIndex()).toUInt());
-    spec->set_sample_rate_conversion_quality(resampleQualityComboBox->itemData(resampleQualityComboBox->currentIndex()).toInt());
+    spec->set_resampler(TBufferedAudioStreamReader::configured_backend(), resampleQualityComboBox->currentData().toInt());
 
     // TODO Make a ComboBox for this one too!
     spec->set_dither_type(GDitherTri);

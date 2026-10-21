@@ -1,13 +1,11 @@
 #include "TExportSpecification.h"
 
-#include "ResampleAudioReader.h"
 #include "TInformUser.h"
 #include "TProject.h"
 #include "TSheet.h"
 #include "TTimeLineRuler.h"
 #include "Utils.h"
 
-#include <samplerate.h>
 #include <sndfile.h>
 
 #include <QDir>
@@ -24,7 +22,8 @@ TExportSpecification::TExportSpecification()
 
     m_writerType = TraversoDAW::WriterType::SNDFILE;
     m_fileFormat = TraversoDAW::FileFormat::WAV;
-    m_sampleRateConversionQuality = SRC_SINC_MEDIUM_QUALITY;
+    m_resampler = TAudioResampler::BackendType::LIBSOXR;
+    m_resampleQuality = TAudioResampler::default_quality(m_resampler);
 
     m_exportStartLocation = TTimeRef::INVALID;
     m_exportEndLocation = TTimeRef::INVALID;
@@ -292,10 +291,11 @@ TraversoDAW::BitrateMode TExportSpecification::string_to_format(const QString &o
     return TraversoDAW::BitrateMode::UNKNOWN;
 }
 
-void TExportSpecification::set_sample_rate_conversion_quality(int quality)
+void TExportSpecification::set_resampler(TAudioResampler::BackendType backend, int quality)
 {
-    Q_ASSERT(TResampleAudioReader::get_convertor_types().contains(quality));
-    m_sampleRateConversionQuality = quality;
+    Q_ASSERT(TAudioResampler::qualities(backend).contains(quality));
+    m_resampler = backend;
+    m_resampleQuality = quality;
 }
 
 void TExportSpecification::set_is_cd_export(bool cdExport)
@@ -360,7 +360,8 @@ TAudioEncodeSettings TExportSpecification::get_encode_settings() const
     settings.blockSize = get_block_size();
     settings.sampleBytes = get_sample_bytes();
     settings.bitDepth = get_bit_depth();
-    settings.sampleRateConversionQuality = get_sample_rate_conversion_quality();
+    settings.resampler = get_resampler();
+    settings.resampleQuality = get_resample_quality();
     settings.ditherType = get_dither_type();
     settings.ditherSize = get_dither_size();
     return settings;

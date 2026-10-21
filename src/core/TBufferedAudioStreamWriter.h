@@ -72,7 +72,7 @@ private:
 
     void process_realtime_buffers(TFileIOBuffer &fileIOBuffer) final;
     void rb_seek_to_transport_location(TFileIOBuffer&, const TTimeRef &/*transportLocation*/) final {}
-    void set_output_rate_and_convertor_type(int /*outputRate*/, int /*converterType*/) final {}
+    void set_output_rate_and_resampler(int /*outputRate*/, const Resampler& /*resampler*/) final {}
     // Something to write (it is recorded audio: as soon as it is there), or
     // the recording stopped and the file is not finished yet
     TIOPlanner::Stream disk_state(const TTimeRef& transportLocation) final;

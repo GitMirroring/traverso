@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioResampler.h"
 #include "TAudioBuffer.h"
 #include "Debugger.h"
-#include <samplerate.h>
 
 #include <algorithm>
 
@@ -44,7 +43,6 @@ TResampleAudioReader::TResampleAudioReader(const QString& filename)
     }
 
     m_isResampleAvailable = false;
-    m_convertorType = -1;
 }
 
 TResampleAudioReader::~TResampleAudioReader()
@@ -66,17 +64,12 @@ void TResampleAudioReader::reset()
     m_dropFrames = 0;
 }
 
-void TResampleAudioReader::set_converter_type(int converterType)
+void TResampleAudioReader::set_resampler(TAudioResampler::BackendType backend, int quality)
 {
     PENTER;
 
-    if ((float(m_outputSampleRate) / get_file_rate()) > 2.0f &&
-        (converterType == SRC_ZERO_ORDER_HOLD || converterType == SRC_LINEAR)) {
-        m_convertorType = SRC_SINC_FASTEST;
-    } else {
-        m_convertorType = converterType;
-    }
-
+    m_backend = backend;
+    m_quality = quality;
     m_isResampleAvailable = true;
     create_resamplers();
     clear_buffers();
@@ -89,7 +82,7 @@ void TResampleAudioReader::create_resamplers()
     const double ratio = double(m_outputSampleRate) / m_fileSampleRate;
     m_resamplers.clear();
     for (uint c = 0; c < m_channels; c++) {
-        m_resamplers.push_back(std::make_unique<TAudioResampler>(TAudioResampler::BackendType::LIBSOXR, ratio, m_convertorType, 512));
+        m_resamplers.push_back(std::make_unique<TAudioResampler>(m_backend, ratio, m_quality, 512));
     }
 }
 

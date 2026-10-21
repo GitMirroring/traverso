@@ -23,11 +23,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TFileIOBuffer.h"
 #include "AbstractAudioReader.h"
+#include "TAudioResampler.h"
 #include <memory>
-#include <samplerate.h>
 #include <vector>
-
-class TAudioResampler;
 
 class TResampleAudioReader : public AbstractAudioReader
 {
@@ -50,22 +48,10 @@ public:
     // The frames of the file at its own rate; get_nframes() counts them at
     // the output rate
     nframes_t get_file_frames() const { return m_reader ? m_reader->get_nframes() : 0; }
-    int get_convertor_type() const { return m_convertorType; }
     void set_output_rate(uint rate);
-    void set_converter_type(int converterType);
-
-    static int get_default_resample_quality() { return SRC_SINC_FASTEST; }
-    static QString get_convertor_type_name(int convertorType)
-    {
-        return QString(src_get_name(convertorType));
-    }
-    static QString get_convertor_type_description(int convertorType)
-    {
-        return QString(src_get_description(convertorType));
-    }
-    static QList<int> get_convertor_types()  {
-        return {SRC_SINC_BEST_QUALITY, SRC_SINC_MEDIUM_QUALITY, SRC_SINC_FASTEST, SRC_ZERO_ORDER_HOLD, SRC_LINEAR};
-    }
+    // The resampler for another output rate than the file's: a backend and
+    // one of its qualities (TAudioResampler::qualities())
+    void set_resampler(TAudioResampler::BackendType backend, int quality);
 
 protected:
     void reset();
@@ -86,7 +72,8 @@ protected:
     std::vector<std::unique_ptr<TAudioResampler>>   m_resamplers;
 
     uint                    m_outputSampleRate;
-    int                     m_convertorType;
+    TAudioResampler::BackendType m_backend{TAudioResampler::BackendType::LIBSOXR};
+    int                     m_quality{0};
     bool                    m_isResampleAvailable;
 
 private:

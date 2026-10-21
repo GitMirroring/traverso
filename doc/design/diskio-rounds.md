@@ -67,7 +67,7 @@ of the scheduler thread, without it. The scheduler thread (`run()`):
 | Audio thread | `tick()`, `set_transport_location()`, `set_seek_transport_location()`; it reads or writes the rings of the streams it processes | nothing of the scheduler | never: atomics, the wake's `signal()`, the streams' lock-free slot queues |
 | Owner thread (GUI) | the constructor, `start()`, the destructor; `add_stream()`, `remove_stream()`; the meters | a stream before `add_stream()` and after `remove_stream()` returned | on the request lock for a moment; `remove_stream()` until the round that runs is over |
 | Any thread | `add_idle_task()`; the setters (rate, quality, buffer size, idle allowed, idle limit) | — | on the request lock for a moment |
-| Scheduler thread | `dispatch()`: the requests, the plan, a round; between rounds the streams' `disk_state()` and `set_output_rate_and_convertor_type()` (a new quality), and `retire()` of streams and tasks | the stream list, the task list, the planner, the round's information | on the wake; on the end of a round; on disk IO when it runs a step itself (a round of one step, a busy pool) |
+| Scheduler thread | `dispatch()`: the requests, the plan, a round; between rounds the streams' `disk_state()` and `set_output_rate_and_resampler()` (a new resampler), and `retire()` of streams and tasks | the stream list, the task list, the planner, the round's information | on the wake; on the end of a round; on disk IO when it runs a step itself (a round of one step, a busy pool) |
 | Worker threads (the global pool) | `step()` of one stream or one task | that stream or task during its step | on disk IO |
 
 | From → to | What | How |

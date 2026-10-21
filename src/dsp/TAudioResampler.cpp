@@ -107,6 +107,69 @@ public:
 // =========================================================================
 // MAIN CLASS: TAudioResampler Mono Core Orchestration
 // =========================================================================
+QList<int> TAudioResampler::qualities(BackendType backend)
+{
+    // Not libsamplerate's zero order hold and linear converters: they lag,
+    // one input frame and one and a half, so what they give is not where
+    // it belongs
+    if (backend == BackendType::LIBSAMPLERATE) {
+        return {SRC_SINC_BEST_QUALITY, SRC_SINC_MEDIUM_QUALITY, SRC_SINC_FASTEST};
+    }
+    // The five standard qualities of soxr, as SoX has them
+    return {SOXR_VHQ, SOXR_HQ, SOXR_MQ, SOXR_LQ, SOXR_QQ};
+}
+
+QString TAudioResampler::quality_name(BackendType backend, int quality)
+{
+    if (backend == BackendType::LIBSAMPLERATE) {
+        return QString(src_get_name(quality));
+    }
+    switch (quality) {
+    case SOXR_VHQ: return QStringLiteral("Very High Quality");
+    case SOXR_HQ: return QStringLiteral("High Quality");
+    case SOXR_MQ: return QStringLiteral("Medium Quality");
+    case SOXR_LQ: return QStringLiteral("Low Quality");
+    case SOXR_QQ: return QStringLiteral("Quick");
+    default: return QString();
+    }
+}
+
+QString TAudioResampler::quality_description(BackendType backend, int quality)
+{
+    if (backend == BackendType::LIBSAMPLERATE) {
+        return QString(src_get_description(quality));
+    }
+    switch (quality) {
+    // As soxr.h describes them
+    case SOXR_VHQ: return QStringLiteral("28 bit precision.");
+    case SOXR_HQ: return QStringLiteral("20 bit precision.");
+    case SOXR_MQ: return QStringLiteral("16 bit precision with medium roll-off.");
+    case SOXR_LQ: return QStringLiteral("16 bit precision with larger roll-off.");
+    case SOXR_QQ: return QStringLiteral("Cubic interpolation.");
+    default: return QString();
+    }
+}
+
+int TAudioResampler::default_quality(BackendType backend)
+{
+    return backend == BackendType::LIBSAMPLERATE ? SRC_SINC_MEDIUM_QUALITY : SOXR_HQ;
+}
+
+int TAudioResampler::default_realtime_quality(BackendType backend)
+{
+    return backend == BackendType::LIBSAMPLERATE ? SRC_SINC_FASTEST : SOXR_MQ;
+}
+
+QString TAudioResampler::backend_name(BackendType backend)
+{
+    return backend == BackendType::LIBSAMPLERATE ? QStringLiteral("libsamplerate") : QStringLiteral("soxr");
+}
+
+TAudioResampler::BackendType TAudioResampler::backend_from_name(const QString& name)
+{
+    return name == QLatin1String("libsamplerate") ? BackendType::LIBSAMPLERATE : BackendType::LIBSOXR;
+}
+
 TAudioResampler::TAudioResampler(BackendType backend, double srcRatio, int quality, long blockSize)
     : m_backendType(backend)
     , m_srcRatio(srcRatio)
@@ -114,6 +177,7 @@ TAudioResampler::TAudioResampler(BackendType backend, double srcRatio, int quali
     , m_leftOverFrames(0)
     , m_inputWorkBuffer(blockSize * 4)   // Pure mono frames allocation
 {
+    Q_ASSERT_X(qualities(backend).contains(quality), "TAudioResampler", "not a quality of this backend");
     if (m_backendType == BackendType::LIBSOXR) {
         m_backend = std::make_unique<LibSoxrBackend>(quality, srcRatio);
     } else {

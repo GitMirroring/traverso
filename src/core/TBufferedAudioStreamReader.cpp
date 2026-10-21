@@ -222,8 +222,7 @@ int TBufferedAudioStreamReader::init( )
         return (m_error = COULD_NOT_OPEN_FILE);
     }
 
-    int converterType = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
-    set_output_rate_and_convertor_type(m_resampleAudioReader->get_file_rate(), converterType);
+    set_output_rate_and_resampler(m_resampleAudioReader->get_file_rate(), configured_resampler());
 
     m_channelCount = m_resampleAudioReader->get_num_channels();
 
@@ -250,10 +249,25 @@ int TBufferedAudioStreamReader::init( )
 }
 
 
-void TBufferedAudioStreamReader::set_output_rate_and_convertor_type(int outputRate, int converterType)
+TAudioResampler::BackendType TBufferedAudioStreamReader::configured_backend()
+{
+    return TAudioResampler::backend_from_name(config().get_property("Conversion", "Resampler", "soxr").toString());
+}
+
+TBufferedAudioStreamReader::Resampler TBufferedAudioStreamReader::configured_resampler()
+{
+    const TAudioResampler::BackendType backend = configured_backend();
+    int quality = config().get_property("Conversion", "RTResamplingQuality", -1).toInt();
+    if (!TAudioResampler::qualities(backend).contains(quality)) {
+        quality = TAudioResampler::default_realtime_quality(backend);
+    }
+    return {int(backend), quality};
+}
+
+void TBufferedAudioStreamReader::set_output_rate_and_resampler(int outputRate, const Resampler& resampler)
 {
     Q_ASSERT(outputRate > 0);
-    Q_ASSERT_X(m_resampleAudioReader, "ReadSource::set_output_rate_and_convertor_type", "No Resample Audio Reader");
+    Q_ASSERT_X(m_resampleAudioReader, "ReadSource::set_output_rate_and_resampler", "No Resample Audio Reader");
 
     bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
     if (useResampling) {
@@ -262,7 +276,7 @@ void TBufferedAudioStreamReader::set_output_rate_and_convertor_type(int outputRa
         m_resampleAudioReader->set_output_rate(m_resampleAudioReader->get_file_rate());
     }
 
-    m_resampleAudioReader->set_converter_type(converterType);
+    m_resampleAudioReader->set_resampler(TAudioResampler::BackendType(resampler.backend), resampler.quality);
 
     m_outputRate = outputRate;
 }

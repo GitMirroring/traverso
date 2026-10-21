@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QStyleFactory>
 
 #include "Pages.h"
-#include "ResampleAudioReader.h"
+#include "TBufferedAudioStreamReader.h"
 #include "dialogs/ThemeModifierDialog.h"
 #include "TAudioDevice.h"
 #if defined (ALSA_SUPPORT)
@@ -1041,6 +1041,12 @@ RecordingConfigPage::RecordingConfigPage(QWidget * parent)
     wavpackCompressionComboBox->addItem("High", "high");
     wavpackCompressionComboBox->addItem("Fast", "fast");
 
+    // The qualities of the resampler in use
+    const TAudioResampler::BackendType resampler = TBufferedAudioStreamReader::configured_backend();
+    for (int quality : TAudioResampler::qualities(resampler)) {
+        ontheflyResampleComboBox->addItem(TAudioResampler::quality_name(resampler, quality), quality);
+    }
+
     connect(encodingComboBox, &QComboBox::activated, this, &RecordingConfigPage::encoding_index_changed);
     connect(useResamplingCheckBox, &QCheckBox::checkStateChanged, this, &RecordingConfigPage::use_onthefly_resampling_checkbox_changed);
 
@@ -1074,7 +1080,7 @@ void RecordingConfigPage::load_config()
         wavpackCompressionComboBox->setCurrentIndex(2);
     }
 
-    int index = config().get_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality()).toInt();
+    int index = ontheflyResampleComboBox->findData(TBufferedAudioStreamReader::configured_resampler().quality);
     ontheflyResampleComboBox->setCurrentIndex(index);
 
     index = config().get_property("Conversion", "ExportResamplingConverterType", 1).toInt();
@@ -1084,7 +1090,7 @@ void RecordingConfigPage::load_config()
 void RecordingConfigPage::save_config()
 {
     config().set_property("Conversion", "DynamicResampling", useResamplingCheckBox->isChecked());
-    config().set_property("Conversion", "RTResamplingConverterType", ontheflyResampleComboBox->currentIndex());
+    config().set_property("Conversion", "RTResamplingQuality", ontheflyResampleComboBox->currentData().toInt());
     config().set_property("Conversion", "ExportResamplingConverterType", exportDefaultResampleQualityComboBox->currentIndex());
     config().set_property("Recording", "FileFormat", encodingComboBox->itemData(encodingComboBox->currentIndex()).toString());
     config().set_property("Recording", "WavpackCompressionType", wavpackCompressionComboBox->itemData(wavpackCompressionComboBox->currentIndex()).toString());
@@ -1095,7 +1101,8 @@ void RecordingConfigPage::save_config()
 void RecordingConfigPage::reset_default_config()
 {
     config().set_property("Conversion", "DynamicResampling", true);
-    config().set_property("Conversion", "RTResamplingConverterType", TResampleAudioReader::get_default_resample_quality());
+    config().set_property("Conversion", "RTResamplingQuality",
+                          TAudioResampler::default_realtime_quality(TBufferedAudioStreamReader::configured_backend()));
     config().set_property("Conversion", "ExportResamplingConverterType", 1);
     config().set_property("Recording", "FileFormat", "wav");
     config().set_property("Recording", "WavpackCompressionType", "fast");

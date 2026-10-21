@@ -51,7 +51,9 @@ public:
     void set_writer_type(TraversoDAW::WriterType writerType) { m_writerType = writerType; }
     void set_file_format(TraversoDAW::FileFormat fileFormat);
     void set_data_format(TraversoDAW::DataFormat format);
-    void set_sample_rate_conversion_quality(int quality);
+    // For an input rate other than the file's: a backend and one of its
+    // qualities (TAudioResampler::qualities())
+    void set_resampler(TAudioResampler::BackendType backend, int quality);
     void set_is_cd_export(bool cdExport);
     void set_export_dir(const QString& dir);
     void set_export_file_name(const QString &fileName);
@@ -82,7 +84,8 @@ public:
     static QString writer_type_to_string(TraversoDAW::WriterType writerType);
 
     int get_bit_depth() const;
-    int get_sample_rate_conversion_quality() const { return m_sampleRateConversionQuality; }
+    TAudioResampler::BackendType get_resampler() const { return m_resampler; }
+    int get_resample_quality() const { return m_resampleQuality; }
     TTimeRef get_export_start_location() const { return m_exportStartLocation; }
     TTimeRef get_export_end_location() const { return m_exportEndLocation; }
     TTimeRef get_export_location() const { return m_exportLocation; }
@@ -133,7 +136,8 @@ private:
 
     TraversoDAW::DataFormat    m_dataFormat;
     uint                       m_sampleBytes;
-    int                        m_sampleRateConversionQuality;
+    TAudioResampler::BackendType m_resampler;
+    int                        m_resampleQuality;
     int                        m_progress;
 
 

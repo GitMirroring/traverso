@@ -154,9 +154,9 @@ bool TIOScheduler::do_round()
 {
     Q_ASSERT_X(on_scheduler_thread(), "TIOScheduler::do_round", "not on the scheduler thread");
 
-    if (m_qualityChanged.exchange(false)) {
+    if (m_resamplerChanged.exchange(false)) {
         for (TIOStream* stream : m_streams) {
-            stream->set_output_rate_and_convertor_type(int(get_output_rate()), get_resample_quality());
+            stream->set_output_rate_and_resampler(int(get_output_rate()), get_resampler());
         }
     }
 
@@ -169,7 +169,7 @@ bool TIOScheduler::do_round()
     m_round.transportLocation = TTimeRef(m_transportLocation.load(std::memory_order_relaxed));
     m_round.sampleRateChanged = seek && m_rateChanged.exchange(false);
     m_round.outputRate = get_output_rate();
-    m_round.resampleQuality = get_resample_quality();
+    m_round.resampler = get_resampler();
     m_round.bufferSize = seek ? m_bufferSize.load(std::memory_order_relaxed) : 0;
     if (seek) {
         TLOG_D("diskio", "seek requested, seeking");
@@ -334,7 +334,7 @@ void TIOScheduler::add_stream(TIOStream* stream)
         return;
     }
 
-    stream->set_output_rate_and_convertor_type(int(get_output_rate()), get_resample_quality());
+    stream->set_output_rate_and_resampler(int(get_output_rate()), get_resampler());
     stream->prepare_rt_buffers(m_bufferSize.load(std::memory_order_relaxed));
 
     {
@@ -390,10 +390,10 @@ int TIOScheduler::get_buffers_fill_status( )
     return m_bufferFillStatus.exchange(100);
 }
 
-void TIOScheduler::set_resample_quality(int quality)
+void TIOScheduler::set_resampler(const TIOStream::Resampler& resampler)
 {
-    m_resampleQuality.store(quality);
-    m_qualityChanged.store(true);
+    m_resampler.store(resampler);
+    m_resamplerChanged.store(true);
 }
 
 void TIOScheduler::set_output_sample_rate(uint outputSampleRate)
