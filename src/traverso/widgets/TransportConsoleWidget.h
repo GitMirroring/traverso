@@ -20,8 +20,7 @@
  
 */
 
-#ifndef TRANSPORTCONSOLEWIDGET_H
-#define TRANSPORTCONSOLEWIDGET_H
+#pragma once
 
 
 #include <QToolBar>
@@ -77,5 +76,4 @@ private slots:
 
 
 
-#endif
 

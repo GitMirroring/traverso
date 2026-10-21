@@ -19,8 +19,7 @@
  
 */
 
-#ifndef INSERT_SILENCE_DIALOG_H
-#define INSERT_SILENCE_DIALOG_H
+#pragma once
 
 #include "ui_InsertSilenceDialog.h"
 #include <QDialog>
@@ -46,6 +45,5 @@ private:
 
 };
 
-#endif
 
 //eof

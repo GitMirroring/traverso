@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef PROCESSING_DATA_VIEW_H
-#define PROCESSING_DATA_VIEW_H
+#pragma once
 
 #include "ViewItem.h"
 
@@ -74,6 +73,5 @@ private slots:
 };
 
 
-#endif
 
 //eof

@@ -19,8 +19,7 @@
 
 */
 
-#ifndef CROP_H
-#define CROP_H
+#pragma once
 
 #include "TCommand.h"
 
@@ -65,6 +64,5 @@ public slots:
         void adjust_right();
 };
 
-#endif
 
 

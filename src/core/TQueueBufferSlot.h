@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef TQUEUEBUFFERSLOT_H
-#define TQUEUEBUFFERSLOT_H
+#pragma once
 
 #include "TAudioBuffer.h"
 #include "defines.h"
@@ -87,4 +86,3 @@ private:
     nframes_t           m_bufferWriteOffset{0};
 };
 
-#endif // TQUEUEBUFFERSLOT_H

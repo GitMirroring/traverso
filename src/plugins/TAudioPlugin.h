@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef T_AUDIO_PLUGIN_H
-#define T_AUDIO_PLUGIN_H
+#pragma once
 
 #include "TContextItem.h"
 #include <QString>
@@ -100,6 +99,5 @@ public slots:
 
 
 
-#endif
 
 //eof

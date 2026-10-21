@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TTRACKLANEVIEW_H
-#define TTRACKLANEVIEW_H
+#pragma once
 
 #include "TTrackView.h"
 #include "TTrackPanelView.h"
@@ -54,4 +53,3 @@ private:
 	bool		m_paintBackground{};
 };
 
-#endif // TTRACKLANEVIEW_H

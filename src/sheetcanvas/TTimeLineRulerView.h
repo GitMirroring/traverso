@@ -19,8 +19,7 @@
  
 */
 
-#ifndef TIME_LINE_VIEW_H
-#define TIME_LINE_VIEW_H
+#pragma once
 
 #include "TViewItem.h"
 
@@ -77,6 +76,5 @@ private slots:
 
 };
 
-#endif
 
 //eof

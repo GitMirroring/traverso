@@ -19,8 +19,7 @@
  
 */
 
-#ifndef TPOSITION_INDICATOR_H
-#define TPOSITION_INDICATOR_H
+#pragma once
 
 #include "TViewItem.h"
 #include <QPixmap>
@@ -43,6 +42,5 @@ private:
 	QPixmap m_background;
 };
 
-#endif
 
 //eof

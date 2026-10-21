@@ -20,8 +20,7 @@
  
 */
 
-#ifndef SPECTRALMETERWIDGET_H
-#define SPECTRALMETERWIDGET_H
+#pragma once
 
 #include "MeterWidget.h"
 
@@ -45,5 +44,4 @@ private:
 
 
 
-#endif
 

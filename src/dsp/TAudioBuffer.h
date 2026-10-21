@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef TAUDIOBUFFER_H
-#define TAUDIOBUFFER_H
+#pragma once
 
 #include "Debugger.h"
 #include "defines.h"
@@ -145,4 +144,3 @@ public:
     ~TRealTimeAudioBuffer() {}
 };
 
-#endif // TAUDIOBUFFER_H

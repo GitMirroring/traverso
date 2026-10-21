@@ -19,8 +19,7 @@
 
 */
 
-#ifndef TSHEET_VIEW_H
-#define TSHEET_VIEW_H
+#pragma once
 
 #include "TViewItem.h"
 #include "TViewPortInterface.h"
@@ -261,4 +260,3 @@ inline QHash<QString, QString>* TSheetView::cursor_dict()
 	return &m_cursorsDict;
 }
 
-#endif

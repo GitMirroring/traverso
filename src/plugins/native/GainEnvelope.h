@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef GAIN_ENVELOPE_H
-#define GAIN_ENVELOPE_H
+#pragma once
 
 #include "TAudioPlugin.h"
 #include "TTimeRef.h"
@@ -57,5 +56,4 @@ private:
     float m_gain;
 };
 
-#endif
 

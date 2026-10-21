@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef FLACAUDIOREADER_H
-#define FLACAUDIOREADER_H
+#pragma once
 
 #include "AbstractAudioReader.h"
 #include "TFileIoBuffer.h"
@@ -46,4 +45,3 @@ protected:
 	FlacPrivate *m_flac;
 };
 
-#endif

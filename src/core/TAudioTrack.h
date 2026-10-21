@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef TAUDIO_TRACK_H
-#define TAUDIO_TRACK_H
+#pragma once
 
 #include <QString>
 #include <QDomDocument>
@@ -128,5 +127,4 @@ private:
     AudioBus* m_bounceInputBus{nullptr};
 };
 
-#endif
 

@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef WPAUDIOWRITER_H
-#define WPAUDIOWRITER_H
+#pragma once
 
 #include "AbstractAudioWriter.h"
 
@@ -57,4 +56,3 @@ protected:
 	nframes_t	m_tmpBufferSize;
 };
 
-#endif

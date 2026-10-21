@@ -19,8 +19,7 @@
 
 */
 
-#ifndef MOVEMARKER_H
-#define MOVEMARKER_H
+#pragma once
 
 #include "TMoveCommand.h"
 #include "TTimeRef.h"
@@ -60,4 +59,3 @@ public slots:
         void prev_snap_pos();
 };
 
-#endif // MOVEMARKER_H

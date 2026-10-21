@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef PLUGIN_MANAGER_H
-#define PLUGIN_MANAGER_H
+#pragma once
 
 #if defined (LV2_SUPPORT)
 #include <lilv/lilv.h>
@@ -58,6 +57,5 @@ private:
 	void init();
 };
 
-#endif
 
 //eof

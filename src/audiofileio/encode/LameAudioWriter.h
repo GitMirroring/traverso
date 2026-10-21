@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef LAMEAUDIOWRITER_H
-#define LAMEAUDIOWRITER_H
+#pragma once
 
 #include "AbstractAudioWriter.h"
 #include "defines.h"
@@ -56,4 +55,3 @@ protected:
 	int	m_quality;	// performance / quality tradeoff 0=slow and good, 9=fast and rough
 };
 
-#endif

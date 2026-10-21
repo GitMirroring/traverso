@@ -21,8 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef __pbd_fpu_h__
-#define __pbd_fpu_h__
+#pragma once
 
 
 class FPU {
@@ -47,4 +46,3 @@ class FPU {
 	Flags _flags;
 };
 
-#endif /* __pbd_fpu_h__ */

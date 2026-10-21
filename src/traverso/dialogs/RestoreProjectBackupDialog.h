@@ -19,8 +19,7 @@
  
 */
 
-#ifndef RESTORE_PROJECT_BACKUP_DIALOG_H
-#define RESTORE_PROJECT_BACKUP_DIALOG_H
+#pragma once
 
 #include "ui_RestoreProjectBackupDialog.h"
 #include <QDialog>
@@ -44,6 +43,5 @@ private:
 	void populate_treeview();
 };
 
-#endif
 
 //eof

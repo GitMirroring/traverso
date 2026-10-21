@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef TPROCESSCALLBACKDATA_H
-#define TPROCESSCALLBACKDATA_H
+#pragma once
 
 #include "TTimeRef.h"
 #include "defines.h"
@@ -111,4 +110,3 @@ private:
 
 };
 
-#endif // TPROCESSCALLBACKDATA_H

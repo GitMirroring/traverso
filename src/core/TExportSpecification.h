@@ -1,5 +1,4 @@
-#ifndef TEXPORTSPECIFICATION_H
-#define TEXPORTSPECIFICATION_H
+#pragma once
 
 #include <QObject>
 #include <QMap>
@@ -143,4 +142,3 @@ signals:
     void exportMessage(QString);
 };
 
-#endif // TEXPORTSPECIFICATION_H

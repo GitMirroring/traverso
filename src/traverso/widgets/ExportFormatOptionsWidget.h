@@ -19,8 +19,7 @@
  
 */
 
-#ifndef T_EXPORT_FORMAT_OPTIONS_WIDGET_H
-#define T_EXPORT_FORMAT_OPTIONS_WIDGET_H
+#pragma once
 
 #include "ui_ExportFormatOptionsWidget.h"
 
@@ -45,7 +44,6 @@ private slots:
 	void ogg_method_changed(int index);
 };
 
-#endif
 
 //eof
 

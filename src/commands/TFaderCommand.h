@@ -19,8 +19,7 @@
 
 */
 
-#ifndef GAINCOMMAND_H
-#define GAINCOMMAND_H
+#pragma once
 
 #include "TCommand.h"
 
@@ -55,5 +54,4 @@ private :
     void apply_new_gain_to_object(float newGain);
 };
 
-#endif
 

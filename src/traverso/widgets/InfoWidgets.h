@@ -19,8 +19,7 @@
  
 */
 
-#ifndef RESOURCES_INFO_WIDGET_H
-#define RESOURCES_INFO_WIDGET_H
+#pragma once
 
 #include <QToolBar>
 #include <QTimer>
@@ -202,7 +201,6 @@ private:
 	int		filenum;
 };
 
-#endif
 
 //eof
 

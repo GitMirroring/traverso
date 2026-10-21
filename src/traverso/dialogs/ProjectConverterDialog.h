@@ -19,8 +19,7 @@
  
 */
 
-#ifndef PROJECT_CONVERTER_DIALOG_H
-#define PROJECT_CONVERTER_DIALOG_H
+#pragma once
 
 #include "ui_ProjectConverterDialog.h"
 #include <QDialog>
@@ -54,6 +53,5 @@ private slots:
 	void on_stopConversionButton_clicked();
 };
 
-#endif
 
 //eof

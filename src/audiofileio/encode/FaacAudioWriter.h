@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef FAACAUDIOWRITER_H
-#define FAACAUDIOWRITER_H
+#pragma once
 
 #include "AbstractAudioWriter.h"
 #include "defines.h"
@@ -59,4 +58,3 @@ protected:
 	int	m_useMidside;	// mid-side stereo
 };
 
-#endif

@@ -19,8 +19,7 @@
  
 */
 
-#ifndef CD_WRITING_DIALOG_H
-#define CD_WRITING_DIALOG_H
+#pragma once
 
 #include "ui_CDWritingDialog.h"
 
@@ -98,7 +97,6 @@ private slots:
 	void reject();
 };
 
-#endif
 
 //eof
 

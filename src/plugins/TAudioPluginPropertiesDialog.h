@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef T_AUDIO_PLUGIN_PROPERTIES_DIALOG_H
-#define T_AUDIO_PLUGIN_PROPERTIES_DIALOG_H
+#pragma once
 
 #include <QDialog>
 
@@ -48,6 +47,5 @@ private slots:
 	void reset_button_clicked();
 };
 
-#endif
 
 //eof

@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TSHORTCUTMANAGER_H
-#define TSHORTCUTMANAGER_H
+#pragma once
 
 #include <QObject>
 #include <QStringList>
@@ -190,4 +189,3 @@ signals:
 TShortCutManager& tShortCutManager();
 
 
-#endif // TSHORTCUTMANAGER_H

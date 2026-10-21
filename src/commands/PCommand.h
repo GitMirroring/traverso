@@ -19,8 +19,7 @@
  
 */
 
-#ifndef PCOMMAND_H
-#define PCOMMAND_H
+#pragma once
 
 #include "TCommand.h"
 
@@ -50,5 +49,4 @@ private :
 
 };
 
-#endif
 

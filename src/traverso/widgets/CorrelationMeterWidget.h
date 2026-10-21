@@ -20,8 +20,7 @@
  
 */
 
-#ifndef CORRELATIONMETERWIDGET_H
-#define CORRELATIONMETERWIDGET_H
+#pragma once
 
 #include "CorrelationMeterView.h"
 #include "MeterWidget.h"
@@ -40,5 +39,4 @@ public:
 
 
 
-#endif
 

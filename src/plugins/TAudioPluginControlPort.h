@@ -1,5 +1,4 @@
-#ifndef TAUDIOPLUGINCONTROLPORT_H
-#define TAUDIOPLUGINCONTROLPORT_H
+#pragma once
 
 #include "TAudioPluginPort.h"
 
@@ -49,4 +48,3 @@ public slots:
     void set_control_value(float value);
 };
 
-#endif // TAUDIOPLUGINCONTROLPORT_H

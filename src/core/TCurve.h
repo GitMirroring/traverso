@@ -4,8 +4,7 @@
     in order to fit Traverso's lockless design
 */
 
-#ifndef TCURVE_H
-#define TCURVE_H
+#pragma once
 
 #include "TContextItem.h"
 #include <QString>
@@ -105,4 +104,3 @@ signals :
     void nodePositionChanged();
 };
 
-#endif

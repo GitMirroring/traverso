@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TPROJECT_H
-#define TPROJECT_H
+#pragma once
 
 #include <QString>
 #include <memory>
@@ -244,4 +243,3 @@ signals:
     void exportFinished();
 };
 
-#endif

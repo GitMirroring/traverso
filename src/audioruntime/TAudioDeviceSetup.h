@@ -1,5 +1,4 @@
-#ifndef TAUDIODEVICESETUP_H
-#define TAUDIODEVICESETUP_H
+#pragma once
 
 #include <QList>
 
@@ -57,4 +56,3 @@ private:
     QString         m_ditherShape;
 };
 
-#endif // TAUDIODEVICESETUP_H

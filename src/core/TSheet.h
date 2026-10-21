@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef SONG_H
-#define SONG_H
+#pragma once
 
 #include "TProcessCallBackData.h"
 #include "TPeakBuildService.h"
@@ -208,4 +207,3 @@ private slots:
     void update_idle_limit();
 };
 
-#endif // SONG_H

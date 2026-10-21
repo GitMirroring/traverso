@@ -19,8 +19,7 @@
 
 */
 
-#ifndef T_AUDIO_PLUGIN_VIEW_H
-#define T_AUDIO_PLUGIN_VIEW_H
+#pragma once
 
 
 #include "TViewItem.h"
@@ -67,7 +66,6 @@ private slots:
     void repaint();
 };
 
-#endif
 
 //eof
 

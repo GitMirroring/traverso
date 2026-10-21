@@ -1,5 +1,4 @@
-#ifndef T_METERVIEW_H
-#define T_METERVIEW_H
+#pragma once
 
 #include "TViewItem.h"
 
@@ -40,4 +39,3 @@ private slots:
 	void		delay_timeout();
 };
 
-#endif // METERVIEW_H

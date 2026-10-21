@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef NEW_TRACK_DIALOG_H
-#define NEW_TRACK_DIALOG_H
+#pragma once
 
 #include "ui_NewTrackDialog.h"
 
@@ -61,4 +60,3 @@ private slots:
 
 };
 
-#endif

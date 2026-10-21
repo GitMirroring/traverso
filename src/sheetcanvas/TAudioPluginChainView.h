@@ -19,8 +19,7 @@
 
 */
 
-#ifndef T_AUDIO_PLUGIN_CHAIN_VIEW_H
-#define T_AUDIO_PLUGIN_CHAIN_VIEW_H
+#pragma once
 
 
 #include "TViewItem.h"
@@ -51,7 +50,6 @@ public slots:
     void scrollbar_value_changed(int value);
 };
 
-#endif
 
 //eof
 

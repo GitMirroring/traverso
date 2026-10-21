@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TSEND_H
-#define TSEND_H
+#pragma once
 
 #include <QDomElement>
 #include <QObject>
@@ -69,4 +68,3 @@ private:
     void init();
 };
 
-#endif // TSEND_H

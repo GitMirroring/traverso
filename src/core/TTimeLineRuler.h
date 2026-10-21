@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TTIME_LINE_RULER_H
-#define TTIME_LINE_RULER_H
+#pragma once
 
 #include "TContextItem.h"
 #include <QDomNode>
@@ -77,6 +76,5 @@ signals:
     void markerPositionChanged();
 };
 
-#endif
 
 //eof

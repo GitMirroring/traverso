@@ -19,8 +19,7 @@
  
 */
 
-#ifndef PLAYHEAD_MOVE_H
-#define PLAYHEAD_MOVE_H
+#pragma once
 
 #include "TMoveCommand.h"
 #include "TTimeRef.h"
@@ -66,4 +65,3 @@ public slots:
         void move_to_start();
 };
 
-#endif

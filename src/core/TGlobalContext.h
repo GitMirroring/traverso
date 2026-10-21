@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TGLOBALCONTEXT_H
-#define TGLOBALCONTEXT_H
+#pragma once
 
 #include <QObject>
 
@@ -48,4 +47,3 @@ private slots:
 
 };
 
-#endif // TGLOBALCONTEXT_H

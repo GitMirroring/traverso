@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TCONTEXTITEM_H
-#define TCONTEXTITEM_H
+#pragma once
 
 #include <QObject>
 
@@ -85,6 +84,5 @@ signals:
     void activeContextChanged();
 };
 
-#endif
 
 //eof

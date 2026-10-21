@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef AUDIOCLIP_EDIT_DIALOG_H
-#define AUDIOCLIP_EDIT_DIALOG_H
+#pragma once
 
 #include "TTimeRef.h"
 #include "ui_AudioClipEditDialog.h"
@@ -83,4 +82,3 @@ private slots:
 	void fade_curve_added();
 };
 
-#endif

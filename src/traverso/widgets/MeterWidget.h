@@ -19,8 +19,7 @@
  
 */
 
-#ifndef METER_WIDGET_H
-#define METER_WIDGET_H
+#pragma once
 
 #include "MeterView.h"
 
@@ -52,6 +51,5 @@ protected:
 
 
 
-#endif
 
  

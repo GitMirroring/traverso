@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef RESOURCES_MANAGER_H
-#define RESOURCES_MANAGER_H
+#pragma once
 
 #include "TTimeRef.h"
 #include <QString>
@@ -102,5 +101,4 @@ signals:
 
 
 
-#endif
 

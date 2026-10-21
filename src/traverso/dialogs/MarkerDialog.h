@@ -19,8 +19,7 @@
  
 */
 
-#ifndef MARKER_DIALOG_H
-#define MARKER_DIALOG_H
+#pragma once
 
 #include "ui_MarkerDialog.h"
 #include <QDialog>
@@ -74,4 +73,3 @@ private slots:
 	void pemph_all();
 };
 
-#endif

@@ -18,8 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  */
 
-#ifndef JACKDRIVER_H
-#define JACKDRIVER_H
+#pragma once
 
 #include "TAudioDriver.h"
 #include "defines.h"
@@ -126,7 +125,6 @@ signals:
 };
 
 
-#endif
 
 //eof
 

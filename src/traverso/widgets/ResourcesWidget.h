@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
  
-#ifndef RESOURCESWIDGET_H
-#define RESOURCESWIDGET_H
+#pragma once
 
 #include <QWidget>
 #include <QTreeWidgetItem>
@@ -132,4 +131,3 @@ private slots:
 };
 
 
-#endif

@@ -19,8 +19,7 @@
  
 */
 
-#ifndef T_PORTAUDIO_DRIVER_H
-#define T_PORTAUDIO_DRIVER_H
+#pragma once
 
 #include "TAudioBuffer.h"
 #include "TAudioDriver.h"
@@ -78,7 +77,6 @@ private:
 };
 
 
-#endif
 
 //eof
 

@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TAUDIOCLIPMANAGER_H
-#define TAUDIOCLIPMANAGER_H
+#pragma once
 
 #include "TContextItem.h"
 #include "TTimeRef.h"
@@ -72,6 +71,5 @@ public slots:
     [[deprecated("Move Function to TSelectionService")]] TCommand* invert_clip_selection();
 };
 
-#endif
 
 //eof

@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef ThemeModifierDialog_H
-#define ThemeModifierDialog_H
+#pragma once
 
 #include "ui_ThemeModifierDialog.h"
 
@@ -52,4 +51,3 @@ private slots:
         void list_widget_item_changed(QListWidgetItem* item, QListWidgetItem*);
 };
 
-#endif // ThemeModifierDialog_H

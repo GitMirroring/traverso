@@ -20,8 +20,7 @@
     $Id: Driver.h,v 1.5 2007/03/19 11:18:57 r_sijrier Exp $
 */
 
-#ifndef T_AUDIO_DRIVER_H
-#define T_AUDIO_DRIVER_H
+#pragma once
 
 #include "defines.h"
 #include "TAudioDevice.h"
@@ -123,7 +122,6 @@ signals:
 };
 
 
-#endif
 
 //eof
 

@@ -1,5 +1,4 @@
-#ifndef TTIMEREF_H
-#define TTIMEREF_H
+#pragma once
 
 #include <chrono>
 #include "Utils.h"
@@ -275,4 +274,3 @@ private:
 
 Q_DECLARE_METATYPE(TTimeRef);
 
-#endif // TTIMEREF_H

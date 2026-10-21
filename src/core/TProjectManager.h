@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef ProjectManager_H
-#define ProjectManager_H
+#pragma once
 
 #include "TCommand.h"
 #include "TContextItem.h"
@@ -119,4 +118,3 @@ TProjectManager& pm();
 // Use this function to get the loaded Project's Resources Manager
 TResourcesManager* resources_manager();
 
-#endif

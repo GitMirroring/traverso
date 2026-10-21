@@ -19,8 +19,7 @@
  
 */
 
-#ifndef T_TIMELINE_MARKER_VIEW_H
-#define T_TIMELINE_MARKER_VIEW_H
+#pragma once
 
 #include "TViewItem.h"
 
@@ -65,6 +64,5 @@ private slots:
     void active_context_changed();
 };
 
-#endif
 
 //eof

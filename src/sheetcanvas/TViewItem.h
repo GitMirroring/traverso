@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TVIEW_ITEM_H
-#define TVIEW_ITEM_H
+#pragma once
 
 #include <TContextItem.h>
 #include <QGraphicsScene>
@@ -118,6 +117,5 @@ protected:
 inline QRectF TViewItem::boundingRect() const {return m_boundingRect;}
 inline int TViewItem::type() const {return Type;}
 
-#endif
 
 //eof

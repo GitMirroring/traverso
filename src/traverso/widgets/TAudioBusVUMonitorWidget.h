@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: BusMonitor.h,v 1.1 2008/05/24 17:41:02 r_sijrier Exp $
 */
 
-#ifndef BUSMONITOR_H
-#define BUSMONITOR_H
+#pragma once
 
 #include <QWidget>
 #include <QList>
@@ -66,4 +65,3 @@ private slots:
 	void reset_vu_meters();
 };
 
-#endif

@@ -20,8 +20,7 @@
     $Id: VUMeter.h,v 1.3 2009/04/16 19:38:19 n_doebelin Exp $
 */
 
-#ifndef VUMETER_H
-#define VUMETER_H
+#pragma once
 
 #include <QWidget>
 #include <QString>
@@ -224,5 +223,4 @@ signals:
 };
 
 
-#endif
 

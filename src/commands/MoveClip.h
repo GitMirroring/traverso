@@ -19,8 +19,7 @@
  
 */
 
-#ifndef MOVECLIPACTION_H
-#define MOVECLIPACTION_H
+#pragma once
 
 #include "TMoveCommand.h"
 
@@ -107,4 +106,3 @@ public slots:
 	void toggle_vertical_only();
 };
 
-#endif

@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TBUFFEREDAUDIOSTREAMSTATUS_H
-#define TBUFFEREDAUDIOSTREAMSTATUS_H
+#pragma once
 
 #include <atomic>
 #include <QString>
@@ -87,4 +86,3 @@ private:
     std::atomic<int>     m_syncStatus;
 };
 
-#endif // TBUFFEREDAUDIOSTREAMSTATUS_H

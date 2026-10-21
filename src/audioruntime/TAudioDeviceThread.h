@@ -20,8 +20,7 @@
     $Id: AudioDeviceThread.h,v 1.4 2007/03/16 00:10:26 r_sijrier Exp $
 */
 
-#ifndef T_AUDIODEVICETHREAD_H
-#define T_AUDIODEVICETHREAD_H
+#pragma once
 
 #include <QThread>
 
@@ -48,6 +47,5 @@ private:
         int become_realtime();
 };
 
-#endif
 
 //eof

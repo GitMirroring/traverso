@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: Client.h,v 1.7 2007/11/19 11:18:54 r_sijrier Exp $
 */
 
-#ifndef T_AUDIO_DEVICE_CLIENT_H
-#define T_AUDIO_DEVICE_CLIENT_H
+#pragma once
 
 #include <QString>
 #include <QObject>
@@ -63,6 +62,5 @@ private:
 
 };
 
-#endif
 
 //eof

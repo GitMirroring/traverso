@@ -19,8 +19,7 @@
  
 */
 
-#ifndef OPEN_PROJECT_DIALOG_H
-#define OPEN_PROJECT_DIALOG_H
+#pragma once
 
 #include "ui_OpenProjectDialog.h"
 #include <QDialog>
@@ -42,7 +41,6 @@ private slots:
 	void projectitem_clicked( QTreeWidgetItem* , int  );
 };
 
-#endif
 
 //eof
 

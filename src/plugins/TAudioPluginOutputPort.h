@@ -1,5 +1,4 @@
-#ifndef TAUDIOPLUGINOUTPUTPORT_H
-#define TAUDIOPLUGINOUTPUTPORT_H
+#pragma once
 
 #include "TAudioPluginPort.h"
 
@@ -16,4 +15,3 @@ public:
 
 };
 
-#endif // TAUDIOPLUGINOUTPUTPORT_H

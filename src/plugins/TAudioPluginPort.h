@@ -1,5 +1,4 @@
-#ifndef TAUDIOPLUGINPORT_H
-#define TAUDIOPLUGINPORT_H
+#pragma once
 
 #include "qdom.h"
 #include "qobject.h"
@@ -31,4 +30,3 @@ protected:
     int	m_hint;
 };
 
-#endif // TAUDIOPLUGINPORT_H

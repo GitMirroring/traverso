@@ -19,8 +19,7 @@
  
 */
 
-#ifndef EXPORT_DIALOG_H
-#define EXPORT_DIALOG_H
+#pragma once
 
 #include "ui_ExportDialog.h"
 
@@ -64,7 +63,6 @@ private slots:
 	void reject();
 };
 
-#endif
 
 //eof
 

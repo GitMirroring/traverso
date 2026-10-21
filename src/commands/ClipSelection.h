@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef CLIPSELECTION_H
-#define CLIPSELECTION_H
+#pragma once
 
 #include "TCommand.h"
 #include <QList>
@@ -53,7 +52,6 @@ private:
 	TAudioClipManager* 	m_acmanager;
 };
 
-#endif
 
 
 

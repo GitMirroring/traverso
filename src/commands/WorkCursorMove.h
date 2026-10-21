@@ -19,8 +19,7 @@
 
 */
 
-#ifndef WORKCURSOR_MOVE_H
-#define WORKCURSOR_MOVE_H
+#pragma once
 
 #include "TMoveCommand.h"
 #include "TTimeRef.h"
@@ -70,4 +69,3 @@ public slots:
 
 };
 
-#endif

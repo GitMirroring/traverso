@@ -19,8 +19,7 @@
  
 */
 
-#ifndef TWORK_CURSOR_VIEW_H
-#define TWORK_CURSOR_VIEW_H
+#pragma once
 
 #include "TPlayHeadView.h"
 #include "TViewItem.h"
@@ -56,6 +55,5 @@ public slots:
 };
 
 
-#endif
 
 //eof

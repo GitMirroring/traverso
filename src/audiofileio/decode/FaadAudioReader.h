@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef FAADAUDIOREADER_H
-#define FAADAUDIOREADER_H
+#pragma once
 
 #include "AbstractAudioReader.h"
 #include "TFileIOBuffer.h"
@@ -46,4 +45,3 @@ protected:
 	FaadDecoderPrivate* d;
 };
 
-#endif // FAADAUDIOREADER_H

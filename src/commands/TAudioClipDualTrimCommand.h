@@ -19,8 +19,7 @@
 
 */
 
-#ifndef TAUDIOCLIPDUALTRIMCOMMAND_H
-#define TAUDIOCLIPDUALTRIMCOMMAND_H
+#pragma once
 
 #include "TMoveCommand.h"
 #include "TTimeRef.h"
@@ -58,4 +57,3 @@ private:
 
 };
 
-#endif // TAUDIOCLIPDUALTRIMCOMMAND_H

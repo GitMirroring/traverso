@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TCOREAUDIODRIVER_H
-#define TCOREAUDIODRIVER_H
+#pragma once
 
 #include "TAudioDriver.h"
 #include "RingBufferNPT.h"
@@ -92,4 +91,3 @@ private:
                                           AudioBufferList* output);
 };
 
-#endif

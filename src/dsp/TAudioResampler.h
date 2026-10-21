@@ -1,5 +1,4 @@
-#ifndef TAUDIORESAMPLER_H
-#define TAUDIORESAMPLER_H
+#pragma once
 
 #include "TAudioBuffer.h"
 #include "defines.h"
@@ -45,4 +44,3 @@ private:
     TRealTimeAudioBuffer m_inputWorkBuffer;
 };
 
-#endif // TAUDIORESAMPLER_H

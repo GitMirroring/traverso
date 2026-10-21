@@ -20,8 +20,7 @@
     $Id: PanelLed.h,v 1.1 2008/01/21 16:17:29 r_sijrier Exp $
 */
 
-#ifndef PANEL_LED_VIEW_H
-#define PANEL_LED_VIEW_H
+#pragma once
 
 #include <QObject>
 #include <QString>
@@ -54,6 +53,5 @@ public slots:
 };
 
 
-#endif
 
 //eof

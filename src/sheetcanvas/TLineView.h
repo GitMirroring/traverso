@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TLINE_VIEW_H
-#define TLINE_VIEW_H
+#pragma once
 
 #include "TViewItem.h"
 
@@ -49,4 +48,3 @@ private:
 	QColor m_color;
 };
 
-#endif

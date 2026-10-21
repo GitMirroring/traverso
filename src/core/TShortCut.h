@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TSHORTCUT_H
-#define TSHORTCUT_H
+#pragma once
 
 #include <QList>
 #include <QMultiHash>
@@ -62,4 +61,3 @@ private:
 
 };
 
-#endif // TSHORTCUT_H

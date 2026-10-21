@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef WELCOMEWIDGET_H
-#define WELCOMEWIDGET_H
+#pragma once
 
 #include <QWidget>
 #include "ui_WelcomeWidget.h"
@@ -54,4 +53,3 @@ private slots:
         void update_projects_directory_line_edit();
 };
 
-#endif // WELCOMEWIDGET_H

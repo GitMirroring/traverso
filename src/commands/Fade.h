@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: Fade.h,v 1.13 2008/01/21 16:22:11 r_sijrier Exp $
 */
 
-#ifndef FADE_H
-#define FADE_H
+#pragma once
 
 #include "TCommand.h"
 
@@ -116,6 +115,5 @@ private :
 };
 
 
-#endif
 
 

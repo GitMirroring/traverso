@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TAUDIO_FILE_MERGER_H
-#define TAUDIO_FILE_MERGER_H
+#pragma once
 
 #include <QThread>
 #include <QQueue>
@@ -66,4 +65,3 @@ signals:
 	void processingStopped();
 };
 
-#endif

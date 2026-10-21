@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: FadeCurve.h,v 1.19 2008/01/21 16:22:14 r_sijrier Exp $
 */
 
-#ifndef TFADE_CURVE_H
-#define TFADE_CURVE_H
+#pragma once
 
 #include "TCommand.h"
 #include "TContextItem.h"
@@ -148,4 +147,3 @@ signals:
     void lengthChanged();
 };
 
-#endif

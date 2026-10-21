@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TSESSIONTABWIDGET_H
-#define TSESSIONTABWIDGET_H
+#pragma once
 
 #include <QPushButton>
 
@@ -71,4 +70,3 @@ private slots:
         void close_current_project();
 };
 
-#endif // TSESSIONTABWIDGET_H

@@ -18,8 +18,7 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
-#ifndef VUMeterView_H
-#define VUMeterView_H
+#pragma once
 
 #include "TViewItem.h"
 #include "TMainWindow.h"
@@ -167,5 +166,4 @@ signals:
 };
 
 
-#endif
 

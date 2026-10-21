@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef CURVE_NODE_VIEW_H
-#define CURVE_NODE_VIEW_H
+#pragma once
 
 #include "TViewItem.h"
 
@@ -65,7 +64,6 @@ public slots:
 	void update_pos();
 };
 
-#endif
 
 //eof
  

@@ -19,8 +19,7 @@
  
 */
 
-#ifndef T_INFORM_USER_H
-#define T_INFORM_USER_H
+#pragma once
 
 #include <QObject>
 
@@ -65,7 +64,6 @@ private slots:
 // use this function to propagate the TInformUser
 TInformUser& tInformUser();
 
-#endif
 
 //eof
 

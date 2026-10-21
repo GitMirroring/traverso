@@ -19,8 +19,7 @@
 
 */
 
-#ifndef TPLAYHEADVIEW_H
-#define TPLAYHEADVIEW_H
+#pragma once
 
 #include "TViewItem.h"
 
@@ -89,4 +88,3 @@ public slots:
     void disable_follow(); // enabled in the config
 };
 
-#endif // TPLAYHEADVIEW_H

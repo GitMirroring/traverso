@@ -1,5 +1,4 @@
-#ifndef TTRANSPORTCONTROL_H
-#define TTRANSPORTCONTROL_H
+#pragma once
 
 #include "TTimeRef.h"
 
@@ -37,4 +36,3 @@ private:
     TTimeRef    m_location;
 };
 
-#endif // TTRANSPORTCONTROL_H

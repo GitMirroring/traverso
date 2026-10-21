@@ -19,8 +19,7 @@
  
 */
 
-#ifndef MESSAGEWIDGET_H
-#define MESSAGEWIDGET_H
+#pragma once
 
 #include <QWidget>
 #include <QQueue>
@@ -73,6 +72,5 @@ private:
 	QPushButton* m_button;
 };
 
-#endif
 
 //eof

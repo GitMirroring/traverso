@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef AUDIOCLIP_EXTERNAL_PROCESSING_DIALOG_H
-#define AUDIOCLIP_EXTERNAL_PROCESSING_DIALOG_H
+#pragma once
 
 #include <QProcess>
 #include "ui_ExternalProcessingDialog.h"
@@ -67,6 +66,5 @@ private slots:
 };
 
 
-#endif
 
 //eof

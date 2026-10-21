@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef VORBISAUDIOREADER_H
-#define VORBISAUDIOREADER_H
+#pragma once
 
 #include "AbstractAudioReader.h"
 #include "vorbis/codec.h"
@@ -47,4 +46,3 @@ protected:
 	vorbis_info*	m_vi;
 };
 
-#endif

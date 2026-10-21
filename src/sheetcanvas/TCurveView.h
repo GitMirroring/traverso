@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef CURVE_VIEW_H
-#define CURVE_VIEW_H
+#pragma once
 
 #include "TAudioBuffer.h"
 #include "TViewItem.h"
@@ -94,7 +93,6 @@ signals :
 	void curveUpdated(int xleft, int xright);
 };
 
-#endif
 
 //eof
  

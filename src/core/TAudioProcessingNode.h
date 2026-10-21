@@ -3,8 +3,7 @@
     This file is part of Traverso
 */
 
-#ifndef T_AUDIO_PROCESSING_NODE_H
-#define T_AUDIO_PROCESSING_NODE_H
+#pragma once
 
 #include "TCommand.h"
 #include "TContextItem.h"
@@ -70,4 +69,3 @@ signals:
     void gainChanged();
 };
 
-#endif

@@ -1,5 +1,4 @@
-#ifndef SPECTRALMETERCONFIGWIDGET_H
-#define SPECTRALMETERCONFIGWIDGET_H
+#pragma once
 
 #include "ui_SpectralMeterConfigWidget.h"
 #include <qdialog.h>
@@ -27,4 +26,3 @@ signals:
 };
 
 
-#endif // SPECTRALMETERCONFIGWIDGET_H

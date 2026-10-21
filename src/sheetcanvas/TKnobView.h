@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TKNOBVIEW_H
-#define TKNOBVIEW_H
+#pragma once
 
 
 #include "TViewItem.h"
@@ -103,4 +102,3 @@ private slots:
     void track_gain_changed();
 };
 
-#endif // TKNOBVIEW_H

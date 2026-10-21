@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: FadeCurveView.h,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 */
 
-#ifndef FADE_VIEW_H
-#define FADE_VIEW_H
+#pragma once
 
 #include "TAudioBuffer.h"
 #include "TViewItem.h"
@@ -66,7 +65,6 @@ signals :
 };
 
 
-#endif
 
 //eof
 

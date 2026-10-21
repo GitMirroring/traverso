@@ -1,5 +1,4 @@
-#ifndef TAUDIOBUSCONFIGURATION_H
-#define TAUDIOBUSCONFIGURATION_H
+#pragma once
 
 #include <QString>
 #include <QStringList>
@@ -18,4 +17,3 @@ public:
     qint64 id;
 };
 
-#endif // TAUDIOBUSCONFIGURATION_H

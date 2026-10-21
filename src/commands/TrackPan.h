@@ -19,8 +19,7 @@
  
 */
 
-#ifndef TRACKPAN_H
-#define TRACKPAN_H
+#pragma once
 
 #include "TCommand.h"
 
@@ -64,6 +63,5 @@ public slots:
 
 };
 
-#endif
 
 

@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TSESSION_H
-#define TSESSION_H
+#pragma once
 
 #include "TContextItem.h"
 
@@ -196,4 +195,3 @@ signals:
 	void propertyChanged();
 };
 
-#endif // TSESSION_H

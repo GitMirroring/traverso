@@ -1,5 +1,4 @@
-#ifndef CORRELATIONMETERVIEW_H
-#define CORRELATIONMETERVIEW_H
+#pragma once
 
 #include "widgets/MeterView.h"
 
@@ -33,4 +32,3 @@ public slots:
 
 };
 
-#endif // CORRELATIONMETERVIEW_H

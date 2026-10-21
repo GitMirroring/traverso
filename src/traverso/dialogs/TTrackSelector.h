@@ -19,8 +19,7 @@
 
 */
 
-#ifndef TTRACKSELECTOR_H
-#define TTRACKSELECTOR_H
+#pragma once
 
 #include "ui_TTrackSelector.h"
 #include <QDialog>
@@ -41,4 +40,3 @@ private:
         TSession*       m_childSession;
 };
 
-#endif // TTRACKSELECTOR_H

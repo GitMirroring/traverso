@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TAUDIODEVICE_H
-#define TAUDIODEVICE_H
+#pragma once
 
 #include <QObject>
 #include <QList>
@@ -353,6 +352,5 @@ private slots:
 TAudioDevice& audiodevice();
 
 
-#endif
 
 //eof

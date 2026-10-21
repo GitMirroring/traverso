@@ -1,5 +1,4 @@
-#ifndef SPECTRALMETERVIEW_H
-#define SPECTRALMETERVIEW_H
+#pragma once
 
 #include "MeterView.h"
 
@@ -82,4 +81,3 @@ public slots:
 	TCommand*	screen_capture();
 };
 
-#endif // SPECTRALMETERVIEW_H

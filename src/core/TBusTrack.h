@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef TBUS_TRACK_H
-#define TBUS_TRACK_H
+#pragma once
 
 #include "TProcessCallBackData.h"
 #include "TTimeRef.h"
@@ -84,4 +83,3 @@ public:
 
 };
 
-#endif // TBUS_TRACK_H

@@ -20,8 +20,7 @@
     $Id: Themer.h,v 1.5 2009/04/16 18:05:34 n_doebelin Exp $
 */
 
-#ifndef T_THEMER_H
-#define T_THEMER_H
+#pragma once
 
 #include <QObject>
 #include <QColor>
@@ -88,5 +87,4 @@ signals:
 // use this function to get the Colormanager object
 TThemer* themer();
 
-#endif
 

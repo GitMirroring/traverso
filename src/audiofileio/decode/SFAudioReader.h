@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef SFAUDIOREADER_H
-#define SFAUDIOREADER_H
+#pragma once
 
 #include <AbstractAudioReader.h>
 #include "sndfile.h"
@@ -48,4 +47,3 @@ private:
 	QFile m_file;
 };
 
-#endif

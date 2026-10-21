@@ -1,5 +1,4 @@
-#ifndef TVUMONITOR_H
-#define TVUMONITOR_H
+#pragma once
 
 #include "defines.h"
 
@@ -41,4 +40,3 @@ private:
     audio_sample_t m_peak;
 };
 
-#endif // TVUMONITOR_H

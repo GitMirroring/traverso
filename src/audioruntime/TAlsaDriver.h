@@ -22,8 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef T_ALSADRIVER_H
-#define T_ALSADRIVER_H
+#pragma once
 
 #include "TAudioDriver.h"
 
@@ -230,6 +229,5 @@ private:
 
 };
 
-#endif
 
 //eof

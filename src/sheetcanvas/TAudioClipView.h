@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef AUDIO_CLIP_VIEW_H
-#define AUDIO_CLIP_VIEW_H
+#pragma once
 
 #include "TViewItem.h"
 
@@ -151,6 +150,5 @@ private slots:
     void clip_state_changed();
 };
 
-#endif
 
 //eof

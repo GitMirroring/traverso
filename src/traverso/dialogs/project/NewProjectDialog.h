@@ -19,8 +19,7 @@
  
 */
 
-#ifndef NEW_PROJECT_DIALOG_H
-#define NEW_PROJECT_DIALOG_H
+#pragma once
 
 #include "ui_NewProjectDialog.h"
 #include <QDialog>
@@ -67,7 +66,6 @@ signals:
         void numberOfFiles(int);
 };
 
-#endif
 
 //eof
 

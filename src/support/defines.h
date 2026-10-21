@@ -1,5 +1,4 @@
-#ifndef TRAVERSO_TYPES_H
-#define TRAVERSO_TYPES_H
+#pragma once
 
 #include <QString>
 #include <QStringList>
@@ -261,6 +260,5 @@ typedef uint8_t            u_int8_t;
 #define PROFILE_START auto starttime = TTimeRef::get_microseconds_since_epoch();
 #define PROFILE_END(args...) auto processtime = (TTimeRef::get_microseconds_since_epoch() - starttime); printf("Process time for %s: %ld useconds\n\n", args, processtime);
 
-#endif // endif TRAVERSO_TYPES_H
 
 //eof

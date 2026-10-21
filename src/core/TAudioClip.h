@@ -18,8 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
-#ifndef T_AUDIOCLIP_H
-#define T_AUDIOCLIP_H
+#pragma once
 
 #include <QString>
 #include <QList>
@@ -190,4 +189,3 @@ private slots:
     void sync_location_to_stream();
 };
 
-#endif

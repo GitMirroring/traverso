@@ -20,8 +20,7 @@
     $Id: Command.h,v 1.13 2008/02/12 20:39:08 r_sijrier Exp $
 */
 
-#ifndef TCOMMAND_H
-#define TCOMMAND_H
+#pragma once
 
 #include <QObject>
 #include <QUndoCommand>
@@ -88,4 +87,3 @@ private:
     int push_to_history_stack();
 };
 
-#endif // TCOMMAND_H

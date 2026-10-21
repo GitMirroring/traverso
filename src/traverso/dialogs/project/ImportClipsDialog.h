@@ -19,8 +19,7 @@
  
 */
 
-#ifndef IMPORT_CLIPS_DIALOG_H
-#define IMPORT_CLIPS_DIALOG_H
+#pragma once
 
 #include "ui_ImportClipsDialog.h"
 #include "TAudioTrack.h"
@@ -47,7 +46,6 @@ private:
 
 };
 
-#endif
 
 //eof
 

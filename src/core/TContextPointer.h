@@ -19,8 +19,7 @@
 
 */
 
-#ifndef TCONTEXTPOINTER_H
-#define TCONTEXTPOINTER_H
+#pragma once
 
 #include <QObject>
 #include "TTimeRef.h"
@@ -213,7 +212,6 @@ signals:
 // use this function to access the context pointer
 TContextPointer& cpointer();
 
-#endif
 
 
 //eof

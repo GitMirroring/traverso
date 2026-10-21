@@ -20,8 +20,7 @@
     $Id: Traverso.h,v 1.10 2007/10/27 17:57:16 r_sijrier Exp $
 */
 
-#ifndef Traverso_H
-#define Traverso_H
+#pragma once
 
 #include <QApplication>
 #include <QSessionManager>
@@ -49,4 +48,3 @@ private :
         void prepare_audio_device();
 };
 
-#endif

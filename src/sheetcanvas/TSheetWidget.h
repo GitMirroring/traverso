@@ -20,8 +20,7 @@
     $Id: SheetWidget.h,v 1.2 2009/02/23 20:12:58 r_sijrier Exp $
 */
 
-#ifndef SONG_WIDGET_H
-#define SONG_WIDGET_H
+#pragma once
 
 #include <QFrame>
 #include <QPushButton>
@@ -124,6 +123,5 @@ private slots:
 };
 
 
-#endif
 
 //eof

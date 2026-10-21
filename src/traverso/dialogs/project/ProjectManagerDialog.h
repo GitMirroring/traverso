@@ -19,8 +19,7 @@
  
 */
 
-#ifndef SONG_MANAGER_DIALOG_H
-#define SONG_MANAGER_DIALOG_H
+#pragma once
 
 #include "ui_ProjectManagerDialog.h"
 #include <QDialog>
@@ -61,7 +60,6 @@ private slots:
 	void reject();
 };
 
-#endif
 
 //eof
 

@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TSHORTCUTEDITORDIALOG_H
-#define TSHORTCUTEDITORDIALOG_H
+#pragma once
 
 #include <QDialog>
 
@@ -64,4 +63,3 @@ private slots:
 	void button_box_button_clicked(QAbstractButton*);
 };
 
-#endif // SHORTCUTEDITORDIALOG_H

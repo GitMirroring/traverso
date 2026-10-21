@@ -19,8 +19,7 @@
 
 */
 
-#ifndef MOVEPLUGIN_H
-#define MOVEPLUGIN_H
+#pragma once
 
 
 #include "TCommand.h"
@@ -54,4 +53,3 @@ public slots:
 };
 
 
-#endif // MOVEPLUGIN_H

@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TTRANSPORT_H
-#define TTRANSPORT_H
+#pragma once
 
 #include "TCommand.h"
 #include "TGlobalContext.h"
@@ -56,4 +55,3 @@ private:
 
 TTransport& transport();
 
-#endif // TTRANSPORT_H

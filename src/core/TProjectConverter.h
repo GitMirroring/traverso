@@ -19,8 +19,7 @@
  
 */
 
-#ifndef PROJECT_CONVERTER_H
-#define PROJECT_CONVERTER_H
+#pragma once
 
 #include <QObject>
 #include <QString>
@@ -71,4 +70,3 @@ signals:
 	void message(QString);
 };
 
-#endif

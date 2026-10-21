@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TSHORTCUTFUNCTION_H
-#define TSHORTCUTFUNCTION_H
+#pragma once
 
 #include "Debugger.h"
 #include "TActions.h"
@@ -160,4 +159,3 @@ private:
     int                 m_autorepeatStartDelay{-1};
 };
 
-#endif // TSHORTCUTFUNCTION_H

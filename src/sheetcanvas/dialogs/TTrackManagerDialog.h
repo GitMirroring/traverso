@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TTRACK_MANAGER_DIALOG_H
-#define TTRACK_MANAGER_DIALOG_H
+#pragma once
 
 #include "ui_TTrackManagerDialog.h"
 
@@ -86,4 +85,3 @@ private slots:
 
 };
 
-#endif

@@ -21,8 +21,7 @@ $Id: CorrelationMeter.h,v 1.2 2008/02/07 11:46:09 n_doebelin Exp $
 */
 
 
-#ifndef CORRELATION_METER_H
-#define CORRELATION_METER_H
+#pragma once
 
 #include "TAudioPlugin.h"
 #include "cameron/readerwritercircularbuffer.h"
@@ -66,5 +65,4 @@ private slots:
 };
 
 
-#endif
 

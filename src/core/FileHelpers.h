@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: FileHelpers.h,v 1.4 2007/10/06 14:17:58 r_sijrier Exp $
 */
 
-#ifndef TFILE_HELPER_H
-#define TFILE_HELPER_H
+#pragma once
 
 #include <QString>
 #include <QObject>
@@ -44,4 +43,3 @@ public:
     static bool save_document(const QDomDocument& doc, const QString& fileName, QString* error = nullptr);
 };
 
-#endif

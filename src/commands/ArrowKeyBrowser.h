@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef ARROWKEYBROWSER_H
-#define ARROWKEYBROWSER_H
+#pragma once
 
 #include "TCommand.h"
 #include <QTimer>
@@ -61,4 +60,3 @@ public slots:
     void right();
 };
 
-#endif // ARROWKEYBROWSER_H

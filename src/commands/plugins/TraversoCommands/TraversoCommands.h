@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TTRAVERSO_COMMANDS_H
-#define TTRAVERSO_COMMANDS_H
+#pragma once
 
 
 #include <TCommandPlugin.h>
@@ -169,6 +168,5 @@ class TNavigationBaseRight : QObject
     Q_OBJECT
 };
 
-#endif
 
 //eof

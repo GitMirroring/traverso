@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#ifndef TCOMMAND_PLUGIN_H
-#define TCOMMAND_PLUGIN_H
+#pragma once
 
 #include <QStringList>
 #include <QHash>
@@ -69,6 +68,5 @@ protected:
 	QHash<TActionId, int> m_dict;
 };
 
-#endif
 
 //eof

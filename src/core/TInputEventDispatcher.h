@@ -19,8 +19,7 @@
 
 */
 
-#ifndef TINPUT_EVENT_DISPATCHER_H
-#define TINPUT_EVENT_DISPATCHER_H
+#pragma once
 
 #include <QObject>
 #include <QTimer>
@@ -163,4 +162,3 @@ signals:
 // use this function to get the InputEngine object
 TInputEventDispatcher& ied();
 
-#endif // TINPUT_EVENT_DISPATCHER_H

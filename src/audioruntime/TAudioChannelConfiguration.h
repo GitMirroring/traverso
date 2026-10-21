@@ -1,5 +1,4 @@
-#ifndef TAUDIOCHANNELCONFIGURATION_H
-#define TAUDIOCHANNELCONFIGURATION_H
+#pragma once
 
 #include <QString>
 
@@ -13,4 +12,3 @@ public:
     QString destination;
 };
 
-#endif // TAUDIOCHANNELCONFIGURATION_H

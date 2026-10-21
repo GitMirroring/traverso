@@ -19,8 +19,7 @@
 
 */
 
-#ifndef MOVETRACK_H
-#define MOVETRACK_H
+#pragma once
 
 
 #include "TMoveCommand.h"
@@ -63,4 +62,3 @@ public slots:
 
 
 
-#endif // MOVETRACK_H

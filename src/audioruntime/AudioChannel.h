@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 */
 
-#ifndef AUDIOCHANNEL_H
-#define AUDIOCHANNEL_H
+#pragma once
 
 #include "TAudioBuffer.h"
 #include "defines.h"
@@ -92,6 +91,5 @@ signals:
     void vuMonitorRemoved(TVUMonitor*);
 };
 
-#endif
 
 //eof

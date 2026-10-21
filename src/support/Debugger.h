@@ -22,8 +22,7 @@
 // log's error and warning, PMESG and PDEBUG the developer log's debug,
 // PMESG2..4 and PENTER* its trace. The category is the source file.
 
-#ifndef TRAVERSO_DEBUGGER_H
-#define TRAVERSO_DEBUGGER_H
+#pragma once
 
 #include "TLog.h"
 
@@ -110,4 +109,3 @@ private:
 #define PMESG2_START(...) ((void)0)
 #define PMESG2_END(...)   ((void)0)
 
-#endif

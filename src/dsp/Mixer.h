@@ -3,8 +3,7 @@
     This file is part of Traverso
 */
 
-#ifndef TRAVERSO_MIXER_H
-#define TRAVERSO_MIXER_H
+#pragma once
 
 #include "defines.h"
 #include <cmath>
@@ -110,4 +109,3 @@ public:
     static float fader_position_to_gain(float position);
 };
 
-#endif

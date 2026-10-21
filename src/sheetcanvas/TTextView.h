@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef TTEXTVIEW_H
-#define TTEXTVIEW_H
+#pragma once
 
 #include "TViewItem.h"
 
@@ -40,4 +39,3 @@ private:
         QString		m_text;
 };
 
-#endif // TTEXTVIEW_H

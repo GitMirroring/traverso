@@ -20,8 +20,7 @@
     $Id: MoveEdge.h,v 1.11 2009/03/07 17:33:12 r_sijrier Exp $
 */
 
-#ifndef MOVEEDGE_H
-#define MOVEEDGE_H
+#pragma once
 
 #include "TMoveCommand.h"
 #include "TTimeRef.h"
@@ -63,5 +62,4 @@ public slots:
     void prev_snap_pos();
 };
 
-#endif
 

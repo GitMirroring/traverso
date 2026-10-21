@@ -21,8 +21,7 @@ $Id: AudioBus.h,v 1.7 2007/06/04 20:47:16 r_sijrier Exp $
 */
 
 
-#ifndef AUDIOBUS_H
-#define AUDIOBUS_H
+#pragma once
 
 #include <QObject>
 #include <QList>
@@ -141,6 +140,5 @@ inline AudioChannel * AudioBus::get_channel( uint channelNumber )
 }
 
 
-#endif
 
 //eof
