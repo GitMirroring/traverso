@@ -15,3 +15,9 @@ add_test(NAME resample_reader COMMAND traverso_resample_reader_test)
 add_executable(traverso_resample_writer_test test_resample_writer.cpp)
 target_link_libraries(traverso_resample_writer_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
 add_test(NAME resample_writer COMMAND traverso_resample_writer_test)
+
+# Headless test of the resampler's qualities: each one is what its backend
+# means by it, the best first
+add_executable(traverso_resampler_quality_test test_resampler_quality.cpp)
+target_link_libraries(traverso_resampler_quality_test PRIVATE traverso_compiler_settings traversodsp traversosupport Qt6::Core)
+add_test(NAME resampler_quality COMMAND traverso_resampler_quality_test)
