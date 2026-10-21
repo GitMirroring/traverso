@@ -22,14 +22,14 @@ Each sheet keeps **two** DiskIO threads:
 A round is a barrier: it ends when its slowest step is done. A read that
 hangs (a disk spinning up, a seek storm on a hard disk) would otherwise hold
 up the flush of the write buffers (about one second), and that is recorded
-audio lost. Both threads run the same loop. DiskIO stays per sheet; one
+audio lost. Both work the same way. DiskIO stays per sheet; one
 DiskIO for the whole project is a later step.
 
-## 2. The loop
+## 2. The scheduler thread
 
-`TIOScheduler` is a `QObject` of the GUI thread with a loop thread of its
-own (`start()`); a test calls `dispatch()`, one turn of the loop, without
-it. The loop (`loop()`):
+`TIOScheduler` is a `QObject` of the owner thread (the GUI) with a
+scheduler thread of its own (`start()`); a test calls `dispatch()`, one turn
+of the scheduler thread, without it. The scheduler thread (`run()`):
 1. Wait for a wake: the audio thread's `tick()` every cycle, also with the
    transport stopped, or a request. One semaphore, any number of wakers,
    the audio thread never blocks. After a round with idle work the next
@@ -37,8 +37,8 @@ it. The loop (`loop()`):
 2. Take the requests, between rounds and never during a step: streams added
    and removed, new idle tasks (one mutex). A seek, a rate or a quality
    change are atomics the round reads. `remove_stream()` returns once the
-   loop has let go of the stream (`retire()` frees its ring buffers); its
-   owner deletes it then, on the GUI thread.
+   scheduler thread has let go of the stream (`retire()` frees its ring
+   buffers); its owner deletes it then, on the GUI thread.
 3. One round (`do_round()`):
    - every stream reports its state in one call (`disk_state()`: whether it
      has work, whether its fill counts, its fill);
@@ -46,14 +46,67 @@ it. The loop (`loop()`):
    - `TIOPlanner` decides the order;
    - one step of each runs with one `QtConcurrent::blockingMap`, spread
      over the global pool. In Qt 6 `blockingMap()` starts the work on the
-     pool and waits: the loop thread takes part only when the pool is busy
-     (then it runs the round alone, so the scheduler always gets on). A
-     round of one step runs on the loop thread without the hand-over to the
-     pool.
+     pool and waits: the scheduler thread takes part only when the pool is
+     busy (then it runs the round alone, so the scheduler always gets on). A
+     round of one step runs on the scheduler thread without the hand-over
+     to the worker threads.
 4. After the round: the GUI's fill meter takes the emptiest stream in sync;
    a seek round reports `seekFinished`; idle tasks that are over are handed
    back (`retire()`, a build reports its result then, see
    §5) and deleted.
+
+### Threads, ownership and hand-overs
+
+| Thread | Calls | Has alone | May block |
+|---|---|---|---|
+| Audio thread | `tick()`, `set_transport_location()`, `set_seek_transport_location()`; it reads or writes the rings of the streams it processes | nothing of the scheduler | never: atomics, the wake's `signal()`, the streams' lock-free slot queues |
+| Owner thread (GUI) | the constructor, `start()`, the destructor; `add_stream()`, `remove_stream()`; the meters | a stream before `add_stream()` and after `remove_stream()` returned | on the request lock for a moment; `remove_stream()` until the round that runs is over |
+| Any thread | `add_idle_task()`; the setters (rate, quality, buffer size, idle allowed, idle limit) | — | on the request lock for a moment |
+| Scheduler thread | `dispatch()`: the requests, the plan, a round; between rounds the streams' `disk_state()` and `set_output_rate_and_convertor_type()` (a new quality), and `retire()` of streams and tasks | the stream list, the task list, the planner, the round's information | on the wake; on the end of a round; on disk IO when it runs a step itself (a round of one step, a busy pool) |
+| Worker threads (the global pool) | `step()` of one stream or one task | that stream or task during its step | on disk IO |
+
+| From → to | What | How |
+|---|---|---|
+| Audio → scheduler | transport location | `std::atomic<qint64>`, universal frames |
+| Audio → scheduler | a seek | the location (`std::atomic<qint64>`) first, then the flag (release); the round takes the flag with `exchange()` (acquire) at its start, and the transport goes on from the location it served |
+| Audio → scheduler | the wake | `LightweightSemaphore::signal()` |
+| Audio ↔ steps | audio data | the stream's ring, its lock-free slot queues |
+| Owner, any → scheduler | streams added and removed, tasks | lists under one `std::mutex` |
+| Owner, any → scheduler | rate, quality, buffer size, idle allowed, idle limit | atomics |
+| Scheduler → workers | the steps of a round | `blockingMap`, and the release/acquire pair `m_roundStarted`/`m_stepsDone` |
+| Scheduler → owner | a finished seek | `seekFinished()`, queued (the object lives on the owner thread) |
+| Scheduler → a task's owner | a task's result | the task's `QPromise`, set in `retire()` |
+
+**A stream**
+1. The owner makes it and calls `add_stream()` before the audio thread can
+   see it; the rate and the rings (`prepare_rt_buffers()`) are set there, on
+   the owner thread.
+2. While registered, the scheduler thread and the worker threads change its
+   disk side, the audio thread its side of the ring. A seek step with a new
+   rate makes the rings again, on a worker thread, while the audio thread
+   waits for the seek. *Open:* the GUI writes a reader's position and range
+   in place (`m_streamStart`, `m_streamEnd`, `m_sourceStartLocation`)
+   while the scheduler thread and the workers read them.
+3. Before `remove_stream()` the owner takes it out of the audio processing.
+   The project's close order and the stopped transport see to that; the
+   scheduler does not check it.
+4. `remove_stream()` returns once the scheduler thread took it out between
+   two rounds and called `retire()`, which frees the rings. The owner
+   deletes it then, on the owner thread.
+
+**A task:** the scheduler's from `add_idle_task()`. `step()` runs at most
+once per round, on a worker or the scheduler thread. When it returns false
+the scheduler thread calls `retire()` after the round and deletes the task;
+at the end the destructor does that for the tasks that are left. A result
+goes out through the task's `QPromise`.
+
+**One seek at a time:** the owner asks for the next only after
+`seekFinished` (`TSheet::initiate_seek_start()` refuses meanwhile).
+
+**The end** (destructor, owner thread), once the audio thread no longer
+calls the scheduler: stop, wake and join the scheduler thread (a round that
+runs ends first); assert that no stream is registered; retire and delete
+the tasks that are left.
 
 A seek that comes in during a round is taken at the next round. Idle steps
 of the running round that have not started yet give way to it; a read that

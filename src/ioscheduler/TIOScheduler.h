@@ -45,18 +45,39 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  *
  * Each sheet has two: one for its readers and their idle work, one for its
  * writers (recordings), so a slow read never holds up writing what was
- * recorded. Both run the same loop on a thread of their own: wait for a
- * wake (the audio thread's tick every cycle, or a request), then rounds
- * (dispatch()). A round asks every stream what it needs, lets TIOPlanner
- * pick the order (streams first, the emptiest first, then idle tasks on the
- * threads left) and runs one step of each in parallel on the global thread
- * pool (the loop waits, and runs the round itself when the pool is busy).
+ * recorded. Each runs on a scheduler thread of its own: wait for a wake (the
+ * audio thread's tick every cycle, or a request), then rounds (dispatch()).
+ * A round asks every stream what it needs, lets TIOPlanner pick the order
+ * (streams first, the emptiest first, then idle tasks on the threads left)
+ * and runs one step of each in parallel on worker threads (the global pool;
+ * the scheduler thread waits, and runs steps itself when the pool is busy).
  * Between rounds, never during one: seeks, streams added and removed, new
  * idle tasks, rate changes. Nothing is timed: the kernel schedules, the
  * scheduler only knows the order.
  *
- * The object lives on the thread that made it (the GUI thread); only its
- * loop runs on the loop thread. Without start() there is no loop: a test
+ * Threads (doc/design/diskio-rounds.md, section 2, has the full contract):
+ * - audio thread: tick(), set_transport_location(),
+ *   set_seek_transport_location(); never blocks (atomics, the wake). It
+ *   reads or writes the rings of the streams it processes.
+ * - owner thread (GUI): the constructor, start(), the destructor,
+ *   add_stream(), remove_stream(), the meters. remove_stream() waits until
+ *   the round that runs is over.
+ * - any thread: add_idle_task() and the setters (atomics, or the request
+ *   lock for a moment).
+ * - scheduler thread: dispatch(); it alone has the stream list, the task
+ *   list, the planner and the round. It blocks on the wake, on the end of a
+ *   round, and on disk IO when it runs a step itself.
+ * - worker threads: step() of one stream or one task, during a round.
+ *
+ * Ownership: a stream is its owner's until add_stream() and again once
+ * remove_stream() returned; in between the scheduler has it, and calls
+ * retire() when it takes it out. The owner then deletes it. Before
+ * remove_stream() the owner takes it out of the audio processing. A task is
+ * the scheduler's from add_idle_task() until it is retired and deleted.
+ * One seek at a time: the next is asked for after seekFinished.
+ *
+ * The object lives on the owner thread; only dispatch() runs on the
+ * scheduler thread. Without start() there is no scheduler thread: a test
  * calls dispatch() itself.
  */
 class TIOScheduler : public QObject
@@ -65,15 +86,15 @@ class TIOScheduler : public QObject
 
 public:
     TIOScheduler();
-    // Stops the loop and hands back the tasks that are left. The streams
+    // Stops the scheduler thread and hands back the tasks that are left. The streams
     // must have been removed before.
     ~TIOScheduler();
 
-    // Starts the loop thread, once the owner has set the rate, the buffer
+    // Starts the scheduler thread, once the owner has set the rate, the buffer
     // size and the quality
     void start();
 
-    // The audio thread, every cycle: wakes the loop, never blocks
+    // The audio thread, every cycle: wakes the scheduler thread, never blocks
     void tick() { m_wake.signal(); }
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
@@ -86,7 +107,7 @@ public:
     }
 
     // The owner's thread. A stream to read or write. remove_stream()
-    // returns once the loop has let go of the stream (it called retire());
+    // returns once the scheduler thread has let go of the stream (it called retire());
     // the owner deletes it then.
     void add_stream(TIOStream* stream);
     void remove_stream(TIOStream* stream);
@@ -94,7 +115,7 @@ public:
     // Background work for the idle time; the scheduler owns the task until
     // it is done (and deletes it then, or when it goes). Any thread. Picked
     // up at the next wake: without a running driver (not even the Dummy
-    // one) the loop is not woken every cycle and idle tasks wait.
+    // one) the scheduler thread is not woken every cycle and idle tasks wait.
     void add_idle_task(std::unique_ptr<TIOTask> task);
 
     // Any thread. The output rate takes effect at the next seek (the
@@ -123,23 +144,23 @@ public:
     bool get_cpu_time(float &time);
     int get_buffers_fill_status();
 
-    // One turn of the loop: the requests that came, then a round. True when
-    // the next turn follows without waiting for a wake. On the loop thread,
-    // or on the owner's thread when there is no loop (a test).
+    // One turn of the scheduler thread: the requests that came, then a
+    // round. True when the next turn follows without waiting for a wake. On
+    // the scheduler thread, or on the owner's thread without one (a test).
     bool dispatch();
 
 signals:
     void seekFinished();
 
 private:
-    void loop();
+    void run();
     // Between rounds: streams added and removed, new idle tasks
     void take_requests();
     // One round; true when the next one follows without waiting for the tick
     bool do_round();
-    bool on_loop_thread() const;
+    bool on_scheduler_thread() const;
 
-    std::unique_ptr<QThread> m_loop;
+    std::unique_ptr<QThread> m_thread;
     moodycamel::spsc_sema::LightweightSemaphore m_wake;
     std::atomic<bool> m_stopRequested{false};
 
@@ -170,11 +191,11 @@ private:
     // What the steps of the current round need to know
     TIOStream::StepInfo m_round;
 
-    // The hand-over between the loop and the round's steps (do_round())
+    // The hand-over between the scheduler thread and the round's steps (do_round())
     std::atomic<quint64> m_roundStarted{0};
     std::atomic<quint64> m_stepsDone{0};
 
-    // The loop's
+    // The scheduler thread's
     TIOPlanner m_planner;
     std::vector<TIOStream*> m_streams;
     std::deque<std::unique_ptr<TIOTask>> m_idleTasks;

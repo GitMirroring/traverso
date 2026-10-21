@@ -3,7 +3,8 @@
 
 // Headless test of TIOScheduler with streams and tasks of its own, no core,
 // no driver: dispatch() called directly, a stream removed while rounds run
-// on the loop thread, the end with tasks still running, a seek, a new rate.
+// on the scheduler thread, the end with tasks still running, a seek, a new
+// rate.
 
 #include "TIOScheduler.h"
 #include "TIOStream.h"
@@ -108,7 +109,7 @@ int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
 
-    // dispatch() without a loop and without a driver: the streams that need
+    // dispatch() without a scheduler thread and without a driver: the streams that need
     // work get one step per round, an idle task runs to its end and is
     // handed back once
     {
@@ -136,14 +137,14 @@ int main(int argc, char** argv)
 
         scheduler.remove_stream(&reading);
         scheduler.remove_stream(&full);
-        check(reading.m_retired.load() == 1 && full.m_retired.load() == 1, "remove_stream() without a loop hands the stream back");
+        check(reading.m_retired.load() == 1 && full.m_retired.load() == 1, "remove_stream() without a scheduler thread hands the stream back");
         reading.m_needsWork = true;
         scheduler.dispatch();
         check(reading.m_steps.load() == 1, "a removed stream gets no step");
     }
 
-    // A stream removed while the loop runs rounds (the audio thread ticks):
-    // remove_stream() returns only once the loop let go of it, no step of it
+    // A stream removed while the scheduler thread runs rounds (the audio thread ticks):
+    // remove_stream() returns only once the scheduler thread let go of it, no step of it
     // runs after that
     for (int round = 0; round < 20; ++round) {
         TIOScheduler scheduler;

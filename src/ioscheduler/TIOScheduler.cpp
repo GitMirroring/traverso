@@ -48,13 +48,13 @@ TIOScheduler::~TIOScheduler()
 {
     PENTERDES;
 
-    // No new work, the loop wakes and ends (a round that runs ends first:
+    // No new work, the scheduler thread wakes and ends (a round that runs ends first:
     // its steps use the streams and tasks), then the tasks that are left go
     // back to their owners
     m_stopRequested.store(true);
-    if (m_loop) {
+    if (m_thread) {
         m_wake.signal();
-        m_loop->wait();
+        m_thread->wait();
     }
     Q_ASSERT_X(m_streams.empty() && m_streamsToAdd.empty(), "TIOScheduler", "streams are still registered");
     for (const std::unique_ptr<TIOTask>& task : m_tasksToAdd) {
@@ -67,17 +67,17 @@ TIOScheduler::~TIOScheduler()
 
 void TIOScheduler::start()
 {
-    Q_ASSERT(!m_loop);
-    m_loop.reset(QThread::create([this] { loop(); }));
-    m_loop->start();
+    Q_ASSERT(!m_thread);
+    m_thread.reset(QThread::create([this] { run(); }));
+    m_thread->start();
 }
 
-bool TIOScheduler::on_loop_thread() const
+bool TIOScheduler::on_scheduler_thread() const
 {
-    return m_loop ? QThread::currentThread() == m_loop.get() : QThread::currentThread() == thread();
+    return m_thread ? QThread::currentThread() == m_thread.get() : QThread::currentThread() == thread();
 }
 
-void TIOScheduler::loop()
+void TIOScheduler::run()
 {
     TLog::name_thread("diskio");
 
@@ -111,7 +111,7 @@ bool TIOScheduler::dispatch()
 
 void TIOScheduler::take_requests()
 {
-    Q_ASSERT_X(on_loop_thread(), "TIOScheduler::take_requests", "not on the loop thread");
+    Q_ASSERT_X(on_scheduler_thread(), "TIOScheduler::take_requests", "not on the scheduler thread");
 
     std::lock_guard locker(m_requestsMutex);
     for (TIOStream* stream : m_streamsToAdd) {
@@ -136,7 +136,7 @@ void TIOScheduler::take_requests()
 
 bool TIOScheduler::do_round()
 {
-    Q_ASSERT_X(on_loop_thread(), "TIOScheduler::do_round", "not on the loop thread");
+    Q_ASSERT_X(on_scheduler_thread(), "TIOScheduler::do_round", "not on the scheduler thread");
 
     if (m_qualityChanged.exchange(false)) {
         for (TIOStream* stream : m_streams) {
@@ -326,13 +326,13 @@ void TIOScheduler::remove_stream(TIOStream* stream)
 
     std::unique_lock locker(m_requestsMutex);
     m_streamsToRemove.push_back(stream);
-    if (!m_loop) {
-        // No loop: this thread is the only one
+    if (!m_thread) {
+        // No scheduler thread: this thread is the only one
         locker.unlock();
         take_requests();
         return;
     }
-    // Until the loop took it, between two rounds: no step of it runs after
+    // Until the scheduler thread took it, between two rounds: no step of it runs after
     const quint64 request = ++m_requested;
     m_wake.signal();
     m_requestsTaken.wait(locker, [this, request] { return m_taken >= request; });
