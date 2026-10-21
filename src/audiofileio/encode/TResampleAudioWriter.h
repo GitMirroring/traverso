@@ -18,9 +18,9 @@ the Free Software Foundation; either version 2 of the License, or
 #include <vector>
 
 #include "TAudioEncodeSettings.h"
+#include "TFileIOBuffer.h"
 class AbstractAudioWriter;
 class TAudioResampler;
-class TFileIOBuffer;
 
 class TResampleAudioWriter
 {
@@ -35,6 +35,8 @@ public:
 private:
     // At close: the resamplers' rest into the file
     void flush_resamplers();
+    // The channels of buffer, frames long, into its interleaved part
+    float* interleave(TFileIOBuffer& buffer, nframes_t frames);
     // targetFrames interleaved frames into the file, in the file's format
     nframes_t write_interleaved(TFileIOBuffer& fileIOBuffer, float* interleavedFloatBuffer, nframes_t targetFrames);
 
@@ -47,4 +49,8 @@ private:
 
     std::vector<std::unique_ptr<TAudioResampler>>   m_resamplers;
     GDither                                         m_dither;
+    // What the resamplers give, interleaved and packed there, like the
+    // decode buffer of TResampleAudioReader; the caller's buffer is only
+    // read then
+    TFileIOBuffer                                   m_resampleEncodeBuffer;
 };

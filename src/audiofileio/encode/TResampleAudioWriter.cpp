@@ -100,81 +100,54 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
         return 0;
     }
 
-    nframes_t targetFrames = frameCount;
-    float* interleavedFloatBuffer = nullptr;
-    uint chan;
-
-    if (!m_resamplers.empty()) {
-        double ratio = double(m_outputSampleRate) / m_inputSampleRate;
-        nframes_t maxExpectedOutFrames = nframes_t(frameCount * ratio) + 64;
-        nframes_t requiredInterleavedSamples = maxExpectedOutFrames * m_channelCount;
-
-        fileIOBuffer.check_capacity(requiredInterleavedSamples, m_channelCount);
-        interleavedFloatBuffer = fileIOBuffer.get_file_io_interleaved_buffer().get_data(requiredInterleavedSamples);
-
-        std::vector<std::vector<float>> tmpMonoBuffers(m_channelCount, std::vector<float>(maxExpectedOutFrames));
-
-        for (chan = 0; chan < m_channelCount; ++chan) {
-            float* inputMonoData = fileIOBuffer.get_channel_buffer(chan).get_data(frameCount);
-            targetFrames = m_resamplers[chan]->process(
-                inputMonoData,
-                frameCount,
-                tmpMonoBuffers[chan].data(),
-                maxExpectedOutFrames,
-                false
-                );
-        }
-
-        if (targetFrames > 0) {
-            for (chan = 0; chan < m_channelCount; ++chan) {
-                for (uint f = 0; f < targetFrames; ++f) {
-                    interleavedFloatBuffer[f * m_channelCount + chan] = tmpMonoBuffers[chan][f];
-                }
-            }
-        }
-    }
-    else {
-        nframes_t requiredInterleavedSamples = frameCount * m_channelCount;
-        fileIOBuffer.check_capacity(requiredInterleavedSamples, m_channelCount);
-        interleavedFloatBuffer = fileIOBuffer.get_file_io_interleaved_buffer().get_data(requiredInterleavedSamples);
-
-        for (chan = 0; chan < m_channelCount; ++chan) {
-            float* readBuffer = fileIOBuffer.get_channel_buffer(chan).get_data(frameCount);
-            for (uint f = 0; f < frameCount; ++f) {
-                interleavedFloatBuffer[f * m_channelCount + chan] = readBuffer[f];
-            }
-        }
+    if (m_resamplers.empty()) {
+        return write_interleaved(fileIOBuffer, interleave(fileIOBuffer, frameCount), frameCount);
     }
 
-    if (targetFrames == 0) {
+    // Resampled into the writer's own buffer: the output has another length
+    // than the input it is made from, and the input is still read
+    const double ratio = double(m_outputSampleRate) / m_inputSampleRate;
+    const nframes_t maxOutputFrames = nframes_t(frameCount * ratio) + 64;
+    m_resampleEncodeBuffer.check_capacity(maxOutputFrames, m_channelCount);
+    nframes_t frames = 0;
+    for (uint chan = 0; chan < m_channelCount; ++chan) {
+        frames = m_resamplers[chan]->process(fileIOBuffer.get_channel_buffer(chan).get_data(frameCount), frameCount,
+                                             m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(maxOutputFrames),
+                                             maxOutputFrames, false);
+    }
+    if (frames == 0) {
         return 0;
     }
-
-    return write_interleaved(fileIOBuffer, interleavedFloatBuffer, targetFrames);
+    return write_interleaved(m_resampleEncodeBuffer, interleave(m_resampleEncodeBuffer, frames), frames);
 }
 
 void TResampleAudioWriter::flush_resamplers()
 {
     const nframes_t chunk = 4096;
-    std::vector<std::vector<float>> monoBuffers(m_channelCount, std::vector<float>(chunk));
-    TFileIOBuffer fileIOBuffer;
+    m_resampleEncodeBuffer.check_capacity(chunk, m_channelCount);
     while (true) {
         nframes_t frames = 0;
         for (uint chan = 0; chan < m_channelCount; ++chan) {
-            frames = m_resamplers[chan]->flush(monoBuffers[chan].data(), chunk);
+            frames = m_resamplers[chan]->flush(m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(chunk), chunk);
         }
         if (frames == 0) {
             break;
         }
-        fileIOBuffer.check_capacity(frames * m_channelCount, m_channelCount);
-        float* interleaved = fileIOBuffer.get_file_io_interleaved_buffer().get_data(frames * m_channelCount);
-        for (uint chan = 0; chan < m_channelCount; ++chan) {
-            for (nframes_t f = 0; f < frames; ++f) {
-                interleaved[f * m_channelCount + chan] = monoBuffers[chan][f];
-            }
-        }
-        write_interleaved(fileIOBuffer, interleaved, frames);
+        write_interleaved(m_resampleEncodeBuffer, interleave(m_resampleEncodeBuffer, frames), frames);
     }
+}
+
+float* TResampleAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
+{
+    buffer.check_capacity(frames, m_channelCount);
+    float* interleaved = buffer.get_file_io_interleaved_buffer().get_data(frames * m_channelCount);
+    for (uint chan = 0; chan < m_channelCount; ++chan) {
+        const float* data = buffer.get_channel_buffer(chan).get_data(frames);
+        for (nframes_t f = 0; f < frames; ++f) {
+            interleaved[f * m_channelCount + chan] = data[f];
+        }
+    }
+    return interleaved;
 }
 
 nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, float* interleavedFloatBuffer, nframes_t targetFrames)
