@@ -299,7 +299,8 @@ static void stress_stream(const QString& peakPath, const QString& audioPath, con
         // Now and then max_amplitude over a stretch of what is recorded
         if (reads % 16 == 0) {
             const TPeakLevels all = stream->read(0, blocks, records);
-            const qint64 recorded = all.block_count(0) * TPeakLevels::BlockFrames;
+            // After finish() the last block may be partial: the frames end first
+            const qint64 recorded = std::min(all.block_count(0) * TPeakLevels::BlockFrames, all.frame_count());
             const qint64 first = random_between(0, recorded - 1);
             const qint64 last = std::min(first + random_between(1, 30000), recorded);
             float real = 0.0f;
@@ -559,11 +560,12 @@ int main()
         for (int steps = 0; steps < 50; ++steps) {
             task.step();
         }
-        // Level 0 so far is on disk, in the part file (50 slices of at most
-        // 1024 frames, the first of which opens)
+        // Level 0 so far is on disk, in the part file: every block the stream
+        // published (the source delivers less than asked now and then)
         const QString part = task.stream()->part_path();
-        CHECK(QFileInfo(part).size() >= TPeakFile::HeaderBytes + 40 * 16 * TPeakFile::record_bytes(2),
-              "%lld bytes: level 0 was not written", (long long)QFileInfo(part).size());
+        const qint64 written = task.stream()->written_frames();
+        CHECK(written > 0 && QFileInfo(part).size() == TPeakFile::HeaderBytes + written / 64 * TPeakFile::record_bytes(2),
+              "%lld bytes for %lld frames: level 0 was not written", (long long)QFileInfo(part).size(), (long long)written);
         task.cancel();
         CHECK(run(task) == TPeakBuildTask::State::Cancelled, "cancel not honoured");
         CHECK(!QFile::exists(part) && !QFile::exists(peakPath), "a cancelled build left a file behind");
