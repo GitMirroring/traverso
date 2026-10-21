@@ -122,11 +122,19 @@ static const char* pattern_name(Pattern p)
 // rate / buffer slots, then all free slots once the ring is at 80% or less;
 // Seek, the stream pattern from 3.3 s on. Returns the output and its first
 // frame on the file's timeline.
-static std::vector<float> read_all(const QString& path, uint outputRate, int quality, Pattern pattern, nframes_t& first)
+static std::vector<float> read_all(const QString& path, uint outputRate, int quality, Pattern pattern, nframes_t& first,
+                                   nframes_t fileFrames, uint fileRate)
 {
     TResampleAudioReader reader(path);
     reader.set_output_rate(outputRate);
     reader.set_converter_type(quality);
+
+    // The length and the frames are the file's, at any output rate; the
+    // frames at the output rate end where the file ends
+    check(reader.get_length() == TTimeRef(fileFrames, fileRate), "the length is the file's");
+    check(reader.get_file_frames() == fileFrames, "the frames of the file at its own rate");
+    check(qint64(reader.get_nframes()) == TTimeRef::frame_at_or_after(TTimeRef(fileFrames, fileRate), outputRate),
+          "the frames at the output rate end where the file ends");
 
     const nframes_t bufferSize = 1024;
     const nframes_t slotCount = std::max<nframes_t>(5, outputRate / bufferSize);
@@ -186,7 +194,10 @@ int main()
         // Below both Nyquist frequencies, so the sweep is the same at either rate
         const double high = std::min(6000.0, 0.4 * std::min(c.fileRate, c.outputRate));
         const std::vector<float> s = sweep(c.fileRate, high);
-        std::vector<float> file(size_t(std::lround((sweep_start(SweepCount - 1) + 1.5) * c.fileRate)), 0.0f);
+        // 7 frames past a whole half second: the end falls between two
+        // frames of the output rate, so a length taken from the output
+        // frames would be off
+        std::vector<float> file(size_t(std::lround((sweep_start(SweepCount - 1) + 1.5) * c.fileRate)) + 7, 0.0f);
         for (int k = 0; k < SweepCount; ++k) {
             std::copy(s.begin(), s.end(), file.begin() + long(std::lround(sweep_start(k) * c.fileRate)));
         }
@@ -197,7 +208,7 @@ int main()
         for (int quality : qualities) {
             for (Pattern pattern : {Pattern::Buffers, Pattern::Stream, Pattern::Seek}) {
                 nframes_t first = 0;
-                const std::vector<float> out = read_all(path, c.outputRate, quality, pattern, first);
+                const std::vector<float> out = read_all(path, c.outputRate, quality, pattern, first, nframes_t(file.size()), c.fileRate);
                 double worst = 0.0;
                 int found = 0;
                 for (int k = 0; k < SweepCount; ++k) {

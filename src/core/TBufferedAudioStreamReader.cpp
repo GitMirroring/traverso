@@ -265,12 +265,6 @@ void TBufferedAudioStreamReader::set_output_rate_and_convertor_type(int outputRa
     m_resampleAudioReader->set_converter_type(converterType);
 
     m_outputRate = outputRate;
-
-    // The length could have become slightly smaller/larger due
-    // rounding issues involved with converting to one samplerate to another.
-    // Should be at the order of one - two samples at most, but for reading purposes we
-    // need sample accurate information!
-    m_length = m_resampleAudioReader->get_length();
 }
 
 void TBufferedAudioStreamReader::set_source_start_location(const TTimeRef &sourceStartLocation)
@@ -303,12 +297,13 @@ TBufferedAudioStreamReader * TBufferedAudioStreamReader::deep_copy( )
     return source;
 }
 
+// The frames of the file at its own rate, at any output rate
 nframes_t TBufferedAudioStreamReader::get_nframes( ) const
 {
     if (!m_resampleAudioReader) {
         return 0;
     }
-    return m_resampleAudioReader->get_nframes();
+    return m_resampleAudioReader->get_file_frames();
 }
 
 int TBufferedAudioStreamReader::set_file(const QString & filename)

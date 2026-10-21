@@ -96,8 +96,11 @@ void TResampleAudioReader::set_output_rate(uint rate)
     if (m_outputSampleRate == rate) return;
 
     m_outputSampleRate = rate;
-    m_fileFrames = file_to_resampled_frame(m_reader->get_nframes());
-    m_length = TTimeRef(m_fileFrames, m_outputSampleRate);
+    // The length is the file's, at any output rate; the frames the file
+    // gives at the output rate end where it ends
+    m_length = m_reader->get_length();
+    m_fileFrames = rate == m_fileSampleRate ? m_reader->get_nframes()
+                                            : nframes_t(TTimeRef::frame_at_or_after(m_length, m_outputSampleRate));
 
     double ratio = double(m_outputSampleRate) / m_fileSampleRate;
     for (const auto& resampler : m_resamplers) {

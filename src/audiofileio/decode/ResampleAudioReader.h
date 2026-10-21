@@ -47,6 +47,9 @@ public:
 
     uint get_output_rate() { return m_outputSampleRate; }
     uint get_file_rate() { return m_reader->get_file_rate(); }
+    // The frames of the file at its own rate; get_nframes() counts them at
+    // the output rate
+    nframes_t get_file_frames() const { return m_reader ? m_reader->get_nframes() : 0; }
     int get_convertor_type() const { return m_convertorType; }
     void set_output_rate(uint rate);
     void set_converter_type(int converterType);
@@ -77,9 +80,6 @@ protected:
 
     nframes_t resampled_to_file_frame(nframes_t frame) {
         return TTimeRef::to_frame(TTimeRef(frame, m_outputSampleRate), m_fileSampleRate);
-    }
-    nframes_t file_to_resampled_frame(nframes_t frame) {
-        return TTimeRef::to_frame(TTimeRef(frame, m_fileSampleRate), m_outputSampleRate);
     }
 
     std::unique_ptr<AbstractAudioReader>            m_reader;
