@@ -27,13 +27,7 @@ add_library(traversocore STATIC
     FileHelpers.cpp
     TInformUser.cpp
     TInputEventDispatcher.cpp
-    TPeakFile.h TPeakFile.cpp
-    TPeakCache.h TPeakCache.cpp
-    TPeakPyramid.h TPeakPyramid.cpp
-    TWaveformColumns.h TWaveformColumns.cpp
     TPeakBuildService.h TPeakBuildService.cpp
-    TPeakStream.h TPeakStream.cpp
-    TPeakBuildTask.h TPeakBuildTask.cpp
     TWaveform.h TWaveform.cpp
     TProject.cpp
     TProjectManager.cpp
@@ -84,6 +78,7 @@ target_link_libraries(traversocore
         traversodsp
         traversoaudioruntime
         traversoaudiofileio
+        traversowaveform
         Qt6::Widgets
         Qt6::Gui
         Qt6::Xml

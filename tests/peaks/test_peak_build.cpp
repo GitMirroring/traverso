@@ -8,7 +8,6 @@
 // it writes level 0 shows the right peaks; a write failure in the middle of
 // a recording leaves no file.
 
-#include "TBufferedAudioStreamStatus.h"
 #include "TPeakBuildTask.h"
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
@@ -328,26 +327,6 @@ static void stress_stream(const QString& peakPath, const QString& audioPath, con
 
 int main()
 {
-    // When DiskIO may do idle work (builds): no stream needs reading. A stream
-    // far from the transport (out of its window) needs nothing, also though it
-    // is not in sync for the audio thread
-    {
-        TBufferedAudioStreamStatus status;
-        status.set_sync_status(TBufferedAudioStreamStatus::OUT_OF_WINDOW);
-        status.set_fill_status(0);
-        CHECK(!status.needs_disk_work() && status.out_of_sync(), "a stream out of its window keeps DiskIO busy");
-        status.set_sync_status(TBufferedAudioStreamStatus::OUT_OF_SYNC);
-        status.set_fill_status(100);
-        CHECK(status.needs_disk_work(), "a stream out of sync near the transport needs no reading");
-        status.set_sync_status(TBufferedAudioStreamStatus::IN_SYNC);
-        status.set_fill_status(80);
-        CHECK(status.needs_disk_work(), "a stream with buffers at 80 %% needs no reading");
-        status.set_fill_status(81);
-        CHECK(!status.needs_disk_work(), "a stream with full buffers needs reading");
-        status.set_sync_status(TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
-        CHECK(status.needs_disk_work(), "a seeking stream needs no reading");
-    }
-
     QTemporaryDir dir;
     CHECK(dir.isValid(), "no temporary directory");
     // Any file stands in for the audio file: its size and time go into the header

@@ -3,6 +3,7 @@
 
 // Headless test of TDiskIOPlanner, the decisions of a DiskIO round
 
+#include "TBufferedAudioStreamStatus.h"
 #include "TDiskIOPlanner.h"
 
 #include <cstdio>
@@ -28,6 +29,26 @@ static Stream reader(int fill)
 
 int main()
 {
+    // When DiskIO may do idle work (builds): no stream needs reading. A stream
+    // far from the transport (out of its window) needs nothing, also though it
+    // is not in sync for the audio thread
+    {
+        TBufferedAudioStreamStatus status;
+        status.set_sync_status(TBufferedAudioStreamStatus::OUT_OF_WINDOW);
+        status.set_fill_status(0);
+        check(!status.needs_disk_work() && status.out_of_sync(), "a stream out of its window keeps DiskIO busy");
+        status.set_sync_status(TBufferedAudioStreamStatus::OUT_OF_SYNC);
+        status.set_fill_status(100);
+        check(status.needs_disk_work(), "a stream out of sync near the transport needs no reading");
+        status.set_sync_status(TBufferedAudioStreamStatus::IN_SYNC);
+        status.set_fill_status(80);
+        check(status.needs_disk_work(), "a stream with buffers at 80% needs no reading");
+        status.set_fill_status(81);
+        check(!status.needs_disk_work(), "a stream with full buffers needs reading");
+        status.set_sync_status(TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
+        check(status.needs_disk_work(), "a seeking stream needs no reading");
+    }
+
     {
         // Order: the reader under the threshold, then as many idle tasks as
         // there are threads left; full readers get no step
