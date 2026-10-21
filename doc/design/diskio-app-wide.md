@@ -111,8 +111,8 @@ this design does not stand in its way.
 
 ## 7. JACK transport
 
-JACK has one transport. Which groups it drives is project policy: the active
-song (the likely use, a JACK session is a song) or all of them. Today
+JACK has one transport. It drives the active song (decided: a JACK session
+is a song); driving all songs is an option of the project's policy. Today
 `TProject::transport_control()` passes it to every sheet.
 
 ## 8. Where it lives
@@ -169,7 +169,7 @@ device, buses, RT primitives) and would then depend on decoding files.
 Each step with headless tests on the planner (the order of section 3, the
 flags) and the reader's play-order functions (pure).
 
-## 11. Decided, and open
+## 11. Decided
 
 Decided by the user on 2026-10-21:
 - **DiskIO gets a thread pool of its own**, so the priority is DiskIO's
@@ -180,5 +180,5 @@ Decided by the user on 2026-10-21:
 - **Starting another song stops the song that plays.** Independent playback
   is a mode of its own, chosen on purpose.
 
-Open:
-- What JACK drives by default: the active song.
+- **JACK transport drives the active song by default.** Driving all songs
+  is an option of the project's policy.
