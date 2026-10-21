@@ -93,6 +93,5 @@ private:
     TFileIOBuffer m_resampleDecodeBuffer;
     // After a seek: output frames to drop before the position asked for
     nframes_t m_dropFrames{0};
-    TFileIOBuffer m_dropBuffer;
 };
 

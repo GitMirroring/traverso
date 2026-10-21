@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 #include <samplerate.h>
 
-#include <numeric>
+#include <algorithm>
 
 TResampleAudioReader::TResampleAudioReader(const QString& filename)
     : AbstractAudioReader(filename)
@@ -120,16 +120,13 @@ bool TResampleAudioReader::seek_private(nframes_t start)
 
     // A position in output frames is mostly no whole frame of the file, and
     // a seek to the nearest file frame would shift the output by a fraction
-    // of a frame. The frames of both rates meet every outStep output frames
-    // (160 at 48 kHz against 147 at 44.1 kHz): the file is sought to the
-    // last such point before start, and the output frames up to start are
-    // dropped by the next read.
-    const nframes_t common = std::gcd(m_fileSampleRate, m_outputSampleRate);
-    const nframes_t outStep = m_outputSampleRate / common;
-    const nframes_t fileStep = m_fileSampleRate / common;
-    const nframes_t steps = start / outStep;
-    m_dropFrames = start - steps * outStep;
-    return m_reader->seek(steps * fileStep);
+    // of a frame. The file is sought to the last frame before start where a
+    // frame of both rates coincide (every 147 frames of 44.1 kHz and 160 of
+    // 48 kHz); the next read drops the output frames from there to start.
+    const TTimeRef position(start, m_outputSampleRate);
+    const TTimeRef common = TTimeRef::common_frame_at_or_before(position, m_fileSampleRate, m_outputSampleRate);
+    m_dropFrames = nframes_t(TTimeRef::frame_at_or_before(position - common, m_outputSampleRate));
+    return m_reader->seek(nframes_t(TTimeRef::frame_at_or_before(common, m_fileSampleRate)));
 }
 
 nframes_t TResampleAudioReader::resample_turn(TFileIOBuffer& out, nframes_t at, nframes_t count, nframes_t& inputFrames)
@@ -204,12 +201,12 @@ nframes_t TResampleAudioReader::read_private(TFileIOBuffer& buffer, nframes_t fr
         return 0;
     }
 
-    // After a seek: the output frames between the point the file was sought
-    // to and the position asked for (seek_private())
-    if (m_dropFrames) {
-        m_dropBuffer.check_capacity(m_dropFrames, m_channels);
-        resample(m_dropBuffer, m_dropFrames);
-        m_dropFrames = 0;
+    // After a seek: the output frames between the common frame the file was
+    // sought to and the position asked for (seek_private()), in pieces the
+    // buffer holds; the output asked for writes over them
+    while (m_dropFrames) {
+        const nframes_t piece = std::min(m_dropFrames, framesToConvert);
+        m_dropFrames = resample(buffer, piece) < piece ? 0 : m_dropFrames - piece;
     }
 
     // Silence only past the end of what the resampler gives: padding a short

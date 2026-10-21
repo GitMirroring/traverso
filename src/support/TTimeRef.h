@@ -89,6 +89,13 @@ public:
     // The length of duration in frames, with fraction. For decisions and
     // ratios, not for positions.
     static double to_frames(const TTimeRef& duration, uint rate);
+    // The last time at or before time where a frame of rateA and a frame of
+    // rateB coincide (every 147 frames of 44.1 kHz and 160 of 48 kHz):
+    // resampling from one rate to the other can start there without a
+    // fraction of a frame. Exact when UNIVERSAL_SAMPLE_RATE is a multiple of
+    // the greatest common divisor of the rates, which holds for every rate
+    // it divides and for 384 kHz with most others; else time itself.
+    static TTimeRef common_frame_at_or_before(const TTimeRef& time, uint rateA, uint rateB);
 
 
     void add_frames(nframes_t frames, uint rate) {

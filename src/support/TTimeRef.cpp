@@ -6,6 +6,7 @@
 
 #include <limits.h>
 #include <cmath>
+#include <numeric>
 
 TTimeRef::TTimeRef() {
     m_universalFrame = 0;
@@ -59,6 +60,24 @@ double TTimeRef::to_frames(const TTimeRef& duration, uint rate)
 {
     Q_ASSERT(rate != 0);
     return double(duration.m_universalFrame) * double(rate) / double(UNIVERSAL_SAMPLE_RATE);
+}
+
+TTimeRef TTimeRef::common_frame_at_or_before(const TTimeRef& time, uint rateA, uint rateB)
+{
+    Q_ASSERT(rateA != 0 && rateB != 0);
+    // The frames of both rates coincide every UNIVERSAL_SAMPLE_RATE / gcd
+    // universal frames: rateA / gcd frames of the one, rateB / gcd of the
+    // other
+    const qint64 common = std::gcd(qint64(rateA), qint64(rateB));
+    if (UNIVERSAL_SAMPLE_RATE % common != 0) {
+        return time;
+    }
+    const qint64 period = UNIVERSAL_SAMPLE_RATE / common;
+    qint64 rest = time.m_universalFrame % period;
+    if (rest < 0) {
+        rest += period;
+    }
+    return TTimeRef(time.m_universalFrame - rest);
 }
 
 // The whole seconds and the rest are converted separately: the
