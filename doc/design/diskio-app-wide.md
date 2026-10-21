@@ -35,7 +35,7 @@ time, is a choice of the project:
 | Song | the active song | its own |
 | Album | every song, one after another | album time minus the song's offset |
 | All at once | every song | the same position for all |
-| Independent | the songs that were started | each its own transport |
+| Independent (chosen on purpose) | the songs that were started | each its own transport |
 
 DiskIO knows none of these modes. They are the project's policy: it sets
 the transports of the songs.
@@ -169,11 +169,16 @@ device, buses, RT primitives) and would then depend on decoding files.
 Each step with headless tests on the planner (the order of section 3, the
 flags) and the reader's play-order functions (pure).
 
-## 11. Open
+## 11. Decided, and open
 
-- Its own thread pool for DiskIO, or the global one: with its own pool,
-  priority is DiskIO's alone and the global pool stays for the cache's
-  eviction and the like.
-- Does starting another song stop the one that plays (no independent mode
-  by default), or does independent mode stay as it is today?
+Decided by the user on 2026-10-21:
+- **DiskIO gets a thread pool of its own**, so the priority is DiskIO's
+  alone. The global pool stays for the cache's eviction and the like. The
+  pool size that `main()` sets on the global pool (branch `peak-records`,
+  half the cores) then goes to DiskIO's pool, and the global pool keeps
+  Qt's default.
+- **Starting another song stops the song that plays.** Independent playback
+  is a mode of its own, chosen on purpose.
+
+Open:
 - What JACK drives by default: the active song.
