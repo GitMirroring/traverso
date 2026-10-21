@@ -153,10 +153,24 @@ float* TResampleAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
 nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, float* interleavedFloatBuffer, nframes_t targetFrames)
 {
     nframes_t finalInterleavedSamples = targetFrames * m_channelCount;
-    uint sampleBytes = m_settings.sampleBytes;
 
-    if (sampleBytes > 0) {
-        fileIOBuffer.check_packed_byte_capacity(finalInterleavedSamples * sampleBytes);
+    // The bytes a sample takes in memory, as gdither writes it and the
+    // codec writer reads it: a 24 bit sample sits in a 32 bit word
+    // (GDither32bit, sf_writef_int()), not in the three bytes it takes in
+    // the file (m_settings.sampleBytes)
+    size_t containerBytes = 4;
+    switch (m_settings.dataFormat) {
+    case TraversoDAW::DataFormat::PCM_S8:
+        containerBytes = 1;
+        break;
+    case TraversoDAW::DataFormat::PCM_16:
+        containerBytes = 2;
+        break;
+    default:
+        break;
+    }
+    if (m_settings.dataFormat != TraversoDAW::DataFormat::FLOAT) {
+        fileIOBuffer.check_packed_byte_capacity(size_t(finalInterleavedSamples) * containerBytes);
     }
 
     void* packedOutputBuffer = fileIOBuffer.get_packed_byte_buffer();

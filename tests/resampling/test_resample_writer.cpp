@@ -88,8 +88,12 @@ int main()
     QTemporaryDir dir;
     check(dir.isValid(), "a temporary directory");
 
-    struct Case { uint inputRate; uint fileRate; };
-    for (const Case c : {Case{48000, 44100}, Case{44100, 48000}, Case{96000, 48000}}) {
+    // Float, and 24 bit PCM as an export or a recording describes it (three
+    // bytes a sample, dithered into 32 bit words)
+    struct Case { uint inputRate; uint fileRate; TraversoDAW::DataFormat format; };
+    for (const Case c : {Case{48000, 44100, TraversoDAW::DataFormat::FLOAT}, Case{44100, 48000, TraversoDAW::DataFormat::FLOAT},
+                         Case{96000, 48000, TraversoDAW::DataFormat::FLOAT}, Case{48000, 44100, TraversoDAW::DataFormat::PCM_24},
+                         Case{48000, 48000, TraversoDAW::DataFormat::PCM_24}}) {
         // The input: sweeps, the last one ending 3 ms before the end
         const std::vector<float> s = sweep(c.inputRate);
         const nframes_t inputFrames = nframes_t(std::lround((sweep_start(SweepCount - 1) + SweepSeconds + 0.003) * c.inputRate));
@@ -101,15 +105,18 @@ int main()
         TAudioEncodeSettings settings;
         settings.writerType = TraversoDAW::WriterType::SNDFILE;
         settings.fileFormat = TraversoDAW::FileFormat::WAV;
-        settings.dataFormat = TraversoDAW::DataFormat::FLOAT;
+        settings.dataFormat = c.format;
         settings.channelCount = 1;
         settings.sampleRate = c.fileRate;
         settings.blockSize = 1024;
-        settings.sampleBytes = 4;
-        settings.bitDepth = 32;
+        const bool pcm24 = c.format == TraversoDAW::DataFormat::PCM_24;
+        settings.sampleBytes = pcm24 ? 3 : 4;
+        settings.bitDepth = pcm24 ? 24 : 32;
+        settings.ditherType = GDitherNone;
+        settings.ditherSize = pcm24 ? GDither32bit : GDitherFloat;
         settings.sampleRateConversionQuality = 2;
 
-        const QString path = dir.filePath(QString("written-%1-%2.wav").arg(c.inputRate).arg(c.fileRate));
+        const QString path = dir.filePath(QString("written-%1-%2-%3.wav").arg(c.inputRate).arg(c.fileRate).arg(pcm24 ? "pcm24" : "float"));
         {
             TResampleAudioWriter writer(settings);
             check(writer.open(path, c.inputRate), "opening the writer");
