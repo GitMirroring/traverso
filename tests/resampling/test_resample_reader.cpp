@@ -296,26 +296,46 @@ int main()
 
         // A seek into the last frames, where more frames are to be dropped
         // after the common frame than the file has left: the read gives
-        // what is left (the silence after the sweep) and ends. Not where
-        // every output frame is a common one (96 -> 48 kHz).
+        // what is left and ends. A tone up to the end, so that frames
+        // dropped too many or silence in their place show: the read must
+        // match the same frames read from the start. Not where every
+        // output frame is a common one (96 -> 48 kHz).
         const uint common = std::gcd(c.fileRate, c.outputRate);
         const nframes_t period = c.outputRate / common;
         if (period < 2) {
             continue;
         }
-        nframes_t last = (frames - 1) / period * period + period - 1;
-        if (last >= frames) {
+        std::vector<float> tone(c.fileRate / 2 + 70);
+        for (size_t i = 0; i < tone.size(); ++i) {
+            tone[i] = float(0.5 * std::sin(2.0 * M_PI * 1000.0 * double(i) / c.fileRate));
+        }
+        const QString tonePath = dir.filePath(QString("tone-%1.wav").arg(c.fileRate));
+        check(write_wav(tonePath, c.fileRate, tone), "writing the tone");
+        TResampleAudioReader toneReader(tonePath);
+        toneReader.set_output_rate(c.outputRate);
+        toneReader.set_converter_type(2);
+        const nframes_t toneFrames = toneReader.get_nframes();
+        buffer.check_capacity(toneFrames, 1);
+        buffer.silence_buffers();
+        toneReader.read_from(buffer, nframes_t(0), toneFrames);
+        const std::vector<float> sequential(buffer.get_channel_buffer(0).get_data(toneFrames),
+                                            buffer.get_channel_buffer(0).get_data(toneFrames) + toneFrames);
+
+        nframes_t last = (toneFrames - 1) / period * period + period - 1;
+        if (last >= toneFrames) {
             last -= period;
         }
-        const nframes_t left = frames - last;
-        buffer.check_capacity(left, 1);
+        const nframes_t left = toneFrames - last;
         buffer.silence_buffers();
-        const nframes_t read = reader.read_from(buffer, last, left);
+        const nframes_t read = toneReader.read_from(buffer, last, left);
         const float* data = buffer.get_channel_buffer(0).get_data(left);
-        const bool silent = std::all_of(data, data + left, [](float v) { return std::fabs(v) < 1e-3f; });
-        std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: a seek %u frames before the end, %u to drop, reads them (%u)",
-                      c.fileRate, c.outputRate, piece ? "after pieces" : "after one go", left, period - 1, read);
-        const bool lastOk = left < period - 1 && read == left && silent;
+        float worstDiff = 0.0f;
+        for (nframes_t i = 0; i < left; ++i) {
+            worstDiff = std::max(worstDiff, std::fabs(data[i] - sequential[last + i]));
+        }
+        std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: a seek %u frames before the end, %u to drop, reads them (%u, %.5f off)",
+                      c.fileRate, c.outputRate, piece ? "after pieces" : "after one go", left, period - 1, read, double(worstDiff));
+        const bool lastOk = left < period - 1 && read == left && worstDiff < 0.01f;
         check(lastOk, what);
         if (lastOk) {
             std::printf("ok:   %s\n", what);
