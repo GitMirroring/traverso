@@ -182,3 +182,14 @@ nframes_t TAudioResampler::process(const float* inputBuffer, nframes_t inputFram
 
     return generatedFrames;
 }
+
+nframes_t TAudioResampler::flush(float* outputBuffer, nframes_t maxOutputFrames)
+{
+    // First the input it kept, then, with nothing left of that, the tail of
+    // the filter (soxr flushes on an empty input only)
+    nframes_t produced = process(nullptr, 0, outputBuffer, maxOutputFrames, true);
+    if (produced < maxOutputFrames && m_leftOverFrames == 0) {
+        produced += process(nullptr, 0, outputBuffer + produced, maxOutputFrames - produced, true);
+    }
+    return produced;
+}

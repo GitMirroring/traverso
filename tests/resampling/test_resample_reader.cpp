@@ -237,6 +237,49 @@ int main()
         }
     }
 
+    // The end of the file: a sweep that ends 3 ms before it is whole in the
+    // output, through the flush of the resampler
+    for (const Case& c : {Case{44100, 48000}, Case{48000, 44100}, Case{96000, 48000}}) {
+        const std::vector<float> s = sweep(c.fileRate, 6000.0);
+        const nframes_t fileFrames = nframes_t(std::lround((1.0 + SweepSeconds + 0.003) * c.fileRate));
+        std::vector<float> file(fileFrames, 0.0f);
+        std::copy(s.begin(), s.end(), file.begin() + long(c.fileRate));
+        const QString path = dir.filePath(QString("end-%1.wav").arg(c.fileRate));
+        check(write_wav(path, c.fileRate, file), "writing the file");
+
+        TResampleAudioReader reader(path);
+        reader.set_output_rate(c.outputRate);
+        reader.set_converter_type(2);
+        const nframes_t frames = reader.get_nframes();
+        TFileIOBuffer buffer;
+        buffer.check_capacity(frames, 1);
+        buffer.silence_buffers();
+        reader.read_from(buffer, nframes_t(0), frames);
+        const float* data = buffer.get_channel_buffer(0).get_data(frames);
+        const std::vector<float> out(data, data + frames);
+        const std::vector<float> tpl = sweep(c.outputRate, 6000.0);
+        const double offset = sweep_offset(out, double(c.outputRate), tpl, 100);
+
+        // Whole, not only found: the correlation at its place against the
+        // sweep's own energy (a sweep cut short by silence matches less)
+        double match = 0.0, energy = 0.0;
+        const size_t at = size_t(c.outputRate);
+        for (size_t i = 0; i < tpl.size() && at + i < out.size(); ++i) {
+            match += double(out[at + i]) * tpl[i];
+            energy += double(tpl[i]) * tpl[i];
+        }
+        const double whole = match / energy;
+
+        char what[200];
+        std::snprintf(what, sizeof(what), "%u -> %u Hz: the sweep 3 ms before the end in place and whole (%+.2f frames, %.3f)",
+                      c.fileRate, c.outputRate, offset, whole);
+        const bool ok = !std::isnan(offset) && std::fabs(offset) <= 0.05 && whole > 0.99;
+        check(ok, what);
+        if (ok) {
+            std::printf("ok:   %s\n", what);
+        }
+    }
+
     if (failures) {
         std::printf("%d check(s) failed\n", failures);
         return 1;

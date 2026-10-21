@@ -33,6 +33,11 @@ public:
     bool close();
 
 private:
+    // At close: the resamplers' rest into the file
+    void flush_resamplers();
+    // targetFrames interleaved frames into the file, in the file's format
+    nframes_t write_interleaved(TFileIOBuffer& fileIOBuffer, float* interleavedFloatBuffer, nframes_t targetFrames);
+
     std::unique_ptr<AbstractAudioWriter>            m_codecWriter;
     TAudioEncodeSettings                            m_settings;
 

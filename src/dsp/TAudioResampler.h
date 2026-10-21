@@ -32,6 +32,10 @@ public:
     nframes_t process(const float* inputBuffer, nframes_t inputFrames,
                       float* outputBuffer, nframes_t maxOutputFrames,
                       bool endOfInput);
+    // The end of the input: what the resampler still holds (input it kept
+    // and the tail of its filter), up to maxOutputFrames. Called until it
+    // gives nothing.
+    nframes_t flush(float* outputBuffer, nframes_t maxOutputFrames);
 
 private:
     BackendType     m_backendType;

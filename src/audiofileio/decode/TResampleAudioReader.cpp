@@ -146,14 +146,15 @@ nframes_t TResampleAudioReader::resample_turn(TFileIOBuffer& out, nframes_t at, 
 
     nframes_t generated = 0;
     for (uint chan = 0; chan < m_channels && chan < m_resamplers.size(); chan++) {
+        float* output = out.get_channel_buffer(chan).get_data(at + count) + at;
+        if (inputFrames == 0 && endOfInput) {
+            // The file is read to its end: what the resampler still holds
+            generated = m_resamplers[chan]->flush(output, count);
+            continue;
+        }
         const nframes_t inputSize = m_resampleDecodeBuffer.get_channel_buffer(chan).get_size();
-        generated = m_resamplers[chan]->process(
-            inputFrames ? m_resampleDecodeBuffer.get_channel_buffer(chan).get_data(inputSize) : nullptr,
-            inputFrames,
-            out.get_channel_buffer(chan).get_data(at + count) + at,
-            count,
-            endOfInput
-            );
+        generated = m_resamplers[chan]->process(m_resampleDecodeBuffer.get_channel_buffer(chan).get_data(inputSize),
+                                                inputFrames, output, count, endOfInput);
     }
     return generated;
 }
@@ -166,7 +167,6 @@ nframes_t TResampleAudioReader::resample(TFileIOBuffer& out, nframes_t count)
     // of the file as that takes; once the file is read to its end, it is
     // flushed.
     nframes_t produced = 0;
-    int idle = 0;
     while (produced < count) {
         nframes_t inputFrames = 0;
         const nframes_t generated = resample_turn(out, produced, count - produced, inputFrames);
@@ -175,10 +175,9 @@ nframes_t TResampleAudioReader::resample(TFileIOBuffer& out, nframes_t count)
             // A read error
             break;
         }
-        // At the end of the file: one turn takes what the resampler kept of
-        // the input, the next one flushes it; two turns without anything
-        // and it is empty
-        if (generated == 0 && inputFrames == 0 && ++idle == 2) {
+        // At the end of the file the resampler is flushed until it gives
+        // nothing
+        if (generated == 0 && inputFrames == 0) {
             break;
         }
     }
