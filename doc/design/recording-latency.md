@@ -81,7 +81,7 @@ Not compensated:
 |---|---|---|
 | ALSA | one period | the input of a cycle is the period captured before it |
 | JACK | the input port's capture latency range (max) | `jack_port_get_latency_range(JackCaptureLatency)` in the latency callback, like the playback side |
-| PipeWire | what the capture stream reports (delay + queued + buffered), plus the cycles the buffer waited | the capture and playback streams are two graph nodes in no fixed order: when the capture node runs after the playback node, a cycle processes the buffer captured a cycle earlier. The graph times (`pw_time.ticks`) of the two callbacks give that cycle. Whether `delay` counts from the first or the last frame of the quantum is not verified (the loopback test tells) |
+| PipeWire | what the capture stream reports (delay + queued + buffered) | a correction per cycle for the order of the capture and the playback node (from the graph times of the two callbacks) was taken out on 2026-10-21: it jumped by a quantum from cycle to cycle while the quantum stayed the same, so takes got a compensation that depended on the cycle they started in. Whether a cycle is missing, and whether `delay` counts from the first or the last frame of the quantum, the loopback test tells; a missing cycle then becomes a fixed correction |
 | PortAudio | the stream's input latency | `Pa_GetStreamInfo()->inputLatency`; one period when the host API reports none |
 | CoreAudio | one period | device and safety-offset properties not read yet (no Mac to test) |
 | Dummy | one period | captures silence |
@@ -126,7 +126,7 @@ a real recording (no loopback here); PortAudio and JACK capture latency
 like `recording-session`: a small merge conflict there.
 
 Review (Fable, 2026-10-19 evening), fixed:
-- the PipeWire cycle order;
+- the PipeWire cycle order (taken out again on 2026-10-21, see section 3);
 - the PortAudio fallback when a host API reports no latency;
 - JACK's capture latency read at start;
 - the recording length at the device rate (with a project at 44.1 kHz and

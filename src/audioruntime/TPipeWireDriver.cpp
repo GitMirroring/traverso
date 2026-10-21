@@ -304,8 +304,7 @@ nframes_t TPipeWireDriver::get_playback_latency_frames() const
 }
 
 // pw_stream_get_time() in process_callback(): how long ago the oldest frame
-// of the buffer the callback reads came in, including a cycle the buffer
-// waited when the capture node ran after the playback node
+// of the buffer the callback reads came in
 nframes_t TPipeWireDriver::get_capture_latency_frames() const
 {
     const nframes_t measured = m_captureFrameLatency.load(std::memory_order_relaxed);
@@ -322,15 +321,15 @@ int TPipeWireDriver::process_callback()
     int64_t newPlaybackLatency = m_playbackFrameLatency.load(std::memory_order_relaxed);
     int64_t newCaptureLatency = m_captureFrameLatency.load(std::memory_order_relaxed);
 
-    struct pw_time playback_time;
-    const bool havePlaybackTime = m_playbackStream
-        && pw_stream_get_time_n(m_playbackStream, &playback_time, sizeof(playback_time)) == 0;
-    if (havePlaybackTime) {
-        int64_t out_delay = playback_time.delay + playback_time.queued + playback_time.buffered;
-        if (out_delay < 0) {
-            out_delay = playback_time.size;
+    if (m_playbackStream) {
+        struct pw_time playback_time;
+        if (pw_stream_get_time_n(m_playbackStream, &playback_time, sizeof(playback_time)) == 0) {
+            int64_t out_delay = playback_time.delay + playback_time.queued + playback_time.buffered;
+            if (out_delay < 0) {
+                out_delay = playback_time.size;
+            }
+            newPlaybackLatency = out_delay;
         }
-        newPlaybackLatency = out_delay;
     }
 
     if (m_captureStream) {
@@ -339,20 +338,6 @@ int TPipeWireDriver::process_callback()
             int64_t in_delay = capture_time.delay + capture_time.queued + capture_time.buffered;
             if (in_delay < 0) {
                 in_delay = capture_time.size;
-            }
-            // The capture and the playback stream are two nodes of the graph
-            // whose order within a cycle nothing fixes: when the capture node
-            // runs after this one, this cycle processes the buffer it took a
-            // cycle earlier, a quantum its delay does not contain. The graph
-            // times of the two callbacks tell. (A capture stream more than a
-            // few quanta behind stopped delivering: that is no latency.)
-            const uint64_t captureTicks = m_captureTicks.load(std::memory_order_relaxed);
-            if (havePlaybackTime && captureTicks != 0 && playback_time.ticks > captureTicks
-                && playback_time.rate.denom != 0) {
-                const uint64_t behind = playback_time.ticks - captureTicks;
-                if (behind <= 4 * uint64_t(m_framesPerCycle)) {
-                    in_delay += int64_t(behind) * playback_time.rate.num * m_frameRate / playback_time.rate.denom;
-                }
             }
             newCaptureLatency = in_delay;
         }
@@ -446,11 +431,6 @@ int TPipeWireDriver::process_capture_callback()
 {
     struct pw_buffer* b = pw_stream_dequeue_buffer(m_captureStream);
     if (!b) return -1;
-
-    struct pw_time captureTime;
-    if (pw_stream_get_time_n(m_captureStream, &captureTime, sizeof(captureTime)) == 0) {
-        m_captureTicks.store(captureTime.ticks, std::memory_order_relaxed);
-    }
 
     struct spa_buffer* buf = b->buffer;
     uint channelCount = m_captureChannels.size();
