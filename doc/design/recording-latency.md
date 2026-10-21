@@ -37,7 +37,7 @@ latency, section 4), by dropping its first L frames (the user's choice,
   anything could be heard. The file starts with the frame that belongs to
   the take's position: the file is what the clip shows, nothing is hidden,
   and the file lines up in any other program too.
-- The drop happens on the DiskIO thread when a slot is written
+- The drop happens in the writer's step when a slot is written
   (`TBufferedAudioStreamWriter::rb_file_write()`): whole slots are skipped,
   in the slot the drop ends in the rest moves to the front (once per take).
   The audio thread is not touched. A counter that goes to zero; checking

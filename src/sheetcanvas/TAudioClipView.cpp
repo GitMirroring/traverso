@@ -576,8 +576,8 @@ void TAudioClipView::update_recording(qint64 nowNanoseconds)
     // which counts what was captured past the latency compensation: with it
     // the length stays behind the play head by the capture (and extra)
     // latency, without it runs ahead by the output latency. The waveform
-    // follows a little behind, as DiskIO fills the pyramid; repaint from
-    // where it was painted up to the play head.
+    // follows a little behind, as the writer's steps append its peaks;
+    // repaint from where it was painted up to the play head.
     const TTimeRef heard = m_sv->get_sheet()->get_heard_transport_location(nowNanoseconds);
     const TTimeRef start = m_clip->get_location_start();
     TTimeRef drawn = heard > start ? heard - start : TTimeRef();
