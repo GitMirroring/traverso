@@ -17,6 +17,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <numeric>
 #include <vector>
 
 static int failures = 0;
@@ -110,18 +111,24 @@ static double sweep_offset(const std::vector<float>& out, double expected, const
     return start + double(best) + frac - expected;
 }
 
-enum class Pattern { Buffers, Stream, Seek };
+enum class Pattern { Buffers, Stream, Seek, SeekCommon };
 
 static const char* pattern_name(Pattern p)
 {
-    return p == Pattern::Buffers ? "buffers" : p == Pattern::Stream ? "stream" : "seek";
+    switch (p) {
+    case Pattern::Buffers: return "buffers";
+    case Pattern::Stream: return "stream";
+    case Pattern::Seek: return "seek";
+    default: return "seek to a common frame";
+    }
 }
 
 // Reads the whole file at outputRate as TBufferedAudioStreamReader does:
 // Buffers, one buffer per read; Stream, after a seek 70% of a ring of
 // rate / buffer slots, then all free slots once the ring is at 80% or less;
-// Seek, the stream pattern from 3.3 s on. Returns the output and its first
-// frame on the file's timeline.
+// Seek, the stream pattern from 3.3 s on; SeekCommon, from 3 s on, a frame
+// of both rates (nothing to drop). Returns the output and its first frame
+// on the file's timeline.
 static std::vector<float> read_all(const QString& path, uint outputRate, int quality, Pattern pattern, nframes_t& first,
                                    nframes_t fileFrames, uint fileRate)
 {
@@ -139,7 +146,8 @@ static std::vector<float> read_all(const QString& path, uint outputRate, int qua
     const nframes_t bufferSize = 1024;
     const nframes_t slotCount = std::max<nframes_t>(5, outputRate / bufferSize);
     const nframes_t total = nframes_t(double(reader.get_nframes()) / bufferSize);
-    first = pattern == Pattern::Seek ? nframes_t(3.3 * outputRate) / bufferSize * bufferSize : 0;
+    first = pattern == Pattern::Seek ? nframes_t(3.3 * outputRate) / bufferSize * bufferSize
+          : pattern == Pattern::SeekCommon ? 3 * outputRate : 0;
 
     std::vector<float> out;
     TFileIOBuffer buffer;
@@ -206,7 +214,7 @@ int main()
 
         const std::vector<float> tpl = sweep(c.outputRate, high);
         for (int quality : qualities) {
-            for (Pattern pattern : {Pattern::Buffers, Pattern::Stream, Pattern::Seek}) {
+            for (Pattern pattern : {Pattern::Buffers, Pattern::Stream, Pattern::Seek, Pattern::SeekCommon}) {
                 nframes_t first = 0;
                 const std::vector<float> out = read_all(path, c.outputRate, quality, pattern, first, nframes_t(file.size()), c.fileRate);
                 double worst = 0.0;
@@ -238,7 +246,9 @@ int main()
     }
 
     // The end of the file: a sweep that ends 3 ms before it is whole in the
-    // output, through the flush of the resampler
+    // output, through the flush of the resampler, read in one go or in
+    // pieces of 100 frames (the flush goes on over several reads)
+    for (const nframes_t piece : {nframes_t(0), nframes_t(100)}) {
     for (const Case& c : {Case{44100, 48000}, Case{48000, 44100}, Case{96000, 48000}}) {
         const std::vector<float> s = sweep(c.fileRate, 6000.0);
         const nframes_t fileFrames = nframes_t(std::lround((1.0 + SweepSeconds + 0.003) * c.fileRate));
@@ -252,11 +262,16 @@ int main()
         reader.set_converter_type(2);
         const nframes_t frames = reader.get_nframes();
         TFileIOBuffer buffer;
-        buffer.check_capacity(frames, 1);
-        buffer.silence_buffers();
-        reader.read_from(buffer, nframes_t(0), frames);
-        const float* data = buffer.get_channel_buffer(0).get_data(frames);
-        const std::vector<float> out(data, data + frames);
+        std::vector<float> out;
+        for (nframes_t at = 0; at < frames;) {
+            const nframes_t n = piece ? std::min(piece, frames - at) : frames;
+            buffer.check_capacity(n, 1);
+            buffer.silence_buffers();
+            reader.read_from(buffer, at, n);
+            const float* data = buffer.get_channel_buffer(0).get_data(n);
+            out.insert(out.end(), data, data + n);
+            at += n;
+        }
         const std::vector<float> tpl = sweep(c.outputRate, 6000.0);
         const double offset = sweep_offset(out, double(c.outputRate), tpl, 100);
 
@@ -271,13 +286,41 @@ int main()
         const double whole = match / energy;
 
         char what[200];
-        std::snprintf(what, sizeof(what), "%u -> %u Hz: the sweep 3 ms before the end in place and whole (%+.2f frames, %.3f)",
-                      c.fileRate, c.outputRate, offset, whole);
+        std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: the sweep 3 ms before the end in place and whole (%+.2f frames, %.3f)",
+                      c.fileRate, c.outputRate, piece ? "in pieces" : "in one go", offset, whole);
         const bool ok = !std::isnan(offset) && std::fabs(offset) <= 0.05 && whole > 0.99;
         check(ok, what);
         if (ok) {
             std::printf("ok:   %s\n", what);
         }
+
+        // A seek into the last frames, where more frames are to be dropped
+        // after the common frame than the file has left: the read gives
+        // what is left (the silence after the sweep) and ends. Not where
+        // every output frame is a common one (96 -> 48 kHz).
+        const uint common = std::gcd(c.fileRate, c.outputRate);
+        const nframes_t period = c.outputRate / common;
+        if (period < 2) {
+            continue;
+        }
+        nframes_t last = (frames - 1) / period * period + period - 1;
+        if (last >= frames) {
+            last -= period;
+        }
+        const nframes_t left = frames - last;
+        buffer.check_capacity(left, 1);
+        buffer.silence_buffers();
+        const nframes_t read = reader.read_from(buffer, last, left);
+        const float* data = buffer.get_channel_buffer(0).get_data(left);
+        const bool silent = std::all_of(data, data + left, [](float v) { return std::fabs(v) < 1e-3f; });
+        std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: a seek %u frames before the end, %u to drop, reads them (%u)",
+                      c.fileRate, c.outputRate, piece ? "after pieces" : "after one go", left, period - 1, read);
+        const bool lastOk = left < period - 1 && read == left && silent;
+        check(lastOk, what);
+        if (lastOk) {
+            std::printf("ok:   %s\n", what);
+        }
+    }
     }
 
     if (failures) {
