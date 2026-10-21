@@ -113,25 +113,41 @@ void TIOScheduler::take_requests()
 {
     Q_ASSERT_X(on_scheduler_thread(), "TIOScheduler::take_requests", "not on the scheduler thread");
 
-    std::lock_guard locker(m_requestsMutex);
-    for (TIOStream* stream : m_streamsToAdd) {
+    // Under the lock only the swap: a request never waits for retire()
+    std::vector<TIOStream*> added;
+    std::vector<TIOStream*> removed;
+    std::vector<std::unique_ptr<TIOTask>> tasks;
+    quint64 requested = 0;
+    {
+        std::lock_guard locker(m_requestsMutex);
+        added.swap(m_streamsToAdd);
+        removed.swap(m_streamsToRemove);
+        tasks.swap(m_tasksToAdd);
+        requested = m_requested;
+    }
+
+    for (TIOStream* stream : added) {
         Q_ASSERT(std::find(m_streams.begin(), m_streams.end(), stream) == m_streams.end());
         m_streams.push_back(stream);
     }
-    m_streamsToAdd.clear();
     // The ring buffers go here, where the audio thread does not use them;
     // the owner deletes the stream once remove_stream() returns
-    for (TIOStream* stream : m_streamsToRemove) {
+    for (TIOStream* stream : removed) {
         std::erase(m_streams, stream);
         stream->retire();
     }
-    m_streamsToRemove.clear();
-    for (std::unique_ptr<TIOTask>& task : m_tasksToAdd) {
+    for (std::unique_ptr<TIOTask>& task : tasks) {
         m_idleTasks.push_back(std::move(task));
     }
-    m_tasksToAdd.clear();
-    m_taken = m_requested;
-    m_requestsTaken.notify_all();
+
+    // remove_stream() returns now
+    if (!removed.empty()) {
+        {
+            std::lock_guard locker(m_requestsMutex);
+            m_taken = requested;
+        }
+        m_requestsTaken.notify_all();
+    }
 }
 
 bool TIOScheduler::do_round()

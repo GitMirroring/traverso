@@ -39,7 +39,8 @@ of the scheduler thread, without it. The scheduler thread (`run()`):
    each other. After a round with idle work the next round follows without
    waiting.
 2. Take the requests, between rounds and never during a step: streams added
-   and removed, new idle tasks (one mutex). A seek, a rate or a quality
+   and removed, new idle tasks (one mutex, held only to swap the lists out;
+   `retire()` runs outside it). A seek, a rate or a quality
    change are atomics the round reads. `remove_stream()` returns once the
    scheduler thread has let go of the stream (`retire()` frees its ring
    buffers); its owner deletes it then, on the GUI thread.
@@ -75,7 +76,7 @@ of the scheduler thread, without it. The scheduler thread (`run()`):
 | Audio → scheduler | a seek | the location (`std::atomic<qint64>`) first, then the flag (release); the round takes the flag with `exchange()` (acquire) at its start, and the transport goes on from the location it served |
 | Audio → scheduler | the wake | `LightweightSemaphore::signal()` |
 | Audio ↔ steps | audio data | the stream's ring, its lock-free slot queues |
-| Owner, any → scheduler | streams added and removed, tasks | lists under one `std::mutex` |
+| Owner, any → scheduler | streams added and removed, tasks | lists under one `std::mutex`; the scheduler thread swaps them out and handles them outside it |
 | Owner, any → scheduler | rate, quality, buffer size, idle allowed, idle limit | atomics |
 | Scheduler → workers | the steps of a round | `blockingMap`, and the release/acquire pair `m_roundStarted`/`m_stepsDone` |
 | Scheduler → owner | a finished seek | `seekFinished()`, queued (the object lives on the owner thread) |
