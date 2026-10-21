@@ -26,6 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 #include <samplerate.h>
 
+#include <numeric>
+
 TResampleAudioReader::TResampleAudioReader(const QString& filename)
     : AbstractAudioReader(filename)
 {
@@ -61,6 +63,7 @@ void TResampleAudioReader::reset()
     for (const auto& resampler : m_resamplers) {
             resampler->reset();
     }
+    m_dropFrames = 0;
 }
 
 void TResampleAudioReader::set_converter_type(int converterType)
@@ -111,7 +114,75 @@ bool TResampleAudioReader::seek_private(nframes_t start)
         return m_reader->seek(start);
     }
     reset();
-    return m_reader->seek(resampled_to_file_frame(start));
+
+    // A position in output frames is mostly no whole frame of the file, and
+    // a seek to the nearest file frame would shift the output by a fraction
+    // of a frame. The frames of both rates meet every outStep output frames
+    // (160 at 48 kHz against 147 at 44.1 kHz): the file is sought to the
+    // last such point before start, and the output frames up to start are
+    // dropped by the next read.
+    const nframes_t common = std::gcd(m_fileSampleRate, m_outputSampleRate);
+    const nframes_t outStep = m_outputSampleRate / common;
+    const nframes_t fileStep = m_fileSampleRate / common;
+    const nframes_t steps = start / outStep;
+    m_dropFrames = start - steps * outStep;
+    return m_reader->seek(steps * fileStep);
+}
+
+nframes_t TResampleAudioReader::resample_turn(TFileIOBuffer& out, nframes_t at, nframes_t count, nframes_t& inputFrames)
+{
+    nframes_t fileCnt = resampled_to_file_frame(count);
+    if (!fileCnt) {
+        fileCnt = 1;
+    }
+
+    inputFrames = 0;
+    if (!m_reader->eof()) {
+        m_resampleDecodeBuffer.check_capacity(fileCnt, m_channels);
+        m_resampleDecodeBuffer.silence_buffers();
+        inputFrames = m_reader->read(m_resampleDecodeBuffer, fileCnt);
+    }
+    const bool endOfInput = m_reader->eof();
+
+    nframes_t generated = 0;
+    for (uint chan = 0; chan < m_channels && chan < m_resamplers.size(); chan++) {
+        const nframes_t inputSize = m_resampleDecodeBuffer.get_channel_buffer(chan).get_size();
+        generated = m_resamplers[chan]->process(
+            inputFrames ? m_resampleDecodeBuffer.get_channel_buffer(chan).get_data(inputSize) : nullptr,
+            inputFrames,
+            out.get_channel_buffer(chan).get_data(at + count) + at,
+            count,
+            endOfInput
+            );
+    }
+    return generated;
+}
+
+nframes_t TResampleAudioReader::resample(TFileIOBuffer& out, nframes_t count)
+{
+    // The resampler gives what its input allows: after a seek it holds back
+    // the length of its filter, and soxr releases its output in blocks of its
+    // own. So it is fed until it gave all that was asked for, reading as much
+    // of the file as that takes; once the file is read to its end, it is
+    // flushed.
+    nframes_t produced = 0;
+    int idle = 0;
+    while (produced < count) {
+        nframes_t inputFrames = 0;
+        const nframes_t generated = resample_turn(out, produced, count - produced, inputFrames);
+        produced += generated;
+        if (inputFrames == 0 && !m_reader->eof()) {
+            // A read error
+            break;
+        }
+        // At the end of the file: one turn takes what the resampler kept of
+        // the input, the next one flushes it; two turns without anything
+        // and it is empty
+        if (generated == 0 && inputFrames == 0 && ++idle == 2) {
+            break;
+        }
+    }
+    return produced;
 }
 
 nframes_t TResampleAudioReader::read_private(TFileIOBuffer& buffer, nframes_t frameCount)
@@ -122,59 +193,32 @@ nframes_t TResampleAudioReader::read_private(TFileIOBuffer& buffer, nframes_t fr
         return m_reader->read(buffer, frameCount);
     }
 
-    nframes_t fileCnt = resampled_to_file_frame(frameCount);
-    if (frameCount && !fileCnt) {
-        fileCnt = 1;
-    }
-
-    // Prepare the temporary disk buffer to match the requested frame block size
-    m_resampleDecodeBuffer.check_capacity(fileCnt, m_channels);
-    m_resampleDecodeBuffer.silence_buffers();
-
-    // Directly fetch raw data from the storage device
-    nframes_t bytesRead = 0;
-    if (!m_reader->eof()) {
-        bytesRead = m_reader->read(m_resampleDecodeBuffer, fileCnt);
-    }
-
-    if (bytesRead == 0) {
-        return 0;
-    }
-
     nframes_t framesToConvert = frameCount;
     if (frameCount > m_fileFrames - m_readPos) {
         framesToConvert = m_fileFrames - m_readPos;
     }
-
-    nframes_t framesRead = 0;
-
-    for (uint chan = 0; chan < m_channels; chan++) {
-        if (chan < m_resamplers.size() && m_resamplers[chan]) {
-            nframes_t maxBufSize = m_resampleDecodeBuffer.get_channel_buffer(chan).get_size();
-
-            framesRead = m_resamplers[chan]->process(
-                m_resampleDecodeBuffer.get_channel_buffer(chan).get_data(maxBufSize),
-                bytesRead,
-                buffer.get_channel_buffer(chan).get_data(framesToConvert),
-                framesToConvert,
-                m_reader->eof()
-                );
-        }
+    if (framesToConvert == 0) {
+        return 0;
     }
 
-    if (framesRead > 0 && framesRead < framesToConvert) {
-        nframes_t missing = framesToConvert - framesRead;
+    // After a seek: the output frames between the point the file was sought
+    // to and the position asked for (seek_private())
+    if (m_dropFrames) {
+        m_dropBuffer.check_capacity(m_dropFrames, m_channels);
+        resample(m_dropBuffer, m_dropFrames);
+        m_dropFrames = 0;
+    }
+
+    // Silence only past the end of what the resampler gives: padding a short
+    // read anywhere else would shift all that follows
+    const nframes_t produced = resample(buffer, framesToConvert);
+    if (produced < framesToConvert) {
         for (uint chan = 0; chan < m_channels; chan++) {
-            buffer.get_channel_buffer(chan).set_data_start_offset(framesRead);
-            buffer.get_channel_buffer(chan).silence_data(missing);
+            buffer.get_channel_buffer(chan).set_data_start_offset(produced);
+            buffer.get_channel_buffer(chan).silence_data(framesToConvert - produced);
             buffer.get_channel_buffer(chan).set_data_start_offset(0);
         }
-        framesRead = framesToConvert;
     }
 
-    if (m_readPos + framesRead > get_nframes()) {
-        framesRead = get_nframes() - m_readPos;
-    }
-
-    return framesRead;
+    return framesToConvert;
 }

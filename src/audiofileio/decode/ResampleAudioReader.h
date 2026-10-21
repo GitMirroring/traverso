@@ -68,6 +68,12 @@ protected:
     void reset();
     bool seek_private(nframes_t start) final;
     nframes_t read_private(TFileIOBuffer& buffer, nframes_t frameCount) final;
+    // count output frames into out, reading the file as far as that takes;
+    // fewer only at the end of the file or on a read error
+    nframes_t resample(TFileIOBuffer& out, nframes_t count);
+    // One feed of the resampler with the input for count output frames;
+    // what it gives goes into out from frame at
+    nframes_t resample_turn(TFileIOBuffer& out, nframes_t at, nframes_t count, nframes_t& inputFrames);
 
     nframes_t resampled_to_file_frame(nframes_t frame) {
         return TTimeRef::to_frame(TTimeRef(frame, m_outputSampleRate), m_fileSampleRate);
@@ -85,5 +91,8 @@ protected:
 
 private:
     TFileIOBuffer m_resampleDecodeBuffer;
+    // After a seek: output frames to drop before the position asked for
+    nframes_t m_dropFrames{0};
+    TFileIOBuffer m_dropBuffer;
 };
 
