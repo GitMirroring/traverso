@@ -12,6 +12,9 @@ another one, right after it.
 
 ## 1. Why
 
+(The library is named `traversoioscheduler` since 2026-10-21, sections 8 and
+10; "DiskIO" below is the scheduler.)
+
 Today:
 - every sheet has two DiskIO threads (one reads, one writes);
 - importing and merging have threads of their own (`TAudioFileCopyConvert`,
@@ -117,13 +120,15 @@ is a song); driving all songs is an option of the project's policy. Today
 
 ## 8. Where it lives
 
-A library `traversodiskio`: the DiskIO thread, `TDiskIOPlanner`,
-`TDiskIOTask` and the stream interface, linking `traversosupport` and
-`traversoaudiofileio`. The readers and writers in core implement the stream
-interface.
+A library `traversoioscheduler` in `src/ioscheduler` (decided 2026-10-21):
+`TIOScheduler` (today `TDiskIOThread`), `TIOPlanner`, `TIOTask` and the
+stream interface `TIOStream`, linking `traversosupport` and Qt Core only.
+The readers and writers in core implement `TIOStream`; their decode buffer
+is `thread_local` in core. The name says what it does: it plans and hands
+out work, the reading, decoding, encoding and writing are the streams'.
 
 It does not go into `audioruntime`, which is the real-time side (drivers,
-device, buses, RT primitives) and would then depend on decoding files.
+device, buses, RT primitives).
 
 ## 9. Disadvantages, from a DAW's point of view
 
@@ -154,20 +159,36 @@ device, buses, RT primitives) and would then depend on decoding files.
 
 ## 10. Steps
 
-1. The library `traversodiskio` and the stream interface: moving code, no
-   behaviour change.
-2. One DiskIO pair owned by the application, a group per sheet with each
-   sheet's transport as today (song mode, and independent mode as it is
-   today). The priority across all sheets is one planner's; the fill meter
-   is one number.
-3. Parked groups as idle work.
-4. Importing and merging as DiskIO tasks, with their peaks in the same step
-   (the next work order).
-5. Play lists, and later punch in/out.
-6. Album mode and the project's mode policy.
+The work order, "Werkopdracht: van DiskIO naar TIOScheduler" (version 2,
+2026-10-21), holds the steps that pay off now:
+1. the peaks library `traversopeaks`;
+2. the library `traversoioscheduler` and `TIOStream`: moving code, no
+   behaviour change;
+3. the scheduler has a thread instead of being one: `dispatch()` testable
+   without a driver, one wake semaphore, synchronous removal, the shutdown
+   order in one place;
+4. one scheduler for the application, with two loops (read and write) and
+   pools of their own, a group per sheet with each sheet's transport as
+   today. The priority across all sheets is one planner's; the fill meter is
+   one number.
 
-Each step with headless tests on the planner (the order of section 3, the
-flags) and the reader's play-order functions (pure).
+**The round with `blockingMap` stays** (a round ends when its last step
+does). A dispatcher without that barrier is for slow media (a NAS, a USB or
+external disk), later: it is reopened on a measured dropout, at the latest
+with importing from external media.
+
+Later, each a step of its own:
+- JACK drives the active song, and starting another song stops the one that
+  plays (decided, section 11);
+- parked groups as idle work;
+- importing and merging as scheduler tasks, with their peaks in the same
+  step (the next work order);
+- play lists, and later punch in/out;
+- album mode and the project's mode policy.
+
+Each step with headless tests: on the planner (the order of section 3, the
+flags), on the scheduler with fake streams, and on the reader's play-order
+functions (pure).
 
 ## 11. Decided
 
@@ -181,4 +202,7 @@ Decided by the user on 2026-10-21:
   is a mode of its own, chosen on purpose.
 
 - **JACK transport drives the active song by default.** Driving all songs
-  is an option of the project's policy.
+  is an option of the project's policy. (Built after the app-wide
+  scheduler, section 10.)
+- **The library is `traversoioscheduler`** (section 8), and the round keeps
+  its barrier for now (section 10).
