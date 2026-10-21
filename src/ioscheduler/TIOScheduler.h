@@ -19,8 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef T_IO_SCHEDULER_H
-#define T_IO_SCHEDULER_H
+#pragma once
 
 #include <QMutex>
 #include <QThread>
@@ -166,8 +165,3 @@ public slots:
 signals:
 	void seekFinished();
 };
-
-
-#endif
-
-//eof
