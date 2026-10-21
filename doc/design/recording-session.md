@@ -64,9 +64,12 @@ Decisions are the user's (2026-10-18); open points are marked.
   cycle is recorded.
 - `TResourcesManager::discard_takes()`: applies the setting. Deleting
   takes the clips and sources out of the project (they are not saved
-  anymore) and keeps the objects until the project closes: a clip's reader
-  leaves its DiskIO asynchronously, so freeing it at once could pull it
-  from under DiskIO. `TProject::save()` deletes the audio and peak files
+  anymore) and keeps the objects until the project closes: a take may
+  have just left its track, and the audio thread lets go of it only in a
+  later cycle; once the project is off the audio device nothing uses it.
+  (Removing a reader from the scheduler is synchronous since the
+  scheduler's phase 2; that alone does not make freeing at once safe.)
+  `TProject::save()` deletes the audio and peak files
   once the project file is written.
 - Asking: core does not show dialogs. `TProjectManager` holds a question
   function the application installs (a QMessageBox in `TMainWindow`; a
@@ -84,12 +87,12 @@ takes that are kept, and undo of everything else.
 
 A change of the device's rate restarts the device, and
 `TSheet::audiodevice_params_changed()` then seeks one buffer ahead so
-DiskIO refills its buffers at the new rate. While recording, that seek
-ends the takes and starts new ones (decision 2): their writers and peak
-recordings take the device's rate when they start, so the new takes are
-written at the new rate. Before, the take went on with audio at the new
-rate in a file of the old one. Follows from the code; not tested at
-runtime yet.
+the read scheduler refills its buffers at the new rate. While recording,
+that seek ends the takes and starts new ones (decision 2): their writers
+and peak recordings take the device's rate when they start, so the new
+takes are written at the new rate. Before, the take went on with audio at
+the new rate in a file of the old one. Follows from the code; not tested
+at runtime yet.
 
 ## 5. Open
 

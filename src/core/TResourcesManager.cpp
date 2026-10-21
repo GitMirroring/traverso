@@ -66,8 +66,8 @@ TResourcesManager::~TResourcesManager()
 	}
 
     // As above, and before any clip goes: a take's reader was referenced at
-    // its creation, and its clip's destructor hands it to DiskIO, which
-    // deletes it (then it may be gone already)
+    // its creation, and its clip's destructor takes it out of the read
+    // scheduler and the sheet deletes it (then it may be gone already)
     for (SourceData* data : std::as_const(m_retiredSources)) {
         if (!data->stream->ref()) {
             delete data->stream;

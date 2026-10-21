@@ -105,8 +105,9 @@ private:
 	QHash<qint64, SourceData* >	m_sources;
 	QHash<qint64, ClipData* >	m_clips;
     // Taken out of the project by discard_takes(), freed with the project:
-    // a clip's reader leaves its DiskIO asynchronously (and DiskIO deletes
-    // a reader it had)
+    // a take may have just left its track, and the audio thread lets go of
+    // it only in a later cycle; once the project is off the audio device
+    // nothing uses it
     QList<ClipData*> m_retiredClips;
     QList<SourceData*> m_retiredSources;
     QStringList m_discardedFiles;
