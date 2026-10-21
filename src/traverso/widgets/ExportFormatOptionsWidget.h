@@ -22,6 +22,7 @@
 #pragma once
 
 #include "ui_ExportFormatOptionsWidget.h"
+#include "TAudioResampler.h"
 
 #include <QWidget>
 
@@ -42,6 +43,10 @@ private slots:
 	void audio_type_changed(int index);
 	void mp3_method_changed(int index);
 	void ogg_method_changed(int index);
+
+private:
+    // The backend whose qualities the quality combo box lists
+    TAudioResampler::BackendType m_resampler{TAudioResampler::BackendType::LIBSOXR};
 };
 
 

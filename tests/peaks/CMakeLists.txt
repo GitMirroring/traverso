@@ -28,4 +28,4 @@ target_link_libraries(traverso_peak_benchmark PRIVATE traverso_compiler_settings
 # Measurements on real audio files (doc/design/peaks-v6-report.md), not part
 # of ctest. Build it in Release.
 add_executable(traverso_peak_measure EXCLUDE_FROM_ALL measure_peaks.cpp)
-target_link_libraries(traverso_peak_measure PRIVATE traverso_compiler_settings traversowaveform traversoaudiofileio traversosupport Qt6::Core)
+target_link_libraries(traverso_peak_measure PRIVATE traverso_compiler_settings traversowaveform traversoaudiofileio traversodsp traversosupport Qt6::Core)

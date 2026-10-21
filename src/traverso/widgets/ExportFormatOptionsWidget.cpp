@@ -53,14 +53,14 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
     }
 
     // The qualities of the resampler in use
-    const TAudioResampler::BackendType resampler = TBufferedAudioStreamReader::configured_backend();
-    for (int quality : TAudioResampler::qualities(resampler)) {
-        resampleQualityComboBox->addItem(TAudioResampler::quality_name(resampler, quality), quality);
+    m_resampler = TBufferedAudioStreamReader::configured_backend();
+    for (int quality : TAudioResampler::qualities(m_resampler)) {
+        resampleQualityComboBox->addItem(TAudioResampler::quality_name(m_resampler, quality), quality);
     }
 
     resampleQualityComboBox->setToolTipDuration(4000);
-    connect(resampleQualityComboBox, &QComboBox::currentIndexChanged, this, [this, resampler]() {
-        resampleQualityComboBox->setToolTip(TAudioResampler::quality_description(resampler, resampleQualityComboBox->currentData().toInt()));
+    connect(resampleQualityComboBox, &QComboBox::currentIndexChanged, this, [this]() {
+        resampleQualityComboBox->setToolTip(TAudioResampler::quality_description(m_resampler, resampleQualityComboBox->currentData().toInt()));
     });
 
 	audioTypeComboBox->addItem("WAV", "wav");
@@ -195,7 +195,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	normalizeCheckBox->setChecked(checked);
 	
     // The backend's own number (resampleQualityComboBox had libsamplerate's)
-    const int defaultQuality = TAudioResampler::default_quality(TBufferedAudioStreamReader::configured_backend());
+    const int defaultQuality = TAudioResampler::default_quality(m_resampler);
     index = resampleQualityComboBox->findData(config().get_property("ExportFormatOptionsWidget", "resampleQuality", defaultQuality).toInt());
     resampleQualityComboBox->setCurrentIndex(index >= 0 ? index : resampleQualityComboBox->findData(defaultQuality));
 
@@ -371,7 +371,7 @@ void ExportFormatOptionsWidget::get_format_options(TExportSpecification* spec)
 
     spec->set_channel_count(channelComboBox->itemData(channelComboBox->currentIndex()).toUInt());
     spec->set_sample_rate(sampleRateComboBox->itemData(sampleRateComboBox->currentIndex()).toUInt());
-    spec->set_resampler(TBufferedAudioStreamReader::configured_backend(), resampleQualityComboBox->currentData().toInt());
+    spec->set_resampler(m_resampler, resampleQualityComboBox->currentData().toInt());
 
     // TODO Make a ComboBox for this one too!
     spec->set_dither_type(GDitherTri);

@@ -22,7 +22,6 @@
 #include "CDWritingDialog.h"
 
 #include <QMessageBox>
-#include <samplerate.h>
 
 #include "TExportSpecification.h"
 #include "TConfig.h"
