@@ -76,6 +76,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  * the scheduler's from add_idle_task() until it is retired and deleted.
  * One seek at a time: the next is asked for after seekFinished.
  *
+ * No deadlock in remove_stream(): the owner holds no lock there that a step
+ * needs, and a step never waits for the owner thread.
+ *
  * The object lives on the owner thread; only dispatch() runs on the
  * scheduler thread. Without start() there is no scheduler thread: a test
  * calls dispatch() itself.
@@ -104,15 +107,18 @@ public:
         m_transportLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
     }
     // One seek at a time: the owner asks for the next only after
-    // seekFinished (TSheet::initiate_seek_start())
+    // seekFinished (TSheet::initiate_seek_start(), also for a JACK relocation)
     void set_seek_transport_location(const TTimeRef& transportLocation) {
+        [[maybe_unused]] const bool seeking = m_seeking.exchange(true, std::memory_order_relaxed);
+        Q_ASSERT_X(!seeking, "TIOScheduler::set_seek_transport_location", "a seek is asked for before the previous one finished");
         m_seekLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
         m_seekRequested.store(true, std::memory_order_release);
     }
 
     // The owner's thread. A stream to read or write. remove_stream()
-    // returns once the scheduler thread has let go of the stream (it called retire());
-    // the owner deletes it then.
+    // returns once the scheduler thread has let go of the stream (it called
+    // retire()); the owner deletes it then. The owner holds no lock a step
+    // needs while it waits.
     void add_stream(TIOStream* stream);
     void remove_stream(TIOStream* stream);
 
@@ -179,6 +185,8 @@ private:
     quint64 m_taken{0};
 
     std::atomic<bool> m_seekRequested{false};
+    // From the request until seekFinished, for the assert of one seek at a time
+    std::atomic<bool> m_seeking{false};
     std::atomic<qint64> m_transportLocation{0};     // universal frames
     std::atomic<qint64> m_seekLocation{0};          // universal frames
 

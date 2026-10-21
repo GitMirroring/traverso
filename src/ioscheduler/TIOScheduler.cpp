@@ -257,6 +257,7 @@ bool TIOScheduler::do_round()
     if (seek) {
         // Where the streams seeked to
         m_transportLocation.store(m_round.seekLocation.universal_frame(), std::memory_order_relaxed);
+        m_seeking.store(false, std::memory_order_relaxed);
         emit seekFinished();
     }
 

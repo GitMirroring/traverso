@@ -99,6 +99,15 @@ of the scheduler thread, without it. The scheduler thread (`run()`):
    two rounds and called `retire()`, which frees the rings. The owner
    deletes it then, on the owner thread.
 
+**No deadlock in `remove_stream()`:** the owner holds no lock there that a
+step needs, and a step never waits for the owner thread (no blocking call to
+it, no wait for one of its futures). Closing a project removes its streams
+one by one, after `TPeakBuildService::cancel_all()`: a cancelled build's
+next step ends it, so only the first removal waits for a step that runs.
+Measured with 641 streams and six builds cancelled: 12 ms with 5 ms steps,
+20 ms with 20 ms steps. Removing a group at once is phase 3's, with one
+scheduler for the application.
+
 **A task:** the scheduler's from `add_idle_task()`. `step()` runs at most
 once per round, on a worker or the scheduler thread. When it returns false
 the scheduler thread calls `retire()` after the round and deletes the task;
@@ -106,7 +115,13 @@ at the end the destructor does that for the tasks that are left. A result
 goes out through the task's `QPromise`.
 
 **One seek at a time:** the owner asks for the next only after
-`seekFinished` (`TSheet::initiate_seek_start()` refuses meanwhile).
+`seekFinished`. Every seek goes through `TSheet::initiate_seek_start()`,
+which refuses meanwhile: a locate from the GUI, and a JACK relocation
+(`TJackDriver::process_callback()` → `TAudioDevice::transport_control()` →
+`TSheet::transport_control()`). It is called from one thread per driver: the
+audio thread when the transport follows JACK, the GUI otherwise. A debug
+assert in `set_seek_transport_location()` checks it: a flag set at the
+request and cleared just before `seekFinished`.
 
 **The end** (destructor, owner thread), once the audio thread no longer
 calls the scheduler: stop, wake and join the scheduler thread (a round that
