@@ -198,6 +198,20 @@ int main(int argc, char** argv)
         check(retired.load() == 4 && done.load() > 0, "every task that was left is handed back once at the end");
     }
 
+    // Without a driver: a task added to a running scheduler thread is done
+    // without any tick
+    {
+        std::atomic<int> retired{0};
+        std::atomic<int> done{0};
+        TIOScheduler scheduler;
+        scheduler.start();
+        scheduler.add_idle_task(std::make_unique<FakeTask>(5, retired, done));
+        for (int i = 0; i < 2000 && retired.load() == 0; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        check(retired.load() == 1 && done.load() == 5, "a task runs to its end without a tick");
+    }
+
     // A seek: one seek step per stream, then seekFinished; a new rate is
     // passed to the next seek only
     {

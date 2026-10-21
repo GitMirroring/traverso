@@ -299,8 +299,12 @@ int TIOScheduler::idle_limit_for(const QString& directory)
 
 void TIOScheduler::add_idle_task(std::unique_ptr<TIOTask> task)
 {
-    std::lock_guard locker(m_requestsMutex);
-    m_tasksToAdd.push_back(std::move(task));
+    {
+        std::lock_guard locker(m_requestsMutex);
+        m_tasksToAdd.push_back(std::move(task));
+    }
+    // Also without a driver: the task does not wait for a tick
+    m_wake.signal();
 }
 
 void TIOScheduler::add_stream(TIOStream* stream)
@@ -316,8 +320,11 @@ void TIOScheduler::add_stream(TIOStream* stream)
     stream->set_output_rate_and_convertor_type(int(get_output_rate()), get_resample_quality());
     stream->prepare_rt_buffers(m_bufferSize.load(std::memory_order_relaxed));
 
-    std::lock_guard locker(m_requestsMutex);
-    m_streamsToAdd.push_back(stream);
+    {
+        std::lock_guard locker(m_requestsMutex);
+        m_streamsToAdd.push_back(stream);
+    }
+    m_wake.signal();
 }
 
 void TIOScheduler::remove_stream(TIOStream* stream)

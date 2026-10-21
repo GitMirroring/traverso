@@ -94,7 +94,11 @@ public:
     // size and the quality
     void start();
 
-    // The audio thread, every cycle: wakes the scheduler thread, never blocks
+    // The audio thread, every cycle: wakes the scheduler thread, never blocks.
+    // The wake is a counting semaphore with one waiter (the scheduler
+    // thread) and any number of wakers: an atomic add, and a post to the
+    // system semaphore only when the scheduler thread waits. The audio
+    // thread and a request never wait for each other.
     void tick() { m_wake.signal(); }
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
@@ -113,9 +117,9 @@ public:
     void remove_stream(TIOStream* stream);
 
     // Background work for the idle time; the scheduler owns the task until
-    // it is done (and deletes it then, or when it goes). Any thread. Picked
-    // up at the next wake: without a running driver (not even the Dummy
-    // one) the scheduler thread is not woken every cycle and idle tasks wait.
+    // it is done (and deletes it then, or when it goes). Any thread. Every
+    // request wakes the scheduler thread, so a task runs also without a
+    // driver (the rounds with idle work follow each other until it is over).
     void add_idle_task(std::unique_ptr<TIOTask> task);
 
     // Any thread. The output rate takes effect at the next seek (the

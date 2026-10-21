@@ -31,9 +31,13 @@ DiskIO for the whole project is a later step.
 scheduler thread of its own (`start()`); a test calls `dispatch()`, one turn
 of the scheduler thread, without it. The scheduler thread (`run()`):
 1. Wait for a wake: the audio thread's `tick()` every cycle, also with the
-   transport stopped, or a request. One semaphore, any number of wakers,
-   the audio thread never blocks. After a round with idle work the next
-   round follows without waiting.
+   transport stopped, or a request (every `add_stream()`,
+   `add_idle_task()`, `remove_stream()`), so idle tasks run also without a
+   driver. One counting semaphore with one waiter and any number of wakers:
+   an atomic add, and a post to the system semaphore only while the
+   scheduler thread waits; the audio thread and a request never wait for
+   each other. After a round with idle work the next round follows without
+   waiting.
 2. Take the requests, between rounds and never during a step: streams added
    and removed, new idle tasks (one mutex). A seek, a rate or a quality
    change are atomics the round reads. `remove_stream()` returns once the
