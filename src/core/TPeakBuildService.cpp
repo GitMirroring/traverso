@@ -6,6 +6,9 @@
 #include "TDiskIOThread.h"
 #include "TPeakCache.h"
 #include "TPeakBuildTask.h"
+#include "TPeakStream.h"
+
+#include "TLog.h"
 
 #include <QPromise>
 
@@ -84,8 +87,10 @@ TPeakBuild TPeakBuildService::build(const QString& audioPath, const QString& pea
     forget_finished();
     const auto running = m_jobs.constFind(peakPath);
     if (running != m_jobs.constEnd()) {
+        TLOG_I("peaks", "waiting for the running job of {}", peakPath.toStdString());
         return TPeakBuild{running->future, running->stream.lock()};
     }
+    TLOG_I("peaks", "building {}", peakPath.toStdString());
     auto stream = std::make_shared<TPeakStream>(rate, channelCount, peakPath);
     return add_job(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream), diskio);
 }
@@ -93,6 +98,7 @@ TPeakBuild TPeakBuildService::build(const QString& audioPath, const QString& pea
 void TPeakBuildService::post_process(std::shared_ptr<TPeakStream> recorded, TDiskIOThread* diskio)
 {
     forget_finished();
+    TLOG_I("peaks", "post-processing {}", recorded->peak_path().toStdString());
     add_job(std::make_unique<TPeakBuildTask>(std::move(recorded)), diskio);
 }
 

@@ -164,7 +164,7 @@ void TWaveform::open_or_build()
 
 void TWaveform::start_build(const char* reason)
 {
-    TLOG_I("peaks", "building {} ({})", m_peakPath.toStdString(), reason);
+    TLOG_I("peaks", "asking for {} ({})", m_peakPath.toStdString(), reason);
     ++m_builds;
     m_state = State::Building;
     m_progress = 0;
