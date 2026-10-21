@@ -6,11 +6,11 @@
 #include <vector>
 
 /**
- * @brief Decides what a round of a DiskIO thread does: which streams get a
+ * @brief Decides what a round of a TIOScheduler does: which streams get a
  * step, in which order, how many background (idle) tasks join them, and
  * whether the next round follows at once (doc/design/diskio-rounds.md).
  *
- * No time is measured and nothing is weighed: the kernel schedules, DiskIO
+ * No time is measured and nothing is weighed: the kernel schedules, the scheduler
  * only knows the order. Streams come first, the emptiest first; idle tasks
  * fill the threads that are left, never more than the idle limit, and only
  * while the emptiest reader is full enough (with hysteresis, so idle work

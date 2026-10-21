@@ -19,8 +19,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#ifndef T_DISKIO_THREAD_H
-#define T_DISKIO_THREAD_H
+#ifndef T_IO_SCHEDULER_H
+#define T_IO_SCHEDULER_H
 
 #include <QMutex>
 #include <QThread>
@@ -51,7 +51,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  * each in parallel on the global thread pool (this thread waits, and runs
  * the round itself when the pool is busy). Between
  * rounds, never during one: seeks, streams added and removed, new idle
- * tasks, rate changes. Nothing is timed: the kernel schedules, DiskIO only
+ * tasks, rate changes. Nothing is timed: the kernel schedules, the scheduler only
  * knows the order.
  */
 class TIOScheduler : public QThread
@@ -93,10 +93,10 @@ public:
         m_audioThreadProcessedFramesQueue->try_enqueue(0);
     }
 
-    // Background work for the idle time; DiskIO owns the task until it is
-    // done (and deletes it then, or when DiskIO goes). Any thread. Picked up
+    // Background work for the idle time; the scheduler owns the task until
+    // it is done (and deletes it then, or when it goes). Any thread. Picked up
     // at the next tick: without a running driver (not even the Dummy one)
-    // DiskIO is not woken and idle tasks do not run.
+    // the scheduler is not woken and idle tasks do not run.
     void add_idle_task(std::unique_ptr<TIOTask> task);
 
     // false while the sheet records: the disk belongs to the recording. Per
@@ -120,7 +120,7 @@ private:
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TIOStream*>>   m_streamsToBeRemoved;
 
     std::atomic<bool>   m_seekRequested;
-    std::atomic<bool>   m_stopDiskIOThreadRequested;
+    std::atomic<bool>   m_stopRequested;
 
     std::atomic<int>    m_bufferFillStatus;
     std::atomic<trav_time_t> m_doWorktTime;
@@ -151,7 +151,7 @@ private:
     std::atomic<bool> m_idleWorkAllowed{true};
     std::atomic<int> m_idleLimit{1};
 
-    void stop_disk_thread();
+    void stop_thread();
     // Between rounds: streams added and removed, new idle tasks
     void take_requests();
     // One round; true when the next one follows without waiting for the tick

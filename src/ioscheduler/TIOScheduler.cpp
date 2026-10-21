@@ -56,7 +56,7 @@ void TIOScheduler::run()
         }
 
         take_requests();
-        if (m_stopDiskIOThreadRequested.load()) {
+        if (m_stopRequested.load()) {
             break;
         }
 
@@ -77,7 +77,7 @@ TIOScheduler::TIOScheduler()
     m_streamsToBeRemoved = std::make_unique<moodycamel::BlockingReaderWriterCircularBuffer<TIOStream*>>(512);
 
     m_seekRequested.store(false);
-    m_stopDiskIOThreadRequested.store(false);
+    m_stopRequested.store(false);
     m_outputSampleRate = 0;
     m_sampleRateChanged = false;
     m_resampleQualityChanged = false;
@@ -93,7 +93,7 @@ TIOScheduler::TIOScheduler()
 TIOScheduler::~TIOScheduler()
 {
     PENTERDES;
-    stop_disk_thread();
+    stop_thread();
 
     // Background tasks that did not get to their end are handed back too
     // (the thread is gone: this one may touch its lists)
@@ -125,7 +125,7 @@ void TIOScheduler::take_requests()
 
 bool TIOScheduler::do_round()
 {
-    Q_ASSERT_X(this->thread() == QThread::currentThread(), "DiskIO::do_round", "NOT running in DiskIO thread");
+    Q_ASSERT_X(this->thread() == QThread::currentThread(), "TIOScheduler::do_round", "not on the scheduler's thread");
 
     if (m_resampleQualityChanged) {
         for (TIOStream* stream : m_streams) {
@@ -156,7 +156,7 @@ bool TIOScheduler::do_round()
 
     // blockingMap() starts the round on the pool and waits: the pool's
     // threads do the work, this thread takes part only when the pool is busy
-    // (it runs the round then alone, so DiskIO always gets on)
+    // (it runs the round then alone, so the scheduler always gets on)
     const TIOPlanner::Round plan = m_planner.plan(streams, seek, int(m_idleTasks.size()),
                                                       m_idleWorkAllowed.load(std::memory_order_relaxed),
                                                       QThreadPool::globalInstance()->maxThreadCount(),
@@ -365,14 +365,14 @@ int TIOScheduler::get_buffers_fill_status( )
     return m_bufferFillStatus.exchange(100);
 }
 
-void TIOScheduler::stop_disk_thread( )
+void TIOScheduler::stop_thread()
 {
     PENTER;
 
     // Stop any processing in the round loop
-    m_stopDiskIOThreadRequested.store(true);
+    m_stopRequested.store(true);
 
-    // this function is called from the DiskIO destructor
+    // this function is called from the scheduler's destructor
     // most likely we're waiting on an empty blocking queue so the loop will never go on
     // so make sure we wake up the thread by adding an item to the queue
     // Since we are disconnected from the audio processing callback it's safe to do so.
