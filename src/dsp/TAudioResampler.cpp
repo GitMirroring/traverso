@@ -33,12 +33,6 @@ public:
         }
     }
 
-    void set_ratio(double ratio) override {
-        if (m_state) {
-            src_set_ratio(m_state, ratio);
-        }
-    }
-
     nframes_t process(const float* input, nframes_t inFrames, float* output,
                       nframes_t maxOutFrames, double ratio, bool endOfInput, nframes_t& framesConsumed) override {
         if (!m_state) return 0;
@@ -94,12 +88,6 @@ public:
         }
     }
 
-    void set_ratio(double ratio) override {
-        if (m_resampler) {
-            soxr_set_io_ratio(m_resampler, ratio, 0);
-        }
-    }
-
     nframes_t process(const float* input, nframes_t inFrames, float* output,
                       nframes_t maxOutFrames, double ratio, bool endOfInput, nframes_t& framesConsumed) override {
         Q_UNUSED(ratio);
@@ -140,13 +128,6 @@ void TAudioResampler::reset() {
         m_backend->reset();
     }
     m_leftOverFrames = 0;
-}
-
-void TAudioResampler::set_ratio(double newRatio) {
-    m_srcRatio = newRatio;
-    if (m_backend) {
-        m_backend->set_ratio(newRatio);
-    }
 }
 
 nframes_t TAudioResampler::process(const float* inputBuffer, nframes_t inputFrames,

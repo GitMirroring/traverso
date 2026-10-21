@@ -8,7 +8,6 @@ class ResampleBackend {
 public:
     virtual ~ResampleBackend() = default;
     virtual void reset() = 0;
-    virtual void set_ratio(double ratio) = 0;
     virtual nframes_t process(const float* input, nframes_t inFrames,
                               float* output, nframes_t maxOutFrames,
                               double ratio, bool endOfInput, nframes_t& framesConsumed) = 0;
@@ -22,11 +21,12 @@ public:
         LIBSOXR
     };
 
+    // The ratio stays: another ratio is another resampler (soxr cannot
+    // change it once it ran)
     TAudioResampler(BackendType backend, double srcRatio, int quality, long blockSize);
     ~TAudioResampler();
 
     void reset();
-    void set_ratio(double newRatio);
 
     // CLEAN & PURE: Strictly float-to-float mono resampling
     nframes_t process(const float* inputBuffer, nframes_t inputFrames,

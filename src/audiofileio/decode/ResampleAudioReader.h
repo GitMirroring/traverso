@@ -90,6 +90,9 @@ protected:
     bool                    m_isResampleAvailable;
 
 private:
+    // One per channel, for the ratio of the output rate to the file's
+    void create_resamplers();
+
     TFileIOBuffer m_resampleDecodeBuffer;
     // After a seek: output frames to drop before the position asked for
     nframes_t m_dropFrames{0};

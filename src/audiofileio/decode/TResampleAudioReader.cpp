@@ -77,17 +77,20 @@ void TResampleAudioReader::set_converter_type(int converterType)
         m_convertorType = converterType;
     }
 
-    m_resamplers.clear();
+    m_isResampleAvailable = true;
+    create_resamplers();
     clear_buffers();
 
-    m_isResampleAvailable = true;
-    double ratio = double(m_outputSampleRate) / m_fileSampleRate;
+    seek_private(pos());
+}
 
+void TResampleAudioReader::create_resamplers()
+{
+    const double ratio = double(m_outputSampleRate) / m_fileSampleRate;
+    m_resamplers.clear();
     for (uint c = 0; c < m_channels; c++) {
         m_resamplers.push_back(std::make_unique<TAudioResampler>(TAudioResampler::BackendType::LIBSOXR, ratio, m_convertorType, 512));
     }
-
-    seek_private(pos());
 }
 
 void TResampleAudioReader::set_output_rate(uint rate)
@@ -102,9 +105,9 @@ void TResampleAudioReader::set_output_rate(uint rate)
     m_fileFrames = rate == m_fileSampleRate ? m_reader->get_nframes()
                                             : nframes_t(TTimeRef::frame_at_or_after(m_length, m_outputSampleRate));
 
-    double ratio = double(m_outputSampleRate) / m_fileSampleRate;
-    for (const auto& resampler : m_resamplers) {
-        resampler->set_ratio(ratio);
+    // Another ratio is another resampler
+    if (m_isResampleAvailable) {
+        create_resamplers();
     }
 
     reset();
