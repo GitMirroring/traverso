@@ -6,10 +6,10 @@
 #include <vector>
 
 /**
- * @brief Decides what a round of a TIOScheduler does: which streams get a
- * step, in which order, how many background (idle) tasks join them, and
- * whether the next round follows at once (doc/design/diskio-rounds.md,
- * dispatcher-conclusie.md).
+ * @brief Decides what a TIOScheduler starts when threads are free: which of
+ * the streams and idle tasks that wait get a step, in which order
+ * (doc/design/diskio-rounds.md, dispatcher-conclusie.md). What does not fit
+ * waits for the next time a thread is free.
  *
  * No time is measured and nothing is weighed: the kernel schedules, the scheduler
  * only knows the order:
@@ -23,19 +23,19 @@
  *    plays seeks.
  *
  * Pure: no threads, no streams, no audio device, so it is tested headless.
- * TIOScheduler asks it once per round, on its own thread.
+ * TIOScheduler asks it on its own thread, every time it dispatches.
  */
 class TIOPlanner
 {
 public:
     // Idle work starts when the emptiest reader is above this (percent of
-    // its ring): the readers can take a round without a step then. It was
+    // its ring): the readers can go a while without a step then. It was
     // the threshold a reader gets a step below before the round loop too.
     static constexpr int IdleStartThreshold = 80;
     // Once running, idle work goes on until the emptiest reader drops below
-    // this: a reader that slips below the start threshold gets its step in
-    // the same round anyway, and stopping at once would make the idle work
-    // stop and start with every round around one threshold.
+    // this: a reader that slips below the start threshold gets its step
+    // anyway, and stopping at once would make the idle work stop and start
+    // all the time around one threshold.
     static constexpr int ResumeThreshold = 60;
 
     struct Stream
@@ -55,25 +55,21 @@ public:
     struct Round
     {
         // Indices into the streams, in order: the seeks of songs that play,
-        // then the refills, the emptiest first
+        // then the refills, the emptiest first; no more than there are threads
         std::vector<int> streams;
         // The seeks of songs that do not play, as idle work, in order
         std::vector<int> idleSeeks;
-        int idleSteps{0};               // the first idleSteps idle tasks join
-        // The next round starts without waiting for the audio thread's
-        // tick. Only with idle work: a stream step fills or flushes all it
-        // can, so a stream that still wants work waits for the next tick
-        // (and one that cannot make progress does not spin).
-        bool continueWithoutTick{false};
+        int idleSteps{0};               // the first idleSteps idle tasks get a step
     };
 
-    // A seek of a song that plays: no idle work runs, and it waits until the
-    // readers are above the start threshold again. idleTasks: the idle tasks
-    // that need work now. idleAllowed: false while a song records. threads:
-    // how many steps can run at the same time (the pool's threads).
-    // idleLimit: at most this many idle steps per round (1 on a disk that
-    // seeks).
-    Round plan(const std::vector<Stream>& streams, int idleTasks, bool idleAllowed, int threads, int idleLimit);
+    // streams: those that do not run a step now. playingSeek: a song that
+    // plays seeks (also when all its seek steps run): no idle work starts,
+    // and none until the readers are above the start threshold again; a
+    // stream that seeks for a song that plays says so too. idleTasks: the
+    // idle tasks that wait. idleAllowed: false while a song records.
+    // threads: how many steps may start now (the threads that are free).
+    // idleLimit: how many idle steps may start now.
+    Round plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed, int threads, int idleLimit);
 
     // Whether idle work may run as far as the readers' fill goes
     bool idle_running() const { return m_idleRunning; }

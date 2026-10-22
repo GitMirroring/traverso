@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <atomic>
 #include <condition_variable>
-#include <deque>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -42,49 +41,60 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "cameron/atomicops.h"
 
 /**
- * @brief Reads and writes the buffered audio streams of a sheet, and runs
- * background work (peak builds) in its idle time (doc/design/diskio-rounds.md).
+ * @brief Reads and writes the buffered audio streams of the songs, and runs
+ * background work (peak builds) in the idle time (doc/design/diskio-rounds.md,
+ * dispatcher-conclusie.md).
  *
  * The application has two (TProjectManager): one for the readers and the
  * idle work, one for the writers (recordings), so a slow read never holds up
  * writing what was recorded. Every sheet is a group (TIOGroup) in the read
- * one. Each runs on a scheduler thread of its own: wait for a wake (the
- * audio thread's tick every cycle, or a request), then rounds (dispatch()).
- * A round asks every stream what it needs, lets TIOPlanner pick the order
- * (streams first, the emptiest first, then idle tasks on the threads left)
- * and runs one step of each in parallel on worker threads (its own pool;
- * the scheduler thread takes part in the round).
- * Between rounds, never during one: seeks, streams added and removed, new
- * idle tasks, rate changes. Nothing is timed: the kernel schedules, the
- * scheduler only knows the order.
+ * one. Each has a scheduler thread and a pool of worker threads of its own.
+ * The scheduler thread waits for a wake (the audio thread's tick every
+ * cycle, a request, a step that is done) and then dispatches: it takes the
+ * requests and the reports of the steps that are done, asks TIOPlanner for
+ * the order of what may start, and starts one step of each on the pool, as
+ * many as there are threads free. A step that is done reports back and the
+ * next one starts at once: no step waits for a slower one (no rounds). A
+ * stream or a task has at most one step at a time; a stream at most one
+ * refill step per tick; idle work never takes the last thread. Nothing is
+ * timed for the plan: the kernel schedules, the scheduler only knows the
+ * order.
  *
  * Threads (doc/design/diskio-rounds.md, section 2, has the full contract):
- * - audio thread: tick(), set_transport_location(),
- *   set_seek_transport_location(); never blocks (atomics, the wake). It
- *   reads or writes the rings of the streams it processes.
+ * - audio thread: tick(), the transport and the seek of a group
+ *   (TIOGroup); never blocks (atomics, the wake). It reads or writes the
+ *   rings of the streams it processes.
  * - owner thread (GUI): the constructor, start(), the destructor,
- *   add_stream(), remove_stream(), the meters. remove_stream() waits until
- *   the round that runs is over.
+ *   add_group(), remove_group(), add_stream(), remove_stream(), the meters.
+ *   remove_stream() waits until the scheduler thread let go of the stream:
+ *   at once, or after the step it has running.
  * - any thread: add_idle_task() and the setters (atomics, or the request
  *   lock for a moment).
- * - scheduler thread: dispatch(); it alone has the stream list, the task
- *   list, the planner and the round. It blocks on the wake, on the end of a
- *   round, and on disk IO when it runs a step itself.
- * - worker threads: step() of one stream or one task, during a round.
+ * - scheduler thread: dispatch(); it alone has the streams, the tasks, the
+ *   groups' seeks, the planner and what runs, in plain variables. It blocks
+ *   on the wake only, and never runs a step.
+ * - worker threads: step() of one stream or one task, then the report.
+ *
+ * Hand-overs, four: the wake (a semaphore), the requests (a lock, swapped
+ * out, and a wake), a step to the pool (QThreadPool::start()), and a step
+ * done (a lock, swapped out, and a wake).
  *
  * Ownership: a stream is its owner's until add_stream() and again once
  * remove_stream() returned; in between the scheduler has it, and calls
  * retire() when it takes it out. The owner then deletes it. Before
  * remove_stream() the owner takes it out of the audio processing. A task is
- * the scheduler's from add_idle_task() until it is retired and deleted.
- * One seek at a time: the next is asked for after seekFinished.
+ * the scheduler's from add_idle_task() until it is retired and deleted. A
+ * group is its owner's; the scheduler reads it between add_group() and
+ * remove_group(). One seek at a time per group: the next is asked for after
+ * seekFinished(group).
  *
  * No deadlock in remove_stream(): the owner holds no lock there that a step
  * needs, and a step never waits for the owner thread.
  *
  * The object lives on the owner thread; only dispatch() runs on the
  * scheduler thread. Without start() there is no scheduler thread: a test
- * calls dispatch() itself.
+ * calls dispatch() itself, which then waits until the steps it started are
+ * done.
  */
 class TIOScheduler : public QObject
 {
@@ -105,8 +115,13 @@ public:
     // The wake is a counting semaphore with one waiter (the scheduler
     // thread) and any number of wakers: an atomic add, and a post to the
     // system semaphore only when the scheduler thread waits. The audio
-    // thread and a request never wait for each other.
-    void tick() { m_wake.signal(); }
+    // thread and a request never wait for each other. The count of ticks
+    // gives every stream one refill step per tick.
+    void tick()
+    {
+        m_ticks.fetch_add(1, std::memory_order_relaxed);
+        m_wake.signal();
+    }
 
     // The owner's thread. A song (a sheet): its transport, its seek, whether
     // it plays or records (TIOGroup). Added before its streams, removed
@@ -154,9 +169,10 @@ public:
     bool get_cpu_time(float &time);
     int get_buffers_fill_status();
 
-    // One turn of the scheduler thread: the requests that came, then a
-    // round. True when the next turn follows without waiting for a wake. On
-    // the scheduler thread, or on the owner's thread without one (a test).
+    // One turn of the scheduler thread: the requests and the reports that
+    // came, then the steps there are threads for. True when idle steps were
+    // started. On the scheduler thread, or on the owner's thread without one
+    // (a test): it waits then until the steps it started are done.
     bool dispatch();
 
 signals:
@@ -164,31 +180,14 @@ signals:
     void seekFinished(TIOGroup* group);
 
 private:
-    void run();
-    // Between rounds: streams added and removed, new idle tasks
-    void take_requests();
-    // One round; true when the next one follows without waiting for the tick
-    bool do_round();
-    bool on_scheduler_thread() const;
-
-    std::unique_ptr<QThread> m_thread;
-    // The worker threads, of this scheduler alone
-    QThreadPool m_pool;
-    moodycamel::spsc_sema::LightweightSemaphore m_wake;
-    std::atomic<bool> m_stopRequested{false};
-
-    // The owner's requests, taken between rounds (std::mutex: a thread
-    // sanitizer sees it, Qt's own here is not built for one)
-    std::mutex m_requestsMutex;
-    std::condition_variable m_requestsTaken;
-    // A stream as the scheduler thread has it
-    struct StreamWork
+    // A stream as the scheduler thread has it; its address stays, a step's
+    // report points to it
+    struct StreamWork;
+    // An idle task as the scheduler thread has it
+    struct TaskWork
     {
-        TIOStream* stream{nullptr};
-        TIOGroup* group{nullptr};       // none: a writer
-        uint rate{0};                   // the output rate it reads at
-        nframes_t bufferSize{0};        // the buffer size of its rings
-        bool seek{false};               // its seek step is to come
+        std::unique_ptr<TIOTask> task;
+        bool inFlight{false};
     };
     // A song as the scheduler thread has it
     struct GroupWork
@@ -197,13 +196,77 @@ private:
         bool seeking{false};
         int seeksLeft{0};               // its streams whose seek step is to come
     };
+    // A removal the owner waits for (on its stack)
+    struct Removal
+    {
+        TIOStream* stream{nullptr};
+        TIOGroup* group{nullptr};
+        bool done{false};               // under the request lock
+    };
+    struct StreamWork
+    {
+        TIOStream* stream{nullptr};
+        TIOGroup* group{nullptr};       // none: a writer
+        uint rate{0};                   // the output rate it reads at
+        nframes_t bufferSize{0};        // the buffer size of its rings
+        bool seek{false};               // its seek step is to come
+        bool inFlight{false};           // a step of it runs
+        bool resamplerPending{false};   // a new resampler, for after the step that runs
+        quint64 stepTick{~quint64(0)};  // the tick of its last refill step
+        Removal* removal{nullptr};      // removed once the step that runs is done
+    };
+    // What a step tells when it is done, from its worker thread
+    struct Report
+    {
+        StreamWork* stream{nullptr};
+        TaskWork* task{nullptr};
+        TIOStream::StepInfo info;
+        int fill{-1};                   // what the GUI is told, -1 for nothing
+        bool over{false};               // the task is over
+        bool idle{false};
+        trav_time_t nanoseconds{0};     // how long the step took
+    };
+
+    void run();
+    // The owners' requests: groups and streams added and removed, new idle
+    // tasks
+    void take_requests();
+    // The steps that are done
+    void take_reports();
+    // The steps there are threads for, in the planner's order; true when
+    // idle steps were started
+    bool start_steps();
+    void start_stream_step(StreamWork* work, bool idle, int plannedFill, const TIOStream::StepInfo& info, quint64 tick);
+    void start_task_step(TaskWork* task);
+    void report(const Report& report);
+    // Takes the stream out: its song has one stream less to seek
+    void retire_stream(StreamWork* work);
+    void finish_seeks();
+    bool on_scheduler_thread() const;
+
+    std::unique_ptr<QThread> m_thread;
+    // The worker threads, of this scheduler alone
+    QThreadPool m_pool;
+    moodycamel::spsc_sema::LightweightSemaphore m_wake;
+    std::atomic<bool> m_stopRequested{false};
+    std::atomic<quint64> m_ticks{0};
+
+    // The owners' requests (std::mutex: a thread sanitizer sees it, Qt's own
+    // here is not built for one)
+    std::mutex m_requestsMutex;
+    std::condition_variable m_requestsTaken;   // a removal is done
     std::vector<TIOGroup*> m_groupsToAdd;
-    std::vector<TIOGroup*> m_groupsToRemove;
     std::vector<StreamWork> m_streamsToAdd;
-    std::vector<TIOStream*> m_streamsToRemove;
+    std::vector<Removal*> m_removals;
     std::vector<std::unique_ptr<TIOTask>> m_tasksToAdd;
-    quint64 m_requested{0};
-    quint64 m_taken{0};
+
+    // The steps that are done
+    std::mutex m_reportsMutex;
+    std::vector<Report> m_reports;
+    // A step handed to the pool: QThreadPool's own lock orders it, this
+    // atomic says so in a way a thread sanitizer sees too (static: the step
+    // reads it before anything of its closure)
+    static std::atomic<quint64> s_stepsStarted;
 
     std::atomic<uint> m_outputRate{0};
     std::atomic<TIOStream::Resampler> m_resampler{};  // the owner sets it before streams come
@@ -214,14 +277,12 @@ private:
     // The time the steps took (the CPU meter)
     std::atomic<trav_time_t> m_doWorktTime{0};
     trav_time_t m_lastCpuReadTime;
-
-    // The hand-over between the scheduler thread and the round's steps (do_round())
-    std::atomic<quint64> m_roundStarted{0};
-    std::atomic<quint64> m_stepsDone{0};
+    std::atomic<int> m_idleLimit{1};
 
     // The scheduler thread's
     // A stretch of idle work, from its first idle step until no idle task is
-    // left, for the log: how long, and how much of the threads it used
+    // left and none runs, for the log: how long, and how much of the threads
+    // it used
     struct IdleStretch
     {
         trav_time_t start{0};
@@ -232,13 +293,11 @@ private:
     IdleStretch m_idleStretch;
     TIOPlanner m_planner;
     std::vector<GroupWork> m_groups;
-    std::vector<StreamWork> m_streams;
-    std::deque<std::unique_ptr<TIOTask>> m_idleTasks;
-    std::atomic<int> m_idleLimit{1};
+    std::vector<std::unique_ptr<StreamWork>> m_streams;
+    std::vector<std::unique_ptr<TaskWork>> m_idleTasks;     // in the order they came
+    int m_running{0};                   // steps that run
+    int m_runningIdle{0};               // of them idle steps
 
-    // A seek of a song that plays was asked for (idle steps give way to it);
-    // during a round, on the worker threads too (the groups do not change then)
-    bool playing_seek_requested() const;
     // The step information of a stream's step
     TIOStream::StepInfo step_info(const StreamWork& work, uint outputRate, nframes_t bufferSize,
                                   const TIOStream::Resampler& resampler) const;

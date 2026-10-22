@@ -106,9 +106,12 @@ TIOScheduler* TProjectManager::get_read_scheduler()
 {
     Q_ASSERT_X(QThread::currentThread() == thread(), "TProjectManager::get_read_scheduler", "not on the GUI thread");
     if (!m_readScheduler) {
-        // Half the cores (at least two): the rest stays free for the GUI and
-        // the audio thread
-        m_readScheduler = new TIOScheduler(QThread::idealThreadCount() / 2);
+        // Half the cores for the idle work (peak builds), as the global pool
+        // had before, the rest free for the GUI and the audio thread; and one
+        // more, which idle work never takes: a refill finds a thread at once
+        // (in rounds the scheduler thread took part, the dispatcher's never
+        // runs a step)
+        m_readScheduler = new TIOScheduler(std::max(QThread::idealThreadCount() / 2, 1) + 1);
         m_readScheduler->set_output_sample_rate(audiodevice().get_sample_rate());
         m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
         m_readScheduler->set_resampler(TBufferedAudioStreamReader::configured_resampler());

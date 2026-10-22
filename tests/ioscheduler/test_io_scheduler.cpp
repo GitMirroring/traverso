@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 // Headless test of TIOScheduler with streams and tasks of its own, no core,
-// no driver: dispatch() called directly, a stream removed while rounds run
-// on the scheduler thread, the end with tasks still running, the seeks of
-// songs (groups) that play and that do not, a new rate, a new resampler.
+// no driver: dispatch() called directly, a stream removed while steps run
+// on the worker threads, the end with tasks still running, the seeks of
+// songs (groups) that play and that do not, a new rate, a new resampler, and
+// the dispatcher: no step waits for a slower one, never more steps than
+// threads, idle work never on the last thread, a removal waits only for its
+// own stream.
 
 #include "TIOScheduler.h"
 #include "TIOStream.h"
@@ -81,28 +84,60 @@ public:
     std::atomic<qint64> m_lastSeek{0};
 };
 
+// How many steps run at the same time, and the most there were
+struct Concurrency
+{
+    std::atomic<int> now{0};
+    std::atomic<int> most{0};
+    void enter()
+    {
+        const int running = now.fetch_add(1) + 1;
+        int seen = most.load();
+        while (running > seen && !most.compare_exchange_weak(seen, running)) {
+        }
+    }
+    void leave() { now.fetch_sub(1); }
+};
+
 // A task of a number of steps, sleeping a while in each; it counts into
 // numbers of the test, as the scheduler deletes it
 class FakeTask final : public TIOTask
 {
 public:
-    FakeTask(int steps, std::atomic<int>& retired, std::atomic<int>& done, int stepMicroseconds = 0)
-        : m_left(steps), m_retired(retired), m_done(done), m_stepMicroseconds(stepMicroseconds) {}
+    FakeTask(int steps, std::atomic<int>& retired, std::atomic<int>& done, int stepMicroseconds = 0,
+             Concurrency* concurrency = nullptr, std::atomic<int>* order = nullptr, int* retiredAs = nullptr)
+        : m_left(steps), m_retired(retired), m_done(done), m_stepMicroseconds(stepMicroseconds),
+          m_concurrency(concurrency), m_order(order), m_retiredAs(retiredAs) {}
 
     bool step() override
     {
+        if (m_concurrency) {
+            m_concurrency->enter();
+        }
         if (m_stepMicroseconds > 0) {
             std::this_thread::sleep_for(std::chrono::microseconds(m_stepMicroseconds));
         }
         m_done.fetch_add(1);
+        if (m_concurrency) {
+            m_concurrency->leave();
+        }
         return --m_left > 0;
     }
-    void retire() override { m_retired.fetch_add(1); }
+    void retire() override
+    {
+        if (m_order && m_retiredAs) {
+            *m_retiredAs = m_order->fetch_add(1);
+        }
+        m_retired.fetch_add(1);
+    }
 
     int m_left;
     std::atomic<int>& m_retired;
     std::atomic<int>& m_done;
     int m_stepMicroseconds;
+    Concurrency* m_concurrency;
+    std::atomic<int>* m_order;
+    int* m_retiredAs;
 };
 
 int main(int argc, char** argv)
@@ -256,6 +291,7 @@ int main(int argc, char** argv)
         scheduler.dispatch();
         check(a.m_lastTransport.load() == 5000, "the transport goes on from the seek");
         song.set_transport_location(TTimeRef(qint64(6000)));
+        scheduler.tick();
         scheduler.dispatch();
         check(a.m_lastTransport.load() == 6000, "then from where the audio thread says");
         scheduler.remove_stream(&a);
@@ -383,6 +419,136 @@ int main(int argc, char** argv)
         scheduler.remove_stream(&b);
         scheduler.remove_group(&one);
         scheduler.remove_group(&two);
+    }
+
+    // The dispatcher: a fast task does not wait for a slow one next to it
+    // (in rounds the fast one took a step only as often as the slow one)
+    {
+        std::atomic<int> retired{0};
+        std::atomic<int> done{0};
+        std::atomic<int> order{0};
+        int slowAs = -1;
+        int fastAs = -1;
+        TIOScheduler scheduler(4);
+        scheduler.set_idle_limit(4);
+        scheduler.add_idle_task(std::make_unique<FakeTask>(5, retired, done, 20000, nullptr, &order, &slowAs));
+        scheduler.add_idle_task(std::make_unique<FakeTask>(40, retired, done, 1000, nullptr, &order, &fastAs));
+        scheduler.start();
+        for (int i = 0; i < 5000 && retired.load() < 2; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        check(retired.load() == 2 && fastAs == 0 && slowAs == 1, "40 fast steps are done before 5 slow ones next to them");
+    }
+
+    // Never more steps at the same time than threads, and idle work never on
+    // the last one: a stream that needs work every tick gets its steps while
+    // idle tasks keep all other threads busy
+    {
+        std::atomic<int> retired{0};
+        std::atomic<int> done{0};
+        Concurrency idle;
+        TIOScheduler scheduler(3);
+        scheduler.set_buffer_size(256);
+        scheduler.set_idle_limit(8);
+        TIOGroup song;
+        song.set_idle_limit(8);
+        scheduler.add_group(&song);
+        FakeStream reading(true, 50, 500);
+        scheduler.add_stream(&reading, &song);
+        for (int i = 0; i < 6; ++i) {
+            scheduler.add_idle_task(std::make_unique<FakeTask>(20, retired, done, 2000, &idle));
+        }
+        scheduler.start();
+        std::atomic<bool> ticking{true};
+        std::thread audio([&] {
+            while (ticking.load()) {
+                scheduler.tick();
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
+            }
+        });
+        for (int i = 0; i < 5000 && retired.load() < 6; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        const int readingSteps = reading.m_steps.load();
+        ticking.store(false);
+        audio.join();
+        check(retired.load() == 6, "the idle tasks are done");
+        check(idle.most.load() == 2, "idle work on two of the three threads, never on the last");
+        check(readingSteps > 20, "the stream got its steps meanwhile");
+        scheduler.remove_stream(&reading);
+        scheduler.remove_group(&song);
+    }
+
+    // A removal waits only for its own stream: many streams go while long
+    // idle steps run, and a stream whose step runs goes once that step is
+    // done
+    {
+        std::atomic<int> retired{0};
+        std::atomic<int> done{0};
+        TIOScheduler scheduler(4);
+        scheduler.set_buffer_size(256);
+        scheduler.set_idle_limit(2);
+        std::vector<std::unique_ptr<FakeStream>> streams;
+        for (int i = 0; i < 200; ++i) {
+            streams.push_back(std::make_unique<FakeStream>(false, 100));
+            scheduler.add_stream(streams.back().get());
+        }
+        FakeStream slow(true, 50, 30000);
+        scheduler.add_stream(&slow);
+        for (int i = 0; i < 2; ++i) {
+            scheduler.add_idle_task(std::make_unique<FakeTask>(1000, retired, done, 50000));
+        }
+        scheduler.start();
+        while (done.load() == 0 || slow.m_steps.load() == 0) {
+            scheduler.tick();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        const auto start = std::chrono::steady_clock::now();
+        for (const std::unique_ptr<FakeStream>& stream : streams) {
+            scheduler.remove_stream(stream.get());
+        }
+        const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+        char what[160];
+        std::snprintf(what, sizeof(what), "200 streams removed while 50 ms idle steps run, in %.3f s", seconds);
+        check(seconds < 0.5, what);
+        std::printf("%s\n", what);
+        scheduler.remove_stream(&slow);
+        check(slow.m_retired.load() == 1 && slow.m_stepsAfterRetire.load() == 0, "a stream whose step ran goes after that step");
+    }
+
+    // A seek of a song that plays starts at once while long idle steps run:
+    // the last thread is never idle work's
+    {
+        std::atomic<int> retired{0};
+        std::atomic<int> done{0};
+        std::atomic<int> finished{0};
+        TIOScheduler scheduler(2);
+        scheduler.set_buffer_size(256);
+        TIOGroup song;
+        song.set_idle_limit(4);
+        song.set_playing(true);
+        QObject::connect(&scheduler, &TIOScheduler::seekFinished, [&finished](TIOGroup*) { finished.fetch_add(1); });
+        scheduler.add_group(&song);
+        FakeStream a(false, 100);
+        scheduler.add_stream(&a, &song);
+        scheduler.add_idle_task(std::make_unique<FakeTask>(1000, retired, done, 100000));
+        scheduler.start();
+        while (done.load() == 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        const auto start = std::chrono::steady_clock::now();
+        song.request_seek(TTimeRef(qint64(1000)));
+        scheduler.tick();
+        while (finished.load() == 0) {
+            std::this_thread::sleep_for(std::chrono::microseconds(200));
+        }
+        const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+        char what[160];
+        std::snprintf(what, sizeof(what), "a seek next to 100 ms idle steps is done in %.4f s", seconds);
+        check(seconds < 0.05, what);
+        std::printf("%s\n", what);
+        scheduler.remove_stream(&a);
+        scheduler.remove_group(&song);
     }
 
     if (failures) {
