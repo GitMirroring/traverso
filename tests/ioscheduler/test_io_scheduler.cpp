@@ -145,7 +145,7 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
 
     // dispatch() without a scheduler thread and without a driver: the streams that need
-    // work get one step per round, an idle task runs to its end and is
+    // work get one step per dispatch, an idle task runs to its end and is
     // handed back once
     {
         TIOScheduler scheduler;
@@ -155,7 +155,7 @@ int main(int argc, char** argv)
         scheduler.add_stream(&reading);
         scheduler.add_stream(&full);
         check(reading.m_prepared.load() == 1 && full.m_prepared.load() == 1, "add_stream() makes the ring buffers");
-        check(!scheduler.dispatch(), "only streams: the next round waits for a wake");
+        check(!scheduler.dispatch(), "only streams: no idle step started");
         check(reading.m_steps.load() == 1 && full.m_steps.load() == 0, "one step for the stream that needs work");
 
         reading.m_needsWork = false;
@@ -163,9 +163,9 @@ int main(int argc, char** argv)
         std::atomic<int> retired{0};
         std::atomic<int> done{0};
         scheduler.add_idle_task(std::make_unique<FakeTask>(3, retired, done));
-        int rounds = 0;
-        while (scheduler.dispatch() && rounds < 10) {
-            ++rounds;
+        int dispatches = 0;
+        while (scheduler.dispatch() && dispatches < 10) {
+            ++dispatches;
         }
         check(retired.load() == 1, "the task is handed back once when it is over");
         check(done.load() == 3, "the task took its three steps");
@@ -178,10 +178,10 @@ int main(int argc, char** argv)
         check(reading.m_steps.load() == 1, "a removed stream gets no step");
     }
 
-    // A stream removed while the scheduler thread runs rounds (the audio thread ticks):
+    // A stream removed while its steps run (the audio thread ticks):
     // remove_stream() returns only once the scheduler thread let go of it, no step of it
     // runs after that
-    for (int round = 0; round < 20; ++round) {
+    for (int run = 0; run < 20; ++run) {
         TIOScheduler scheduler;
         scheduler.set_buffer_size(256);
         FakeStream removed(true, 50, 200);
@@ -213,7 +213,7 @@ int main(int argc, char** argv)
         scheduler.remove_stream(&stays);
     }
 
-    // The end while tasks run: the round that runs ends first, every task
+    // The end while tasks run: the steps that run end first, every task
     // that is left is handed back once
     {
         std::atomic<int> retired{0};
@@ -325,7 +325,7 @@ int main(int argc, char** argv)
     }
 
     // The seek of a song that does not play is idle work: on a disk that
-    // seeks (idle limit 1) one stream a round, after the refills; done, the
+    // seeks (idle limit 1) one stream at a time, after the refills; done, the
     // song hears it once
     {
         TIOScheduler scheduler;
@@ -342,8 +342,8 @@ int main(int argc, char** argv)
         scheduler.add_stream(&b, &song);
         scheduler.add_stream(&c, &song);
         song.request_seek(TTimeRef(qint64(1000)));
-        check(scheduler.dispatch(), "an idle seek: the next round follows at once");
-        check(a.m_seeks.load() + b.m_seeks.load() + c.m_seeks.load() == 1 && finished == 0, "one stream seeks a round");
+        check(scheduler.dispatch(), "an idle seek: an idle step started");
+        check(a.m_seeks.load() + b.m_seeks.load() + c.m_seeks.load() == 1 && finished == 0, "one stream seeks at a time");
         scheduler.dispatch();
         scheduler.dispatch();
         check(a.m_seeks.load() == 1 && b.m_seeks.load() == 1 && c.m_seeks.load() == 1 && finished == 1,

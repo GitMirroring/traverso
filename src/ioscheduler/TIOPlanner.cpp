@@ -5,10 +5,10 @@
 
 #include <algorithm>
 
-TIOPlanner::Round TIOPlanner::plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed,
+TIOPlanner::Plan TIOPlanner::plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed,
                                    int threads, int idleLimit)
 {
-    Round round;
+    Plan plan;
     threads = std::max(threads, 0);
 
     // The emptiest reader of the songs that play; none: nothing holds idle
@@ -20,10 +20,10 @@ TIOPlanner::Round TIOPlanner::plan(const std::vector<Stream>& streams, bool play
         // A stream that seeks takes no refill: the seek fills it
         if (stream.seek) {
             if (stream.playing) {
-                round.streams.push_back(i);
+                plan.streams.push_back(i);
                 playingSeek = true;
             } else {
-                round.idleSeeks.push_back(i);
+                plan.idleSeeks.push_back(i);
             }
             continue;
         }
@@ -38,22 +38,22 @@ TIOPlanner::Round TIOPlanner::plan(const std::vector<Stream>& streams, bool play
     std::stable_sort(refills.begin(), refills.end(), [&streams](int a, int b) {
         return streams[size_t(a)].fill < streams[size_t(b)].fill;
     });
-    round.streams.insert(round.streams.end(), refills.begin(), refills.end());
+    plan.streams.insert(plan.streams.end(), refills.begin(), refills.end());
     // What there are no threads for waits
-    round.streams.resize(std::min(round.streams.size(), size_t(threads)));
+    plan.streams.resize(std::min(plan.streams.size(), size_t(threads)));
 
     if (playingSeek) {
         m_idleRunning = false;
-        round.idleSeeks.clear();
-        return round;
+        plan.idleSeeks.clear();
+        return plan;
     }
 
     m_idleRunning = m_idleRunning ? lowest >= ResumeThreshold : lowest > IdleStartThreshold;
     int budget = 0;
     if (m_idleRunning && idleAllowed) {
-        budget = std::clamp(threads - int(round.streams.size()), 0, std::max(idleLimit, 0));
+        budget = std::clamp(threads - int(plan.streams.size()), 0, std::max(idleLimit, 0));
     }
-    round.idleSeeks.resize(std::min(round.idleSeeks.size(), size_t(budget)));
-    round.idleSteps = std::clamp(budget - int(round.idleSeeks.size()), 0, std::max(idleTasks, 0));
-    return round;
+    plan.idleSeeks.resize(std::min(plan.idleSeeks.size(), size_t(budget)));
+    plan.idleSteps = std::clamp(budget - int(plan.idleSeeks.size()), 0, std::max(idleTasks, 0));
+    return plan;
 }

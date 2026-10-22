@@ -421,7 +421,7 @@ bool TIOScheduler::start_steps()
     // Idle work never takes the last thread: a refill finds one at once
     const int threads = m_pool.maxThreadCount();
     const int idleBudget = std::min(std::max(idleLimit, 1), threads - 1) - m_runningIdle;
-    const TIOPlanner::Round plan = m_planner.plan(states, playingSeek, int(tasks.size()), idleAllowed,
+    const TIOPlanner::Plan plan = m_planner.plan(states, playingSeek, int(tasks.size()), idleAllowed,
                                                   threads - m_running, idleBudget);
 
     for (const int index : plan.streams) {
@@ -614,8 +614,9 @@ void TIOScheduler::remove_stream(TIOStream* stream)
 }
 
 /**
- *
- * @return Returns the CPU time consumed by the TIOScheduler thread
+ * The time the steps took since the last call, in percent of the time that
+ * passed (percent of one core: above 100 with more than one thread busy).
+ * The time a step waits for the disk counts too.
  */
 bool TIOScheduler::get_cpu_time(float &time)
 {
@@ -631,10 +632,8 @@ bool TIOScheduler::get_cpu_time(float &time)
 
 
 /**
- * 	Get the status of the writebuffers.
- *
- * @return The status in procentual amount of the smallest remaining space in the writebuffers
- *		that could be used to write 'recording' data too.
+ * The fill of the emptiest stream in sync since the last call, in percent
+ * (a writer's fill is its free part), 100 when no step reported meanwhile.
  */
 int TIOScheduler::get_buffers_fill_status( )
 {

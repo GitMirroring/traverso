@@ -29,8 +29,8 @@ class TIOPlanner
 {
 public:
     // Idle work starts when the emptiest reader is above this (percent of
-    // its ring): the readers can go a while without a step then. It was
-    // the threshold a reader gets a step below before the round loop too.
+    // its ring): the readers can go a while without a step then. A reader
+    // gets a step at this fill or below.
     static constexpr int IdleStartThreshold = 80;
     // Once running, idle work goes on until the emptiest reader drops below
     // this: a reader that slips below the start threshold gets its step
@@ -52,7 +52,7 @@ public:
         bool playing{false};
     };
 
-    struct Round
+    struct Plan
     {
         // Indices into the streams, in order: the seeks of songs that play,
         // then the refills, the emptiest first; no more than there are threads
@@ -69,7 +69,7 @@ public:
     // idle tasks that wait. idleAllowed: false while a song records.
     // threads: how many steps may start now (the threads that are free).
     // idleLimit: how many idle steps may start now.
-    Round plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed, int threads, int idleLimit);
+    Plan plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed, int threads, int idleLimit);
 
     // Whether idle work may run as far as the readers' fill goes
     bool idle_running() const { return m_idleRunning; }

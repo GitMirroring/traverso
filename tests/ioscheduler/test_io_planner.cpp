@@ -46,14 +46,14 @@ int main()
         // there are threads left; full readers get no step
         TIOPlanner planner;
         planner.plan({reader(100), reader(90), reader(95)}, false, 4, true, 2, 2);   // idle work starts
-        const TIOPlanner::Round round = planner.plan({reader(100), reader(75), reader(95)}, false, 4, true, 2, 2);
+        const TIOPlanner::Plan round = planner.plan({reader(100), reader(75), reader(95)}, false, 4, true, 2, 2);
         check(round.streams == std::vector<int>({1}), "only the reader under the threshold");
         check(round.idleSteps == 1, "idle tasks fill the threads left");
     }
     {
         // The emptiest reader first
         TIOPlanner planner;
-        const TIOPlanner::Round round = planner.plan({reader(70), reader(20), reader(50)}, false, 0, true, 8, 1);
+        const TIOPlanner::Plan round = planner.plan({reader(70), reader(20), reader(50)}, false, 0, true, 8, 1);
         check(round.streams == std::vector<int>({1, 2, 0}), "lowest fill first");
     }
     {
@@ -76,7 +76,7 @@ int main()
         const Stream away{false, false, 0};
         check(planner.plan({reader(100), away}, false, 1, true, 4, 4).idleSteps == 1, "out of the window: no reason to wait");
         const Stream entered{true, false, 0};
-        const TIOPlanner::Round round = planner.plan({reader(100), entered}, false, 1, true, 4, 4);
+        const TIOPlanner::Plan round = planner.plan({reader(100), entered}, false, 1, true, 4, 4);
         check(round.streams == std::vector<int>({1}), "a reader whose window the transport entered gets a step");
         check(round.idleSteps == 1, "and does not hold the idle work back");
     }
@@ -87,7 +87,7 @@ int main()
         TIOPlanner planner;
         planner.plan({reader(100), reader(100)}, false, 2, true, 4, 4);
         check(planner.idle_running(), "idle work running before the seek");
-        const TIOPlanner::Round seek = planner.plan({reader(50), seeking(true), seeking(true)}, false, 2, true, 4, 4);
+        const TIOPlanner::Plan seek = planner.plan({reader(50), seeking(true), seeking(true)}, false, 2, true, 4, 4);
         check(seek.streams == std::vector<int>({1, 2, 0}) && seek.idleSteps == 0 && seek.idleSeeks.empty(),
               "the seeks of a song that plays before the refills, no idle work");
         check(planner.plan({reader(70), reader(70)}, false, 2, true, 4, 4).idleSteps == 0, "no idle work after the seek at 70");
@@ -98,10 +98,10 @@ int main()
         // refills, before the idle tasks, within the idle limit and the
         // threads that are left
         TIOPlanner planner;
-        const TIOPlanner::Round round = planner.plan({stopped(50), seeking(false), seeking(false), seeking(false)}, false, 3, true, 4, 3);
+        const TIOPlanner::Plan round = planner.plan({stopped(50), seeking(false), seeking(false), seeking(false)}, false, 3, true, 4, 3);
         check(round.streams == std::vector<int>({0}), "the refill as a stream step");
         check(round.idleSeeks == std::vector<int>({1, 2, 3}) && round.idleSteps == 0, "idle seeks before the idle tasks, three of three");
-        const TIOPlanner::Round two = planner.plan({seeking(false), seeking(false)}, false, 3, true, 8, 4);
+        const TIOPlanner::Plan two = planner.plan({seeking(false), seeking(false)}, false, 3, true, 8, 4);
         check(two.idleSeeks.size() == 2 && two.idleSteps == 2, "the idle tasks take what the seeks leave");
         // A disk that seeks: one at a time
         check(planner.plan({seeking(false), seeking(false)}, false, 0, true, 8, 1).idleSeeks.size() == 1, "limit 1: one seek at a time");
@@ -112,7 +112,7 @@ int main()
         check(held.plan({reader(50), seeking(false)}, false, 0, true, 8, 4).idleSeeks.empty(), "held back by a song that plays");
         // A seek of a song that plays goes first, the idle seek waits
         TIOPlanner both;
-        const TIOPlanner::Round first = both.plan({seeking(false), seeking(true)}, false, 0, true, 8, 4);
+        const TIOPlanner::Plan first = both.plan({seeking(false), seeking(true)}, false, 0, true, 8, 4);
         check(first.streams == std::vector<int>({1}) && first.idleSeeks.empty(), "the song that plays seeks first");
     }
     {
@@ -136,7 +136,7 @@ int main()
         // No more stream steps than there are threads free; what does not fit
         // waits, the emptiest first gets the thread
         TIOPlanner planner;
-        const TIOPlanner::Round two = planner.plan({reader(50), reader(10), reader(30)}, false, 4, true, 2, 4);
+        const TIOPlanner::Plan two = planner.plan({reader(50), reader(10), reader(30)}, false, 4, true, 2, 4);
         check(two.streams == std::vector<int>({1, 2}) && two.idleSteps == 0, "two threads: the two emptiest, no idle work");
         check(planner.plan({reader(50)}, false, 4, true, 0, 4).streams.empty(), "no thread free: nothing starts");
         // A seek of a song that plays whose steps all run already still
@@ -153,7 +153,7 @@ int main()
         TIOPlanner planner;
         const Stream full{true, false, 30};
         const Stream empty{false, false, 100};
-        const TIOPlanner::Round round = planner.plan({empty, full, empty}, false, 0, false, 2, 1);
+        const TIOPlanner::Plan round = planner.plan({empty, full, empty}, false, 0, false, 2, 1);
         check(round.streams == std::vector<int>({1}) && round.idleSteps == 0, "writers with data only");
     }
 

@@ -141,12 +141,12 @@ public:
     // Background work for the idle time; the scheduler owns the task until
     // it is done (and deletes it then, or when it goes). Any thread. Every
     // request wakes the scheduler thread, so a task runs also without a
-    // driver (the rounds with idle work follow each other until it is over).
+    // driver: its next step starts once its step before reported.
     void add_idle_task(std::unique_ptr<TIOTask> task);
 
     // Any thread. The output rate takes effect at a stream's next seek (the
-    // owner seeks after changing it), the resampler at the next round, for
-    // every stream at the rate it reads at.
+    // owner seeks after changing it), the resampler at the next dispatch (or
+    // after the step that runs), for every stream at the rate it reads at.
     void set_output_sample_rate(uint outputSampleRate);
     void set_resampler(const TIOStream::Resampler& resampler);
     // The audio device's buffer size: the ring buffers of new streams, and
@@ -155,7 +155,7 @@ public:
     uint get_output_rate() const { return m_outputRate.load(std::memory_order_relaxed); }
     TIOStream::Resampler get_resampler() const { return m_resampler.load(std::memory_order_relaxed); }
 
-    // At most this many idle steps per round (1 on a disk that seeks), with
+    // At most this many idle steps at a time (1 on a disk that seeks), with
     // no song; with songs the lowest of theirs (TIOGroup::set_idle_limit()).
     // Any thread.
     void set_idle_limit(int limit) { m_idleLimit.store(limit, std::memory_order_relaxed); }
