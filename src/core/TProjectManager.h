@@ -33,6 +33,7 @@ class TCommand;
 class TResourcesManager;
 class QFileSystemWatcher;
 class TTransport;
+class TIOScheduler;
 
 class TProjectManager : public TContextItem
 {
@@ -71,6 +72,16 @@ public:
 
     TTransport* get_transport() const {return m_transport;}
 
+    // The application's IO schedulers (doc/design/diskio-app-wide.md): one
+    // reads and runs the idle work (peak builds), one writes (recordings),
+    // each with a pool of its own. Made at the first ask, on the GUI thread;
+    // they outlive every project and go with stop_schedulers(), at the end
+    // of the application after the last project (never in a static
+    // destructor: their threads and pools need Qt).
+    TIOScheduler* get_read_scheduler();
+    TIOScheduler* get_write_scheduler();
+    void stop_schedulers();
+
     void start(const QString& basepath, const QString& projectname);
 
 
@@ -91,6 +102,8 @@ private:
     bool		m_closeWithoutQuestions{false};
     QStringList	m_projectDirs;
     QFileSystemWatcher*	m_watcher;
+    TIOScheduler*   m_readScheduler{nullptr};
+    TIOScheduler*   m_writeScheduler{nullptr};
 
     static QUndoGroup	m_undogroup;
 

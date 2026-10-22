@@ -42,6 +42,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "FileHelpers.h"
 #include "TAudioDevice.h"
 #include "TPeakBuildService.h"
+#include "TBufferedAudioStreamReader.h"
+#include "TIOScheduler.h"
 #include "TRtTransaction.h"
 #include "Utils.h"
 #include "Debugger.h"
@@ -100,6 +102,42 @@ void TProjectManager::apply_peak_cache_settings()
  * 	Used to get a reference to the TProjectManager
  * @return A reference to the TProjectManager singleton 
  */
+TIOScheduler* TProjectManager::get_read_scheduler()
+{
+    Q_ASSERT_X(QThread::currentThread() == thread(), "TProjectManager::get_read_scheduler", "not on the GUI thread");
+    if (!m_readScheduler) {
+        // Half the cores (at least two): the rest stays free for the GUI and
+        // the audio thread
+        m_readScheduler = new TIOScheduler(QThread::idealThreadCount() / 2);
+        m_readScheduler->set_output_sample_rate(audiodevice().get_sample_rate());
+        m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
+        m_readScheduler->set_resampler(TBufferedAudioStreamReader::configured_resampler());
+        m_readScheduler->start();
+    }
+    return m_readScheduler;
+}
+
+TIOScheduler* TProjectManager::get_write_scheduler()
+{
+    Q_ASSERT_X(QThread::currentThread() == thread(), "TProjectManager::get_write_scheduler", "not on the GUI thread");
+    if (!m_writeScheduler) {
+        // Two: one slow encoding step (WavPack) does not hold up the other
+        // writers. A measurement of 32 tracks decides (dispatcher-conclusie.md).
+        m_writeScheduler = new TIOScheduler(2);
+        m_writeScheduler->set_buffer_size(audiodevice().get_buffer_size());
+        m_writeScheduler->start();
+    }
+    return m_writeScheduler;
+}
+
+void TProjectManager::stop_schedulers()
+{
+    delete m_readScheduler;
+    m_readScheduler = nullptr;
+    delete m_writeScheduler;
+    m_writeScheduler = nullptr;
+}
+
 TProjectManager& pm()
 {
 	static TProjectManager projMan;

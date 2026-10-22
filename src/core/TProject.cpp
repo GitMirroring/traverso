@@ -34,6 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProject.h"
 #include "TSheet.h"
 #include "TProjectManager.h"
+#include "TIOScheduler.h"
 #include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 #include "TResourcesManager.h"
@@ -97,6 +98,9 @@ TProject::TProject(const QString& title)
     create_history_stack();
 
     m_audiodeviceClient = new TAudioDeviceClient("sheet_" + QByteArray::number(get_id()));
+    // Made here, on the GUI thread, if not yet: process() only wakes them
+    m_readScheduler = pm().get_read_scheduler();
+    m_writeScheduler = pm().get_write_scheduler();
     m_audiodeviceClient->set_process_callback(
         TProcessCallBack::from_method<TProject, &TProject::process>(this)
         );
@@ -1624,6 +1628,12 @@ int TProject::process(TProcessCallBackData &processData)
 
     // Mix the result into the AudioDevice "physical" buffers
     m_masterOutBusTrack->process(processData);
+
+    // The schedulers are woken once per cycle, after the sheets took from
+    // the rings and asked for their seeks; also with the transport stopped
+    // (a seek, a writer that finishes its file after recording)
+    m_readScheduler->tick();
+    m_writeScheduler->tick();
 
     return result;
 }

@@ -36,6 +36,7 @@ class AudioChannel;
 class TAudioBusConfiguration;
 class TTransportControl;
 class TSheet;
+class TIOScheduler;
 class TRtTransaction;
 class TTrack;
 class TResourcesManager;
@@ -171,6 +172,9 @@ private:
     TSheet*                  m_activeSheet;
     TSession*               m_activeSession;
     TAudioDeviceClient*     m_audiodeviceClient;
+    // The application's (TProjectManager), woken once per cycle from here
+    TIOScheduler*           m_readScheduler;
+    TIOScheduler*           m_writeScheduler;
     SpectralMeter*          m_spectralMeter;
     CorrelationMeter*       m_correlationMeter;
 

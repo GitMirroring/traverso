@@ -40,9 +40,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <sys/types.h>
 #endif
 
-TIOScheduler::TIOScheduler()
+TIOScheduler::TIOScheduler(int threads)
     : m_lastCpuReadTime(TTimeRef::get_nanoseconds_since_epoch())
 {
+    m_pool.setMaxThreadCount(std::max(threads, 2));
 }
 
 TIOScheduler::~TIOScheduler()
@@ -265,7 +266,7 @@ bool TIOScheduler::do_round()
     // blockingMap() starts the round on the pool and waits: the pool's
     // threads do the work, and this thread takes part in it
     const TIOPlanner::Round plan = m_planner.plan(streams, int(m_idleTasks.size()), idleAllowed,
-                                                  QThreadPool::globalInstance()->maxThreadCount(), idleLimit);
+                                                  m_pool.maxThreadCount(), idleLimit);
 
     // A step of a stream (fill: what it had when the round looked at it,
     // afterwards what the GUI is told, -1 for nothing) or of an idle task.
@@ -327,7 +328,7 @@ bool TIOScheduler::do_round()
         // inside Qt; these two atomics say so in a way a thread sanitizer
         // sees too.
         m_roundStarted.fetch_add(1, std::memory_order_release);
-        QtConcurrent::blockingMap(round, [this, &run](Step& step) {
+        QtConcurrent::blockingMap(&m_pool, round, [this, &run](Step& step) {
             m_roundStarted.load(std::memory_order_acquire);
             run(step);
             m_stepsDone.fetch_add(1, std::memory_order_release);
@@ -399,7 +400,7 @@ bool TIOScheduler::do_round()
     // the steps used meanwhile (the steps' time against the threads' time)
     if (m_idleTasks.empty() && m_idleStretch.start != 0) {
         const trav_time_t duration = TTimeRef::get_nanoseconds_since_epoch() - m_idleStretch.start;
-        const int threads = QThreadPool::globalInstance()->maxThreadCount();
+        const int threads = m_pool.maxThreadCount();
         const double used = duration > 0 ? 100.0 * double(m_idleStretch.stepTime) / (double(threads) * double(duration)) : 0.0;
         TLOG_I("diskio", "idle work done in {:.3f} s: {} idle steps, {} steps, {} threads, {:.0f}% used",
                double(duration) / 1e9, m_idleStretch.idleSteps, m_idleStretch.steps, threads, used);

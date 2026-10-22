@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QObject>
 #include <QThread>
+#include <QThreadPool>
 
 #include <atomic>
 #include <condition_variable>
@@ -89,7 +90,8 @@ class TIOScheduler : public QObject
     Q_OBJECT
 
 public:
-    TIOScheduler();
+    // threads: the worker threads of its pool, at least two
+    explicit TIOScheduler(int threads = 2);
     // Stops the scheduler thread and hands back the tasks that are left. The streams
     // must have been removed before.
     ~TIOScheduler();
@@ -169,6 +171,8 @@ private:
     bool on_scheduler_thread() const;
 
     std::unique_ptr<QThread> m_thread;
+    // The worker threads, of this scheduler alone
+    QThreadPool m_pool;
     moodycamel::spsc_sema::LightweightSemaphore m_wake;
     std::atomic<bool> m_stopRequested{false};
 

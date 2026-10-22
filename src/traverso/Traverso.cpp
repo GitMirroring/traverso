@@ -69,6 +69,9 @@ Traverso::Traverso(int &argc, char **argv )
 Traverso::~Traverso()
 {
     PENTERDES;
+    // The last project went when exec() returned (its deleteLater()): the
+    // application's schedulers end now
+    pm().stop_schedulers();
     audiodevice().shutdown();
     delete TMainWindow::instance();
     delete themer();

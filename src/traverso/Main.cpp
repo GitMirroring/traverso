@@ -28,8 +28,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QFile>
 #include <QLocale>
 #include <QTextStream>
-#include <QThread>
-#include <QThreadPool>
 #include <QTranslator>
 
 #if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
@@ -170,10 +168,6 @@ int main( int argc, char **argv )
 		}
 	}
 #endif
-
-	// The DiskIO threads run their rounds on the global thread pool: half
-	// the cores, the rest stays free for the GUI and the audio thread
-	QThreadPool::globalInstance()->setMaxThreadCount(std::max(QThread::idealThreadCount() / 2, 1));
 
 	traverso = new Traverso(argc, argv);
 

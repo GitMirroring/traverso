@@ -109,10 +109,9 @@ TSheet::~TSheet()
 {
     PENTERDES;
 
-    // Its streams went before (~TProject deletes the clips first)
+    // Its streams went before (~TProject deletes the clips first); the
+    // schedulers are the application's
     m_readScheduler->remove_group(&m_ioGroup);
-    delete m_readScheduler;
-    delete m_writeScheduler;
     delete m_masterOutBusTrack;
     delete m_renderBus;
     delete m_clipRenderBus;
@@ -130,13 +129,13 @@ void TSheet::init()
     set_transport_locate_requested_state(false);
     set_transport_stop_requested_state(false);
 
-    m_readScheduler = new TIOScheduler();
+    // The application's schedulers: this song is a group in the read one
+    m_readScheduler = pm().get_read_scheduler();
     m_readScheduler->set_output_sample_rate(audiodevice().get_sample_rate());
     m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
     m_readScheduler->set_resampler(TBufferedAudioStreamReader::configured_resampler());
     m_readScheduler->add_group(&m_ioGroup);
     update_idle_limit();
-    m_readScheduler->start();
 
     connect(m_readScheduler, &TIOScheduler::seekFinished, this, [this](TIOGroup* group) {
         if (group == &m_ioGroup) {
@@ -144,9 +143,8 @@ void TSheet::init()
         }
     }, Qt::QueuedConnection);
 
-    m_writeScheduler = new TIOScheduler();
+    m_writeScheduler = pm().get_write_scheduler();
     m_writeScheduler->set_buffer_size(audiodevice().get_buffer_size());
-    m_writeScheduler->start();
 
     m_audioClipManager = new TAudioClipManager(this);
     set_related_context_item( m_audioClipManager );
@@ -505,11 +503,8 @@ void TSheet::solo_track(TTrack *track)
 //
 int TSheet::process(TProcessCallBackData &processData)
 {
-    // The schedulers are woken every cycle, also with the transport
-    // stopped: a seek, or a writer that finishes its file after recording
-    m_readScheduler->tick();
-    m_writeScheduler->tick();
-
+    // The schedulers are woken by the project, once per cycle after all
+    // sheets (TProject::process())
     if (transport_locate_requested()) {
         TLOG_RT_D("transport", "starting the seek");
         rt_inititate_seek();
@@ -584,10 +579,6 @@ int TSheet::process(TProcessCallBackData &processData)
             bounceInputBus->silence_buffers();
         }
     }
-
-    // Once more now that this cycle took from the rings
-    m_readScheduler->tick();
-    m_writeScheduler->tick();
 
     return 1;
 }
