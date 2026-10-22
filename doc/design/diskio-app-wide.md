@@ -50,21 +50,28 @@ location), whether it rolls, and later its play list (section 5). This is
 the state every sheet has today, moved out of its own DiskIO threads into
 the shared one. A stream belongs to a group.
 
-A round, in this order:
-1. **Refills of the streams of rolling groups**, the emptiest first.
-2. **Seeks**, per group: a seek reads a lot at once, so on a hard disk it
-   waits behind the refills of the groups that are audible.
-3. **Idle work**, behind the hysteresis (only the readers of rolling groups
-   count) and off while any group records:
+The order (decided by the user on 2026-10-22, replacing "refills before
+seeks"):
+1. **The seeks of songs that play**, before all refills. A song plays when
+   it rolls, or will roll once its seek is done (a seek during playback,
+   play pressed during a seek).
+2. **Refills**, the emptiest first (a writer's fill is its free part: the
+   fullest queue first).
+3. **Idle work** on the threads that are left, within the idle limit,
+   behind the hysteresis (only the readers of songs that play count) and
+   off while any song records:
+   - the seeks of songs that do not play: a preparation to play (on a disk
+     that seeks, one stream at a time);
    - the readers of parked songs (section 4);
    - peak post-processing and peak builds;
    - imports and merges (the next work order).
 
-`TIOPlanner` gets two flags per stream: it seeks, and it is parked. It
-stays pure and tested headless.
+`TIOPlanner` has per stream whether it seeks and whether its song plays
+(built 2026-10-22; parked follows with section 4). It stays pure and tested
+headless.
 
-The audio thread wakes DiskIO once per cycle, from the project, not once
-per sheet.
+The audio thread wakes the schedulers once per cycle, from the project, not
+once per sheet (built 2026-10-22).
 
 ## 4. Parked songs
 
@@ -167,15 +174,24 @@ The work order, "Werkopdracht: van DiskIO naar TIOScheduler" (version 2,
 3. the scheduler has a thread instead of being one: `dispatch()` testable
    without a driver, one wake semaphore, synchronous removal, the shutdown
    order in one place;
-4. one scheduler for the application, with two loops (read and write) and
-   pools of their own, a group per sheet with each sheet's transport as
-   today. The priority across all sheets is one planner's; the fill meter is
-   one number.
+4. one scheduler for the application, still on rounds (step A of
+   `dispatcher-conclusie.md`, built 2026-10-22 on branch `app-scheduler`):
+   two instances, one that reads (and runs the idle work) and one that
+   writes, owned by `TProjectManager`, with pools of their own (read: half
+   the cores, write: two; at least two), a group per sheet (`TIOGroup`:
+   transport, seek, plays, records, idle limit), the order above, one wake
+   per cycle from the project, idle work off while any song records, the
+   idle limit the lowest of the songs', the meters one number;
+5. a dispatcher without the round's barrier (step B): every step goes to
+   the pool on its own as soon as a thread is free, and reports back when it
+   is done; the next one starts at once.
 
-**The round with `blockingMap` stays** (a round ends when its last step
-does). A dispatcher without that barrier is for slow media (a NAS, a USB or
-external disk), later: it is reopened on a measured dropout, at the latest
-with importing from external media.
+The reason for step 5 is not slow media but the work per step, which
+differs: in a round every task gets one step and the round ends with the
+slowest, so a WAV peak build ran exactly as fast as a WavPack one next to
+it, and all imported work goes at the pace of its slowest step. Measured
+before step 5 (`traverso_measure_idle_builds`, 54 files of six formats and
+three rates, 6 threads): 1.75 s, 58% of the threads used.
 
 Later, each a step of its own:
 - JACK drives the active song, and starting another song stops the one that
@@ -204,5 +220,26 @@ Decided by the user on 2026-10-21:
 - **JACK transport drives the active song by default.** Driving all songs
   is an option of the project's policy. (Built after the app-wide
   scheduler, section 10.)
-- **The library is `traversoioscheduler`** (section 8), and the round keeps
-  its barrier for now (section 10).
+- **The library is `traversoioscheduler`** (section 8).
+
+Decided by the user on 2026-10-22 (`dispatcher-conclusie.md`, which
+replaces phases 3 and 4 of the work order):
+- **The round loses its barrier** (section 10, step 5), for both
+  schedulers: writing can be CPU-bound too, into a compressed format. This
+  replaces "the round keeps its barrier for now".
+- **A seek of a song that plays goes before all refills; the seek of a
+  song that does not play is idle work** (section 3).
+- **`TProjectManager` owns the two schedulers.**
+
+## 12. Deferred
+
+Until a measurement asks for it:
+
+| What | Why deferred |
+|---|---|
+| A count per device (a device that hangs does not hold all threads) | Devices that hang are rare locally |
+| `QStorageInfo` as a device id, recognising network file systems | Belongs to the count per device |
+| `remove_stream()` without waiting, a deadline at the end | Only for steps that never come back |
+| Detecting spinning disks on Windows and macOS | Only faster builds on an SSD; the setting does |
+| One loop with two pools instead of two instances | Only when load on one hard disk becomes a measured problem |
+| Group removal in one request | With the dispatcher a removal waits only for its own stream |

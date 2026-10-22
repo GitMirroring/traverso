@@ -45,14 +45,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  * @brief Reads and writes the buffered audio streams of a sheet, and runs
  * background work (peak builds) in its idle time (doc/design/diskio-rounds.md).
  *
- * Each sheet has two: one for its readers and their idle work, one for its
- * writers (recordings), so a slow read never holds up writing what was
- * recorded. Each runs on a scheduler thread of its own: wait for a wake (the
+ * The application has two (TProjectManager): one for the readers and the
+ * idle work, one for the writers (recordings), so a slow read never holds up
+ * writing what was recorded. Every sheet is a group (TIOGroup) in the read
+ * one. Each runs on a scheduler thread of its own: wait for a wake (the
  * audio thread's tick every cycle, or a request), then rounds (dispatch()).
  * A round asks every stream what it needs, lets TIOPlanner pick the order
  * (streams first, the emptiest first, then idle tasks on the threads left)
- * and runs one step of each in parallel on worker threads (the global pool;
- * the scheduler thread waits, and runs steps itself when the pool is busy).
+ * and runs one step of each in parallel on worker threads (its own pool;
+ * the scheduler thread takes part in the round).
  * Between rounds, never during one: seeks, streams added and removed, new
  * idle tasks, rate changes. Nothing is timed: the kernel schedules, the
  * scheduler only knows the order.
