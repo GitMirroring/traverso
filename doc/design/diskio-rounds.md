@@ -11,164 +11,160 @@ describes what branch `peaks-v6` does now.
 
 Since 2026-10-21 DiskIO is the library `traversoioscheduler` (src/ioscheduler):
 `TIOScheduler` (was `TDiskIOThread`), `TIOPlanner`, `TIOTask`, and the streams
-implement `TIOStream`. The rounds described here are unchanged.
+implement `TIOStream`.
+
+Since 2026-10-22 (branch `app-scheduler`, `dispatcher-conclusie.md`) there
+are no rounds any more: the application has one scheduler that reads and one
+that writes, every sheet is a group in the read one, and a dispatcher starts
+every step on its own. Sections 1 to 3 describe that; the round they replace
+is in the history of this file. Sections 4 to 7 are as they were, but for
+the measurements added to section 6.
 
 ## 1. Threads
 
-Each sheet keeps **two** DiskIO threads:
-- one for its readers and the background work (peak builds);
-- one for its writers (recordings).
+The application has **two** schedulers (`TProjectManager`):
+- one for the readers and the background work (peak builds), with a pool of
+  half the cores plus one;
+- one for the writers (recordings), with a pool of two.
 
-A round is a barrier: it ends when its slowest step is done. A read that
-hangs (a disk spinning up, a seek storm on a hard disk) would otherwise hold
-up the flush of the write buffers (about one second), and that is recorded
-audio lost. Both work the same way. DiskIO stays per sheet; one
-DiskIO for the whole project is a later step.
+Writing has its own scheduler so that recorded audio never waits behind a
+read (a disk spinning up, a seek storm on a hard disk). Every sheet is a
+group (`TIOGroup`) in the read scheduler: its transport, its seek, whether
+it plays (or plays once its seek is done), whether it records, and the idle
+limit of the disk of its audio. Writers have no group.
 
 ## 2. The scheduler thread
 
 `TIOScheduler` is a `QObject` of the owner thread (the GUI) with a
-scheduler thread of its own (`start()`); a test calls `dispatch()`, one turn
-of the scheduler thread, without it. The scheduler thread (`run()`):
-1. Wait for a wake: the audio thread's `tick()` every cycle, also with the
-   transport stopped, or a request (every `add_stream()`,
-   `add_idle_task()`, `remove_stream()`), so idle tasks run also without a
-   driver. One counting semaphore with one waiter and any number of wakers:
-   an atomic add, and a post to the system semaphore only while the
-   scheduler thread waits; the audio thread and a request never wait for
-   each other. After a round with idle work the next round follows without
-   waiting.
-2. Take the requests, between rounds and never during a step: streams added
-   and removed, new idle tasks (one mutex, held only to swap the lists out;
-   `retire()` runs outside it). A seek, a rate or a quality
-   change are atomics the round reads. `remove_stream()` returns once the
-   scheduler thread has let go of the stream (`retire()` frees its ring
-   buffers); its owner deletes it then, on the GUI thread.
-3. One round (`do_round()`):
-   - every stream reports its state in one call (`disk_state()`: whether it
-     has work, whether its fill counts, its fill);
-   - every idle task has work (until its step says it is over);
-   - `TIOPlanner` decides the order;
-   - one step of each runs with one `QtConcurrent::blockingMap`, spread
-     over the global pool. In Qt 6 `blockingMap()` starts the work on the
-     pool and waits: the scheduler thread takes part only when the pool is
-     busy (then it runs the round alone, so the scheduler always gets on). A
-     round of one step runs on the scheduler thread without the hand-over
-     to the worker threads.
-4. After the round: the GUI's fill meter takes the emptiest stream in sync;
-   a seek round reports `seekFinished`; idle tasks that are over are handed
-   back (`retire()`, a build reports its result then, see
-   §5) and deleted.
+scheduler thread (`start()`) and a pool of worker threads of its own; a test
+calls `dispatch()`, one turn of the scheduler thread, without it, and
+`dispatch()` waits then until the steps it started are done. The scheduler
+thread (`run()`):
+1. Waits for a wake: the audio thread's `tick()`, once per cycle from
+   `TProject::process()`, also with the transport stopped; a request; a
+   step that is done. One counting semaphore with one waiter and any number
+   of wakers: an atomic add, and a post to the system semaphore only while
+   the scheduler thread waits.
+2. Takes the requests (groups and streams added and removed, new idle
+   tasks: one mutex, held only to swap the lists out) and the reports of the
+   steps that are done (another mutex, swapped out the same way).
+3. Asks every stream whose step does not run what it needs
+   (`disk_state()`), lets `TIOPlanner` choose what may start, and starts one
+   step of each on the pool (`QThreadPool::start()`), no more than there are
+   threads free. It never runs a step itself and blocks on the wake only.
+4. A step runs on a worker thread and reports when it is done: its fill,
+   whether a task is over, how long it took. The next dispatch starts what
+   now fits.
 
 ### Threads, ownership and hand-overs
 
 | Thread | Calls | Has alone | May block |
 |---|---|---|---|
-| Audio thread | `tick()`, `set_transport_location()`, `set_seek_transport_location()`; it reads or writes the rings of the streams it processes | nothing of the scheduler | never: atomics, the wake's `signal()`, the streams' lock-free slot queues |
-| Owner thread (GUI) | the constructor, `start()`, the destructor; `add_stream()`, `remove_stream()`; the meters | a stream before `add_stream()` and after `remove_stream()` returned | on the request lock for a moment; `remove_stream()` until the round that runs is over |
-| Any thread | `add_idle_task()`; the setters (rate, quality, buffer size, idle allowed, idle limit) | — | on the request lock for a moment |
-| Scheduler thread | `dispatch()`: the requests, the plan, a round; between rounds the streams' `disk_state()` and `set_output_rate_and_resampler()` (a new resampler), and `retire()` of streams and tasks | the stream list, the task list, the planner, the round's information | on the wake; on the end of a round; on disk IO when it runs a step itself (a round of one step, a busy pool) |
-| Worker threads (the global pool) | `step()` of one stream or one task | that stream or task during its step | on disk IO |
+| Audio thread | `tick()`; a group's `set_transport_location()`, `request_seek()`, `set_playing()`; it reads or writes the rings of the streams it processes | nothing of the scheduler | never: atomics, the wake's `signal()`, the streams' lock-free slot queues |
+| Owner thread (GUI) | the constructor, `start()`, the destructor; `add_group()`, `remove_group()`, `add_stream()`, `remove_stream()`; a group's `set_recording()`, `set_idle_limit()`; the meters | a stream before `add_stream()` and after `remove_stream()` returned; its group | on the request lock for a moment; `remove_stream()` until the scheduler let go of the stream (at once, or once its step that runs is done) |
+| Any thread | `add_idle_task()`; the setters (rate, resampler, buffer size, idle limit) | — | on the request lock for a moment |
+| Scheduler thread | `dispatch()`: the requests, the reports, the plan, starting steps; `disk_state()`, `set_output_rate_and_resampler()` and `retire()` of streams whose step does not run; `retire()` of tasks | the records of the streams, tasks and groups' seeks, the planner, what runs | on the wake only |
+| Worker threads (the scheduler's pool) | `step()` of one stream or one task, then the report | that stream or task during its step | on disk IO |
 
 | From → to | What | How |
 |---|---|---|
-| Audio → scheduler | transport location | `std::atomic<qint64>`, universal frames |
-| Audio → scheduler | a seek | the location (`std::atomic<qint64>`) first, then the flag (release); the round takes the flag with `exchange()` (acquire) at its start, and the transport goes on from the location it served |
-| Audio → scheduler | the wake | `LightweightSemaphore::signal()` |
+| Audio → scheduler | a group's transport location | `std::atomic<qint64>`, universal frames |
+| Audio → scheduler | a group's seek | the location (`std::atomic<qint64>`) first, then the flag (release); the scheduler takes the flag with `exchange()` (acquire), and the group's transport goes on from that location |
+| Audio → scheduler | the wake, the tick count | `LightweightSemaphore::signal()`, an atomic count (one refill step per tick) |
 | Audio ↔ steps | audio data | the stream's ring, its lock-free slot queues |
-| Owner, any → scheduler | streams added and removed, tasks | lists under one `std::mutex`; the scheduler thread swaps them out and handles them outside it |
-| Owner, any → scheduler | rate, quality, buffer size, idle allowed, idle limit | atomics |
-| Scheduler → workers | the steps of a round | `blockingMap`, and the release/acquire pair `m_roundStarted`/`m_stepsDone` |
-| Scheduler → owner | a finished seek | `seekFinished()`, queued (the object lives on the owner thread) |
+| Owner, any → scheduler | groups, streams added and removed, tasks | lists under one `std::mutex`; the scheduler thread swaps them out; a removal waits for a flag of its own |
+| Owner, any → scheduler | rate, resampler, buffer size, idle limit; a group's playing, recording, idle limit | atomics |
+| Scheduler → workers | a step | `QThreadPool::start()` of a runnable that carries its own `StepInfo`; a static atomic (release before, acquire in the step) shows the order to a thread sanitizer, which does not see QThreadPool's lock |
+| Workers → scheduler | a step done | a report under a `std::mutex`, swapped out, and the wake |
+| Scheduler → owner | a group's finished seek | `seekFinished(group)`, queued (the object lives on the owner thread) |
 | Scheduler → a task's owner | a task's result | the task's `QPromise`, set in `retire()` |
 
 **A stream**
 1. The owner makes it and calls `add_stream()` before the audio thread can
    see it; the rate and the rings (`prepare_rt_buffers()`) are set there, on
-   the owner thread.
-2. While registered, the scheduler thread and the worker threads change its
-   disk side, the audio thread its side of the ring. A seek step with a new
-   rate makes the rings again, on a worker thread, while the audio thread
-   waits for the seek. *Open:* the GUI writes a reader's position and range
-   in place (`m_streamStart`, `m_streamEnd`, `m_sourceStartLocation`)
-   while the scheduler thread and the workers read them.
+   the owner thread. The scheduler keeps the rate it reads at and the
+   buffer size of its rings.
+2. While registered, its steps (one at a time, possibly on another thread
+   each time) and the scheduler thread (between its steps) change its disk
+   side, the audio thread its side of the ring. A seek step with a new rate
+   or buffer size makes the rings again, on a worker thread, while the
+   audio thread waits for the seek. *Open:* the GUI writes a reader's
+   position and range in place (`m_streamStart`, `m_streamEnd`,
+   `m_sourceStartLocation`) while the scheduler thread and the workers read
+   them.
 3. Before `remove_stream()` the owner takes it out of the audio processing.
    The project's close order and the stopped transport see to that; the
    scheduler does not check it.
-4. `remove_stream()` returns once the scheduler thread took it out between
-   two rounds and called `retire()`, which frees the rings. The owner
-   deletes it then, on the owner thread.
+4. `remove_stream()` returns once the scheduler thread took it out and
+   called `retire()`, which frees the rings: at once, or after the step
+   that runs. The owner deletes it then, on the owner thread.
 
 **No deadlock in `remove_stream()`:** the owner holds no lock there that a
 step needs, and a step never waits for the owner thread (no blocking call to
-it, no wait for one of its futures). Closing a project removes its streams
-one by one, after `TPeakBuildService::cancel_all()`: a cancelled build's
-next step ends it, so only the first removal waits for a step that runs.
-Measured with 641 streams and six builds cancelled: 12 ms with 5 ms steps,
-20 ms with 20 ms steps. Removing a group at once is phase 3's, with one
-scheduler for the application.
+it, no wait for one of its futures). A removal waits only for its own
+stream: 200 removals next to 50 ms idle steps take 5 ms (test).
 
-**A task:** the scheduler's from `add_idle_task()`. `step()` runs at most
-once per round, on a worker or the scheduler thread. When it returns false
-the scheduler thread calls `retire()` after the round and deletes the task;
-at the end the destructor does that for the tasks that are left. A result
-goes out through the task's `QPromise`.
+**A task:** the scheduler's from `add_idle_task()`. One step at a time,
+on a worker thread. When it returns false the scheduler thread calls
+`retire()` and deletes the task; at the end the destructor does that for
+the tasks that are left, after the pool's steps are done. A result goes out
+through the task's `QPromise`.
 
-**One seek at a time:** the owner asks for the next only after
-`seekFinished`. Every seek goes through `TSheet::initiate_seek_start()`,
-which refuses meanwhile: a locate from the GUI, and a JACK relocation
-(`TJackDriver::process_callback()` → `TAudioDevice::transport_control()` →
-`TSheet::transport_control()`). It is called from one thread per driver: the
-audio thread when the transport follows JACK, the GUI otherwise. A debug
-assert in `set_seek_transport_location()` checks it: a flag set at the
-request and cleared just before `seekFinished`.
+**One seek at a time per group:** the owner asks for the next only after
+`seekFinished(group)`. Every seek goes through
+`TSheet::initiate_seek_start()`, which refuses meanwhile: a locate from the
+GUI, and a JACK relocation. A debug assert in `TIOGroup::request_seek()`
+checks it. A stream whose step runs when its group's seek comes seeks after
+that step.
 
 **The end** (destructor, owner thread), once the audio thread no longer
-calls the scheduler: stop, wake and join the scheduler thread (a round that
-runs ends first); assert that no stream is registered; retire and delete
-the tasks that are left.
+calls the scheduler: stop, wake and join the scheduler thread; wait until
+the pool's steps are done; assert that no group and no stream is
+registered; retire and delete the tasks that are left. The application's
+schedulers end in `~Traverso`, after the last project went.
 
-A seek that comes in during a round is taken at the next round. Idle steps
-of the running round that have not started yet give way to it; a read that
-runs already finishes first, so a seek waits at most one step (a fifth of a
-second of a source, longer on a slow share).
-
-Streams tell the round what they need (`disk_state()`); background work is
-a `TIOTask`, whose `step()` says when it is over:
+Streams tell the scheduler what they need (`disk_state()`); background work
+is a `TIOTask`, whose `step()` says when it is over:
 - **A reader** has work when it is out of sync or its ring is at 80% or
   less. A reader **out of its window** (the transport far from its clip) has
   work only once the transport comes within its window, and then it seeks.
-  Before, it only noticed this because it kept every audio cycle a round. It
-  never counts for the idle work's fill: a clip far away would otherwise
-  keep the idle work away for good.
+  It never counts for the idle work's fill.
 - **A writer** has work as soon as there is a slot to write (it is recorded
   audio), or when the recording stopped and its file is not finished.
-- **A step** reads or writes everything there is room for. A seek round
-  lets every stream seek (and then fill), with no idle work.
+- **A step** reads or writes everything there is room for: a stream needs
+  one refill step per tick at most.
 - **A peak build** is an idle task: one read of a fifth of a second of the
-  source per step, about what a reader reads per refill. So the steps of a
-  round take about as long as each other and a round stays short.
+  source per step. Steps may take different times (WAV, WavPack, MP3):
+  none waits for another.
 
 ## 3. The planner
 
 `TIOPlanner` is pure: no threads, no streams, no device. It is tested
-headless (ctest `diskio_planner`, mutation-checked). Per round it decides:
-- **The streams that need work, the emptiest first.** `blockingMap` starts
-  at the front.
-- **Idle tasks on the threads that are left** (the pool's), never more
-  than the idle limit, and only while the hysteresis allows it:
-  - idle work starts when the emptiest reader that counts is above
-    `IdleStartThreshold` (80%, the threshold a reader gets a step at);
-  - it goes on until that reader drops below `ResumeThreshold` (60%);
-  - a seek stops it until the readers are above 80% again;
-  - recording turns it off altogether (`set_idle_work_allowed(false)`).
-- **Whether the next round follows without waiting for the tick:** only
-  with idle work. A stream's step fills or flushes all it can, so a stream
-  that still wants work waits for the next tick, and one that cannot make
-  progress does not spin.
+headless (ctest `io_planner`). Every time the scheduler dispatches it gets
+the streams and tasks whose step does not run, the threads that are free and
+the idle steps that may start, and decides, in this order:
+1. **the seeks of songs that play** (or play once the seek is done);
+2. **refills, the emptiest first** (a writer's fill is its free part);
+3. **idle work on the threads that are left**, within the idle budget:
+   first the seeks of songs that do not play (a preparation to play), then
+   the idle tasks.
 
-No time is measured and nothing is weighed: the kernel schedules, DiskIO
-only knows the order. The CPU time the GUI shows is a display, not a plan.
+No more stream steps than there are threads free; what does not fit waits,
+and the priority is chosen again when a thread frees. Idle work:
+- never takes the pool's last thread (the scheduler gives the planner a
+  budget of the idle limit, at most the pool's threads minus one, minus the
+  idle steps that run);
+- starts when the emptiest reader of the songs that play is above
+  `IdleStartThreshold` (80%), and goes on until it drops below
+  `ResumeThreshold` (60%);
+- a seek of a song that plays stops it until the readers are above 80%
+  again;
+- off while any song records; the idle limit is the lowest of the songs'.
+
+No time is measured for the plan and nothing is weighed: the kernel
+schedules, the scheduler only knows the order. The steps are timed for the
+CPU meter and for the log line at the end of a stretch of idle work ("idle
+work done in … s, … % used").
 
 ## 4. The idle limit
 
@@ -214,10 +210,11 @@ setting `DiskIO/IdleLimit` overrides the limit (0 means: from the disk).
   - `TPeakFile::open()` never reads part files.
   Recorded audio is another matter: doc/design/recording-data-safety.md.
 - **One thread appends at a time.** In a build that is the thread that
-  runs `step()`, possibly another one each round. The round's hand-over
-  gives the happens-before: blockingMap synchronises inside Qt, and two
-  atomics around the round make it visible to a thread sanitizer too. The
-  GUI reads the level-0 records below the stream's published count.
+  runs `step()`, possibly another one each step. The hand-overs give the
+  happens-before: the report's lock from the step to the scheduler thread,
+  QThreadPool's lock (and the static atomic a thread sanitizer sees) from
+  the scheduler thread to the next step. The GUI reads the level-0 records
+  below the stream's published count.
 
 ## 6. Measured
 
@@ -228,6 +225,18 @@ Release build, headless app on the Dummy driver, timed from the log's first
 |---|---|---|---|
 | Bendictus, 6 sources (180 MB WAV) | 0.25 s | 0.25 s | 0.13 s |
 | Pirates, 22 sources, 175 clips | 0.44–0.70 s | 0.45–0.53 s | 0.25 s |
+
+2026-10-22, the dispatcher (`traverso_measure_idle_builds`, Release, 54
+files of 60 s stereo in six formats at three rates, warm cache, 12 cores):
+
+| Pool, idle limit | Rounds | Dispatcher |
+|---|---|---|
+| 6 (rounds) / 7 (dispatcher: 6 + 1), 6 | 1.75 s, 58% used | 1.22 s, 72% used |
+| 2 / 3 (2 + 1), 2 | 2.96 s | 2.76 s |
+| 6 / 7, 1 | 4.30 s | 4.4–4.7 s (two thread wakes per step, about 0.1 ms) |
+
+App, Bendictus copy on the NVMe SSD: 0.38 s on rounds, 0.31 s with the
+dispatcher.
 
 The first version of the round looked at every stream three times per
 round. With a reader per clip (175 here) that made builds 50% slower, until
