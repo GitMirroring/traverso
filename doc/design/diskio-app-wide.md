@@ -5,10 +5,10 @@ SPDX-License-Identifier: GPL-2.0-or-later
 
 # One DiskIO for the application (design, 2026-10-21)
 
-A design for after the peak redesign (branch `peak-records`), worked out
-with the user on 2026-10-21 under the KISS principle. Nothing of it is built
-yet. It is a work order of its own; importing and merging through DiskIO is
-another one, right after it.
+Worked out with the user on 2026-10-21 under the KISS principle, after the
+peak redesign. Steps 1 to 5 of section 10 are built (the last two on branch
+`app-scheduler`, 2026-10-22); the later steps are not. Importing and merging
+through the scheduler is a work order of its own.
 
 **This is the one design document of the IO scheduler** (since 2026-10-22).
 How it works now, thread by thread, is in `diskio-rounds.md` (as built). It
@@ -50,18 +50,18 @@ stays visible: the old text struck through, with the date and the reason.
 (The library is named `traversoioscheduler` since 2026-10-21, sections 8 and
 10; "DiskIO" below is the scheduler.)
 
-Today:
-- every sheet has two DiskIO threads (one reads, one writes);
+Before (until 2026-10-22):
+- every sheet had two DiskIO threads (one read, one wrote);
+- every DiskIO ran its rounds on the one global thread pool
+  (`QtConcurrent::blockingMap`);
 - importing and merging have threads of their own (`TAudioFileCopyConvert`,
-  `TAudioFileMerger`, both a `QThread`);
-- every DiskIO runs its rounds on the one global thread pool
-  (`QtConcurrent::blockingMap`).
+  `TAudioFileMerger`, both a `QThread`), still today.
 
-The threads that do the work are shared, but nobody decides which stream
-comes first across them: every DiskIO plans only its own streams. One
-DiskIO for the whole application, one thread that reads and one that
-writes, lets one planner decide. Recorded audio still never waits behind a
-slow read: writing keeps a thread of its own.
+The threads that did the work were shared, but nobody decided which stream
+came first across them: every DiskIO planned only its own streams. One
+scheduler for the whole application that reads and one that writes, each
+with a pool of its own, lets one planner decide. Recorded audio still never
+waits behind a slow read (R1): writing keeps a scheduler of its own.
 
 ## 2. The concept: an album of songs
 
@@ -212,8 +212,10 @@ The work order, "Werkopdracht: van DiskIO naar TIOScheduler" (version 2,
 4. one scheduler for the application, still on rounds (step A of
    `dispatcher-conclusie.md`, built 2026-10-22 on branch `app-scheduler`):
    two instances, one that reads (and runs the idle work) and one that
-   writes, owned by `TProjectManager`, with pools of their own (read: half
-   the cores, write: two; at least two), a group per sheet (`TIOGroup`:
+   writes, owned by `TProjectManager` and ended by `~Traverso`
+   (`stop_schedulers()`, after the last project went), with pools of their
+   own (read: half the cores plus one, the reserve for refills of step 5;
+   write: two; at least two), a group per sheet (`TIOGroup`:
    transport, seek, plays, records, idle limit), the order above, one wake
    per cycle from the project, idle work off while any song records, the
    idle limit the lowest of the songs', the meters one number;
@@ -265,7 +267,7 @@ Decided by the user on 2026-10-21:
   alone. The global pool stays for the cache's eviction and the like. The
   pool size that `main()` sets on the global pool (branch `peak-records`,
   half the cores) then goes to DiskIO's pool, and the global pool keeps
-  Qt's default.
+  Qt's default. (Built 2026-10-22 as half the cores plus one: section 10.)
 - **Starting another song stops the song that plays.** Independent playback
   is a mode of its own, chosen on purpose.
 
@@ -300,6 +302,14 @@ Until a measurement asks for it:
 
 From the review of branch `app-scheduler` (2026-10-22, `status.md`), with
 what is to be done:
+Status 2026-10-22: 2, 3, 5 and 6 are done (commits "assert that a song's
+transport does not move while it seeks", "a seek step that fails says so",
+"no rounds in names and comments", and this document's corrections); 1 has
+a design proposal; 4 waits for the decision on a disk-load meter. Checked
+and nothing to do: `seekFinished(group)` is queued with the sheet as the
+connection's context, and the group is the sheet's, so it cannot go before
+the signal arrives.
+
 1. **The GUI writes a reader's position and range in place**
    (`m_streamStart`, `m_streamEnd`, `m_sourceStartLocation`) while the
    scheduler thread and the workers read them: an open race (R11). A design

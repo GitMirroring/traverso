@@ -3,11 +3,13 @@ SPDX-FileCopyrightText: 2026 Remon Sijrier
 SPDX-License-Identifier: GPL-2.0-or-later
 -->
 
-# DiskIO in rounds (design, 2026-10-20)
+# The IO scheduler as built (since 2026-10-20)
 
-User work order of 2026-10-19 ("DiskIO met één rondelus voor readers,
-writers en peakbuilds"), executed in the version agreed with the user. This
-describes what branch `peaks-v6` does now.
+How the IO scheduler works now, thread by thread: the as built of the design
+in `diskio-app-wide.md` (requirements, decisions, what is deferred and open).
+It began as the rounds of the user's work order of 2026-10-19 ("DiskIO met
+één rondelus voor readers, writers en peakbuilds", branch `peaks-v6`); the
+file keeps that name.
 
 Since 2026-10-21 DiskIO is the library `traversoioscheduler` (src/ioscheduler):
 `TIOScheduler` (was `TDiskIOThread`), `TIOPlanner`, `TIOTask`, and the streams
