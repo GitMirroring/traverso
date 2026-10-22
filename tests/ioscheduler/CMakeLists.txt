@@ -15,3 +15,9 @@ add_test(NAME io_planner COMMAND traverso_io_planner_test)
 add_executable(traverso_io_scheduler_test test_io_scheduler.cpp)
 target_link_libraries(traverso_io_scheduler_test PRIVATE traverso_compiler_settings traversoioscheduler traversosupport Qt6::Core)
 add_test(NAME io_scheduler COMMAND traverso_io_scheduler_test)
+
+# A measurement, not part of ctest (dispatcher-conclusie.md, acceptance):
+# the peak builds of a directory of audio files as idle work. Build it in
+# Release.
+add_executable(traverso_measure_idle_builds EXCLUDE_FROM_ALL measure_idle_builds.cpp)
+target_link_libraries(traverso_measure_idle_builds PRIVATE traverso_compiler_settings traversoioscheduler traversowaveform traversoaudiofileio traversodsp traversosupport Qt6::Core)
