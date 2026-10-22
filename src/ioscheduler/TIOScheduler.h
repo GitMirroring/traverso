@@ -197,6 +197,7 @@ private:
     std::atomic<nframes_t> m_bufferSize{0};
 
     std::atomic<int> m_bufferFillStatus{0};
+    // The time the steps took (the CPU meter)
     std::atomic<trav_time_t> m_doWorktTime{0};
     trav_time_t m_lastCpuReadTime;
 
@@ -208,6 +209,16 @@ private:
     std::atomic<quint64> m_stepsDone{0};
 
     // The scheduler thread's
+    // A stretch of idle work, from its first idle step until no idle task is
+    // left, for the log: how long, and how much of the threads it used
+    struct IdleStretch
+    {
+        trav_time_t start{0};
+        trav_time_t stepTime{0};
+        quint64 steps{0};
+        quint64 idleSteps{0};
+    };
+    IdleStretch m_idleStretch;
     TIOPlanner m_planner;
     std::vector<TIOStream*> m_streams;
     std::deque<std::unique_ptr<TIOTask>> m_idleTasks;

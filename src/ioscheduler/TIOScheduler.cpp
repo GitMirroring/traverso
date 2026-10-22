@@ -95,9 +95,7 @@ void TIOScheduler::run()
             break;
         }
 
-        const trav_time_t startTime = TTimeRef::get_nanoseconds_since_epoch();
         more = dispatch();
-        m_doWorktTime.fetch_add(TTimeRef::get_nanoseconds_since_epoch() - startTime);
     }
 
     TLOG_I("diskio", "stopped");
@@ -202,6 +200,7 @@ bool TIOScheduler::do_round()
         TIOTask* idle{nullptr};
         int fill{-1};
         bool over{false};
+        trav_time_t nanoseconds{0};     // how long the step took
     };
     std::vector<Step> round;
     round.reserve(plan.streams.size() + size_t(plan.idleSteps));
@@ -212,6 +211,7 @@ bool TIOScheduler::do_round()
         round.push_back(Step{nullptr, m_idleTasks[size_t(i)].get()});
     }
     auto run = [this](Step& step) {
+        const trav_time_t start = TTimeRef::get_nanoseconds_since_epoch();
         if (step.stream) {
             // The fill to show: after a seek what the seek filled, otherwise
             // what the stream had when the round looked at it (its low point,
@@ -221,8 +221,10 @@ bool TIOScheduler::do_round()
         } else if (!m_seekRequested.load(std::memory_order_relaxed)) {
             step.over = !step.idle->step();
         }
+        step.nanoseconds = TTimeRef::get_nanoseconds_since_epoch() - start;
     };
 
+    const trav_time_t roundStart = TTimeRef::get_nanoseconds_since_epoch();
     if (round.size() == 1) {
         // Nothing to share: no hand-over to the pool
         run(round.front());
@@ -240,6 +242,21 @@ bool TIOScheduler::do_round()
             m_stepsDone.fetch_add(1, std::memory_order_release);
         });
         m_stepsDone.load(std::memory_order_acquire);
+    }
+
+    // The CPU time is the time the steps took, on whatever thread
+    trav_time_t stepTime = 0;
+    for (const Step& step : round) {
+        stepTime += step.nanoseconds;
+    }
+    m_doWorktTime.fetch_add(stepTime, std::memory_order_relaxed);
+    if (plan.idleSteps > 0 || m_idleStretch.start != 0) {
+        if (m_idleStretch.start == 0) {
+            m_idleStretch.start = roundStart;
+        }
+        m_idleStretch.stepTime += stepTime;
+        m_idleStretch.steps += round.size();
+        m_idleStretch.idleSteps += quint64(plan.idleSteps);
     }
 
     // For the GUI: the emptiest stream in sync since it last asked (a
@@ -267,6 +284,17 @@ bool TIOScheduler::do_round()
             step.idle->retire();
             std::erase_if(m_idleTasks, [&step](const std::unique_ptr<TIOTask>& task) { return task.get() == step.idle; });
         }
+    }
+
+    // The idle work is over: how long it took, and how much of the threads
+    // the steps used meanwhile (the steps' time against the threads' time)
+    if (m_idleTasks.empty() && m_idleStretch.start != 0) {
+        const trav_time_t duration = TTimeRef::get_nanoseconds_since_epoch() - m_idleStretch.start;
+        const int threads = QThreadPool::globalInstance()->maxThreadCount();
+        const double used = duration > 0 ? 100.0 * double(m_idleStretch.stepTime) / (double(threads) * double(duration)) : 0.0;
+        TLOG_I("diskio", "idle work done in {:.3f} s: {} idle steps, {} steps, {} threads, {:.0f}% used",
+               double(duration) / 1e9, m_idleStretch.idleSteps, m_idleStretch.steps, threads, used);
+        m_idleStretch = IdleStretch{};
     }
 
     return plan.continueWithoutTick;
