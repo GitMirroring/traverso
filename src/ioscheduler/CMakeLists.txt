@@ -7,6 +7,7 @@
 # it the transport, the output rate and the buffer size.
 add_library(traversoioscheduler STATIC
     TIOScheduler.h TIOScheduler.cpp
+    TIOGroup.h
     TIOPlanner.h TIOPlanner.cpp
     TIOTask.h
     TIOStream.h

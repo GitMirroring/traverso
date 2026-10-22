@@ -109,6 +109,8 @@ TSheet::~TSheet()
 {
     PENTERDES;
 
+    // Its streams went before (~TProject deletes the clips first)
+    m_readScheduler->remove_group(&m_ioGroup);
     delete m_readScheduler;
     delete m_writeScheduler;
     delete m_masterOutBusTrack;
@@ -132,10 +134,15 @@ void TSheet::init()
     m_readScheduler->set_output_sample_rate(audiodevice().get_sample_rate());
     m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
     m_readScheduler->set_resampler(TBufferedAudioStreamReader::configured_resampler());
+    m_readScheduler->add_group(&m_ioGroup);
     update_idle_limit();
     m_readScheduler->start();
 
-    connect(m_readScheduler, &TIOScheduler::seekFinished, this, &TSheet::seek_finished, Qt::QueuedConnection);
+    connect(m_readScheduler, &TIOScheduler::seekFinished, this, [this](TIOGroup* group) {
+        if (group == &m_ioGroup) {
+            seek_finished();
+        }
+    }, Qt::QueuedConnection);
 
     m_writeScheduler = new TIOScheduler();
     m_writeScheduler->set_buffer_size(audiodevice().get_buffer_size());
@@ -521,6 +528,7 @@ int TSheet::process(TProcessCallBackData &processData)
     if (transport_stop_requested()) {
         set_transport_rolling_state(false);
         set_transport_stop_requested_state(false);
+        m_ioGroup.set_playing(false);
         TLOG_RT_I("transport", "stopped at {} universal frames", m_transportLocation.universal_frame());
         tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
             .rtTask = nullptr,
@@ -555,7 +563,7 @@ int TSheet::process(TProcessCallBackData &processData)
 
     // update the transport location
     m_transportLocation.add_frames(nframes, audiodevice().get_sample_rate());
-    m_readScheduler->set_transport_location(m_transportLocation);
+    m_ioGroup.set_transport_location(m_transportLocation);
 
     if (!processResult) {
         return 0;
@@ -754,6 +762,8 @@ int TSheet::transport_control(TTransportControl *transportControl)
     {
     case TTransportControl::TransportStopped:
         // printf("Sheet::transport_control: Stopped\n");
+        // A seek now is a preparation, idle work for the scheduler
+        m_ioGroup.set_playing(false);
         if (transportControl->get_location() != m_transportLocation) {
             initiate_seek_start(transportControl->get_location());
         }
@@ -767,6 +777,9 @@ int TSheet::transport_control(TTransportControl *transportControl)
 
     case TTransportControl::TransportStarting:
         TLOG_RT_I("transport", "starting");
+        // Plays once the seek (or the preparation of a recording) is done:
+        // the seek goes before all refills
+        m_ioGroup.set_playing(true);
         if (transportControl->get_location() != m_transportLocation) {
             initiate_seek_start(transportControl->get_location());
             return false;
@@ -851,8 +864,9 @@ void TSheet::rt_inititate_seek()
     set_transport_rolling_state(false);
     set_transport_locate_requested_state(false);
 
-    // only sets a boolean flag and the new seek location, save to call
-    m_readScheduler->set_seek_transport_location(m_seekTransportLocation);
+    // only sets a boolean flag and the new seek location, save to call (a
+    // song that rolled plays on after the seek: m_resumeTransport)
+    m_ioGroup.request_seek(m_seekTransportLocation);
 }
 
 void TSheet::seek_finished()
@@ -878,6 +892,7 @@ void TSheet::start_transport_rolling(bool realtime)
 {
     m_runStartPending.store(true, std::memory_order_relaxed);
     set_transport_rolling_state(true);
+    m_ioGroup.set_playing(true);
     TLOG_RT_I("transport", "rolling from {} universal frames", m_transportLocation.universal_frame());
 
     if (realtime) {
@@ -957,7 +972,7 @@ void TSheet::prepare_recording()
         connect(clip, &TAudioClip::recordingFinished, this, &TSheet::clip_finished_recording);
         m_recordingClips.append(clip);
         // The disk belongs to the recording: no peak builds meanwhile
-        m_readScheduler->set_idle_work_allowed(false);
+        m_ioGroup.set_recording(true);
         newClips.append(clip);
     }
 
@@ -1011,7 +1026,7 @@ void TSheet::clip_finished_recording(TAudioClip * clip)
     }
 
     if (m_recordingClips.isEmpty()) {
-        m_readScheduler->set_idle_work_allowed(true);
+        m_ioGroup.set_recording(false);
         // seems we finished recording completely now
         // all clips have set their resulting ReadSource
         // length and whatsoever, let's do an autosave:
@@ -1049,8 +1064,8 @@ void TSheet::update_idle_limit()
 {
     const int setting = config().get_property("DiskIO", "IdleLimit", 0).toInt();
     const int limit = setting > 0 ? setting : TIOScheduler::idle_limit_for(get_audio_sources_dir());
-    if (limit != m_readScheduler->idle_limit()) {
-        m_readScheduler->set_idle_limit(limit);
+    if (limit != m_ioGroup.idle_limit()) {
+        m_ioGroup.set_idle_limit(limit);
         TLOG_I("diskio", "{} peak builds at a time{}", limit, setting > 0 ? " (setting)" : "");
     }
 }
@@ -1073,7 +1088,7 @@ TAudioTrack * TSheet::get_audio_track_for_index(int index)
 }
 
 void TSheet::add_audio_source_to_diskio(TBufferedAudioStreamReader *source) const {
-    m_readScheduler->add_stream(source);
+    m_readScheduler->add_stream(source, &m_ioGroup);
 }
 
 void TSheet::remove_audio_source_from_diskio(TBufferedAudioStreamReader *source) const {

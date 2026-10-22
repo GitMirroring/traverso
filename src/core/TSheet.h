@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TProcessCallBackData.h"
 #include "TPeakBuildService.h"
+#include "TIOGroup.h"
 #include "TSession.h"
 #include <QDomNode>
 #include "defines.h"
@@ -135,6 +136,10 @@ private:
     AudioBus*           m_clipRenderBus{};
     TIOScheduler*             m_readScheduler;
     TIOScheduler*             m_writeScheduler;
+    // This song in the read scheduler: its transport, seek, whether it plays
+    // or records. mutable: the audio thread and the scheduler write it, it is
+    // not the sheet's state.
+    mutable TIOGroup    m_ioGroup;
     TAudioClipManager*	m_audioClipManager{};
     TSelectionService*  m_selectionService{nullptr};
     QString             m_audioSourcesDir;

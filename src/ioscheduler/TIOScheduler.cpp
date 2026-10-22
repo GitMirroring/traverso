@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QThreadPool>
 
 #include <algorithm>
+#include <climits>
 
 #if defined (Q_OS_LINUX)
 // idle_limit_for(): the block device of a directory
@@ -57,6 +58,7 @@ TIOScheduler::~TIOScheduler()
         m_thread->wait();
     }
     Q_ASSERT_X(m_streams.empty() && m_streamsToAdd.empty(), "TIOScheduler", "streams are still registered");
+    Q_ASSERT_X(m_groups.empty() && m_groupsToAdd.empty(), "TIOScheduler", "groups are still registered");
     for (const std::unique_ptr<TIOTask>& task : m_tasksToAdd) {
         task->retire();
     }
@@ -112,34 +114,58 @@ void TIOScheduler::take_requests()
     Q_ASSERT_X(on_scheduler_thread(), "TIOScheduler::take_requests", "not on the scheduler thread");
 
     // Under the lock only the swap: a request never waits for retire()
-    std::vector<TIOStream*> added;
+    std::vector<TIOGroup*> groupsAdded;
+    std::vector<TIOGroup*> groupsRemoved;
+    std::vector<StreamWork> added;
     std::vector<TIOStream*> removed;
     std::vector<std::unique_ptr<TIOTask>> tasks;
     quint64 requested = 0;
     {
         std::lock_guard locker(m_requestsMutex);
+        groupsAdded.swap(m_groupsToAdd);
+        groupsRemoved.swap(m_groupsToRemove);
         added.swap(m_streamsToAdd);
         removed.swap(m_streamsToRemove);
         tasks.swap(m_tasksToAdd);
         requested = m_requested;
     }
 
-    for (TIOStream* stream : added) {
-        Q_ASSERT(std::find(m_streams.begin(), m_streams.end(), stream) == m_streams.end());
-        m_streams.push_back(stream);
+    for (TIOGroup* group : groupsAdded) {
+        m_groups.push_back(GroupWork{group});
+    }
+    for (const StreamWork& work : added) {
+        Q_ASSERT(std::none_of(m_streams.begin(), m_streams.end(), [&work](const StreamWork& w) { return w.stream == work.stream; }));
+        m_streams.push_back(work);
     }
     // The ring buffers go here, where the audio thread does not use them;
-    // the owner deletes the stream once remove_stream() returns
+    // the owner deletes the stream once remove_stream() returns. A stream
+    // that was still to seek is one less for its song.
     for (TIOStream* stream : removed) {
-        std::erase(m_streams, stream);
+        const auto it = std::find_if(m_streams.begin(), m_streams.end(), [stream](const StreamWork& w) { return w.stream == stream; });
+        if (it == m_streams.end()) {
+            continue;
+        }
+        if (it->seek) {
+            for (GroupWork& group : m_groups) {
+                if (group.group == it->group) {
+                    --group.seeksLeft;
+                }
+            }
+        }
+        m_streams.erase(it);
         stream->retire();
+    }
+    for (TIOGroup* group : groupsRemoved) {
+        Q_ASSERT_X(std::none_of(m_streams.begin(), m_streams.end(), [group](const StreamWork& w) { return w.group == group; }),
+                   "TIOScheduler::remove_group", "the group still has streams");
+        std::erase_if(m_groups, [group](const GroupWork& w) { return w.group == group; });
     }
     for (std::unique_ptr<TIOTask>& task : tasks) {
         m_idleTasks.push_back(std::move(task));
     }
 
-    // remove_stream() returns now
-    if (!removed.empty()) {
+    // remove_stream() and remove_group() return now
+    if (!removed.empty() || !groupsRemoved.empty()) {
         {
             std::lock_guard locker(m_requestsMutex);
             m_taken = requested;
@@ -148,78 +174,143 @@ void TIOScheduler::take_requests()
     }
 }
 
+bool TIOScheduler::playing_seek_requested() const
+{
+    for (const GroupWork& group : m_groups) {
+        if (group.group->m_seekRequested.load(std::memory_order_relaxed) && group.group->m_playing.load(std::memory_order_relaxed)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+TIOStream::StepInfo TIOScheduler::step_info(const StreamWork& work, uint outputRate, nframes_t bufferSize,
+                                           const TIOStream::Resampler& resampler) const
+{
+    TIOStream::StepInfo info;
+    // A writer has no song: no transport, no seek
+    if (work.group) {
+        info.transportLocation = TTimeRef(work.group->m_transportLocation.load(std::memory_order_relaxed));
+    }
+    info.seek = work.seek;
+    info.seekLocation = info.transportLocation;
+    // A new rate or buffer size goes with the stream's next seek: its rings
+    // are made again there, where the audio thread does not use them
+    info.sampleRateChanged = work.seek && (work.rate != outputRate || work.bufferSize != bufferSize);
+    info.outputRate = outputRate;
+    info.resampler = resampler;
+    info.bufferSize = work.seek ? bufferSize : 0;
+    return info;
+}
+
 bool TIOScheduler::do_round()
 {
     Q_ASSERT_X(on_scheduler_thread(), "TIOScheduler::do_round", "not on the scheduler thread");
 
+    const uint outputRate = get_output_rate();
+    const nframes_t bufferSize = m_bufferSize.load(std::memory_order_relaxed);
+    const TIOStream::Resampler resampler = get_resampler();
+
+    // A new resampler: every stream at the rate it reads at now (a new rate
+    // comes with the stream's next seek)
     if (m_resamplerChanged.exchange(false)) {
-        for (TIOStream* stream : m_streams) {
-            stream->set_output_rate_and_resampler(int(get_output_rate()), get_resampler());
+        for (StreamWork& work : m_streams) {
+            work.stream->set_output_rate_and_resampler(int(work.rate), resampler);
         }
     }
 
-    // A new rate is taken by the next seek (the owner seeks after it)
-    // A seek is taken at the start of a round; the location is written
-    // before the flag
-    const bool seek = m_seekRequested.exchange(false, std::memory_order_acquire);
-    m_round.seek = seek;
-    m_round.seekLocation = TTimeRef(m_seekLocation.load(std::memory_order_relaxed));
-    m_round.transportLocation = TTimeRef(m_transportLocation.load(std::memory_order_relaxed));
-    m_round.sampleRateChanged = seek && m_rateChanged.exchange(false);
-    m_round.outputRate = get_output_rate();
-    m_round.resampler = get_resampler();
-    m_round.bufferSize = seek ? m_bufferSize.load(std::memory_order_relaxed) : 0;
-    if (seek) {
-        TLOG_D("diskio", "seek requested, seeking");
+    // A song's seek is taken at the start of a round (the location is written
+    // before the flag): its streams seek to the location, which is where its
+    // transport is from now on (the audio thread does not move it while the
+    // song seeks)
+    for (GroupWork& group : m_groups) {
+        if (!group.group->m_seekRequested.exchange(false, std::memory_order_acquire)) {
+            continue;
+        }
+        group.group->m_transportLocation.store(group.group->m_seekLocation.load(std::memory_order_relaxed),
+                                               std::memory_order_relaxed);
+        group.seeking = true;
+        group.seeksLeft = 0;
+        for (StreamWork& work : m_streams) {
+            if (work.group == group.group) {
+                work.seek = true;
+                ++group.seeksLeft;
+            }
+        }
+        TLOG_D("diskio", "seek requested, {} streams seek", group.seeksLeft);
     }
 
-    // What every stream needs; an idle task has work until its step says
-    // it is over
+    // What every stream needs; a stream that seeks needs its seek. An idle
+    // task has work until its step says it is over.
     std::vector<TIOPlanner::Stream> streams;
     streams.reserve(m_streams.size());
-    for (TIOStream* stream : m_streams) {
-        streams.push_back(stream->disk_state(m_round.transportLocation));
+    bool idleAllowed = true;
+    int idleLimit = m_groups.empty() ? m_idleLimit.load(std::memory_order_relaxed) : INT_MAX;
+    for (const GroupWork& group : m_groups) {
+        idleAllowed = idleAllowed && !group.group->m_recording.load(std::memory_order_relaxed);
+        idleLimit = std::min(idleLimit, group.group->idle_limit());
+    }
+    for (const StreamWork& work : m_streams) {
+        const bool playing = work.group && work.group->m_playing.load(std::memory_order_relaxed);
+        if (work.seek) {
+            streams.push_back(TIOPlanner::Stream{false, false, 100, true, playing});
+            continue;
+        }
+        const TTimeRef transport = work.group ? TTimeRef(work.group->m_transportLocation.load(std::memory_order_relaxed)) : TTimeRef();
+        TIOPlanner::Stream state = work.stream->disk_state(transport);
+        state.playing = playing;
+        streams.push_back(state);
     }
 
     // blockingMap() starts the round on the pool and waits: the pool's
-    // threads do the work, this thread takes part only when the pool is busy
-    // (it runs the round then alone, so the scheduler always gets on)
-    const TIOPlanner::Round plan = m_planner.plan(streams, seek, int(m_idleTasks.size()),
-                                                      m_idleWorkAllowed.load(std::memory_order_relaxed),
-                                                      QThreadPool::globalInstance()->maxThreadCount(),
-                                                      m_idleLimit.load(std::memory_order_relaxed));
+    // threads do the work, and this thread takes part in it
+    const TIOPlanner::Round plan = m_planner.plan(streams, int(m_idleTasks.size()), idleAllowed,
+                                                  QThreadPool::globalInstance()->maxThreadCount(), idleLimit);
 
     // A step of a stream (fill: what it had when the round looked at it,
     // afterwards what the GUI is told, -1 for nothing) or of an idle task.
-    // Idle steps that have not started yet give way to a seek that comes in
-    // meanwhile (they get their step in a later round); a read that runs
+    // Idle steps (the seeks of songs that do not play, the idle tasks) that
+    // have not started yet give way to a seek of a song that plays that comes
+    // in meanwhile (they get their step in a later round); a read that runs
     // already finishes first.
     struct Step
     {
-        TIOStream* stream{nullptr};
+        StreamWork* work{nullptr};
         TIOTask* idle{nullptr};
+        TIOStream::StepInfo info;
+        bool idleStep{false};
+        bool done{false};
         int fill{-1};
         bool over{false};
         trav_time_t nanoseconds{0};     // how long the step took
     };
     std::vector<Step> round;
-    round.reserve(plan.streams.size() + size_t(plan.idleSteps));
+    round.reserve(plan.streams.size() + plan.idleSeeks.size() + size_t(plan.idleSteps));
     for (const int index : plan.streams) {
-        round.push_back(Step{m_streams[size_t(index)], nullptr, streams[size_t(index)].fill});
+        StreamWork& work = m_streams[size_t(index)];
+        round.push_back(Step{&work, nullptr, step_info(work, outputRate, bufferSize, resampler), false, false, streams[size_t(index)].fill});
+    }
+    for (const int index : plan.idleSeeks) {
+        StreamWork& work = m_streams[size_t(index)];
+        round.push_back(Step{&work, nullptr, step_info(work, outputRate, bufferSize, resampler), true, false, streams[size_t(index)].fill});
     }
     for (int i = 0; i < plan.idleSteps; ++i) {
-        round.push_back(Step{nullptr, m_idleTasks[size_t(i)].get()});
+        round.push_back(Step{nullptr, m_idleTasks[size_t(i)].get(), {}, true});
     }
     auto run = [this](Step& step) {
         const trav_time_t start = TTimeRef::get_nanoseconds_since_epoch();
-        if (step.stream) {
+        if (step.idleStep && playing_seek_requested()) {
+            // Its turn comes again
+        } else if (step.work) {
             // The fill to show: after a seek what the seek filled, otherwise
             // what the stream had when the round looked at it (its low point,
             // before this step refilled or flushed it); none out of sync
-            const int fill = step.stream->step(m_round);
-            step.fill = fill < 0 ? -1 : (m_round.seek ? fill : step.fill);
-        } else if (!m_seekRequested.load(std::memory_order_relaxed)) {
+            const int fill = step.work->stream->step(step.info);
+            step.fill = fill < 0 ? -1 : (step.info.seek ? fill : step.fill);
+            step.done = true;
+        } else {
             step.over = !step.idle->step();
+            step.done = true;
         }
         step.nanoseconds = TTimeRef::get_nanoseconds_since_epoch() - start;
     };
@@ -246,24 +337,26 @@ bool TIOScheduler::do_round()
 
     // The CPU time is the time the steps took, on whatever thread
     trav_time_t stepTime = 0;
+    quint64 idleSteps = 0;
     for (const Step& step : round) {
         stepTime += step.nanoseconds;
+        idleSteps += step.idleStep && step.done ? 1 : 0;
     }
     m_doWorktTime.fetch_add(stepTime, std::memory_order_relaxed);
-    if (plan.idleSteps > 0 || m_idleStretch.start != 0) {
+    if (idleSteps > 0 || m_idleStretch.start != 0) {
         if (m_idleStretch.start == 0) {
             m_idleStretch.start = roundStart;
         }
         m_idleStretch.stepTime += stepTime;
         m_idleStretch.steps += round.size();
-        m_idleStretch.idleSteps += quint64(plan.idleSteps);
+        m_idleStretch.idleSteps += idleSteps;
     }
 
     // For the GUI: the emptiest stream in sync since it last asked (a
     // reading it takes meanwhile may miss this round's low: it is a meter)
     int lowest = 100;
     for (const Step& step : round) {
-        if (step.stream && step.fill >= 0) {
+        if (step.work && step.done && step.fill >= 0) {
             lowest = std::min(lowest, step.fill);
         }
     }
@@ -271,11 +364,27 @@ bool TIOScheduler::do_round()
         m_bufferFillStatus.store(lowest, std::memory_order_relaxed);
     }
 
-    if (seek) {
-        // Where the streams seeked to
-        m_transportLocation.store(m_round.seekLocation.universal_frame(), std::memory_order_relaxed);
-        m_seeking.store(false, std::memory_order_relaxed);
-        emit seekFinished();
+    // The seeks that were done: the stream reads at the rate and with the
+    // rings of the seek, and its song has one stream less to seek
+    for (const Step& step : round) {
+        if (!step.work || !step.done || !step.info.seek) {
+            continue;
+        }
+        step.work->seek = false;
+        step.work->rate = step.info.outputRate;
+        step.work->bufferSize = step.info.bufferSize;
+        for (GroupWork& group : m_groups) {
+            if (group.group == step.work->group) {
+                --group.seeksLeft;
+            }
+        }
+    }
+    for (GroupWork& group : m_groups) {
+        if (group.seeking && group.seeksLeft <= 0) {
+            group.seeking = false;
+            group.group->m_seeking.store(false, std::memory_order_relaxed);
+            emit seekFinished(group.group);
+        }
     }
 
     // Idle tasks that are over go (a build reports its result then)
@@ -352,7 +461,33 @@ void TIOScheduler::add_idle_task(std::unique_ptr<TIOTask> task)
     m_wake.signal();
 }
 
-void TIOScheduler::add_stream(TIOStream* stream)
+void TIOScheduler::add_group(TIOGroup* group)
+{
+    Q_ASSERT(group);
+    {
+        std::lock_guard locker(m_requestsMutex);
+        m_groupsToAdd.push_back(group);
+    }
+    m_wake.signal();
+}
+
+void TIOScheduler::remove_group(TIOGroup* group)
+{
+    std::unique_lock locker(m_requestsMutex);
+    m_groupsToRemove.push_back(group);
+    if (!m_thread) {
+        // No scheduler thread: this thread is the only one
+        locker.unlock();
+        take_requests();
+        return;
+    }
+    // Until the scheduler thread took it, between two rounds
+    const quint64 request = ++m_requested;
+    m_wake.signal();
+    m_requestsTaken.wait(locker, [this, request] { return m_taken >= request; });
+}
+
+void TIOScheduler::add_stream(TIOStream* stream, TIOGroup* group)
 {
     PENTER2;
 
@@ -362,12 +497,14 @@ void TIOScheduler::add_stream(TIOStream* stream)
         return;
     }
 
-    stream->set_output_rate_and_resampler(int(get_output_rate()), get_resampler());
-    stream->prepare_rt_buffers(m_bufferSize.load(std::memory_order_relaxed));
+    const uint rate = get_output_rate();
+    const nframes_t bufferSize = m_bufferSize.load(std::memory_order_relaxed);
+    stream->set_output_rate_and_resampler(int(rate), get_resampler());
+    stream->prepare_rt_buffers(bufferSize);
 
     {
         std::lock_guard locker(m_requestsMutex);
-        m_streamsToAdd.push_back(stream);
+        m_streamsToAdd.push_back(StreamWork{stream, group, rate, bufferSize});
     }
     m_wake.signal();
 }
@@ -428,5 +565,4 @@ void TIOScheduler::set_output_sample_rate(uint outputSampleRate)
 {
     TLOG_I("diskio", "output sample rate {}", outputSampleRate);
     m_outputRate.store(outputSampleRate);
-    m_rateChanged.store(true);
 }

@@ -3,8 +3,8 @@
 
 // Headless test of TIOScheduler with streams and tasks of its own, no core,
 // no driver: dispatch() called directly, a stream removed while rounds run
-// on the scheduler thread, the end with tasks still running, a seek, a new
-// rate.
+// on the scheduler thread, the end with tasks still running, the seeks of
+// songs (groups) that play and that do not, a new rate, a new resampler.
 
 #include "TIOScheduler.h"
 #include "TIOStream.h"
@@ -57,7 +57,11 @@ public:
         m_steps.fetch_add(1);
         return m_fill;
     }
-    void set_output_rate_and_resampler(int outputRate, const Resampler&) override { m_rate.store(uint(outputRate)); }
+    void set_output_rate_and_resampler(int outputRate, const Resampler& resampler) override
+    {
+        m_rate.store(uint(outputRate));
+        m_quality.store(resampler.quality);
+    }
     uint get_channel_count() const override { return 1; }
     void prepare_rt_buffers(nframes_t) override { m_prepared.fetch_add(1); }
     void retire() override { m_retired.fetch_add(1); }
@@ -69,6 +73,7 @@ public:
     std::atomic<int> m_seeks{0};
     std::atomic<int> m_rateChanges{0};
     std::atomic<uint> m_rate{0};
+    std::atomic<int> m_quality{-1};
     std::atomic<int> m_prepared{0};
     std::atomic<int> m_retired{0};
     std::atomic<int> m_stepsAfterRetire{0};
@@ -207,27 +212,32 @@ int main(int argc, char** argv)
         check(retired.load() == 1 && done.load() == 5, "a task runs to its end without a tick");
     }
 
-    // A seek: one seek step per stream, then seekFinished; a new rate is
-    // passed to the next seek only
+    // A seek: one seek step per stream of the song, then seekFinished for
+    // it; a new rate is passed to the next seek only
     {
         TIOScheduler scheduler;
         scheduler.set_buffer_size(256);
-        std::atomic<int> finished{0};
-        QObject::connect(&scheduler, &TIOScheduler::seekFinished, [&finished] { finished.fetch_add(1); });
+        TIOGroup song;
+        song.set_playing(true);
+        std::vector<TIOGroup*> finished;
+        QObject::connect(&scheduler, &TIOScheduler::seekFinished, [&finished](TIOGroup* group) { finished.push_back(group); });
+        scheduler.add_group(&song);
         FakeStream a(false, 100);
         FakeStream b(false, 100);
-        scheduler.add_stream(&a);
-        scheduler.add_stream(&b);
+        scheduler.add_stream(&a, &song);
+        scheduler.add_stream(&b, &song);
         scheduler.set_output_sample_rate(44100);
-        scheduler.set_seek_transport_location(TTimeRef(qint64(1000)));
+        song.request_seek(TTimeRef(qint64(1000)));
         scheduler.dispatch();
-        check(a.m_seeks.load() == 1 && b.m_seeks.load() == 1 && finished.load() == 1, "a seek steps every stream once");
+        check(a.m_seeks.load() == 1 && b.m_seeks.load() == 1 && finished == std::vector<TIOGroup*>({&song}),
+              "a seek steps every stream of the song once");
         check(a.m_rateChanges.load() == 1 && a.m_rate.load() == 44100, "the new rate goes with the seek");
-        scheduler.set_seek_transport_location(TTimeRef(qint64(2000)));
+        song.request_seek(TTimeRef(qint64(2000)));
         scheduler.dispatch();
-        check(a.m_rateChanges.load() == 1 && finished.load() == 2, "a seek without a new rate keeps the rate");
+        check(a.m_rateChanges.load() == 1 && finished.size() == 2, "a seek without a new rate keeps the rate");
         scheduler.remove_stream(&a);
         scheduler.remove_stream(&b);
+        scheduler.remove_group(&song);
     }
 
     // After a seek the transport goes on from where the streams seeked to,
@@ -235,14 +245,144 @@ int main(int argc, char** argv)
     {
         TIOScheduler scheduler;
         scheduler.set_buffer_size(256);
+        TIOGroup song;
+        scheduler.add_group(&song);
         FakeStream a(true, 50);
-        scheduler.add_stream(&a);
-        scheduler.set_seek_transport_location(TTimeRef(qint64(5000)));
+        scheduler.add_stream(&a, &song);
+        song.set_playing(true);
+        song.request_seek(TTimeRef(qint64(5000)));
         scheduler.dispatch();
         check(a.m_seeks.load() == 1 && a.m_lastSeek.load() == 5000, "the seek");
         scheduler.dispatch();
         check(a.m_lastTransport.load() == 5000, "the transport goes on from the seek");
+        song.set_transport_location(TTimeRef(qint64(6000)));
+        scheduler.dispatch();
+        check(a.m_lastTransport.load() == 6000, "then from where the audio thread says");
         scheduler.remove_stream(&a);
+        scheduler.remove_group(&song);
+    }
+
+    // Two songs: a seek of one does not seek the other, and the other's
+    // streams read at its own transport
+    {
+        TIOScheduler scheduler;
+        scheduler.set_buffer_size(256);
+        TIOGroup one;
+        TIOGroup two;
+        one.set_playing(true);
+        two.set_playing(true);
+        scheduler.add_group(&one);
+        scheduler.add_group(&two);
+        FakeStream a(false, 100);
+        FakeStream b(true, 50);
+        scheduler.add_stream(&a, &one);
+        scheduler.add_stream(&b, &two);
+        two.set_transport_location(TTimeRef(qint64(7000)));
+        one.request_seek(TTimeRef(qint64(3000)));
+        scheduler.dispatch();
+        check(a.m_seeks.load() == 1 && b.m_seeks.load() == 0, "only the song that asked seeks");
+        check(b.m_steps.load() == 1 && b.m_lastTransport.load() == 7000, "the other song's stream reads at its own transport");
+        scheduler.remove_stream(&a);
+        scheduler.remove_stream(&b);
+        scheduler.remove_group(&one);
+        scheduler.remove_group(&two);
+    }
+
+    // The seek of a song that does not play is idle work: on a disk that
+    // seeks (idle limit 1) one stream a round, after the refills; done, the
+    // song hears it once
+    {
+        TIOScheduler scheduler;
+        scheduler.set_buffer_size(256);
+        TIOGroup song;
+        song.set_idle_limit(1);
+        int finished = 0;
+        QObject::connect(&scheduler, &TIOScheduler::seekFinished, [&finished](TIOGroup*) { ++finished; });
+        scheduler.add_group(&song);
+        FakeStream a(false, 100);
+        FakeStream b(false, 100);
+        FakeStream c(false, 100);
+        scheduler.add_stream(&a, &song);
+        scheduler.add_stream(&b, &song);
+        scheduler.add_stream(&c, &song);
+        song.request_seek(TTimeRef(qint64(1000)));
+        check(scheduler.dispatch(), "an idle seek: the next round follows at once");
+        check(a.m_seeks.load() + b.m_seeks.load() + c.m_seeks.load() == 1 && finished == 0, "one stream seeks a round");
+        scheduler.dispatch();
+        scheduler.dispatch();
+        check(a.m_seeks.load() == 1 && b.m_seeks.load() == 1 && c.m_seeks.load() == 1 && finished == 1,
+              "every stream seeked once, then the song hears it");
+        check(!scheduler.dispatch(), "nothing left: wait for a wake");
+        // Recording elsewhere holds it back
+        song.set_recording(true);
+        song.request_seek(TTimeRef(qint64(2000)));
+        scheduler.dispatch();
+        check(a.m_seeks.load() + b.m_seeks.load() + c.m_seeks.load() == 3, "no idle seek while a song records");
+        song.set_recording(false);
+        scheduler.dispatch();
+        scheduler.dispatch();
+        scheduler.dispatch();
+        check(finished == 2, "after the recording it goes on");
+        scheduler.remove_stream(&a);
+        scheduler.remove_stream(&b);
+        scheduler.remove_stream(&c);
+        scheduler.remove_group(&song);
+    }
+
+    // A stream removed while its song seeks: the seek finishes without it
+    {
+        TIOScheduler scheduler;
+        scheduler.set_buffer_size(256);
+        TIOGroup song;
+        song.set_idle_limit(1);
+        int finished = 0;
+        QObject::connect(&scheduler, &TIOScheduler::seekFinished, [&finished](TIOGroup*) { ++finished; });
+        scheduler.add_group(&song);
+        FakeStream a(false, 100);
+        FakeStream b(false, 100);
+        scheduler.add_stream(&a, &song);
+        scheduler.add_stream(&b, &song);
+        song.request_seek(TTimeRef(qint64(1000)));
+        scheduler.dispatch();
+        FakeStream& waiting = a.m_seeks.load() == 0 ? a : b;
+        scheduler.remove_stream(&waiting);
+        scheduler.dispatch();
+        check(finished == 1 && waiting.m_seeks.load() == 0, "the seek finished without the removed stream");
+        scheduler.remove_stream(&waiting == &a ? &b : &a);
+        scheduler.remove_group(&song);
+    }
+
+    // Two songs seek at another rate one after the other: each stream takes
+    // the new rate with its own song's seek, and a new resampler meanwhile
+    // keeps the rate the stream reads at
+    {
+        TIOScheduler scheduler;
+        scheduler.set_buffer_size(256);
+        scheduler.set_output_sample_rate(44100);
+        TIOGroup one;
+        TIOGroup two;
+        one.set_playing(true);
+        two.set_playing(true);
+        scheduler.add_group(&one);
+        scheduler.add_group(&two);
+        FakeStream a(false, 100);
+        FakeStream b(false, 100);
+        scheduler.add_stream(&a, &one);
+        scheduler.add_stream(&b, &two);
+        scheduler.set_output_sample_rate(48000);
+        one.request_seek(TTimeRef(qint64(1000)));
+        scheduler.dispatch();
+        check(a.m_rateChanges.load() == 1 && a.m_rate.load() == 48000, "the first song's stream takes the new rate");
+        scheduler.set_resampler(TIOStream::Resampler{0, 7});
+        scheduler.dispatch();
+        check(b.m_quality.load() == 7 && b.m_rate.load() == 44100, "a new resampler keeps the rate the stream reads at");
+        two.request_seek(TTimeRef(qint64(1000)));
+        scheduler.dispatch();
+        check(b.m_rateChanges.load() == 1 && b.m_rate.load() == 48000, "the second song's stream takes it with its own seek");
+        scheduler.remove_stream(&a);
+        scheduler.remove_stream(&b);
+        scheduler.remove_group(&one);
+        scheduler.remove_group(&two);
     }
 
     if (failures) {

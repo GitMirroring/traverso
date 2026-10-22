@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <mutex>
 #include <vector>
 
+#include "TIOGroup.h"
 #include "TIOPlanner.h"
 #include "TIOStream.h"
 #include "TIOTask.h"
@@ -103,23 +104,20 @@ public:
     // system semaphore only when the scheduler thread waits. The audio
     // thread and a request never wait for each other.
     void tick() { m_wake.signal(); }
-    void set_transport_location(const TTimeRef& transportLocation) {
-        m_transportLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
-    }
-    // One seek at a time: the owner asks for the next only after
-    // seekFinished (TSheet::initiate_seek_start(), also for a JACK relocation)
-    void set_seek_transport_location(const TTimeRef& transportLocation) {
-        [[maybe_unused]] const bool seeking = m_seeking.exchange(true, std::memory_order_relaxed);
-        Q_ASSERT_X(!seeking, "TIOScheduler::set_seek_transport_location", "a seek is asked for before the previous one finished");
-        m_seekLocation.store(transportLocation.universal_frame(), std::memory_order_relaxed);
-        m_seekRequested.store(true, std::memory_order_release);
-    }
 
-    // The owner's thread. A stream to read or write. remove_stream()
-    // returns once the scheduler thread has let go of the stream (it called
-    // retire()); the owner deletes it then. The owner holds no lock a step
-    // needs while it waits.
-    void add_stream(TIOStream* stream);
+    // The owner's thread. A song (a sheet): its transport, its seek, whether
+    // it plays or records (TIOGroup). Added before its streams, removed
+    // after them; remove_group() returns once the scheduler thread has let
+    // go of it.
+    void add_group(TIOGroup* group);
+    void remove_group(TIOGroup* group);
+
+    // The owner's thread. A stream to read or write, of a song (a reader) or
+    // of none (a writer: no transport, no seek). remove_stream() returns once
+    // the scheduler thread has let go of the stream (it called retire()); the
+    // owner deletes it then. The owner holds no lock a step needs while it
+    // waits.
+    void add_stream(TIOStream* stream, TIOGroup* group = nullptr);
     void remove_stream(TIOStream* stream);
 
     // Background work for the idle time; the scheduler owns the task until
@@ -128,21 +126,20 @@ public:
     // driver (the rounds with idle work follow each other until it is over).
     void add_idle_task(std::unique_ptr<TIOTask> task);
 
-    // Any thread. The output rate takes effect at the next seek (the
-    // owner seeks after changing it), the resampler at the next round.
+    // Any thread. The output rate takes effect at a stream's next seek (the
+    // owner seeks after changing it), the resampler at the next round, for
+    // every stream at the rate it reads at.
     void set_output_sample_rate(uint outputSampleRate);
     void set_resampler(const TIOStream::Resampler& resampler);
     // The audio device's buffer size: the ring buffers of new streams, and
-    // of all streams after a seek with a new rate
+    // of a stream at its next seek once the rate or the buffer size changed
     void set_buffer_size(nframes_t bufferSize) { m_bufferSize.store(bufferSize, std::memory_order_relaxed); }
     uint get_output_rate() const { return m_outputRate.load(std::memory_order_relaxed); }
     TIOStream::Resampler get_resampler() const { return m_resampler.load(std::memory_order_relaxed); }
 
-    // false while the sheet records: the disk belongs to the recording. Per
-    // sheet: the other sheets go on (peak files are rebuilt only after a new
-    // file version or when they are lost, and nobody records then)
-    void set_idle_work_allowed(bool allowed) { m_idleWorkAllowed.store(allowed, std::memory_order_relaxed); }
-    // At most this many idle tasks per round (1 on a disk that seeks). Any thread.
+    // At most this many idle steps per round (1 on a disk that seeks), with
+    // no song; with songs the lowest of theirs (TIOGroup::set_idle_limit()).
+    // Any thread.
     void set_idle_limit(int limit) { m_idleLimit.store(limit, std::memory_order_relaxed); }
     int idle_limit() const { return m_idleLimit.load(std::memory_order_relaxed); }
     // The idle limit for sources in directory: 1 on a hard disk, which a
@@ -160,7 +157,8 @@ public:
     bool dispatch();
 
 signals:
-    void seekFinished();
+    // The seek of the group is done: all its streams seeked
+    void seekFinished(TIOGroup* group);
 
 private:
     void run();
@@ -178,21 +176,32 @@ private:
     // sanitizer sees it, Qt's own here is not built for one)
     std::mutex m_requestsMutex;
     std::condition_variable m_requestsTaken;
-    std::vector<TIOStream*> m_streamsToAdd;
+    // A stream as the scheduler thread has it
+    struct StreamWork
+    {
+        TIOStream* stream{nullptr};
+        TIOGroup* group{nullptr};       // none: a writer
+        uint rate{0};                   // the output rate it reads at
+        nframes_t bufferSize{0};        // the buffer size of its rings
+        bool seek{false};               // its seek step is to come
+    };
+    // A song as the scheduler thread has it
+    struct GroupWork
+    {
+        TIOGroup* group{nullptr};
+        bool seeking{false};
+        int seeksLeft{0};               // its streams whose seek step is to come
+    };
+    std::vector<TIOGroup*> m_groupsToAdd;
+    std::vector<TIOGroup*> m_groupsToRemove;
+    std::vector<StreamWork> m_streamsToAdd;
     std::vector<TIOStream*> m_streamsToRemove;
     std::vector<std::unique_ptr<TIOTask>> m_tasksToAdd;
     quint64 m_requested{0};
     quint64 m_taken{0};
 
-    std::atomic<bool> m_seekRequested{false};
-    // From the request until seekFinished, for the assert of one seek at a time
-    std::atomic<bool> m_seeking{false};
-    std::atomic<qint64> m_transportLocation{0};     // universal frames
-    std::atomic<qint64> m_seekLocation{0};          // universal frames
-
     std::atomic<uint> m_outputRate{0};
     std::atomic<TIOStream::Resampler> m_resampler{};  // the owner sets it before streams come
-    std::atomic<bool> m_rateChanged{false};
     std::atomic<bool> m_resamplerChanged{false};
     std::atomic<nframes_t> m_bufferSize{0};
 
@@ -200,9 +209,6 @@ private:
     // The time the steps took (the CPU meter)
     std::atomic<trav_time_t> m_doWorktTime{0};
     trav_time_t m_lastCpuReadTime;
-
-    // What the steps of the current round need to know
-    TIOStream::StepInfo m_round;
 
     // The hand-over between the scheduler thread and the round's steps (do_round())
     std::atomic<quint64> m_roundStarted{0};
@@ -220,8 +226,15 @@ private:
     };
     IdleStretch m_idleStretch;
     TIOPlanner m_planner;
-    std::vector<TIOStream*> m_streams;
+    std::vector<GroupWork> m_groups;
+    std::vector<StreamWork> m_streams;
     std::deque<std::unique_ptr<TIOTask>> m_idleTasks;
-    std::atomic<bool> m_idleWorkAllowed{true};
     std::atomic<int> m_idleLimit{1};
+
+    // A seek of a song that plays was asked for (idle steps give way to it);
+    // during a round, on the worker threads too (the groups do not change then)
+    bool playing_seek_requested() const;
+    // The step information of a stream's step
+    TIOStream::StepInfo step_info(const StreamWork& work, uint outputRate, nframes_t bufferSize,
+                                  const TIOStream::Resampler& resampler) const;
 };
