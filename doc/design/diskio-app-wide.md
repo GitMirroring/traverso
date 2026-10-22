@@ -313,7 +313,7 @@ the signal arrives.
 1. **The GUI writes a reader's position and range in place**
    (`m_streamStart`, `m_streamEnd`, `m_sourceStartLocation`) while the
    scheduler thread and the workers read them: an open race (R11). A design
-   proposal first.
+   proposal first (below, not decided).
 2. **Two writers on a group's transport location**: the audio thread every
    cycle the song rolls, the scheduler at the start of a seek. It holds
    because a song does not roll while it seeks; an assert is to say so.
@@ -325,6 +325,81 @@ the signal arrives.
 5. Clean-up: `Qt6::Concurrent` is no longer used; comments that still speak
    of rounds.
 6. The design documents disagree in places (this one and `diskio-rounds.md`).
+
+**Proposal for point 1 (2026-10-22, not decided).** Who touches the three
+values:
+- the GUI writes them: `TAudioClip::set_source_start_location()` (a trim,
+  a split) and `TAudioClip::sync_location_to_stream()` (on every
+  `locationChanged`), in two separate calls;
+- the scheduler thread reads the window in `disk_state()`
+  (`transport_in_window()`); a step reads all three in
+  `rb_seek_to_transport_location()` and `process_realtime_buffers()`, and
+  labels every slot it fills with the file location it read;
+- the audio thread does not read them: it asks for the file location it
+  computes from the clip's own values, and a slot whose label does not
+  match sends the reader out of sync, so the next step seeks again.
+
+Because of that label, a step that sees a mix of old and new values never
+makes the audio thread play wrong audio: either a slot carries exactly the
+file location asked for, or the reader resyncs (as after every clip move
+anyway). What has to go is the data race itself, and a mix within one
+function (a slot labelled with one value and read with another). Proposed,
+the simplest that does it:
+- the three values become `std::atomic<qint64>` (universal frames,
+  relaxed), as the group's transport is;
+- every function of the disk side loads them once at its start into
+  locals and uses only those, so a slot's label and what is read for it
+  come from the same values;
+- the GUI's two setters stay as they are; the resync covers a step that
+  falls between them.
+
+Rejected: an immutable snapshot of the three behind an atomic pointer (who
+frees the old one while a step reads it?), and a pending window under a lock
+taken at the start of each disk access (it makes the three consistent, but
+the GUI sets them in two calls anyway, and the resync is needed regardless).
+Not part of it: the clip's own values (`m_location`, `m_sourceStartLocation`,
+`m_length`) are read on the audio thread while the GUI writes them, and a
+recording's `m_length` is written on the audio thread while a save reads it:
+the same kind of race on the audio side, for the RT transaction design.
+
+**Found 2026-10-22: the shutdown order is not in one place.** On a normal
+quit (the window's close, the Quit action, the last window closed) it is
+spread over five places: `TProjectManager::exit()` and
+`set_current_project(nullptr)` (save, cancel the peak builds, drop the
+views, `TProject::set_project_closed()`, which waits up to a second until
+the audio device let go of the project); Qt's clean-up when `exec()`
+returns (the project's `deleteLater()`: `~TProject` removes the clips' and
+sheets' streams and groups); `main()` (`delete traverso`); `~Traverso`
+(`stop_schedulers()`, `audiodevice().shutdown()`, the main window, the
+themer, `config().save()`); and the static destructors (`pm()`,
+`audiodevice()`, the peak cache's state). On SIGINT (`catch_signal()` in
+`Main.cpp`) `Traverso::shutdown()` calls `pm().exit()` and then `exit(0)`
+in the signal handler: the project is saved but never deleted, the
+schedulers never stop, the main window is not deleted, `config().save()`
+does not run, and the audio device stops in its static destructor. That
+runs inside a signal handler (Qt calls, locks) and possibly on another
+thread than the GUI's. If the audio device does not let go of a project in
+time, the project is not deleted either, and `stop_schedulers()` meets
+streams that are still registered (an assert in a debug build).
+
+**Found 2026-10-22: a save while a recording finishes its file.** Between
+the stop (`TAudioClip::finish_recording()`) and
+`TAudioClip::finish_write_source()` the write scheduler writes what is left
+in the takes' rings and closes the files; that is usually one or two
+cycles, longer on a slow disk. A save in that time is allowed
+(`TProject::is_recording()` is false once the transport stopped, and
+`TProjectManager::save_project()` does not ask) and writes each take as it
+is then: the clip with its whole recorded length, its source with length 0
+(the source has no file open yet). The autosave at the end
+(`TSheet::clip_finished_recording()`) writes the final state over it, so
+when the application goes on nothing is lost. When the project closes in
+that time (quit right after the stop: `is_save_to_close()` is true), the
+save is followed by `~TAudioClip`, which takes the writer out
+(`remove_stream()` → `retire()` frees the ring with the slots not written
+yet); the writer's destructor closes the file with what was written. The
+take's last part is lost, and the saved clip is longer than its file. The
+branches `recording-latency` and `recording-session` change how the length
+grows, not this.
 
 Not done yet from the work orders:
 - the measurement of 32 WavPack tracks, which decides the size of the
