@@ -10,6 +10,41 @@ with the user on 2026-10-21 under the KISS principle. Nothing of it is built
 yet. It is a work order of its own; importing and merging through DiskIO is
 another one, right after it.
 
+**This is the one design document of the IO scheduler** (since 2026-10-22).
+How it works now, thread by thread, is in `diskio-rounds.md` (as built). It
+replaces, for their designs and decisions, the work orders
+`ioscheduler-taak.md` (and its first version), `dispatcher-conclusie.md` and
+`diskio-uniforme-taken.md`; they are done or replaced and are not updated
+any more. A decision made in a work order comes back here.
+
+## 0. Requirements
+
+**Concept of 2026-10-22: Remon confirms them row by row.** A requirement is
+written as "X never happens, also when Y". [hard]: must hold; [pref]: should
+hold, may be traded with a reason; [idea]: wanted, not yet decided. A change
+stays visible: the old text struck through, with the date and the reason.
+
+| # | Requirement | Kind | Proven by | Status |
+|---|---|---|---|---|
+| R1 | Recorded audio never waits behind a read, also when a read is slow or a disk spins up | hard | two schedulers with pools of their own (§10); no test yet | concept |
+| R2 | The audio thread never blocks on a scheduler, also while requests, seeks and steps go on | hard | review: atomics and the wake only (`diskio-rounds.md` §2) | concept |
+| R3 | A song that plays never runs dry because of idle work, also when every idle task wants all threads | hard | `io_scheduler`: idle work on two of three threads, a stream gets its steps; `io_planner`: hysteresis | concept |
+| R4 | A seek of a song that plays never waits behind refills or idle work, also when long idle steps run | hard | `io_planner`: order; `io_scheduler`: a seek next to 100 ms idle steps under 1 ms | concept |
+| R5 | No idle work runs while any song records, also when another song plays or seeks | hard | `io_planner` and `io_scheduler`: no idle step while recording | concept |
+| R6 | A seek of one song never moves the streams of another song | hard | `io_scheduler`: two songs | concept |
+| R7 | A stream gets no step after `remove_stream()` returned, also when its step ran at that moment | hard | `io_scheduler`: removal while steps run | concept |
+| R8 | A stream that cannot make progress (end of its file, out of its window, an error) never spins | hard | the rule of one refill step per tick; no test of its own yet | concept |
+| R9 | A new rate or buffer size never reaches a stream outside its own seek, and a new resampler never takes a rate the stream does not read at yet | hard | `io_scheduler`: rate per stream, resampler at the stream's rate | concept |
+| R10 | At most one seek per song at a time, also for a JACK relocation | hard | debug assert in `TIOGroup::request_seek()` | concept |
+| R11 | The GUI never writes what a step or the scheduler reads at the same time | hard | **violated**: a reader's position and range (§13, point 1) | concept |
+| R12 | The schedulers' threads and pools never end in a static destructor, and never before the last project went | hard | the smoke run's exit; no test | concept |
+| R13 | No step waits for a slower step: the work goes at about all work ÷ threads | pref | `io_scheduler`: a fast task before a slow one; `traverso_measure_idle_builds` | concept |
+| R14 | A removal waits only for its own stream | pref | `io_scheduler`: 200 removals next to 50 ms steps | concept |
+| R15 | On a disk that seeks at most one idle read at a time; on an SSD as many as there are idle threads; the setting overrides | pref | `io_planner`: idle limit; `idle_limit_for()` by hand | concept |
+| R16 | The seek of a song that does not play is a preparation: idle work, never before refills | pref | `io_scheduler`: an idle seek one stream at a time | concept |
+| R17 | Nothing is timed for the plan: the kernel schedules, the scheduler only knows the order | pref | review | concept |
+| R18 | Recorded audio survives a stall of the disk of N seconds | idea | open: the size of the write rings (§13) | concept |
+
 ## 1. Why
 
 (The library is named `traversoioscheduler` since 2026-10-21, sections 8 and
@@ -206,6 +241,23 @@ Each step with headless tests: on the planner (the order of section 3, the
 flags), on the scheduler with fake streams, and on the reader's play-order
 functions (pure).
 
+From the work order's "Later" (`ioscheduler-taak.md`, 2026-10-21), each a
+step of its own:
+- **A recording session as a class of its own** (`TRecordingSession`,
+  decided 2026-10-21): it owns the writers of one recording; the recording
+  logic goes out of `TSheet` into it (`prepare_recording()`, the recording
+  clips, `clip_finished_recording()`, idle work off and on, the autosave at
+  the end, the takes of branch `recording-session`). A permanent member of
+  the sheet with two verbs, `start_takes()` and `end_takes()`; a seek during
+  a recording is `end_takes()` plus `start_takes()` in `seek_finished()`. One
+  concrete class, no new behaviour: the code moves over mostly as it is.
+  Order: the runtime test and merge of `recording-session`, then this step.
+  At that merge: discarded takes keep their readers until the project
+  closes (32a2c2ca) because removal was asynchronous then; with synchronous
+  removal that reason is gone, but freeing at once still waits until the
+  audio thread processed the clip's removal.
+- **Slow media** and **planning per disk**: in section 12 (deferred).
+
 ## 11. Decided
 
 Decided by the user on 2026-10-21:
@@ -243,3 +295,40 @@ Until a measurement asks for it:
 | Detecting spinning disks on Windows and macOS | Only faster builds on an SSD; the setting does |
 | One loop with two pools instead of two instances | Only when load on one hard disk becomes a measured problem |
 | Group removal in one request | With the dispatcher a removal waits only for its own stream |
+
+## 13. Open points
+
+From the review of branch `app-scheduler` (2026-10-22, `status.md`), with
+what is to be done:
+1. **The GUI writes a reader's position and range in place**
+   (`m_streamStart`, `m_streamEnd`, `m_sourceStartLocation`) while the
+   scheduler thread and the workers read them: an open race (R11). A design
+   proposal first.
+2. **Two writers on a group's transport location**: the audio thread every
+   cycle the song rolls, the scheduler at the start of a seek. It holds
+   because a song does not roll while it seeks; an assert is to say so.
+3. **A seek step that fails** (`step()` returns −1) counts as done without
+   a line in the log.
+4. **The CPU meter** (the time the steps took ÷ the wall time) can be above
+   100% and counts the time a step waits for the disk. A disk-load meter is
+   a decision (below).
+5. Clean-up: `Qt6::Concurrent` is no longer used; comments that still speak
+   of rounds.
+6. The design documents disagree in places (this one and `diskio-rounds.md`).
+
+Not done yet from the work orders:
+- the measurement of 32 WavPack tracks, which decides the size of the
+  write pool (two for now);
+- the size of the write rings: as long as the stall to survive (R18); about
+  one second now; 32 mono tracks at 48 kHz float cost about 6 MB per second
+  of ring.
+
+Decisions waiting for Remon:
+- the shutdown: an explicit `shutdown()` (`design-principles.md` §6) or the
+  order in the destructors, as built;
+- flush and wait on the schedulers before a project is saved: a
+  requirement or not;
+- a disk-load meter (required ÷ achieved throughput) next to the CPU meter,
+  or instead of it.
+
+Before the merge of `app-scheduler`: the runtime test with recording.
