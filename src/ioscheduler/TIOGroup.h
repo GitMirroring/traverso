@@ -25,9 +25,13 @@ class TIOScheduler;
 class TIOGroup
 {
 public:
-    // The audio thread, every cycle the song rolls
+    // The audio thread, every cycle the song rolls. While the song seeks the
+    // scheduler writes it (the location the streams seek to); a song does not
+    // roll while it seeks (TSheet), so the two never write at the same time.
     void set_transport_location(const TTimeRef& location)
     {
+        Q_ASSERT_X(!m_seeking.load(std::memory_order_relaxed), "TIOGroup::set_transport_location",
+                   "the transport moves while the song seeks");
         m_transportLocation.store(location.universal_frame(), std::memory_order_relaxed);
     }
 
