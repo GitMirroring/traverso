@@ -45,7 +45,7 @@ stays visible: the old text struck through, with the date and the reason.
 | R17 | Nothing is timed for the plan: the kernel schedules, the scheduler only knows the order | pref | review | concept |
 | ~~R18~~ | ~~Recorded audio survives a stall of the disk of N seconds~~ | — | deferred 2026-10-23 until a stall is observed (the size of the write rings, §12) | deferred |
 | R19 | The audio thread never allocates on the heap, also not to log (no QString there; `TLOG_RT_*` takes numbers and literals) | hard | review | decided 2026-10-23 |
-| R20 | The code builds as C++20: libc++ on macOS has no `std::move_only_function` | hard | **violated**: `TAudioThreadMessageQueue.h` (the only C++23 use; with `std::function` the whole tree builds as C++20, GCC and Clang, 2026-10-23) | decided 2026-10-23 |
+| R20 | The code builds as C++20: libc++ on macOS has no `std::move_only_function` | hard | `std::move_only_function` in `TAudioThreadMessageQueue.h` is the only C++23 use (with `std::function` the whole tree builds as C++20, GCC and Clang, 2026-10-23); Ben's patch for macOS, to come on GitHub, takes care of it | decided 2026-10-23 |
 | R21 | Positions and block numbers are 64 bit, also on 32-bit architectures | hard | review | decided 2026-10-23 |
 | R22 | The consumer (the audio thread) decides what is true (position, direction, the slots it holds); the producer (the reader) predicts from the same region list, and a wrong prediction costs read work, never wrong audio; the audio thread does constant, allocation-free bookkeeping only | hard | review; every slot carries its file position | decided 2026-10-23 |
 | R23 | Every slot is owned by exactly one thread at a time | hard | review: slots move through the SPSC queues | decided 2026-10-23 |
@@ -315,7 +315,8 @@ Instrumentation and Buffer Design.md` (requirements R19 to R28 in §0):
   instrumentation, without a change in behaviour, as the baseline; then the
   random-access slot buffer.
 - **C++20, not C++23** (R20): libc++ on macOS has no
-  `std::move_only_function`.
+  `std::move_only_function`. Ben's patch, to come on GitHub, takes care of
+  it; not a task of this work order.
 - **An architecture without lock-free atomics may block the audio thread**
   on an atomic; positions and block numbers are 64 bit (R2, R21). The
   `static_assert` on lock-free 64-bit atomics in `TRtTransportPosition.h`
