@@ -32,9 +32,12 @@
 class MeasuredBuild final : public TIOIdleTask
 {
 public:
-    MeasuredBuild(std::unique_ptr<TPeakBuildTask> task, std::atomic<int>& done, std::atomic<int>& failed,
+    MeasuredBuild(std::unique_ptr<TPeakBuildTask> task, qint64 frames, std::atomic<int>& done, std::atomic<int>& failed,
                   std::atomic<qint64>& stepNanoseconds)
-        : m_task(std::move(task)), m_done(done), m_failed(failed), m_stepNanoseconds(stepNanoseconds) {}
+        : m_task(std::move(task)), m_frames(frames), m_done(done), m_failed(failed), m_stepNanoseconds(stepNanoseconds) {}
+
+    // As the app weighs a build: the frames of its source
+    qint64 weight() const override { return m_frames; }
 
     bool step() override
     {
@@ -53,6 +56,7 @@ public:
 
 private:
     std::unique_ptr<TPeakBuildTask> m_task;
+    qint64 m_frames;
     std::atomic<int>& m_done;
     std::atomic<int>& m_failed;
     std::atomic<qint64>& m_stepNanoseconds;
@@ -91,7 +95,7 @@ int main(int argc, char** argv)
         }
         auto stream = std::make_shared<TPeakStream>(reader.get_file_rate(), int(reader.get_num_channels()), peaks.filePath(name + ".peaks"));
         auto task = std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(path), path, stream);
-        scheduler.add_idle_task(std::make_unique<MeasuredBuild>(std::move(task), done, failed, stepNanoseconds));
+        scheduler.add_idle_task(std::make_unique<MeasuredBuild>(std::move(task), qint64(reader.get_nframes()), done, failed, stepNanoseconds));
     }
     while (done.load() < int(files.size())) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));

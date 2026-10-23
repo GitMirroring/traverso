@@ -20,8 +20,9 @@
 class TPeakBuildJob final : public TIOIdleTask
 {
 public:
-    TPeakBuildJob(std::unique_ptr<TPeakBuildTask> task, QPromise<TPeakBuildResult> promise)
-        : m_task(std::move(task)), m_promise(std::move(promise)) {}
+    TPeakBuildJob(std::unique_ptr<TPeakBuildTask> task, QPromise<TPeakBuildResult> promise, qint64 weight)
+        : m_task(std::move(task)), m_promise(std::move(promise)), m_weight(weight) {}
+    qint64 weight() const override { return m_weight; }
 
     void retire() override
     {
@@ -56,9 +57,10 @@ public:
 private:
     std::unique_ptr<TPeakBuildTask> m_task;
     QPromise<TPeakBuildResult> m_promise;
+    qint64 m_weight;
 };
 
-TPeakBuild TPeakBuildService::add_job(std::unique_ptr<TPeakBuildTask> task, TIOScheduler* scheduler)
+TPeakBuild TPeakBuildService::add_job(std::unique_ptr<TPeakBuildTask> task, qint64 weight, TIOScheduler* scheduler)
 {
     Q_ASSERT(scheduler);
     const std::shared_ptr<TPeakStream> stream = task->stream();
@@ -68,7 +70,7 @@ TPeakBuild TPeakBuildService::add_job(std::unique_ptr<TPeakBuildTask> task, TIOS
     promise.start();
     promise.setProgressRange(0, 100);
     QFuture<TPeakBuildResult> job = promise.future();
-    scheduler->add_idle_task(std::make_unique<TPeakBuildJob>(std::move(task), std::move(promise)));
+    scheduler->add_idle_task(std::make_unique<TPeakBuildJob>(std::move(task), std::move(promise), weight));
     m_jobs.insert(stream->peak_path(), Job{job, stream});
     return TPeakBuild{job, stream};
 }
@@ -82,7 +84,7 @@ void TPeakBuildService::forget_finished()
 }
 
 TPeakBuild TPeakBuildService::build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
-                                    TIOScheduler* scheduler)
+                                    qint64 frames, TIOScheduler* scheduler)
 {
     forget_finished();
     const auto running = m_jobs.constFind(peakPath);
@@ -92,14 +94,15 @@ TPeakBuild TPeakBuildService::build(const QString& audioPath, const QString& pea
     }
     TLOG_I("peaks", "building {}", peakPath.toStdString());
     auto stream = std::make_shared<TPeakStream>(rate, channelCount, peakPath);
-    return add_job(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream), scheduler);
+    return add_job(std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(audioPath), audioPath, stream), frames, scheduler);
 }
 
 void TPeakBuildService::post_process(std::shared_ptr<TPeakStream> recorded, TIOScheduler* scheduler)
 {
     forget_finished();
     TLOG_I("peaks", "post-processing {}", recorded->peak_path().toStdString());
-    add_job(std::make_unique<TPeakBuildTask>(std::move(recorded)), scheduler);
+    const qint64 frames = recorded->written_frames();
+    add_job(std::make_unique<TPeakBuildTask>(std::move(recorded)), frames, scheduler);
 }
 
 void TPeakBuildService::cancel_all()

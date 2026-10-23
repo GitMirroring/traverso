@@ -748,8 +748,9 @@ void TAudioClip::set_audio_source(TBufferedAudioStreamReader* rs)
         m_waveform = nullptr;
         if (m_isReadSourceValid) {
             // Built in the idle time of this clip's sheet's DiskIO
-            m_waveform = new TWaveform(rs, [this](const QString& audioPath, const QString& peakPath, uint rate, int channelCount) {
-                return m_sheet ? m_sheet->request_peak_build(audioPath, peakPath, rate, channelCount) : TPeakBuild{};
+            m_waveform = new TWaveform(rs, [this](const QString& audioPath, const QString& peakPath, uint rate, int channelCount,
+                                                  qint64 frames) {
+                return m_sheet ? m_sheet->request_peak_build(audioPath, peakPath, rate, channelCount, frames) : TPeakBuild{};
             });
             if (m_sheet) {
                 m_waveform->prepare();

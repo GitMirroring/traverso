@@ -410,17 +410,18 @@ bool TIOScheduler::start_steps()
         streams.push_back(work.get());
     }
     std::vector<TaskWork*> tasks;
+    std::vector<qint64> weights;
     for (const std::unique_ptr<TaskWork>& task : m_idleTasks) {
         if (!task->inFlight) {
             tasks.push_back(task.get());
+            weights.push_back(task->task->weight());
         }
     }
 
     // Idle work never takes the last thread: a refill finds one at once
     const int threads = m_pool.maxThreadCount();
     const int idleBudget = std::min(std::max(idleLimit, 1), threads - 1) - m_runningIdle;
-    const TIOPlanner::Plan plan = m_planner.plan(states, playingSeek, int(tasks.size()), idleAllowed,
-                                                  threads - m_running, idleBudget);
+    const TIOPlanner::Plan plan = m_planner.plan(states, playingSeek, weights, idleAllowed, threads - m_running, idleBudget);
 
     for (const int index : plan.streams) {
         StreamWork* work = streams[size_t(index)];
@@ -430,11 +431,11 @@ bool TIOScheduler::start_steps()
         StreamWork* work = streams[size_t(index)];
         start_stream_step(work, true, states[size_t(index)].fill, step_info(*work, outputRate, bufferSize, resampler), tick);
     }
-    for (int i = 0; i < plan.idleSteps; ++i) {
-        start_task_step(tasks[size_t(i)]);
+    for (const int index : plan.idleTasks) {
+        start_task_step(tasks[size_t(index)]);
     }
 
-    const bool idle = !plan.idleSeeks.empty() || plan.idleSteps > 0;
+    const bool idle = !plan.idleSeeks.empty() || !plan.idleTasks.empty();
     if (idle && m_idleStretch.start == 0) {
         m_idleStretch.start = TTimeRef::get_nanoseconds_since_epoch();
     }

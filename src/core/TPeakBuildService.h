@@ -47,8 +47,11 @@ struct TPeakBuild
 class TPeakBuildService
 {
 public:
-    // rate, channelCount: the source's, as its waveform knows them
-    TPeakBuild build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount, TIOScheduler* scheduler);
+    // rate, channelCount, frames: the source's, as its waveform knows them;
+    // the frames are the build's weight among the idle work (the heaviest
+    // first)
+    TPeakBuild build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount, qint64 frames,
+                     TIOScheduler* scheduler);
     // A recording's peaks after TPeakStream::finish(): the levels above level
     // 0 and the file's name. Before the recording's file waveform asks for
     // its peak file, so that one joins this job.
@@ -56,7 +59,7 @@ public:
     void cancel_all();
 
 private:
-    TPeakBuild add_job(std::unique_ptr<TPeakBuildTask> task, TIOScheduler* scheduler);
+    TPeakBuild add_job(std::unique_ptr<TPeakBuildTask> task, qint64 weight, TIOScheduler* scheduler);
     void forget_finished();
 
     // The stream is not kept alive here: the job holds it while it runs,

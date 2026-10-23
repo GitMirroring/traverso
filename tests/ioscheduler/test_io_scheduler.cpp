@@ -105,9 +105,11 @@ class FakeTask final : public TIOIdleTask
 {
 public:
     FakeTask(int steps, std::atomic<int>& retired, std::atomic<int>& done, int stepMicroseconds = 0,
-             Concurrency* concurrency = nullptr, std::atomic<int>* order = nullptr, int* retiredAs = nullptr)
+             Concurrency* concurrency = nullptr, std::atomic<int>* order = nullptr, int* retiredAs = nullptr, qint64 weight = 0)
         : m_left(steps), m_retired(retired), m_done(done), m_stepMicroseconds(stepMicroseconds),
-          m_concurrency(concurrency), m_order(order), m_retiredAs(retiredAs) {}
+          m_concurrency(concurrency), m_order(order), m_retiredAs(retiredAs), m_weight(weight) {}
+
+    qint64 weight() const override { return m_weight; }
 
     bool step() override
     {
@@ -138,6 +140,7 @@ public:
     Concurrency* m_concurrency;
     std::atomic<int>* m_order;
     int* m_retiredAs;
+    qint64 m_weight;
 };
 
 int main(int argc, char** argv)
@@ -419,6 +422,23 @@ int main(int argc, char** argv)
         scheduler.remove_stream(&b);
         scheduler.remove_group(&one);
         scheduler.remove_group(&two);
+    }
+
+    // The heaviest idle task first: with one idle step at a time the tasks
+    // are done heaviest first, not in the order they came
+    {
+        std::atomic<int> retired{0};
+        std::atomic<int> done{0};
+        std::atomic<int> order{0};
+        int light = -1, heavy = -1, middle = -1;
+        TIOScheduler scheduler(2);
+        scheduler.add_idle_task(std::make_unique<FakeTask>(2, retired, done, 0, nullptr, &order, &light, 10));
+        scheduler.add_idle_task(std::make_unique<FakeTask>(2, retired, done, 0, nullptr, &order, &heavy, 500));
+        scheduler.add_idle_task(std::make_unique<FakeTask>(2, retired, done, 0, nullptr, &order, &middle, 100));
+        for (int i = 0; i < 20 && retired.load() < 3; ++i) {
+            scheduler.dispatch();
+        }
+        check(heavy == 0 && middle == 1 && light == 2, "the heaviest task first, then the next heaviest");
     }
 
     // The dispatcher: a fast task does not wait for a slow one next to it

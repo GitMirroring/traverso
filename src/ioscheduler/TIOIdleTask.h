@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <QtGlobal>
+
 /**
  * @brief Background work of a TIOScheduler, such as a peak build
  * (doc/design/diskio-rounds.md).
@@ -20,6 +22,11 @@ public:
     // One unit of work, about one reader read; false when the task is over
     // (the scheduler hands it back and deletes it then)
     virtual bool step() = 0;
+    // How much work the task is, in a unit the tasks share (a peak build:
+    // the frames of its source): of the tasks that wait, the heaviest gets
+    // the next thread, so the longest one does not start last. On the
+    // scheduler thread, while no step of the task runs.
+    virtual qint64 weight() const { return 0; }
     // The scheduler hands the task back right before it deletes it: when it
     // is over (on the scheduler's thread, after its last step), or when the
     // scheduler goes first (on the thread that deletes it). Reporting a result belongs

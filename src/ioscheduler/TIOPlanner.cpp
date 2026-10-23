@@ -4,9 +4,10 @@
 #include "TIOPlanner.h"
 
 #include <algorithm>
+#include <numeric>
 
-TIOPlanner::Plan TIOPlanner::plan(const std::vector<TIOStream::State>& streams, bool playingSeek, int idleTasks, bool idleAllowed,
-                                   int freeThreads, int idleBudget)
+TIOPlanner::Plan TIOPlanner::plan(const std::vector<TIOStream::State>& streams, bool playingSeek, const std::vector<qint64>& idleTasks,
+                                   bool idleAllowed, int freeThreads, int idleBudget)
 {
     Plan plan;
     freeThreads = std::max(freeThreads, 0);
@@ -54,6 +55,15 @@ TIOPlanner::Plan TIOPlanner::plan(const std::vector<TIOStream::State>& streams, 
         budget = std::clamp(freeThreads - int(plan.streams.size()), 0, std::max(idleBudget, 0));
     }
     plan.idleSeeks.resize(std::min(plan.idleSeeks.size(), size_t(budget)));
-    plan.idleSteps = std::clamp(budget - int(plan.idleSeeks.size()), 0, std::max(idleTasks, 0));
+
+    // The heaviest idle tasks first: the longest one does not start last
+    // and run alone at the end; equal weights in the order they came
+    const size_t idleSteps = size_t(std::max(budget - int(plan.idleSeeks.size()), 0));
+    plan.idleTasks.resize(idleTasks.size());
+    std::iota(plan.idleTasks.begin(), plan.idleTasks.end(), 0);
+    std::stable_sort(plan.idleTasks.begin(), plan.idleTasks.end(), [&idleTasks](int a, int b) {
+        return idleTasks[size_t(a)] > idleTasks[size_t(b)];
+    });
+    plan.idleTasks.resize(std::min(plan.idleTasks.size(), idleSteps));
     return plan;
 }

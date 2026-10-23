@@ -70,7 +70,7 @@ public:
     TProject* get_project() const {return m_project;}
     // The peak file of an audio source, built in this sheet's DiskIO idle
     // time (TPeakBuildService)
-    TPeakBuild request_peak_build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount);
+    TPeakBuild request_peak_build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount, qint64 frames);
     // A recording's peaks (level 0 is complete): the rest in the same idle
     // time, before the recording's file waveform asks for them
     void post_process_peaks(std::shared_ptr<TPeakStream> recorded);

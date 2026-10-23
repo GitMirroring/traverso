@@ -1238,9 +1238,9 @@ QUndoCommand* TSheet::create_command_split_entities(const QList<TSplitableTimeLi
 
 //eof
 
-TPeakBuild TSheet::request_peak_build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount)
+TPeakBuild TSheet::request_peak_build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount, qint64 frames)
 {
-    return m_project->get_peak_builds()->build(audioPath, peakPath, rate, channelCount, m_readScheduler);
+    return m_project->get_peak_builds()->build(audioPath, peakPath, rate, channelCount, frames, m_readScheduler);
 }
 
 void TSheet::post_process_peaks(std::shared_ptr<TPeakStream> recorded)
