@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Utils.h"
 #include "TQueueBufferSlot.h"
 #include "TIOPlanner.h"
+#include "TLog.h"
 
 
 
@@ -133,6 +134,12 @@ int TBufferedAudioStream::step(const StepInfo& info)
         const int seekFill = status.get_fill_status();
         if (!status.out_of_sync() && seekFill <= TIOPlanner::IdleStartThreshold) {
             process_realtime_buffers(fileIOBuffer);
+        }
+        // Out of its window is no failure: nothing to read there yet
+        const int syncStatus = status.get_sync_status();
+        if (syncStatus != TBufferedAudioStreamStatus::IN_SYNC && syncStatus != TBufferedAudioStreamStatus::OUT_OF_WINDOW) {
+            TLOG_W("diskio", "{}: the seek did not get in sync ({}); the next step tries again",
+                   get_name().toStdString(), status.get_readable_sync_status().toStdString());
         }
         return status.out_of_sync() ? -1 : seekFill;
     }

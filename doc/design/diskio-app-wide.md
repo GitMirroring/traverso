@@ -302,7 +302,11 @@ Until a measurement asks for it:
 
 From the review of branch `app-scheduler` (2026-10-22, `status.md`), with
 what is to be done:
-Status 2026-10-22: 2, 3, 5 and 6 are done (commits "assert that a song's
+Status 2026-10-23: point 3 was wrong as written: after a seek a step gives
+-1 mostly for a reader out of its window, which is normal, and the warning
+of 44029a56 fired for each of them (54 at every load of "Minidisk
+opname"). The stream itself now warns, only when its seek did not get in
+sync for another reason. Status 2026-10-22: 2, 3, 5 and 6 are done (commits "assert that a song's
 transport does not move while it seeks", "a seek step that fails says so",
 "no rounds in names and comments", and this document's corrections); 1 has
 a design proposal; 4 waits for the decision on a disk-load meter. Checked

@@ -248,13 +248,11 @@ void TIOScheduler::take_reports()
             lowest = std::min(lowest, report.fill);
         }
         // A seek done: the stream reads at the rate and with the rings of the
-        // seek, and its song has one stream less to seek. One that failed
-        // (out of sync) counts too, for its song goes on: the stream seeks to
+        // seek, and its song has one stream less to seek. A fill of -1 counts
+        // too: mostly a stream out of its window (nothing to read there); a
+        // seek that really failed the stream tells itself, and it seeks to
         // the transport again with its next step, one a tick.
         if (report.info.seek) {
-            if (report.fill < 0) {
-                TLOG_W("diskio", "a seek step failed (out of sync): the stream tries again from where the transport is");
-            }
             work->seek = false;
             work->rate = report.info.outputRate;
             work->bufferSize = report.info.bufferSize;
