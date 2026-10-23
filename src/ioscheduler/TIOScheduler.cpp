@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <sys/types.h>
 #endif
 
-std::atomic<quint64> TIOScheduler::s_stepsStarted{0};
+std::atomic<quint64> TIOScheduler::s_handOverFence{0};
 
 TIOScheduler::TIOScheduler(int threads)
     : m_lastStepLoadTime(TTimeRef::get_nanoseconds_since_epoch())
@@ -62,7 +62,7 @@ TIOScheduler::~TIOScheduler()
     m_pool.waitForDone();
     Q_ASSERT_X(m_streams.empty() && m_streamsToAdd.empty(), "TIOScheduler", "streams are still registered");
     Q_ASSERT_X(m_groups.empty() && m_groupsToAdd.empty(), "TIOScheduler", "groups are still registered");
-    for (const std::unique_ptr<TIOTask>& task : m_tasksToAdd) {
+    for (const std::unique_ptr<TIOIdleTask>& task : m_tasksToAdd) {
         task->retire();
     }
     for (const std::unique_ptr<TaskWork>& task : m_idleTasks) {
@@ -138,7 +138,7 @@ void TIOScheduler::take_requests()
     std::vector<TIOGroup*> groups;
     std::vector<StreamWork> added;
     std::vector<Removal*> removals;
-    std::vector<std::unique_ptr<TIOTask>> tasks;
+    std::vector<std::unique_ptr<TIOIdleTask>> tasks;
     {
         std::lock_guard locker(m_requestsMutex);
         groups.swap(m_groupsToAdd);
@@ -155,7 +155,7 @@ void TIOScheduler::take_requests()
                               [&work](const std::unique_ptr<StreamWork>& w) { return w->stream == work.stream; }));
         m_streams.push_back(std::make_unique<StreamWork>(work));
     }
-    for (std::unique_ptr<TIOTask>& task : tasks) {
+    for (std::unique_ptr<TIOIdleTask>& task : tasks) {
         m_idleTasks.push_back(std::make_unique<TaskWork>(TaskWork{std::move(task)}));
     }
 
@@ -191,7 +191,7 @@ void TIOScheduler::take_requests()
                 removal->done = true;
             }
         }
-        m_requestsTaken.notify_all();
+        m_removalDone.notify_all();
     }
 }
 
@@ -275,8 +275,8 @@ void TIOScheduler::take_reports()
     }
 
     m_stepTime.fetch_add(stepTime, std::memory_order_relaxed);
-    if (lowest < m_bufferFillStatus.load(std::memory_order_relaxed)) {
-        m_bufferFillStatus.store(lowest, std::memory_order_relaxed);
+    if (lowest < m_lowestBufferFill.load(std::memory_order_relaxed)) {
+        m_lowestBufferFill.store(lowest, std::memory_order_relaxed);
     }
     if (m_idleStretch.start != 0) {
         m_idleStretch.stepTime += stepTime;
@@ -304,7 +304,7 @@ void TIOScheduler::take_reports()
                 removal->done = true;
             }
         }
-        m_requestsTaken.notify_all();
+        m_removalDone.notify_all();
     }
 }
 
@@ -393,7 +393,7 @@ bool TIOScheduler::start_steps()
         idleLimit = std::min(idleLimit, group.group->idle_limit());
         playingSeek = playingSeek || (group.seeking && group.group->m_playing.load(std::memory_order_relaxed));
     }
-    std::vector<TIOPlanner::Stream> states;
+    std::vector<TIOStream::State> states;
     std::vector<StreamWork*> streams;
     for (const std::unique_ptr<StreamWork>& work : m_streams) {
         if (work->inFlight) {
@@ -401,10 +401,10 @@ bool TIOScheduler::start_steps()
         }
         const bool playing = work->group && work->group->m_playing.load(std::memory_order_relaxed);
         if (work->seek) {
-            states.push_back(TIOPlanner::Stream{false, false, 100, true, playing});
+            states.push_back(TIOStream::State{false, false, 100, true, playing});
         } else {
             const TTimeRef transport = work->group ? TTimeRef(work->group->m_transportLocation.load(std::memory_order_relaxed)) : TTimeRef();
-            TIOPlanner::Stream state = work->stream->disk_state(transport);
+            TIOStream::State state = work->stream->disk_state(transport);
             state.playing = playing;
             state.needsWork = state.needsWork && work->stepTick != tick;
             states.push_back(state);
@@ -455,7 +455,7 @@ void TIOScheduler::start_stream_step(StreamWork* work, bool idle, int plannedFil
     }
     TIOStream* stream = work->stream;
     QRunnable* step = QRunnable::create([this, work, stream, info, idle, plannedFill] {
-        s_stepsStarted.load(std::memory_order_acquire);
+        s_handOverFence.load(std::memory_order_acquire);
         const trav_time_t start = TTimeRef::get_nanoseconds_since_epoch();
         // The fill to show: after a seek what the seek filled, otherwise
         // what the stream had when the planner looked at it (its low point,
@@ -470,7 +470,7 @@ void TIOScheduler::start_stream_step(StreamWork* work, bool idle, int plannedFil
         report(done);
     });
     // After the step is made, before it goes to the pool
-    s_stepsStarted.fetch_add(1, std::memory_order_release);
+    s_handOverFence.fetch_add(1, std::memory_order_release);
     m_pool.start(step);
 }
 
@@ -479,9 +479,9 @@ void TIOScheduler::start_task_step(TaskWork* task)
     task->inFlight = true;
     ++m_running;
     ++m_runningIdle;
-    TIOTask* idleTask = task->task.get();
+    TIOIdleTask* idleTask = task->task.get();
     QRunnable* step = QRunnable::create([this, task, idleTask] {
-        s_stepsStarted.load(std::memory_order_acquire);
+        s_handOverFence.load(std::memory_order_acquire);
         const trav_time_t start = TTimeRef::get_nanoseconds_since_epoch();
         Report done;
         done.task = task;
@@ -490,7 +490,7 @@ void TIOScheduler::start_task_step(TaskWork* task)
         done.nanoseconds = TTimeRef::get_nanoseconds_since_epoch() - start;
         report(done);
     });
-    s_stepsStarted.fetch_add(1, std::memory_order_release);
+    s_handOverFence.fetch_add(1, std::memory_order_release);
     m_pool.start(step);
 }
 
@@ -536,7 +536,7 @@ int TIOScheduler::idle_limit_for(const QString& directory)
 #endif
 }
 
-void TIOScheduler::add_idle_task(std::unique_ptr<TIOTask> task)
+void TIOScheduler::add_idle_task(std::unique_ptr<TIOIdleTask> task)
 {
     {
         std::lock_guard locker(m_requestsMutex);
@@ -568,7 +568,7 @@ void TIOScheduler::remove_group(TIOGroup* group)
         return;
     }
     m_wake.signal();
-    m_requestsTaken.wait(locker, [&removal] { return removal.done; });
+    m_removalDone.wait(locker, [&removal] { return removal.done; });
 }
 
 void TIOScheduler::add_stream(TIOStream* stream, TIOGroup* group)
@@ -584,7 +584,7 @@ void TIOScheduler::add_stream(TIOStream* stream, TIOGroup* group)
     const uint rate = get_output_rate();
     const nframes_t bufferSize = m_bufferSize.load(std::memory_order_relaxed);
     stream->set_output_rate_and_resampler(int(rate), get_resampler());
-    stream->prepare_rt_buffers(bufferSize);
+    stream->prepare_ring_buffers(bufferSize);
 
     {
         std::lock_guard locker(m_requestsMutex);
@@ -610,7 +610,7 @@ void TIOScheduler::remove_stream(TIOStream* stream)
     // Until the scheduler thread let go of it: at once, or once its step
     // that runs is done; no step of it runs after that
     m_wake.signal();
-    m_requestsTaken.wait(locker, [&removal] { return removal.done; });
+    m_removalDone.wait(locker, [&removal] { return removal.done; });
 }
 
 /**
@@ -635,9 +635,9 @@ bool TIOScheduler::get_step_load(float &time)
  * The fill of the emptiest stream in sync since the last call, in percent
  * (a writer's fill is its free part), 100 when no step reported meanwhile.
  */
-int TIOScheduler::get_buffers_fill_status( )
+int TIOScheduler::lowest_buffer_fill( )
 {
-    return m_bufferFillStatus.exchange(100);
+    return m_lowestBufferFill.exchange(100);
 }
 
 void TIOScheduler::set_resampler(const TIOStream::Resampler& resampler)

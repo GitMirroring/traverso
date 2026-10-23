@@ -88,7 +88,7 @@ protected:
 public:
     // TIOStream: the scheduler's step, and the ring buffers it makes and frees
     int step(const StepInfo& info) override;
-    void prepare_rt_buffers(nframes_t bufferSize) override;
+    void prepare_ring_buffers(nframes_t bufferSize) override;
     void retire() override;
 
 private:

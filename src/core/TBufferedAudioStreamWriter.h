@@ -75,7 +75,7 @@ private:
     void set_output_rate_and_resampler(int /*outputRate*/, const Resampler& /*resampler*/) final {}
     // Something to write (it is recorded audio: as soon as it is there), or
     // the recording stopped and the file is not finished yet
-    TIOPlanner::Stream disk_state(const TTimeRef& transportLocation) final;
+    TIOStream::State disk_state(const TTimeRef& transportLocation) final;
 
 signals:
     void exportFinished();

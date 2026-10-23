@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TIOGroup.h"
 #include "TIOPlanner.h"
 #include "TIOStream.h"
-#include "TIOTask.h"
+#include "TIOIdleTask.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -142,7 +142,7 @@ public:
     // it is done (and deletes it then, or when it goes). Any thread. Every
     // request wakes the scheduler thread, so a task runs also without a
     // driver: its next step starts once its step before reported.
-    void add_idle_task(std::unique_ptr<TIOTask> task);
+    void add_idle_task(std::unique_ptr<TIOIdleTask> task);
 
     // Any thread. The output rate takes effect at a stream's next seek (the
     // owner seeks after changing it), the resampler at the next dispatch (or
@@ -169,7 +169,10 @@ public:
     // The wall-clock time the steps took since the last call, in percent of
     // the time that passed (of one core; waiting for the disk counts too)
     bool get_step_load(float &time);
-    int get_buffers_fill_status();
+    // The fill of the emptiest stream since the last call, in percent (a
+    // writer's fill is its free part), for readers and writers alike; 100
+    // when no step reported meanwhile
+    int lowest_buffer_fill();
 
     // One turn of the scheduler thread: the requests and the reports that
     // came, then the steps there are threads for. True when idle steps were
@@ -188,7 +191,7 @@ private:
     // An idle task as the scheduler thread has it
     struct TaskWork
     {
-        std::unique_ptr<TIOTask> task;
+        std::unique_ptr<TIOIdleTask> task;
         bool inFlight{false};
     };
     // A song as the scheduler thread has it
@@ -256,26 +259,27 @@ private:
     // The owners' requests (std::mutex: a thread sanitizer sees it, Qt's own
     // here is not built for one)
     std::mutex m_requestsMutex;
-    std::condition_variable m_requestsTaken;   // a removal is done
+    std::condition_variable m_removalDone;   // a removal is done
     std::vector<TIOGroup*> m_groupsToAdd;
     std::vector<StreamWork> m_streamsToAdd;
     std::vector<Removal*> m_removals;
-    std::vector<std::unique_ptr<TIOTask>> m_tasksToAdd;
+    std::vector<std::unique_ptr<TIOIdleTask>> m_tasksToAdd;
 
     // The steps that are done
     std::mutex m_reportsMutex;
     std::vector<Report> m_reports;
-    // A step handed to the pool: QThreadPool's own lock orders it, this
-    // atomic says so in a way a thread sanitizer sees too (static: the step
-    // reads it before anything of its closure)
-    static std::atomic<quint64> s_stepsStarted;
+    // A step handed to the pool: QThreadPool's own lock orders it; this
+    // fence (release before the hand-over, acquire in the step) says so in a
+    // way a thread sanitizer sees too. It counts nothing anyone reads.
+    // Static: the step reads it before anything of its closure.
+    static std::atomic<quint64> s_handOverFence;
 
     std::atomic<uint> m_outputRate{0};
     std::atomic<TIOStream::Resampler> m_resampler{};  // the owner sets it before streams come
     std::atomic<bool> m_resamplerChanged{false};
     std::atomic<nframes_t> m_bufferSize{0};
 
-    std::atomic<int> m_bufferFillStatus{0};
+    std::atomic<int> m_lowestBufferFill{0};
     // The time the steps took (get_step_load())
     std::atomic<trav_time_t> m_stepTime{0};
     trav_time_t m_lastStepLoadTime;

@@ -119,7 +119,7 @@ private:
     // Out of its window, a reader needs work when the transport came close
     // (it seeks then) and its fill does not count; otherwise it needs work
     // when it is out of sync or getting empty
-    TIOPlanner::Stream disk_state(const TTimeRef& transportLocation) final;
+    TIOStream::State disk_state(const TTimeRef& transportLocation) final;
     // The transport is near enough to fill the buffers: from about one to
     // four seconds before the stream's start (spread per reader) to its end
     bool transport_in_window(const TTimeRef& transportLocation) const;

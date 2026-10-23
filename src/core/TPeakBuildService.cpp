@@ -17,7 +17,7 @@
 // is over (or DiskIO goes first) DiskIO hands it back (retire()), on its own
 // thread or on the one that deletes it: the future finishes then, and a
 // waveform that opens the file finds it.
-class TPeakBuildJob final : public TIOTask
+class TPeakBuildJob final : public TIOIdleTask
 {
 public:
     TPeakBuildJob(std::unique_ptr<TPeakBuildTask> task, QPromise<TPeakBuildResult> promise)

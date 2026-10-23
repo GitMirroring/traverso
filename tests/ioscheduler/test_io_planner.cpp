@@ -18,25 +18,25 @@ static void check(bool ok, const char* what)
     }
 }
 
-using Stream = TIOPlanner::Stream;
+using State = TIOStream::State;
 
 // A reader of a song that plays, as the scheduler reports it: work below
 // the threshold
-static Stream reader(int fill)
+static State reader(int fill)
 {
-    return Stream{fill <= TIOPlanner::IdleStartThreshold, true, fill, false, true};
+    return State{fill <= TIOPlanner::IdleStartThreshold, true, fill, false, true};
 }
 
 // A reader of a song that does not play
-static Stream stopped(int fill)
+static State stopped(int fill)
 {
-    return Stream{fill <= TIOPlanner::IdleStartThreshold, true, fill, false, false};
+    return State{fill <= TIOPlanner::IdleStartThreshold, true, fill, false, false};
 }
 
 // A reader whose song seeks
-static Stream seeking(bool playing)
+static State seeking(bool playing)
 {
-    return Stream{false, true, 100, true, playing};
+    return State{false, true, 100, true, playing};
 }
 
 int main()
@@ -73,9 +73,9 @@ int main()
         // A reader out of its window does not count, also not with an empty
         // ring, and when the transport came close it gets its step
         TIOPlanner planner;
-        const Stream away{false, false, 0};
+        const State away{false, false, 0};
         check(planner.plan({reader(100), away}, false, 1, true, 4, 4).idleSteps == 1, "out of the window: no reason to wait");
-        const Stream entered{true, false, 0};
+        const State entered{true, false, 0};
         const TIOPlanner::Plan round = planner.plan({reader(100), entered}, false, 1, true, 4, 4);
         check(round.streams == std::vector<int>({1}), "a reader whose window the transport entered gets a step");
         check(round.idleSteps == 1, "and does not hold the idle work back");
@@ -151,8 +151,8 @@ int main()
     {
         // Writers: only those with something to write, no fill rule
         TIOPlanner planner;
-        const Stream full{true, false, 30};
-        const Stream empty{false, false, 100};
+        const State full{true, false, 30};
+        const State empty{false, false, 100};
         const TIOPlanner::Plan round = planner.plan({empty, full, empty}, false, 0, false, 2, 1);
         check(round.streams == std::vector<int>({1}) && round.idleSteps == 0, "writers with data only");
     }

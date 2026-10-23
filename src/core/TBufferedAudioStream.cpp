@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSheet.h"
 #include "Utils.h"
 #include "TQueueBufferSlot.h"
+#include "TIOPlanner.h"
 
 
 
@@ -68,7 +69,7 @@ TBufferedAudioStream::~TBufferedAudioStream()
 	PENTERDES;
 }
 
-void TBufferedAudioStream::prepare_rt_buffers(nframes_t bufferSize)
+void TBufferedAudioStream::prepare_ring_buffers(nframes_t bufferSize)
 {
     Q_ASSERT(m_outputRate > 0);
 
@@ -111,8 +112,8 @@ void TBufferedAudioStream::prepare_rt_buffers(nframes_t bufferSize)
 
     m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
 
-    // printf("AudioSource::::prepare_rt_buffers: freeBufferSlotsQueue slot count %zu\n", m_freeBufferSlotsQueue->size_approx());
-    // printf("AudioSource::::prepare_rt_buffers: rtBufferSlotsQueue slot count %zu\n", m_rtBufferSlotsQueue->size_approx());
+    // printf("AudioSource::::prepare_ring_buffers: freeBufferSlotsQueue slot count %zu\n", m_freeBufferSlotsQueue->size_approx());
+    // printf("AudioSource::::prepare_ring_buffers: rtBufferSlotsQueue slot count %zu\n", m_rtBufferSlotsQueue->size_approx());
 }
 
 int TBufferedAudioStream::step(const StepInfo& info)
@@ -125,7 +126,7 @@ int TBufferedAudioStream::step(const StepInfo& info)
     if (info.seek) {
         if (info.sampleRateChanged) {
             set_output_rate_and_resampler(int(info.outputRate), info.resampler);
-            prepare_rt_buffers(info.bufferSize);
+            prepare_ring_buffers(info.bufferSize);
         }
         rb_seek_to_transport_location(fileIOBuffer, info.seekLocation);
         // The seek fills part of the ring; the rest at once

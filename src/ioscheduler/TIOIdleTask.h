@@ -13,10 +13,10 @@
  * one read of a reader; steps may take different times (a WAV and a WavPack
  * file): none waits for another.
  */
-class TIOTask
+class TIOIdleTask
 {
 public:
-    virtual ~TIOTask() = default;
+    virtual ~TIOIdleTask() = default;
     // One unit of work, about one reader read; false when the task is over
     // (the scheduler hands it back and deletes it then)
     virtual bool step() = 0;

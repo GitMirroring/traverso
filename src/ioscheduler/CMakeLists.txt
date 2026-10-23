@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Plans and hands out the IO work of the streams (TIOStream: the readers and
-# writers in core) and of background tasks (TIOTask: peak builds) on a pool
+# writers in core) and of background tasks (TIOIdleTask: peak builds) on a pool
 # of its own, one step at a time each, as threads are free. It does no IO
 # itself and knows no engine: the owner tells it the transport, the output
 # rate and the buffer size.
@@ -10,7 +10,7 @@ add_library(traversoioscheduler STATIC
     TIOScheduler.h TIOScheduler.cpp
     TIOGroup.h
     TIOPlanner.h TIOPlanner.cpp
-    TIOTask.h
+    TIOIdleTask.h
     TIOStream.h
 )
 

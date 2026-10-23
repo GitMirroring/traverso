@@ -171,8 +171,8 @@ void SystemResources::update_status( )
             return;
         }
 
-        bufReadStatus = sheet->get_read_diskio_buffers_fill_status();
-        bufWriteStatus = sheet->get_write_diskio_buffers_fill_status();
+        bufReadStatus = sheet->get_read_lowest_buffer_fill();
+        bufWriteStatus = sheet->get_write_lowest_buffer_fill();
         float time;
         if (sheet->get_read_step_load(time)) {
             m_diskReadCpuUsage->set_value(time);

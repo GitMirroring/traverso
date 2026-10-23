@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "TIOStream.h"
+
 #include <vector>
 
 /**
@@ -38,20 +40,6 @@ public:
     // all the time around one threshold.
     static constexpr int IdleStopThreshold = 60;
 
-    struct Stream
-    {
-        bool needsWork{false};
-        // A reader whose fill decides about idle work: not a writer, not a
-        // reader out of its window (nothing to read there, it would keep the
-        // idle work away for good). Only the readers of songs that play count.
-        bool countsForFill{false};
-        int fill{100};      // percent of the ring that holds data
-        // Its seek step is to come (its song seeks)
-        bool seek{false};
-        // Its song plays, or plays once its seek is done; a writer has no song
-        bool playing{false};
-    };
-
     struct Plan
     {
         // Indices into the streams, in order: the seeks of songs that play,
@@ -69,7 +57,7 @@ public:
     // idle tasks that wait. idleAllowed: false while a song records.
     // freeThreads: how many steps may start now (the threads that are
     // free). idleBudget: how many idle steps may start now.
-    Plan plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed, int freeThreads, int idleBudget);
+    Plan plan(const std::vector<TIOStream::State>& streams, bool playingSeek, int idleTasks, bool idleAllowed, int freeThreads, int idleBudget);
 
     // Whether idle work may run as far as the readers' fill goes
     bool idle_running() const { return m_idleRunning; }

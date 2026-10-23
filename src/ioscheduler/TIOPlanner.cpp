@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-TIOPlanner::Plan TIOPlanner::plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed,
+TIOPlanner::Plan TIOPlanner::plan(const std::vector<TIOStream::State>& streams, bool playingSeek, int idleTasks, bool idleAllowed,
                                    int freeThreads, int idleBudget)
 {
     Plan plan;
@@ -16,9 +16,9 @@ TIOPlanner::Plan TIOPlanner::plan(const std::vector<Stream>& streams, bool playi
     int lowest = 100;
     std::vector<int> refills;
     for (int i = 0; i < int(streams.size()); ++i) {
-        const Stream& stream = streams[size_t(i)];
+        const TIOStream::State& stream = streams[size_t(i)];
         // A stream that seeks takes no refill: the seek fills it
-        if (stream.seek) {
+        if (stream.seekPending) {
             if (stream.playing) {
                 plan.streams.push_back(i);
                 playingSeek = true;

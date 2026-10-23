@@ -163,7 +163,7 @@ is a song); driving all songs is an option of the project's policy. Today
 ## 8. Where it lives
 
 A library `traversoioscheduler` in `src/ioscheduler` (decided 2026-10-21):
-`TIOScheduler` (formerly `TDiskIOThread`), `TIOPlanner`, `TIOTask` and the
+`TIOScheduler` (formerly `TDiskIOThread`), `TIOPlanner`, `TIOIdleTask` and the
 stream interface `TIOStream`, linking `traversosupport` and Qt Core only.
 The readers and writers in core implement `TIOStream`; their decode buffer
 is `thread_local` in core. The name says what it does: it plans and hands

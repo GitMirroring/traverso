@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "TIOPlanner.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -15,6 +14,21 @@
 class TIOStream
 {
 public:
+    // What a stream needs now, for the planner (one look at its buffers)
+    struct State
+    {
+        bool needsWork{false};
+        // A reader whose fill decides about idle work: not a writer, not a
+        // reader out of its window (nothing to read there, it would keep the
+        // idle work away for good). Only the readers of songs that play count.
+        bool countsForFill{false};
+        int fill{100};      // percent of the ring that holds data
+        // Its seek step is to come (its song seeks)
+        bool seekPending{false};
+        // Its song plays, or plays once its seek is done; a writer has no song
+        bool playing{false};
+    };
+
     // The resampler of a stream that reads at another rate than its file's:
     // a TAudioResampler backend and one of its qualities, as the owner chose
     // them; the scheduler only hands them on
@@ -44,7 +58,7 @@ public:
     // transportLocation: whether it has work, whether its fill decides about
     // the idle work, its fill (one look at its buffers). On the scheduler
     // thread, never while a step of the stream runs.
-    virtual TIOPlanner::Stream disk_state(const TTimeRef& transportLocation) = 0;
+    virtual TIOStream::State disk_state(const TTimeRef& transportLocation) = 0;
     // One step: a seek, back in sync, or read or write all there is room
     // for. The fill to show for it, -1 for nothing (out of sync). On a
     // worker thread, one step of a stream at a time.
@@ -55,7 +69,7 @@ public:
     virtual uint get_channel_count() const = 0;
     // The ring buffers are made and freed only where the audio thread does
     // not use them: the scheduler knows when that is
-    virtual void prepare_rt_buffers(nframes_t bufferSize) = 0;
+    virtual void prepare_ring_buffers(nframes_t bufferSize) = 0;
     // The scheduler hands the stream back when it takes it out, on its
     // thread, when no step of it runs: the ring buffers go. Its owner deletes
     // it once remove_stream() returned.

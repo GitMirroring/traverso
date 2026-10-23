@@ -1098,14 +1098,14 @@ void TSheet::remove_audio_source_from_diskio(TBufferedAudioStreamWriter *source)
     delete source;
 }
 
-int TSheet::get_read_diskio_buffers_fill_status()
+int TSheet::get_read_lowest_buffer_fill()
 {
-    return m_readScheduler->get_buffers_fill_status();
+    return m_readScheduler->lowest_buffer_fill();
 }
 
-int TSheet::get_write_diskio_buffers_fill_status()
+int TSheet::get_write_lowest_buffer_fill()
 {
-    return m_writeScheduler->get_buffers_fill_status();
+    return m_writeScheduler->lowest_buffer_fill();
 }
 
 bool TSheet::get_read_step_load(float &time)

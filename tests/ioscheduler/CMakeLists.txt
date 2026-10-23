@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Remon Sijrier
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# Headless test of the scheduler's round planner: order, hysteresis, seeks,
-# the idle limit, rounds without waiting for the tick. Links the library
-# only, no core.
+# Headless test of the scheduler's planner: order, hysteresis, seeks, the
+# free threads and the idle budget. No core; support and Qt Core for the
+# stream state's header (TIOStream.h, its time types).
 add_executable(traverso_io_planner_test test_io_planner.cpp)
-target_link_libraries(traverso_io_planner_test PRIVATE traverso_compiler_settings traversoioscheduler)
+target_link_libraries(traverso_io_planner_test PRIVATE traverso_compiler_settings traversoioscheduler traversosupport Qt6::Core)
 add_test(NAME io_planner COMMAND traverso_io_planner_test)
 
 # Headless test of the scheduler with streams and tasks of its own: rounds

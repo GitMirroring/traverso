@@ -11,7 +11,7 @@
 
 #include "TIOScheduler.h"
 #include "TIOStream.h"
-#include "TIOTask.h"
+#include "TIOIdleTask.h"
 
 #include <QCoreApplication>
 
@@ -39,7 +39,7 @@ public:
     explicit FakeStream(bool needsWork, int fill = 100, int stepMicroseconds = 0)
         : m_needsWork(needsWork), m_fill(fill), m_stepMicroseconds(stepMicroseconds) {}
 
-    TIOPlanner::Stream disk_state(const TTimeRef&) override { return {m_needsWork, true, m_fill}; }
+    TIOStream::State disk_state(const TTimeRef&) override { return {m_needsWork, true, m_fill}; }
     int step(const StepInfo& info) override
     {
         if (m_retired.load()) {
@@ -66,7 +66,7 @@ public:
         m_quality.store(resampler.quality);
     }
     uint get_channel_count() const override { return 1; }
-    void prepare_rt_buffers(nframes_t) override { m_prepared.fetch_add(1); }
+    void prepare_ring_buffers(nframes_t) override { m_prepared.fetch_add(1); }
     void retire() override { m_retired.fetch_add(1); }
 
     bool m_needsWork;
@@ -101,7 +101,7 @@ struct Concurrency
 
 // A task of a number of steps, sleeping a while in each; it counts into
 // numbers of the test, as the scheduler deletes it
-class FakeTask final : public TIOTask
+class FakeTask final : public TIOIdleTask
 {
 public:
     FakeTask(int steps, std::atomic<int>& retired, std::atomic<int>& done, int stepMicroseconds = 0,

@@ -12,7 +12,7 @@
 
 #include "ResampleAudioReader.h"
 #include "TIOScheduler.h"
-#include "TIOTask.h"
+#include "TIOIdleTask.h"
 #include "TPeakBuildTask.h"
 #include "TPeakStream.h"
 
@@ -29,7 +29,7 @@
 #include <thread>
 
 // A build as the read scheduler runs it, timed per step
-class MeasuredBuild final : public TIOTask
+class MeasuredBuild final : public TIOIdleTask
 {
 public:
     MeasuredBuild(std::unique_ptr<TPeakBuildTask> task, std::atomic<int>& done, std::atomic<int>& failed,

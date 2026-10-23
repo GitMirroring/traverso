@@ -79,8 +79,8 @@ public:
     void add_audio_source_to_diskio(TBufferedAudioStreamWriter *source) const;
     void remove_audio_source_from_diskio(TBufferedAudioStreamWriter *source) const;
 
-    int get_read_diskio_buffers_fill_status();
-    int get_write_diskio_buffers_fill_status();
+    int get_read_lowest_buffer_fill();
+    int get_write_lowest_buffer_fill();
     bool get_read_step_load(float &time);
     bool get_write_step_load(float &time);
 

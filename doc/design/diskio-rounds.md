@@ -12,7 +12,7 @@ It began as the rounds of the user's work order of 2026-10-19 ("DiskIO met
 file keeps that name.
 
 Since 2026-10-21 DiskIO is the library `traversoioscheduler` (src/ioscheduler):
-`TIOScheduler` (was `TDiskIOThread`), `TIOPlanner`, `TIOTask`, and the streams
+`TIOScheduler` (was `TDiskIOThread`), `TIOPlanner`, `TIOIdleTask`, and the streams
 implement `TIOStream`.
 
 Since 2026-10-22 (branch `app-scheduler`, `dispatcher-conclusie.md`) there
@@ -83,7 +83,7 @@ thread (`run()`):
 
 **A stream**
 1. The owner makes it and calls `add_stream()` before the audio thread can
-   see it; the rate and the rings (`prepare_rt_buffers()`) are set there, on
+   see it; the rate and the rings (`prepare_ring_buffers()`) are set there, on
    the owner thread. The scheduler keeps the rate it reads at and the
    buffer size of its rings.
 2. While registered, its steps (one at a time, possibly on another thread
@@ -126,7 +126,7 @@ registered; retire and delete the tasks that are left. The application's
 schedulers end in `~Traverso`, after the last project went.
 
 Streams tell the scheduler what they need (`disk_state()`); background work
-is a `TIOTask`, whose `step()` says when it is over:
+is a `TIOIdleTask`, whose `step()` says when it is over:
 - **A reader** has work when it is out of sync or its ring is at 80% or
   less. A reader **out of its window** (the transport far from its clip) has
   work only once the transport comes within its window, and then it seeks.
