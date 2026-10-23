@@ -7,7 +7,7 @@
 #include <numeric>
 
 TIOPlanner::Plan TIOPlanner::plan(const std::vector<TIOStream::State>& streams, bool playingSeek, const std::vector<qint64>& idleTasks,
-                                   bool idleAllowed, int freeThreads, int idleBudget)
+                                   qint64 heaviestRunning, bool idleAllowed, int freeThreads, int idleBudget)
 {
     Plan plan;
     freeThreads = std::max(freeThreads, 0);
@@ -56,14 +56,22 @@ TIOPlanner::Plan TIOPlanner::plan(const std::vector<TIOStream::State>& streams, 
     }
     plan.idleSeeks.resize(std::min(plan.idleSeeks.size(), size_t(budget)));
 
-    // The heaviest idle tasks first: the longest one does not start last
-    // and run alone at the end; equal weights in the order they came
+    // The heaviest idle task of all never waits: it decides when the idle
+    // work ends (a task runs one step at a time), so it must not start last
+    // and run alone at the end. The others take their turn in the order they
+    // came, so the many small ones are not held back behind the big ones.
     const size_t idleSteps = size_t(std::max(budget - int(plan.idleSeeks.size()), 0));
     plan.idleTasks.resize(idleTasks.size());
     std::iota(plan.idleTasks.begin(), plan.idleTasks.end(), 0);
-    std::stable_sort(plan.idleTasks.begin(), plan.idleTasks.end(), [&idleTasks](int a, int b) {
-        return idleTasks[size_t(a)] > idleTasks[size_t(b)];
-    });
+    if (!plan.idleTasks.empty()) {
+        // The first of the heaviest, if no heavier one runs
+        const auto heaviest = std::max_element(plan.idleTasks.begin(), plan.idleTasks.end(), [&idleTasks](int a, int b) {
+            return idleTasks[size_t(a)] < idleTasks[size_t(b)];
+        });
+        if (idleTasks[size_t(*heaviest)] > heaviestRunning) {
+            std::rotate(plan.idleTasks.begin(), heaviest, heaviest + 1);
+        }
+    }
     plan.idleTasks.resize(std::min(plan.idleTasks.size(), idleSteps));
     return plan;
 }

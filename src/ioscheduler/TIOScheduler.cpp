@@ -411,17 +411,21 @@ bool TIOScheduler::start_steps()
     }
     std::vector<TaskWork*> tasks;
     std::vector<qint64> weights;
+    qint64 heaviestRunning = -1;
     for (const std::unique_ptr<TaskWork>& task : m_idleTasks) {
         if (!task->inFlight) {
             tasks.push_back(task.get());
             weights.push_back(task->task->weight());
+        } else {
+            heaviestRunning = std::max(heaviestRunning, task->weight);
         }
     }
 
     // Idle work never takes the last thread: a refill finds one at once
     const int threads = m_pool.maxThreadCount();
     const int idleBudget = std::min(std::max(idleLimit, 1), threads - 1) - m_runningIdle;
-    const TIOPlanner::Plan plan = m_planner.plan(states, playingSeek, weights, idleAllowed, threads - m_running, idleBudget);
+    const TIOPlanner::Plan plan = m_planner.plan(states, playingSeek, weights, heaviestRunning, idleAllowed, threads - m_running,
+                                                 idleBudget);
 
     for (const int index : plan.streams) {
         StreamWork* work = streams[size_t(index)];
@@ -476,6 +480,7 @@ void TIOScheduler::start_stream_step(StreamWork* work, bool idle, int plannedFil
 void TIOScheduler::start_task_step(TaskWork* task)
 {
     task->inFlight = true;
+    task->weight = task->task->weight();
     ++m_running;
     ++m_runningIdle;
     TIOIdleTask* idleTask = task->task.get();

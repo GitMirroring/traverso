@@ -424,21 +424,25 @@ int main(int argc, char** argv)
         scheduler.remove_group(&two);
     }
 
-    // The heaviest idle task first: with one idle step at a time the tasks
-    // are done heaviest first, not in the order they came
+    // The heaviest idle task of all never waits, the others go in the order
+    // they came: with two idle steps at a time the heaviest and the first
+    // that came start, not the two heaviest
     {
         std::atomic<int> retired{0};
-        std::atomic<int> done{0};
-        std::atomic<int> order{0};
-        int light = -1, heavy = -1, middle = -1;
-        TIOScheduler scheduler(2);
-        scheduler.add_idle_task(std::make_unique<FakeTask>(2, retired, done, 0, nullptr, &order, &light, 10));
-        scheduler.add_idle_task(std::make_unique<FakeTask>(2, retired, done, 0, nullptr, &order, &heavy, 500));
-        scheduler.add_idle_task(std::make_unique<FakeTask>(2, retired, done, 0, nullptr, &order, &middle, 100));
-        for (int i = 0; i < 20 && retired.load() < 3; ++i) {
+        std::atomic<int> first{0}, heavy{0}, middle{0}, last{0};
+        TIOScheduler scheduler(3);
+        scheduler.set_idle_limit(2);
+        scheduler.add_idle_task(std::make_unique<FakeTask>(3, retired, first, 0, nullptr, nullptr, nullptr, 10));
+        scheduler.add_idle_task(std::make_unique<FakeTask>(3, retired, heavy, 0, nullptr, nullptr, nullptr, 500));
+        scheduler.add_idle_task(std::make_unique<FakeTask>(3, retired, middle, 0, nullptr, nullptr, nullptr, 100));
+        scheduler.add_idle_task(std::make_unique<FakeTask>(3, retired, last, 0, nullptr, nullptr, nullptr, 5));
+        scheduler.dispatch();
+        check(heavy.load() == 1 && first.load() == 1 && middle.load() == 0 && last.load() == 0,
+              "the heaviest and the first that came start, not the two heaviest");
+        for (int i = 0; i < 20 && retired.load() < 4; ++i) {
             scheduler.dispatch();
         }
-        check(heavy == 0 && middle == 1 && light == 2, "the heaviest task first, then the next heaviest");
+        check(retired.load() == 4, "all are done");
     }
 
     // The dispatcher: a fast task does not wait for a slow one next to it

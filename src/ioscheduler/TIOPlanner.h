@@ -21,7 +21,8 @@
  * 2. refills, the emptiest first;
  * 3. idle work on the threads that are left, never more than the idle
  *    limit: first the seeks of songs that do not play (a preparation to
- *    play), then the idle tasks, the heaviest first. Only while the emptiest reader of the songs
+ *    play), then the idle tasks: the heaviest of all never waits, the
+ *    others take their turn in the order they came. Only while the emptiest reader of the songs
  *    that play is full enough (with hysteresis, so idle work does not
  *    flicker on and off around one threshold), and not while a song that
  *    plays seeks.
@@ -49,7 +50,7 @@ public:
         std::vector<int> streams;
         // The seeks of songs that do not play, as idle work, in order
         std::vector<int> idleSeeks;
-        // Indices into the idle tasks that get a step, the heaviest first
+        // Indices into the idle tasks that get a step, in order
         std::vector<int> idleTasks;
     };
 
@@ -57,12 +58,13 @@ public:
     // plays seeks (also when all its seek steps run): no idle work starts,
     // and none until the readers are above the start threshold again; a
     // stream that seeks for a song that plays says so too. idleTasks: the
-    // weights of the idle tasks that wait, in the order they came (equal
-    // weights keep it). idleAllowed: false while a song records.
+    // weights of the idle tasks that wait, in the order they came.
+    // heaviestRunning: the weight of the heaviest idle task whose step runs
+    // (-1: none). idleAllowed: false while a song records.
     // freeThreads: how many steps may start now (the threads that are
     // free). idleBudget: how many idle steps may start now.
-    Plan plan(const std::vector<TIOStream::State>& streams, bool playingSeek, const std::vector<qint64>& idleTasks, bool idleAllowed,
-              int freeThreads, int idleBudget);
+    Plan plan(const std::vector<TIOStream::State>& streams, bool playingSeek, const std::vector<qint64>& idleTasks,
+              qint64 heaviestRunning, bool idleAllowed, int freeThreads, int idleBudget);
 
     // Whether idle work may run as far as the readers' fill goes
     bool idle_running() const { return m_idleRunning; }

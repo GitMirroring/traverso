@@ -193,6 +193,7 @@ private:
     {
         std::unique_ptr<TIOIdleTask> task;
         bool inFlight{false};
+        qint64 weight{0};               // its weight when its step started
     };
     // A song as the scheduler thread has it
     struct GroupWork

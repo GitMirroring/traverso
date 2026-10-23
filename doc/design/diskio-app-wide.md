@@ -98,7 +98,10 @@ seeks"):
    - the seeks of songs that do not play: a preparation to play (on a disk
      that seeks, one stream at a time);
    - the readers of parked songs (section 4);
-   - peak post-processing and peak builds;
+   - peak post-processing and peak builds: the heaviest task of all (the
+     most frames) never waits, the others take their turn in the order they
+     came (decided 2026-10-23); a build reads a second of its source per
+     step;
    - imports and merges (the next work order).
 
 `TIOPlanner` has per stream whether it seeks and whether its song plays
@@ -284,6 +287,16 @@ replaces phases 3 and 4 of the work order):
 - **A seek of a song that plays goes before all refills; the seek of a
   song that does not play is idle work** (section 3).
 - **`TProjectManager` owns the two schedulers.**
+
+Decided by the user on 2026-10-23, after measuring on "Minidisk opname"
+(52 builds, one of them 22 minutes, built last and alone):
+- **The heaviest idle task of all never waits; the others go in the order
+  they came.** Measured against the heaviest first for all threads (all
+  built 8.4–9.7 s but the median build at 7.3–8.3 s) and the order they
+  came (median 3.4–3.6 s but all built 12–15 s, depending on when the long
+  file starts): all built 8.6–10.9 s, the median at 4.0–4.7 s.
+- **A peak build reads a second of its source per step** (was a fifth):
+  five times fewer hand-overs to the pool.
 
 ## 12. Deferred
 

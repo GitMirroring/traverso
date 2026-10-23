@@ -138,8 +138,8 @@ is a `TIOIdleTask`, whose `step()` says when it is over:
 - **A peak build** is an idle task: one read of a second of the source per
   step (a fifth of a second until 2026-10-23: fewer hand-overs to the pool).
   Steps may take different times (WAV, WavPack, MP3): none waits for
-  another. Of the builds that wait, the heaviest (the most frames) gets the
-  next thread.
+  another. The heaviest build of all (the most frames) never waits; the
+  others take their turn in the order they came.
 
 ## 3. The planner
 

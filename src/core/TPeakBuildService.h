@@ -49,7 +49,7 @@ class TPeakBuildService
 public:
     // rate, channelCount, frames: the source's, as its waveform knows them;
     // the frames are the build's weight among the idle work (the heaviest
-    // first)
+    // build never waits)
     TPeakBuild build(const QString& audioPath, const QString& peakPath, uint rate, int channelCount, qint64 frames,
                      TIOScheduler* scheduler);
     // A recording's peaks after TPeakStream::finish(): the levels above level
