@@ -52,7 +52,7 @@ stays visible: the old text struck through, with the date and the reason.
 | R24 | Recording writes forward: the write side stays a FIFO | hard | review | decided 2026-10-23 |
 | R25 | Near misses and worst cases are reported per session, scheduler efficiency apart from hardware latency, in numbers that stay comparable across buffer designs | hard | the instrumentation (`IO Scheduler Instrumentation and Buffer Design.md`, session 2026-10-23); not built yet | decided 2026-10-23 |
 | R26 | Playback that jumps at region boundaries, and freewheeling (the audio thread faster than real time, waiting with a long timeout) keep working | hard | not built yet (regions); freewheeling as today | decided 2026-10-23 |
-| R27 | Backward playback and scrubbing; a new seek while one runs: the one in flight is interrupted, the last asked for wins | idea | research, after the random-access buffer (§13) | decided 2026-10-23 |
+| R27 | Backward playback and scrubbing; a new seek while one runs: the last asked for wins, what is left of the old one lapses, a read that runs finishes | idea | research, after the random-access buffer (§13) | decided 2026-10-23 |
 | R28 | Cheap seeks and loops that reuse what is read; buffer sizes per device, growing for slow media (a NAS) | idea | after the instrumentation | decided 2026-10-23 |
 
 ## 1. Why
@@ -463,10 +463,16 @@ Decisions waiting for Remon:
   or instead of it.
 
 Research (2026-10-23):
-- **Scrubbing and a seek while one runs** (R27): the one in flight is
-  interrupted, the last asked for wins. With the random-access buffer
-  first. Today a seek during a seek is refused by the sheet
-  (`TSheet::initiate_seek_start()`).
+- **Scrubbing and a seek while one runs** (R27): the last asked for wins.
+  A read step that runs is not broken off (that gains little); what is
+  left of the old seek lapses: the streams that did not seek yet seek to
+  the new location, those that did seek again, one whose step runs after
+  it. With the random-access buffer first. Today a seek during a seek is
+  refused by the sheet (`TSheet::initiate_seek_start()`, and R10). In the
+  dispatcher it would mean: the group's seek takes the new location, all
+  its streams seek (again), and a report of a step of the old seek must
+  not count for the new one (a seek number per group in the step's
+  information).
 - **Stream buffers the size of the audio thread's buffers**, so a period
   is one copy. Found: they are so today (a slot is one period of
   `bufferSize` frames, the ring `outputRate / bufferSize` slots, one copy
