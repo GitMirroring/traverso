@@ -158,7 +158,7 @@ and the priority is chosen again when a thread frees. Idle work:
   idle steps that run);
 - starts when the emptiest reader of the songs that play is above
   `IdleStartThreshold` (80%), and goes on until it drops below
-  `ResumeThreshold` (60%);
+  `IdleStopThreshold` (60%);
 - a seek of a song that plays stops it until the readers are above 80%
   again;
 - off while any song records; the idle limit is the lowest of the songs'.

@@ -42,7 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 std::atomic<quint64> TIOScheduler::s_stepsStarted{0};
 
 TIOScheduler::TIOScheduler(int threads)
-    : m_lastCpuReadTime(TTimeRef::get_nanoseconds_since_epoch())
+    : m_lastStepLoadTime(TTimeRef::get_nanoseconds_since_epoch())
 {
     m_pool.setMaxThreadCount(std::max(threads, 2));
 }
@@ -274,7 +274,7 @@ void TIOScheduler::take_reports()
         }
     }
 
-    m_doWorktTime.fetch_add(stepTime, std::memory_order_relaxed);
+    m_stepTime.fetch_add(stepTime, std::memory_order_relaxed);
     if (lowest < m_bufferFillStatus.load(std::memory_order_relaxed)) {
         m_bufferFillStatus.store(lowest, std::memory_order_relaxed);
     }
@@ -618,14 +618,14 @@ void TIOScheduler::remove_stream(TIOStream* stream)
  * passed (percent of one core: above 100 with more than one thread busy).
  * The time a step waits for the disk counts too.
  */
-bool TIOScheduler::get_cpu_time(float &time)
+bool TIOScheduler::get_step_load(float &time)
 {
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
 
     // exchange: what the scheduler thread adds meanwhile counts next time
-    time = (m_doWorktTime.exchange(0) / float(currentTime - m_lastCpuReadTime)) * 100;
+    time = (m_stepTime.exchange(0) / float(currentTime - m_lastStepLoadTime)) * 100;
 
-    m_lastCpuReadTime = currentTime;
+    m_lastStepLoadTime = currentTime;
 
     return true;
 }

@@ -36,7 +36,7 @@ public:
     // this: a reader that slips below the start threshold gets its step
     // anyway, and stopping at once would make the idle work stop and start
     // all the time around one threshold.
-    static constexpr int ResumeThreshold = 60;
+    static constexpr int IdleStopThreshold = 60;
 
     struct Stream
     {
@@ -67,9 +67,9 @@ public:
     // and none until the readers are above the start threshold again; a
     // stream that seeks for a song that plays says so too. idleTasks: the
     // idle tasks that wait. idleAllowed: false while a song records.
-    // threads: how many steps may start now (the threads that are free).
-    // idleLimit: how many idle steps may start now.
-    Plan plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed, int threads, int idleLimit);
+    // freeThreads: how many steps may start now (the threads that are
+    // free). idleBudget: how many idle steps may start now.
+    Plan plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed, int freeThreads, int idleBudget);
 
     // Whether idle work may run as far as the readers' fill goes
     bool idle_running() const { return m_idleRunning; }

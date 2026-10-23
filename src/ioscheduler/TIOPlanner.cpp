@@ -6,10 +6,10 @@
 #include <algorithm>
 
 TIOPlanner::Plan TIOPlanner::plan(const std::vector<Stream>& streams, bool playingSeek, int idleTasks, bool idleAllowed,
-                                   int threads, int idleLimit)
+                                   int freeThreads, int idleBudget)
 {
     Plan plan;
-    threads = std::max(threads, 0);
+    freeThreads = std::max(freeThreads, 0);
 
     // The emptiest reader of the songs that play; none: nothing holds idle
     // work back
@@ -39,8 +39,8 @@ TIOPlanner::Plan TIOPlanner::plan(const std::vector<Stream>& streams, bool playi
         return streams[size_t(a)].fill < streams[size_t(b)].fill;
     });
     plan.streams.insert(plan.streams.end(), refills.begin(), refills.end());
-    // What there are no threads for waits
-    plan.streams.resize(std::min(plan.streams.size(), size_t(threads)));
+    // What there are no free threads for waits
+    plan.streams.resize(std::min(plan.streams.size(), size_t(freeThreads)));
 
     if (playingSeek) {
         m_idleRunning = false;
@@ -48,10 +48,10 @@ TIOPlanner::Plan TIOPlanner::plan(const std::vector<Stream>& streams, bool playi
         return plan;
     }
 
-    m_idleRunning = m_idleRunning ? lowest >= ResumeThreshold : lowest > IdleStartThreshold;
+    m_idleRunning = m_idleRunning ? lowest >= IdleStopThreshold : lowest > IdleStartThreshold;
     int budget = 0;
     if (m_idleRunning && idleAllowed) {
-        budget = std::clamp(threads - int(plan.streams.size()), 0, std::max(idleLimit, 0));
+        budget = std::clamp(freeThreads - int(plan.streams.size()), 0, std::max(idleBudget, 0));
     }
     plan.idleSeeks.resize(std::min(plan.idleSeeks.size(), size_t(budget)));
     plan.idleSteps = std::clamp(budget - int(plan.idleSeeks.size()), 0, std::max(idleTasks, 0));

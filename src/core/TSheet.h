@@ -81,8 +81,8 @@ public:
 
     int get_read_diskio_buffers_fill_status();
     int get_write_diskio_buffers_fill_status();
-    bool get_read_diskio_cpu_time(float &time);
-    bool get_write_diskio_cpu_time(float &time);
+    bool get_read_step_load(float &time);
+    bool get_write_step_load(float &time);
 
     TAudioClipManager* get_audioclip_manager() const;
     TSelectionService* get_selection_service() const { return m_selectionService; }

@@ -166,7 +166,9 @@ public:
     static int idle_limit_for(const QString& directory);
 
     // The GUI's meters
-    bool get_cpu_time(float &time);
+    // The wall-clock time the steps took since the last call, in percent of
+    // the time that passed (of one core; waiting for the disk counts too)
+    bool get_step_load(float &time);
     int get_buffers_fill_status();
 
     // One turn of the scheduler thread: the requests and the reports that
@@ -274,9 +276,9 @@ private:
     std::atomic<nframes_t> m_bufferSize{0};
 
     std::atomic<int> m_bufferFillStatus{0};
-    // The time the steps took (the CPU meter)
-    std::atomic<trav_time_t> m_doWorktTime{0};
-    trav_time_t m_lastCpuReadTime;
+    // The time the steps took (get_step_load())
+    std::atomic<trav_time_t> m_stepTime{0};
+    trav_time_t m_lastStepLoadTime;
     std::atomic<int> m_idleLimit{1};
 
     // The scheduler thread's

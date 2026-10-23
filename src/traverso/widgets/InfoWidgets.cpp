@@ -174,10 +174,10 @@ void SystemResources::update_status( )
         bufReadStatus = sheet->get_read_diskio_buffers_fill_status();
         bufWriteStatus = sheet->get_write_diskio_buffers_fill_status();
         float time;
-        if (sheet->get_read_diskio_cpu_time(time)) {
+        if (sheet->get_read_step_load(time)) {
             m_diskReadCpuUsage->set_value(time);
         }
-        if (sheet->get_write_diskio_cpu_time(time)) {
+        if (sheet->get_write_step_load(time)) {
             m_diskWriteCpuUsage->set_value(time);
         }
 	}

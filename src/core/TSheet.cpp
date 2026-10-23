@@ -1108,14 +1108,14 @@ int TSheet::get_write_diskio_buffers_fill_status()
     return m_writeScheduler->get_buffers_fill_status();
 }
 
-bool TSheet::get_read_diskio_cpu_time(float &time)
+bool TSheet::get_read_step_load(float &time)
 {
-    return m_readScheduler->get_cpu_time(time);
+    return m_readScheduler->get_step_load(time);
 }
 
-bool TSheet::get_write_diskio_cpu_time(float &time)
+bool TSheet::get_write_step_load(float &time)
 {
-    return m_writeScheduler->get_cpu_time(time);
+    return m_writeScheduler->get_step_load(time);
 }
 
 QList<TAudioTrack *> TSheet::get_solo_tracks() const
