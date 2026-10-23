@@ -36,9 +36,7 @@ public:
  * a recording's stream (level 0 complete) is post-processed only.
  *
  * Whoever runs it calls step() until it returns false; each step reads
- * about a fifth of a second of the source (a reader's refill, so the steps
- * of a DiskIO round take about as long as each other), or post-processes a
- * piece. The first step opens the source, so the decoder is opened on the
+ * about a second of the source, or post-processes a piece. The first step opens the source, so the decoder is opened on the
  * thread that builds. A reader of the stream sees the waveform grow. The
  * last step puts the file under its name. State, error and progress belong
  * to the thread that steps; cancel() may be called from any thread.
@@ -59,7 +57,7 @@ public:
 
     // stream: where the peaks go, at the rate and channel count the source
     // must have (its waveform knows them). readFrames: frames per step, 0
-    // for a fifth of a second of the source.
+    // for a second of the source.
     TPeakBuildTask(OpenSource openSource, QString audioPath, std::shared_ptr<TPeakStream> stream, qint64 readFrames = 0);
     // A recording's stream after its finish(): post-processing only
     explicit TPeakBuildTask(std::shared_ptr<TPeakStream> recorded);

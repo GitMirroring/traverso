@@ -135,9 +135,11 @@ is a `TIOIdleTask`, whose `step()` says when it is over:
   audio), or when the recording stopped and its file is not finished.
 - **A step** reads or writes everything there is room for: a stream needs
   one refill step per tick at most.
-- **A peak build** is an idle task: one read of a fifth of a second of the
-  source per step. Steps may take different times (WAV, WavPack, MP3):
-  none waits for another.
+- **A peak build** is an idle task: one read of a second of the source per
+  step (a fifth of a second until 2026-10-23: fewer hand-overs to the pool).
+  Steps may take different times (WAV, WavPack, MP3): none waits for
+  another. Of the builds that wait, the heaviest (the most frames) gets the
+  next thread.
 
 ## 3. The planner
 

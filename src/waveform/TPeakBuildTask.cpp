@@ -119,9 +119,11 @@ bool TPeakBuildTask::start()
         return fail(error);
     }
 
-    // A fifth of a second: what a reader reads at least per refill
+    // A second of the source: every step costs a hand-over to the
+    // scheduler's pool and back (two thread wakes); a refill does not wait
+    // for it, idle work never takes the last thread
     if (m_readFrames <= 0) {
-        m_readFrames = qint64(rate) / 5;
+        m_readFrames = qint64(rate);
     }
     m_readFrames = std::max<qint64>(TPeakLevels::BlockFrames, m_readFrames);
     m_samples.assign(size_t(channels), std::vector<float>(size_t(m_readFrames)));
