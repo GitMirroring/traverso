@@ -27,7 +27,7 @@ stays visible: the old text struck through, with the date and the reason.
 | # | Requirement | Kind | Proven by | Status |
 |---|---|---|---|---|
 | R1 | Recorded audio never waits behind a read, also when a read is slow or a disk spins up | hard | two schedulers with pools of their own (§10); no test yet | concept |
-| R2 | The audio thread never blocks on a scheduler, also while requests, seeks and steps go on | hard | review: atomics and the wake only (`diskio-rounds.md` §2) | concept |
+| R2 | The audio thread never waits for a scheduler without a timeout: when it waits (a late buffer, freewheeling) a timeout lets it go on. On an architecture without lock-free atomics it may block on an atomic (accepted) | hard | review: atomics and the wake only (`diskio-rounds.md` §2); the freewheel wait has a limit of 1 s | decided 2026-10-23 |
 | R3 | A song that plays never runs dry because of idle work, also when every idle task wants all threads | hard | `io_scheduler`: idle work on two of three threads, a stream gets its steps; `io_planner`: hysteresis | concept |
 | R4 | A seek of a song that plays never waits behind refills or idle work, also when long idle steps run | hard | `io_planner`: order; `io_scheduler`: a seek next to 100 ms idle steps under 1 ms | concept |
 | R5 | No idle work runs while any song records, also when another song plays or seeks | hard | `io_planner` and `io_scheduler`: no idle step while recording | concept |
@@ -43,7 +43,17 @@ stays visible: the old text struck through, with the date and the reason.
 | R15 | On a disk that seeks at most one idle read at a time; on an SSD as many as there are idle threads; the setting overrides | pref | `io_planner`: idle limit; `idle_limit_for()` by hand | concept |
 | R16 | The seek of a song that does not play is a preparation: idle work, never before refills | pref | `io_scheduler`: an idle seek one stream at a time | concept |
 | R17 | Nothing is timed for the plan: the kernel schedules, the scheduler only knows the order | pref | review | concept |
-| R18 | Recorded audio survives a stall of the disk of N seconds | idea | open: the size of the write rings (§13) | concept |
+| ~~R18~~ | ~~Recorded audio survives a stall of the disk of N seconds~~ | — | deferred 2026-10-23 until a stall is observed (the size of the write rings, §12) | deferred |
+| R19 | The audio thread never allocates on the heap, also not to log (no QString there; `TLOG_RT_*` takes numbers and literals) | hard | review | decided 2026-10-23 |
+| R20 | The code builds as C++20: libc++ on macOS has no `std::move_only_function` | hard | **violated**: `TAudioThreadMessageQueue.h` (the only C++23 use; with `std::function` the whole tree builds as C++20, GCC and Clang, 2026-10-23) | decided 2026-10-23 |
+| R21 | Positions and block numbers are 64 bit, also on 32-bit architectures | hard | review | decided 2026-10-23 |
+| R22 | The consumer (the audio thread) decides what is true (position, direction, the slots it holds); the producer (the reader) predicts from the same region list, and a wrong prediction costs read work, never wrong audio; the audio thread does constant, allocation-free bookkeeping only | hard | review; every slot carries its file position | decided 2026-10-23 |
+| R23 | Every slot is owned by exactly one thread at a time | hard | review: slots move through the SPSC queues | decided 2026-10-23 |
+| R24 | Recording writes forward: the write side stays a FIFO | hard | review | decided 2026-10-23 |
+| R25 | Near misses and worst cases are reported per session, scheduler efficiency apart from hardware latency, in numbers that stay comparable across buffer designs | hard | the instrumentation (`IO Scheduler Instrumentation and Buffer Design.md`, session 2026-10-23); not built yet | decided 2026-10-23 |
+| R26 | Playback that jumps at region boundaries, and freewheeling (the audio thread faster than real time, waiting with a long timeout) keep working | hard | not built yet (regions); freewheeling as today | decided 2026-10-23 |
+| R27 | Backward playback and scrubbing; a new seek while one runs: the one in flight is interrupted, the last asked for wins | idea | research, after the random-access buffer (§13) | decided 2026-10-23 |
+| R28 | Cheap seeks and loops that reuse what is read; buffer sizes per device, growing for slow media (a NAS) | idea | after the instrumentation | decided 2026-10-23 |
 
 ## 1. Why
 
@@ -298,6 +308,23 @@ Decided by the user on 2026-10-23, after measuring on "Minidisk opname"
 - **A peak build reads a second of its source per step** (was a fifth):
   five times fewer hand-overs to the pool.
 
+Decided by the user on 2026-10-23, on the session document `IO Scheduler
+Instrumentation and Buffer Design.md` (requirements R19 to R28 in §0):
+- **First the review, the runtime test and the merge of the open branches**
+  (`resample-reader`, `resampler-choice`, `app-scheduler`); then the
+  instrumentation, without a change in behaviour, as the baseline; then the
+  random-access slot buffer.
+- **C++20, not C++23** (R20): libc++ on macOS has no
+  `std::move_only_function`.
+- **An architecture without lock-free atomics may block the audio thread**
+  on an atomic; positions and block numbers are 64 bit (R2, R21). The
+  `static_assert` on lock-free 64-bit atomics in `TRtTransportPosition.h`
+  follows this decision when it is touched next.
+- **The audio thread waits only with a timeout** (R2).
+- **No heap allocation on the audio thread**, also not for logging (R19).
+- **Slow media get a dynamic buffer** (R28) instead of steering the design:
+  the instrumentation and the devices are the scheduler's.
+
 ## 12. Deferred
 
 Until a measurement asks for it:
@@ -310,6 +337,7 @@ Until a measurement asks for it:
 | Detecting spinning disks on Windows and macOS | Only faster builds on an SSD; the setting does |
 | One loop with two pools instead of two instances | Only when load on one hard disk becomes a measured problem |
 | Group removal in one request | With the dispatcher a removal waits only for its own stream |
+| The size of the write rings (R18) | Only when a stall of the disk is observed (decided 2026-10-23) |
 
 ## 13. Open points
 
@@ -432,5 +460,21 @@ Decisions waiting for Remon:
   requirement or not;
 - a disk-load meter (required ÷ achieved throughput) next to the CPU meter,
   or instead of it.
+
+Research (2026-10-23):
+- **Scrubbing and a seek while one runs** (R27): the one in flight is
+  interrupted, the last asked for wins. With the random-access buffer
+  first. Today a seek during a seek is refused by the sheet
+  (`TSheet::initiate_seek_start()`).
+- **Stream buffers the size of the audio thread's buffers**, so a period
+  is one copy. Found: they are so today (a slot is one period of
+  `bufferSize` frames, the ring `outputRate / bufferSize` slots, one copy
+  per channel and period), and that is where the ring rebuild on a buffer
+  size change comes from, a slot that is longer than the clip it holds at a
+  clip's edge, and a block numbering that would change with the period. A
+  slot of its own size (a period across at most two slots: two copies)
+  keeps block numbers stable for the random-access buffer, lets the decoder
+  read in bigger pieces and lets freewheeling use much bigger periods
+  without touching the ring. Proposal: do not tie them together.
 
 Before the merge of `app-scheduler`: the runtime test with recording.
