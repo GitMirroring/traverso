@@ -605,9 +605,9 @@ bool MadAudioReader::can_decode(const QString& filename)
 }
 
 
-bool MadAudioReader::seek(nframes_t start)
+bool MadAudioReader::seek(nframes_t frame)
 {
-    if (!d || start >= m_frames) {
+    if (!d || frame >= m_frames) {
         return false;
     }
 
@@ -623,8 +623,8 @@ bool MadAudioReader::seek(nframes_t start)
         samplesPerFrame = 1152;
     }
 
-    unsigned int targetFrame = start / samplesPerFrame;
-    nframes_t frameOffset = start % samplesPerFrame;
+    unsigned int targetFrame = frame / samplesPerFrame;
+    nframes_t frameOffset = frame % samplesPerFrame;
 
     if (d->seekPositions.isEmpty()) {
         return false;
@@ -680,7 +680,7 @@ bool MadAudioReader::seek(nframes_t start)
     }
     // =========================================================================
 
-    m_frame = start;
+    m_frame = frame;
     return true;
 }
 

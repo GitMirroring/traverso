@@ -65,8 +65,11 @@ public :
 
     nframes_t ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation);
 
-    int file_read(TFileIOBuffer &buffer, const TTimeRef& fileLocation, nframes_t cnt) const;
-    int file_read(TFileIOBuffer &buffer, nframes_t fileLocation, nframes_t cnt) const;
+    // count frames at the output rate into buffer, from the file's location
+    // (a time) or from its frame firstFrame (at the output rate): what the
+    // file gives and zeros past its end (TResampleAudioReader::read_from())
+    int file_read(TFileIOBuffer &buffer, const TTimeRef& fileLocation, nframes_t count) const;
+    int file_read(TFileIOBuffer &buffer, nframes_t firstFrame, nframes_t count) const;
 
 	int init();
 	int get_error() const {return m_error;}

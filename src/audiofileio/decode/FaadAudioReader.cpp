@@ -374,9 +374,9 @@ bool FaadAudioReader::initDecoderInternal()
 	return true;
 }
 
-bool FaadAudioReader::seek(nframes_t start)
+bool FaadAudioReader::seek(nframes_t frame)
 {
-	if (!d || start >= m_frames) {
+	if (!d || frame >= m_frames) {
 		return false;
 	}
 
@@ -394,7 +394,7 @@ bool FaadAudioReader::seek(nframes_t start)
 			return false;
 		}
 
-		auto it = std::upper_bound(d->samplePcmOffsets.begin(), d->samplePcmOffsets.end(), start);
+		auto it = std::upper_bound(d->samplePcmOffsets.begin(), d->samplePcmOffsets.end(), frame);
 		int targetPkt = std::max(0, static_cast<int>(std::distance(d->samplePcmOffsets.begin(), it) - 1));
 		if (targetPkt >= static_cast<int>(d->sampleCount)) {
 			targetPkt = static_cast<int>(d->sampleCount) - 1;
@@ -423,7 +423,7 @@ bool FaadAudioReader::seek(nframes_t start)
 
 		if (info.error == 0 && info.samples > 0 && m_channels > 0) {
 			nframes_t decodedFrames = info.samples / m_channels;
-			nframes_t offsetInPkt = (start > d->samplePcmOffsets[targetPkt]) ? (start - d->samplePcmOffsets[targetPkt]) : 0;
+			nframes_t offsetInPkt = (frame > d->samplePcmOffsets[targetPkt]) ? (frame - d->samplePcmOffsets[targetPkt]) : 0;
 			if (offsetInPkt < decodedFrames) {
 				nframes_t rem = decodedFrames - offsetInPkt;
 				float* samples = static_cast<float*>(pcm);
@@ -436,7 +436,7 @@ bool FaadAudioReader::seek(nframes_t start)
 			}
 		}
 
-		m_frame = start;
+		m_frame = frame;
 		return true;
 	} else {
 		// ADTS mode
@@ -444,7 +444,7 @@ bool FaadAudioReader::seek(nframes_t start)
 			return false;
 		}
 
-		int targetFrame = static_cast<int>(start / 1024);
+		int targetFrame = static_cast<int>(frame / 1024);
 		if (targetFrame >= d->adtsFrameOffsets.size()) {
 			targetFrame = d->adtsFrameOffsets.size() - 1;
 		}
@@ -468,7 +468,7 @@ bool FaadAudioReader::seek(nframes_t start)
 
 		if (info.error == 0 && info.samples > 0 && m_channels > 0) {
 			nframes_t decodedFrames = info.samples / m_channels;
-			nframes_t offsetInFrame = start % 1024;
+			nframes_t offsetInFrame = frame % 1024;
 			if (offsetInFrame < decodedFrames) {
 				nframes_t rem = decodedFrames - offsetInFrame;
 				float* samples = static_cast<float*>(pcm);
@@ -481,7 +481,7 @@ bool FaadAudioReader::seek(nframes_t start)
 			}
 		}
 
-		m_frame = start;
+		m_frame = frame;
 		return true;
 	}
 }

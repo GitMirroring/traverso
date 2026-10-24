@@ -280,17 +280,17 @@ void TBufferedAudioStreamReader::set_source_start_location(const TTimeRef &sourc
     m_sourceStartLocation = sourceStartLocation;
 }
 
-int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, const TTimeRef& fileLocation, nframes_t cnt) const
+int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, const TTimeRef& fileLocation, nframes_t count) const
 {
     Q_ASSERT(m_resampleAudioReader);
-    return m_resampleAudioReader->read_from(buffer, fileLocation, cnt);
+    return m_resampleAudioReader->read_from(buffer, fileLocation, count);
 }
 
 
-int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, nframes_t fileLocation, nframes_t cnt) const
+int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count) const
 {
     Q_ASSERT(m_resampleAudioReader);
-    return m_resampleAudioReader->read_from(buffer, fileLocation, cnt);
+    return m_resampleAudioReader->read_from(buffer, firstFrame, count);
 }
 
 
