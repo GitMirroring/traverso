@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "AudioChannel.h"
 #include <Utils.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <memory.h>
@@ -550,29 +551,19 @@ int TAlsaDriver::configure_stream(const QString &device_name,
     }
 
     if (!*nchns) {
-        /*if not user-specified, try to find the maximum number of channels */
-        unsigned int channels_max ;
-        err = snd_pcm_hw_params_get_channels_max (hw_params, &channels_max);
-        *nchns = channels_max;
-
-        if (*nchns > 1024) {
-
-            /* the hapless user is an unwitting victim of
-            the "default" ALSA PCM device, which can
-            support up to 16 million channels. since
-            they can't be bothered to set up a proper
-            default device, limit the number of
-            channels for them to a sane default.
-            */
-
-            PERROR (
-                        "ALSA Driver: You appear to be using the ALSA software \"plug\" layer, probably\n"
-                        "a result of using the \"default\" ALSA device. This is less\n"
-                        "efficient than it could be. Consider using a hardware device\n"
-                        "instead rather than using the plug layer. Usually the name of the\n"
-                        "hardware device that corresponds to the first sound card is hw:0\n"
-                        );
-            *nchns = 2;
+        // If not user-specified: a hardware device opens with all its
+        // channels. Any other device (default, pipewire, plughw, ...) converts
+        // to whatever is asked, up to 128 channels (pipewire) or 16 million
+        // (the plug layer): there a stereo pair, or what the device allows.
+        unsigned int channels_min, channels_max;
+        snd_pcm_hw_params_get_channels_min(hw_params, &channels_min);
+        snd_pcm_hw_params_get_channels_max(hw_params, &channels_max);
+        if (snd_pcm_type(handle) == SND_PCM_TYPE_HW) {
+            *nchns = channels_max;
+        } else {
+            *nchns = std::clamp(2u, channels_min, channels_max);
+            TLog::write_printf(TLogLevel::Info, "alsa", "AlsaDriver: %s is not a hardware device, using %lu channels for %s",
+                               device_name.toLatin1().data(), *nchns, stream_name);
         }
     }
 
