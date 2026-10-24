@@ -9,10 +9,9 @@
 #include <QFile>
 #include <QString>
 
-#include <vector>
 
 /**
- * @brief Peak file (TRAVPEAK version 3): a TPeakLevels pyramid on disk, read
+ * @brief Peak file (TRAVPEAK version 4): a TPeakLevels pyramid on disk, read
  * mapped. TPeakStream writes it.
  *
  * The file is a cache of its source: when it is missing, unfinished, from
@@ -20,10 +19,12 @@
  * size, modification time), open() says so and the caller rebuilds it. An
  * open peak file holds a mapping, not a file descriptor.
  *
- * Layout (doc/design/peak-records.md): a header of fixed size, then the
- * records of every level, level 0 first, one record per block (the min/max
- * of every channel, then the RMS of every channel). Every offset follows
- * from the frame count, so there is no table. The header is written last;
+ * Layout (doc/design/peak-records.md): a header of fixed size, then chunks of
+ * the same size, each with levels 0 to the chunk level of its 2^chunkLevel
+ * level-0 blocks, one record per block (the min/max of every channel, then
+ * the RMS of every channel); the last chunk is filled up with zeros. Every
+ * offset follows from the frame count and the chunk level in the header, so
+ * there is no table. The file is only ever appended to. The header is written last;
  * until then it is zero, so an unfinished file is Invalid. It has a
  * checksum, which open() checks. The records have none: a file reaches its
  * name only when it is complete, so what opens is whole. Peak files are a
@@ -71,17 +72,23 @@ public:
     const TPeakLevels& levels() const { return m_levels; }
 
     // Magic TRAVPEAK, version counted from 2 (the format after legacy TRAVPF
-    // 1.5; version 2 had the levels in periods). Every format change counts up.
-    static constexpr quint32 FormatVersion = 3;
+    // 1.5; version 2 had the levels in periods, version 3 every level as one
+    // array). Every format change counts up.
+    static constexpr quint32 FormatVersion = 4;
     // How far the source's time may be from the one in the header: network
     // shares and FAT round times to 1 or 2 seconds
     static constexpr qint64 SourceTimeTolerance = 2000;   // ms
 
-    // The layout, for TPeakStream: the header's size, a record's size, the
-    // blocks of every level of a pyramid over frames frames
-    static constexpr qint64 HeaderBytes = 72;
+    // The layout, for TPeakStream: the header's size, a record's size, a
+    // chunk's size, the chunks of a pyramid over frames frames
+    static constexpr qint64 HeaderBytes = 80;
     static qint64 record_bytes(int channelCount) { return qint64(TPeakLevels::record_codes(channelCount)) * qint64(sizeof(qint16)); }
-    static std::vector<qint64> block_counts(qint64 frames);
+    static qint64 chunk_bytes(int chunkLevel, int channelCount) { return TPeakLevels::chunk_records(chunkLevel) * record_bytes(channelCount); }
+    static qint64 chunk_count(qint64 frames, int chunkLevel)
+    {
+        const qint64 blocks = (frames + TPeakLevels::BlockFrames - 1) >> TPeakLevels::BlockFramesShift;
+        return (blocks + (qint64(1) << chunkLevel) - 1) >> chunkLevel;
+    }
     // The header of the finished file of source
     static QByteArray header(const SourceInfo& source);
 

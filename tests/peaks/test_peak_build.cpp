@@ -250,7 +250,6 @@ static void stress_stream(const QString& peakPath, const QString& audioPath, con
     const qint64 widths[] = {64, 64 * 3, 64 * 16, 64 * 100 + 7, 64 * 1000};
     std::vector<TWaveformColumn> got(400);
     std::vector<TWaveformColumn> want(400);
-    std::vector<qint16> records;
     qint64 lastFrames = 0;
     int reads = 0;
     int compared = 0;
@@ -273,8 +272,8 @@ static void stress_stream(const QString& peakPath, const QString& audioPath, con
         const int count = int(got.size()) / 2;
         const qint64 startFrame = random_between(0, blocks * TPeakLevels::BlockFrames - 1);
         const TTimeRef start(uint64_t(startFrame), signal.rate);
-        // The blocks in view, as the waveform reads them
-        const TPeakLevels view = stream->read(startFrame / 64, (startFrame + columnFrames * count) / 64 + 1, records);
+        // What is written, as the waveform reads it
+        stream->read([&](const TPeakLevels& view) {
         const qint64 have = view.block_count(0);
         TWaveformColumns::query(view, nullptr, start, width, count, got.data());
         TWaveformColumns::query(expected, nullptr, start, width, count, want.data());
@@ -295,10 +294,11 @@ static void stress_stream(const QString& peakPath, const QString& audioPath, con
                 ++compared;
             }
         }
+        });
 
         // Now and then max_amplitude over a stretch of what is recorded
         if (reads % 16 == 0) {
-            const TPeakLevels all = stream->read(0, blocks, records);
+            stream->read([&](const TPeakLevels& all) {
             // After finish() the last block may be partial: the frames end first
             const qint64 recorded = std::min(all.block_count(0) * TPeakLevels::BlockFrames, all.frame_count());
             const qint64 first = random_between(0, recorded - 1);
@@ -312,6 +312,7 @@ static void stress_stream(const QString& peakPath, const QString& audioPath, con
                 CHECK(false, "stress read %d: max_amplitude %g, real %g", reads, amplitude, real);
                 failed = true;
             }
+            });
         }
     }
     writer.join();
@@ -414,20 +415,25 @@ int main()
 
         int reads = 0;
         bool wrong = false;
-        std::vector<qint16> records;
         while ((!done.load() || reads == 0) && !wrong) {
             ++reads;
-            const TPeakLevels view = recording->read(0, expected.block_count(0), records);
-            for (int c = 0; c < view.channel_count() && !wrong; ++c) {
-                for (qint64 k = 0; k < view.block_count(0); k += 1 + k / 7) {
-                    if (view.block(0, c, k).min != expected.block(0, c, k).min || view.block(0, c, k).max != expected.block(0, c, k).max
-                            || view.rms(0, c, k) != expected.rms(0, c, k)) {
-                        wrong = true;
-                        CHECK(false, "recording %d: channel %d block %lld differs in read %d", round, c, (long long)k, reads);
-                        break;
+            // Every level of the complete chunks, level 0 after them
+            recording->read([&](const TPeakLevels& view) {
+            for (int level = 0; level < view.level_count() && !wrong; ++level) {
+                for (int c = 0; c < view.channel_count() && !wrong; ++c) {
+                    for (qint64 k = 0; k < view.block_count(level); k += 1 + k / 7) {
+                        if (view.block(level, c, k).min != expected.block(level, c, k).min
+                                || view.block(level, c, k).max != expected.block(level, c, k).max
+                                || view.rms(level, c, k) != expected.rms(level, c, k)) {
+                            wrong = true;
+                            CHECK(false, "recording %d: level %d channel %d block %lld differs in read %d", round, level, c,
+                                  (long long)k, reads);
+                            break;
+                        }
                     }
                 }
             }
+            });
         }
         writer.join();
         CHECK(finished == TPeakFile::Status::Ok, "recording %d: finish", round);
@@ -437,11 +443,12 @@ int main()
         CHECK(run(post) == TPeakBuildTask::State::Done, "recording %d: post-processing %s", round, qPrintable(post.error()));
         CHECK(file_bytes(peakPath) == reference, "recording %d: the file differs from the one-go file", round);
         CHECK(!QFile::exists(recording->part_path()), "recording %d: part file left", round);
-        // After the rename the stream reads level 0 from the file's name
-        const TPeakLevels last = recording->read(0, expected.block_count(0), records);
+        // After the rename the stream reads from the file's name
+        recording->read([&](const TPeakLevels& last) {
         CHECK(last.block_count(0) == expected.block_count(0) && last.frame_count() == expected.frame_count()
                   && last.block(0, 0, last.block_count(0) - 1).max == expected.block(0, 0, last.block_count(0) - 1).max,
               "recording %d: level 0 after the rename", round);
+        });
         std::printf("    recording of %lld frames: %d reads\n", (long long)signal.frames(), reads);
     }
 
@@ -465,7 +472,6 @@ int main()
         const int count = int((signal.frames() + columnFrames - 1) / columnFrames);
         std::vector<TWaveformColumn> got(size_t(count) * 2);
         std::vector<TWaveformColumn> want(size_t(count) * 2);
-        std::vector<qint16> records;
         TWaveformColumns::query(whole.levels(), nullptr, TTimeRef(), width, count, want.data());
         int steps = 0;
         int growing = 0;
@@ -473,7 +479,7 @@ int main()
         qint64 lastBuilt = 0;
         while (task.step() && right) {
             ++steps;
-            const TPeakLevels view = stream->read(0, whole.levels().block_count(0), records);
+            stream->read([&](const TPeakLevels& view) {
             const qint64 built = view.block_count(0) * TPeakLevels::BlockFrames;
             right = right && built >= lastBuilt;
             if (built > lastBuilt) {
@@ -495,6 +501,7 @@ int main()
                     }
                 }
             }
+            });
         }
         CHECK(task.state() == TPeakBuildTask::State::Done, "growing build: %s", qPrintable(task.error()));
         CHECK(growing > 5, "growing build: the waveform grew only %d times in %d steps", growing, steps);
@@ -521,10 +528,10 @@ int main()
         const qint64 frozen = recording.written_frames();
         CHECK(recording.write_failed() && frozen > 0 && frozen < signal.frames(), "write failure: %lld frames written",
               (long long)frozen);
-        std::vector<qint16> records;
-        const TPeakLevels view = recording.read(0, signal.frames() / 64, records);
-        CHECK(view.block_count(0) == frozen / 64, "write failure: %lld blocks readable, %lld written", (long long)view.block_count(0),
-              (long long)(frozen / 64));
+        recording.read([&](const TPeakLevels& view) {
+            CHECK(view.block_count(0) == frozen / 64, "write failure: %lld blocks readable, %lld written", (long long)view.block_count(0),
+                  (long long)(frozen / 64));
+        });
         CHECK(recording.finish(audioPath) != TPeakFile::Status::Ok && !recording.post_process(), "write failure: finish reports Ok");
         CHECK(!QFile::exists(recording.part_path()) && !QFile::exists(peakPath), "write failure: a file was left");
     }
@@ -566,31 +573,38 @@ int main()
         const Signal signal = make_signal(2, 300000);
         QFile::remove(peakPath);
         TPeakBuildTask task(memory_source(signal), audioPath, stream_for(signal, peakPath), 1024);
-        for (int steps = 0; steps < 50; ++steps) {
+        for (int steps = 0; steps < 150; ++steps) {
             task.step();
         }
-        // Level 0 so far is on disk, in the part file: every block the stream
-        // published (the source delivers less than asked now and then)
+        // What is made so far is on disk, in the part file: every block the
+        // stream published, the complete chunks with their levels (the
+        // source delivers less than asked now and then)
         const QString part = task.stream()->part_path();
         const qint64 written = task.stream()->written_frames();
-        CHECK(written > 0 && QFileInfo(part).size() == TPeakFile::HeaderBytes + written / 64 * TPeakFile::record_bytes(2),
-              "%lld bytes for %lld frames: level 0 was not written", (long long)QFileInfo(part).size(), (long long)written);
+        const qint64 blocks = written / 64;
+        const qint64 chunks = blocks >> TPeakLevels::ChunkLevel;
+        const qint64 bytes = TPeakFile::HeaderBytes + chunks * TPeakFile::chunk_bytes(TPeakLevels::ChunkLevel, 2)
+                             + (blocks - (chunks << TPeakLevels::ChunkLevel)) * TPeakFile::record_bytes(2);
+        CHECK(written > 0 && chunks > 0 && QFileInfo(part).size() == bytes, "%lld bytes for %lld frames: the chunks were not written",
+              (long long)QFileInfo(part).size(), (long long)written);
         task.cancel();
         CHECK(run(task) == TPeakBuildTask::State::Cancelled, "cancel not honoured");
         CHECK(!QFile::exists(part) && !QFile::exists(peakPath), "a cancelled build left a file behind");
 
-        const Signal longer = make_signal(1, 64 * 70000);   // post-processing takes more than one step
+        // Cancelled after the last chunk, before the header and the name
+        const Signal longer = make_signal(1, 64 * 70000);
         TPeakBuildTask late(memory_source(longer), audioPath, stream_for(longer, peakPath), 1 << 20);
-        while (late.step() && QFileInfo(late.stream()->part_path()).size() < TPeakFile::HeaderBytes + 70000 * TPeakFile::record_bytes(1)) {
+        while (late.step() && late.stream()->written_frames() < longer.frames()) {
         }
-        CHECK(late.step() && late.state() == TPeakBuildTask::State::Running, "post-processing done in one step");
+        CHECK(late.state() == TPeakBuildTask::State::Running && QFile::exists(late.stream()->part_path()),
+              "the build ended before its header");
         late.cancel();
         CHECK(run(late) == TPeakBuildTask::State::Cancelled && !QFile::exists(late.stream()->part_path()) && !QFile::exists(peakPath),
-              "a build cancelled during post-processing left a file behind");
+              "a build cancelled before its header left a file behind");
     }
 
-    // A stream that goes before its post-processing ends (the project
-    // closes): no file, no part file
+    // A stream that goes before its post-processing (the project closes):
+    // no file, no part file
     {
         const Signal signal = make_signal(1, 64 * 70000);
         QFile::remove(peakPath);
@@ -599,10 +613,10 @@ int main()
             TPeakStream recording(signal.rate, 1, peakPath);
             CHECK(recording.open() == TPeakFile::Status::Ok, "gone: open");
             record_into(recording, signal, 0, signal.frames());
-            CHECK(recording.finish(audioPath) == TPeakFile::Status::Ok && recording.post_process(), "gone: post-processing");
+            CHECK(recording.finish(audioPath) == TPeakFile::Status::Ok, "gone: finish");
             part = recording.part_path();
         }
-        CHECK(!QFile::exists(part) && !QFile::exists(peakPath), "a stream gone halfway post-processing left a file");
+        CHECK(!QFile::exists(part) && !QFile::exists(peakPath), "a stream gone before its post-processing left a file");
     }
 
     // Sources the task refuses

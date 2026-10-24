@@ -121,23 +121,38 @@ static void combine(TPeakBlock& into, const TPeakBlock& block)
     into.max = std::max(into.max, block.max);
 }
 
-TPeakLevels::TPeakLevels(uint rate, int channelCount, qint64 frameCount, std::vector<Level> levels)
+TPeakLevels::TPeakLevels(uint rate, int channelCount, qint64 frameCount, int chunkLevel, const qint16* chunks, qint64 chunkCount,
+                         const qint16* tail)
     : m_rate(rate)
     , m_channelCount(channelCount)
     , m_frameCount(frameCount)
-    , m_levels(std::move(levels))
+    , m_chunkLevel(chunkLevel)
+    , m_chunks(chunks)
+    , m_chunkCount(chunkCount)
+    , m_tail(tail)
 {
+    Q_ASSERT(chunkLevel > 0 && chunkLevel < 31);
+    Q_ASSERT(level0_blocks() <= pyramid_end() || tail);
 }
 
 // The blocks that make up the level-0 blocks [first, last), from the
 // coarsest levels that fit: visit(level, index) for each. Like a segment
 // tree: take the blocks at the odd ends of the range, then continue one
-// level up with the pairs that are fully inside it.
+// level up with the pairs that are fully inside it; on the top level, the
+// blocks one by one. Level 0 of a chunk being written has no levels above
+// it: its blocks one by one too (the end of the complete chunks is a
+// multiple of 2^ChunkLevel, so no pair crosses it).
 template <typename Visit>
 static void visit_range(const TPeakLevels& levels, qint64 first, qint64 last, Visit&& visit)
 {
     Q_ASSERT(levels.level_count() > 0);
     Q_ASSERT(first >= 0 && first < last && last <= levels.block_count(0));
+
+    const qint64 end = std::min(last, levels.pyramid_end());
+    for (qint64 index = std::max(first, end); index < last; ++index) {
+        visit(0, index);
+    }
+    last = end;
 
     int level = 0;
     while (first < last) {

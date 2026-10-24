@@ -210,14 +210,16 @@ TWaveformColumns::Source TWaveform::stream_columns(const TPeakStream& stream, TW
                                                    const TTimeRef& start, const TTimeRef& columnWidth, int count,
                                                    TWaveformColumn* out)
 {
-    // The level-0 blocks the columns cover, read from the file: zoomed out
-    // far that is all of them (16 MB per channel-hour at 48 kHz, mostly from
-    // the page cache), until post-processing gives the file its levels
-    const uint rate = stream.rate();
-    const qint64 first = TTimeRef::frame_at_or_before(start, rate) >> TPeakLevels::BlockFramesShift;
-    const qint64 last = (TTimeRef::frame_at_or_after(start + columnWidth * double(count), rate) >> TPeakLevels::BlockFramesShift) + 1;
-    const TPeakLevels levels = stream.read(first, last, m_streamRecords);
-    return TWaveformColumns::query(levels, samples, start, columnWidth, count, out);
+    // What is written so far, mapped for this query only: the complete
+    // chunks with their levels, level 0 of the chunk being written. A fresh
+    // mapping costs a page fault per page the query touches: about 0.25 ms
+    // per stereo track for 10 minutes in view, more for a wider view
+    // (doc/design/peak-records.md).
+    TWaveformColumns::Source source = TWaveformColumns::Source::None;
+    stream.read([&](const TPeakLevels& levels) {
+        source = TWaveformColumns::query(levels, samples, start, columnWidth, count, out);
+    });
+    return source;
 }
 
 float TWaveform::max_amplitude(const TTimeRef& start, const TTimeRef& end)

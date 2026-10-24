@@ -95,7 +95,7 @@ signals:
 
 private:
     TPeakFile::SourceInfo source_info() const;
-    // From a recording's or a build's level 0
+    // From the file of a recording or a build while it is written
     TWaveformColumns::Source stream_columns(const TPeakStream& stream, TWaveformSampleSource* samples,
                                             const TTimeRef& start, const TTimeRef& columnWidth, int count,
                                             TWaveformColumn* out);
@@ -115,7 +115,6 @@ private:
     std::shared_ptr<TPeakStream> m_live;
     // The peaks of the running build, until its file opens
     std::shared_ptr<TPeakStream> m_building;
-    std::vector<qint16> m_streamRecords;
     QString m_peakPath;
     TPeakFile m_file;
     std::unique_ptr<TFileIOBuffer> m_decodeBuffer;

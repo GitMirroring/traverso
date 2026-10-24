@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <array>
-#include <vector>
 
 // The lowest and highest sample value of a block of frames as value codes
 // (TPeakLevels::to_value()), rounded outwards, so the stored span always
@@ -105,13 +104,21 @@ struct TPeakCodeTables
  * [k * BlockFrames * 2^L, (k + 1) * BlockFrames * 2^L), and is the
  * combination of blocks 2k and 2k + 1 of level L - 1. The last block of a
  * level may cover fewer frames; a level has half the blocks of the one below,
- * rounded up, up to a level of one block.
+ * rounded up. There are levels 0 to ChunkLevel.
  *
- * Every level is an array of records, one per block: the min and max code of
- * every channel, then the RMS code of every channel (record_codes()). The view
- * does not own them: TPeakFile (a mapped file) and TPeakStream (the level-0
- * records of a file being written, copied) do. A level may hold a window of
- * its blocks only, [first, end): a view of a file being written.
+ * A record per block: the min and max code of every channel, then the RMS
+ * code of every channel (record_codes()). The records are kept in chunks of
+ * 2^ChunkLevel level-0 blocks (TRAVPEAK version 4, doc/design/peak-records.md):
+ * a chunk holds levels 0 to ChunkLevel of its blocks, each level an array of
+ * records, level 0 first, and every chunk has the same size (the last one is
+ * filled up with zeros). A record is found by index arithmetic, without a
+ * table; pairs never cross a chunk, so a chunk's levels are the pyramid's,
+ * cut to the chunk.
+ *
+ * The view does not own the records: TPeakFile (a mapped file) and
+ * TPeakStream (a file being written, mapped for one read) do. A file being
+ * written has its complete chunks, then level 0 of the chunk being written
+ * (the tail): the levels above level 0 end with the complete chunks.
  */
 class TPeakLevels
 {
@@ -133,26 +140,40 @@ public:
     // every channel
     static constexpr int record_codes(int channelCount) { return 3 * channelCount; }
 
-    struct Level
+    // A chunk holds 2^ChunkLevel level-0 blocks and levels 0 to ChunkLevel
+    // of them: 65536 frames, 1.4 s at 48 kHz. What this version writes; a
+    // file says its own (TPeakFile).
+    static constexpr int ChunkLevel = 10;
+    // The records of a chunk, and where a level starts in it
+    static constexpr qint64 chunk_records(int chunkLevel) { return (qint64(2) << chunkLevel) - 1; }
+    static constexpr qint64 level_offset(int chunkLevel, int level)
     {
-        const qint16* records{nullptr};   // the records of the blocks [first, end)
-        qint64 first{0};
-        qint64 end{0};                    // the level's blocks end here
-    };
+        return chunk_records(chunkLevel) - ((qint64(2) << (chunkLevel - level)) - 1);
+    }
 
     TPeakLevels() = default;
-    TPeakLevels(uint rate, int channelCount, qint64 frameCount, std::vector<Level> levels);
+    // chunks: the records of chunkCount complete chunks; tail: level 0 of the
+    // blocks after them, up to frameCount (a file being written), or nullptr
+    TPeakLevels(uint rate, int channelCount, qint64 frameCount, int chunkLevel, const qint16* chunks, qint64 chunkCount,
+                const qint16* tail = nullptr);
 
     uint rate() const { return m_rate; }
     int channel_count() const { return m_channelCount; }
     qint64 frame_count() const { return m_frameCount; }
 
-    // 0 when there is no pyramid (yet); frame_count() and rate() still tell
+    // 0 when there are no blocks (yet); frame_count() and rate() still tell
     // about the source then
-    int level_count() const { return int(m_levels.size()); }
-    // Where the level's blocks end: its block count (for a window, the
-    // blocks it reaches)
-    qint64 block_count(int level) const { return m_levels[size_t(level)].end; }
+    int level_count() const { return m_frameCount > 0 ? m_chunkLevel + 1 : 0; }
+    // The level's blocks. Above level 0, of a file being written: those of
+    // its complete chunks.
+    qint64 block_count(int level) const
+    {
+        const qint64 blocks = level == 0 ? level0_blocks() : std::min(level0_blocks(), pyramid_end());
+        return (blocks + (qint64(1) << level) - 1) >> level;
+    }
+    // The level-0 blocks the levels above level 0 cover: those of the
+    // complete chunks
+    qint64 pyramid_end() const { return m_chunkCount << m_chunkLevel; }
     TPeakBlock block(int level, int channel, qint64 index) const
     {
         const qint16* codes = record(level, index);
@@ -196,15 +217,26 @@ public:
     static float max_value() { return to_value(MaxCode); }
 
 private:
+    qint64 level0_blocks() const { return (m_frameCount + BlockFrames - 1) >> BlockFramesShift; }
+
     const qint16* record(int level, qint64 index) const
     {
-        const Level& l = m_levels[size_t(level)];
-        Q_ASSERT(index >= l.first && index < l.end);
-        return l.records + (index - l.first) * record_codes(m_channelCount);
+        Q_ASSERT(index >= 0 && index < block_count(level));
+        const qint64 codes = record_codes(m_channelCount);
+        if (level == 0 && index >= pyramid_end()) {
+            return m_tail + (index - pyramid_end()) * codes;
+        }
+        const int shift = m_chunkLevel - level;
+        const qint64 chunk = index >> shift;
+        const qint64 local = index & ((qint64(1) << shift) - 1);
+        return m_chunks + (chunk * chunk_records(m_chunkLevel) + level_offset(m_chunkLevel, level) + local) * codes;
     }
 
     uint m_rate{0};
     int m_channelCount{0};
     qint64 m_frameCount{0};
-    std::vector<Level> m_levels;
+    int m_chunkLevel{ChunkLevel};
+    const qint16* m_chunks{nullptr};
+    qint64 m_chunkCount{0};
+    const qint16* m_tail{nullptr};
 };

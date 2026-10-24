@@ -25,13 +25,20 @@ struct TPeakFileHeader
     quint32 blockFrames;
     quint32 codesPerOctave;     // of the value codes (TPeakLevels)
     quint32 recordContents;     // what a record has: RecordMinMax | RecordRms
+    quint32 chunkLevel;         // a chunk holds 2^chunkLevel level-0 blocks
+    quint32 reserved;           // 0
     quint64 frameCount;
     qint64 sourceSize;
     qint64 sourceModified;
     quint64 checksum;           // of this header with checksum 0
 };
 
-static_assert(sizeof(TPeakFileHeader) == TPeakFile::HeaderBytes && offsetof(TPeakFileHeader, frameCount) == 40);
+static_assert(sizeof(TPeakFileHeader) == TPeakFile::HeaderBytes && offsetof(TPeakFileHeader, frameCount) == 48);
+
+// The chunk levels a file may have: the reader takes the file's own, the
+// writer writes TPeakLevels::ChunkLevel
+static constexpr quint32 MinChunkLevel = 1;
+static constexpr quint32 MaxChunkLevel = 20;
 
 // What a record holds, in this order: min/max of every channel, then the
 // RMS codes of every channel. This version writes and reads exactly these.
@@ -58,21 +65,6 @@ static quint64 header_checksum(TPeakFileHeader header)
     return checksum;
 }
 
-std::vector<qint64> TPeakFile::block_counts(qint64 frames)
-{
-    std::vector<qint64> counts;
-    if (frames <= 0) {
-        return counts;
-    }
-    qint64 blocks = (frames + TPeakLevels::BlockFrames - 1) >> TPeakLevels::BlockFramesShift;
-    counts.push_back(blocks);
-    while (blocks > 1) {
-        blocks = (blocks + 1) / 2;
-        counts.push_back(blocks);
-    }
-    return counts;
-}
-
 QByteArray TPeakFile::header(const SourceInfo& source)
 {
     TPeakFileHeader header{};
@@ -85,6 +77,7 @@ QByteArray TPeakFile::header(const SourceInfo& source)
     header.blockFrames = TPeakLevels::BlockFrames;
     header.codesPerOctave = quint32(TPeakLevels::CodesPerOctave);
     header.recordContents = RecordContents;
+    header.chunkLevel = TPeakLevels::ChunkLevel;
     header.frameCount = quint64(source.frameCount);
     header.sourceSize = source.fileSize;
     header.sourceModified = source.modified;
@@ -161,6 +154,8 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
             || header.blockFrames != quint32(TPeakLevels::BlockFrames)
             || header.codesPerOctave != quint32(TPeakLevels::CodesPerOctave)
             || header.recordContents != RecordContents
+            || header.chunkLevel < MinChunkLevel || header.chunkLevel > MaxChunkLevel
+            || header.reserved != 0
             || header.checksum != header_checksum(header)) {
         return Status::Invalid;
     }
@@ -178,19 +173,14 @@ TPeakFile::Status TPeakFile::validate(const SourceInfo& expected, qint64 fileSiz
         return Status::Invalid;
     }
 
-    const std::vector<qint64> counts = block_counts(qint64(header.frameCount));
-    const qint64 recordBytes = record_bytes(expected.channelCount);
-    std::vector<TPeakLevels::Level> levels;
-    qint64 offset = HeaderBytes;
-    for (const qint64 count : counts) {
-        levels.push_back({reinterpret_cast<const qint16*>(m_map + offset), 0, count});
-        offset += count * recordBytes;
-    }
-    if (offset != fileSize) {
+    const int chunkLevel = int(header.chunkLevel);
+    const qint64 chunks = chunk_count(qint64(header.frameCount), chunkLevel);
+    if (HeaderBytes + chunks * chunk_bytes(chunkLevel, expected.channelCount) != fileSize) {
         return Status::Invalid;
     }
 
-    m_levels = TPeakLevels(expected.rate, expected.channelCount, qint64(header.frameCount), std::move(levels));
+    m_levels = TPeakLevels(expected.rate, expected.channelCount, qint64(header.frameCount), chunkLevel,
+                           reinterpret_cast<const qint16*>(m_map + HeaderBytes), chunks);
     return Status::Ok;
 }
 

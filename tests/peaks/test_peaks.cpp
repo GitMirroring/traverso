@@ -299,7 +299,10 @@ static void test_time_conversions()
 
 static void test_pyramid()
 {
-    std::vector<qint64> lengths = {0, 1, 2, 63, 64, 65, 127, 128, 129, 191, 192, 193, 4095, 4096, 4097, 7919, 104729};
+    // Around blocks, pairs and chunks (2^ChunkLevel blocks of 64 frames)
+    constexpr qint64 Chunk = qint64(64) << TPeakLevels::ChunkLevel;
+    std::vector<qint64> lengths = {0, 1, 2, 63, 64, 65, 127, 128, 129, 191, 192, 193, 4095, 4096, 4097, 7919, 104729,
+                                   Chunk - 64, Chunk - 1, Chunk, Chunk + 1, Chunk + 64, 2 * Chunk, 3 * Chunk + 65};
     lengths.push_back(random_between(500000, 1100000));
 
     for (qint64 frames : lengths) {
@@ -313,12 +316,10 @@ static void test_pyramid()
             CHECK(same_levels(whole->levels(), levels), "frames %lld: chunked differs from one append", (long long)frames);
             CHECK(levels.frame_count() == frames, "frames %lld", (long long)frames);
 
-            // Level structure: ceil halving down to one block
+            // Level structure: levels 0 to ChunkLevel, each half the blocks of
+            // the one below, rounded up
             qint64 expected = (frames + 63) / 64;
-            int expectedLevels = 0;
-            for (qint64 blocks = expected; blocks > 0; blocks = blocks > 1 ? (blocks + 1) / 2 : 0) {
-                ++expectedLevels;
-            }
+            const int expectedLevels = frames > 0 ? TPeakLevels::ChunkLevel + 1 : 0;
             CHECK(levels.level_count() == expectedLevels, "frames %lld: %d levels, expected %d",
                   (long long)frames, levels.level_count(), expectedLevels);
 
@@ -343,8 +344,7 @@ static void test_pyramid()
             TPeakStream growing(signal.rate, channelCount, s_dir->filePath(QStringLiteral("%1.peaks").arg(++s_files)));
             CHECK(growing.open() == TPeakFile::Status::Ok, "open a growing stream");
             append(growing, signal, true);
-            std::vector<qint16> records;
-            const TPeakLevels growingLevels = growing.read(0, (frames + 63) / 64, records);
+            growing.read([&](const TPeakLevels& growingLevels) {
             for (const TPeakLevels* view : {&levels, &growingLevels}) {
                 if (view->level_count() == 0 || view->block_count(0) == 0) {
                     continue;
@@ -366,6 +366,7 @@ static void test_pyramid()
                           view == &levels ? "finished" : "growing");
                 }
             }
+            });
         }
     }
 }
@@ -391,14 +392,9 @@ static void test_file()
         const std::unique_ptr<Built> chunked = build(signal, true);
         CHECK(file_bytes(whole->path).mid(int(TPeakFile::HeaderBytes)) == file_bytes(chunked->path).mid(int(TPeakFile::HeaderBytes)),
               "frames %lld: the files differ", (long long)frames);
-        const qint64 records = [&] {
-            qint64 sum = 0;
-            for (const qint64 count : TPeakFile::block_counts(frames)) {
-                sum += count;
-            }
-            return sum;
-        }();
-        CHECK(QFileInfo(whole->path).size() == TPeakFile::HeaderBytes + records * TPeakFile::record_bytes(channelCount),
+        const qint64 chunks = ((frames + 63) / 64 + (qint64(1) << TPeakLevels::ChunkLevel) - 1) >> TPeakLevels::ChunkLevel;
+        CHECK(QFileInfo(whole->path).size() == TPeakFile::HeaderBytes
+                  + chunks * TPeakLevels::chunk_records(TPeakLevels::ChunkLevel) * TPeakFile::record_bytes(channelCount),
               "frames %lld: file size", (long long)frames);
 
         // Another source
@@ -429,9 +425,9 @@ static void test_file()
         CHECK(!QFile::exists(built->path) && built->levels().level_count() == 0, "a peak file without audio");
     }
 
-    // A crash before the header (while level 0 is written, or during
-    // post-processing) leaves a part file whose header is zero: refused
-    // under the file's name. A stream that is given up removes its part file.
+    // A crash before the header (while the chunks are written, or after the
+    // last one) leaves a part file whose header is zero: refused under the
+    // file's name. A stream that is given up removes its part file.
     {
         const Signal signal = make_signal(44100, 2, 200000);
         const QString audio = make_audio_file();
@@ -447,15 +443,13 @@ static void test_file()
             CHECK(file.open(path, source) == TPeakFile::Status::Invalid, "a file left %s accepted", when);
             QFile::remove(path);
         };
-        refused_as_crash("while level 0 is written");
+        refused_as_crash("while the chunks are written");
         CHECK(stream.finish(audio) == TPeakFile::Status::Ok, "finish");
-        refused_as_crash("after level 0");
-        CHECK(stream.post_process(), "post-processing in more than one step");
-        refused_as_crash("halfway post-processing");
-        // Given up halfway (the project closes): no file, no part file
+        refused_as_crash("after the last chunk, before the header");
+        // Given up before the header (the project closes): no file, no part file
         stream.abandon();
         CHECK(!stream.post_process() && !stream.published() && !QFile::exists(path) && !QFile::exists(stream.part_path()),
-              "a stream given up halfway post-processing left a file");
+              "a stream given up before its header left a file");
 
         // A rename that cannot happen (a directory under the file's name):
         // publish() leaves the part file to its caller, post-processing gives
@@ -515,20 +509,23 @@ static void test_file()
     };
     expect_damaged(QByteArray(bytes).replace(0, 1, "X"), "magic");
     expect_damaged(patched(8, 2), "version 2 (periods)");
-    expect_damaged(patched(8, 4), "version 4");
-    expect_damaged(patched(8, 6), "version 6 (development)");
+    expect_damaged(patched(8, 3), "version 3 (every level one array)");
+    expect_damaged(patched(8, 5), "version 5");
     // Offsets in TPeakFileHeader: 8 version, 12 byte order, 16 header size,
     // 20 rate, 24 channels, 28 block frames, 32 codes per octave, 36 record contents,
-    // 40 frame count (TPeakFile.cpp asserts 72 bytes and 40)
+    // 40 chunk level, 44 reserved, 48 frame count (TPeakFile.cpp asserts 80 bytes and 48)
     expect_damaged(patched(12, 0x04030201), "byte order");
     expect_damaged(patched(16, 64), "header size");
     expect_damaged(patched(28, 32), "block frames");
     expect_damaged(patched(32, 512), "codes per octave");
     expect_damaged(patched(36, 1), "record contents: min/max only");
     expect_damaged(patched(36, 7), "record contents: one more than this version knows");
-    expect_damaged(patched(40, 0), "frame count 0");
-    expect_damaged(patched(40, 49000), "frame count with another layout");
-    expect_damaged(patched(40, 49999), "frame count with the same layout (header checksum)");
+    expect_damaged(patched(40, 0), "chunk level 0");
+    expect_damaged(patched(40, 9), "chunk level 9 (another layout)");
+    expect_damaged(patched(40, 21), "chunk level 21 (beyond what a reader takes)");
+    expect_damaged(patched(44, 1), "reserved not 0");
+    expect_damaged(patched(48, 0), "frame count 0");
+    expect_damaged(patched(48, 49999), "frame count with the same layout (header checksum)");
     expect_damaged(QByteArray(int(TPeakFile::HeaderBytes), '\0') + bytes.mid(int(TPeakFile::HeaderBytes)), "a header of zeros (unfinished)");
     expect_damaged(bytes.left(bytes.size() - 6), "truncated file");
     expect_damaged(bytes + QByteArray(6, '\0'), "trailing bytes");
@@ -869,11 +866,11 @@ static void run(const char* name, Test test)
 }
 
 // One thread appends buffers of 256 frames to a stream (an audio cycle of a
-// recording), another reads level 0 below the count meanwhile, as the
-// waveform of a recording does: every record read has its final value and
-// the count only grows. Once post-processed, the finished file's columns
-// equal the ones from level 0 alone: min and max exactly, the RMS within a
-// step.
+// recording), another reads what is written meanwhile, as the waveform of a
+// recording does: every record read has its final value, on every level of
+// the complete chunks, and the count only grows. Once published, the
+// finished file's columns equal the ones read through the stream: min and
+// max exactly, the RMS within a step.
 static void test_live_read()
 {
     for (qint64 length : {qint64(3000000), qint64(70000) * 64 + 17}) {
@@ -901,7 +898,6 @@ static void test_live_read()
         int reads = 0;
         qint64 lastFrames = 0;
         bool finished = false;
-        std::vector<qint16> records;
         while (!finished) {
             finished = done.load();   // one more read after the writer is done
             const qint64 frames = stream.written_frames();
@@ -913,28 +909,31 @@ static void test_live_read()
             if (blocks == 0) {
                 continue;
             }
-            // A window, sometimes past the count: it ends there
-            const qint64 first = random_between(0, blocks - 1);
-            const qint64 last = random_between(first + 1, blocks + 10);
-            const TPeakLevels live = stream.read(first, last, records);
-            ++reads;
-            CHECK(live.level_count() == 1 && live.frame_count() >= frames && live.block_count(0) >= std::min(last, blocks)
-                      && live.block_count(0) <= last, "window %lld..%lld of %lld blocks: %lld", (long long)first, (long long)last,
-                  (long long)blocks, (long long)live.block_count(0));
-            for (qint64 k = first; k < live.block_count(0); ++k) {
-                for (int c = 0; c < 2; ++c) {
-                    const TPeakBlock x = live.block(0, c, k);
-                    const TPeakBlock y = final.block(0, c, k);
-                    CHECK(x.min == y.min && x.max == y.max && live.rms(0, c, k) == final.rms(0, c, k), "block %lld differs", (long long)k);
+            stream.read([&](const TPeakLevels& live) {
+                ++reads;
+                // The count may have grown since: what the read saw
+                CHECK(live.level_count() == TPeakLevels::ChunkLevel + 1 && live.frame_count() >= frames && live.block_count(0) >= blocks,
+                      "%lld blocks written, the read has %lld", (long long)blocks, (long long)live.block_count(0));
+                // Every level of the complete chunks, and level 0 after them
+                for (int level = 0; level < live.level_count(); ++level) {
+                    const qint64 count = live.block_count(level);
+                    const qint64 from = random_between(0, std::max<qint64>(count - 1, 0));
+                    for (qint64 k = from; k < std::min(count, from + 2000); ++k) {
+                        for (int c = 0; c < 2; ++c) {
+                            const TPeakBlock x = live.block(level, c, k);
+                            const TPeakBlock y = final.block(level, c, k);
+                            CHECK(x.min == y.min && x.max == y.max && live.rms(level, c, k) == final.rms(level, c, k),
+                                  "level %d block %lld differs", level, (long long)k);
+                        }
+                    }
                 }
-            }
-            if (live.block_count(0) > first) {
-                const qint64 a = random_between(first, live.block_count(0) - 1);
-                const qint64 b = random_between(a + 1, live.block_count(0));
+                const qint64 have = live.block_count(0);
+                const qint64 a = random_between(0, have - 1);
+                const qint64 b = random_between(a + 1, have);
                 const TPeakBlock x = live.range(1, a, b);
                 const TPeakBlock y = final.range(1, a, b);
                 CHECK(x.min == y.min && x.max == y.max, "range %lld..%lld differs", (long long)a, (long long)b);
-            }
+            });
         }
         writer.join();
         CHECK(stream.written_frames() == length, "%lld frames written", (long long)stream.written_frames());
@@ -946,11 +945,11 @@ static void test_live_read()
         CHECK(file.open(path, TPeakFile::SourceInfo::from_file(audio, 48000, 2, length)) == TPeakFile::Status::Ok
                   && same_levels(file.levels(), final), "the finished file differs from the one built at once");
 
-        // Level 0 alone (still read through the stream, from the file's
-        // name now) against the finished file, at any zoom
+        // Read through the stream (from the file's name now, the last chunk
+        // as level 0 alone) against the finished file, at any zoom
         const qint64 blocks = (length + 63) / 64;
-        const TPeakLevels live = stream.read(0, blocks, records);
-        CHECK(live.block_count(0) == blocks, "level 0 after the rename: %lld blocks", (long long)live.block_count(0));
+        stream.read([&](const TPeakLevels& live) {
+        CHECK(live.block_count(0) == blocks, "after the rename: %lld blocks", (long long)live.block_count(0));
         const double step = TPeakCodeMath::octave_fraction(1) * 1.00001;
         for (int round = 0; round < 40; ++round) {
             const double framesPerColumn = std::exp(std::log(64.0) + random_unit() * (std::log(200000.0) - std::log(64.0)));
@@ -969,6 +968,7 @@ static void test_live_read()
                       "column %zu: live %g..%g rms %g, file %g..%g rms %g", i, a[i].min, a[i].max, a[i].rms, b[i].min, b[i].max, b[i].rms);
             }
         }
+        });
         std::printf("    live stream of %lld frames: %d reads while writing\n", (long long)length, reads);
     }
 }
@@ -1015,9 +1015,9 @@ static void test_max_amplitude()
             const float expected = brute_max(signal, first, last);
             memory.reads = 0;
             const float amplitude = TWaveformColumns::max_amplitude(builder->levels(), &memory, first, last);
-            // Saturated (the signal has spikes past +24 dB): exact through the
-            // samples of those blocks
-            if (expected >= TPeakLevels::max_value()) {
+            // Saturated (the signal has spikes at or near +24 dB, whose code
+            // is the highest): exact through the samples of those blocks
+            if (TPeakLevels::code_at_or_above(expected) >= TPeakLevels::MaxCode) {
                 CHECK(amplitude == expected, "round %d range %lld..%lld: saturated %f expected %f", round, (long long)first,
                       (long long)last, amplitude, expected);
                 continue;
@@ -1025,7 +1025,8 @@ static void test_max_amplitude()
             CHECK(within_a_step(amplitude, expected), "round %d range %lld..%lld: %.9g expected %.9g", round, (long long)first,
                   (long long)last, amplitude, expected);
             // Only the two partial blocks at the ends are read
-            CHECK(memory.reads <= 2 * TPeakLevels::BlockFrames, "round %d: read %lld frames", round, (long long)memory.reads);
+            CHECK(memory.reads <= 2 * TPeakLevels::BlockFrames, "round %d range %lld..%lld of %lld frames: read %lld frames", round,
+                  (long long)first, (long long)last, (long long)frames, (long long)memory.reads);
         }
     }
 

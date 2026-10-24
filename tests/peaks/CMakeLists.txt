@@ -20,6 +20,11 @@ add_executable(traverso_peak_cache_test test_peak_cache.cpp)
 target_link_libraries(traverso_peak_cache_test PRIVATE traverso_compiler_settings traversowaveform traversosupport Qt6::Core)
 add_test(NAME peak_cache COMMAND traverso_peak_cache_test)
 
+# The chunked pyramid against a separate pass over level 0, byte for byte
+add_executable(traverso_peak_chunks_test test_peak_chunks.cpp)
+target_link_libraries(traverso_peak_chunks_test PRIVATE traverso_compiler_settings traversowaveform traversosupport Qt6::Core)
+add_test(NAME peak_chunks COMMAND traverso_peak_chunks_test)
+
 # Benchmark of the column query and the envelope painting, not part of ctest.
 # Build it in Release.
 add_executable(traverso_peak_benchmark benchmark_peaks.cpp)

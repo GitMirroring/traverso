@@ -278,23 +278,24 @@ int main()
         TPeakCache::set_limit(qint64(10240) << 20);
     }
 
-    // The format: TRAVPEAK version 3; another TRAVPEAK version and a legacy
-    // file (TRAVPF 1.5) are Invalid and get rebuilt
+    // The format: TRAVPEAK version 4; another TRAVPEAK version (3: every
+    // level one array) and a legacy file (TRAVPF 1.5) are Invalid and get
+    // rebuilt
     {
         TPeakCache::set_directory(cache);
         const QString peaks = TPeakCache::path_for(takeB);
         write_peaks(peaks, takeB);
         const auto source = TPeakFile::SourceInfo::from_file(takeB, 48000, 1, 5000);
         TPeakFile file;
-        CHECK(TPeakFile::FormatVersion == 3, "format version %u", TPeakFile::FormatVersion);
-        CHECK(file.open(peaks, source) == TPeakFile::Status::Ok, "a version 3 file does not open");
+        CHECK(TPeakFile::FormatVersion == 4, "format version %u", TPeakFile::FormatVersion);
+        CHECK(file.open(peaks, source) == TPeakFile::Status::Ok, "a version 4 file does not open");
         file.close();
         QFile patch(peaks);
         CHECK(patch.open(QIODevice::ReadWrite) && patch.seek(8), "patch");
-        const quint32 six = 6;
-        patch.write(reinterpret_cast<const char*>(&six), sizeof(six));
+        const quint32 three = 3;
+        patch.write(reinterpret_cast<const char*>(&three), sizeof(three));
         patch.close();
-        CHECK(file.open(peaks, source) == TPeakFile::Status::Invalid, "TRAVPEAK version 6 opens");
+        CHECK(file.open(peaks, source) == TPeakFile::Status::Invalid, "TRAVPEAK version 3 opens");
         QFile legacy(peaks);
         CHECK(legacy.open(QIODevice::WriteOnly), "legacy");
         legacy.write(QByteArray("TRAVPF\0\0", 8) + QByteArray(200, '\0'));

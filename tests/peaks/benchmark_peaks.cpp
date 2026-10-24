@@ -116,19 +116,26 @@ int main(int argc, char** argv)
     timer.start();
     stream.finish(audio);
     appendMs += double(timer.nsecsElapsed()) / 1e6;
-    std::printf("build: 1 h 48 kHz stereo, level 0 %.0f ms (%.0fx real time), signal generation %.0f ms (not counted)\n",
+    std::printf("build: 1 h 48 kHz stereo, all levels %.0f ms (%.0fx real time), signal generation %.0f ms (not counted)\n",
                 appendMs, 3600000.0 / appendMs, generateMs);
 
-    // The waveform of a recording zoomed out over the whole hour: all of
-    // level 0 read and its columns, on every full repaint until the file has
-    // its levels
-    std::vector<qint16> records;
+    // The waveform of a recording zoomed out over the whole hour: the
+    // written file mapped for the read and its columns, on every full repaint
     std::vector<TWaveformColumn> liveColumns(size_t(Columns) * Channels);
-    const qint64 blocks = (Frames + 63) / 64;
     const TTimeRef wholeWidth(qint64(std::llround(double(Frames) / Columns * double(TTimeRef::UNIVERSAL_SAMPLE_RATE) / Rate)));
     const double liveMs = best_ms(5, [&] {
-        const TPeakLevels live = stream.read(0, blocks, records);
-        TWaveformColumns::query(live, nullptr, TTimeRef(), wholeWidth, Columns, liveColumns.data());
+        stream.read([&](const TPeakLevels& live) {
+            TWaveformColumns::query(live, nullptr, TTimeRef(), wholeWidth, Columns, liveColumns.data());
+        });
+    });
+    // Ten minutes in view (minute 25 to 35), the widest view a fresh mapping
+    // per repaint is meant for (doc/design/peak-records.md)
+    const TTimeRef tenStart(qint64(std::llround(25.0 * 60.0 * double(TTimeRef::UNIVERSAL_SAMPLE_RATE))));
+    const TTimeRef tenWidth(qint64(std::llround(600.0 / Columns * double(TTimeRef::UNIVERSAL_SAMPLE_RATE))));
+    const double liveTenMs = best_ms(20, [&] {
+        stream.read([&](const TPeakLevels& live) {
+            TWaveformColumns::query(live, nullptr, tenStart, tenWidth, Columns, liveColumns.data());
+        });
     });
 
     timer.start();
@@ -138,8 +145,11 @@ int main(int argc, char** argv)
     const TPeakFile::SourceInfo source = TPeakFile::SourceInfo::from_file(audio, Rate, Channels, Frames);
     TPeakFile file;
     const double openMs = best_ms(1, [&] { file.open(path, source); });
-    std::printf("file: post-processing %.0f ms, %.1f MB, open + validate %.3f ms\n", postMs, double(QFileInfo(path).size()) / 1e6, openMs);
-    std::printf("live (level 0 only), the whole hour in %d columns: %.2f ms per repaint\n", Columns, liveMs);
+    const double fileTenMs = best_ms(20, [&] { TWaveformColumns::query(file.levels(), nullptr, tenStart, tenWidth, Columns, liveColumns.data()); });
+    std::printf("file: header and name %.1f ms, %.1f MB, open + validate %.3f ms\n", postMs, double(QFileInfo(path).size()) / 1e6, openMs);
+    std::printf("while written (mapped per read), %d columns: the whole hour %.2f ms, 10 minutes %.3f ms per repaint\n", Columns,
+                liveMs, liveTenMs);
+    std::printf("finished file (mapping kept), 10 minutes in %d columns: %.3f ms per repaint\n", Columns, fileTenMs);
 
     // Query and paint
     GeneratedSource generated;
