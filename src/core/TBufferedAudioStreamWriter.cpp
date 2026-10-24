@@ -50,7 +50,7 @@ TBufferedAudioStreamWriter::~TBufferedAudioStreamWriter()
     PENTERDES;
 }
 
-int TBufferedAudioStreamWriter::prepare_export(TExportSpecification *specification)
+int TBufferedAudioStreamWriter::prepare_file(TExportSpecification *specification)
 {
     PENTER;
     Q_ASSERT(specification->is_valid() == 1);
@@ -71,12 +71,14 @@ int TBufferedAudioStreamWriter::prepare_export(TExportSpecification *specificati
     return 0;
 }
 
-int TBufferedAudioStreamWriter::finish_export()
+void TBufferedAudioStreamWriter::finish_file()
 {
-    PENTER;
-
     if (m_resampleWriter) {
-        m_resampleWriter->close();
+        // The resampler's rest and the final header: a file whose close
+        // fails may not hold all that was written
+        if (!m_resampleWriter->close()) {
+            TLOG_W("diskio", "closing {} failed: it may not hold all that was written", m_fileName.toStdString());
+        }
         m_resampleWriter.reset();
     }
 
@@ -104,10 +106,8 @@ int TBufferedAudioStreamWriter::finish_export()
         }
     }
 
-    m_exportFinished = true;
-    emit exportFinished();
-
-    return 1;
+    m_fileFinished = true;
+    emit fileFinished();
 }
 
 int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer)
@@ -205,7 +205,7 @@ TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessCa
 
 void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileIOBuffer)
 {
-    if (m_exportFinished) {
+    if (m_fileFinished) {
         return;
     }
     Q_ASSERT(m_resampleWriter);
@@ -217,14 +217,14 @@ void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileIOB
     }
 
     if (!m_isRecording) {
-        finish_export();
+        finish_file();
     }
 }
 
 TIOStream::State TBufferedAudioStreamWriter::disk_state(const TTimeRef& /*transportLocation*/)
 {
     // The fill is the free part: the fullest queue goes first
-    const bool work = m_rtBufferSlotsQueue->size_approx() > 0 || (!m_isRecording && !m_exportFinished);
+    const bool work = m_rtBufferSlotsQueue->size_approx() > 0 || (!m_isRecording && !m_fileFinished);
     return TIOStream::State{work, false, get_buffer_status().get_fill_status()};
 }
 

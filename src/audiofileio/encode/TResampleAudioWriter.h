@@ -51,8 +51,9 @@ public:
     bool close();
 
 private:
-    // At close: what the resampler still holds into the file
-    void flush_resampler();
+    // At close: what the resampler still holds into the file; false when it
+    // could not all be written
+    bool flush_resampler();
     // The channels of buffer, frames long, into its interleaved part
     void interleave(TFileIOBuffer& buffer, nframes_t frames);
     // frames frames of buffer's interleaved part into the file, in the
@@ -62,9 +63,9 @@ private:
     std::unique_ptr<AbstractAudioWriter>            m_codecWriter;
     TAudioEncodeSettings                            m_settings;
 
+    // The rate of the audio handed to write_planar(); the file's rate and
+    // its channels are the settings'
     uint                                            m_inputSampleRate;
-    uint                                            m_outputSampleRate;
-    uint                                            m_channelCount;
 
     // All channels at once: every channel gives the same frames
     std::unique_ptr<TAudioResampler>                m_resampler;

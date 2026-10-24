@@ -94,7 +94,6 @@ public:
     // What the audio writers need of this specification
     TAudioEncodeSettings get_encode_settings() const;
     GDitherType get_dither_type() const { return m_ditherType; }
-    uint get_sample_bytes() const { return m_sampleBytes; }
     QList<TSheet*> get_sheets_to_export() const { return m_sheetsToExport; }
 
     bool is_cd_export() const { return m_isCdExport; }
@@ -135,7 +134,6 @@ private:
     bool                       m_cancelExportRequested;
 
     TraversoDAW::DataFormat    m_dataFormat;
-    uint                       m_sampleBytes;
     TAudioResampler::BackendType m_resampler;
     int                        m_resampleQuality;
     int                        m_progress;

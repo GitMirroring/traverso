@@ -23,12 +23,36 @@ struct TAudioEncodeSettings
     uint                    channelCount{0};
     uint                    sampleRate{0};
     uint                    blockSize{0};
-    uint                    sampleBytes{0};
-    int                     bitDepth{0};
     // The resampler when the input rate is not sampleRate: a backend and one
     // of its qualities
     TAudioResampler::BackendType resampler{TAudioResampler::BackendType::LIBSOXR};
     int                     resampleQuality{TAudioResampler::default_quality(TAudioResampler::BackendType::LIBSOXR)};
     GDitherType             ditherType{};
-    GDitherSize             ditherSize{};
+
+    // Of the sample format: the bits of a sample in the file, and the size
+    // gdither writes it in (a 24 bit sample in a 32 bit word)
+    int bit_depth() const { return bit_depth(dataFormat); }
+    GDitherSize dither_size() const { return dither_size(dataFormat); }
+
+    static int bit_depth(TraversoDAW::DataFormat format)
+    {
+        switch (format) {
+        case TraversoDAW::DataFormat::PCM_S8: return 8;
+        case TraversoDAW::DataFormat::PCM_16: return 16;
+        case TraversoDAW::DataFormat::PCM_24: return 24;
+        case TraversoDAW::DataFormat::PCM_32:
+        case TraversoDAW::DataFormat::FLOAT: return 32;
+        }
+        return 32;
+    }
+
+    static GDitherSize dither_size(TraversoDAW::DataFormat format)
+    {
+        switch (format) {
+        case TraversoDAW::DataFormat::PCM_S8: return GDither8bit;
+        case TraversoDAW::DataFormat::PCM_16: return GDither16bit;
+        case TraversoDAW::DataFormat::PCM_24: return GDither32bit;
+        default: return GDitherFloat;
+        }
+    }
 };

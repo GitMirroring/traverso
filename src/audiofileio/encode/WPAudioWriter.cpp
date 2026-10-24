@@ -108,7 +108,7 @@ bool WPAudioWriter::open_private()
 	}
 
 	memset (&m_config, 0, sizeof(m_config));
-    int bitDepth = m_settings.bitDepth;
+    const int bitDepth = m_settings.bit_depth();
     m_config.bytes_per_sample = bitDepth/8;
     m_config.bits_per_sample = bitDepth;
     if (m_settings.dataFormat == TraversoDAW::DataFormat::FLOAT) {

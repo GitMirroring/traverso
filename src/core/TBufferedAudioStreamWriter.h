@@ -47,8 +47,13 @@ public :
     // The peaks of this recording, streamed to its peak file as level 0
     std::shared_ptr<TPeakStream> get_peaks() const { return m_peaks; }
 
-    int prepare_export(TExportSpecification* specification);
-    int finish_export();
+    // The file a recording, an import or a merge writes into (not an export
+    // of the project: TExportSpecification::prepare_export()); -1 when it
+    // cannot be opened
+    int prepare_file(TExportSpecification* specification);
+    // All written: the file closed (the resampler's rest, the final header),
+    // its peaks finished; fileFinished() follows
+    void finish_file();
 
     void set_process_peaks(bool process);
     void set_recording(bool rec);
@@ -58,7 +63,7 @@ public :
 
     bool is_recording() const { return m_isRecording; }
     // The frames in the file, after the dropped ones. Written by the
-    // writer's steps; read after exportFinished() (queued), when the writing
+    // writer's steps; read after fileFinished() (queued), when the writing
     // is over
     qint64 get_written_frames() const { return m_writtenFrames; }
 
@@ -73,7 +78,7 @@ private:
     // A recording: its peaks are read while they are written, and
     // post-processed in DiskIO's idle time (an import does it at once)
     bool            m_peaksAreRead{false};
-    bool            m_exportFinished{false};
+    bool            m_fileFinished{false};
     qint64          m_framesToDrop{0};   // the writer's steps once it is added
     qint64          m_writtenFrames{0};
 
@@ -87,5 +92,5 @@ private:
     TIOStream::State disk_state(const TTimeRef& transportLocation) final;
 
 signals:
-    void exportFinished();
+    void fileFinished();
 };

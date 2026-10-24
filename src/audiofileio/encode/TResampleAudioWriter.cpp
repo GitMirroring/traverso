@@ -18,8 +18,6 @@ the Free Software Foundation; either version 2 of the License, or
 TResampleAudioWriter::TResampleAudioWriter(const TAudioEncodeSettings& settings)
     : m_settings(settings)
     , m_inputSampleRate(0)
-    , m_outputSampleRate(0)
-    , m_channelCount(0)
     , m_dither(nullptr)
 {
     m_codecWriter = AbstractAudioWriter::create_audio_writer(m_settings);
@@ -39,13 +37,11 @@ bool TResampleAudioWriter::open(const QString& filename, uint inputSampleRate)
     }
 
     m_inputSampleRate = inputSampleRate;
-    m_outputSampleRate = m_settings.sampleRate;
-    m_channelCount = m_settings.channelCount;
 
     m_resampler.reset();
-    if (m_inputSampleRate != m_outputSampleRate) {
-        const double ratio = double(m_outputSampleRate) / m_inputSampleRate;
-        m_resampler = std::make_unique<TAudioResampler>(m_settings.resampler, ratio, m_settings.resampleQuality, m_channelCount);
+    if (m_inputSampleRate != m_settings.sampleRate) {
+        const double ratio = double(m_settings.sampleRate) / m_inputSampleRate;
+        m_resampler = std::make_unique<TAudioResampler>(m_settings.resampler, ratio, m_settings.resampleQuality, m_settings.channelCount);
     }
 
     if (m_dither) {
@@ -56,9 +52,9 @@ bool TResampleAudioWriter::open(const QString& filename, uint inputSampleRate)
     if (m_settings.dataFormat != TraversoDAW::DataFormat::FLOAT) {
         m_dither = gdither_new(
             m_settings.ditherType,
-            m_channelCount,
-            m_settings.ditherSize,
-            m_settings.bitDepth
+            m_settings.channelCount,
+            m_settings.dither_size(),
+            m_settings.bit_depth()
             );
     }
 
@@ -69,8 +65,9 @@ bool TResampleAudioWriter::close()
 {
     // The end of the input: what the resampler still holds goes into the
     // file too, else the file loses its last few milliseconds
+    bool flushed = true;
     if (m_resampler && m_codecWriter) {
-        flush_resampler();
+        flushed = flush_resampler();
     }
 
     if (m_dither) {
@@ -81,7 +78,7 @@ bool TResampleAudioWriter::close()
     m_resampler.reset();
 
     if (m_codecWriter) {
-        return m_codecWriter->close();
+        return m_codecWriter->close() && flushed;
     }
 
     return false;
@@ -100,9 +97,9 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
 
     // Resampled into the writer's own buffer: the output has another length
     // than the input it is made from, and the input is still read
-    const double ratio = double(m_outputSampleRate) / m_inputSampleRate;
+    const double ratio = double(m_settings.sampleRate) / m_inputSampleRate;
     const nframes_t maxOutputFrames = nframes_t(frameCount * ratio) + 64;
-    m_resampleEncodeBuffer.check_capacity(maxOutputFrames, m_channelCount);
+    m_resampleEncodeBuffer.check_capacity(maxOutputFrames, m_settings.channelCount);
     const nframes_t frames = m_resampler->process(fileIOBuffer.channel_buffers(), frameCount, m_resampleEncodeBuffer.channel_buffers(), 0,
                                                   maxOutputFrames);
     if (frames == 0) {
@@ -112,41 +109,42 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
     return write_interleaved(m_resampleEncodeBuffer, frames);
 }
 
-void TResampleAudioWriter::flush_resampler()
+bool TResampleAudioWriter::flush_resampler()
 {
     // The resampler says how much it can still hold: one flush of that many
     // frames gives all of it
     const nframes_t pending = m_resampler->pending_frames();
-    m_resampleEncodeBuffer.check_capacity(pending, m_channelCount);
+    m_resampleEncodeBuffer.check_capacity(pending, m_settings.channelCount);
     const nframes_t frames = m_resampler->flush(m_resampleEncodeBuffer.channel_buffers(), 0, pending);
-    if (frames > 0) {
-        interleave(m_resampleEncodeBuffer, frames);
-        write_interleaved(m_resampleEncodeBuffer, frames);
+    if (frames == 0) {
+        return true;
     }
+    interleave(m_resampleEncodeBuffer, frames);
+    return write_interleaved(m_resampleEncodeBuffer, frames) == frames;
 }
 
 void TResampleAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
 {
-    buffer.check_capacity(frames, m_channelCount);
-    float* interleaved = buffer.get_file_io_interleaved_buffer().get_data(frames * m_channelCount);
-    for (uint chan = 0; chan < m_channelCount; ++chan) {
+    buffer.check_capacity(frames, m_settings.channelCount);
+    float* interleaved = buffer.get_file_io_interleaved_buffer().get_data(frames * m_settings.channelCount);
+    for (uint chan = 0; chan < m_settings.channelCount; ++chan) {
         const float* data = buffer.get_channel_buffer(chan).get_data(frames);
         for (nframes_t f = 0; f < frames; ++f) {
-            interleaved[f * m_channelCount + chan] = data[f];
+            interleaved[f * m_settings.channelCount + chan] = data[f];
         }
     }
 }
 
 nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nframes_t targetFrames)
 {
-    nframes_t finalInterleavedSamples = targetFrames * m_channelCount;
+    nframes_t finalInterleavedSamples = targetFrames * m_settings.channelCount;
     // Not const: gdither and the codec writers take a plain pointer
     float* interleavedFloatBuffer = fileIOBuffer.get_file_io_interleaved_buffer().get_data(finalInterleavedSamples);
 
     // The bytes a sample takes in memory, as gdither writes it and the
     // codec writer reads it: a 24 bit sample sits in a 32 bit word
     // (GDither32bit, sf_writef_int()), not in the three bytes it takes in
-    // the file (m_settings.sampleBytes)
+    // the file
     size_t containerBytes = 4;
     switch (m_settings.dataFormat) {
     case TraversoDAW::DataFormat::PCM_S8:
@@ -171,7 +169,7 @@ nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, n
     case TraversoDAW::DataFormat::PCM_24:
         Q_ASSERT(m_dither);
         Q_ASSERT(packedOutputBuffer);
-        for (uint chn = 0; chn < m_channelCount; ++chn) {
+        for (uint chn = 0; chn < m_settings.channelCount; ++chn) {
             gdither_runf(m_dither, chn, targetFrames, interleavedFloatBuffer, packedOutputBuffer);
         }
         writtenFrames = m_codecWriter->write(packedOutputBuffer, targetFrames);
@@ -184,9 +182,9 @@ nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, n
         const double int_max = double(INT_MAX);
         const double int_min = double(INT_MIN);
 
-        for (uint chn = 0; chn < m_channelCount; ++chn) {
+        for (uint chn = 0; chn < m_settings.channelCount; ++chn) {
             for (nframes_t x = 0; x < targetFrames; ++x) {
-                uint i = chn + (x * m_channelCount);
+                uint i = chn + (x * m_settings.channelCount);
 
                 if (interleavedFloatBuffer[i] > 1.0f) {
                     ob[i] = INT_MAX;

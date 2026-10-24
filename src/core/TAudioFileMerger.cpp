@@ -88,7 +88,7 @@ void TAudioFileMerger::process_task(MergeTask task)
     spec.set_export_file_name(task.outFileName);
 
     TBufferedAudioStreamWriter writesource(spec.get_export_dir(), spec.get_export_file_name());
-    if (writesource.prepare_export(&spec) == -1) {
+    if (writesource.prepare_file(&spec) == -1) {
         return;
     }
 
@@ -123,7 +123,7 @@ void TAudioFileMerger::process_task(MergeTask task)
 
     if (m_stopMerging) {
         PMESG("AudioFileMerger::process_task: Stop Merging was requested, WriterSource finish export called");
-        writesource.finish_export();
+        writesource.finish_file();
     }
 
     if (m_stopMerging) {

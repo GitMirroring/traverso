@@ -668,7 +668,7 @@ int TAudioClip::init_recording()
     spec->set_export_file_name(m_name + "-" + sourceid);
 
     m_writer = new TBufferedAudioStreamWriter(spec->get_export_dir(), spec->get_export_file_name());
-    if (m_writer->prepare_export(spec) == -1) {
+    if (m_writer->prepare_file(spec) == -1) {
         TLOG_E("clip", "preparing the write source for recording failed");
         delete m_writer;
         m_writer = nullptr;
@@ -686,8 +686,8 @@ int TAudioClip::init_recording()
 
     m_sheet->add_audio_source_to_diskio(m_writer);
 
-    // Writers exportFinished() signal comes from DiskIO thread, so we have to connect by Qt::QueuedConnection
-    connect(m_writer, &TBufferedAudioStreamWriter::exportFinished, this, &TAudioClip::finish_write_source, Qt::QueuedConnection);
+    // Writers fileFinished() signal comes from DiskIO thread, so we have to connect by Qt::QueuedConnection
+    connect(m_writer, &TBufferedAudioStreamWriter::fileFinished, this, &TAudioClip::finish_write_source, Qt::QueuedConnection);
     connect(m_sheet, &TSheet::transportStopped, this, &TAudioClip::finish_recording);
 
     return 1;

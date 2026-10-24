@@ -217,34 +217,11 @@ QString TExportSpecification::get_file_extension() const
 void TExportSpecification::set_data_format(TraversoDAW::DataFormat format)
 {
     m_dataFormat = format;
-
-    switch (m_dataFormat) {
-    case TraversoDAW::DataFormat::PCM_S8:
-        m_sampleBytes = 1;
-        break;
-    case TraversoDAW::DataFormat::PCM_16:
-        m_sampleBytes = 2;
-        break;
-    case TraversoDAW::DataFormat::PCM_24:
-        m_sampleBytes = 3;
-        break;
-    case TraversoDAW::DataFormat::PCM_32:
-    case TraversoDAW::DataFormat::FLOAT:
-        m_sampleBytes = 4;
-        break;
-    }
 }
 
 int TExportSpecification::get_bit_depth() const
 {
-    switch (m_dataFormat) {
-    case TraversoDAW::DataFormat::FLOAT:  return 32;
-    case TraversoDAW::DataFormat::PCM_S8: return 8;
-    case TraversoDAW::DataFormat::PCM_16: return 16;
-    case TraversoDAW::DataFormat::PCM_24: return 24;
-    case TraversoDAW::DataFormat::PCM_32: return 32;
-    }
-    return 32;
+    return TAudioEncodeSettings::bit_depth(m_dataFormat);
 }
 
 QString TExportSpecification::format_to_string(TraversoDAW::BitrateMode format)
@@ -358,37 +335,15 @@ TAudioEncodeSettings TExportSpecification::get_encode_settings() const
     settings.channelCount = get_channel_count();
     settings.sampleRate = get_sample_rate();
     settings.blockSize = get_block_size();
-    settings.sampleBytes = get_sample_bytes();
-    settings.bitDepth = get_bit_depth();
     settings.resampler = get_resampler();
     settings.resampleQuality = get_resample_quality();
     settings.ditherType = get_dither_type();
-    settings.ditherSize = get_dither_size();
     return settings;
 }
 
 GDitherSize TExportSpecification::get_dither_size() const
 {
-    GDitherSize ditherSize;
-
-    switch (get_data_format()) {
-    case TraversoDAW::DataFormat::PCM_S8:
-        ditherSize = GDither8bit;
-        break;
-
-    case TraversoDAW::DataFormat::PCM_16:
-        ditherSize = GDither16bit;
-        break;
-
-    case TraversoDAW::DataFormat::PCM_24:
-        ditherSize = GDither32bit;
-        break;
-
-    default:
-        ditherSize = GDitherFloat;
-        break;
-    }
-    return ditherSize;
+    return TAudioEncodeSettings::dither_size(m_dataFormat);
 }
 
 void TExportSpecification::add_extra_format(const QString& key, const QString& value)

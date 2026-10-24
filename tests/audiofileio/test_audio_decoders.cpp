@@ -86,7 +86,6 @@ static bool write_with_traverso(const QString& path, TraversoDAW::WriterType wri
     // AAC: 16 bit input, as FaacAudioWriter takes it
     const bool aac = writer == TraversoDAW::WriterType::M4A;
     settings.dataFormat = aac ? TraversoDAW::DataFormat::PCM_16 : TraversoDAW::DataFormat::FLOAT;
-    settings.bitDepth = aac ? 16 : 32;
     settings.channelCount = Channels;
     settings.sampleRate = Rate;
     std::unique_ptr<AbstractAudioWriter> file = AbstractAudioWriter::create_audio_writer(settings);

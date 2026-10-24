@@ -80,19 +80,14 @@ int main()
         settings.channelCount = 1;
         settings.sampleRate = c.fileRate;
         settings.blockSize = 1024;
-        int bits = 32;
-        GDitherSize ditherSize = GDitherFloat;
         const char* formatName = "float";
         switch (c.format) {
-        case TraversoDAW::DataFormat::PCM_S8: bits = 8; ditherSize = GDither8bit; formatName = "pcm8"; break;
-        case TraversoDAW::DataFormat::PCM_16: bits = 16; ditherSize = GDither16bit; formatName = "pcm16"; break;
-        case TraversoDAW::DataFormat::PCM_24: bits = 24; ditherSize = GDither32bit; formatName = "pcm24"; break;
+        case TraversoDAW::DataFormat::PCM_S8: formatName = "pcm8"; break;
+        case TraversoDAW::DataFormat::PCM_16: formatName = "pcm16"; break;
+        case TraversoDAW::DataFormat::PCM_24: formatName = "pcm24"; break;
         default: break;
         }
-        settings.sampleBytes = uint(bits / 8);
-        settings.bitDepth = bits;
         settings.ditherType = GDitherNone;
-        settings.ditherSize = ditherSize;
         settings.resampler = c.backend;
         settings.resampleQuality = TAudioResampler::default_quality(c.backend);
 

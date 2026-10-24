@@ -53,7 +53,6 @@ int main()
         settings.writerType = TraversoDAW::WriterType::WAVPACK;
         settings.fileFormat = TraversoDAW::FileFormat::WAVPACK;
         settings.dataFormat = TraversoDAW::DataFormat::FLOAT;
-        settings.bitDepth = 32;
         settings.channelCount = c.channels;
         settings.sampleRate = Rate;
         const QString path = dir.filePath(QStringLiteral("take-%1.wv").arg(c.channels));

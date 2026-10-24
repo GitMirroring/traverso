@@ -96,7 +96,7 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
     TBufferedAudioStreamWriter* writesource = new TBufferedAudioStreamWriter(task.spec->get_export_dir(), task.spec->get_export_file_name());
     bool failedToPrepareWritesource = false;
 
-    if (writesource->prepare_export(task.spec) == -1) {
+    if (writesource->prepare_file(task.spec) == -1) {
         failedToPrepareWritesource = true;
         goto out;
     }
@@ -131,7 +131,7 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
 
 out:
     if (!failedToPrepareWritesource) {
-        writesource->finish_export();
+        writesource->finish_file();
     }
     delete writesource;
     writesource = nullptr;
