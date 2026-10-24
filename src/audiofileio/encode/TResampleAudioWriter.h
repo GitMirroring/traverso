@@ -22,6 +22,24 @@ the Free Software Foundation; either version 2 of the License, or
 class AbstractAudioWriter;
 class TAudioResampler;
 
+/**
+ * @brief Writes planar float audio to one file in the format the settings
+ * describe: the codec (sndfile, WavPack, FLAC, Vorbis, MP3, AAC), the sample
+ * format and the file's rate.
+ *
+ * Between the caller's buffer and the codec writer it does three things, in
+ * this order: resamples when the input rate is not the file's (flushed at
+ * close(), so the file keeps its last milliseconds), interleaves the
+ * channels, and converts float to the file's sample format (8, 16 and 24
+ * bit dithered through gdither, 32 bit scaled, float as it is). It owns the
+ * codec writer, the resamplers, the dither and the buffer the resampled
+ * audio goes through; the caller's buffer is only read. One file per
+ * instance: open(), write_planar() as the audio comes, close(). Not for the
+ * audio thread: it allocates and does file IO.
+ *
+ * The only user is TBufferedAudioStreamWriter (recordings, imports, merges,
+ * exports); the codec writers know nothing of rates or planar buffers.
+ */
 class TResampleAudioWriter
 {
 public:
