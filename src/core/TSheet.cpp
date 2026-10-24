@@ -768,9 +768,14 @@ int TSheet::transport_control(TTransportControl *transportControl)
 
     case TTransportControl::TransportStarting:
         TLOG_RT_I("transport", "starting");
-        // Plays once the seek (or the preparation of a recording) is done:
-        // the seek goes before all refills
-        m_ioGroup.set_playing(true);
+        // From JACK the song starts: it plays once the seek (or the
+        // preparation of a recording) is done, the seek goes before all
+        // refills. Without JACK this is a locate (TAudioDevice::
+        // transport_locate()), which leaves playing as it is: a locate while
+        // stopped is a preparation, idle work for the scheduler
+        if (transportControl->is_slave()) {
+            m_ioGroup.set_playing(true);
+        }
         if (transportControl->get_location() != m_transportLocation) {
             initiate_seek_start(transportControl->get_location());
             return false;
