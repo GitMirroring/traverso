@@ -55,8 +55,8 @@ TResampleAudioReader::~TResampleAudioReader()
 // to the position read before, and the next read is from another one
 void TResampleAudioReader::reset()
 {
-    for (const auto& resampler : m_resamplers) {
-            resampler->reset();
+    if (m_resampler) {
+        m_resampler->reset();
     }
     m_dropFrames = 0;
 }
@@ -76,10 +76,7 @@ void TResampleAudioReader::set_resampler(TAudioResampler::BackendType backend, i
 void TResampleAudioReader::create_resamplers()
 {
     const double ratio = double(m_outputSampleRate) / m_fileSampleRate;
-    m_resamplers.clear();
-    for (uint c = 0; c < m_channels; c++) {
-        m_resamplers.push_back(std::make_unique<TAudioResampler>(m_backend, ratio, m_quality, 512));
-    }
+    m_resampler = std::make_unique<TAudioResampler>(m_backend, ratio, m_quality, m_channels);
 }
 
 void TResampleAudioReader::set_output_rate(uint rate)
@@ -143,21 +140,11 @@ nframes_t TResampleAudioReader::resample_turn(TFileIOBuffer& out, nframes_t at, 
     if (!m_decoder->at_end()) {
         inputFrames = m_decoder->read(m_resampleDecodeBuffer, fileCnt);
     }
-    const bool endOfInput = m_decoder->at_end();
-
-    nframes_t generated = 0;
-    for (uint chan = 0; chan < m_channels && chan < m_resamplers.size(); chan++) {
-        float* output = out.get_channel_buffer(chan).get_data(at + count) + at;
-        if (inputFrames == 0 && endOfInput) {
-            // The file is read to its end: what the resampler still holds
-            generated = m_resamplers[chan]->flush(output, count);
-            continue;
-        }
-        const nframes_t inputSize = m_resampleDecodeBuffer.get_channel_buffer(chan).get_size();
-        generated = m_resamplers[chan]->process(m_resampleDecodeBuffer.get_channel_buffer(chan).get_data(inputSize),
-                                                inputFrames, output, count, endOfInput);
+    if (inputFrames == 0 && m_decoder->at_end()) {
+        // The file is read to its end: what the resampler still holds
+        return m_resampler->flush(out.channel_buffers(), at, count);
     }
-    return generated;
+    return m_resampler->process(m_resampleDecodeBuffer.channel_buffers(), inputFrames, out.channel_buffers(), at, count);
 }
 
 nframes_t TResampleAudioReader::resample(TFileIOBuffer& out, nframes_t count)

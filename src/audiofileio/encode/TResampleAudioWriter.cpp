@@ -14,9 +14,6 @@ the Free Software Foundation; either version 2 of the License, or
 #include "TAudioResampler.h"
 #include "TFileIOBuffer.h"
 #include "gdither.h"
-#include "TLog.h"
-
-#include <algorithm>
 
 TResampleAudioWriter::TResampleAudioWriter(const TAudioEncodeSettings& settings)
     : m_settings(settings)
@@ -45,14 +42,10 @@ bool TResampleAudioWriter::open(const QString& filename, uint inputSampleRate)
     m_outputSampleRate = m_settings.sampleRate;
     m_channelCount = m_settings.channelCount;
 
-    m_resamplers.clear();
+    m_resampler.reset();
     if (m_inputSampleRate != m_outputSampleRate) {
-        double ratio = double(m_outputSampleRate) / m_inputSampleRate;
-        for (uint chn = 0; chn < m_channelCount; ++chn) {
-            m_resamplers.push_back(std::make_unique<TAudioResampler>(
-                m_settings.resampler, ratio, m_settings.resampleQuality, m_settings.blockSize
-                ));
-        }
+        const double ratio = double(m_outputSampleRate) / m_inputSampleRate;
+        m_resampler = std::make_unique<TAudioResampler>(m_settings.resampler, ratio, m_settings.resampleQuality, m_channelCount);
     }
 
     if (m_dither) {
@@ -74,10 +67,10 @@ bool TResampleAudioWriter::open(const QString& filename, uint inputSampleRate)
 
 bool TResampleAudioWriter::close()
 {
-    // The end of the input: what the resamplers still hold goes into the
+    // The end of the input: what the resampler still holds goes into the
     // file too, else the file loses its last few milliseconds
-    if (!m_resamplers.empty() && m_codecWriter) {
-        flush_resamplers();
+    if (m_resampler && m_codecWriter) {
+        flush_resampler();
     }
 
     if (m_dither) {
@@ -85,7 +78,7 @@ bool TResampleAudioWriter::close()
         m_dither = nullptr;
     }
 
-    m_resamplers.clear();
+    m_resampler.reset();
 
     if (m_codecWriter) {
         return m_codecWriter->close();
@@ -100,7 +93,7 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
         return 0;
     }
 
-    if (m_resamplers.empty()) {
+    if (!m_resampler) {
         interleave(fileIOBuffer, frameCount);
         return write_interleaved(fileIOBuffer, frameCount);
     }
@@ -110,13 +103,8 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
     const double ratio = double(m_outputSampleRate) / m_inputSampleRate;
     const nframes_t maxOutputFrames = nframes_t(frameCount * ratio) + 64;
     m_resampleEncodeBuffer.check_capacity(maxOutputFrames, m_channelCount);
-    nframes_t frames = 0;
-    for (uint chan = 0; chan < m_channelCount; ++chan) {
-        const nframes_t produced = m_resamplers[chan]->process(fileIOBuffer.get_channel_buffer(chan).get_data(frameCount), frameCount,
-                                                               m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(maxOutputFrames),
-                                                               maxOutputFrames, false);
-        frames = least_frames(chan, produced, frames);
-    }
+    const nframes_t frames = m_resampler->process(fileIOBuffer.channel_buffers(), frameCount, m_resampleEncodeBuffer.channel_buffers(), 0,
+                                                  maxOutputFrames);
     if (frames == 0) {
         return 0;
     }
@@ -124,43 +112,17 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
     return write_interleaved(m_resampleEncodeBuffer, frames);
 }
 
-void TResampleAudioWriter::flush_resamplers()
+void TResampleAudioWriter::flush_resampler()
 {
-    // A resampler does not say how much it still holds (the input it kept
-    // and the tail of its filter), so it is flushed in the writer's blocks,
-    // the size the resamplers were made with, until it gives nothing
-    const nframes_t block = m_settings.blockSize;
-    m_resampleEncodeBuffer.check_capacity(block, m_channelCount);
-    while (const nframes_t frames = flush_block(block)) {
+    // The resampler says how much it can still hold: one flush of that many
+    // frames gives all of it
+    const nframes_t pending = m_resampler->pending_frames();
+    m_resampleEncodeBuffer.check_capacity(pending, m_channelCount);
+    const nframes_t frames = m_resampler->flush(m_resampleEncodeBuffer.channel_buffers(), 0, pending);
+    if (frames > 0) {
         interleave(m_resampleEncodeBuffer, frames);
         write_interleaved(m_resampleEncodeBuffer, frames);
     }
-}
-
-nframes_t TResampleAudioWriter::flush_block(nframes_t block)
-{
-    nframes_t frames = 0;
-    for (uint chan = 0; chan < m_channelCount; ++chan) {
-        const nframes_t produced = m_resamplers[chan]->flush(m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(block), block);
-        frames = least_frames(chan, produced, frames);
-    }
-    return frames;
-}
-
-nframes_t TResampleAudioWriter::least_frames(uint chan, nframes_t produced, nframes_t least)
-{
-    if (chan == 0) {
-        return produced;
-    }
-    if (produced != least && !m_frameCountMismatchLogged) {
-        // Cannot be made good here: the least drops the surplus of the one
-        // channel, so the channels drift by the difference from here on
-        m_frameCountMismatchLogged = true;
-        TLOG_W("audiofileio", "the resamplers of channel 0 and channel {} gave {} and {} frames; the least is written",
-               chan, least, produced);
-        Q_ASSERT_X(false, "TResampleAudioWriter::least_frames", "the channels' resamplers gave different frame counts");
-    }
-    return std::min(least, produced);
 }
 
 void TResampleAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)

@@ -56,6 +56,17 @@ public:
         memset (m_buffer + m_readOffset, 0, sizeof (audio_sample_t) * nframes);
     }
 
+    // The frames [at, at + count), range checked in a debug build (the read
+    // offset plays no part)
+    audio_sample_t* data(nframes_t at, nframes_t count) {
+        Q_ASSERT(at + count <= m_size);
+        return m_buffer + at;
+    }
+    const audio_sample_t* data(nframes_t at, nframes_t count) const {
+        Q_ASSERT(at + count <= m_size);
+        return m_buffer + at;
+    }
+
     // Zeros for count frames from frame at (the read offset plays no part)
     void silence(nframes_t at, nframes_t count) {
         Q_ASSERT(at + count <= m_size);

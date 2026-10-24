@@ -35,7 +35,7 @@ public:
     {
         // Default initialize to stereo footprint capacity
         for (uint chan = 0; chan < 2; ++chan) {
-            m_channelBuffers.push_back(std::make_unique<TAudioBuffer>(1));
+            add_channel_buffer();
         }
     }
 
@@ -45,6 +45,12 @@ public:
     // Accesses a single, standalone de-interleaved mono channel stream
     TAudioBuffer& get_channel_buffer(uint channel) {
         return *m_channelBuffers.at(channel);
+    }
+
+    // The channel buffers, one per channel, as one array (a resampler takes
+    // them so); they stay where they are when the buffer grows
+    TAudioBuffer* const* channel_buffers() {
+        return m_channelPointers.data();
     }
 
     // Accesses the contiguous interleaved floating point data stream array
@@ -83,7 +89,7 @@ public:
         Q_ASSERT(size > 0);
 
         while (m_channelBuffers.size() < channels) {
-            m_channelBuffers.push_back(std::make_unique<TAudioBuffer>(m_channelBufferSize));
+            add_channel_buffer();
         }
 
         if (size > m_channelBufferSize) {
@@ -110,7 +116,13 @@ public:
     }
 
 private:
+    void add_channel_buffer() {
+        m_channelBuffers.push_back(std::make_unique<TAudioBuffer>(m_channelBufferSize));
+        m_channelPointers.push_back(m_channelBuffers.back().get());
+    }
+
     std::vector<std::unique_ptr<TAudioBuffer>>  m_channelBuffers;
+    std::vector<TAudioBuffer*>                  m_channelPointers;
     TAudioBuffer                                m_interleavedBuffer;
     std::vector<char>                           m_packedByteBuffer;
 

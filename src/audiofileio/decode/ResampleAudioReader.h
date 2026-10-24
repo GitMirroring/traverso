@@ -71,7 +71,7 @@ protected:
     }
 
     std::unique_ptr<TAudioDecoder>                  m_decoder;
-    std::vector<std::unique_ptr<TAudioResampler>>   m_resamplers;
+    std::unique_ptr<TAudioResampler>                m_resampler;
 
     uint                    m_outputSampleRate;
     TAudioResampler::BackendType m_backend{TAudioResampler::BackendType::LIBSOXR};
@@ -79,7 +79,7 @@ protected:
     bool                    m_isResampleAvailable;
 
 private:
-    // One per channel, for the ratio of the output rate to the file's
+    // For all channels, for the ratio of the output rate to the file's
     void create_resamplers();
 
     TFileIOBuffer m_resampleDecodeBuffer;

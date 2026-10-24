@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Remon Sijrier
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 #pragma once
 
 #include "TAudioBuffer.h"
@@ -5,16 +8,23 @@
 #include <QList>
 #include <QString>
 #include <memory>
+#include <vector>
 
-class ResampleBackend {
-public:
-    virtual ~ResampleBackend() = default;
-    virtual void reset() = 0;
-    virtual nframes_t process(const float* input, nframes_t inFrames,
-                              float* output, nframes_t maxOutFrames,
-                              double ratio, bool endOfInput, nframes_t& framesConsumed) = 0;
-};
+class ResampleBackend;
 
+/**
+ * @brief Converts audio from one rate to another, all channels of a stream
+ * at once: every channel gives the same frames, by construction.
+ *
+ * The caller hands channel buffers (one TAudioBuffer per channel) and a
+ * range; the backends' plain pointers stay inside this class. Input that a
+ * process() cannot take yet (the output range is full) is kept for the next
+ * one. At the end of the input, flush() gives what is still inside: the input
+ * kept and the tail of the filter, at most pending_frames() frames.
+ *
+ * Two backends: soxr (the default) and libsamplerate. Not for the audio
+ * thread: it allocates when the input grows.
+ */
 class TAudioResampler
 {
 public:
@@ -40,32 +50,46 @@ public:
     static QString backend_name(BackendType backend);
     static BackendType backend_from_name(const QString& name);
 
-    // quality: one of qualities(backend). The ratio stays: another ratio is
-    // another resampler (soxr cannot change it once it ran).
-    TAudioResampler(BackendType backend, double srcRatio, int quality, long blockSize);
+    // ratio: the output rate over the input rate. quality: one of
+    // qualities(backend). The ratio stays: another ratio is another
+    // resampler (soxr cannot change it once it ran).
+    TAudioResampler(BackendType backend, double ratio, int quality, uint channels);
     ~TAudioResampler();
+
+    uint channel_count() const { return m_channels; }
 
     // Forgets the frames fed so far (filter history, kept input): before
     // feeding frames from another position than the last one's
     void reset();
 
-    // CLEAN & PURE: Strictly float-to-float mono resampling
-    nframes_t process(const float* inputBuffer, nframes_t inputFrames,
-                      float* outputBuffer, nframes_t maxOutputFrames,
-                      bool endOfInput);
-    // The end of the input: what the resampler still holds (input it kept
-    // and the tail of its filter), up to maxOutputFrames. Called until it
-    // gives nothing.
-    nframes_t flush(float* outputBuffer, nframes_t maxOutputFrames);
+    // Feeds inputFrames frames of in (one buffer per channel, from frame 0)
+    // and puts what comes out into out (one buffer per channel) from frame
+    // at, at most count frames. The frames given, the same in every channel;
+    // fewer than count while the filter fills.
+    nframes_t process(const TAudioBuffer* const* in, nframes_t inputFrames, TAudioBuffer* const* out, nframes_t at, nframes_t count);
+
+    // The end of the input: at most this many frames still come out (the
+    // input kept and the tail of the filter)
+    nframes_t pending_frames() const;
+    // The end of the input: what is still inside into out from frame at, at
+    // most count frames. The frames given; fewer than count once it is all
+    // out. A flush of pending_frames() frames gives all of it.
+    nframes_t flush(TAudioBuffer* const* out, nframes_t at, nframes_t count);
 
 private:
-    BackendType     m_backendType;
-    double          m_srcRatio;
-    long            m_blockSize;
+    // The kept input followed by inputFrames frames of in (when in is given)
+    // through the backend into out from frame at, at most count frames
+    nframes_t run(const TAudioBuffer* const* in, nframes_t inputFrames, TAudioBuffer* const* out, nframes_t at, nframes_t count,
+                  bool endOfInput);
 
+    uint m_channels;
+    double m_ratio;
     std::unique_ptr<ResampleBackend> m_backend;
 
-    nframes_t       m_leftOverFrames;
-    TRealTimeAudioBuffer m_inputWorkBuffer;
+    // The input a process() could not hand on yet, per channel
+    std::vector<std::vector<float>> m_kept;
+    nframes_t m_keptFrames{0};
+    // The backend's view of the input and the output, per channel
+    std::vector<const float*> m_inputPointers;
+    std::vector<float*> m_outputPointers;
 };
-

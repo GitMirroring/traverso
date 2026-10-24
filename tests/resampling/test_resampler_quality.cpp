@@ -16,6 +16,9 @@
 #include <vector>
 
 static int failures = 0;
+// Every resampler of level_after() gave all it held with one flush of
+// pending_frames(): a second flush gave nothing
+static bool flushedAll = true;
 
 static void check(bool ok, const char* what)
 {
@@ -40,13 +43,24 @@ static double level_after(TAudioResampler::BackendType backend, int quality, dou
         input[i] = float(0.5 * std::sin(2.0 * M_PI * frequency * i / InputRate));
     }
 
-    TAudioResampler resampler(backend, double(OutputRate) / InputRate, quality, 1024);
-    std::vector<float> output(frames + 4096, 0.0f);
+    TAudioResampler resampler(backend, double(OutputRate) / InputRate, quality, 1);
+    TAudioBuffer in(1024);
+    TAudioBuffer out(frames + 4096);
+    TAudioBuffer* inBuffer = &in;
+    TAudioBuffer* outBuffer = &out;
     nframes_t produced = 0;
     for (nframes_t at = 0; at < frames; at += 1024) {
         const nframes_t n = std::min<nframes_t>(1024, frames - at);
-        produced += resampler.process(input.data() + at, n, output.data() + produced, nframes_t(output.size()) - produced, false);
+        std::copy_n(input.data() + at, n, in.data(0, n));
+        produced += resampler.process(&inBuffer, n, &outBuffer, produced, out.get_size() - produced);
     }
+    // One flush of pending_frames() gives all that is left
+    const nframes_t pending = resampler.pending_frames();
+    if (produced + pending <= out.get_size()) {
+        produced += resampler.flush(&outBuffer, produced, pending);
+        flushedAll = flushedAll && resampler.flush(&outBuffer, produced, std::min<nframes_t>(16, out.get_size() - produced)) == 0;
+    }
+    const float* output = out.data(0, produced);
 
     // The middle, away from the start and the end of the tone
     const nframes_t from = OutputRate / 10;
@@ -89,6 +103,8 @@ int main()
         std::snprintf(what, sizeof(what), "%s: its settings name", name.constData());
         check(TAudioResampler::backend_from_name(TAudioResampler::backend_name(backend)) == backend, what);
     }
+
+    check(flushedAll, "every quality of both backends: one flush of pending_frames() frames gives all it holds");
 
     if (failures) {
         std::printf("%d check(s) failed\n", failures);
