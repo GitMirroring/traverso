@@ -6,7 +6,7 @@
 // right, more channels none), and WPAudioReader reads all channels back.
 
 #include "AbstractAudioWriter.h"
-#include "ResampleAudioReader.h"
+#include "TAudioDecoder.h"
 #include "TFileIOBuffer.h"
 
 #include <QTemporaryDir>
@@ -82,10 +82,10 @@ int main()
             WavpackCloseFile(wp);
         }
 
-        TResampleAudioReader reader(path);
-        bool same = reader.is_valid() && reader.get_num_channels() == c.channels && reader.get_nframes() == Frames;
+        std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(path);
+        bool same = decoder && decoder->is_valid() && decoder->channel_count() == c.channels && decoder->frame_count() == Frames;
         TFileIOBuffer buffer;
-        same = same && reader.read_from(buffer, nframes_t(0), Frames) == Frames;
+        same = same && decoder->read(buffer, Frames) == Frames;
         for (uint channel = 0; same && channel < c.channels; ++channel) {
             const float* samples = buffer.get_channel_buffer(channel).get_data(Frames);
             for (nframes_t frame = 0; frame < Frames; ++frame) {

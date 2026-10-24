@@ -1,6 +1,7 @@
 # Define the static library for managing audio file input and output processes
 add_library(traversoaudiofileio STATIC
     decode/AbstractAudioReader.cpp
+    decode/TAudioDecoder.h decode/TAudioDecoder.cpp
     decode/SFAudioReader.cpp
     decode/TResampleAudioReader.cpp
     decode/WPAudioReader.cpp

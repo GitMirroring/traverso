@@ -11,9 +11,9 @@
 // WavPack and AAC (M4A) with Traverso's own writers. Each channel holds a
 // tone of its own, so channels that are swapped or silent show.
 
-#include "AbstractAudioReader.h"
 #include "AbstractAudioWriter.h"
 #include "MadAudioReader.h"
+#include "TAudioDecoder.h"
 #include "TFileIOBuffer.h"
 
 #include <QTemporaryDir>
@@ -112,13 +112,15 @@ static bool write_with_traverso(const QString& path, TraversoDAW::WriterType wri
 // The decoder as the test uses it: the only place that names its API
 struct Decoder
 {
-    std::unique_ptr<AbstractAudioReader> reader;
+    std::unique_ptr<TAudioDecoder> decoder;
 
-    bool valid() const { return reader && reader->is_valid(); }
-    uint channels() const { return reader->get_num_channels(); }
-    uint rate() const { return reader->get_file_rate(); }
-    nframes_t frames() const { return reader->get_nframes(); }
-    nframes_t read(TFileIOBuffer& buffer, nframes_t first, nframes_t count) { return reader->read_from(buffer, first, count); }
+    bool valid() const { return decoder && decoder->is_valid(); }
+    uint channels() const { return decoder->channel_count(); }
+    uint rate() const { return decoder->rate(); }
+    nframes_t frames() const { return decoder->frame_count(); }
+    nframes_t read(TFileIOBuffer& buffer, nframes_t first, nframes_t count) { return decoder->read_from(buffer, first, count); }
+    // A read where the decoder is, without a seek
+    nframes_t read_on(TFileIOBuffer& buffer, nframes_t count) { return decoder->read(buffer, count); }
 };
 
 struct Format
@@ -150,7 +152,7 @@ static void check_or_known(bool ok, const char* what, const Format& format)
 
 static Decoder from_factory(const QString& path)
 {
-    return Decoder{AbstractAudioReader::create_audio_reader(path)};
+    return Decoder{open_audio_decoder(path)};
 }
 
 static Decoder with_mad(const QString& path)
@@ -279,6 +281,30 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         }
         std::snprintf(what, sizeof(what), "%s: a read across the end gives the last %u frames and zeros after them", format.name, read);
         check_or_known(read == 100 && zeros, what, format);
+    }
+
+    // Past the end: nothing to read, only zeros (no stale audio), whether
+    // the decoder is at the end already or is asked for a frame past it
+    for (const bool seekPastEnd : {false, true}) {
+        const nframes_t count = 500;
+        fill_with_garbage(buffer, count);
+        const nframes_t read = seekPastEnd ? decoder.read(buffer, frames + 10, count) : decoder.read_on(buffer, count);
+        bool zeros = true;
+        for (uint channel = 0; channel < Channels; ++channel) {
+            const float* data = buffer.get_channel_buffer(channel).get_data(count);
+            for (nframes_t i = 0; i < count; ++i) {
+                zeros = zeros && data[i] == 0.0f;
+            }
+        }
+        std::snprintf(what, sizeof(what), "%s: a read %s gives no frames, only zeros (%u)", format.name,
+                      seekPastEnd ? "of a frame past the end" : "at the end", read);
+        // A decoder that counts more frames than it gives is not at its end
+        // after the last frame it gave: known where the frames are known wrong
+        if (seekPastEnd) {
+            check(read == 0 && zeros, what);
+        } else {
+            check_or_known(read == 0 && zeros, what, format);
+        }
     }
 }
 

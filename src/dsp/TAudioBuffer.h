@@ -56,6 +56,12 @@ public:
         memset (m_buffer + m_readOffset, 0, sizeof (audio_sample_t) * nframes);
     }
 
+    // Zeros for count frames from frame at (the read offset plays no part)
+    void silence(nframes_t at, nframes_t count) {
+        Q_ASSERT(at + count <= m_size);
+        memset(m_buffer + at, 0, sizeof(audio_sample_t) * count);
+    }
+
     // returns pointer to data buffer starting from read offset (if it was set). Range check in Debug build
     audio_sample_t* get_data(nframes_t nframes) const {
         Q_ASSERT((nframes + m_readOffset) <= m_size);

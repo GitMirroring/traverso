@@ -487,14 +487,14 @@ public:
 
 
 MadAudioReader::MadAudioReader(const QString& filename)
- : AbstractAudioReader(filename)
+ : TAudioDecoder(filename)
 {
     d = new MadDecoderPrivate();
     d->handle = new K3bMad();
 
     initDecoderInternal();
 
-    m_fileFrames = countFrames();
+    m_frames = countFrames();
 
     switch( d->firstHeader.mode ) {
         case MAD_MODE_SINGLE_CHANNEL:
@@ -506,7 +506,7 @@ MadAudioReader::MadAudioReader(const QString& filename)
             m_channels = 2;
     }
 
-    if (m_fileFrames <= 0) {
+    if (m_frames <= 0) {
         d->handle->cleanup();
         delete d->handle;
         delete d;
@@ -514,8 +514,7 @@ MadAudioReader::MadAudioReader(const QString& filename)
         return;
     }
 
-    m_fileSampleRate = d->firstHeader.samplerate;
-    m_length = TTimeRef(m_fileFrames, m_fileSampleRate);
+    m_rate = d->firstHeader.samplerate;
 
     initDecoderInternal();
 }
@@ -606,11 +605,9 @@ bool MadAudioReader::can_decode(const QString& filename)
 }
 
 
-bool MadAudioReader::seek_private(nframes_t start)
+bool MadAudioReader::seek(nframes_t start)
 {
-    Q_ASSERT(d);
-
-    if (start >= m_fileFrames) {
+    if (!d || start >= m_frames) {
         return false;
     }
 
@@ -683,6 +680,7 @@ bool MadAudioReader::seek_private(nframes_t start)
     }
     // =========================================================================
 
+    m_frame = start;
     return true;
 }
 
@@ -751,7 +749,23 @@ unsigned long MadAudioReader::countFrames()
 }
 
 
-nframes_t MadAudioReader::read_private(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
+nframes_t MadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+{
+    if (count == 0) {
+        return 0;
+    }
+    fileIOBuffer.check_capacity(count, m_channels);
+
+    const nframes_t readFrames = (d && !at_end()) ? decode(fileIOBuffer, count) : 0;
+
+    // What the file did not give: zeros (the contract of TAudioDecoder::read())
+    fileIOBuffer.silence(readFrames, count - readFrames, m_channels);
+    m_frame += readFrames;
+    return readFrames;
+}
+
+
+nframes_t MadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
     TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
     d->outputBuffer = &readBuffer;
@@ -823,8 +837,8 @@ bool MadAudioReader::createPcmSamples(mad_synth* synth)
     nframes_t i;
     nframes_t overflowIndex = 0;
 
-    if (writeBuffer && (m_readPos + d->outputPos + nframes) > m_fileFrames) {
-        nframes = m_fileFrames - (m_readPos + outputOffset);
+    if (writeBuffer && (m_frame + d->outputPos + nframes) > m_frames) {
+        nframes = m_frames - (m_frame + outputOffset);
     }
 
     const mad_fixed_t* srcLeft  = synth->pcm.samples[0];

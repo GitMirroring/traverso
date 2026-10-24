@@ -30,15 +30,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 TResampleAudioReader::TResampleAudioReader(const QString& filename)
     : AbstractAudioReader(filename)
 {
-    m_reader = AbstractAudioReader::create_audio_reader(filename);
-    if (!m_reader) {
+    m_decoder = open_audio_decoder(filename);
+    if (!m_decoder) {
         PERROR("ResampleAudioReader: couldn't create AudioReader");
         m_channels = m_fileFrames = 0;
     } else {
-        m_channels = m_reader->get_num_channels();
-        m_fileSampleRate = m_reader->get_file_rate();
-        m_fileFrames = m_reader->get_nframes();
-        m_length = m_reader->get_length();
+        m_channels = m_decoder->channel_count();
+        m_fileSampleRate = m_decoder->rate();
+        m_fileFrames = m_decoder->frame_count();
+        m_length = m_decoder->length();
         m_outputSampleRate = m_fileSampleRate;
     }
 
@@ -47,13 +47,6 @@ TResampleAudioReader::TResampleAudioReader(const QString& filename)
 
 TResampleAudioReader::~TResampleAudioReader()
 {
-}
-
-void TResampleAudioReader::clear_buffers()
-{
-    if (m_reader) {
-        m_reader->clear_buffers();
-    }
 }
 
 // Forgets what the resamplers hold of the frames fed so far (the filter
@@ -76,7 +69,6 @@ void TResampleAudioReader::set_resampler(TAudioResampler::BackendType backend, i
     m_quality = quality;
     m_isResampleAvailable = true;
     create_resamplers();
-    clear_buffers();
 
     seek_private(pos());
 }
@@ -92,14 +84,14 @@ void TResampleAudioReader::create_resamplers()
 
 void TResampleAudioReader::set_output_rate(uint rate)
 {
-    if (!m_reader) return;
+    if (!m_decoder) return;
     if (m_outputSampleRate == rate) return;
 
     m_outputSampleRate = rate;
     // The length is the file's, at any output rate; the frames the file
     // gives at the output rate end where it ends
-    m_length = m_reader->get_length();
-    m_fileFrames = rate == m_fileSampleRate ? m_reader->get_nframes()
+    m_length = m_decoder->length();
+    m_fileFrames = rate == m_fileSampleRate ? m_decoder->frame_count()
                                             : nframes_t(TTimeRef::frame_at_or_after(m_length, m_outputSampleRate));
 
     // Another ratio is another resampler
@@ -115,9 +107,10 @@ void TResampleAudioReader::set_output_rate(uint rate)
 
 bool TResampleAudioReader::seek_private(nframes_t start)
 {
-    Q_ASSERT(m_reader);
+    Q_ASSERT(m_decoder);
     if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
-        return m_reader->seek(start);
+        // A decoder that is there already does not seek
+        return m_decoder->frame() == start || m_decoder->seek(start);
     }
     // The resamplers' filter history and kept input are from the position
     // read before: fed on, they would put that position's tail (a click, the
@@ -134,7 +127,8 @@ bool TResampleAudioReader::seek_private(nframes_t start)
     const TTimeRef position(start, m_outputSampleRate);
     const TTimeRef common = TTimeRef::common_frame_at_or_before(position, m_fileSampleRate, m_outputSampleRate);
     m_dropFrames = nframes_t(TTimeRef::frame_at_or_before(position - common, m_outputSampleRate));
-    return m_reader->seek(nframes_t(TTimeRef::frame_at_or_before(common, m_fileSampleRate)));
+    const nframes_t fileFrame = nframes_t(TTimeRef::frame_at_or_before(common, m_fileSampleRate));
+    return m_decoder->frame() == fileFrame || m_decoder->seek(fileFrame);
 }
 
 nframes_t TResampleAudioReader::resample_turn(TFileIOBuffer& out, nframes_t at, nframes_t count, nframes_t& inputFrames)
@@ -144,13 +138,12 @@ nframes_t TResampleAudioReader::resample_turn(TFileIOBuffer& out, nframes_t at, 
         fileCnt = 1;
     }
 
+    // The decoder makes room in the buffer and leaves no stale frames in it
     inputFrames = 0;
-    if (!m_reader->eof()) {
-        m_resampleDecodeBuffer.check_capacity(fileCnt, m_channels);
-        m_resampleDecodeBuffer.silence_buffers();
-        inputFrames = m_reader->read(m_resampleDecodeBuffer, fileCnt);
+    if (!m_decoder->at_end()) {
+        inputFrames = m_decoder->read(m_resampleDecodeBuffer, fileCnt);
     }
-    const bool endOfInput = m_reader->eof();
+    const bool endOfInput = m_decoder->at_end();
 
     nframes_t generated = 0;
     for (uint chan = 0; chan < m_channels && chan < m_resamplers.size(); chan++) {
@@ -179,7 +172,7 @@ nframes_t TResampleAudioReader::resample(TFileIOBuffer& out, nframes_t count)
         nframes_t inputFrames = 0;
         const nframes_t generated = resample_turn(out, produced, count - produced, inputFrames);
         produced += generated;
-        if (inputFrames == 0 && !m_reader->eof()) {
+        if (inputFrames == 0 && !m_decoder->at_end()) {
             // A read error
             break;
         }
@@ -194,10 +187,10 @@ nframes_t TResampleAudioReader::resample(TFileIOBuffer& out, nframes_t count)
 
 nframes_t TResampleAudioReader::read_private(TFileIOBuffer& buffer, nframes_t frameCount)
 {
-    Q_ASSERT(m_reader);
+    Q_ASSERT(m_decoder);
 
     if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
-        return m_reader->read(buffer, frameCount);
+        return m_decoder->read(buffer, frameCount);
     }
 
     nframes_t framesToConvert = frameCount;

@@ -6,7 +6,7 @@
 // channels, whether the new read is smaller or larger than the ones before,
 // and a 4-channel file read through it keeps its channels apart.
 
-#include "ResampleAudioReader.h"
+#include "TAudioDecoder.h"
 #include "TFileIOBuffer.h"
 
 #include <QFile>
@@ -70,11 +70,11 @@ static bool write_wav(const QString& path, uint channels, uint frames)
 // that every channel holds its own value
 static bool read_file(TFileIOBuffer& buffer, const QString& path, uint channels, nframes_t count)
 {
-    TResampleAudioReader reader(path);
-    if (!reader.is_valid() || reader.get_num_channels() != channels) {
+    std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(path);
+    if (!decoder || !decoder->is_valid() || decoder->channel_count() != channels) {
         return false;
     }
-    if (reader.read_from(buffer, nframes_t(0), count) != count) {
+    if (decoder->read(buffer, count) != count) {
         return false;
     }
     for (uint channel = 0; channel < channels; ++channel) {

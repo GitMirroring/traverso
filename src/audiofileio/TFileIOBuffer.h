@@ -60,6 +60,13 @@ public:
     // =========================================================================
     // Common Management API (Used by both Read and Write paths)
     // =========================================================================
+    // Zeros in the first channels channel buffers, count frames from frame at
+    void silence(nframes_t at, nframes_t count, uint channels) {
+        for (uint channel = 0; channel < channels; ++channel) {
+            m_channelBuffers.at(channel)->silence(at, count);
+        }
+    }
+
     void silence_buffers() {
         m_interleavedBuffer.silence_data();
         for (const auto &buffer : m_channelBuffers) {

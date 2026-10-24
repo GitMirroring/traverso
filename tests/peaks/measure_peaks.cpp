@@ -9,7 +9,7 @@
 //   measure_peaks query <audio> <peaks>    2000 columns at three zooms
 //   measure_peaks record <dir>             8 mono tracks, 10 minutes: time
 
-#include "ResampleAudioReader.h"
+#include "TAudioDecoder.h"
 #include "TFileIOBuffer.h"
 #include "TPeakBuildTask.h"
 #include "TPeakFile.h"
@@ -31,17 +31,16 @@
 class FileSamples final : public TWaveformSampleSource
 {
 public:
-    explicit FileSamples(const QString& fileName) : m_reader(fileName) {}
+    explicit FileSamples(const QString& fileName) : m_decoder(open_audio_decoder(fileName)) {}
 
-    bool is_valid() { return m_reader.is_valid(); }
-    uint rate() { return m_reader.get_file_rate(); }
-    int channel_count() { return int(m_reader.get_num_channels()); }
-    qint64 frame_count() { return qint64(m_reader.get_nframes()); }
+    bool is_valid() { return m_decoder && m_decoder->is_valid(); }
+    uint rate() { return m_decoder->rate(); }
+    int channel_count() { return int(m_decoder->channel_count()); }
+    qint64 frame_count() { return qint64(m_decoder->frame_count()); }
 
     qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override
     {
-        m_buffer.check_capacity(nframes_t(count), uint(channel_count()));
-        const qint64 read = std::clamp<qint64>(qint64(m_reader.read_from(m_buffer, nframes_t(firstFrame), nframes_t(count))), 0, count);
+        const qint64 read = std::clamp<qint64>(qint64(m_decoder->read_from(m_buffer, nframes_t(firstFrame), nframes_t(count))), 0, count);
         for (int c = 0; c < channel_count(); ++c) {
             std::copy_n(m_buffer.get_channel_buffer(uint(c)).get_data(nframes_t(std::max<qint64>(read, 1))), read, channels[c]);
         }
@@ -54,16 +53,16 @@ public:
     qint64 calls{0};
 
 private:
-    TResampleAudioReader m_reader;
+    std::unique_ptr<TAudioDecoder> m_decoder;
     TFileIOBuffer m_buffer;
 };
 
 static int build(const QString& audio, const QString& peaks)
 {
     QFile::remove(peaks);
-    TResampleAudioReader reader(audio);
+    std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(audio);
     TPeakBuildTask task(TPeakBuildTask::audio_file(audio), audio,
-                        std::make_shared<TPeakStream>(reader.get_file_rate(), int(reader.get_num_channels()), peaks));
+                        std::make_shared<TPeakStream>(decoder->rate(), int(decoder->channel_count()), peaks));
     QElapsedTimer timer;
     timer.start();
     while (task.step()) {

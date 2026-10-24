@@ -8,7 +8,7 @@
 // other programs do not).
 
 #include "AbstractAudioWriter.h"
-#include "ResampleAudioReader.h"
+#include "TAudioDecoder.h"
 #include "TFileIOBuffer.h"
 
 #include <QFile>
@@ -40,12 +40,12 @@ static float sample(nframes_t frame, uint channel)
 // The file holds frames frames of sample(), as a reader sees them
 static bool reads(const QString& path, nframes_t frames)
 {
-    TResampleAudioReader reader(path);
-    if (!reader.is_valid() || reader.get_nframes() != frames || reader.get_num_channels() != Channels) {
+    std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(path);
+    if (!decoder || !decoder->is_valid() || decoder->frame_count() != frames || decoder->channel_count() != Channels) {
         return false;
     }
     TFileIOBuffer buffer;
-    if (reader.read_from(buffer, nframes_t(0), frames) != frames) {
+    if (decoder->read(buffer, frames) != frames) {
         return false;
     }
     for (uint channel = 0; channel < Channels; ++channel) {

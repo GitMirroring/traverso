@@ -21,29 +21,31 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include <AbstractAudioReader.h>
+#include "TAudioDecoder.h"
 #include "wavpack/wavpack.h"
 
-
-class WPAudioReader : public AbstractAudioReader
+class WPAudioReader : public TAudioDecoder
 {
 public:
-	WPAudioReader(const QString& filename);
-	~WPAudioReader();
-	
-	QString decoder_type() const {return "wavpack";}
-	
-	static bool can_decode(const QString& filename);
+    explicit WPAudioReader(const QString& filename);
+    ~WPAudioReader() override;
+
+    QString decoder_type() const override { return "wavpack"; }
+
+    static bool can_decode(const QString& filename);
 
     static void print_libwavpack_version();
 
-protected:
-    bool seek_private(nframes_t frameToSeekTo) final;
-    nframes_t read_private(TFileIOBuffer& fileIOBuffer, nframes_t frameCount) final;
-	
-	WavpackContext*	m_wp;
-	bool		m_isFloat;
-	int		m_bitsPerSample;
-	int		m_bytesPerSample;
+    bool seek(nframes_t frame) override;
+    nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+
+private:
+    // readFrames frames WavPack unpacked into the channel buffers, as float
+    void unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuffer, nframes_t readFrames);
+
+    WavpackContext*	m_wp{nullptr};
+    bool		m_isFloat{false};
+    int		m_bitsPerSample{0};
+    int		m_bytesPerSample{0};
 };
 

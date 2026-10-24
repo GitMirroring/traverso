@@ -21,29 +21,28 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include <AbstractAudioReader.h>
+#include "TAudioDecoder.h"
 #include "sndfile.h"
 
 #include <QFile>
 
-class SFAudioReader : public AbstractAudioReader
+// WAV, W64, AIFF, FLAC, Ogg Vorbis, MP3 and what else libsndfile reads
+class SFAudioReader : public TAudioDecoder
 {
 public:
-	SFAudioReader(const QString &filename);
-	~SFAudioReader();
-	
-	QString decoder_type() const {return "sndfile";}
-	
-	static bool can_decode(QString filename);
+    explicit SFAudioReader(const QString& filename);
+    ~SFAudioReader() override;
 
-protected:
-    bool seek_private(nframes_t start) final;
-    nframes_t read_private(TFileIOBuffer& fileIOBuffer, nframes_t nframes) final;
-	
-	SNDFILE*	m_sf;
-	SF_INFO		m_sfinfo{};
-	
+    QString decoder_type() const override { return "sndfile"; }
+
+    static bool can_decode(QString filename);
+
+    bool seek(nframes_t frame) override;
+    nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+
 private:
-	QFile m_file;
+    SNDFILE*	m_sf{nullptr};
+    SF_INFO		m_sfinfo{};
+    QFile m_file;
 };
 

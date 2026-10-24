@@ -131,7 +131,7 @@ public:
 };
 
 FaadAudioReader::FaadAudioReader(const QString& filename)
-	: AbstractAudioReader(filename)
+	: TAudioDecoder(filename)
 	, d(new FaadDecoderPrivate())
 {
 	if (!libfaad_is_present) {
@@ -145,16 +145,7 @@ FaadAudioReader::FaadAudioReader(const QString& filename)
 
 FaadAudioReader::~FaadAudioReader()
 {
-    FaadAudioReader::clear_buffers();
 	delete d;
-}
-
-void FaadAudioReader::clear_buffers()
-{
-	if (d) {
-		d->overflowStart = 0;
-		d->overflowSize = 0;
-	}
 }
 
 bool FaadAudioReader::can_decode(const QString& filename)
@@ -291,10 +282,10 @@ bool FaadAudioReader::initDecoderInternal()
 				}
 			}
 
-			m_fileSampleRate = static_cast<uint>(rate > 0 ? rate : track->SampleDescription.audio.samplerate_hz);
+			m_rate = static_cast<uint>(rate > 0 ? rate : track->SampleDescription.audio.samplerate_hz);
 			m_channels = static_cast<uint>(ch > 0 ? ch : track->SampleDescription.audio.channelcount);
 
-			if (m_fileSampleRate == 0 || m_channels == 0) {
+			if (m_rate == 0 || m_channels == 0) {
 				return false;
 			}
 
@@ -302,24 +293,23 @@ bool FaadAudioReader::initDecoderInternal()
 			d->samplePcmOffsets.resize(d->sampleCount + 1);
 			d->samplePcmOffsets[0] = 0;
 
-			unsigned int timescale = track->timescale ? track->timescale : m_fileSampleRate;
+			unsigned int timescale = track->timescale ? track->timescale : m_rate;
 			for (unsigned int i = 0; i < d->sampleCount; ++i) {
 				unsigned int fb = 0, ts = 0, dur = 0;
 				MP4D_frame_offset(&d->demux, d->audioTrack, i, &fb, &ts, &dur);
-				nframes_t pcm_pos = static_cast<nframes_t>(((double)ts / timescale) * m_fileSampleRate + 0.5);
+				nframes_t pcm_pos = static_cast<nframes_t>(((double)ts / timescale) * m_rate + 0.5);
 				d->samplePcmOffsets[i] = pcm_pos;
 			}
 
 			uint64_t totalDur = ((uint64_t)track->duration_hi << 32) | track->duration_lo;
 			if (totalDur > 0) {
-				m_fileFrames = static_cast<nframes_t>(((double)totalDur / timescale) * m_fileSampleRate + 0.5);
+				m_frames = static_cast<nframes_t>(((double)totalDur / timescale) * m_rate + 0.5);
 			} else {
-				m_fileFrames = d->sampleCount * 1024;
+				m_frames = d->sampleCount * 1024;
 			}
-			d->samplePcmOffsets[d->sampleCount] = m_fileFrames;
+			d->samplePcmOffsets[d->sampleCount] = m_frames;
 
-			m_length = TTimeRef(m_fileFrames, m_fileSampleRate);
-			m_readPos = 0;
+			m_frame = 0;
 			d->currentPacket = 0;
 			return true;
 		}
@@ -376,20 +366,17 @@ bool FaadAudioReader::initDecoderInternal()
 		return false;
 	}
 
-	m_fileSampleRate = static_cast<uint>(rate);
+	m_rate = static_cast<uint>(rate);
 	m_channels = static_cast<uint>(ch);
-	m_fileFrames = static_cast<nframes_t>(d->adtsFrameOffsets.size() * 1024);
-	m_length = TTimeRef(m_fileFrames, m_fileSampleRate);
-	m_readPos = 0;
+	m_frames = static_cast<nframes_t>(d->adtsFrameOffsets.size() * 1024);
+	m_frame = 0;
 	d->currentAdtsFrame = 0;
 	return true;
 }
 
-bool FaadAudioReader::seek_private(nframes_t start)
+bool FaadAudioReader::seek(nframes_t start)
 {
-	Q_ASSERT(d);
-
-	if (start >= m_fileFrames) {
+	if (!d || start >= m_frames) {
 		return false;
 	}
 
@@ -449,6 +436,7 @@ bool FaadAudioReader::seek_private(nframes_t start)
 			}
 		}
 
+		m_frame = start;
 		return true;
 	} else {
 		// ADTS mode
@@ -493,11 +481,27 @@ bool FaadAudioReader::seek_private(nframes_t start)
 			}
 		}
 
+		m_frame = start;
 		return true;
 	}
 }
 
-nframes_t FaadAudioReader::read_private(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
+nframes_t FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+{
+    if (count == 0) {
+        return 0;
+    }
+    fileIOBuffer.check_capacity(count, m_channels);
+
+    const nframes_t readFrames = (d && d->hDecoder && !at_end()) ? decode(fileIOBuffer, count) : 0;
+
+    // What the file did not give: zeros (the contract of TAudioDecoder::read())
+    fileIOBuffer.silence(readFrames, count - readFrames, m_channels);
+    m_frame += readFrames;
+    return readFrames;
+}
+
+nframes_t FaadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
     TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
 	nframes_t outputPos = 0;

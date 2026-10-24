@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 SFAudioReader::SFAudioReader(const QString& filename)
-    : AbstractAudioReader(filename)
+    : TAudioDecoder(filename)
 {
     /* although libsndfile says we don't need to set this,
 	valgrind and source code shows us that we do.
@@ -48,9 +48,8 @@ SFAudioReader::SFAudioReader(const QString& filename)
     }
 
     m_channels = m_sfinfo.channels;
-    m_fileFrames = m_sfinfo.frames;
-    m_fileSampleRate = m_sfinfo.samplerate;
-    m_length = TTimeRef(m_fileFrames, m_fileSampleRate);
+    m_frames = m_sfinfo.frames;
+    m_rate = m_sfinfo.samplerate;
 }
 
 
@@ -93,38 +92,36 @@ bool SFAudioReader::can_decode(QString filename)
 }
 
 
-bool SFAudioReader::seek_private(nframes_t start)
+bool SFAudioReader::seek(nframes_t frame)
 {
-    Q_ASSERT(m_sf);
-
-
-    if (start >= m_fileFrames) {
+    if (!m_sf || frame >= m_frames) {
         return false;
     }
 
-    if (sf_seek (m_sf, (off_t) start, SEEK_SET) < 0) {
-        char errbuf[256];
-        sf_error_str (0, errbuf, sizeof (errbuf) - 1);
-        //		PERROR("ReadAudioSource: could not seek to frame %d within %s (%s)", start, QS_C(m_fileName), errbuf);
+    if (sf_seek (m_sf, (off_t) frame, SEEK_SET) < 0) {
         return false;
     }
 
+    m_frame = frame;
     return true;
 }
 
 
-nframes_t SFAudioReader::read_private(TFileIOBuffer& fileIOBuffer, nframes_t nframes)
+nframes_t SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 {
-    Q_ASSERT(m_sf);
+    if (count == 0) {
+        return 0;
+    }
+    fileIOBuffer.check_capacity(count, m_channels);
 
     TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
 
-    nframes_t readFrames = sf_readf_float(m_sf, readBuffer.get_data(nframes * m_channels), nframes);
+    const nframes_t readFrames = (m_sf && !at_end()) ? nframes_t(sf_readf_float(m_sf, readBuffer.get_data(count * m_channels), count)) : 0;
 
     // De-interlace
     switch (m_channels) {
     case 0:
-        return readFrames;
+        return 0;
     case 1:
     {
         TAudioBuffer::copy_data(fileIOBuffer.get_channel_buffer(0), readBuffer, readFrames);
@@ -152,6 +149,9 @@ nframes_t SFAudioReader::read_private(TFileIOBuffer& fileIOBuffer, nframes_t nfr
     }
     }
 
+    // What the file did not give: zeros (the contract of TAudioDecoder::read())
+    fileIOBuffer.silence(readFrames, count - readFrames, m_channels);
+    m_frame += readFrames;
     return readFrames;
 }
 

@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include <AbstractAudioReader.h>
+#include "TAudioDecoder.h"
 
 extern "C" {
 #include <mad.h>
@@ -101,19 +101,23 @@ private:
 };
 
 
-class MadAudioReader : public AbstractAudioReader
+class MadAudioReader : public TAudioDecoder
 {
 public:
-    MadAudioReader(const QString& filename);
-    ~MadAudioReader();
+    explicit MadAudioReader(const QString& filename);
+    ~MadAudioReader() override;
 
-    QString decoder_type() const { return "mad"; }
+    QString decoder_type() const override { return "mad"; }
 
     static bool can_decode(const QString& filename);
 
+    bool seek(nframes_t frame) override;
+    nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+
 protected:
-    bool seek_private(nframes_t start) final;
-    nframes_t read_private(TFileIOBuffer& fileIOBuffer, nframes_t frameCount) final;
+    // MAD's decoding of frameCount frames into the channel buffers; the
+    // frames it gave
+    nframes_t decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
 
     bool initDecoderInternal();
     unsigned long countFrames();

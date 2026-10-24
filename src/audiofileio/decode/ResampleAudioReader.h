@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TFileIOBuffer.h"
 #include "AbstractAudioReader.h"
+#include "TAudioDecoder.h"
 #include "TAudioResampler.h"
 #include <memory>
 #include <vector>
@@ -40,14 +41,13 @@ public:
         return AbstractAudioReader::read_from(buffer, TTimeRef::to_frame(start, m_outputSampleRate), count);
     }
 
-    QString decoder_type() const { return (m_reader) ? m_reader->decoder_type() : ""; }
-    void clear_buffers();
+    QString decoder_type() const { return (m_decoder) ? m_decoder->decoder_type() : ""; }
 
     uint get_output_rate() { return m_outputSampleRate; }
-    uint get_file_rate() { return m_reader->get_file_rate(); }
+    uint get_file_rate() { return m_decoder->rate(); }
     // The frames of the file at its own rate; get_nframes() counts them at
     // the output rate
-    nframes_t get_file_frames() const { return m_reader ? m_reader->get_nframes() : 0; }
+    nframes_t get_file_frames() const { return m_decoder ? m_decoder->frame_count() : 0; }
     void set_output_rate(uint rate);
     // The resampler for another output rate than the file's: a backend and
     // one of its qualities (TAudioResampler::qualities())
@@ -70,7 +70,7 @@ protected:
         return TTimeRef::to_frame(TTimeRef(frame, m_outputSampleRate), m_fileSampleRate);
     }
 
-    std::unique_ptr<AbstractAudioReader>            m_reader;
+    std::unique_ptr<TAudioDecoder>                  m_decoder;
     std::vector<std::unique_ptr<TAudioResampler>>   m_resamplers;
 
     uint                    m_outputSampleRate;

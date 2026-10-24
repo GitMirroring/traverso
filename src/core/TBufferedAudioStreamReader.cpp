@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TBufferedAudioStreamReader.h"
 #include "ResampleAudioReader.h"
+#include "TAudioDecoder.h"
 
 #include "TProjectManager.h"
 #include "TProject.h"
@@ -75,13 +76,8 @@ TBufferedAudioStreamReader::TBufferedAudioStreamReader(const QString& dir, const
 {
     private_init();
 
-    std::unique_ptr<AbstractAudioReader> reader = AbstractAudioReader::create_audio_reader(m_fileName);
-
-    if (reader) {
-        m_channelCount = reader->get_num_channels();
-    } else {
-        m_channelCount = 0;
-    }
+    std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(m_fileName);
+    m_channelCount = decoder ? decoder->channel_count() : 0;
 
     m_silent = false;
 }
@@ -234,7 +230,7 @@ int TBufferedAudioStreamReader::init( )
        //         return (m_error = INVALID_CHANNEL_COUNT);
        // }
 
-    // Never reached, it's allready checked in AbstractAudioReader::is_valid() which was allready called!
+    // Never reached, it's allready checked in TResampleAudioReader::is_valid() which was allready called!
     if (m_channelCount == 0) {
 //		PERROR("ReadAudioSource: not a valid channel count: %d", m_channelCount);
         delete m_resampleAudioReader;
