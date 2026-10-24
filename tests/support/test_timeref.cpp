@@ -20,8 +20,45 @@ static void check(bool ok, const char* what)
     }
 }
 
+// Frames to time at any rate: exact where the rate divides
+// UNIVERSAL_SAMPLE_RATE, else the first universal frame at or after the frame
+// (so the frame comes back), also beyond 32 bits of frames
+static void frames_to_time()
+{
+    const qint64 universal = TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    for (const uint rate : {8000u, 11025u, 22050u, 32000u, 37800u, 44100u, 48000u, 50000u, 64000u, 88200u, 96000u, 176400u,
+                            192000u, 352800u, 384000u, 768000u}) {
+        bool divides = universal % rate == 0;
+        bool exact = true;
+        bool back = true;
+        bool first = true;
+        bool same = true;
+        for (const uint64_t frame : {uint64_t(0), uint64_t(1), uint64_t(2), uint64_t(3), uint64_t(63), uint64_t(64), uint64_t(65),
+                                     uint64_t(1023), uint64_t(65536), uint64_t(rate) - 1, uint64_t(rate), uint64_t(rate) + 1,
+                                     uint64_t(3600) * rate + 17, uint64_t(1) << 33, (uint64_t(1) << 38) + 12345}) {
+            const TTimeRef time(frame, rate);
+            if (divides) {
+                exact = exact && time.universal_frame() == qint64(frame) * (universal / rate);
+            }
+            // The frame back, and no earlier universal frame gives it
+            back = back && TTimeRef::frame_at_or_before(time, rate) == qint64(frame);
+            first = first && (frame == 0 || TTimeRef::frame_at_or_before(time - qint64(1), rate) == qint64(frame) - 1);
+            if (frame <= 0xffffffffu) {
+                TTimeRef added;
+                added.add_frames(nframes_t(frame), rate);
+                same = same && TTimeRef(nframes_t(frame), rate) == time && added == time;
+            }
+        }
+        char what[96];
+        std::snprintf(what, sizeof(what), "%u Hz: frames to time (%s)", rate, divides ? "exact" : "rounded up");
+        check(exact && back && first && same, what);
+    }
+}
+
 int main()
 {
+    frames_to_time();
+
     const qint64 rate = TTimeRef::UNIVERSAL_SAMPLE_RATE;
 
     check(TTimeRef::from_nanoseconds(0).universal_frame() == 0, "zero");

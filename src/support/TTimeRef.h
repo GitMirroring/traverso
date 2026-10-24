@@ -23,12 +23,11 @@ public:
     explicit TTimeRef(int position) : TTimeRef(qint64(position)) {}
     explicit TTimeRef(qint64 position);
     explicit TTimeRef(double position);
+    // The time of frame frame at rate rate: exact where rate divides
+    // UNIVERSAL_SAMPLE_RATE (every device rate), else the first universal
+    // frame at or after it, so frame_at_or_before() gives frame back at any
+    // rate. Fits 64 bits for some ten thousand years of frames.
     explicit TTimeRef(nframes_t frame, uint rate);
-    // TODO
-    // Upgrade internal data structure for nframes to uint64_t ?
-    // Pipewire is using this type internally to track time
-    // FIXME
-    // m_universalFrame can overflow now easily...
     explicit TTimeRef(uint64_t frame, uint rate);
 
     explicit TTimeRef(qreal frame, uint rate);
@@ -101,7 +100,9 @@ public:
 
 
     void add_frames(nframes_t frames, uint rate) {
-        m_universalFrame += ((UNIVERSAL_SAMPLE_RATE / rate) * frames);
+        // Rounded per call where rate does not divide UNIVERSAL_SAMPLE_RATE,
+        // so the sum of many calls drifts there; every device rate divides it
+        m_universalFrame += universal_frames(frames, rate);
     }
 
     qint64 universal_frame() const {return m_universalFrame;}
@@ -278,6 +279,8 @@ public:
     }
 
 private:
+    static qint64 universal_frames(uint64_t frames, uint rate);
+
     qint64 m_universalFrame;
 };
 

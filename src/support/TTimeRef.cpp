@@ -12,16 +12,26 @@ TTimeRef::TTimeRef() {
     m_universalFrame = 0;
 }
 
-TTimeRef::TTimeRef(nframes_t frame, uint rate) {
-    Q_ASSERT(rate != 0);
-    m_universalFrame = (TTimeRef::UNIVERSAL_SAMPLE_RATE / rate) * frame;
+TTimeRef::TTimeRef(nframes_t frame, uint rate)
+    : m_universalFrame(universal_frames(frame, rate))
+{
 }
 
-TTimeRef::TTimeRef(uint64_t frame, uint rate) {
+TTimeRef::TTimeRef(uint64_t frame, uint rate)
+    : m_universalFrame(universal_frames(frame, rate))
+{
+}
+
+// The whole seconds and the rest separately, so the multiplication of the
+// rest cannot overflow (the whole seconds only after some ten thousand
+// years); the rest rounded up, so frame_at_or_before() gives the frame back
+qint64 TTimeRef::universal_frames(uint64_t frames, uint rate)
+{
     Q_ASSERT(rate != 0);
-    // FIXME
-    // m_universalFrame is also 64 bit, now it can overflow!
-    m_universalFrame = (TTimeRef::UNIVERSAL_SAMPLE_RATE / rate) * frame;
+    const uint64_t universal = uint64_t(UNIVERSAL_SAMPLE_RATE);
+    const uint64_t seconds = frames / rate;
+    const uint64_t rest = frames % rate;
+    return qint64(seconds * universal + (rest * universal + rate - 1) / rate);
 }
 
 TTimeRef::TTimeRef(qreal frame, uint rate) {
