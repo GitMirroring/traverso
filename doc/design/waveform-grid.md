@@ -75,8 +75,10 @@ query only (`traverso_peak_benchmark`, best of three runs):
 | 45000 (the hour) | 0.612 ms | 0.122 ms | -80% |
 | 65536 | 0.118 ms | 0.119 ms | +1% |
 
-(At 40 and 63 frames per pixel the benchmark computes its samples with sin();
-decoding a real file costs less, the grid's level 0 the same.)
+At 40 and 63 frames per pixel the benchmark computes its samples with sin().
+Through the real reader (`TResampleAudioReader`, warm cache) the exact query
+costs 2.15 and 3.16 ms for a WAV file and 6.8 and 10.7 ms for a FLAC file;
+the grid 0.22 and 0.34 ms for both.
 
 While a file is written (mapped per read): the whole hour 2.56–2.70 ms
 against 2.00–2.09 ms, 10 minutes 0.64–0.67 ms against 0.43–0.45 ms; page
@@ -129,7 +131,8 @@ peak-file generation, shift and tile, in an LRU of about 32 MB; a finished
 file's tiles immutable, a growing file's tile final once its frames lie in
 complete chunks.
 
-**Repaints in today's view.** During a recording a clip repaints strips at
+**Repaints in today's view** (from the `update()` call sites in
+`TAudioClipView`, not counted in a live session). During a recording a clip repaints strips at
 the display rate (`update_recording()`), a few pixels wide, touching a few
 pages; a whole repaint comes once a minute (the bounding rect grows) and
 with the user's zoom, scroll, mute or lock. During a build a clip repaints
