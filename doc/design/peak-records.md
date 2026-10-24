@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 Remon Sijrier
 SPDX-License-Identifier: GPL-2.0-or-later
 -->
 
-# Peak files as records, level 0 first (design, 2026-10-20)
+# Peak files as records in chunks (design 2026-10-20, format 4 2026-10-24)
 
 The simplified peak system, decided with the user on 2026-10-20 under the
 KISS principle: simple where possible, complex only where it must be. It
@@ -11,107 +11,148 @@ replaces the periods, the in-memory pyramid and the lock-free reader
 protocol of `peak-diskio.md` (sections 2 to 4). The value codes, the RMS,
 the peak cache and the DiskIO rounds stay as they were.
 
-## 1. File format: TRAVPEAK version 3
+Format version 4 (2026-10-24, the user's proposal "Peak-bestandsformaat v4:
+gechunkte pyramide" and its decisions) writes the levels while the audio
+comes, in chunks. A file being written has its levels too, so painting a
+long recording zoomed out no longer reads all of level 0 per repaint, and
+the pass over level 0 after a recording or a build is gone.
+
+## 1. File format: TRAVPEAK version 4
 
 ```
-[header, 72 bytes][level 0 records][level 1 records] ... [top level: 1 record]
+[header, 80 bytes][chunk 0][chunk 1] ... [chunk n - 1]
+chunk: [level 0: 1024 records][level 1: 512] ... [level 10: 1 record]
 ```
 
 - **A record per block**, the same for every level: the min and max code of
   every channel, then the RMS code of every channel (int16 log codes, 1024
   steps per octave). 6 bytes per channel, 12 for stereo.
+- **A chunk** holds 2^C level-0 blocks and levels 0 to C of them, each level
+  an array of records, level 0 first. C = 10: 65536 frames, 1.4 s at 48 kHz.
+  Pairs never cross a chunk, so a chunk's levels are the pyramid's, cut to
+  the chunk. There are no levels above C: a query goes through level C one
+  block (one chunk) at a time.
 - **Level counts round up** (ceil): level L + 1 has half the blocks of level
-  L, rounded up, down to a level of one block. The last block of a level
-  may cover fewer frames; it is weighted by its real frames.
-- **Every offset follows from the frame count** in the header: level L
-  starts at `72 + recordBytes × (blocks of the levels below it)`.
+  L, rounded up. The last block of a level may cover fewer frames; it is
+  weighted by its real frames.
+- **Every chunk has the same size** (2047 records); the last one is filled up
+  with zeros, at most 12 KB per channel. Every offset follows from the frame
+  count and C: block k of level L is in chunk `k >> (C - L)`, at
+  `level_offset(L) + (k & (2^(C - L) - 1))`. No table.
+- **The file is only appended to**; a chunk does not change once written.
 - **The header is written last.** Until then it is zero, so an unfinished
   file is Invalid and gets rebuilt (it is a cache). It holds the source's
-  rate, channels, frames, size and modification time, and a checksum.
-- Separate planes (all min/max, then all RMS) would need the length before
-  the first record is written; a recording does not know it.
+  rate, channels, frames, size and modification time, the chunk level C (a
+  reader takes the file's own, 1 to 20; this version writes 10), and a
+  checksum.
 
 ## 2. Writing: one path for recordings, builds and imports
 
 `TPeakStream`:
 
 1. `open()`: a part file of its own, `<peak>.<pid>-<n>.part`, never one that
-   exists already; 72 zero bytes for the header.
-2. `append()`: every 64 frames a level-0 record. After each append the
-   records are written, flushed, and the frames they cover are published in
-   one atomic count (release). Nothing else is shared between threads.
-3. `finish(audioPath)`: the partial last block; the source's size and time
-   for the header.
-4. `post_process()`, one piece per call (16384 level-0 blocks): the levels
-   above level 0 from the decoded level-0 codes, in one pass.
+   exists already; 80 zero bytes for the header.
+2. `append()`: every 64 frames a level-0 record, and from its decoded codes
+   the levels above it: per level a block waits for its pair, a pair makes
+   the block above it, up to level C.
    - Min and max are combined codes: exact.
    - The RMS comes from the mean squares of the decoded level-0 codes,
      weighted by frames, rounded once: within one code step (0.0059 dB) at
-     every level. The user accepted this as invisible.
-   - Each level collects up to 16384 records and then writes them at its
-     offset: about 1.5 MB for an hour of stereo, freed when it is done.
-   - At the end: the header, then the rename to the peak file's name
-     (`TPeakFile::publish()`). Windows renames no file that is open, and the
-     waveform of a recording opens it for a moment per repaint (a virus
-     scanner or the indexer may too): there a refused rename is tried again
-     in the next steps, for two seconds, never in a sleep inside a round.
-     The part file stays meanwhile.
+     every level. The user accepted this as invisible. A recording makes the
+     same file as a build from its audio.
+   - Levels 1 to C of the chunk being made are in memory (1023 records, 12 KB
+     per channel) and follow the chunk's level 0 in the file when the chunk
+     is full.
+   - After each append the records are written, flushed, and the frames they
+     cover are published in one atomic count (release). The complete chunks
+     follow from that count: a chunk's last block and its levels above are
+     written together. Nothing else is shared between threads.
+3. `finish(audioPath)`: the partial last block; in the last chunk a block
+   without its pair covers the end of the source alone and moves up as it
+   is, level by level; zeros for the blocks the chunk does not have. The
+   source's size and time for the header.
+4. `post_process()`: the header, then the rename to the peak file's name
+   (`TPeakFile::publish()`). Windows renames no file that is open, and a
+   waveform maps it for a moment per repaint (a virus scanner or the indexer
+   may open it too): there a refused rename is tried again in the next
+   steps, for two seconds, never in a sleep inside a round. The part file
+   stays meanwhile.
 
 Who calls what:
 
 | Writer | append | post_process |
 |---|---|---|
 | Recording | its writer, on the write DiskIO | a job of `TPeakBuildService` in the read DiskIO's idle time, asked for by `TAudioClip::finish_write_source()` |
-| Build | `TPeakBuildTask` steps in DiskIO's idle time | the same task's next steps |
+| Build | `TPeakBuildTask` steps in DiskIO's idle time | the same task's next step |
 | Import, merge | their own thread | at once, in `finish_export()` (until imports move to DiskIO, a separate work order) |
+
+`post_process()` is one short step now. The recording's job and the file
+waveform joining it (section 3) stay until the glue around them is made
+simpler, after the merge of the IO scheduler branches.
 
 **Write failure** (a full cache disk) never affects the recording: the
 stream stops writing, the count freezes, the log says it once. `finish()`
-removes the part file; there is no post-processing, and the waveform builds
-the file from the audio afterwards. (On Windows a removal while the
-waveform reads fails; the part file then goes with the cache's eviction of
-part files older than a day.)
+removes the part file; there is no header, and the waveform builds the file
+from the audio afterwards. (On Windows a removal while the waveform reads
+fails; the part file then goes with the cache's eviction of part files older
+than a day.)
 
 ## 3. Reading
 
-- **While a file is written** the waveform reads the level-0 records in view
-  below the count with plain reads (`TPeakStream::read()`), opening and
-  closing the file per read: no handle stays open that keeps Windows from
-  renaming it. The view (`TPeakLevels`) has level 0 only, a window of it;
-  the column query is the one of a finished file, exact.
-- **Accepted interim cost:** zoomed far out over a long take, this reads all
-  of level 0 in view, 16 MB per channel-hour at 48 kHz, mostly from the
-  page cache, on every full repaint. Measured: one hour of stereo in 3840
-  columns, 14.8 ms per repaint (0.57 ms from the finished file). It ends
-  with post-processing.
+- **While a file is written** the waveform reads it through
+  `TPeakStream::read()`: per call it opens the file, maps what is written
+  (the complete chunks, then level 0 of the chunk being written), runs the
+  query on that view (`TPeakLevels`) and unmaps. Nothing stays open between
+  reads: no handle or mapping keeps Windows from renaming the file.
+- **A query splits its range** (`visit_range`) at the end of the complete
+  chunks: before it the pyramid, after it level 0 one block at a time, at
+  most 1024 blocks. That end is a multiple of 2^C, so no pair crosses it.
+- **Cost:** a fresh mapping costs a page fault per page the query touches;
+  zoomed out, one page per chunk in view. Measured (section 4): 10 minutes in
+  view 0.63 ms per repaint, a whole hour 4.24 ms (14.25 ms with level 0
+  alone). Up to about 10 minutes in view this is the trade the user chose:
+  no state between reads. If wider views during a recording matter, the next
+  step is a mapping kept between reads (remapped when a chunk is complete),
+  with an explicit order between letting go of it and the rename on Windows.
+  The format stays the same.
+- **The view is the file's:** every record read has its final value, on
+  every level of the complete chunks. A column's min and max are the
+  finished file's; its RMS, where the column reaches into the chunk being
+  written, is within a step (that part comes from level 0).
 - **Between the rename and the published flag** a read can find the part
   file gone and the flag not yet set: that repaint shows no waveform, and
   the job's end repaints right after it. Accepted.
 - **After the stop** the recording's file waveform asks for its peak file,
-  finds the post-processing job of the same file and joins it: it shows
-  level 0 until the job is done, then it maps the finished file. Once
-  renamed, a read through the stream reads level 0 from the file's name (it
-  is in the same place). When the job ends in the moment between the
-  waveform's open and its request, the waveform builds the file again from
-  the audio: a wasted build, the result is the same. When post-processing
-  fails, the waveform builds once from the audio.
-- **A finished file** is mapped (`TPeakFile`): every level an array of
-  records. Columns take the middle of a column from the highest level that
-  fits and the edges from the levels below; `max_amplitude()` is the bound
-  from the levels plus exact reads at the edges. No maxima store.
+  finds the post-processing job of the same file and joins it; it maps the
+  finished file when the job is done. Once renamed, a read through the
+  stream reads from the file's name (the records are in the same place).
+  When the job ends in the moment between the waveform's open and its
+  request, the waveform builds the file again from the audio: a wasted
+  build, the result is the same. When post-processing fails, the waveform
+  builds once from the audio.
+- **A finished file** is mapped (`TPeakFile`) and stays mapped. Columns take
+  the middle of a column from the highest level that fits and the edges
+  from the levels below; `max_amplitude()` is the bound from the levels plus
+  exact reads at the edges. No maxima store.
 
 ## 4. Measured
 
-Release, one hour of 48 kHz stereo (`traverso_peak_benchmark`):
+Release, one hour of 48 kHz stereo, 3840 columns (`traverso_peak_benchmark`):
 
-| | master (periods, in-memory pyramid) | records |
+| | version 3 | version 4 |
 |---|---|---|
-| making the pyramid | 732 ms + 18 ms writing | level 0 551 ms + post-processing 172 ms |
+| making the pyramid | level 0 564 ms + post-processing 175 ms | 773 ms, all levels while written |
 | file size | 64.8 MB | 64.8 MB |
-| whole hour in 3840 columns | 0.81 ms | 0.57 ms (finished file), 14.8 ms (level 0 while written) |
+| while written, the whole hour in view | 14.25 ms (level 0 alone) | 4.24 ms (mapped per read) |
+| while written, 10 minutes in view | 2.30 ms | 0.63 ms |
+| finished file, 10 minutes in view | 0.28 ms | 0.32 ms |
 
-Headless app (Debug), Bendictus, 6 sources: build span 1.04–1.08 s against
-1.6–2.1 s on master.
+Headless app (Debug), Minidisk opname, 52 builds: all built in 10.4 s
+against 14.7 s on master; the other projects within the noise.
+
+Version 3 against the periods (2026-10-20): making the pyramid 551 + 172 ms
+against 732 + 18 ms; the whole hour from the finished file 0.57 ms against
+0.81 ms; headless, Bendictus, build span 1.04–1.08 s against 1.6–2.1 s.
 
 ## 5. What went
 
@@ -123,23 +164,35 @@ Headless app (Debug), Bendictus, 6 sources: build span 1.04–1.08 s against
 
 The peak files (`TPeak*`, `TWaveform*`) went from 2606 to 2098 code lines.
 
+In version 4: the pass over level 0 after writing (`PostProcess`,
+`write_level()`, the levels' output buffers) and the windows of level 0 in
+`TPeakLevels` (`Level`). With the chunks added, the peak files went from
+1962 to 1935 code lines.
+
 ## 6. Tests
 
 Headless, on the pure classes (`tests/peaks`):
-- a round trip against brute force (mono to three channels, partial last
-  blocks, the RMS within half a step at level 0 and a step above);
+- a round trip against brute force (mono to three channels, lengths around
+  blocks, pairs and chunks, partial last blocks, the RMS within half a step
+  at level 0 and a step above);
+- the levels made while writing against a separate pass over level 0 (the
+  rules of version 3), every record byte for byte: lengths around the chunks'
+  edges, one to six channels, NaN, inf and samples beyond +24 dB
+  (`test_peak_chunks`); an RMS combined without the frames' weights fails it;
 - appends in any chunk size, builds in any slice size: the same file;
-- a crash before the header, after level 0 and halfway post-processing:
-  Invalid; a stream given up or gone halfway leaves nothing;
+- a crash before the header, while the chunks are written or after the last
+  one: Invalid; a stream given up or gone before its header leaves nothing;
 - a write failure in the middle of a recording (the process's file size
   limit): the count freezes, what was written stays readable, the stop
   leaves no file;
-- a cancel during level 0 and during post-processing;
+- a cancel while the chunks are written and before the header;
 - the hand-over: a recording's post-processing as a task of its own;
 - stress, also under ThreadSanitizer: a writer appends 256-frame buffers
-  while a reader queries below the count; the finished file's columns equal
-  the live ones (min and max exactly, the RMS within a step);
-- the benchmark of the zoomed-out live query (section 4).
+  while a reader queries what is written; every record read, on every level
+  of the complete chunks, equals the finished file's, and so do the columns
+  (min and max exactly, the RMS within a step);
+- the benchmark of the live and finished queries (section 4).
 
 Not tested headless: the app's recording path (writer, clip, service), which
-needs a runtime test.
+needs a runtime test, and the mapping of a file that another handle still
+appends to on Windows and macOS.
