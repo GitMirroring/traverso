@@ -65,26 +65,26 @@ static void test_grid()
     const struct {
         double framesPerPixel;
         int shift;
-    } shifts[] = {{1.0, 0}, {1.0001, 1}, {1.5, 1}, {2.0, 1}, {2.0001, 2}, {31.9, 5}, {32.0, 5}, {32.1, 6}, {63.9, 6}, {64.0, 6},
-                  {100.0, 7}, {4096.0, 12}, {45000.0, 16}, {65536.0, 16}, {65537.0, 17}, {1.0e6, 20}};
+    } shifts[] = {{32.1, 6}, {63.9, 6}, {64.0, 6}, {64.0001, 7}, {100.0, 7}, {4096.0, 12}, {45000.0, 16}, {65536.0, 16},
+                  {65537.0, 17}, {1.0e6, 20}};
     for (const auto& s : shifts) {
         const TWaveformGrid grid = TWaveformGrid::power_of_two(s.framesPerPixel, 48000);
         CHECK(grid.is_valid() && grid.shift == s.shift, "%g frames per pixel: shift %d, expected %d", s.framesPerPixel, grid.shift, s.shift);
     }
-    for (const double none : {0.999, 0.5, 0.0, -1.0, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity(),
-                              std::ldexp(1.0, TWaveformGrid::MaxShift) * 2.0}) {
+    // Up to 32 frames per pixel the samples are read: no grid
+    for (const double none : {32.0, 31.9, 8.0, 1.0, 0.999, 0.5, 0.0, -1.0, std::numeric_limits<double>::quiet_NaN(),
+                              std::numeric_limits<double>::infinity(), std::ldexp(1.0, TWaveformGrid::MaxShift) * 2.0}) {
         CHECK(!TWaveformGrid::power_of_two(none, 48000).is_valid(), "%g frames per pixel has a grid", none);
     }
     CHECK(!TWaveformGrid::power_of_two(4.0, 0).is_valid(), "rate 0 has a grid");
 
     // Rates that do not divide UNIVERSAL_SAMPLE_RATE: a grid only where 2^s
-    // frames are whole universal frames
-    CHECK(!TWaveformGrid::power_of_two(1.0, 384000).is_valid() && TWaveformGrid::power_of_two(2.0, 384000).is_valid(),
-          "384 kHz: a grid from 2 frames per column");
-    CHECK(!TWaveformGrid::power_of_two(2.0, 768000).is_valid() && TWaveformGrid::power_of_two(4.0, 768000).is_valid(),
-          "768 kHz: a grid from 4 frames per column");
+    // frames are whole universal frames (384 kHz from 2 frames, 768 kHz from
+    // 4: both from the grid's smallest columns on; 37.8 and 50 kHz never)
+    CHECK(TWaveformGrid::power_of_two(64.0, 384000).is_valid() && TWaveformGrid::power_of_two(64.0, 768000).is_valid(),
+          "384 and 768 kHz: a grid");
     bool none = true;
-    for (int shift = 0; shift <= 20; ++shift) {
+    for (int shift = TWaveformGrid::MinShift; shift <= 20; ++shift) {
         none = none && !TWaveformGrid::power_of_two(std::ldexp(1.0, shift), 37800).is_valid()
                && !TWaveformGrid::power_of_two(std::ldexp(1.0, shift), 50000).is_valid();
     }
@@ -93,7 +93,7 @@ static void test_grid()
     // The edges are exact: whole frames, whole universal frames
     for (const uint rate : {44100u, 48000u, 96000u, 384000u}) {
         bool exact = true;
-        for (int shift = 1; shift <= 24; ++shift) {
+        for (int shift = TWaveformGrid::MinShift; shift <= 24; ++shift) {
             const TWaveformGrid grid = TWaveformGrid::power_of_two(std::ldexp(1.0, shift), rate);
             if (!grid.is_valid() || grid.shift != shift) {
                 exact = false;
@@ -292,8 +292,10 @@ static int check_views(const TPeakLevels& levels, const std::vector<std::vector<
 
         // Every pixel: the grid column that holds its centre, or the exact
         // column where that grid column reaches outside the clip
+        // No edge where the clip reaches the end of the source: past it there is no audio
         const qint64 clipFirst = TTimeRef::frame_at_or_after(clipStart, rate);
-        const qint64 clipLast = TTimeRef::frame_at_or_after(clipEnd, rate);
+        const qint64 clipLast = TTimeRef::frame_at_or_after(clipEnd, rate) >= frames ? std::numeric_limits<qint64>::max()
+                                                                                       : TTimeRef::frame_at_or_after(clipEnd, rate);
         std::map<qint64, int> pixelsOf;
         std::vector<qint64> columnOf(static_cast<size_t>(count), -1);
         bool right = true;
@@ -422,7 +424,7 @@ static void test_device_columns()
             views += check_views(file.levels(), signal, "finished");
         }
         std::printf("%d channel(s): %d views on the grid checked\n", channelCount, views);
-        CHECK(views > 300, "%d channel(s): only %d views on the grid", channelCount, views);
+        CHECK(views > 250, "%d channel(s): only %d views on the grid", channelCount, views);
     }
 }
 

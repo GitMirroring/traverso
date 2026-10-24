@@ -14,14 +14,14 @@ TWaveformGrid TWaveformGrid::power_of_two(double framesPerPixel, uint rate)
 {
     TWaveformGrid grid;
     grid.rate = rate;
-    if (rate == 0 || !(framesPerPixel >= MinFramesPerPixel) || framesPerPixel > double(qint64(1) << MaxShift)) {
+    if (rate == 0 || !(framesPerPixel > 0.0) || framesPerPixel > double(qint64(1) << MaxShift)) {
         return grid;
     }
     int shift = 0;
     while (double(qint64(1) << shift) < framesPerPixel) {
         ++shift;
     }
-    if (((TTimeRef::UNIVERSAL_SAMPLE_RATE << shift) % qint64(rate)) != 0) {
+    if (shift < MinShift || ((TTimeRef::UNIVERSAL_SAMPLE_RATE << shift) % qint64(rate)) != 0) {
         return grid;
     }
     grid.shift = shift;
@@ -219,17 +219,32 @@ TWaveformColumns::Source TWaveformColumns::device_columns(const TPeakLevels& lev
         return query(levels, samples, start, columnWidth, count, out);
     }
 
-    // The grid column of every pixel: the one that holds its centre
-    const TTimeRef half(columnWidth.universal_frame() / 2);
+    // The grid column of every pixel: the one that holds its centre. A time
+    // is at or past the start of grid column k when it is at or past
+    // start_of(k) (the first universal frame of frame k << shift), so the
+    // centres step through the columns' starts without a division.
+    TTimeRef centre = start + TTimeRef(columnWidth.universal_frame() / 2);
+    qint64 column = grid.column_of(std::max<qint64>(TTimeRef::frame_at_or_before(centre, rate), 0));
+    TTimeRef next = grid.start_of(column + 1);
+    const TTimeRef gridWidth = grid.column_width();
     std::vector<qint64> pixelColumn(static_cast<size_t>(count));
     for (int i = 0; i < count; ++i) {
-        const qint64 centre = TTimeRef::frame_at_or_before(start + columnWidth * double(i) + half, rate);
-        pixelColumn[size_t(i)] = grid.column_of(std::max<qint64>(centre, 0));
+        while (centre >= next) {
+            ++column;
+            next += gridWidth;
+        }
+        pixelColumn[size_t(i)] = column;
+        centre += columnWidth;
     }
 
-    // The pixels whose grid column lies inside the clip: [inLeft, inRight)
+    // The pixels whose grid column lies inside the clip: [inLeft, inRight).
+    // Past the end of the source there is no audio to keep out: a clip that
+    // reaches it (a whole file, a recording) has no edge there.
     const qint64 clipFirst = TTimeRef::frame_at_or_after(clipStart, rate);
-    const qint64 clipLast = TTimeRef::frame_at_or_after(clipEnd, rate);
+    qint64 clipLast = TTimeRef::frame_at_or_after(clipEnd, rate);
+    if (clipLast >= levels.frame_count()) {
+        clipLast = std::numeric_limits<qint64>::max();
+    }
     auto inside = [&](qint64 column) { return grid.first_frame(column) >= clipFirst && grid.first_frame(column + 1) <= clipLast; };
     int inLeft = 0;
     while (inLeft < count && !inside(pixelColumn[size_t(inLeft)])) {
@@ -243,9 +258,14 @@ TWaveformColumns::Source TWaveformColumns::device_columns(const TPeakLevels& lev
         return query(levels, samples, start, columnWidth, count, out);
     }
 
+    // One grid column per pixel and no edge of the clip in view (a zoom of
+    // exactly 2^s frames per pixel): the grid's columns straight into out
     const int channels = levels.channel_count();
     const qint64 firstColumn = pixelColumn[size_t(inLeft)];
     const int columns = int(pixelColumn[size_t(inRight - 1)] - firstColumn + 1);
+    if (inLeft == 0 && inRight == count && columns == count) {
+        return query(levels, samples, grid.start_of(firstColumn), gridWidth, count, out);
+    }
     std::vector<TWaveformColumn> gridColumns(size_t(columns) * size_t(channels));
     const Source source = query(levels, samples, grid.start_of(firstColumn), grid.column_width(), columns, gridColumns.data());
     for (int channel = 0; channel < channels; ++channel) {
