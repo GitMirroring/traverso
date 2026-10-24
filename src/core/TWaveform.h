@@ -40,8 +40,7 @@ public:
     {
         Building,
         Ready,
-        Failed,
-        Unsupported     // more channels than a peak file holds: no waveform
+        Failed
     };
 
     // source: the clip's reader. The waveform reads samples with a reader
@@ -68,13 +67,10 @@ public:
     State state();
     int progress() const { return m_progress; }
     int channel_count() const;
-    // Why there is no waveform, for the clip to show (Unsupported)
-    QString message() const;
 
     // Columns for the source time range starting at start, see
     // TWaveformColumns::query(). While Building: from the peaks built so
-    // far, empty columns past them. Source::None while Failed or
-    // Unsupported.
+    // far, empty columns past them. Source::None while Failed.
     TWaveformColumns::Source columns(const TTimeRef& start, const TTimeRef& columnWidth, int count, TWaveformColumn* out);
 
     // The highest |sample| of all channels between start and end (source

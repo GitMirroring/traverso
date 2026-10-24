@@ -73,15 +73,11 @@ TPeakBuildTask::TPeakBuildTask(std::shared_ptr<TPeakStream> recorded)
 
 TPeakBuildTask::~TPeakBuildTask() = default;
 
-bool TPeakBuildTask::fail(const QString& error, State state)
+bool TPeakBuildTask::fail(const QString& error)
 {
     m_error = error;
-    m_state = state;
-    if (state == State::Unsupported) {
-        TLOG_I("peaks", "{} is not built: {}", peak_path().toStdString(), error.toStdString());
-    } else {
-        TLOG_W("peaks", "building {} failed: {}", peak_path().toStdString(), error.toStdString());
-    }
+    m_state = State::Failed;
+    TLOG_W("peaks", "building {} failed: {}", peak_path().toStdString(), error.toStdString());
     // What is left of an unfinished peak file goes
     m_stream->abandon();
     release();
@@ -114,9 +110,6 @@ bool TPeakBuildTask::start()
     m_reportedFrames = m_source->frame_count();
     if (rate == 0 || channels <= 0 || m_reportedFrames <= 0) {
         return fail(QStringLiteral("the source has no audio"));
-    }
-    if (!supports(channels)) {
-        return fail(QStringLiteral("sources with %1 channels are not supported").arg(channels), State::Unsupported);
     }
     if (rate != m_stream->rate() || channels != m_stream->channel_count()) {
         return fail(QStringLiteral("the source has %1 Hz and %2 channels, its waveform expects %3 Hz and %4")

@@ -6,7 +6,6 @@
 #include "TBufferedAudioStreamReader.h"
 #include "TFileIOBuffer.h"
 #include "TLog.h"
-#include "TPeakBuildTask.h"
 #include "TPeakCache.h"
 #include "TPeakPyramid.h"
 #include "TPeakStream.h"
@@ -114,24 +113,11 @@ TWaveform::State TWaveform::state()
     return m_live ? State::Ready : m_state;
 }
 
-QString TWaveform::message() const
-{
-    if (m_state == State::Unsupported) {
-        return tr("No waveform: %1 channels, at most %2 are supported").arg(m_channelCount).arg(TPeakBuildTask::MaxChannels);
-    }
-    return QString();
-}
-
 void TWaveform::open_or_build()
 {
     if (!m_sourceValid) {
         TLOG_W("peaks", "no readable source for {}", m_peakPath.toStdString());
         m_state = State::Failed;
-        return;
-    }
-    if (!TPeakBuildTask::supports(m_channelCount)) {
-        TLOG_W("peaks", "{}: {} channels, no waveform", m_peakPath.toStdString(), m_channelCount);
-        m_state = State::Unsupported;
         return;
     }
 

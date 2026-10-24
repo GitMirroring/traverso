@@ -54,13 +54,8 @@ public:
         Running,
         Done,       // the peak file is in place
         Failed,     // see error()
-        Unsupported,    // more channels than MaxChannels
         Cancelled
     };
-
-    // A source with more channels than this cannot be read (TFileIOBuffer)
-    static constexpr int MaxChannels = 2;
-    static bool supports(int channelCount) { return channelCount <= MaxChannels; }
 
     // stream: where the peaks go, at the rate and channel count the source
     // must have (its waveform knows them). readFrames: frames per step, 0
@@ -87,7 +82,7 @@ public:
 private:
     bool start();
     bool read_source();
-    bool fail(const QString& error, State state = State::Failed);
+    bool fail(const QString& error);
     void release();
 
     OpenSource m_openSource;

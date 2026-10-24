@@ -3,8 +3,8 @@
 
 // Headless test of TPeakBuildTask and TPeakStream: a build in slices writes
 // the same peak file as appending everything at once, whatever the slice
-// sizes; sources that end early, fail, have too many channels or are
-// cancelled leave no valid file behind; a recording or a build read while
+// sizes, also for more channels than stereo; sources that end early, fail
+// or are cancelled leave no valid file behind; a recording or a build read while
 // it writes level 0 shows the right peaks; a write failure in the middle of
 // a recording leaves no file.
 
@@ -357,6 +357,15 @@ int main()
         CHECK(!QFile::exists(task.stream()->part_path()), "round %d: part file left", round);
     }
 
+    // More channels than stereo: built like any other
+    {
+        const Signal six = make_signal(6, 50000);
+        const QByteArray reference = reference_file(referencePath, six, audioPath);
+        TPeakBuildTask task(memory_source(six), audioPath, stream_for(six, peakPath), 4096);
+        CHECK(run(task) == TPeakBuildTask::State::Done, "six channels: %s", qPrintable(task.error()));
+        CHECK(file_bytes(peakPath) == reference, "six channels: file differs from the one-go file");
+    }
+
     // A source that ends before the length it reports (MP3): the file holds
     // what was read and opens for the reported length
     {
@@ -598,10 +607,6 @@ int main()
 
     // Sources the task refuses
     {
-        const Signal three = make_signal(3, 5000);
-        TPeakBuildTask task(memory_source(three), audioPath, stream_for(three, peakPath));
-        CHECK(run(task) == TPeakBuildTask::State::Unsupported && !task.error().isEmpty(), "three channels accepted");
-        CHECK(!TPeakBuildTask::supports(3) && TPeakBuildTask::supports(2) && TPeakBuildTask::supports(1), "supports()");
         const Signal empty = make_signal(1, 0);
         TPeakBuildTask none(memory_source(empty), audioPath, std::make_shared<TPeakStream>(48000, 1, peakPath));
         CHECK(run(none) == TPeakBuildTask::State::Failed, "empty source accepted");
