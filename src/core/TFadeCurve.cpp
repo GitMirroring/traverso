@@ -169,12 +169,7 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
                              curveBuffer.get_data(framesToProcess), framesToProcess, m_rtLookupCache);
 
     for (uint chan = 0; chan < channelCount; ++chan) {
-        TAudioBuffer &buf = bus->get_buffer(chan);
-        buf.set_data_start_offset(offset);
-        for (nframes_t frame = 0; frame < framesToProcess; ++frame) {
-            buf[frame] *= curveBuffer.at(frame);
-        }
-        buf.set_data_start_offset(0);
+        bus->get_buffer(chan).multiply(offset, framesToProcess, curveBuffer);
     }
 }
 

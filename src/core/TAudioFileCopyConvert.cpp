@@ -112,7 +112,8 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
         nframes_t this_nframes = std::min(diff, task.spec->get_block_size());
         nframes_t nframes = this_nframes;
 
-        fileIOBuffer.check_capacity(nframes * task.spec->get_channel_count(), task.spec->get_channel_count());
+        // The reader makes room for its channels; the export may ask for more
+        fileIOBuffer.check_capacity(nframes, task.spec->get_channel_count());
 
         task.readsource->file_read(fileIOBuffer, task.spec->get_export_location(), nframes);
 

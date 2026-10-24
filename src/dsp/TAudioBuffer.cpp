@@ -52,11 +52,6 @@ void TAudioBuffer::resize(nframes_t size)
 
         operator delete[](oldBuffer, std::align_val_t(AUDIO_BUFFER_ALIGNMENT));
     }
-
-    // Clamp the active read/write offset to avoid out-of-bounds pointer leaks
-    if (m_readOffset >= m_size) {
-        m_readOffset = 0;
-    }
 }
 
 void TAudioBuffer::allocate_buffer_data(nframes_t size)

@@ -121,8 +121,6 @@ static std::vector<float> read_all(const QString& path, uint outputRate, TAudioR
         }
         if (count) {
             const nframes_t frames = count * bufferSize;
-            buffer.check_capacity(frames, 1);
-            buffer.silence_buffers();
             reader.read_from(buffer, location, frames);
             const float* data = buffer.get_channel_buffer(0).get_data(frames);
             out.insert(out.end(), data, data + frames);
@@ -223,8 +221,6 @@ int main()
         std::vector<float> out;
         for (nframes_t at = 0; at < frames;) {
             const nframes_t n = piece ? std::min(piece, frames - at) : frames;
-            buffer.check_capacity(n, 1);
-            buffer.silence_buffers();
             reader.read_from(buffer, at, n);
             const float* data = buffer.get_channel_buffer(0).get_data(n);
             out.insert(out.end(), data, data + n);
@@ -265,8 +261,6 @@ int main()
         TResampleAudioReader toneReader(tonePath);
         toneReader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t toneFrames = toneReader.output_frame_count();
-        buffer.check_capacity(toneFrames, 1);
-        buffer.silence_buffers();
         toneReader.read_from(buffer, nframes_t(0), toneFrames);
         const std::vector<float> sequential(buffer.get_channel_buffer(0).get_data(toneFrames),
                                             buffer.get_channel_buffer(0).get_data(toneFrames) + toneFrames);
@@ -276,7 +270,6 @@ int main()
             last -= period;
         }
         const nframes_t left = toneFrames - last;
-        buffer.silence_buffers();
         const nframes_t read = toneReader.read_from(buffer, last, left);
         const float* data = buffer.get_channel_buffer(0).get_data(left);
         float worstDiff = 0.0f;

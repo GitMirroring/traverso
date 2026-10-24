@@ -73,17 +73,13 @@ public:
         }
     }
 
-    void silence_buffers() {
-        m_interleavedBuffer.silence_data();
-        for (const auto &buffer : m_channelBuffers) {
-            buffer->silence_data();
-        }
-    }
 
-    // Room for size samples in each of channels channel buffers, and in the
-    // interleaved buffer for all channel buffers. A source with more channels
-    // than the buffer has gets the channel buffers it lacks. Not in the audio
-    // thread: allocates
+    // Room for size frames in each of channels channel buffers (frames, not
+    // frames times channels), and in the interleaved buffer for all channel
+    // buffers. Who writes into the buffer makes the room: a reader for what
+    // it reads, a writer for what it packs. A source with more channels than
+    // the buffer has gets the channel buffers it lacks. Grows only, and keeps
+    // what the buffer held. Not in the audio thread: allocates
     void check_capacity(uint size, uint channels)
     {
         Q_ASSERT(size > 0);

@@ -400,10 +400,8 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
         // and only read in the amount of frames needed for this buffer slot
         nframes_t toRead = bufferSize - offset;
 
-        fileDecodeBuffer.check_capacity(toRead, m_channelCount);
-        fileDecodeBuffer.silence_buffers();
-
-        // and read in the samples. We have to use the source start location as the start location, see explanation above
+        // and read in the samples (the reader makes room in the buffer, and
+        // gives zeros past the end of the file). We have to use the source start location as the start location, see explanation above
         nframes_t read = file_read(fileDecodeBuffer, m_sourceStartLocation, toRead);
         if (read != toRead) {
             TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not read %d frames, only %d", toRead, read);
@@ -482,11 +480,10 @@ void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDec
 
     TQueueBufferSlot* slot = nullptr;
     nframes_t totalReadSize = slotsToFill * bufferSize;
-    // file_read can return 0 in which case m_fileDecodeBuffer internal
-    // buffers are the wrong size or not created at all.
-    // since we want to fill the rt buffer even beyond the file length
-    // for now make sure the decode buffers are the correct size
-    fileDecodeBuffer.check_capacity(totalReadSize, m_channelCount);
+    // The slots below take all totalReadSize frames, also past the end of
+    // the file: file_read() fills every one of them, zeros where the file
+    // ends (the contract of TAudioDecoder::read()), so no stale audio
+    // reaches the ring
     nframes_t read = file_read(fileDecodeBuffer, slotFileLocation, totalReadSize);
     nframes_t offset = 0;
     if (read != bufferSize) { // likely end of file

@@ -122,7 +122,7 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
         return int(nframes);
     }
 
-    fileIOBuffer.check_capacity(nframes * m_channelCount, m_channelCount);
+    fileIOBuffer.check_capacity(nframes, m_channelCount);
 
     for (uint chan = 0; chan < m_channelCount; ++chan) {
         TAudioBuffer& targetChannelBuffer = fileIOBuffer.get_channel_buffer(chan);

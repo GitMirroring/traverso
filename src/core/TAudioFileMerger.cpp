@@ -114,7 +114,6 @@ void TAudioFileMerger::process_task(MergeTask task)
         virtualSlot.write_buffer(TTimeRef(), TTimeRef(), destinationLeft, 0, nframes);
         virtualSlot.write_buffer(TTimeRef(), TTimeRef(), destinationRight, 1, nframes);
 
-        fileIOBuffer.check_capacity(nframes * 2, 2);
         writesource.rb_file_write(&virtualSlot, fileIOBuffer);
 
         spec.add_exported_range(TTimeRef(nframes, task.readsource0->get_sample_rate()));
