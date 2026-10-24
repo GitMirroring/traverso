@@ -53,6 +53,9 @@ public:
 private:
     // At close: the resamplers' rest into the file
     void flush_resamplers();
+    // One block of what the resamplers still hold into the encode buffer:
+    // the frames it gave, 0 when they are empty
+    nframes_t flush_block(nframes_t block);
     // The channels of buffer, frames long, into its interleaved part
     void interleave(TFileIOBuffer& buffer, nframes_t frames);
     // frames frames of buffer's interleaved part into the file, in the

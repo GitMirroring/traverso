@@ -131,18 +131,20 @@ void TResampleAudioWriter::flush_resamplers()
     // the size the resamplers were made with, until it gives nothing
     const nframes_t block = m_settings.blockSize;
     m_resampleEncodeBuffer.check_capacity(block, m_channelCount);
-    while (true) {
-        nframes_t frames = 0;
-        for (uint chan = 0; chan < m_channelCount; ++chan) {
-            const nframes_t produced = m_resamplers[chan]->flush(m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(block), block);
-            frames = least_frames(chan, produced, frames);
-        }
-        if (frames == 0) {
-            break;
-        }
+    while (const nframes_t frames = flush_block(block)) {
         interleave(m_resampleEncodeBuffer, frames);
         write_interleaved(m_resampleEncodeBuffer, frames);
     }
+}
+
+nframes_t TResampleAudioWriter::flush_block(nframes_t block)
+{
+    nframes_t frames = 0;
+    for (uint chan = 0; chan < m_channelCount; ++chan) {
+        const nframes_t produced = m_resamplers[chan]->flush(m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(block), block);
+        frames = least_frames(chan, produced, frames);
+    }
+    return frames;
 }
 
 nframes_t TResampleAudioWriter::least_frames(uint chan, nframes_t produced, nframes_t least)
