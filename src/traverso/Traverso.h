@@ -35,7 +35,8 @@ public :
         ~Traverso();
 
 
-        void shutdown(int signal);
+        // SIGINT, SIGTERM or SIGHUP arrived (Main.cpp): close
+        void close_on_signal(int signal);
         void create_interface();
 
 protected:
@@ -46,5 +47,6 @@ private :
 	void init_sse();
 	void setup_fpu();
         void prepare_audio_device();
+        void close_without_questions();
 };
 

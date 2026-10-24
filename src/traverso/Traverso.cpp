@@ -23,8 +23,16 @@ This file is part of Traverso
 #include "TAudioDevice.h"
 #include "TAudioDeviceSetup.h"
 #include "TContextPointer.h"
+#include "TProject.h"
+#include "TProjectManager.h"
+#include "TSheet.h"
+#include "TLog.h"
 #include "Debugger.h"
 #include "fpu.h"
+
+#include <QTimer>
+
+#include <csignal>
 
 #if defined(__SSE__) || defined(_M_X64) || defined(_M_IX86)
 #include <xmmintrin.h>
@@ -111,22 +119,41 @@ void Traverso::create_interface()
     }
 }
 
-void Traverso::shutdown(int signal)
+// SIGINT (Ctrl+C) closes as the window does: the onclose setting, "ask"
+// included, and not while recording. SIGTERM (kill, logout, system
+// shutdown) and SIGHUP (the terminal closed) close soon and without
+// questions, since nobody may be there to answer: see
+// close_without_questions()
+void Traverso::close_on_signal(int signal)
 {
-    PENTER;
-
-    cpointer().hold_finished();
-    QApplication::processEvents();
-
-    switch(signal) {
-    case SIGINT:
-        printf("\nCaught the SIGINT signal!\nShutting down Traverso!\n\n");
+    if (signal == SIGINT) {
+        TLOG_I("app", "closing on SIGINT, as the window closes");
         pm().exit();
         return;
     }
+    TLOG_I("app", "closing on {}, without questions", signal == SIGTERM ? "SIGTERM" : "SIGHUP");
+    close_without_questions();
+}
 
-    printf("Stopped\n");
-    exit(0);
+// Stops a recording and waits until its takes are written (a close right
+// after the stop would lose their last part), then closes; "ask" saves
+void Traverso::close_without_questions()
+{
+    bool waiting = false;
+    if (TProject* project = pm().get_project()) {
+        for (TSheet* sheet : project->get_sheets()) {
+            if (sheet->is_recording() && sheet->is_transport_rolling()) {
+                // Rolling: this stops it
+                sheet->start_transport();
+            }
+            waiting = waiting || (sheet->is_recording() && sheet->is_transport_rolling()) || sheet->has_unfinished_takes();
+        }
+    }
+    if (waiting) {
+        QTimer::singleShot(20, this, &Traverso::close_without_questions);
+        return;
+    }
+    pm().exit_without_questions();
 }
 
 void Traverso::init_sse()

@@ -64,6 +64,9 @@ public:
     QString get_projects_directory();
     void start_incremental_backup(TProject* project);
 
+    // As exit(), for SIGTERM and SIGHUP: no questions, "ask" on close saves
+    void exit_without_questions();
+
     TProject* get_project();
 
     TTransport* get_transport() const {return m_transport;}
@@ -85,6 +88,7 @@ private:
     TTransport*     m_transport;
     QList<TSheet*>	m_deletionSheetList;
     bool		m_exitInProgress;
+    bool		m_closeWithoutQuestions{false};
     QStringList	m_projectDirs;
     QFileSystemWatcher*	m_watcher;
 

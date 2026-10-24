@@ -33,7 +33,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QTranslator>
 
 #if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
+#include <QSocketNotifier>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #endif
 #if defined (Q_OS_MAC)
 #include <sys/syslimits.h>
@@ -50,19 +52,43 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 Traverso* traverso;
 
-int signalcount = 0;
-
 
 #if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
-void catch_signal(int sig_num)
+// SIGINT, SIGTERM and SIGHUP close Traverso (Traverso::close_on_signal()).
+// A signal handler may do next to nothing: it writes the signal into a
+// socket pair, the GUI thread reads it there. A second signal stops at
+// once, for a close that does not end.
+static int signalSockets[2] = {-1, -1};
+static volatile sig_atomic_t signalCount = 0;
+
+static void catch_signal(int signalNumber)
 {
-	if (!signalcount) {
-		++signalcount;
-		traverso->shutdown(sig_num);
-		exit(0);
-	} else {
-                printf("Caught multiple signals, aborting !\n");
-		_exit(-1);
+	if (signalCount == 0) {
+		signalCount = 1;
+		const unsigned char number = static_cast<unsigned char>(signalNumber);
+		[[maybe_unused]] const ssize_t written = write(signalSockets[0], &number, 1);
+		static const char closing[] = "\nClosing Traverso; a second signal stops it at once\n";
+		[[maybe_unused]] const ssize_t told = write(STDERR_FILENO, closing, sizeof(closing) - 1);
+		return;
+	}
+	static const char stopping[] = "Second signal: Traverso stops at once\n";
+	[[maybe_unused]] const ssize_t told = write(STDERR_FILENO, stopping, sizeof(stopping) - 1);
+	_exit(1);
+}
+
+// Only these: a crash must stay a crash (core dump, debugger stop)
+static void catch_close_signals()
+{
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, signalSockets) != 0) {
+		perror("Traverso: no socket pair for SIGINT, SIGTERM and SIGHUP");
+		return;
+	}
+	struct sigaction action = {};
+	action.sa_handler = catch_signal;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = SA_RESTART;
+	for (int signalNumber : {SIGINT, SIGTERM, SIGHUP}) {
+		sigaction(signalNumber, &action, nullptr);
 	}
 }
 #endif
@@ -71,8 +97,7 @@ void catch_signal(int sig_num)
 int main( int argc, char **argv )
 {
 #if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
-	// Only SIGINT: a crash must stay a crash (core dump, debugger stop)
-	signal(SIGINT, catch_signal);
+	catch_close_signals();
 #endif
 
 	// The session log is always written; stderr too in developer builds
@@ -205,6 +230,19 @@ int main( int argc, char **argv )
                 }
         }
 
+#if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
+	// The GUI thread's end of catch_signal(); a signal that came while
+	// Traverso started waits in the socket until now
+	if (signalSockets[1] >= 0) {
+		auto* signalNotifier = new QSocketNotifier(signalSockets[1], QSocketNotifier::Read, traverso);
+		QObject::connect(signalNotifier, &QSocketNotifier::activated, traverso, []() {
+			unsigned char number = 0;
+			if (read(signalSockets[1], &number, 1) == 1) {
+				traverso->close_on_signal(number);
+			}
+		});
+	}
+#endif
 
 	traverso->exec();
 	

@@ -117,6 +117,8 @@ public:
     bool any_audio_track_armed();
     bool is_changed() const {return m_changed;}
     bool is_recording() const {return m_isRecording;}
+    // Takes of the last recording whose files are still being written
+    bool has_unfinished_takes() const {return !m_recordingClips.isEmpty();}
     qreal minimum_hzoom() const override;
 
     QUndoCommand* create_command_mutate_clips(const QList<TAudioClip*>& clipsToAdd,

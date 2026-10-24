@@ -132,6 +132,9 @@ void TProjectManager::set_current_project(TProject* project)
 
 //                printf("exit in progress");
                 QString oncloseaction = config().get_property("Project", "onclose", "save").toString();
+                if (m_closeWithoutQuestions && oncloseaction == "ask") {
+                        oncloseaction = "save";
+                }
                 if (oncloseaction == "save") {
                         m_currentProject->save();
                 } else if (oncloseaction == "ask") {
@@ -400,6 +403,12 @@ TCommand* TProjectManager::exit()
 
 
 	return (TCommand*) 0;
+}
+
+void TProjectManager::exit_without_questions()
+{
+    m_closeWithoutQuestions = true;
+    exit();
 }
 
 void TProjectManager::scheduled_for_deletion( TSheet * sheet )
