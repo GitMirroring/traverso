@@ -18,3 +18,10 @@ add_test(NAME sf_writer_header COMMAND traverso_sf_writer_header_test)
 add_executable(traverso_wavpack_channels_test test_wavpack_channels.cpp)
 target_link_libraries(traverso_wavpack_channels_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core PkgConfig::WAVPACK)
 add_test(NAME wavpack_channels COMMAND traverso_wavpack_channels_test)
+
+# Headless test of the audio decoders: every format they serve, read from the
+# start, after a seek and across the end of the file
+add_executable(traverso_audio_decoders_test test_audio_decoders.cpp)
+target_link_libraries(traverso_audio_decoders_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core
+                      PkgConfig::SNDFILE PkgConfig::MAD)
+add_test(NAME audio_decoders COMMAND traverso_audio_decoders_test)
