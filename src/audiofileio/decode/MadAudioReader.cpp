@@ -26,6 +26,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QString>
 #include <QVector>
 
+#include <algorithm>
+#include <cstring>
+
 #include "TFileIOBuffer.h"
 
 RELAYTOOL_MAD;
@@ -150,17 +153,22 @@ bool K3bMad::fillStreamBuffer()
             }
         }
 
+        // The zeros libmad needs behind the last frame are no part of the
+        // file: streamPos() leaves them out
+        m_guardBytes = 0;
         if (result == 0) {
             if (m_eofPadded) {
                 return false;
             }
             memset(readStart, 0, MAD_BUFFER_GUARD);
             result = MAD_BUFFER_GUARD;
+            m_guardBytes = MAD_BUFFER_GUARD;
             m_eofPadded = true;
         }
         else if (m_inputFile.atEnd()) {
             memset(readStart + result, 0, MAD_BUFFER_GUARD);
             result += MAD_BUFFER_GUARD;
+            m_guardBytes = MAD_BUFFER_GUARD;
             m_eofPadded = true;
         }
 
@@ -181,12 +189,11 @@ bool K3bMad::skipTag()
     //
     // now check if the file starts with an id3 tag and skip it if so
     //
-    char buf[4096];
-    int bufLen = 4096;
-    if (m_inputFile.read(buf, bufLen) < bufLen) {
-        //kdDebug() << "(K3bMad) unable to read " << bufLen << " bytes from "
-        //	      << m_inputFile.name() << endl;
-        return false;
+    // The ten bytes of an ID3v2 header are all it takes (a file shorter than
+    // that has no tag; a short MP3 is a file, too)
+    char buf[10];
+    if (m_inputFile.read(buf, 10) < 10) {
+        return m_inputFile.seek(0);
     }
 
     if ((buf[0] == 'I' && buf[1] == 'D' && buf[2] == '3') &&
@@ -264,6 +271,49 @@ bool K3bMad::isXingOrInfoFrame(const mad_header* header, const unsigned char* fr
 }
 
 
+bool K3bMad::read_lame_tag(const mad_header* header, const unsigned char* frame_data, size_t frame_len, int& delay, int& padding)
+{
+    // The Xing/Info header sits behind the side information, a CRC first
+    // when the frame has one
+    size_t offset = 4;
+    if (header->flags & MAD_FLAG_PROTECTION) {
+        offset += 2;
+    }
+    if (header->flags & (MAD_FLAG_MPEG_2_5_EXT | MAD_FLAG_LSF_EXT)) {
+        offset += (header->mode == MAD_MODE_SINGLE_CHANNEL) ? 9 : 17;
+    } else {
+        offset += (header->mode == MAD_MODE_SINGLE_CHANNEL) ? 17 : 32;
+    }
+    if (frame_len < offset + 8) {
+        return false;
+    }
+    const unsigned char* p = frame_data + offset;
+    if (memcmp(p, "Xing", 4) != 0 && memcmp(p, "Info", 4) != 0) {
+        return false;
+    }
+    // The fields the flags say are there: frames, bytes, table of contents,
+    // quality
+    const unsigned flags = (unsigned(p[4]) << 24) | (unsigned(p[5]) << 16) | (unsigned(p[6]) << 8) | unsigned(p[7]);
+    size_t lame = offset + 8;
+    lame += (flags & 1) ? 4 : 0;
+    lame += (flags & 2) ? 4 : 0;
+    lame += (flags & 4) ? 100 : 0;
+    lame += (flags & 8) ? 4 : 0;
+    // The LAME extension (also ffmpeg's): the encoder's name, and 21 bytes
+    // in the encoder delay and the padding, 12 bits each
+    if (frame_len < lame + 24) {
+        return false;
+    }
+    const unsigned char* q = frame_data + lame;
+    if (memcmp(q, "LAME", 4) != 0 && memcmp(q, "Lavc", 4) != 0 && memcmp(q, "Lavf", 4) != 0) {
+        return false;
+    }
+    delay = (int(q[21]) << 4) | (int(q[22]) >> 4);
+    padding = ((int(q[22]) & 0x0f) << 8) | int(q[23]);
+    return true;
+}
+
+
 bool K3bMad::seekFirstHeader()
 {
     //
@@ -283,6 +333,9 @@ bool K3bMad::seekFirstHeader()
     if (headerFound) {
         size_t frameLen = madStream->next_frame ? (madStream->next_frame - madStream->this_frame) : 0;
         if (isXingOrInfoFrame(&madFrame->header, madStream->this_frame, frameLen)) {
+            // The encoder's delay and padding, when it wrote them (LAME,
+            // ffmpeg): the gapless information
+            read_lame_tag(&madFrame->header, madStream->this_frame, frameLen, encoderDelay, encoderPadding);
             // Skip the Xing/Info/VBRI metadata frame so it isn't decoded as silence
             headerFound = findNextHeader();
         }
@@ -317,7 +370,7 @@ qint64 K3bMad::inputPos() const
 
 qint64 K3bMad::streamPos() const
 {
-    return inputPos() - (madStream->bufend - madStream->this_frame);
+    return inputPos() - (madStream->bufend - madStream->this_frame - m_guardBytes);
 }
 
 
@@ -326,6 +379,7 @@ bool K3bMad::inputSeek(qint64 pos)
     mad_stream_finish(madStream);
     mad_stream_init(madStream);
     m_eofPadded = false;
+    m_guardBytes = 0;
     return m_inputFile.seek(pos);
 }
 
@@ -457,31 +511,28 @@ class MadAudioReader::MadDecoderPrivate
 {
 public:
     MadDecoderPrivate()
-        : overflowBuffers{TAudioBuffer(1152), TAudioBuffer(1152)}
     {
-        outputBuffer = nullptr;
-        outputPos = 0;
-        outputSize = 0;
-        overflowSize = 0;
-        overflowStart = 0;
-
         mad_header_init(&firstHeader);
     }
 
     K3bMad* handle{};
+    // Where every audio frame starts in the file (the Xing frame not)
     QVector<unsigned long long> seekPositions;
-    bool bOutputFinished{};
-
-    TAudioBuffer* outputBuffer;
-    nframes_t	outputPos;
-    nframes_t	outputSize;
-
-    TAudioBuffer overflowBuffers[2];
-    nframes_t	overflowSize;
-    nframes_t	overflowStart;
 
     mad_header firstHeader{};
     bool vbr{};
+    nframes_t samplesPerFrame{1152};
+    // The decoder's samples before output frame 0: with gapless information
+    // the encoder's delay and the decoder's own (529 samples)
+    nframes_t skip{0};
+
+    // The audio frame decode_next_frame() decodes next
+    qint64 nextFrame{0};
+    // The samples of the frame decoded last, per channel; pcmStart: the
+    // first not read yet
+    float pcm[2][1152]{};
+    nframes_t pcmStart{0};
+    nframes_t pcmCount{0};
 };
 
 
@@ -494,7 +545,7 @@ MadAudioReader::MadAudioReader(const QString& filename)
 
     initDecoderInternal();
 
-    m_frames = countFrames();
+    const unsigned long audioFrames = countFrames();
 
     switch( d->firstHeader.mode ) {
         case MAD_MODE_SINGLE_CHANNEL:
@@ -506,7 +557,7 @@ MadAudioReader::MadAudioReader(const QString& filename)
             m_channels = 2;
     }
 
-    if (m_frames <= 0) {
+    if (audioFrames == 0) {
         d->handle->cleanup();
         delete d->handle;
         delete d;
@@ -516,7 +567,25 @@ MadAudioReader::MadAudioReader(const QString& filename)
 
     m_rate = d->firstHeader.samplerate;
 
+    // Gapless: the audio starts behind the encoder's delay and the
+    // decoder's (529 samples of the synthesis filter, as mpg123 and ffmpeg
+    // count it), and ends before the encoder's padding. Without the
+    // information all frames are audio.
+    const qint64 samples = qint64(audioFrames) * d->samplesPerFrame;
+    const int delay = d->handle->encoderDelay;
+    const int padding = d->handle->encoderPadding;
+    if (delay >= 0 && padding >= 0 && samples - delay - padding > 0) {
+        m_frames = nframes_t(samples - delay - padding);
+        d->skip = nframes_t(delay) + DecoderDelay;
+    } else {
+        m_frames = nframes_t(samples);
+        d->skip = 0;
+    }
+
+    // countFrames() read the file to its end and closed it: open again, at
+    // frame 0, as a seek puts the decoder anywhere
     initDecoderInternal();
+    seek(0);
 }
 
 
@@ -611,74 +680,32 @@ bool MadAudioReader::seek(nframes_t frame)
         return false;
     }
 
-    //
-    // we need to reset the complete mad stuff
-    //
-    if (!initDecoderInternal()) {
+    // The frame in the decoder's samples, and the audio frame it is in
+    const qint64 sample = qint64(frame) + d->skip;
+    const qint64 target = sample / d->samplesPerFrame;
+    if (target >= d->seekPositions.size()) {
         return false;
     }
 
-    unsigned int samplesPerFrame = MAD_NSBSAMPLES(&d->firstHeader) * 32;
-    if (samplesPerFrame == 0) {
-        samplesPerFrame = 1152;
-    }
-
-    unsigned int targetFrame = frame / samplesPerFrame;
-    nframes_t frameOffset = frame % samplesPerFrame;
-
-    if (d->seekPositions.isEmpty()) {
+    // The decoder's state at the target as a read from the start has it:
+    // the frames before it decoded first. Their bit reservoir (up to 511
+    // bytes, several frames at a low bitrate), the overlap of the previous
+    // granule and the synthesis filter's history; the first of them may
+    // not decode (their reservoir lies before the seek) and give silence.
+    const qint64 first = std::max<qint64>(0, target - PreRollFrames);
+    if (!d->handle->inputSeek(qint64(d->seekPositions[first]))) {
         return false;
     }
-
-    if (targetFrame >= static_cast<unsigned int>(d->seekPositions.size())) {
-        targetFrame = static_cast<unsigned int>(d->seekPositions.size()) - 1;
-    }
-
-    unsigned int frameReservoirProtect = (targetFrame > 3 ? 3 : targetFrame);
-    unsigned int startFrame = targetFrame - frameReservoirProtect;
-
-    // seek in the input file to the warmup frame
-    d->handle->inputSeek( d->seekPositions[startFrame] );
-
-    // Seek to warmup frame
-    d->handle->inputSeek( d->seekPositions[startFrame] );
-
-    // Decode and synthesize warmup frames up to targetFrame
-    while (d->handle->streamPos() < static_cast<qint64>(d->seekPositions[targetFrame])) {
-        if (!d->handle->decodeNextFrame()) {
+    mad_frame_mute(d->handle->madFrame);
+    mad_synth_mute(d->handle->madSynth);
+    d->nextFrame = first;
+    d->pcmStart = d->pcmCount = 0;
+    while (d->nextFrame <= target) {
+        if (!decode_next_frame()) {
             return false;
         }
-        mad_synth_frame( d->handle->madSynth, d->handle->madFrame );
     }
-
-    // Reset overflow flags prior to synthesis warm-up
-    d->overflowStart = 0;
-    d->overflowSize = 0;
-
-    // Direct libmad to decode the target frame entirely into the overflow cache
-    d->outputBuffer = nullptr;
-    d->outputSize = 0;
-    d->outputPos = 0;
-
-    // This populates d->overflowBuffers starting strictly at index 0,
-    // and sets d->overflowSize to exactly 1152.
-    createPcmSamples(d->handle->madSynth);
-
-    // =========================================================================
-    // CORRECTED SEEK OFFSET MATH:
-    // If the seek destination lands in the middle of an MP3 frame, we must
-    // skip the pre-seek samples. We shift the read pointer (overflowStart) to
-    // the frameOffset, and reduce the available size accordingly.
-    // =========================================================================
-    if (frameOffset < d->overflowSize) {
-        d->overflowStart = frameOffset;
-        d->overflowSize -= frameOffset;
-    } else {
-        // Safe fallback if the offset somehow exceeds the decoded frame length
-        d->overflowStart = 0;
-        d->overflowSize = 0;
-    }
-    // =========================================================================
+    d->pcmStart = std::min(nframes_t(sample - target * d->samplesPerFrame), d->pcmCount);
 
     m_frame = frame;
     return true;
@@ -689,7 +716,6 @@ bool MadAudioReader::initDecoderInternal()
 {
     d->handle->cleanup();
 
-    d->bOutputFinished = false;
 
     if (!d->handle->open(m_fileName)) {
         return false;
@@ -727,8 +753,7 @@ unsigned long MadAudioReader::countFrames()
         //
         // position in stream: position in file minus the not yet used buffer
         //
-        unsigned long long seekPos = d->handle->inputPos() -
-        (d->handle->madStream->bufend - d->handle->madStream->this_frame);
+        unsigned long long seekPos = d->handle->streamPos();
 
         // save the number of bytes to be read to decode i-1 frames at position i
         // in other words: when seeking to seekPos the next decoded frame will be i
@@ -736,11 +761,9 @@ unsigned long MadAudioReader::countFrames()
     }
 
     if (!d->handle->inputError() && !error) {
-        unsigned int samplesPerFrame = MAD_NSBSAMPLES(&d->firstHeader) * 32;
-        if (samplesPerFrame == 0) {
-            samplesPerFrame = 1152;
-        }
-        frames = d->seekPositions.size() * samplesPerFrame;
+        const unsigned int samplesPerFrame = MAD_NSBSAMPLES(&d->firstHeader) * 32;
+        d->samplesPerFrame = (samplesPerFrame > 0 && samplesPerFrame <= 1152) ? samplesPerFrame : 1152;
+        frames = d->seekPositions.size();
     }
 
     d->handle->cleanup();
@@ -767,132 +790,93 @@ nframes_t MadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 
 nframes_t MadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
-    TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
-    d->outputBuffer = &readBuffer;
-    d->outputSize = frameCount;
-    d->outputPos = 0;
-
-    if (d->overflowSize > 0) {
-        nframes_t framesToCopy = std::min(d->overflowSize, frameCount);
-
-        for (uint chan = 0; chan < m_channels; chan++) {
-            TAudioBuffer &destination = fileIOBuffer.get_channel_buffer(chan);
-            for (nframes_t frame = 0; frame < framesToCopy; ++frame) {
-                destination[frame] = d->overflowBuffers[chan][d->overflowStart + frame];
-                readBuffer[frame * m_channels + chan] = d->overflowBuffers[chan][d->overflowStart + frame];
-            }
+    nframes_t given = 0;
+    while (given < frameCount && m_frame + given < m_frames) {
+        if (d->pcmStart >= d->pcmCount && !decode_next_frame()) {
+            break;
         }
-
-
-        d->outputPos += framesToCopy;
-
-        if (d->overflowSize < frameCount) {
-            d->overflowSize = 0;
-            d->overflowStart = 0;
-        } else {
-            d->overflowSize -= frameCount;
-            d->overflowStart += frameCount;
-            return frameCount;
+        const nframes_t n = std::min({frameCount - given, d->pcmCount - d->pcmStart, m_frames - (m_frame + given)});
+        for (uint channel = 0; channel < m_channels; ++channel) {
+            std::copy_n(d->pcm[channel] + d->pcmStart, n, fileIOBuffer.get_channel_buffer(channel).data(given, n));
         }
+        d->pcmStart += n;
+        given += n;
     }
-
-    bool bOutputBufferFull = false;
-
-    while (!bOutputBufferFull && d->handle->fillStreamBuffer()) {
-        if (d->outputPos >= d->outputSize) {
-            bOutputBufferFull = true;
-        }
-        else if (d->handle->decodeNextFrame()) {
-            mad_synth_frame(d->handle->madSynth, d->handle->madFrame);
-
-            if (!createPcmSamples(d->handle->madSynth)) {
-                PERROR("createPcmSamples");
-                return 0;
-            }
-        }
-        else if (d->handle->inputError()) {
-            PERROR("inputError");
-            return 0;
-        }
-    }
-
-    nframes_t finalFrames = std::min(d->outputPos, frameCount);
-    for (uint chan = 0; chan < m_channels; chan++) {
-        TAudioBuffer &destination = fileIOBuffer.get_channel_buffer(chan);
-        for (nframes_t frame = 0; frame < finalFrames; ++frame) {
-            destination[frame] = readBuffer[frame * m_channels + chan];
-        }
-    }
-
-    return finalFrames;
+    return given;
 }
 
 
-bool MadAudioReader::createPcmSamples(mad_synth* synth)
+bool MadAudioReader::decode_next_frame()
 {
-    TAudioBuffer* writeBuffer = d->outputBuffer;
-    nframes_t outputOffset = d->outputPos;
-    nframes_t nframes = synth->pcm.length;
-    bool overflow = false;
-    nframes_t i;
-    nframes_t overflowIndex = 0;
-
-    if (writeBuffer && (m_frame + d->outputPos + nframes) > m_frames) {
-        nframes = m_frames - (m_frame + outputOffset);
+    if (d->nextFrame >= d->seekPositions.size()) {
+        return false;
     }
+    K3bMad* mad = d->handle;
+    const nframes_t length = d->samplesPerFrame;
 
-    const mad_fixed_t* srcLeft  = synth->pcm.samples[0];
-    const mad_fixed_t* srcRight = (synth->pcm.channels == 2) ? synth->pcm.samples[1] : nullptr;
-
-    for (i = 0; i < nframes; i++) {
-        if (!overflow && (!writeBuffer || (outputOffset + i >= d->outputSize))) {
-            overflow = true;
+    // A frame is the one at its place in the file, not the n-th decode: the
+    // first decode after a seek (or at the start) may fail without taking
+    // the frame (its bit reservoir is missing) and decode it on the retry,
+    // and a damaged frame is taken without audio
+    while (true) {
+        if (!mad->fillStreamBuffer()) {
+            return false;
+        }
+        const bool decoded = mad_frame_decode(mad->madFrame, mad->madStream) == 0;
+        const bool taken = mad->madStream->next_frame > mad->madStream->this_frame;
+        if (!decoded && (mad->madStream->error == MAD_ERROR_BUFLEN || !taken)) {
+            // The frame is not all in the buffer yet, or junk before it, or
+            // a decode that took nothing: once more
+            if (!MAD_RECOVERABLE(mad->madStream->error) && mad->madStream->error != MAD_ERROR_BUFLEN) {
+                return false;
+            }
+            continue;
         }
 
-        /* Process Left Channel */
-        if (overflow) {
-            d->overflowBuffers[0][overflowIndex] = mad_f_todouble(srcLeft[i]);
-        } else if (writeBuffer) {
-            (*writeBuffer)[(outputOffset + i) * m_channels] = mad_f_todouble(srcLeft[i]);
+        const qint64 index = frame_index(mad->streamPos());
+        if (index < d->nextFrame) {
+            // A frame before the one asked for (decoded again)
+            continue;
         }
+        // A frame the decoder skipped (it found no header there): silence
+        // for it, the frame decoded now waits for the next call
+        const bool skipped = index > d->nextFrame;
 
-        /* Process Right Channel */
-        if (srcRight) {
-            if (overflow) {
-                d->overflowBuffers[1][overflowIndex] = mad_f_todouble(srcRight[i]);
-            } else if (writeBuffer) {
-                if (m_channels == 2) {
-                    (*writeBuffer)[(outputOffset + i) * m_channels + 1] = mad_f_todouble(srcRight[i]);
+        if (decoded && !skipped) {
+            mad_synth_frame(mad->madSynth, mad->madFrame);
+            const mad_pcm& out = mad->madSynth->pcm;
+            for (uint channel = 0; channel < m_channels; ++channel) {
+                // A mono frame in a stereo file goes to both channels
+                const mad_fixed_t* samples = out.samples[std::min<uint>(channel, out.channels - 1)];
+                const nframes_t n = std::min<nframes_t>(out.length, length);
+                for (nframes_t i = 0; i < n; ++i) {
+                    d->pcm[channel][i] = float(mad_f_todouble(samples[i]));
                 }
+                std::fill(d->pcm[channel] + n, d->pcm[channel] + length, 0.0f);
+            }
+        } else {
+            // Taken without audio (damaged), or skipped: silence for it
+            for (uint channel = 0; channel < m_channels; ++channel) {
+                std::fill_n(d->pcm[channel], length, 0.0f);
+            }
+            if (skipped) {
+                // Decode the frame found again when its turn comes
+                mad->inputSeek(qint64(d->seekPositions[d->nextFrame + 1]));
             }
         }
-        /* Mono-to-Stereo Upmix Fallback */
-        else if (m_channels == 2 && writeBuffer && !overflow) {
-            (*writeBuffer)[(outputOffset + i) * m_channels + 1] = mad_f_todouble(srcLeft[i]);
-        } else if (m_channels == 2 && overflow) {
-            d->overflowBuffers[1][overflowIndex] = mad_f_todouble(srcLeft[i]);
-        }
-
-        if (overflow) {
-            overflowIndex++;
-        }
+        d->pcmStart = 0;
+        d->pcmCount = length;
+        ++d->nextFrame;
+        return true;
     }
-
-    if (overflow) {
-        d->overflowSize = overflowIndex;
-        d->overflowStart = 0;
-    }
-
-    if (writeBuffer) {
-        if (outputOffset + i > d->outputSize) {
-            d->outputPos = d->outputSize;
-        } else {
-            d->outputPos += i;
-        }
-    } else {
-        d->outputPos += i;
-    }
-
-    return true;
 }
 
+qint64 MadAudioReader::frame_index(qint64 position) const
+{
+    // Mostly the frame asked for
+    if (d->nextFrame < d->seekPositions.size() && qint64(d->seekPositions[d->nextFrame]) == position) {
+        return d->nextFrame;
+    }
+    const auto it = std::lower_bound(d->seekPositions.cbegin(), d->seekPositions.cend(), (unsigned long long)position);
+    return it - d->seekPositions.cbegin();
+}

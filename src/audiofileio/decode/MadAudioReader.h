@@ -80,9 +80,17 @@ public:
     bool findNextHeader();
     bool checkFrameHeader(mad_header* header) const;
     static bool isXingOrInfoFrame(const mad_header* header, const unsigned char* frame_data, size_t frame_len);
+    // The encoder's delay and padding from the LAME tag of a Xing/Info
+    // frame (LAME and ffmpeg write it); false when it has none
+    static bool read_lame_tag(const mad_header* header, const unsigned char* frame_data, size_t frame_len, int& delay, int& padding);
 
     void createInputBuffer();
     void clearInputBuffer();
+
+    // The gapless information of the file, -1 where it has none
+    // (seekFirstHeader() reads it)
+    int encoderDelay{-1};
+    int encoderPadding{-1};
 
     mad_stream*   madStream;
     mad_frame*    madFrame;
@@ -95,6 +103,8 @@ private:
     unsigned char* m_inputBuffer;
     bool m_bInputError;
     bool m_eofPadded;
+    // The zeros behind the file's last byte in the input buffer
+    long m_guardBytes{0};
 
     int m_channels{};
     int m_sampleRate{};
@@ -115,15 +125,27 @@ public:
     nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
 
 protected:
-    // MAD's decoding of frameCount frames into the channel buffers; the
-    // frames it gave
+    // The decoder's delay in samples (the synthesis filter), as mpg123 and
+    // ffmpeg count it for gapless playback
+    static constexpr nframes_t DecoderDelay = 529;
+    // The frames decoded before the frame a seek goes to, so the decoder's
+    // state there is a read from the start's: the bit reservoir reaches up
+    // to 511 bytes back, several frames at a low bitrate
+    static constexpr qint64 PreRollFrames = 16;
+
+    // frameCount frames from the decoder's position into the channel
+    // buffers; the frames it gave
     nframes_t decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
+    // The next audio frame into the decoder's samples (silence when it
+    // cannot be decoded); false at the end of the file
+    bool decode_next_frame();
+    // The audio frame that starts at position in the file (or the first one
+    // after it)
+    qint64 frame_index(qint64 position) const;
 
     bool initDecoderInternal();
+    // The audio frames of the file, and where each starts
     unsigned long countFrames();
-    bool createPcmSamples(mad_synth* synth);
-
-    static int MaxAllowedRecoverableErrors;
 
     class MadDecoderPrivate;
     MadDecoderPrivate* d;
