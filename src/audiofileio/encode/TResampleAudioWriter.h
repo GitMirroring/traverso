@@ -19,7 +19,7 @@ the Free Software Foundation; either version 2 of the License, or
 
 #include "TAudioEncodeSettings.h"
 #include "TFileIOBuffer.h"
-class AbstractAudioWriter;
+class TAudioEncoder;
 class TAudioResampler;
 
 /**
@@ -60,7 +60,7 @@ private:
     // file's format (packed in buffer's byte part when it is not float)
     nframes_t write_interleaved(TFileIOBuffer& buffer, nframes_t frames);
 
-    std::unique_ptr<AbstractAudioWriter>            m_codecWriter;
+    std::unique_ptr<TAudioEncoder>                  m_encoder;
     TAudioEncodeSettings                            m_settings;
 
     // The rate of the audio handed to write_planar(); the file's rate and

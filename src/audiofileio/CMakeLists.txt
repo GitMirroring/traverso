@@ -5,7 +5,7 @@ add_library(traversoaudiofileio STATIC
     decode/TResampleAudioReader.h decode/TResampleAudioReader.cpp
     decode/WPAudioReader.cpp
     decode/MadAudioReader.cpp
-    encode/AbstractAudioWriter.cpp
+    encode/TAudioEncoder.h encode/TAudioEncoder.cpp
     encode/SFAudioWriter.cpp
     encode/WPAudioWriter.cpp
     encode/TResampleAudioWriter.cpp

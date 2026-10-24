@@ -7,7 +7,7 @@
 // WAV header has the data size (libsndfile reads to the end without it,
 // other programs do not).
 
-#include "AbstractAudioWriter.h"
+#include "TAudioEncoder.h"
 #include "TAudioDecoder.h"
 #include "TFileIOBuffer.h"
 
@@ -99,7 +99,7 @@ int main()
         settings.channelCount = Channels;
         settings.sampleRate = Rate;
         const QString path = dir.filePath(format.file);
-        std::unique_ptr<AbstractAudioWriter> writer = AbstractAudioWriter::create_audio_writer(settings);
+        std::unique_ptr<TAudioEncoder> writer = create_audio_encoder(settings);
         if (!writer->open(path)) {
             std::printf("%s: cannot open the writer\n", format.name);
             return 1;

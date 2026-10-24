@@ -26,78 +26,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Debugger.h"
 
 WPAudioWriter::WPAudioWriter(const TAudioEncodeSettings& settings)
-    : AbstractAudioWriter(settings)
+    : TAudioEncoder(settings)
 {
-	m_wp = 0;
-    m_firstBlock = 0;
-	m_firstBlockSize = 0;
-    m_tmp_buffer = 0;
-	m_tmpBufferSize = 0;
-    // Set some sensible default values
-    // CONFIG_HIGH_FLAG (default) ~ 1.5 times slower then FAST, ~ 20% extra compression then FAST
-    m_configFlags = 0;
-    m_configFlags |= CONFIG_HIGH_FLAG;
-    m_configFlags &= ~CONFIG_SKIP_WVX;
 }
 
 
 WPAudioWriter::~WPAudioWriter()
 {
-	if (m_wp) {
-        WPAudioWriter::close_private();
-	}
-    if (m_firstBlock) {
-        delete [] m_firstBlock;
-    }
-}
-
-bool WPAudioWriter::set_format_attribute(const QString& key, const QString& value)
-{
-	if (key == "quality") {
-		// Clear quality before or-ing in the new quality value
-		m_configFlags &= ~(CONFIG_FAST_FLAG | CONFIG_HIGH_FLAG | CONFIG_VERY_HIGH_FLAG);
-		
-		if (value == "fast") {
-			m_configFlags |= CONFIG_FAST_FLAG;
-			return true;
-		}
-		else if (value == "high") {
-			// CONFIG_HIGH_FLAG (default) ~ 1.5 times slower then FAST, ~ 20% extra compression then FAST
-			m_configFlags |= CONFIG_HIGH_FLAG;
-			return true;
-		}
-		else if (value == "very_high") {
-			// CONFIG_VERY_HIGH_FLAG ~ 2 times slower then FAST, ~ 25 % extra compression then FAST
-			m_configFlags |= CONFIG_HIGH_FLAG;
-			m_configFlags |= CONFIG_VERY_HIGH_FLAG;
-			return true;
-		}
-	}
-	
-	if (key == "skip_wvx") {
-		if (value == "true") {
-			// This option reduces the storage of some floating-point data files by up to about 10% by eliminating some 
-			// information that has virtually no effect on the audio data. While this does technically make the compression 
-			// lossy, it retains all the advantages of floating point data (>600 dB of dynamic range, no clipping, and 25 bits 
-			// of resolution). This also affects large integer compression by limiting the resolution to 24 bits.
-			m_configFlags |= CONFIG_SKIP_WVX;
-			return true;
-		}
-		else if (value == "false") {
-			m_configFlags &= ~CONFIG_SKIP_WVX;
-			return true;
-		}
-	}
-	
-	return false;
+    WPAudioWriter::close();
+    delete [] m_firstBlock;
 }
 
 
-bool WPAudioWriter::open_private()
+bool WPAudioWriter::open(const QString& fileName)
 {
-	m_file = fopen(m_fileName.toUtf8().data(), "wb");
+	close();
+	m_file = fopen(fileName.toUtf8().data(), "wb");
 	if (!m_file) {
-		qWarning("Couldn't open file %s.", QS_C(m_fileName));
+		qWarning("Couldn't open file %s.", QS_C(fileName));
 		return false;
 	}
 	
@@ -120,7 +66,25 @@ bool WPAudioWriter::open_private()
     m_config.channel_mask = m_settings.channelCount == 1 ? 4 : m_settings.channelCount == 2 ? 3 : 0;
     m_config.num_channels = m_settings.channelCount;
     m_config.sample_rate = m_settings.sampleRate;
-	m_config.flags = m_configFlags;
+	// The compression the user chose: fast, high (about 1.5 times slower than
+	// fast, about 20% smaller), very high (about 2 times slower, about 25%
+	// smaller); and without the correction data of floating point samples
+	// (WVX: about 10% smaller, lossy below 25 bits of resolution)
+	switch (m_settings.wavpackCompression) {
+	case TAudioEncodeSettings::WavPackCompression::Fast:
+		m_config.flags = CONFIG_FAST_FLAG;
+		break;
+	case TAudioEncodeSettings::WavPackCompression::VeryHigh:
+		m_config.flags = CONFIG_HIGH_FLAG | CONFIG_VERY_HIGH_FLAG;
+		break;
+	case TAudioEncodeSettings::WavPackCompression::High:
+	default:
+		m_config.flags = CONFIG_HIGH_FLAG;
+		break;
+	}
+	if (m_settings.wavpackSkipWvx) {
+		m_config.flags |= CONFIG_SKIP_WVX;
+	}
 	
 	WavpackSetConfiguration(m_wp, &m_config, -1);
 	
@@ -199,9 +163,11 @@ bool WPAudioWriter::rewrite_first_block()
 }
 
 
-nframes_t WPAudioWriter::write_private(void* buffer, nframes_t frameCount)
+nframes_t WPAudioWriter::write(void* buffer, nframes_t frameCount)
 {
-    Q_ASSERT(buffer);
+    if (!m_wp || !buffer || frameCount == 0) {
+        return 0;
+    }
 
     uint channels = m_settings.channelCount;
     nframes_t totalSamples = frameCount * channels;
@@ -270,8 +236,11 @@ nframes_t WPAudioWriter::write_private(void* buffer, nframes_t frameCount)
 }
 
 
-bool WPAudioWriter::close_private()
+bool WPAudioWriter::close()
 {
+	if (!m_wp) {
+		return false;
+	}
 	bool success = true;
 	
 	if (WavpackFlushSamples(m_wp) == false) {

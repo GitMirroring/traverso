@@ -22,26 +22,24 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include "AbstractAudioWriter.h"
+#include "TAudioEncoder.h"
 #include "defines.h"
 
 #include <stdio.h>
 
 class QString;
 
-class FaacAudioWriter : public AbstractAudioWriter
+class FaacAudioWriter : public TAudioEncoder
 {
 public:
-	FaacAudioWriter(const TAudioEncodeSettings& settings);
-	~FaacAudioWriter();
+	explicit FaacAudioWriter(const TAudioEncodeSettings& settings);
+	~FaacAudioWriter() override;
 
-	bool set_format_attribute(const QString& key, const QString& value);
-	const char* get_extension();
+    bool open(const QString& fileName) override;
+    nframes_t write(void* buffer, nframes_t frameCount) override;
+    bool close() override;
 
 protected:
-	bool open_private();
-	nframes_t write_private(void* buffer, nframes_t frameCount);
-	bool close_private();
 
 	struct FaacInfo;
 	FaacInfo* m_faacInfo;

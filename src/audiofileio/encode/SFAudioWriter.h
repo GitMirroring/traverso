@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include "AbstractAudioWriter.h"
+#include "TAudioEncoder.h"
 
 #include "defines.h"
 #include "sndfile.h"
@@ -30,22 +30,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioEncodeSettings.h"
 
-class SFAudioWriter : public AbstractAudioWriter
+// WAV, W64, AIFF, FLAC, Ogg Vorbis and MP3 through libsndfile
+class SFAudioWriter : public TAudioEncoder
 {
-	
 public:
-    SFAudioWriter(const TAudioEncodeSettings& settings);
-	~SFAudioWriter();
-		
-protected:
-	bool open_private();
-	nframes_t write_private(void* buffer, nframes_t frameCount);
-	bool close_private();
-	
-	SNDFILE*	m_sf;
-	SF_INFO 	m_sfinfo{};
-	
+    explicit SFAudioWriter(const TAudioEncodeSettings& settings);
+    ~SFAudioWriter() override;
+
+    bool open(const QString& fileName) override;
+    nframes_t write(void* buffer, nframes_t frameCount) override;
+    bool close() override;
+
 private:
-	QFile m_file;
+    SNDFILE*	m_sf{nullptr};
+    SF_INFO 	m_sfinfo{};
+    QFile m_file;
+    QString m_fileName;
 };
 

@@ -14,7 +14,7 @@
 // swapped or silent show, and audio that is shifted shows too (a sweep
 // matches itself at one place only).
 
-#include "AbstractAudioWriter.h"
+#include "TAudioEncoder.h"
 #include "TAudioDecoder.h"
 #include "TFileIOBuffer.h"
 
@@ -114,7 +114,7 @@ static bool write_with_traverso(const QString& path, const Source& source, Trave
     settings.dataFormat = aac ? TraversoDAW::DataFormat::PCM_16 : TraversoDAW::DataFormat::FLOAT;
     settings.channelCount = source.channels;
     settings.sampleRate = source.rate;
-    std::unique_ptr<AbstractAudioWriter> file = AbstractAudioWriter::create_audio_writer(settings);
+    std::unique_ptr<TAudioEncoder> file = create_audio_encoder(settings);
     if (!file || !file->open(path)) {
         return false;
     }

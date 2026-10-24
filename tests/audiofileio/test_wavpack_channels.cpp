@@ -5,7 +5,7 @@
 // has the channel mask of its channels (mono centre, stereo front left and
 // right, more channels none), and WPAudioReader reads all channels back.
 
-#include "AbstractAudioWriter.h"
+#include "TAudioEncoder.h"
 #include "TAudioDecoder.h"
 #include "TFileIOBuffer.h"
 
@@ -57,7 +57,7 @@ int main()
         settings.sampleRate = Rate;
         const QString path = dir.filePath(QStringLiteral("take-%1.wv").arg(c.channels));
         {
-            std::unique_ptr<AbstractAudioWriter> writer = AbstractAudioWriter::create_audio_writer(settings);
+            std::unique_ptr<TAudioEncoder> writer = create_audio_encoder(settings);
             if (!writer->open(path)) {
                 std::printf("%u channels: cannot open the writer\n", c.channels);
                 return 1;
@@ -96,6 +96,44 @@ int main()
         }
         std::snprintf(what, sizeof(what), "%u channels: read back, every channel", c.channels);
         check(same, what);
+    }
+
+    // The compression asked for is the file's (the settings' choice reaches
+    // the encoder): WavPack says in its mode flags how a file was packed
+    using Compression = TAudioEncodeSettings::WavPackCompression;
+    const struct {
+        Compression compression;
+        int mode;
+        const char* name;
+    } compressions[] = {{Compression::Fast, MODE_FAST, "fast"}, {Compression::High, MODE_HIGH, "high"},
+                        {Compression::VeryHigh, MODE_VERY_HIGH, "very high"}};
+    for (const auto& c : compressions) {
+        TAudioEncodeSettings settings;
+        settings.writerType = TraversoDAW::WriterType::WAVPACK;
+        settings.fileFormat = TraversoDAW::FileFormat::WAVPACK;
+        settings.dataFormat = TraversoDAW::DataFormat::FLOAT;
+        settings.channelCount = 2;
+        settings.sampleRate = Rate;
+        settings.wavpackCompression = c.compression;
+        const QString path = dir.filePath(QStringLiteral("compression-%1.wv").arg(int(c.compression)));
+        std::unique_ptr<TAudioEncoder> writer = create_audio_encoder(settings);
+        std::vector<float> interleaved(size_t(Frames) * 2);
+        for (nframes_t frame = 0; frame < Frames; ++frame) {
+            interleaved[size_t(frame) * 2] = sample(frame, 0);
+            interleaved[size_t(frame) * 2 + 1] = sample(frame, 1);
+        }
+        bool ok = writer->open(path) && writer->write(interleaved.data(), Frames) == Frames && writer->close();
+        char error[80];
+        WavpackContext* wp = WavpackOpenFileInput(path.toUtf8().constData(), error, 0, 0);
+        const int mode = wp ? WavpackGetMode(wp) : 0;
+        if (wp) {
+            WavpackCloseFile(wp);
+        }
+        const int compressionModes = MODE_FAST | MODE_HIGH | MODE_VERY_HIGH;
+        const int expected = c.mode == MODE_VERY_HIGH ? (MODE_HIGH | MODE_VERY_HIGH) : c.mode;
+        char what[96];
+        std::snprintf(what, sizeof(what), "compression %s: written so (mode 0x%x)", c.name, mode & compressionModes);
+        check(ok && (mode & compressionModes) == expected, what);
     }
 
     if (failures) {

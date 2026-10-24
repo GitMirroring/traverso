@@ -30,24 +30,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 SFAudioWriter::SFAudioWriter(const TAudioEncodeSettings& settings)
-    : AbstractAudioWriter(settings)
+    : TAudioEncoder(settings)
 {
-	m_sf = 0;
 }
 
 
 SFAudioWriter::~SFAudioWriter()
 {
-	if (m_sf) {
-        SFAudioWriter::close_private();
-	}
+    SFAudioWriter::close();
 }
 
 
-
-
-bool SFAudioWriter::open_private()
+bool SFAudioWriter::open(const QString& fileName)
 {
+    close();
+    m_fileName = fileName;
+
     char errbuf[256];
     std::memset(&m_sfinfo, 0, sizeof(m_sfinfo));
 
@@ -120,10 +118,11 @@ bool SFAudioWriter::open_private()
 
 
 
-nframes_t SFAudioWriter::write_private(void* buffer, nframes_t frameCount)
+nframes_t SFAudioWriter::write(void* buffer, nframes_t frameCount)
 {
-    Q_ASSERT(m_sf);
-    Q_ASSERT(buffer);
+    if (!m_sf || !buffer || frameCount == 0) {
+        return 0;
+    }
 
     int written = 0;
     char errbuf[256];
@@ -168,12 +167,16 @@ nframes_t SFAudioWriter::write_private(void* buffer, nframes_t frameCount)
 
 
 
-bool SFAudioWriter::close_private()
+bool SFAudioWriter::close()
 {
-	bool success = (sf_close(m_sf) == 0);
-	
-	m_sf = nullptr;
-	
-	return success;
+    if (!m_sf) {
+        return false;
+    }
+    const bool success = (sf_close(m_sf) == 0);
+    m_sf = nullptr;
+    // libsndfile does not close a descriptor it was given: the file is
+    // closed here, not when the writer goes
+    m_file.close();
+    return success;
 }
 

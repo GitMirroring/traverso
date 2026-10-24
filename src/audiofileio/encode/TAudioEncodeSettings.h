@@ -29,6 +29,12 @@ struct TAudioEncodeSettings
     int                     resampleQuality{TAudioResampler::default_quality(TAudioResampler::BackendType::LIBSOXR)};
     GDitherType             ditherType{};
 
+    // WavPack: how hard it compresses, and whether it leaves out the
+    // correction data of floating point samples (WVX, lossy below 25 bits)
+    enum class WavPackCompression { Fast, High, VeryHigh };
+    WavPackCompression      wavpackCompression{WavPackCompression::High};
+    bool                    wavpackSkipWvx{false};
+
     // Of the sample format: the bits of a sample in the file, and the size
     // gdither writes it in (a 24 bit sample in a 32 bit word)
     int bit_depth() const { return bit_depth(dataFormat); }

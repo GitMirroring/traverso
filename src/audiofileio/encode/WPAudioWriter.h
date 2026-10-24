@@ -21,38 +21,35 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include "AbstractAudioWriter.h"
+#include "TAudioEncoder.h"
 
 #include "defines.h"
 #include "wavpack/wavpack.h"
 
 #include "TAudioEncodeSettings.h"
 
-class WPAudioWriter : public AbstractAudioWriter
+class WPAudioWriter : public TAudioEncoder
 {
-	
 public:
-    WPAudioWriter(const TAudioEncodeSettings& settings);
-	~WPAudioWriter();
-	
-	bool set_format_attribute(const QString& key, const QString& value);
-	
+    explicit WPAudioWriter(const TAudioEncodeSettings& settings);
+    ~WPAudioWriter() override;
+
+    bool open(const QString& fileName) override;
+    nframes_t write(void* buffer, nframes_t frameCount) override;
+    bool close() override;
+
 protected:
-	bool open_private();
-	nframes_t write_private(void* buffer, nframes_t frameCount);
-	bool close_private();
 	int write_to_file(void *lpBuffer, uint32_t nNumberOfBytesToWrite, uint32_t *lpNumberOfBytesWritten);
 	bool rewrite_first_block();
 	
 	static int write_block(void *id, void *data, int32_t length);
 	
 	WavpackConfig	m_config;
-	WavpackContext*	m_wp;
-	FILE*		m_file;
-    char*		m_firstBlock;
-	int32_t 	m_firstBlockSize;
-    int		m_configFlags;
-    int32_t*	m_tmp_buffer;
-	nframes_t	m_tmpBufferSize;
+	WavpackContext*	m_wp{nullptr};
+	FILE*		m_file{nullptr};
+    char*		m_firstBlock{nullptr};
+	int32_t 	m_firstBlockSize{0};
+    int32_t*	m_tmp_buffer{nullptr};
+	nframes_t	m_tmpBufferSize{0};
 };
 

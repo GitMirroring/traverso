@@ -48,7 +48,7 @@ struct FaacAudioWriter::FaacInfo {
 
 
 FaacAudioWriter::FaacAudioWriter(const TAudioEncodeSettings& settings)
-	: AbstractAudioWriter(settings)
+	: TAudioEncoder(settings)
 {
 	(void)libfaac_is_present;
 	m_fid = nullptr;
@@ -77,9 +77,7 @@ FaacAudioWriter::FaacAudioWriter(const TAudioEncodeSettings& settings)
 
 FaacAudioWriter::~FaacAudioWriter()
 {
-	if (m_fid) {
-		close_private();
-	}
+	FaacAudioWriter::close();
 	if (m_buffer) {
 		delete [] m_buffer;
 	}
@@ -87,50 +85,10 @@ FaacAudioWriter::~FaacAudioWriter()
 }
 
 
-const char* FaacAudioWriter::get_extension()
+bool FaacAudioWriter::open(const QString& fileName)
 {
-	return ".m4a";
-}
-
-
-bool FaacAudioWriter::set_format_attribute(const QString& key, const QString& value)
-{
-	if (key == "bitrate") {
-		m_bitrate = value.toInt();
-		m_useQuality = false;
-		return true;
-	}
-	else if (key == "quality") {
-		m_quality = value.toInt();
-		m_useQuality = true;
-		return true;
-	}
-	else if (key == "objectType") {
-		if (value == "low" || value == "lc") {
-			m_objectType = 2;
-			return true;
-		}
-		else if (value == "he") {
-			m_objectType = 5;
-			return true;
-		}
-	}
-	else if (key == "tns") {
-		m_useTns = (value == "true" || value == "1") ? 1 : 0;
-		return true;
-	}
-	else if (key == "midside") {
-		m_useMidside = (value == "true" || value == "1") ? 1 : 0;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool FaacAudioWriter::open_private()
-{
-	m_fid = fopen(m_fileName.toUtf8().data(), "wb+");
+	close();
+	m_fid = fopen(fileName.toUtf8().data(), "wb+");
 	if (!m_fid) {
 		// PERROR("FaacAudioWriter: Could not open file %s", QS_C(m_fileName));
 		return false;
@@ -234,9 +192,9 @@ bool FaacAudioWriter::open_private()
 }
 
 
-nframes_t FaacAudioWriter::write_private(void* buffer, nframes_t frameCount)
+nframes_t FaacAudioWriter::write(void* buffer, nframes_t frameCount)
 {
-	if (!buffer || frameCount == 0) {
+	if (!m_fid || !buffer || frameCount == 0) {
 		return 0;
 	}
 
@@ -307,8 +265,11 @@ nframes_t FaacAudioWriter::write_private(void* buffer, nframes_t frameCount)
 }
 
 
-bool FaacAudioWriter::close_private()
+bool FaacAudioWriter::close()
 {
+	if (!m_fid) {
+		return false;
+	}
 	bool success = true;
 
 	if (m_bufferSize < (long)m_faacInfo->maxOutputBytes) {

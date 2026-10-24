@@ -338,6 +338,16 @@ TAudioEncodeSettings TExportSpecification::get_encode_settings() const
     settings.resampler = get_resampler();
     settings.resampleQuality = get_resample_quality();
     settings.ditherType = get_dither_type();
+
+    // The writer's options, as the export dialog and the recording settings
+    // name them
+    if (get_writer_type() == TraversoDAW::WriterType::WAVPACK) {
+        const QString compression = get_extra_format(QStringLiteral("quality"), QStringLiteral("high"));
+        settings.wavpackCompression = compression == QLatin1String("fast")        ? TAudioEncodeSettings::WavPackCompression::Fast
+                                      : compression == QLatin1String("very_high") ? TAudioEncodeSettings::WavPackCompression::VeryHigh
+                                                                                  : TAudioEncodeSettings::WavPackCompression::High;
+        settings.wavpackSkipWvx = get_extra_format(QStringLiteral("skip_wvx")) == QLatin1String("true");
+    }
     return settings;
 }
 

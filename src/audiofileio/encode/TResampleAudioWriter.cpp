@@ -10,7 +10,7 @@ the Free Software Foundation; either version 2 of the License, or
 */
 
 #include "TResampleAudioWriter.h"
-#include "AbstractAudioWriter.h"
+#include "TAudioEncoder.h"
 #include "TAudioResampler.h"
 #include "TFileIOBuffer.h"
 #include "gdither.h"
@@ -20,7 +20,7 @@ TResampleAudioWriter::TResampleAudioWriter(const TAudioEncodeSettings& settings)
     , m_inputSampleRate(0)
     , m_dither(nullptr)
 {
-    m_codecWriter = AbstractAudioWriter::create_audio_writer(m_settings);
+    m_encoder = create_audio_encoder(m_settings);
 }
 
 TResampleAudioWriter::~TResampleAudioWriter()
@@ -30,9 +30,7 @@ TResampleAudioWriter::~TResampleAudioWriter()
 
 bool TResampleAudioWriter::open(const QString& filename, uint inputSampleRate)
 {
-    Q_ASSERT(m_codecWriter);
-
-    if (!m_codecWriter->open(filename)) {
+    if (!m_encoder || !m_encoder->open(filename)) {
         return false;
     }
 
@@ -66,7 +64,7 @@ bool TResampleAudioWriter::close()
     // The end of the input: what the resampler still holds goes into the
     // file too, else the file loses its last few milliseconds
     bool flushed = true;
-    if (m_resampler && m_codecWriter) {
+    if (m_resampler && m_encoder) {
         flushed = flush_resampler();
     }
 
@@ -77,8 +75,8 @@ bool TResampleAudioWriter::close()
 
     m_resampler.reset();
 
-    if (m_codecWriter) {
-        return m_codecWriter->close() && flushed;
+    if (m_encoder) {
+        return m_encoder->close() && flushed;
     }
 
     return false;
@@ -86,7 +84,7 @@ bool TResampleAudioWriter::close()
 
 nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
-    if (!m_codecWriter || frameCount == 0) {
+    if (!m_encoder || frameCount == 0) {
         return 0;
     }
 
@@ -172,7 +170,7 @@ nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, n
         for (uint chn = 0; chn < m_settings.channelCount; ++chn) {
             gdither_runf(m_dither, chn, targetFrames, interleavedFloatBuffer, packedOutputBuffer);
         }
-        writtenFrames = m_codecWriter->write(packedOutputBuffer, targetFrames);
+        writtenFrames = m_encoder->write(packedOutputBuffer, targetFrames);
         break;
 
     case TraversoDAW::DataFormat::PCM_32:
@@ -199,12 +197,12 @@ nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, n
                 }
             }
         }
-        writtenFrames = m_codecWriter->write(packedOutputBuffer, targetFrames);
+        writtenFrames = m_encoder->write(packedOutputBuffer, targetFrames);
         break;
     }
 
     default:
-        writtenFrames = m_codecWriter->write(interleavedFloatBuffer, targetFrames);
+        writtenFrames = m_encoder->write(interleavedFloatBuffer, targetFrames);
         break;
     }
 
