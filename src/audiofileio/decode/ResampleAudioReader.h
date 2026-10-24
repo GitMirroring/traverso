@@ -54,6 +54,8 @@ public:
     void set_resampler(TAudioResampler::BackendType backend, int quality);
 
 protected:
+    // The resamplers forget the frames fed so far and the frames to drop:
+    // before every seek, and after a change of rate
     void reset();
     bool seek_private(nframes_t start) final;
     nframes_t read_private(TFileIOBuffer& buffer, nframes_t frameCount) final;

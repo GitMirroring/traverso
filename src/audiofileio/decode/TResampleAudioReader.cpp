@@ -56,6 +56,10 @@ void TResampleAudioReader::clear_buffers()
     }
 }
 
+// Forgets what the resamplers hold of the frames fed so far (the filter
+// history the next output frames would be computed from, and input kept for
+// the next feed) and the frames still to drop after a seek: all of it belongs
+// to the position read before, and the next read is from another one
 void TResampleAudioReader::reset()
 {
     for (const auto& resampler : m_resamplers) {
@@ -103,6 +107,9 @@ void TResampleAudioReader::set_output_rate(uint rate)
         create_resamplers();
     }
 
+    // The new resamplers hold nothing yet; the frames to drop were those of a
+    // seek at the old rate, and the owner seeks again at the new one
+    // (TBufferedAudioStream::step())
     reset();
 }
 
@@ -112,6 +119,11 @@ bool TResampleAudioReader::seek_private(nframes_t start)
     if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
         return m_reader->seek(start);
     }
+    // The resamplers' filter history and kept input are from the position
+    // read before: fed on, they would put that position's tail (a click, the
+    // length of the filter) and its kept frames at the new position. Before
+    // the seek, since the seek sets the frames to drop and the reset clears
+    // them.
     reset();
 
     // A position in output frames is mostly no whole frame of the file, and

@@ -45,6 +45,8 @@ public:
     TAudioResampler(BackendType backend, double srcRatio, int quality, long blockSize);
     ~TAudioResampler();
 
+    // Forgets the frames fed so far (filter history, kept input): before
+    // feeding frames from another position than the last one's
     void reset();
 
     // CLEAN & PURE: Strictly float-to-float mono resampling

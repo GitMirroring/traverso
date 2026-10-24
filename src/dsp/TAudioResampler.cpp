@@ -187,6 +187,9 @@ TAudioResampler::TAudioResampler(BackendType backend, double srcRatio, int quali
 
 TAudioResampler::~TAudioResampler() = default;
 
+// The backend forgets its filter history (soxr_clear(), src_reset()): the
+// next output is computed from the next input only, as at the start. The
+// input kept from the last process() goes too: it is from before the seek.
 void TAudioResampler::reset() {
     if (m_backend) {
         m_backend->reset();
