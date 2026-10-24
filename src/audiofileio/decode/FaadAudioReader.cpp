@@ -44,20 +44,155 @@ static int mp4_read_callback(int64_t offset, void *buffer, size_t size, void *to
 	return (bytesRead == static_cast<qint64>(size)) ? 0 : 1;
 }
 
+static quint32 be32(const unsigned char* p)
+{
+	return (quint32(p[0]) << 24) | (quint32(p[1]) << 16) | (quint32(p[2]) << 8) | quint32(p[3]);
+}
+
+static quint64 be64(const unsigned char* p)
+{
+	return (quint64(be32(p)) << 32) | be32(p + 4);
+}
+
+static constexpr quint32 box_type(const char (&name)[5])
+{
+	return (quint32(uchar(name[0])) << 24) | (quint32(uchar(name[1])) << 16) | (quint32(uchar(name[2])) << 8) | quint32(uchar(name[3]));
+}
+
+// An MP4 box: its type, where its content starts and where it ends
+struct Mp4Box
+{
+	quint32 type{0};
+	qint64 content{0};
+	qint64 end{0};
+};
+
+static bool read_box(QFile& file, qint64 at, qint64 limit, Mp4Box& box)
+{
+	unsigned char header[16];
+	if (!file.seek(at) || file.read(reinterpret_cast<char*>(header), 8) != 8) {
+		return false;
+	}
+	quint64 size = be32(header);
+	box.type = be32(header + 4);
+	qint64 headerSize = 8;
+	if (size == 1) {
+		if (file.read(reinterpret_cast<char*>(header + 8), 8) != 8) {
+			return false;
+		}
+		size = be64(header + 8);
+		headerSize = 16;
+	} else if (size == 0) {
+		size = quint64(limit - at);
+	}
+	if (size < quint64(headerSize) || at + qint64(size) > limit) {
+		return false;
+	}
+	box.content = at + headerSize;
+	box.end = at + qint64(size);
+	return true;
+}
+
+static bool find_box(QFile& file, qint64 from, qint64 to, quint32 type, Mp4Box& found)
+{
+	for (qint64 at = from; at < to;) {
+		Mp4Box box;
+		if (!read_box(file, at, to, box)) {
+			return false;
+		}
+		if (box.type == type) {
+			found = box;
+			return true;
+		}
+		at = box.end;
+	}
+	return false;
+}
+
+// The timescale of an mvhd or mdhd box (version 0 or 1)
+static quint32 header_timescale(QFile& file, const Mp4Box& box)
+{
+	unsigned char data[24];
+	if (!file.seek(box.content) || file.read(reinterpret_cast<char*>(data), 24) != 24) {
+		return 0;
+	}
+	return be32(data + (data[0] == 1 ? 20 : 12));
+}
+
+// The gapless information of an M4A: the edit list of its audio track
+// (ffmpeg and Apple write one): the priming to skip (media timescale) and
+// the length that plays (movie timescale)
+struct Mp4Edit
+{
+	qint64 mediaTime{-1};
+	qint64 segmentDuration{-1};
+	quint32 movieTimescale{0};
+	quint32 mediaTimescale{0};
+};
+
+static bool read_audio_edit(QFile& file, Mp4Edit& edit)
+{
+	Mp4Box moov;
+	if (!find_box(file, 0, file.size(), box_type("moov"), moov)) {
+		return false;
+	}
+	Mp4Box mvhd;
+	if (find_box(file, moov.content, moov.end, box_type("mvhd"), mvhd)) {
+		edit.movieTimescale = header_timescale(file, mvhd);
+	}
+	for (qint64 at = moov.content; at < moov.end;) {
+		Mp4Box trak;
+		if (!read_box(file, at, moov.end, trak)) {
+			return false;
+		}
+		at = trak.end;
+		Mp4Box mdia, hdlr, mdhd, edts, elst;
+		if (trak.type != box_type("trak") || !find_box(file, trak.content, trak.end, box_type("mdia"), mdia) ||
+		    !find_box(file, mdia.content, mdia.end, box_type("hdlr"), hdlr)) {
+			continue;
+		}
+		unsigned char handler[12];
+		if (!file.seek(hdlr.content) || file.read(reinterpret_cast<char*>(handler), 12) != 12 || be32(handler + 8) != box_type("soun")) {
+			continue;
+		}
+		if (find_box(file, mdia.content, mdia.end, box_type("mdhd"), mdhd)) {
+			edit.mediaTimescale = header_timescale(file, mdhd);
+		}
+		if (!find_box(file, trak.content, trak.end, box_type("edts"), edts) ||
+		    !find_box(file, edts.content, edts.end, box_type("elst"), elst)) {
+			return false;
+		}
+		// The first edit that plays media (an empty edit, -1, delays the
+		// track: not met in files Traverso imports)
+		unsigned char head[8];
+		if (!file.seek(elst.content) || file.read(reinterpret_cast<char*>(head), 8) != 8) {
+			return false;
+		}
+		const bool wide = head[0] == 1;
+		const quint32 entries = be32(head + 4);
+		for (quint32 i = 0; i < entries; ++i) {
+			unsigned char entry[20];
+			const int size = wide ? 20 : 12;
+			if (file.read(reinterpret_cast<char*>(entry), size) != size) {
+				return false;
+			}
+			const qint64 duration = wide ? qint64(be64(entry)) : qint64(be32(entry));
+			const qint64 mediaTime = wide ? qint64(be64(entry + 8)) : qint64(qint32(be32(entry + 4)));
+			if (mediaTime >= 0) {
+				edit.segmentDuration = duration;
+				edit.mediaTime = mediaTime;
+				return edit.movieTimescale > 0 && edit.mediaTimescale > 0;
+			}
+		}
+		return false;
+	}
+	return false;
+}
+
 class FaadAudioReader::FaadDecoderPrivate
 {
 public:
 	FaadDecoderPrivate()
-		: hDecoder(nullptr)
-		, isMp4(false)
-		, demuxOpen(false)
-		, audioTrack(-1)
-		, sampleCount(0)
-		, currentPacket(0)
-		, currentAdtsFrame(0)
-		, overflowBuffer(1)
-		, overflowStart(0)
-		, overflowSize(0)
 	{
 		memset(&demux, 0, sizeof(demux));
 	}
@@ -67,12 +202,17 @@ public:
 		cleanup();
 	}
 
-	void cleanup()
+	void close_decoder()
 	{
 		if (hDecoder) {
 			NeAACDecClose(hDecoder);
 			hDecoder = nullptr;
 		}
+	}
+
+	void cleanup()
+	{
+		close_decoder();
 
 		if (demuxOpen) {
 			MP4D_close(&demux);
@@ -81,20 +221,14 @@ public:
 			isMp4 = false;
 		}
 
-		overflowStart = 0;
-		overflowSize = 0;
-
 		if (file.isOpen()) {
 			file.close();
 		}
 
-		samplePcmOffsets.clear();
 		adtsFrameOffsets.clear();
 		adtsFrameSizes.clear();
 
 		sampleCount = 0;
-		currentPacket = 0;
-		currentAdtsFrame = 0;
 		audioTrack = -1;
 	}
 
@@ -109,25 +243,48 @@ public:
 		return file.read(size);
 	}
 
+	// The AAC packets of the file: MP4 samples, or ADTS frames
+	int packet_count() const { return isMp4 ? int(sampleCount) : adtsFrameOffsets.size(); }
+	QByteArray packet(int index)
+	{
+		if (isMp4) {
+			unsigned int bytes = 0, timestamp = 0, duration = 0;
+			const MP4D_file_offset_t offset = MP4D_frame_offset(&demux, audioTrack, unsigned(index), &bytes, &timestamp, &duration);
+			return readBytes(qint64(offset), int(bytes));
+		}
+		return readBytes(adtsFrameOffsets[index], adtsFrameSizes[index]);
+	}
+
 	QFile file;
-	NeAACDecHandle hDecoder;
-	bool isMp4;
-	bool demuxOpen;
+	NeAACDecHandle hDecoder{nullptr};
+	bool isMp4{false};
+	bool demuxOpen{false};
 	MP4D_demux_t demux;
-	int audioTrack;
-	unsigned int sampleCount;
-	QVector<nframes_t> samplePcmOffsets;
+	int audioTrack{-1};
+	unsigned int sampleCount{0};
+	// The decoder's setup: the stream's specific config (MP4), or the first
+	// ADTS frame
+	QByteArray decoderSetup;
 
 	// For ADTS fallback
 	QVector<qint64> adtsFrameOffsets;
 	QVector<int> adtsFrameSizes;
 
-	unsigned int currentPacket;
-	unsigned int currentAdtsFrame;
+	// The decoder's model, measured when the file opens: a fresh decoder
+	// gives nothing for its first leadingEmpty packets (FAAD: one), every
+	// packet after them frameLength frames
+	int leadingEmpty{1};
+	nframes_t frameLength{1024};
+	// Frames of the decoder's output before frame 0 of the file: the
+	// priming an edit list says is more than FAAD leaves out by itself
+	nframes_t skip{0};
 
-	TAudioBuffer overflowBuffer;
-	nframes_t overflowStart;
-	nframes_t overflowSize;
+	// The packet decode_next_packet() decodes next, and the frames of the
+	// packet decoded last (interleaved), from pendingStart on not read yet
+	int nextPacket{0};
+	std::vector<float> pending;
+	nframes_t pendingStart{0};
+	nframes_t pendingCount{0};
 };
 
 FaadAudioReader::FaadAudioReader(const QString& filename)
@@ -268,6 +425,7 @@ bool FaadAudioReader::initDecoderInternal()
 			unsigned char ch = 0;
 
 			if (track->dsi && track->dsi_bytes > 0) {
+				d->decoderSetup = QByteArray(reinterpret_cast<const char*>(track->dsi), int(track->dsi_bytes));
 				char initRes = NeAACDecInit2(d->hDecoder, track->dsi, track->dsi_bytes, &rate, &ch);
 				if (initRes > 0) {
 					return false;
@@ -276,6 +434,7 @@ bool FaadAudioReader::initDecoderInternal()
 				unsigned int fb = 0, ts = 0, dur = 0;
 				MP4D_file_offset_t off = MP4D_frame_offset(&d->demux, d->audioTrack, 0, &fb, &ts, &dur);
 				QByteArray firstPkt = d->readBytes(off, fb);
+				d->decoderSetup = firstPkt;
 				long initRes = NeAACDecInit(d->hDecoder, reinterpret_cast<unsigned char*>(firstPkt.data()), fb, &rate, &ch);
 				if (initRes > 0) {
 					return false;
@@ -289,29 +448,30 @@ bool FaadAudioReader::initDecoderInternal()
 				return false;
 			}
 
-			// Precalculate sample PCM offsets
-			d->samplePcmOffsets.resize(d->sampleCount + 1);
-			d->samplePcmOffsets[0] = 0;
-
-			unsigned int timescale = track->timescale ? track->timescale : m_rate;
-			for (unsigned int i = 0; i < d->sampleCount; ++i) {
-				unsigned int fb = 0, ts = 0, dur = 0;
-				MP4D_frame_offset(&d->demux, d->audioTrack, i, &fb, &ts, &dur);
-				nframes_t pcm_pos = static_cast<nframes_t>(((double)ts / timescale) * m_rate + 0.5);
-				d->samplePcmOffsets[i] = pcm_pos;
+			if (!measure_decoder()) {
+				return false;
 			}
 
-			uint64_t totalDur = ((uint64_t)track->duration_hi << 32) | track->duration_lo;
-			if (totalDur > 0) {
-				m_frames = static_cast<nframes_t>(((double)totalDur / timescale) * m_rate + 0.5);
-			} else {
-				m_frames = d->sampleCount * 1024;
+			// Gapless: the edit list says how much priming to skip and how
+			// long the audio is. FAAD leaves out its first packet(s) by
+			// itself, as much as most encoders prime (1024 frames); the
+			// rest of the priming is skipped here. Without an edit list the
+			// track's duration counts the priming FAAD leaves out.
+			const qint64 own = qint64(d->leadingEmpty) * d->frameLength;
+			const qint64 decodable = qint64(d->packet_count() - d->leadingEmpty) * d->frameLength;
+			qint64 frames = decodable;
+			Mp4Edit edit;
+			const unsigned int timescale = track->timescale ? track->timescale : m_rate;
+			const uint64_t duration = ((uint64_t)track->duration_hi << 32) | track->duration_lo;
+			if (read_audio_edit(d->file, edit)) {
+				const qint64 priming = edit.mediaTime * qint64(m_rate) / edit.mediaTimescale;
+				d->skip = nframes_t(std::max<qint64>(0, priming - own));
+				frames = edit.segmentDuration * qint64(m_rate) / edit.movieTimescale;
+			} else if (duration > 0) {
+				frames = qint64(double(duration) / timescale * m_rate + 0.5) - own;
 			}
-			d->samplePcmOffsets[d->sampleCount] = m_frames;
-
-			m_frame = 0;
-			d->currentPacket = 0;
-			return true;
+			m_frames = nframes_t(std::clamp<qint64>(frames, 0, std::max<qint64>(0, decodable - d->skip)));
+			return seek(0);
 		}
 	}
 
@@ -368,10 +528,62 @@ bool FaadAudioReader::initDecoderInternal()
 
 	m_rate = static_cast<uint>(rate);
 	m_channels = static_cast<uint>(ch);
-	m_frames = static_cast<nframes_t>(d->adtsFrameOffsets.size() * 1024);
-	m_frame = 0;
-	d->currentAdtsFrame = 0;
-	return true;
+	d->decoderSetup = firstFrame;
+	if (!measure_decoder()) {
+		return false;
+	}
+	// ADTS says nothing of priming or padding: the frames FAAD gives (it
+	// leaves out as much as most encoders prime), up to an AAC frame more
+	// than the encoder was given
+	m_frames = nframes_t(qint64(d->packet_count() - d->leadingEmpty) * d->frameLength);
+	return seek(0);
+}
+
+bool FaadAudioReader::open_decoder()
+{
+	d->close_decoder();
+	d->hDecoder = NeAACDecOpen();
+	if (!d->hDecoder) {
+		return false;
+	}
+	NeAACDecConfigurationPtr config = NeAACDecGetCurrentConfiguration(d->hDecoder);
+	config->outputFormat = FAAD_FMT_FLOAT;
+	config->dontUpSampleImplicitSBR = 0;
+	NeAACDecSetConfiguration(d->hDecoder, config);
+
+	unsigned long rate = 0;
+	unsigned char channels = 0;
+	unsigned char* setup = reinterpret_cast<unsigned char*>(d->decoderSetup.data());
+	if (d->isMp4 && d->demux.track[d->audioTrack].dsi) {
+		return NeAACDecInit2(d->hDecoder, setup, (unsigned long)d->decoderSetup.size(), &rate, &channels) == 0;
+	}
+	return NeAACDecInit(d->hDecoder, setup, (unsigned long)d->decoderSetup.size(), &rate, &channels) >= 0;
+}
+
+bool FaadAudioReader::measure_decoder()
+{
+	// A fresh decoder over the first packets: how many give nothing, and
+	// what the first that gives something gives (1024 frames for AAC LC,
+	// 2048 with SBR, at the rate and channels of the decoder's output)
+	if (!open_decoder()) {
+		return false;
+	}
+	d->leadingEmpty = 0;
+	for (int i = 0; i < std::min(d->packet_count(), 8); ++i) {
+		QByteArray data = d->packet(i);
+		NeAACDecFrameInfo info;
+		NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(data.data()), (unsigned long)data.size());
+		if (info.error == 0 && info.samples > 0 && info.channels > 0) {
+			d->frameLength = nframes_t(info.samples / info.channels);
+			m_channels = info.channels;
+			if (info.samplerate > 0) {
+				m_rate = uint(info.samplerate);
+			}
+			return d->frameLength > 0;
+		}
+		++d->leadingEmpty;
+	}
+	return false;
 }
 
 bool FaadAudioReader::seek(nframes_t frame)
@@ -380,110 +592,31 @@ bool FaadAudioReader::seek(nframes_t frame)
 		return false;
 	}
 
-	if (!d->hDecoder) {
-		if (!initDecoderInternal()) {
+	// The frame in the decoder's output, and the packet that gives it
+	const qint64 sample = qint64(frame) + d->skip;
+	const int target = int(sample / d->frameLength) + d->leadingEmpty;
+	if (target >= d->packet_count()) {
+		return false;
+	}
+
+	// A fresh decoder from a few packets before: what it gives for the
+	// target is what a read from the start gives there (the overlap of the
+	// packet before it is all an AAC packet carries over)
+	const int first = std::max(0, target - std::max(PreRollPackets, d->leadingEmpty + 1));
+	if (!open_decoder()) {
+		return false;
+	}
+	d->nextPacket = first;
+	d->pendingStart = d->pendingCount = 0;
+	while (d->nextPacket <= target) {
+		if (!decode_next_packet()) {
 			return false;
 		}
 	}
+	d->pendingStart = std::min(nframes_t(sample - qint64(target - d->leadingEmpty) * d->frameLength), d->pendingCount);
 
-	d->overflowStart = 0;
-	d->overflowSize = 0;
-
-	if (d->isMp4) {
-		if (d->sampleCount == 0) {
-			return false;
-		}
-
-		auto it = std::upper_bound(d->samplePcmOffsets.begin(), d->samplePcmOffsets.end(), frame);
-		int targetPkt = std::max(0, static_cast<int>(std::distance(d->samplePcmOffsets.begin(), it) - 1));
-		if (targetPkt >= static_cast<int>(d->sampleCount)) {
-			targetPkt = static_cast<int>(d->sampleCount) - 1;
-		}
-
-		int prerollPkt = std::max(0, targetPkt - 2);
-
-		NeAACDecPostSeekReset(d->hDecoder, 0);
-
-		// Preroll warmup
-		for (int j = prerollPkt; j < targetPkt; ++j) {
-			unsigned int fb = 0, ts = 0, dur = 0;
-			MP4D_file_offset_t off = MP4D_frame_offset(&d->demux, d->audioTrack, j, &fb, &ts, &dur);
-			QByteArray pktData = d->readBytes(off, fb);
-			NeAACDecFrameInfo info;
-			NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(pktData.data()), fb);
-		}
-
-		// Decode target packet
-		unsigned int fb = 0, ts = 0, dur = 0;
-		MP4D_file_offset_t off = MP4D_frame_offset(&d->demux, d->audioTrack, targetPkt, &fb, &ts, &dur);
-		QByteArray pktData = d->readBytes(off, fb);
-		NeAACDecFrameInfo info;
-		void* pcm = NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(pktData.data()), fb);
-		d->currentPacket = targetPkt + 1;
-
-		if (info.error == 0 && info.samples > 0 && m_channels > 0) {
-			nframes_t decodedFrames = info.samples / m_channels;
-			nframes_t offsetInPkt = (frame > d->samplePcmOffsets[targetPkt]) ? (frame - d->samplePcmOffsets[targetPkt]) : 0;
-			if (offsetInPkt < decodedFrames) {
-				nframes_t rem = decodedFrames - offsetInPkt;
-				float* samples = static_cast<float*>(pcm);
-				d->overflowBuffer.resize(rem * m_channels);
-				memcpy(d->overflowBuffer.get_data(rem * m_channels),
-				       samples + offsetInPkt * m_channels,
-				       rem * m_channels * sizeof(audio_sample_t));
-				d->overflowStart = 0;
-				d->overflowSize = rem;
-			}
-		}
-
-		m_frame = frame;
-		return true;
-	} else {
-		// ADTS mode
-		if (d->adtsFrameOffsets.isEmpty()) {
-			return false;
-		}
-
-		int targetFrame = static_cast<int>(frame / 1024);
-		if (targetFrame >= d->adtsFrameOffsets.size()) {
-			targetFrame = d->adtsFrameOffsets.size() - 1;
-		}
-
-		int prerollFrame = std::max(0, targetFrame - 2);
-
-		NeAACDecPostSeekReset(d->hDecoder, 0);
-
-		// Preroll warmup
-		for (int j = prerollFrame; j < targetFrame; ++j) {
-			QByteArray frameData = d->readBytes(d->adtsFrameOffsets[j], d->adtsFrameSizes[j]);
-			NeAACDecFrameInfo info;
-			NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(frameData.data()), frameData.size());
-		}
-
-		// Decode target frame
-		QByteArray frameData = d->readBytes(d->adtsFrameOffsets[targetFrame], d->adtsFrameSizes[targetFrame]);
-		NeAACDecFrameInfo info;
-		void* pcm = NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(frameData.data()), frameData.size());
-		d->currentAdtsFrame = targetFrame + 1;
-
-		if (info.error == 0 && info.samples > 0 && m_channels > 0) {
-			nframes_t decodedFrames = info.samples / m_channels;
-			nframes_t offsetInFrame = frame % 1024;
-			if (offsetInFrame < decodedFrames) {
-				nframes_t rem = decodedFrames - offsetInFrame;
-				float* samples = static_cast<float*>(pcm);
-				d->overflowBuffer.resize(rem * m_channels);
-				memcpy(d->overflowBuffer.get_data(rem * m_channels),
-				       samples + offsetInFrame * m_channels,
-				       rem * m_channels * sizeof(audio_sample_t));
-				d->overflowStart = 0;
-				d->overflowSize = rem;
-			}
-		}
-
-		m_frame = frame;
-		return true;
-	}
+	m_frame = frame;
+	return true;
 }
 
 nframes_t FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
@@ -503,96 +636,42 @@ nframes_t FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 
 nframes_t FaadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
-    TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
-	nframes_t outputPos = 0;
-
-	auto copyInterleavedToDestination = [&](nframes_t frames, nframes_t destinationOffset) {
+	nframes_t given = 0;
+	while (given < frameCount && m_frame + given < m_frames) {
+		if (d->pendingStart >= d->pendingCount && !decode_next_packet()) {
+			break;
+		}
+		const nframes_t n = std::min({frameCount - given, d->pendingCount - d->pendingStart, m_frames - (m_frame + given)});
 		for (uint channel = 0; channel < m_channels; ++channel) {
-            TAudioBuffer &destination = fileIOBuffer.get_channel_buffer(channel);
-			for (nframes_t frame = 0; frame < frames; ++frame) {
-				destination[destinationOffset + frame] = readBuffer[frame * m_channels + channel];
+			audio_sample_t* destination = fileIOBuffer.get_channel_buffer(channel).data(given, n);
+			for (nframes_t i = 0; i < n; ++i) {
+				destination[i] = d->pending[size_t(d->pendingStart + i) * m_channels + channel];
 			}
 		}
-	};
-
-	// 1. Drain existing overflow samples
-	if (d->overflowSize > 0) {
-		nframes_t toCopy = std::min(d->overflowSize, frameCount);
-		for (nframes_t frame = 0; frame < toCopy; ++frame) {
-			for (uint channel = 0; channel < m_channels; ++channel) {
-				readBuffer[frame * m_channels + channel] = d->overflowBuffer[
-					(d->overflowStart + frame) * m_channels + channel];
-			}
-		}
-		copyInterleavedToDestination(toCopy, outputPos);
-		d->overflowStart += toCopy;
-		d->overflowSize -= toCopy;
-		outputPos += toCopy;
-
-		if (outputPos >= frameCount) {
-			return outputPos;
-		}
+		d->pendingStart += n;
+		given += n;
 	}
+	return given;
+}
 
-	// 2. Decode subsequent frames/packets
-	while (outputPos < frameCount) {
-		QByteArray packetData;
-
-		if (d->isMp4) {
-			if (d->currentPacket >= d->sampleCount) {
-				break; // EOF
-			}
-			unsigned int fb = 0, ts = 0, dur = 0;
-			MP4D_file_offset_t off = MP4D_frame_offset(&d->demux, d->audioTrack, d->currentPacket, &fb, &ts, &dur);
-			packetData = d->readBytes(off, fb);
-			d->currentPacket++;
-		} else {
-			if (d->currentAdtsFrame >= static_cast<unsigned int>(d->adtsFrameOffsets.size())) {
-				break; // EOF
-			}
-			packetData = d->readBytes(d->adtsFrameOffsets[d->currentAdtsFrame], d->adtsFrameSizes[d->currentAdtsFrame]);
-			d->currentAdtsFrame++;
-		}
-
-		if (packetData.isEmpty()) {
-			break;
-		}
-
-		NeAACDecFrameInfo info;
-		void* pcm = NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(packetData.data()), packetData.size());
-
-		if (info.error > 0) {
-			continue;
-		}
-		if (info.samples == 0) {
-			continue;
-		}
-
-		nframes_t decodedFrames = info.samples / m_channels;
-		float* samples = static_cast<float*>(pcm);
-		nframes_t space = frameCount - outputPos;
-		nframes_t framesToCopy = std::min(decodedFrames, space);
-
-		for (nframes_t frame = 0; frame < framesToCopy; ++frame) {
-			for (uint channel = 0; channel < m_channels; ++channel) {
-				readBuffer[frame * m_channels + channel] = samples[frame * m_channels + channel];
-			}
-		}
-		copyInterleavedToDestination(framesToCopy, outputPos);
-		outputPos += framesToCopy;
-
-		if (decodedFrames > space) {
-			// Store remaining samples in overflow buffer
-			nframes_t rem = decodedFrames - space;
-			d->overflowBuffer.resize(rem * m_channels);
-			memcpy(d->overflowBuffer.get_data(rem * m_channels),
-			       samples + space * m_channels,
-			       rem * m_channels * sizeof(audio_sample_t));
-			d->overflowStart = 0;
-			d->overflowSize = rem;
-			break;
-		}
+bool FaadAudioReader::decode_next_packet()
+{
+	if (d->nextPacket >= d->packet_count()) {
+		return false;
 	}
+	QByteArray data = d->packet(d->nextPacket);
+	NeAACDecFrameInfo info;
+	void* pcm = NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(data.data()), (unsigned long)data.size());
+	++d->nextPacket;
 
-	return outputPos;
+	// Every packet counts for frameLength frames, also one that does not
+	// decode (silence then), so the packets stay where they are
+	const size_t samples = size_t(d->frameLength) * m_channels;
+	d->pending.assign(samples, 0.0f);
+	if (pcm && info.error == 0 && info.channels == m_channels) {
+		std::copy_n(static_cast<const float*>(pcm), std::min<size_t>(info.samples, samples), d->pending.data());
+	}
+	d->pendingStart = 0;
+	d->pendingCount = d->frameLength;
+	return true;
 }

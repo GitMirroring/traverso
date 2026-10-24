@@ -38,9 +38,20 @@ public:
     nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
 
 protected:
-    // FAAD's decoding of frameCount frames into the channel buffers; the
-    // frames it gave
+    // The packets decoded before the one a seek goes to (with a fresh
+    // decoder), so it gives what a read from the start gives there
+    static constexpr int PreRollPackets = 2;
+
+    // frameCount frames from the decoder's position into the channel
+    // buffers; the frames it gave
     nframes_t decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
+    // The next packet into the decoder's output (silence when it does not
+    // decode); false at the end of the file
+    bool decode_next_packet();
+    // A fresh FAAD decoder, set up for the file
+    bool open_decoder();
+    // How a fresh decoder starts: its empty packets, its frames per packet
+    bool measure_decoder();
 
 	bool initDecoderInternal();
 
