@@ -67,26 +67,31 @@ public:
         }
     }
 
-    // Dynamically secures memory capacity across the float data containers
+    // Room for size samples in each of channels channel buffers, and in the
+    // interleaved buffer for all channel buffers. A source with more channels
+    // than the buffer has gets the channel buffers it lacks. Not in the audio
+    // thread: allocates
     void check_capacity(uint size, uint channels)
     {
         Q_ASSERT(size > 0);
 
-        if (size <= m_channelBufferSize) {
-            return;
+        while (m_channelBuffers.size() < channels) {
+            m_channelBuffers.push_back(std::make_unique<TAudioBuffer>(m_channelBufferSize));
         }
 
-        uint maxChannels = m_channelBuffers.size();
-        Q_ASSERT(channels <= maxChannels);
-
-        // Buffer resize will safely handle data-migration and silences the structures
-        for (const auto &buffer : m_channelBuffers) {
-            buffer->resize(size);
+        if (size > m_channelBufferSize) {
+            // Buffer resize will safely handle data-migration and silences the structures
+            for (const auto &buffer : m_channelBuffers) {
+                buffer->resize(size);
+            }
+            m_channelBufferSize = size;
         }
-        m_channelBufferSize = size;
 
-        m_interleavedBuffer.resize(size * maxChannels);
-        m_interleavedBufferSize = (size * maxChannels);
+        const uint interleavedSize = m_channelBufferSize * uint(m_channelBuffers.size());
+        if (interleavedSize > m_interleavedBufferSize) {
+            m_interleavedBuffer.resize(interleavedSize);
+            m_interleavedBufferSize = interleavedSize;
+        }
     }
 
     // Dynamically secures memory capacity inside the raw byte container used for integer packaging
