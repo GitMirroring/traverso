@@ -190,36 +190,35 @@ void TWaveform::build_finished()
     emit ready();
 }
 
-TWaveformColumns::Source TWaveform::columns(const TTimeRef& start, const TTimeRef& columnWidth, int count, TWaveformColumn* out)
+TWaveformColumns::Source TWaveform::device_columns(const TTimeRef& start, const TTimeRef& columnWidth, int count,
+                                                   const TTimeRef& clipStart, const TTimeRef& clipEnd, TWaveformColumn* out)
 {
+    auto from = [&](const TPeakLevels& levels, TWaveformSampleSource* samples) {
+        return TWaveformColumns::device_columns(levels, samples, start, columnWidth, count, clipStart, clipEnd, out);
+    };
+    // A file being written: what is written so far, mapped for this call
+    // only, the complete chunks with their levels and level 0 of the chunk
+    // being written. A fresh mapping costs a page fault per page the query
+    // touches: about 0.25 ms per stereo track for 10 minutes in view, more
+    // for a wider view (doc/design/peak-records.md).
+    auto from_stream = [&](const TPeakStream& stream, TWaveformSampleSource* samples) {
+        TWaveformColumns::Source source = TWaveformColumns::Source::None;
+        stream.read([&](const TPeakLevels& levels) { source = from(levels, samples); });
+        return source;
+    };
+
     const State current = state();
     if (current == State::Building && m_building) {
         // What is built so far (the samples of the source are all there)
-        return stream_columns(*m_building, this, start, columnWidth, count, out);
+        return from_stream(*m_building, this);
     }
     if (current != State::Ready) {
         return TWaveformColumns::Source::None;
     }
     if (m_live) {
-        return stream_columns(*m_live, nullptr, start, columnWidth, count, out);
+        return from_stream(*m_live, nullptr);
     }
-    return TWaveformColumns::query(m_file.levels(), this, start, columnWidth, count, out);
-}
-
-TWaveformColumns::Source TWaveform::stream_columns(const TPeakStream& stream, TWaveformSampleSource* samples,
-                                                   const TTimeRef& start, const TTimeRef& columnWidth, int count,
-                                                   TWaveformColumn* out)
-{
-    // What is written so far, mapped for this query only: the complete
-    // chunks with their levels, level 0 of the chunk being written. A fresh
-    // mapping costs a page fault per page the query touches: about 0.25 ms
-    // per stereo track for 10 minutes in view, more for a wider view
-    // (doc/design/peak-records.md).
-    TWaveformColumns::Source source = TWaveformColumns::Source::None;
-    stream.read([&](const TPeakLevels& levels) {
-        source = TWaveformColumns::query(levels, samples, start, columnWidth, count, out);
-    });
-    return source;
+    return from(m_file.levels(), this);
 }
 
 float TWaveform::max_amplitude(const TTimeRef& start, const TTimeRef& end)

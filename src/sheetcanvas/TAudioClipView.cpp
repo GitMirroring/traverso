@@ -604,6 +604,9 @@ void TAudioClipView::update_recording(qint64 nowNanoseconds)
         m_boundingRect = QRectF(0, 0, newPixel + reserve, m_height);
     }
 
+    // From two pixels back: the grid column at the recording's edge is
+    // partial and grows with every append, and a grid column is up to 2
+    // device pixels wide (TWaveformColumns::device_columns())
     update(QRectF(oldPixel - 2, 0, newPixel - oldPixel + 3, m_height));
     m_paintedRecordingPos = painted;
 }
@@ -809,7 +812,11 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
     const TTimeRef sourceStart = m_clip->get_source_start_location();
 
     // The columns and their gain, in chunks so a rounded column width does
-    // not drift from the pixel grid
+    // not drift from the pixel grid. From one frame per pixel on the
+    // columns come from the power-of-two grid in source time
+    // (TWaveformColumns::device_columns()); where a grid column reaches
+    // outside the clip's source range, exactly.
+    const TTimeRef sourceEnd = sourceStart + m_clip->get_length();
     std::vector<TWaveformColumn> data(size_t(columns) * size_t(channels));
     std::vector<TWaveformColumn> chunk;
     std::vector<float> gain(static_cast<size_t>(columns));
@@ -821,7 +828,8 @@ void TAudioClipView::draw_columns(QPainter* painter, qreal xstart, int pixelcoun
         const int count = std::min(Chunk, columns - first);
         const TTimeRef clipLocal(qint64(std::llround((x0 + first / dpr) * scale)));
         chunk.resize(size_t(count) * size_t(channels));
-        if (waveform->columns(sourceStart + clipLocal, columnWidth, count, chunk.data()) == TWaveformColumns::Source::Samples) {
+        if (waveform->device_columns(sourceStart + clipLocal, columnWidth, count, sourceStart, sourceEnd, chunk.data())
+                == TWaveformColumns::Source::Samples) {
             drawRms = false;
         }
         for (int c = 0; c < channels; ++c) {

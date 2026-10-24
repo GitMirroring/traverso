@@ -137,6 +137,18 @@ int main(int argc, char** argv)
             TWaveformColumns::query(live, nullptr, tenStart, tenWidth, Columns, liveColumns.data());
         });
     });
+    // The same through the power-of-two grid (TWaveformColumns::device_columns())
+    const TTimeRef wholeEnd(uint64_t(Frames), Rate);
+    const double liveGridMs = best_ms(5, [&] {
+        stream.read([&](const TPeakLevels& live) {
+            TWaveformColumns::device_columns(live, nullptr, TTimeRef(), wholeWidth, Columns, TTimeRef(), wholeEnd, liveColumns.data());
+        });
+    });
+    const double liveTenGridMs = best_ms(20, [&] {
+        stream.read([&](const TPeakLevels& live) {
+            TWaveformColumns::device_columns(live, nullptr, tenStart, tenWidth, Columns, TTimeRef(), wholeEnd, liveColumns.data());
+        });
+    });
 
     timer.start();
     while (stream.post_process()) {
@@ -146,10 +158,13 @@ int main(int argc, char** argv)
     TPeakFile file;
     const double openMs = best_ms(1, [&] { file.open(path, source); });
     const double fileTenMs = best_ms(20, [&] { TWaveformColumns::query(file.levels(), nullptr, tenStart, tenWidth, Columns, liveColumns.data()); });
+    const double fileTenGridMs = best_ms(20, [&] {
+        TWaveformColumns::device_columns(file.levels(), nullptr, tenStart, tenWidth, Columns, TTimeRef(), wholeEnd, liveColumns.data());
+    });
     std::printf("file: header and name %.1f ms, %.1f MB, open + validate %.3f ms\n", postMs, double(QFileInfo(path).size()) / 1e6, openMs);
-    std::printf("while written (mapped per read), %d columns: the whole hour %.2f ms, 10 minutes %.3f ms per repaint\n", Columns,
-                liveMs, liveTenMs);
-    std::printf("finished file (mapping kept), 10 minutes in %d columns: %.3f ms per repaint\n", Columns, fileTenMs);
+    std::printf("while written (mapped per read), %d columns: the whole hour %.2f ms (grid %.2f), 10 minutes %.3f ms (grid %.3f) per repaint\n",
+                Columns, liveMs, liveGridMs, liveTenMs, liveTenGridMs);
+    std::printf("finished file (mapping kept), 10 minutes in %d columns: %.3f ms (grid %.3f) per repaint\n", Columns, fileTenMs, fileTenGridMs);
 
     // Query and paint
     GeneratedSource generated;
@@ -157,9 +172,10 @@ int main(int argc, char** argv)
     QImage image(Columns, Height * Channels, QImage::Format_ARGB32_Premultiplied);
 
     std::printf("\nms per 4K row of 2 channels, %d px high each\n", Height);
-    std::printf("%12s %10s %9s %10s %9s %9s %9s %9s %9s\n", "frames/col", "source", "query", "polygon", "rects", "+outline",
-                "lines", "opaque", "direct");
-    for (double framesPerColumn : {0.25, 1.0, 8.0, 63.0, 64.0, 256.0, 4096.0, 65536.0, double(Frames) / Columns}) {
+    std::printf("%12s %10s %9s %9s %10s %9s %9s %9s %9s %9s\n", "frames/col", "source", "query", "grid", "polygon", "rects",
+                "+outline", "lines", "opaque", "direct");
+    std::vector<TWaveformColumn> gridColumns(size_t(Columns) * Channels);
+    for (double framesPerColumn : {0.25, 1.0, 8.0, 40.0, 63.0, 64.0, 100.0, 256.0, 1000.0, 4096.0, 30000.0, 65536.0, double(Frames) / Columns}) {
         const TTimeRef width(qint64(std::llround(framesPerColumn * double(TTimeRef::UNIVERSAL_SAMPLE_RATE) / Rate)));
         const TTimeRef start = framesPerColumn * Columns >= Frames
             ? TTimeRef() : TTimeRef(TTimeRef::ONE_MINUTE_UNIVERSAL_SAMPLE_RATE * 7 + 12345);
@@ -167,6 +183,10 @@ int main(int argc, char** argv)
 
         const double queryMs = best_ms(5, [&] {
             used = TWaveformColumns::query(file.levels(), &generated, start, width, Columns, columns.data());
+        });
+        // The device columns through the power-of-two grid, the whole file as the clip
+        const double gridMs = best_ms(5, [&] {
+            TWaveformColumns::device_columns(file.levels(), &generated, start, width, Columns, TTimeRef(), wholeEnd, gridColumns.data());
         });
 
         auto paint = [&](bool pen) {
@@ -287,9 +307,9 @@ int main(int argc, char** argv)
             painter.drawImage(0, 0, image);
         });
 
-        std::printf("%12.2f %10s %9.3f %10.3f %9.3f %9.3f %9.3f %9.3f %9.3f\n", framesPerColumn,
+        std::printf("%12.2f %10s %9.3f %9.3f %10.3f %9.3f %9.3f %9.3f %9.3f %9.3f\n", framesPerColumn,
                     used == TWaveformColumns::Source::Samples ? "samples" : used == TWaveformColumns::Source::Pyramid ? "pyramid" : "none",
-                    queryMs, paintMs, rectsMs, outlineMs, linesMs, opaqueMs, directMs);
+                    queryMs, gridMs, paintMs, rectsMs, outlineMs, linesMs, opaqueMs, directMs);
     }
 
     return 0;

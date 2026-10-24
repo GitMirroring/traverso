@@ -71,10 +71,14 @@ public:
     int progress() const { return m_progress; }
     int channel_count() const;
 
-    // Columns for the source time range starting at start, see
-    // TWaveformColumns::query(). While Building: from the peaks built so
-    // far, empty columns past them. Source::None while Failed.
-    TWaveformColumns::Source columns(const TTimeRef& start, const TTimeRef& columnWidth, int count, TWaveformColumn* out);
+    // One column per device pixel for the source time range starting at
+    // start, see TWaveformColumns::device_columns(): from the power-of-two
+    // grid from one frame per pixel on, exact where a grid column reaches
+    // outside the clip's source range [clipStart, clipEnd). While Building:
+    // from the peaks built so far, empty columns past them. Source::None
+    // while Failed.
+    TWaveformColumns::Source device_columns(const TTimeRef& start, const TTimeRef& columnWidth, int count,
+                                            const TTimeRef& clipStart, const TTimeRef& clipEnd, TWaveformColumn* out);
 
     // The highest |sample| of all channels between start and end (source
     // time), at most 0.006 dB above it (TWaveformColumns::max_amplitude());
@@ -95,10 +99,6 @@ signals:
 
 private:
     TPeakFile::SourceInfo source_info() const;
-    // From the file of a recording or a build while it is written
-    TWaveformColumns::Source stream_columns(const TPeakStream& stream, TWaveformSampleSource* samples,
-                                            const TTimeRef& start, const TTimeRef& columnWidth, int count,
-                                            TWaveformColumn* out);
     void open_or_build();
     void build_finished();
     void start_build(const char* reason);
