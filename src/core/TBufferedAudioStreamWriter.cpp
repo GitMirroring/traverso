@@ -62,9 +62,9 @@ int TBufferedAudioStreamWriter::prepare_file(TExportSpecification *specification
     set_name(get_name() + specification->get_file_extension());
     specification->print_export_data();
 
-    m_audioWriter = std::make_unique<TAudioWriter>(specification->get_encode_settings());
-    if (!m_audioWriter->open(m_fileName, m_sampleRate)) {
-        PERROR("Write Source failed to open via TAudioWriter");
+    // The writer logs why it cannot make the file
+    m_audioWriter = TAudioWriter::open(specification->get_encode_settings(), m_fileName, m_sampleRate);
+    if (!m_audioWriter) {
         return -1;
     }
 

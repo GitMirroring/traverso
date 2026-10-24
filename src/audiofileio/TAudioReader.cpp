@@ -31,52 +31,53 @@ bool TAudioReader::can_read(const QString& fileName)
     return can_decode_audio(fileName);
 }
 
-TAudioReader::TAudioReader(const QString& fileName)
-    : m_decoder(open_audio_decoder(fileName))
+std::unique_ptr<TAudioReader> TAudioReader::open(const QString& fileName)
 {
-    if (!m_decoder) {
-        TLOG_W("audiofile", "{}: no decoder for it", fileName.toStdString());
-        return;
+    // The factory logs why it has none
+    std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(fileName);
+    if (!decoder) {
+        return nullptr;
     }
-    m_outputRate = m_decoder->rate();
-    m_outputFrames = m_decoder->frame_count();
+    return std::unique_ptr<TAudioReader>(new TAudioReader(std::move(decoder)));
+}
+
+TAudioReader::TAudioReader(std::unique_ptr<TAudioDecoder> decoder)
+    : m_decoder(std::move(decoder))
+    , m_outputRate(m_decoder->rate())
+    , m_outputFrames(m_decoder->frame_count())
+{
 }
 
 TAudioReader::~TAudioReader() = default;
 
-bool TAudioReader::is_valid() const
-{
-    return m_decoder && m_decoder->is_valid();
-}
-
 uint TAudioReader::channel_count() const
 {
-    return m_decoder ? m_decoder->channel_count() : 0;
+    return m_decoder->channel_count();
 }
 
 uint TAudioReader::file_rate() const
 {
-    return m_decoder ? m_decoder->rate() : 0;
+    return m_decoder->rate();
 }
 
 nframes_t TAudioReader::file_frame_count() const
 {
-    return m_decoder ? m_decoder->frame_count() : 0;
+    return m_decoder->frame_count();
 }
 
 TTimeRef TAudioReader::length() const
 {
-    return m_decoder ? m_decoder->length() : TTimeRef();
+    return m_decoder->length();
 }
 
 QString TAudioReader::decoder_type() const
 {
-    return m_decoder ? m_decoder->decoder_type() : QString();
+    return m_decoder->decoder_type();
 }
 
 void TAudioReader::set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality)
 {
-    if (!m_decoder || rate == 0) {
+    if (rate == 0) {
         return;
     }
 
@@ -148,7 +149,7 @@ bool TAudioReader::reposition(nframes_t frame)
 
 nframes_t TAudioReader::read(TFileIOBuffer& buffer, const TTimeRef& location, nframes_t count)
 {
-    if (!m_decoder || count == 0) {
+    if (count == 0) {
         return 0;
     }
     // The reader writes into the buffer, so it makes room in it
@@ -174,7 +175,7 @@ nframes_t TAudioReader::read(TFileIOBuffer& buffer, const TTimeRef& location, nf
 
 nframes_t TAudioReader::read_file_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count)
 {
-    if (!m_decoder || count == 0) {
+    if (count == 0) {
         return 0;
     }
     // The decoder moves: where the output left it, for the next read()

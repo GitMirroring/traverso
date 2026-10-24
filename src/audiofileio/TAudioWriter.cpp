@@ -14,37 +14,31 @@ the Free Software Foundation; either version 2 of the License, or
 #include "TAudioResampler.h"
 #include "TFileIOBuffer.h"
 #include "gdither.h"
+#include "TLog.h"
 
-TAudioWriter::TAudioWriter(const TAudioEncodeSettings& settings)
-    : m_settings(settings)
-    , m_inputSampleRate(0)
+std::unique_ptr<TAudioWriter> TAudioWriter::open(const TAudioEncodeSettings& settings, const QString& fileName, uint inputSampleRate)
+{
+    std::unique_ptr<TAudioEncoder> encoder = create_audio_encoder(settings);
+    if (!encoder) {
+        TLOG_W("audiofile", "{}: no encoder for this format in this build", fileName.toStdString());
+        return nullptr;
+    }
+    // The encoder logs why it cannot make the file
+    if (inputSampleRate == 0 || !encoder->open(fileName)) {
+        return nullptr;
+    }
+    return std::unique_ptr<TAudioWriter>(new TAudioWriter(settings, std::move(encoder), inputSampleRate));
+}
+
+TAudioWriter::TAudioWriter(const TAudioEncodeSettings& settings, std::unique_ptr<TAudioEncoder> encoder, uint inputSampleRate)
+    : m_encoder(std::move(encoder))
+    , m_settings(settings)
+    , m_inputSampleRate(inputSampleRate)
     , m_dither(nullptr)
 {
-    m_encoder = create_audio_encoder(m_settings);
-}
-
-TAudioWriter::~TAudioWriter()
-{
-    close();
-}
-
-bool TAudioWriter::open(const QString& filename, uint inputSampleRate)
-{
-    if (!m_encoder || !m_encoder->open(filename)) {
-        return false;
-    }
-
-    m_inputSampleRate = inputSampleRate;
-
-    m_resampler.reset();
     if (m_inputSampleRate != m_settings.sampleRate) {
         const double ratio = double(m_settings.sampleRate) / m_inputSampleRate;
         m_resampler = std::make_unique<TAudioResampler>(m_settings.resampler, ratio, m_settings.resampleQuality, m_settings.channelCount);
-    }
-
-    if (m_dither) {
-        gdither_free(m_dither);
-        m_dither = nullptr;
     }
 
     if (m_settings.dataFormat != TraversoDAW::DataFormat::FLOAT) {
@@ -55,36 +49,36 @@ bool TAudioWriter::open(const QString& filename, uint inputSampleRate)
             m_settings.bit_depth()
             );
     }
+}
 
-    return true;
+TAudioWriter::~TAudioWriter()
+{
+    close();
 }
 
 bool TAudioWriter::close()
 {
+    if (m_closed) {
+        return false;
+    }
+    m_closed = true;
+
     // The end of the input: what the resampler still holds goes into the
     // file too, else the file loses its last few milliseconds
-    bool flushed = true;
-    if (m_resampler && m_encoder) {
-        flushed = flush_resampler();
-    }
+    const bool flushed = m_resampler ? flush_resampler() : true;
 
     if (m_dither) {
         gdither_free(m_dither);
         m_dither = nullptr;
     }
-
     m_resampler.reset();
 
-    if (m_encoder) {
-        return m_encoder->close() && flushed;
-    }
-
-    return false;
+    return m_encoder->close() && flushed;
 }
 
 nframes_t TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
-    if (!m_encoder || frameCount == 0) {
+    if (m_closed || frameCount == 0) {
         return 0;
     }
 

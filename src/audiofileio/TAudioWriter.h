@@ -43,17 +43,22 @@ class TAudioResampler;
 class TAudioWriter
 {
 public:
-    TAudioWriter(const TAudioEncodeSettings& settings);
+    // A new file at fileName in the settings' format, for audio at
+    // inputSampleRate (the file's rate is the settings'; another input rate
+    // is resampled): the one way to write an audio file. nullptr when the
+    // file cannot be made (logged): no encoder for the format in this build,
+    // or no file there.
+    static std::unique_ptr<TAudioWriter> open(const TAudioEncodeSettings& settings, const QString& fileName, uint inputSampleRate);
+
+    // Closes the file if close() did not
     ~TAudioWriter();
 
-    // A new file at filename, for audio at inputSampleRate (the file's rate
-    // is the settings'; another input rate is resampled). The one way to
-    // write an audio file; the input rate is the caller's, planar, float.
-    bool open(const QString& filename, uint inputSampleRate);
     // frameCount frames of the channel buffers of fileIOBuffer, at the input
     // rate; the frames taken (what is written may be fewer or more, at the
     // file's rate)
     nframes_t write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
+    // The file complete (the resampler's rest, the encoder's end, the
+    // header); false when that failed. Once: the writer writes no more after.
     bool close();
 
     uint input_rate() const { return m_inputSampleRate; }
@@ -61,6 +66,8 @@ public:
     uint channel_count() const { return m_settings.channelCount; }
 
 private:
+    TAudioWriter(const TAudioEncodeSettings& settings, std::unique_ptr<TAudioEncoder> encoder, uint inputSampleRate);
+
     // At close: what the resampler still holds into the file; false when it
     // could not all be written
     bool flush_resampler();
@@ -73,9 +80,10 @@ private:
     std::unique_ptr<TAudioEncoder>                  m_encoder;
     TAudioEncodeSettings                            m_settings;
 
-    // The rate of the audio handed to write_planar(); the file's rate and
-    // its channels are the settings'
+    // The rate of the audio handed to write(); the file's rate and its
+    // channels are the settings'
     uint                                            m_inputSampleRate;
+    bool                                            m_closed{false};
 
     // All channels at once: every channel gives the same frames
     std::unique_ptr<TAudioResampler>                m_resampler;

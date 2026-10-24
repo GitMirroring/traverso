@@ -21,6 +21,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
+#include <memory>
+
 #include "TAudioResampler.h"
 #include "TBufferedAudioStream.h"
 #include "TProcessCallBackData.h"
@@ -94,7 +96,8 @@ public :
 	
 	
 private:
-    TAudioReader*        m_audioReader;
+    // The file's reader once init() opened it; none: no file read
+    std::unique_ptr<TAudioReader> m_audioReader;
 
     int                 m_refcount;
     int                 m_error;

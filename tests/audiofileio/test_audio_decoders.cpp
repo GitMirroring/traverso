@@ -115,8 +115,8 @@ static bool write_with_traverso(const QString& path, const Source& source, Trave
     settings.dataFormat = aac ? TraversoDAW::DataFormat::PCM_16 : TraversoDAW::DataFormat::FLOAT;
     settings.channelCount = source.channels;
     settings.sampleRate = source.rate;
-    TAudioWriter file(settings);
-    if (!file.open(path, source.rate)) {
+    const std::unique_ptr<TAudioWriter> file = TAudioWriter::open(settings, path, source.rate);
+    if (!file) {
         return false;
     }
     TFileIOBuffer buffer;
@@ -125,8 +125,8 @@ static bool write_with_traverso(const QString& path, const Source& source, Trave
         const std::vector<float> samples = source.channel(channel);
         std::copy(samples.begin(), samples.end(), buffer.get_channel_buffer(channel).get_data(source.frames()));
     }
-    const nframes_t written = file.write(buffer, source.frames());
-    return file.close() && written == source.frames();
+    const nframes_t written = file->write(buffer, source.frames());
+    return file->close() && written == source.frames();
 }
 
 // With ffmpeg, from a 16 bit WAV of the source; false when ffmpeg is not
@@ -228,13 +228,13 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         std::printf("%s: cannot be written here, skipped\n", format.name);
         return;
     }
-    TAudioReader reader(path);
-    std::snprintf(what, sizeof(what), "%s: opens (%s)", format.name, reader.is_valid() ? qPrintable(reader.decoder_type()) : "no decoder");
-    check(reader.is_valid(), what);
-    if (!reader.is_valid()) {
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+    std::snprintf(what, sizeof(what), "%s: opens (%s)", format.name, reader ? qPrintable(reader->decoder_type()) : "no decoder");
+    check(reader != nullptr, what);
+    if (!reader) {
         return;
     }
-    TAudioReader* decoder = &reader;
+    TAudioReader* decoder = reader.get();
 
     const nframes_t frames = decoder->file_frame_count();
     const long frameError = long(frames) - long(source.frames());

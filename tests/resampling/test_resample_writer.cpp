@@ -97,25 +97,32 @@ int main()
         const QString path = dir.filePath(QString("written-%1-%2-%3-%4.%5").arg(c.inputRate).arg(c.fileRate).arg(formatName, backend)
                                               .arg(c.writer == wavpack ? "wv" : "wav"));
         {
-            TAudioWriter writer(settings);
-            check(writer.open(path, c.inputRate), "opening the writer");
+            const std::unique_ptr<TAudioWriter> writer = TAudioWriter::open(settings, path, c.inputRate);
+            check(writer != nullptr, "opening the writer");
+            if (!writer) {
+                continue;
+            }
             TFileIOBuffer buffer;
             for (nframes_t at = 0; at < inputFrames; at += settings.blockSize) {
                 const nframes_t n = std::min<nframes_t>(settings.blockSize, inputFrames - at);
                 buffer.check_capacity(n, 1);
                 std::copy(input.begin() + at, input.begin() + at + n, buffer.get_channel_buffer(0).get_data(n));
-                writer.write(buffer, n);
+                writer->write(buffer, n);
             }
-            writer.close();
+            writer->close();
         }
 
         // The file at its own rate
-        TAudioReader reader(path);
-        const nframes_t fileFrames = reader.file_frame_count();
+        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+        check(reader != nullptr, "reading the file");
+        if (!reader) {
+            continue;
+        }
+        const nframes_t fileFrames = reader->file_frame_count();
         std::vector<float> file(fileFrames, 0.0f);
         TFileIOBuffer buffer;
         if (fileFrames > 0) {
-            reader.read_file_frames(buffer, 0, fileFrames);
+            reader->read_file_frames(buffer, 0, fileFrames);
         }
         std::copy_n(buffer.get_channel_buffer(0).get_data(fileFrames), fileFrames, file.begin());
 

@@ -75,8 +75,8 @@ TBufferedAudioStreamReader::TBufferedAudioStreamReader(const QString& dir, const
 {
     private_init();
 
-    const TAudioReader reader(m_fileName);
-    m_channelCount = reader.is_valid() ? reader.channel_count() : 0;
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(m_fileName);
+    m_channelCount = reader ? reader->channel_count() : 0;
 
     m_silent = false;
 }
@@ -115,7 +115,6 @@ void TBufferedAudioStreamReader::private_init()
 
     m_refcount = 0;
     m_error = 0;
-    m_audioReader = nullptr;
 
     m_aboutOneToFourSecondsTime = TTimeRef::UNIVERSAL_SAMPLE_RATE * (TraversoDAW::Utils::randomNumberBetween(0, 3) + 1.0);
 }
@@ -123,10 +122,6 @@ void TBufferedAudioStreamReader::private_init()
 TBufferedAudioStreamReader::~TBufferedAudioStreamReader()
 {
     PENTERDES;
-
-    if (m_audioReader) {
-        delete m_audioReader;
-    }
 }
 
 QDomNode TBufferedAudioStreamReader::get_state( QDomDocument doc )
@@ -208,35 +203,16 @@ int TBufferedAudioStreamReader::init( )
         return (m_error = FILE_DOES_NOT_EXIST);
     }
 
-    m_audioReader = new TAudioReader(m_fileName);
-
-    if (!m_audioReader->is_valid()) {
-//		PERROR("ReadSource:: audio reader is not valid! (reader channel count: %d, nframes: %d", m_audioReader->get_num_channels(), m_audioReader->get_nframes());
-        delete m_audioReader;
-        m_audioReader = nullptr;
+    // A reader exists only for a file it reads (channels, rate and frames
+    // there); the reader logs why it has none
+    m_audioReader = TAudioReader::open(m_fileName);
+    if (!m_audioReader) {
         return (m_error = COULD_NOT_OPEN_FILE);
     }
 
     set_output_rate_and_resampler(m_audioReader->file_rate(), configured_resampler());
 
     m_channelCount = m_audioReader->channel_count();
-
-    // @Ben: I thought we support any channel count now ??
-       // if (m_channelCount > 2) {
-       //  PERROR(QString("ReadAudioSource: file contains %1 channels; only 2 channels are supported").arg(m_channelCount));
-       //         delete m_audioReader;
-       //         m_audioReader = 0;
-       //         return (m_error = INVALID_CHANNEL_COUNT);
-       // }
-
-    // Never reached, it's allready checked in TAudioReader::is_valid() which was allready called!
-    if (m_channelCount == 0) {
-//		PERROR("ReadAudioSource: not a valid channel count: %d", m_channelCount);
-        delete m_audioReader;
-        m_audioReader = nullptr;
-        return (m_error = ZERO_CHANNELS);
-    }
-
     m_rate = m_audioReader->file_rate();
     m_length = m_audioReader->length();
 

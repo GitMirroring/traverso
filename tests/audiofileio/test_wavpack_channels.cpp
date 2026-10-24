@@ -39,8 +39,8 @@ static float sample(nframes_t frame, uint channel)
 // writes one
 static bool write_file(const QString& path, const TAudioEncodeSettings& settings)
 {
-    TAudioWriter writer(settings);
-    if (!writer.open(path, settings.sampleRate)) {
+    const std::unique_ptr<TAudioWriter> writer = TAudioWriter::open(settings, path, settings.sampleRate);
+    if (!writer) {
         return false;
     }
     TFileIOBuffer buffer;
@@ -51,8 +51,8 @@ static bool write_file(const QString& path, const TAudioEncodeSettings& settings
             samples[frame] = sample(frame, channel);
         }
     }
-    const bool written = writer.write(buffer, Frames) == Frames;
-    return writer.close() && written;
+    const bool written = writer->write(buffer, Frames) == Frames;
+    return writer->close() && written;
 }
 
 int main()
@@ -90,10 +90,10 @@ int main()
             WavpackCloseFile(wp);
         }
 
-        TAudioReader reader(path);
-        bool same = reader.is_valid() && reader.channel_count() == c.channels && reader.file_frame_count() == Frames;
+        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+        bool same = reader && reader->channel_count() == c.channels && reader->file_frame_count() == Frames;
         TFileIOBuffer buffer;
-        same = same && reader.read_file_frames(buffer, 0, Frames) == Frames;
+        same = same && reader->read_file_frames(buffer, 0, Frames) == Frames;
         for (uint channel = 0; same && channel < c.channels; ++channel) {
             const float* samples = buffer.get_channel_buffer(channel).get_data(Frames);
             for (nframes_t frame = 0; frame < Frames; ++frame) {

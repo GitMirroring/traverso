@@ -76,7 +76,8 @@ protected:
 };
 
 // The decoder for fileName, the libraries tried in order of preference
-// (libsndfile, WavPack, FAAD, MAD); nullptr when none can read it
+// (libsndfile, WavPack, FAAD, MAD), open and valid; nullptr when none can
+// read it (logged)
 std::unique_ptr<TAudioDecoder> open_audio_decoder(const QString& fileName);
 
 // Whether one of the decoders can read fileName. The file is only probed: no

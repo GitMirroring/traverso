@@ -14,21 +14,19 @@
 class TAudioFileBuildSource final : public TPeakBuildSource
 {
 public:
-    explicit TAudioFileBuildSource(const QString& fileName)
-        : m_reader(fileName)
+    explicit TAudioFileBuildSource(std::unique_ptr<TAudioReader> reader)
+        : m_reader(std::move(reader))
     {
     }
 
-    bool is_valid() { return m_reader.is_valid(); }
-
-    uint rate() const override { return m_reader.file_rate(); }
-    int channel_count() const override { return int(m_reader.channel_count()); }
-    qint64 frame_count() const override { return qint64(m_reader.file_frame_count()); }
+    uint rate() const override { return m_reader->file_rate(); }
+    int channel_count() const override { return int(m_reader->channel_count()); }
+    qint64 frame_count() const override { return qint64(m_reader->file_frame_count()); }
 
     qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override
     {
         const int channelCount = channel_count();
-        const qint64 read = qint64(m_reader.read_file_frames(m_buffer, nframes_t(firstFrame), nframes_t(count)));
+        const qint64 read = qint64(m_reader->read_file_frames(m_buffer, nframes_t(firstFrame), nframes_t(count)));
         const qint64 frames = std::min(read, count);
         for (int c = 0; c < channelCount; ++c) {
             std::copy_n(m_buffer.get_channel_buffer(uint(c)).get_data(nframes_t(frames)), frames, channels[c]);
@@ -37,7 +35,7 @@ public:
     }
 
 private:
-    TAudioReader m_reader;
+    std::unique_ptr<TAudioReader> m_reader;
     TFileIOBuffer m_buffer;
 };
 
@@ -45,12 +43,12 @@ private:
 TPeakBuildTask::OpenSource TPeakBuildTask::audio_file(const QString& fileName)
 {
     return [fileName](QString* error) -> std::unique_ptr<TPeakBuildSource> {
-        auto source = std::make_unique<TAudioFileBuildSource>(fileName);
-        if (!source->is_valid()) {
+        std::unique_ptr<TAudioReader> reader = TAudioReader::open(fileName);
+        if (!reader) {
             *error = QStringLiteral("cannot read %1").arg(fileName);
             return nullptr;
         }
-        return source;
+        return std::make_unique<TAudioFileBuildSource>(std::move(reader));
     };
 }
 

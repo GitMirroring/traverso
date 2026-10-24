@@ -87,15 +87,15 @@ int main(int argc, char** argv)
     timer.start();
     for (const QString& name : files) {
         const QString path = directory.filePath(name);
-        const TAudioReader reader(path);
-        if (!reader.is_valid()) {
+        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+        if (!reader) {
             std::printf("skipped: %s\n", qPrintable(name));
             done.fetch_add(1);
             continue;
         }
-        auto stream = std::make_shared<TPeakStream>(reader.file_rate(), int(reader.channel_count()), peaks.filePath(name + ".peaks"));
+        auto stream = std::make_shared<TPeakStream>(reader->file_rate(), int(reader->channel_count()), peaks.filePath(name + ".peaks"));
         auto task = std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(path), path, stream);
-        scheduler.add_idle_task(std::make_unique<MeasuredBuild>(std::move(task), qint64(reader.file_frame_count()), done, failed, stepNanoseconds));
+        scheduler.add_idle_task(std::make_unique<MeasuredBuild>(std::move(task), qint64(reader->file_frame_count()), done, failed, stepNanoseconds));
     }
     while (done.load() < int(files.size())) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));

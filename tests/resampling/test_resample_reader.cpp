@@ -87,7 +87,12 @@ static const char* pattern_name(Pattern p)
 static std::vector<float> read_all(const QString& path, uint outputRate, TAudioResampler::BackendType backend, int quality,
                                    Pattern pattern, nframes_t& first, nframes_t fileFrames, uint fileRate)
 {
-    TAudioReader reader(path);
+    const std::unique_ptr<TAudioReader> opened = TAudioReader::open(path);
+    check(opened != nullptr, "the file opens");
+    if (!opened) {
+        return {};
+    }
+    TAudioReader& reader = *opened;
     reader.set_output_rate_and_resampler(outputRate, backend, quality);
 
     // The length and the frames are the file's, at any output rate; the
@@ -214,7 +219,12 @@ int main()
         const QString path = dir.filePath(QString("end-%1.wav").arg(c.fileRate));
         check(write_wav(path, c.fileRate, file), "writing the file");
 
-        TAudioReader reader(path);
+        const std::unique_ptr<TAudioReader> opened = TAudioReader::open(path);
+        check(opened != nullptr, "the file opens");
+        if (!opened) {
+            continue;
+        }
+        TAudioReader& reader = *opened;
         reader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t frames = reader.output_frame_count();
         TFileIOBuffer buffer;
@@ -258,7 +268,12 @@ int main()
         }
         const QString tonePath = dir.filePath(QString("tone-%1.wav").arg(c.fileRate));
         check(write_wav(tonePath, c.fileRate, tone), "writing the tone");
-        TAudioReader toneReader(tonePath);
+        const std::unique_ptr<TAudioReader> toneOpened = TAudioReader::open(tonePath);
+        check(toneOpened != nullptr, "the tone opens");
+        if (!toneOpened) {
+            continue;
+        }
+        TAudioReader& toneReader = *toneOpened;
         toneReader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t toneFrames = toneReader.output_frame_count();
         toneReader.read(buffer, TTimeRef(), toneFrames);
@@ -288,7 +303,8 @@ int main()
         // reads at the output rate gives the file's samples, and leaves the
         // output where it was (the second read goes on as one read would)
         {
-            TAudioReader both(tonePath);
+            const std::unique_ptr<TAudioReader> bothOpened = TAudioReader::open(tonePath);
+            TAudioReader& both = *bothOpened;
             both.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
             const nframes_t half = toneFrames / 2;
             TFileIOBuffer output;

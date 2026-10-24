@@ -54,18 +54,22 @@ class TAudioDecoder;
  * Positions come in as time (TTimeRef) or as the file's frames; the frames
  * at the output rate stay inside. Not for the audio thread: file IO, and the
  * buffers may grow.
+ *
+ * A reader exists only for a file it reads: open() gives one, or nullptr
+ * (logged). Its facts are the file's, its reads read.
  */
 class TAudioReader
 {
 public:
     // Whether a decoder reads fileName: a probe, nothing is kept or logged
     static bool can_read(const QString& fileName);
+    // A reader of fileName, at the file's own rate until
+    // set_output_rate_and_resampler(); nullptr when no decoder reads it
+    static std::unique_ptr<TAudioReader> open(const QString& fileName);
 
-    explicit TAudioReader(const QString& fileName);
     ~TAudioReader();
 
     // The file, as its decoder knows it
-    bool is_valid() const;
     uint channel_count() const;
     uint file_rate() const;
     nframes_t file_frame_count() const;
@@ -91,6 +95,8 @@ public:
     nframes_t read_file_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count);
 
 private:
+    explicit TAudioReader(std::unique_ptr<TAudioDecoder> decoder);
+
     // The reader at output frame frame: the decoder sought there, through
     // the resampler from the last frame of both rates before it; false when
     // the file cannot go there
