@@ -18,6 +18,35 @@ struct TWaveformColumn
     bool is_empty() const { return min > max; }
 };
 
+// Columns of 2^shift source frames, aligned in source time: column k covers
+// the frames [k << shift, (k + 1) << shift). On such columns the query
+// visits about one record per column (an aligned range has no odd edges
+// below the top level), a fraction of the cost of columns of any width.
+// Built from frames; a time is only derived from frames.
+struct TWaveformGrid
+{
+    // Below one frame per pixel the line through the samples needs columns
+    // of any width
+    static constexpr double MinFramesPerPixel = 1.0;
+    static constexpr int MaxShift = 30;
+
+    uint rate{0};
+    int shift{-1};      // -1: no grid, the exact query
+
+    // The smallest 2^s at or above framesPerPixel at rate. No grid below
+    // MinFramesPerPixel, nor where 2^s frames are not a whole number of
+    // universal frames (a rate that does not divide UNIVERSAL_SAMPLE_RATE,
+    // for small s): the grid's edges would not be exact.
+    static TWaveformGrid power_of_two(double framesPerPixel, uint rate);
+    bool is_valid() const { return shift >= 0; }
+
+    qint64 column_of(qint64 frame) const { return frame >> shift; }
+    qint64 first_frame(qint64 column) const { return column << shift; }
+    // Exact: built from frames
+    TTimeRef start_of(qint64 column) const { return TTimeRef(uint64_t(first_frame(column)), rate); }
+    TTimeRef column_width() const { return TTimeRef(uint64_t(1) << shift, rate); }
+};
+
 // Gives the samples of a source to TWaveformColumns
 class TWaveformSampleSource
 {
@@ -92,6 +121,25 @@ public:
                         const TTimeRef& columnWidth,
                         int count,
                         TWaveformColumn* out);
+
+    // One column per device pixel, for a raster view: pixel i covers
+    // [start + i * columnWidth, start + (i + 1) * columnWidth), as in query().
+    // From one frame per pixel on, a pixel shows the column of the grid
+    // (TWaveformGrid::power_of_two()) that holds the pixel's centre: a grid
+    // column is 1 to 2 pixels wide, every grid column in view shows in at
+    // least one pixel, so no peak is lost, and a peak is at most a grid
+    // column (2 pixels) from its place. A grid column that reaches outside
+    // [clipStart, clipEnd) would show audio from outside the clip: its
+    // pixels come from query(). Without a grid, query(). The source is the
+    // one the grid's columns came from.
+    static Source device_columns(const TPeakLevels& levels,
+                                 TWaveformSampleSource* samples,
+                                 const TTimeRef& start,
+                                 const TTimeRef& columnWidth,
+                                 int count,
+                                 const TTimeRef& clipStart,
+                                 const TTimeRef& clipEnd,
+                                 TWaveformColumn* out);
 
 private:
     static Source from_samples(const TPeakLevels& levels, TWaveformSampleSource* samples,

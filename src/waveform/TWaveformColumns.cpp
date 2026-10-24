@@ -10,6 +10,24 @@
 
 static constexpr TWaveformColumn EmptyColumn{std::numeric_limits<float>::max(), std::numeric_limits<float>::lowest(), 0.0f};
 
+TWaveformGrid TWaveformGrid::power_of_two(double framesPerPixel, uint rate)
+{
+    TWaveformGrid grid;
+    grid.rate = rate;
+    if (rate == 0 || !(framesPerPixel >= MinFramesPerPixel) || framesPerPixel > double(qint64(1) << MaxShift)) {
+        return grid;
+    }
+    int shift = 0;
+    while (double(qint64(1) << shift) < framesPerPixel) {
+        ++shift;
+    }
+    if (((TTimeRef::UNIVERSAL_SAMPLE_RATE << shift) % qint64(rate)) != 0) {
+        return grid;
+    }
+    grid.shift = shift;
+    return grid;
+}
+
 TWaveformColumns::Source TWaveformColumns::source_for(const TPeakLevels& levels, const TTimeRef& columnWidth)
 {
     if (levels.frame_count() <= 0 || levels.rate() == 0) {
@@ -183,6 +201,75 @@ TWaveformColumns::Source TWaveformColumns::query(const TPeakLevels& levels,
         break;
     }
     return Source::None;
+}
+
+TWaveformColumns::Source TWaveformColumns::device_columns(const TPeakLevels& levels,
+                                                          TWaveformSampleSource* samples,
+                                                          const TTimeRef& start,
+                                                          const TTimeRef& columnWidth,
+                                                          int count,
+                                                          const TTimeRef& clipStart,
+                                                          const TTimeRef& clipEnd,
+                                                          TWaveformColumn* out)
+{
+    const uint rate = levels.rate();
+    const TWaveformGrid grid = rate > 0 && count > 0 ? TWaveformGrid::power_of_two(TTimeRef::to_frames(columnWidth, rate), rate)
+                                                     : TWaveformGrid{};
+    if (!grid.is_valid()) {
+        return query(levels, samples, start, columnWidth, count, out);
+    }
+
+    // The grid column of every pixel: the one that holds its centre
+    const TTimeRef half(columnWidth.universal_frame() / 2);
+    std::vector<qint64> pixelColumn(static_cast<size_t>(count));
+    for (int i = 0; i < count; ++i) {
+        const qint64 centre = TTimeRef::frame_at_or_before(start + columnWidth * double(i) + half, rate);
+        pixelColumn[size_t(i)] = grid.column_of(std::max<qint64>(centre, 0));
+    }
+
+    // The pixels whose grid column lies inside the clip: [inLeft, inRight)
+    const qint64 clipFirst = TTimeRef::frame_at_or_after(clipStart, rate);
+    const qint64 clipLast = TTimeRef::frame_at_or_after(clipEnd, rate);
+    auto inside = [&](qint64 column) { return grid.first_frame(column) >= clipFirst && grid.first_frame(column + 1) <= clipLast; };
+    int inLeft = 0;
+    while (inLeft < count && !inside(pixelColumn[size_t(inLeft)])) {
+        ++inLeft;
+    }
+    int inRight = count;
+    while (inRight > inLeft && !inside(pixelColumn[size_t(inRight - 1)])) {
+        --inRight;
+    }
+    if (inLeft == inRight) {
+        return query(levels, samples, start, columnWidth, count, out);
+    }
+
+    const int channels = levels.channel_count();
+    const qint64 firstColumn = pixelColumn[size_t(inLeft)];
+    const int columns = int(pixelColumn[size_t(inRight - 1)] - firstColumn + 1);
+    std::vector<TWaveformColumn> gridColumns(size_t(columns) * size_t(channels));
+    const Source source = query(levels, samples, grid.start_of(firstColumn), grid.column_width(), columns, gridColumns.data());
+    for (int channel = 0; channel < channels; ++channel) {
+        for (int i = inLeft; i < inRight; ++i) {
+            out[qsizetype(channel) * count + i] = gridColumns[size_t(channel) * size_t(columns) + size_t(pixelColumn[size_t(i)] - firstColumn)];
+        }
+    }
+
+    // The pixels at the clip's edges (at most two each), and those outside
+    // it, exactly: the boundaries of query() over all pixels
+    std::vector<TWaveformColumn> exact;
+    auto exactly = [&](int from, int to) {
+        if (from >= to) {
+            return;
+        }
+        exact.resize(size_t(to - from) * size_t(channels));
+        query(levels, samples, start + columnWidth * double(from), columnWidth, to - from, exact.data());
+        for (int channel = 0; channel < channels; ++channel) {
+            std::copy_n(exact.data() + size_t(channel) * size_t(to - from), to - from, out + qsizetype(channel) * count + from);
+        }
+    };
+    exactly(0, inLeft);
+    exactly(inRight, count);
+    return source;
 }
 
 TWaveformColumns::Source TWaveformColumns::from_pyramid(const TPeakLevels& levels,

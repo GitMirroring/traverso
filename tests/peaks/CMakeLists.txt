@@ -25,6 +25,12 @@ add_executable(traverso_peak_chunks_test test_peak_chunks.cpp)
 target_link_libraries(traverso_peak_chunks_test PRIVATE traverso_compiler_settings traversowaveform traversosupport Qt6::Core)
 add_test(NAME peak_chunks COMMAND traverso_peak_chunks_test)
 
+# The power-of-two grid and the device columns of a raster view, against the
+# exact query and the samples
+add_executable(traverso_waveform_grid_test test_waveform_grid.cpp)
+target_link_libraries(traverso_waveform_grid_test PRIVATE traverso_compiler_settings traversowaveform traversosupport Qt6::Core)
+add_test(NAME waveform_grid COMMAND traverso_waveform_grid_test)
+
 # Benchmark of the column query and the envelope painting, not part of ctest.
 # Build it in Release.
 add_executable(traverso_peak_benchmark benchmark_peaks.cpp)
