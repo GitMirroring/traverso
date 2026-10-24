@@ -87,9 +87,10 @@ public:
     void start(const QString& basepath, const QString& projectname);
 
     // The application's way to ask whether the files of discarded recording
-    // takes may be deleted (core shows no dialogs). Without one: no.
+    // takes may be deleted (core shows no dialogs). Without one, or when
+    // closing without questions (SIGTERM, SIGHUP): no.
     void set_discard_question(std::function<bool(const QString& question)> ask) { m_askDiscard = std::move(ask); }
-    bool ask_discard(const QString& question) const { return m_askDiscard ? m_askDiscard(question) : false; }
+    bool ask_discard(const QString& question) const { return m_askDiscard && !m_closeWithoutQuestions ? m_askDiscard(question) : false; }
 
 
 public slots:
