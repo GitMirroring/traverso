@@ -305,6 +305,10 @@ Decided by the user on 2026-10-23, after measuring on "Minidisk opname"
   built 8.4–9.7 s but the median build at 7.3–8.3 s) and the order they
   came (median 3.4–3.6 s but all built 12–15 s, depending on when the long
   file starts): all built 8.6–10.9 s, the median at 4.0–4.7 s.
+  A stop-gap (2026-10-24): the long file is to be built by several readers
+  at once, each its own idle task on its own core, for compressed files
+  only (a WAV is read faster than it is reduced). The weight goes with
+  that; a task for later.
 - **A peak build reads a second of its source per step** (was a fifth):
   five times fewer hand-overs to the pool.
 
