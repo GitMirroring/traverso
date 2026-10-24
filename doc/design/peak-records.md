@@ -130,6 +130,9 @@ than a day.)
   request, the waveform builds the file again from the audio: a wasted
   build, the result is the same. When post-processing fails, the waveform
   builds once from the audio.
+- **A raster view** asks for one column per device pixel; from more than 32
+  frames per pixel they come from a power-of-two grid in source time, about
+  one record per column (`waveform-grid.md`).
 - **A finished file** is mapped (`TPeakFile`) and stays mapped. Columns take
   the middle of a column from the highest level that fits and the edges
   from the levels below; `max_amplitude()` is the bound from the levels plus
