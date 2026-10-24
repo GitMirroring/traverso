@@ -15,6 +15,8 @@ the Free Software Foundation; either version 2 of the License, or
 #include "TFileIOBuffer.h"
 #include "gdither.h"
 
+#include <algorithm>
+
 TResampleAudioWriter::TResampleAudioWriter(const TAudioEncodeSettings& settings)
     : m_settings(settings)
     , m_inputSampleRate(0)
@@ -108,9 +110,13 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
     m_resampleEncodeBuffer.check_capacity(maxOutputFrames, m_channelCount);
     nframes_t frames = 0;
     for (uint chan = 0; chan < m_channelCount; ++chan) {
-        frames = m_resamplers[chan]->process(fileIOBuffer.get_channel_buffer(chan).get_data(frameCount), frameCount,
-                                             m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(maxOutputFrames),
-                                             maxOutputFrames, false);
+        const nframes_t produced = m_resamplers[chan]->process(fileIOBuffer.get_channel_buffer(chan).get_data(frameCount), frameCount,
+                                                               m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(maxOutputFrames),
+                                                               maxOutputFrames, false);
+        // Equal resamplers fed alike give alike; the least decides, so no
+        // channel's unfilled tail is written
+        Q_ASSERT(chan == 0 || produced == frames);
+        frames = chan == 0 ? produced : std::min(frames, produced);
     }
     if (frames == 0) {
         return 0;
@@ -120,12 +126,17 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
 
 void TResampleAudioWriter::flush_resamplers()
 {
-    const nframes_t chunk = 4096;
-    m_resampleEncodeBuffer.check_capacity(chunk, m_channelCount);
+    // A resampler does not say how much it still holds (the input it kept
+    // and the tail of its filter), so it is flushed in the writer's blocks,
+    // the size the resamplers were made with, until it gives nothing
+    const nframes_t block = m_settings.blockSize;
+    m_resampleEncodeBuffer.check_capacity(block, m_channelCount);
     while (true) {
         nframes_t frames = 0;
         for (uint chan = 0; chan < m_channelCount; ++chan) {
-            frames = m_resamplers[chan]->flush(m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(chunk), chunk);
+            const nframes_t produced = m_resamplers[chan]->flush(m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(block), block);
+            Q_ASSERT(chan == 0 || produced == frames);
+            frames = chan == 0 ? produced : std::min(frames, produced);
         }
         if (frames == 0) {
             break;
