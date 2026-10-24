@@ -219,14 +219,12 @@ void TIOScheduler::take_reports()
     }
 
     trav_time_t stepTime = 0;
-    quint64 idleSteps = 0;
     int lowest = 100;
     std::vector<Removal*> done;
     for (const Report& report : reports) {
         --m_running;
         if (report.idle) {
             --m_runningIdle;
-            ++idleSteps;
         }
         stepTime += report.nanoseconds;
 
@@ -276,24 +274,8 @@ void TIOScheduler::take_reports()
     if (lowest < m_lowestBufferFill.load(std::memory_order_relaxed)) {
         m_lowestBufferFill.store(lowest, std::memory_order_relaxed);
     }
-    if (m_idleStretch.start != 0) {
-        m_idleStretch.stepTime += stepTime;
-        m_idleStretch.steps += reports.size();
-        m_idleStretch.idleSteps += idleSteps;
-    }
 
     finish_seeks();
-
-    // The idle work is over: how long it took, and how much of the threads
-    // the steps used meanwhile (the steps' time against the threads' time)
-    if (m_idleStretch.start != 0 && m_idleTasks.empty() && m_runningIdle == 0) {
-        const trav_time_t duration = TTimeRef::get_nanoseconds_since_epoch() - m_idleStretch.start;
-        const int threads = m_pool.maxThreadCount();
-        const double used = duration > 0 ? 100.0 * double(m_idleStretch.stepTime) / (double(threads) * double(duration)) : 0.0;
-        TLOG_I("diskio", "idle work done in {:.3f} s: {} idle steps, {} steps, {} threads, {:.0f}% used",
-               double(duration) / 1e9, m_idleStretch.idleSteps, m_idleStretch.steps, threads, used);
-        m_idleStretch = IdleStretch{};
-    }
 
     if (!done.empty()) {
         {
@@ -439,11 +421,7 @@ bool TIOScheduler::start_steps()
         start_task_step(tasks[size_t(index)]);
     }
 
-    const bool idle = !plan.idleSeeks.empty() || !plan.idleTasks.empty();
-    if (idle && m_idleStretch.start == 0) {
-        m_idleStretch.start = TTimeRef::get_nanoseconds_since_epoch();
-    }
-    return idle;
+    return !plan.idleSeeks.empty() || !plan.idleTasks.empty();
 }
 
 void TIOScheduler::start_stream_step(StreamWork* work, bool idle, int plannedFill, const TIOStream::StepInfo& info, quint64 tick)

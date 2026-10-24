@@ -287,17 +287,6 @@ private:
     std::atomic<int> m_idleLimit{1};
 
     // The scheduler thread's
-    // A stretch of idle work, from its first idle step until no idle task is
-    // left and none runs, for the log: how long, and how much of the threads
-    // it used
-    struct IdleStretch
-    {
-        trav_time_t start{0};
-        trav_time_t stepTime{0};
-        quint64 steps{0};
-        quint64 idleSteps{0};
-    };
-    IdleStretch m_idleStretch;
     TIOPlanner m_planner;
     std::vector<GroupWork> m_groups;
     std::vector<std::unique_ptr<StreamWork>> m_streams;

@@ -167,8 +167,9 @@ and the priority is chosen again when a thread frees. Idle work:
 
 No time is measured for the plan and nothing is weighed: the kernel
 schedules, the scheduler only knows the order. The steps are timed for the
-CPU meter and for the log line at the end of a stretch of idle work ("idle
-work done in … s, … % used").
+CPU meter only. (The measurements below were taken with a log line at the
+end of a stretch of idle work, "idle work done in … s, … % used", removed
+on 2026-10-24 once they were done.)
 
 ## 4. The idle limit
 
