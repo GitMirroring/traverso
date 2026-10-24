@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 #include "TResampleAudioReader.h"
-#include "Debugger.h"
+#include "TLog.h"
 
 #include <algorithm>
 
@@ -29,7 +29,7 @@ TResampleAudioReader::TResampleAudioReader(const QString& fileName)
     : m_decoder(open_audio_decoder(fileName))
 {
     if (!m_decoder) {
-        PERROR(QString("TResampleAudioReader: no decoder for %1").arg(fileName));
+        TLOG_W("audiofile", "{}: no decoder for it", fileName.toStdString());
         return;
     }
     m_channels = m_decoder->channel_count();

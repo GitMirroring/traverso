@@ -22,8 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "WPAudioWriter.h"
 
 #include <QString>
-#include "Utils.h"
-#include "Debugger.h"
+#include "TLog.h"
 
 WPAudioWriter::WPAudioWriter(const TAudioEncodeSettings& settings)
     : TAudioEncoder(settings)
@@ -43,7 +42,7 @@ bool WPAudioWriter::open(const QString& fileName)
 	close();
 	m_file = fopen(fileName.toUtf8().data(), "wb");
 	if (!m_file) {
-		qWarning("Couldn't open file %s.", QS_C(fileName));
+		TLOG_W("audiofile", "{}: cannot create it", fileName.toStdString());
 		return false;
 	}
 	
@@ -217,7 +216,7 @@ nframes_t WPAudioWriter::write(void* buffer, nframes_t frameCount)
 
         // Push the aligned int32_t block to the WavPack compression engine
         if (WavpackPackSamples(m_wp, m_tmp_buffer, frameCount) == false) {
-            PERROR("WPAudioWriter: WavpackPackSamples failed encoding integer block");
+            TLOG_E("audiofile", "WavPack cannot pack the samples ({})", WavpackGetErrorMessage(m_wp));
             return 0;
         }
         return frameCount;
@@ -228,7 +227,7 @@ nframes_t WPAudioWriter::write(void* buffer, nframes_t frameCount)
     // Audio data already occupies 4-byte boundaries, pass directly to compression
     // =========================================================================
     if (WavpackPackSamples(m_wp, static_cast<int32_t*>(buffer), frameCount) == false) {
-        PERROR("WPAudioWriter: WavpackPackSamples failed encoding raw 32-bit block");
+        TLOG_E("audiofile", "WavPack cannot pack the samples ({})", WavpackGetErrorMessage(m_wp));
         return 0;
     }
 

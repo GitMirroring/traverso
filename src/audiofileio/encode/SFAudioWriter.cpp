@@ -20,13 +20,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "SFAudioWriter.h"
-#include "Utils.h"
+#include "TLog.h"
 
 #include <QString>
 
 
-
-#include "Debugger.h"
 
 
 SFAudioWriter::SFAudioWriter(const TAudioEncodeSettings& settings)
@@ -83,7 +81,7 @@ bool SFAudioWriter::open(const QString& fileName)
 
     m_file.setFileName(m_fileName);
     if (!m_file.open(QIODevice::WriteOnly)) {
-        qWarning("SFAudioWriter::open_private: Could not create file (%s)", QS_C(m_fileName));
+        TLOG_W("audiofile", "{}: cannot create it ({})", m_fileName.toStdString(), m_file.errorString().toStdString());
         return false;
     }
 
@@ -99,7 +97,7 @@ bool SFAudioWriter::open(const QString& fileName)
 
     if (m_sf == nullptr) {
         sf_error_str(nullptr, errbuf, sizeof(errbuf) - 1);
-        PWARN(QString("SFAudioWriter: Cannot open output file via descriptor \"%1\" (%2)").arg(m_fileName, errbuf).toLatin1().data());
+        TLOG_W("audiofile", "{}: libsndfile cannot write it ({})", m_fileName.toStdString(), errbuf);
         m_file.close();
         return false;
     }
@@ -158,7 +156,7 @@ nframes_t SFAudioWriter::write(void* buffer, nframes_t frameCount)
     // Validate bounds to trap pipeline and device storage underruns
     if (written < 0 || static_cast<nframes_t>(written) != frameCount) {
         sf_error_str(m_sf, errbuf, sizeof(errbuf) - 1);
-        PERROR(QString("SFAudioWriter: Export block write failed. libsndfile error: %1").arg(errbuf).toLatin1().data());
+        TLOG_E("audiofile", "{}: writing failed ({})", m_fileName.toStdString(), errbuf);
         return 0; // Return 0 instead of -1 to align with unsigned nframes_t error contracts safely
     }
 

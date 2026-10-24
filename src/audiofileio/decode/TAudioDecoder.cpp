@@ -13,7 +13,7 @@
 #include "FaadAudioReader.h"
 #endif
 
-#include "Debugger.h"
+#include "TLog.h"
 
 nframes_t TAudioDecoder::read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count)
 {
@@ -86,15 +86,13 @@ std::unique_ptr<TAudioDecoder> open_audio_decoder(const QString& fileName)
         decoder = std::make_unique<MadAudioReader>(fileName);
         break;
     case DecoderLibrary::None:
-        PERROR(QString("File format not supported %1").arg(fileName));
+        TLOG_W("audiofile", "{}: no decoder reads this format", fileName.toStdString());
         break;
     }
 
     if (decoder && !decoder->is_valid()) {
-        PERROR(QString("new %1 decoder is invalid! (channels: %2, frames: %3)")
-                   .arg(decoder->decoder_type())
-                   .arg(decoder->channel_count())
-                   .arg(decoder->frame_count()));
+        TLOG_W("audiofile", "{}: the {} decoder cannot read it ({} channels, {} frames)", fileName.toStdString(),
+               decoder->decoder_type().toStdString(), decoder->channel_count(), decoder->frame_count());
     }
 
     return decoder;

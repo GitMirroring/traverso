@@ -20,10 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "WPAudioReader.h"
-#include "Debugger.h"
 #include <QString>
 #include "TFileIOBuffer.h"
-#include "Utils.h"
+#include "TLog.h"
 
 RELAYTOOL_WAVPACK;
 
@@ -35,7 +34,7 @@ WPAudioReader::WPAudioReader(const QString& filename)
     m_wp = WavpackOpenFileInput(m_fileName.toUtf8().data(), error, OPEN_NORMALIZE | OPEN_WVC, 0);
 
     if (m_wp == nullptr) {
-        qWarning("Couldn't open soundfile (%s) %s", QS_C(filename), error);
+        TLOG_W("audiofile", "{}: WavPack cannot read it ({})", filename.toStdString(), error);
         return;
     }
 
@@ -77,7 +76,7 @@ bool WPAudioReader::can_decode(const QString& filename)
 
 void WPAudioReader::print_libwavpack_version()
 {
-    TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "Wavpack version %s", WavpackGetLibraryVersionString());
+    TLOG_D("audiofile", "WavPack version {}", WavpackGetLibraryVersionString());
 }
 
 
@@ -89,7 +88,7 @@ bool WPAudioReader::seek(nframes_t frame)
 
     // WavPack's name: a sample of every channel, a frame here
     if (!WavpackSeekSample(m_wp, frame)) {
-        TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "WPAudioReader::seek: Could not seek to frame %d, reason %s", frame, WavpackGetErrorMessage(m_wp));
+        TLOG_W("audiofile", "{}: WavPack cannot seek to frame {} ({})", m_fileName.toStdString(), frame, WavpackGetErrorMessage(m_wp));
         return false;
     }
 

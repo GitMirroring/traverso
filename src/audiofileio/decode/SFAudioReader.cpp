@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QString>
 
 #include "TFileIOBuffer.h"
-#include "Utils.h"
+#include "TLog.h"
 
 
 SFAudioReader::SFAudioReader(const QString& filename)
@@ -38,12 +38,12 @@ SFAudioReader::SFAudioReader(const QString& filename)
     m_file.setFileName(m_fileName);
 
     if (!m_file.open(QIODevice::ReadOnly)) {
-        qWarning("SFAudioReader::Could not open soundfile (%s)", QS_C(m_fileName));
+        TLOG_W("audiofile", "{}: cannot open it ({})", m_fileName.toStdString(), m_file.errorString().toStdString());
         return;
     }
 
     if ((m_sf = sf_open_fd (m_file.handle(), SFM_READ, &m_sfinfo, false)) == nullptr) {
-        qWarning("SFAudioReader::Could not open soundfile (%s)", QS_C(m_fileName));
+        TLOG_W("audiofile", "{}: libsndfile cannot read it ({})", m_fileName.toStdString(), sf_strerror(nullptr));
         return;
     }
 
@@ -57,7 +57,7 @@ SFAudioReader::~SFAudioReader()
 {
     if (m_sf) {
         if (sf_close(m_sf)) {
-            qWarning("sf_close returned an error!");
+            TLOG_W("audiofile", "{}: closing it failed", m_fileName.toStdString());
         }
     }
 }
@@ -74,8 +74,8 @@ int SFAudioReader::major_format(const QString& filename)
 
     QFile file(filename);
 
+    // A probe: a file that does not open is one libsndfile cannot read
     if (!file.open(QIODevice::ReadOnly)) {
-        qWarning("SFAudioReader::can_decode: Couldn't open soundfile (%s)", QS_C(filename));
         return 0;
     }
 

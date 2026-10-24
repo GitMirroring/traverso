@@ -31,7 +31,7 @@ RELAYTOOL_FAAC;
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
-#include "Debugger.h"
+#include "TLog.h"
 
 
 struct FaacAudioWriter::FaacInfo {
@@ -90,7 +90,7 @@ bool FaacAudioWriter::open(const QString& fileName)
 	close();
 	m_fid = fopen(fileName.toUtf8().data(), "wb+");
 	if (!m_fid) {
-		// PERROR("FaacAudioWriter: Could not open file %s", QS_C(m_fileName));
+		TLOG_W("audiofile", "{}: cannot create it", fileName.toStdString());
 		return false;
 	}
 
@@ -98,7 +98,7 @@ bool FaacAudioWriter::open(const QString& fileName)
 	faac_params params;
 	faac_status st = faac_params_init(&params);
 	if (st != FAAC_OK) {
-		// PERROR("FaacAudioWriter: faac_params_init failed: %s", faac_strerror(st));
+		TLOG_W("audiofile", "AAC: faac_params_init failed: {}", faac_strerror(st));
 		fclose(m_fid);
 		m_fid = nullptr;
 		return false;
@@ -124,7 +124,7 @@ bool FaacAudioWriter::open(const QString& fileName)
 
 	st = faac_encoder_open(&params, &m_faacInfo->encoder);
 	if (st != FAAC_OK || !m_faacInfo->encoder) {
-		// PERROR("FaacAudioWriter: faac_encoder_open failed: %s", faac_strerror(st));
+		TLOG_W("audiofile", "AAC: faac_encoder_open failed: {}", faac_strerror(st));
 		fclose(m_fid);
 		m_fid = nullptr;
 		return false;
@@ -134,7 +134,7 @@ bool FaacAudioWriter::open(const QString& fileName)
 	info.struct_size = sizeof(info);
 	st = faac_encoder_get_info(m_faacInfo->encoder, &info);
 	if (st != FAAC_OK) {
-		// PERROR("FaacAudioWriter: faac_encoder_get_info failed: %s", faac_strerror(st));
+		TLOG_W("audiofile", "AAC: faac_encoder_get_info failed: {}", faac_strerror(st));
 		faac_encoder_close(&m_faacInfo->encoder);
 		fclose(m_fid);
 		m_fid = nullptr;
@@ -146,7 +146,7 @@ bool FaacAudioWriter::open(const QString& fileName)
 #else
 	m_faacInfo->handle = faacEncOpen(m_settings.sampleRate, m_settings.channelCount, &m_faacInfo->inputSamples, &m_faacInfo->maxOutputBytes);
 	if (!m_faacInfo->handle) {
-		// PERROR("FaacAudioWriter: faacEncOpen failed.");
+		TLOG_W("audiofile", "AAC: faacEncOpen failed");
 		fclose(m_fid);
 		m_fid = nullptr;
 		return false;
@@ -154,7 +154,7 @@ bool FaacAudioWriter::open(const QString& fileName)
 
 	faacEncConfigurationPtr cfg = faacEncGetCurrentConfiguration(m_faacInfo->handle);
 	if (!cfg) {
-		// PERROR("FaacAudioWriter: faacEncGetCurrentConfiguration failed.");
+		TLOG_W("audiofile", "AAC: faacEncGetCurrentConfiguration failed");
 		faacEncClose(m_faacInfo->handle);
 		m_faacInfo->handle = nullptr;
 		fclose(m_fid);
@@ -179,7 +179,7 @@ bool FaacAudioWriter::open(const QString& fileName)
 	}
 
 	if (!faacEncSetConfiguration(m_faacInfo->handle, cfg)) {
-		// PERROR("FaacAudioWriter: faacEncSetConfiguration failed.");
+		TLOG_W("audiofile", "AAC: faacEncSetConfiguration failed");
 		faacEncClose(m_faacInfo->handle);
 		m_faacInfo->handle = nullptr;
 		fclose(m_fid);
@@ -221,13 +221,13 @@ nframes_t FaacAudioWriter::write(void* buffer, nframes_t frameCount)
 							 m_bufferSize,
 							 &bytesWritten);
 		if (status < 0) {
-			// PERROR("FaacAudioWriter: faac_encoder_encode failed: %s", faac_strerror(status));
+			TLOG_W("audiofile", "AAC: faac_encoder_encode failed: {}", faac_strerror(status));
 			return 0;
 		}
 
 		if (bytesWritten > 0) {
 			if (fwrite(m_buffer, 1, bytesWritten, m_fid) != bytesWritten) {
-				// PERROR("FaacAudioWriter: fwrite failed.");
+				TLOG_W("audiofile", "AAC: fwrite failed");
 				return 0;
 			}
 		}
@@ -246,13 +246,13 @@ nframes_t FaacAudioWriter::write(void* buffer, nframes_t frameCount)
 						reinterpret_cast<unsigned char*>(m_buffer),
 						m_bufferSize);
 		if (bytesWritten < 0) {
-			// PERROR("FaacAudioWriter: faacEncEncode failed.");
+			TLOG_W("audiofile", "AAC: faacEncEncode failed");
 			return 0;
 		}
 
 		if (bytesWritten > 0) {
 			if (fwrite(m_buffer, 1, bytesWritten, m_fid) != (size_t)bytesWritten) {
-				// PERROR("FaacAudioWriter: fwrite failed.");
+				TLOG_W("audiofile", "AAC: fwrite failed");
 				return 0;
 			}
 		}
@@ -290,13 +290,13 @@ bool FaacAudioWriter::close()
 								 m_bufferSize,
 								 &bytesWritten);
 			if (status < 0) {
-				// PERROR("FaacAudioWriter: faac_encoder_encode flush failed: %s", faac_strerror(status));
+				TLOG_W("audiofile", "AAC: faac_encoder_encode flush failed: {}", faac_strerror(status));
 				success = false;
 				break;
 			}
 			if (bytesWritten > 0) {
 				if (fwrite(m_buffer, 1, bytesWritten, m_fid) != bytesWritten) {
-					// PERROR("FaacAudioWriter: flush fwrite failed.");
+					TLOG_W("audiofile", "AAC: flush fwrite failed");
 					success = false;
 					break;
 				}
@@ -316,13 +316,13 @@ bool FaacAudioWriter::close()
 						     reinterpret_cast<unsigned char*>(m_buffer),
 						     m_bufferSize);
 			if (bytesWritten < 0) {
-				// PERROR("FaacAudioWriter: faacEncEncode flush failed.");
+				TLOG_W("audiofile", "AAC: faacEncEncode flush failed");
 				success = false;
 				break;
 			}
 			if (bytesWritten > 0) {
 				if (fwrite(m_buffer, 1, bytesWritten, m_fid) != (size_t)bytesWritten) {
-					// PERROR("FaacAudioWriter: flush fwrite failed.");
+					TLOG_W("audiofile", "AAC: flush fwrite failed");
 					success = false;
 					break;
 				}

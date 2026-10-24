@@ -33,9 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 RELAYTOOL_MAD;
 
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
-#include "Debugger.h"
 
 
 static const int INPUT_BUFFER_SIZE = 5*8192;
@@ -101,7 +98,6 @@ bool K3bMad::open(const QString& filename)
     m_inputFile.setFileName(filename);
 
     if (!m_inputFile.open(QIODevice::ReadOnly)) {
-//		PERROR("could not open file %s", QS_C(filename));
         return false;
     }
 
@@ -215,7 +211,6 @@ bool K3bMad::skipTag()
 
         // skip the id3 tag
         if (!m_inputFile.seek(offset)) {
-//			PERROR("Couldn't seek to %u in %s", offset, QS_C(m_inputFile.fileName()));
             return false;
         }
     }
@@ -667,8 +662,6 @@ bool MadAudioReader::can_decode(const QString& filename)
             }
         }
     }
-
-    //PERROR("unsupported format: %s",QS_C(filename));
 
     return false;
 }
