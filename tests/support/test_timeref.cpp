@@ -110,6 +110,15 @@ int main()
 
         // Before zero: at or before, not towards zero
         const TTimeRef negative(qint64(-1000));
+        // The frames at one rate that cover frames at another, rounded up
+        check(TTimeRef::frames_covering(147, 48000, 44100) == 136, "147 frames at 48 kHz: 136 at 44.1 kHz cover them (135.06)");
+        check(TTimeRef::frames_covering(160, 48000, 44100) == 147, "160 frames at 48 kHz: exactly 147 at 44.1 kHz");
+        check(TTimeRef::frames_covering(1, 48000, 8000) == 1, "one frame at 48 kHz: one frame at 8 kHz covers it");
+        check(TTimeRef::frames_covering(0, 44100, 48000) == 0, "no frames: none");
+        check(TTimeRef::frames_covering(1024, 44100, 44100) == 1024, "equal rates: the count itself");
+        check(TTimeRef::frames_covering(qint64(UINT32_MAX), 44100, 768000) == 74796709356, "beyond 32 bits of frames, exact");
+        check(TTimeRef::to_nframes(qint64(UINT32_MAX)) == UINT32_MAX, "the largest nframes_t passes to_nframes()");
+
         const TTimeRef beforeZero = TTimeRef::common_frame_at_or_before(negative, 44100, 48000);
         check(beforeZero == TTimeRef(qint64(-94080)), "before zero: the common frame before, not after");
     }

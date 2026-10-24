@@ -72,6 +72,14 @@ double TTimeRef::to_frames(const TTimeRef& duration, uint rate)
     return double(duration.m_universalFrame) * double(rate) / double(UNIVERSAL_SAMPLE_RATE);
 }
 
+qint64 TTimeRef::frames_covering(qint64 count, uint fromRate, uint toRate)
+{
+    Q_ASSERT(fromRate != 0 && count >= 0);
+    Q_ASSERT_X(count <= LLONG_MAX / qint64(toRate == 0 ? 1 : toRate), "TTimeRef::frames_covering", "count * toRate does not fit in 64 bits");
+    const qint64 scaled = count * qint64(toRate);
+    return scaled / qint64(fromRate) + (scaled % qint64(fromRate) != 0 ? 1 : 0);
+}
+
 TTimeRef TTimeRef::common_frame_at_or_before(const TTimeRef& time, uint rateA, uint rateB)
 {
     Q_ASSERT(rateA != 0 && rateB != 0);

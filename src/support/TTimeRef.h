@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <limits>
 #include "Utils.h"
 #include "defines.h"
 #include <QMetaType>
@@ -97,6 +98,16 @@ public:
     // the greatest common divisor of the rates, which holds for every rate
     // it divides and for 384 kHz with most others; else time itself.
     static TTimeRef common_frame_at_or_before(const TTimeRef& time, uint rateA, uint rateB);
+    // The fewest frames at toRate that cover count frames at fromRate:
+    // count * toRate / fromRate, rounded up. Exact; 0 for 0.
+    static qint64 frames_covering(qint64 count, uint fromRate, uint toRate);
+    // A frame, or a count of frames, from the 64-bit functions above as a
+    // stream's 32-bit nframes_t; a debug build checks that it fits
+    static nframes_t to_nframes(qint64 frames) {
+        Q_ASSERT_X(frames >= 0 && frames <= qint64(std::numeric_limits<nframes_t>::max()), "TTimeRef::to_nframes",
+                   "the frames do not fit in nframes_t");
+        return nframes_t(frames);
+    }
 
 
     void add_frames(nframes_t frames, uint rate) {
