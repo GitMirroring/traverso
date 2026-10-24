@@ -36,9 +36,10 @@ private:
     // At close: the resamplers' rest into the file
     void flush_resamplers();
     // The channels of buffer, frames long, into its interleaved part
-    float* interleave(TFileIOBuffer& buffer, nframes_t frames);
-    // targetFrames interleaved frames into the file, in the file's format
-    nframes_t write_interleaved(TFileIOBuffer& fileIOBuffer, float* interleavedFloatBuffer, nframes_t targetFrames);
+    void interleave(TFileIOBuffer& buffer, nframes_t frames);
+    // frames frames of buffer's interleaved part into the file, in the
+    // file's format (packed in buffer's byte part when it is not float)
+    nframes_t write_interleaved(TFileIOBuffer& buffer, nframes_t frames);
     // The frames to write once channel chan produced frames and the channels
     // before it the least so far: equal resamplers fed alike give alike, so
     // a difference is a bug (asserted, logged once); the least is written so

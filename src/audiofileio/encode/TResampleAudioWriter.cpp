@@ -101,7 +101,8 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
     }
 
     if (m_resamplers.empty()) {
-        return write_interleaved(fileIOBuffer, interleave(fileIOBuffer, frameCount), frameCount);
+        interleave(fileIOBuffer, frameCount);
+        return write_interleaved(fileIOBuffer, frameCount);
     }
 
     // Resampled into the writer's own buffer: the output has another length
@@ -119,7 +120,8 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
     if (frames == 0) {
         return 0;
     }
-    return write_interleaved(m_resampleEncodeBuffer, interleave(m_resampleEncodeBuffer, frames), frames);
+    interleave(m_resampleEncodeBuffer, frames);
+    return write_interleaved(m_resampleEncodeBuffer, frames);
 }
 
 void TResampleAudioWriter::flush_resamplers()
@@ -138,7 +140,8 @@ void TResampleAudioWriter::flush_resamplers()
         if (frames == 0) {
             break;
         }
-        write_interleaved(m_resampleEncodeBuffer, interleave(m_resampleEncodeBuffer, frames), frames);
+        interleave(m_resampleEncodeBuffer, frames);
+        write_interleaved(m_resampleEncodeBuffer, frames);
     }
 }
 
@@ -158,7 +161,7 @@ nframes_t TResampleAudioWriter::least_frames(uint chan, nframes_t produced, nfra
     return std::min(least, produced);
 }
 
-float* TResampleAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
+void TResampleAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
 {
     buffer.check_capacity(frames, m_channelCount);
     float* interleaved = buffer.get_file_io_interleaved_buffer().get_data(frames * m_channelCount);
@@ -168,12 +171,13 @@ float* TResampleAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
             interleaved[f * m_channelCount + chan] = data[f];
         }
     }
-    return interleaved;
 }
 
-nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, float* interleavedFloatBuffer, nframes_t targetFrames)
+nframes_t TResampleAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nframes_t targetFrames)
 {
     nframes_t finalInterleavedSamples = targetFrames * m_channelCount;
+    // Not const: gdither and the codec writers take a plain pointer
+    float* interleavedFloatBuffer = fileIOBuffer.get_file_io_interleaved_buffer().get_data(finalInterleavedSamples);
 
     // The bytes a sample takes in memory, as gdither writes it and the
     // codec writer reads it: a 24 bit sample sits in a 32 bit word
