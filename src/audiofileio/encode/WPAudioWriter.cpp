@@ -114,7 +114,10 @@ bool WPAudioWriter::open_private()
     if (m_settings.dataFormat == TraversoDAW::DataFormat::FLOAT) {
         m_config.float_norm_exp = 127; // config->float_norm_exp,  select floating-point data (127 for +/-1.0)
     }
-    m_config.channel_mask = (m_settings.channelCount == 2) ? 3 : 4; // Microsoft standard (mono = 4, stereo = 3)
+    // The speakers of the channels (the Microsoft channel mask): mono is
+    // centre, stereo front left and right; more channels (the inputs of an
+    // interface) are no speakers, so none
+    m_config.channel_mask = m_settings.channelCount == 1 ? 4 : m_settings.channelCount == 2 ? 3 : 0;
     m_config.num_channels = m_settings.channelCount;
     m_config.sample_rate = m_settings.sampleRate;
 	m_config.flags = m_configFlags;

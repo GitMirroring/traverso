@@ -32,7 +32,7 @@ WPAudioReader::WPAudioReader(const QString& filename)
 {
     char error[80];
 
-    m_wp = WavpackOpenFileInput(m_fileName.toUtf8().data(), error, OPEN_2CH_MAX | OPEN_NORMALIZE | OPEN_WVC, 0);
+    m_wp = WavpackOpenFileInput(m_fileName.toUtf8().data(), error, OPEN_NORMALIZE | OPEN_WVC, 0);
 
     if (m_wp == nullptr) {
         qWarning("Couldn't open soundfile (%s) %s", QS_C(filename), error);
@@ -65,7 +65,7 @@ bool WPAudioReader::can_decode(const QString& filename)
 
     char error[80];
 
-    WavpackContext *wp = WavpackOpenFileInput(filename.toUtf8().data(), error, OPEN_2CH_MAX | OPEN_NORMALIZE | OPEN_WVC, 0);
+    WavpackContext *wp = WavpackOpenFileInput(filename.toUtf8().data(), error, OPEN_NORMALIZE | OPEN_WVC, 0);
 
     if (wp == nullptr) {
         return false;
