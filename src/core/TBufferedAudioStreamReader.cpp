@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TBufferedAudioStreamReader.h"
-#include "TResampleAudioReader.h"
+#include "TAudioReader.h"
 #include "TAudioDecoder.h"
 
 #include "TProjectManager.h"
@@ -116,7 +116,7 @@ void TBufferedAudioStreamReader::private_init()
 
     m_refcount = 0;
     m_error = 0;
-    m_resampleAudioReader = nullptr;
+    m_audioReader = nullptr;
 
     m_aboutOneToFourSecondsTime = TTimeRef::UNIVERSAL_SAMPLE_RATE * (TraversoDAW::Utils::randomNumberBetween(0, 3) + 1.0);
 }
@@ -125,8 +125,8 @@ TBufferedAudioStreamReader::~TBufferedAudioStreamReader()
 {
     PENTERDES;
 
-    if (m_resampleAudioReader) {
-        delete m_resampleAudioReader;
+    if (m_audioReader) {
+        delete m_audioReader;
     }
 }
 
@@ -209,37 +209,37 @@ int TBufferedAudioStreamReader::init( )
         return (m_error = FILE_DOES_NOT_EXIST);
     }
 
-    m_resampleAudioReader = new TResampleAudioReader(m_fileName);
+    m_audioReader = new TAudioReader(m_fileName);
 
-    if (!m_resampleAudioReader->is_valid()) {
+    if (!m_audioReader->is_valid()) {
 //		PERROR("ReadSource:: audio reader is not valid! (reader channel count: %d, nframes: %d", m_audioReader->get_num_channels(), m_audioReader->get_nframes());
-        delete m_resampleAudioReader;
-        m_resampleAudioReader = nullptr;
+        delete m_audioReader;
+        m_audioReader = nullptr;
         return (m_error = COULD_NOT_OPEN_FILE);
     }
 
-    set_output_rate_and_resampler(m_resampleAudioReader->file_rate(), configured_resampler());
+    set_output_rate_and_resampler(m_audioReader->file_rate(), configured_resampler());
 
-    m_channelCount = m_resampleAudioReader->channel_count();
+    m_channelCount = m_audioReader->channel_count();
 
     // @Ben: I thought we support any channel count now ??
        // if (m_channelCount > 2) {
        //  PERROR(QString("ReadAudioSource: file contains %1 channels; only 2 channels are supported").arg(m_channelCount));
-       //         delete m_resampleAudioReader;
-       //         m_resampleAudioReader = 0;
+       //         delete m_audioReader;
+       //         m_audioReader = 0;
        //         return (m_error = INVALID_CHANNEL_COUNT);
        // }
 
-    // Never reached, it's allready checked in TResampleAudioReader::is_valid() which was allready called!
+    // Never reached, it's allready checked in TAudioReader::is_valid() which was allready called!
     if (m_channelCount == 0) {
 //		PERROR("ReadAudioSource: not a valid channel count: %d", m_channelCount);
-        delete m_resampleAudioReader;
-        m_resampleAudioReader = nullptr;
+        delete m_audioReader;
+        m_audioReader = nullptr;
         return (m_error = ZERO_CHANNELS);
     }
 
-    m_rate = m_resampleAudioReader->file_rate();
-    m_length = m_resampleAudioReader->length();
+    m_rate = m_audioReader->file_rate();
+    m_length = m_audioReader->length();
 
     return 1;
 }
@@ -263,13 +263,13 @@ TBufferedAudioStreamReader::Resampler TBufferedAudioStreamReader::configured_res
 void TBufferedAudioStreamReader::set_output_rate_and_resampler(int outputRate, const Resampler& resampler)
 {
     Q_ASSERT(outputRate > 0);
-    Q_ASSERT_X(m_resampleAudioReader, "ReadSource::set_output_rate_and_resampler", "No Resample Audio Reader");
+    Q_ASSERT_X(m_audioReader, "ReadSource::set_output_rate_and_resampler", "No Resample Audio Reader");
 
     // Without resampling the file is read at its own rate (and plays at
     // another pitch when the device's rate is not the file's)
     const bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
-    const uint readRate = useResampling ? uint(outputRate) : m_resampleAudioReader->file_rate();
-    m_resampleAudioReader->set_output_rate_and_resampler(readRate, TAudioResampler::BackendType(resampler.backend), resampler.quality);
+    const uint readRate = useResampling ? uint(outputRate) : m_audioReader->file_rate();
+    m_audioReader->set_output_rate_and_resampler(readRate, TAudioResampler::BackendType(resampler.backend), resampler.quality);
 
     m_outputRate = outputRate;
 }
@@ -282,15 +282,15 @@ void TBufferedAudioStreamReader::set_source_start_location(const TTimeRef &sourc
 
 int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, const TTimeRef& fileLocation, nframes_t count) const
 {
-    Q_ASSERT(m_resampleAudioReader);
-    return m_resampleAudioReader->read_from(buffer, fileLocation, count);
+    Q_ASSERT(m_audioReader);
+    return m_audioReader->read_from(buffer, fileLocation, count);
 }
 
 
 int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count) const
 {
-    Q_ASSERT(m_resampleAudioReader);
-    return m_resampleAudioReader->read_from(buffer, firstFrame, count);
+    Q_ASSERT(m_audioReader);
+    return m_audioReader->read_from(buffer, firstFrame, count);
 }
 
 
@@ -307,10 +307,10 @@ TBufferedAudioStreamReader * TBufferedAudioStreamReader::deep_copy( )
 // The frames of the file at its own rate, at any output rate
 nframes_t TBufferedAudioStreamReader::get_nframes( ) const
 {
-    if (!m_resampleAudioReader) {
+    if (!m_audioReader) {
         return 0;
     }
-    return m_resampleAudioReader->file_frame_count();
+    return m_audioReader->file_frame_count();
 }
 
 int TBufferedAudioStreamReader::set_file(const QString & filename)
@@ -659,8 +659,8 @@ void TBufferedAudioStreamReader::set_active(bool active)
 
 uint TBufferedAudioStreamReader::get_file_rate() const
 {
-    if (m_resampleAudioReader) {
-        return m_resampleAudioReader->file_rate();
+    if (m_audioReader) {
+        return m_audioReader->file_rate();
     } else {
         PERROR("ReadSource::get_file_rate(), but no audioreader available!!");
     }

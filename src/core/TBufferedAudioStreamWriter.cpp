@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TExportSpecification.h"
 #include "AudioBus.h"
 #include "TAudioDevice.h"
-#include "TResampleAudioWriter.h"
+#include "TAudioWriter.h"
 #include "TLog.h"
 #include "TPeakCache.h"
 #include "TPeakPyramid.h"
@@ -38,7 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 TBufferedAudioStreamWriter::TBufferedAudioStreamWriter(const QString& exportDir, const QString &exportFileName)
     : TBufferedAudioStream(exportDir, exportFileName)
 {
-    m_resampleWriter = nullptr;
+    m_audioWriter = nullptr;
     m_channelCount = 0;
     m_isRecording = false;
     m_sampleRate = 0;
@@ -62,9 +62,9 @@ int TBufferedAudioStreamWriter::prepare_file(TExportSpecification *specification
     set_name(get_name() + specification->get_file_extension());
     specification->print_export_data();
 
-    m_resampleWriter = std::make_unique<TResampleAudioWriter>(specification->get_encode_settings());
-    if (!m_resampleWriter->open(m_fileName, m_sampleRate)) {
-        PERROR("Write Source failed to open via TResampleAudioWriter");
+    m_audioWriter = std::make_unique<TAudioWriter>(specification->get_encode_settings());
+    if (!m_audioWriter->open(m_fileName, m_sampleRate)) {
+        PERROR("Write Source failed to open via TAudioWriter");
         return -1;
     }
 
@@ -73,13 +73,13 @@ int TBufferedAudioStreamWriter::prepare_file(TExportSpecification *specification
 
 void TBufferedAudioStreamWriter::finish_file()
 {
-    if (m_resampleWriter) {
+    if (m_audioWriter) {
         // The resampler's rest and the final header: a file whose close
         // fails may not hold all that was written
-        if (!m_resampleWriter->close()) {
+        if (!m_audioWriter->close()) {
             TLOG_W("diskio", "closing {} failed: it may not hold all that was written", m_fileName.toStdString());
         }
-        m_resampleWriter.reset();
+        m_audioWriter.reset();
     }
 
     // Level 0 of the peaks is on disk already but for its last block; the
@@ -150,7 +150,7 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
         }
     }
 
-    nframes_t writtenFrames = m_resampleWriter->write_planar(fileIOBuffer, nframes);
+    nframes_t writtenFrames = m_audioWriter->write_planar(fileIOBuffer, nframes);
     m_writtenFrames += writtenFrames;
 
     if (writtenFrames != nframes) {
@@ -208,7 +208,7 @@ void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileIOB
     if (m_fileFinished) {
         return;
     }
-    Q_ASSERT(m_resampleWriter);
+    Q_ASSERT(m_audioWriter);
 
     TQueueBufferSlot* slot = nullptr;
     while (m_rtBufferSlotsQueue->try_dequeue(slot)) {

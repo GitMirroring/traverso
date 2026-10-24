@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class TExportSpecification;
 class TPeakStream;
-class TResampleAudioWriter;
+class TAudioWriter;
 class AudioBus;
 class TFileIOBuffer;
 
@@ -68,7 +68,7 @@ public :
     qint64 get_written_frames() const { return m_writtenFrames; }
 
 private:
-    std::unique_ptr<TResampleAudioWriter>           m_resampleWriter;
+    std::unique_ptr<TAudioWriter>           m_audioWriter;
     std::shared_ptr<TPeakStream>                 m_peaks;
     std::vector<const float*>                       m_peakChannels;
 

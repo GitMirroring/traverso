@@ -45,11 +45,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  *
  * Not for the audio thread: file IO, and the buffers may grow.
  */
-class TResampleAudioReader
+class TAudioReader
 {
 public:
-    explicit TResampleAudioReader(const QString& fileName);
-    ~TResampleAudioReader();
+    explicit TAudioReader(const QString& fileName);
+    ~TAudioReader();
 
     // Of the file, at its own rate
     bool is_valid() const { return m_decoder && m_decoder->is_valid(); }

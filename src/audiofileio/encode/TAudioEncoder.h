@@ -20,7 +20,7 @@
  * An encoder does all of its work itself: it opens the file, encodes what it
  * is given and completes the file when it closes (the header, what the codec
  * still holds). It knows nothing of rates or planar buffers:
- * TResampleAudioWriter resamples, interleaves and converts the sample format
+ * TAudioWriter resamples, interleaves and converts the sample format
  * before. Not for the audio thread.
  */
 class TAudioEncoder

@@ -2,13 +2,14 @@
 add_library(traversoaudiofileio STATIC
     decode/TAudioDecoder.h decode/TAudioDecoder.cpp
     decode/SFAudioReader.cpp
-    decode/TResampleAudioReader.h decode/TResampleAudioReader.cpp
+    TAudioReader.h TAudioReader.cpp
     decode/WPAudioReader.cpp
     decode/MadAudioReader.cpp
     encode/TAudioEncoder.h encode/TAudioEncoder.cpp
     encode/SFAudioWriter.cpp
     encode/WPAudioWriter.cpp
-    encode/TResampleAudioWriter.cpp
+    TAudioWriter.h TAudioWriter.cpp
+    TAudioEncodeSettings.h
 )
 
 # Apply shared compilation variables and parameters from the interface target

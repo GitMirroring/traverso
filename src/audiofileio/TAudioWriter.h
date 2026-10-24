@@ -40,11 +40,11 @@ class TAudioResampler;
  * The only user is TBufferedAudioStreamWriter (recordings, imports, merges,
  * exports); the codec writers know nothing of rates or planar buffers.
  */
-class TResampleAudioWriter
+class TAudioWriter
 {
 public:
-    TResampleAudioWriter(const TAudioEncodeSettings& settings);
-    ~TResampleAudioWriter();
+    TAudioWriter(const TAudioEncodeSettings& settings);
+    ~TAudioWriter();
 
     bool open(const QString& filename, uint inputSampleRate);
     nframes_t write_planar(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
@@ -71,7 +71,7 @@ private:
     std::unique_ptr<TAudioResampler>                m_resampler;
     GDither                                         m_dither;
     // What the resampler gives, interleaved and packed there, like the
-    // decode buffer of TResampleAudioReader; the caller's buffer is only
+    // decode buffer of TAudioReader; the caller's buffer is only
     // read then
     TFileIOBuffer                                   m_resampleEncodeBuffer;
 };

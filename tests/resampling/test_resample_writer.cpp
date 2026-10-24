@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of TResampleAudioWriter: sweeps written at another rate
+// Headless test of TAudioWriter: sweeps written at another rate
 // must all be in the file, where they belong and at their level, the last
 // one too, which ends just before the end of the input. A writer that does
 // not flush its resampler at the end loses what the resampler still holds.
@@ -9,7 +9,7 @@
 #include "TAudioDecoder.h"
 #include "TAudioEncodeSettings.h"
 #include "TFileIOBuffer.h"
-#include "TResampleAudioWriter.h"
+#include "TAudioWriter.h"
 #include "sweeps.h"
 
 #include <QTemporaryDir>
@@ -97,7 +97,7 @@ int main()
         const QString path = dir.filePath(QString("written-%1-%2-%3-%4.%5").arg(c.inputRate).arg(c.fileRate).arg(formatName, backend)
                                               .arg(c.writer == wavpack ? "wv" : "wav"));
         {
-            TResampleAudioWriter writer(settings);
+            TAudioWriter writer(settings);
             check(writer.open(path, c.inputRate), "opening the writer");
             TFileIOBuffer buffer;
             for (nframes_t at = 0; at < inputFrames; at += settings.blockSize) {

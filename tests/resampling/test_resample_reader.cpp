@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of TResampleAudioReader: a file of short sweeps, read at
+// Headless test of TAudioReader: a file of short sweeps, read at
 // another rate the way the stream reader reads it, must come out with every
 // sweep where it belongs on the file's timeline, within a twentieth of a frame. A
 // reader that pads a short read of the resampler with silence fails it: the
 // silence shifts all that follows.
 
-#include "TResampleAudioReader.h"
+#include "TAudioReader.h"
 #include "TFileIOBuffer.h"
 #include "TTimeRef.h"
 #include "sweeps.h"
@@ -87,7 +87,7 @@ static const char* pattern_name(Pattern p)
 static std::vector<float> read_all(const QString& path, uint outputRate, TAudioResampler::BackendType backend, int quality,
                                    Pattern pattern, nframes_t& first, nframes_t fileFrames, uint fileRate)
 {
-    TResampleAudioReader reader(path);
+    TAudioReader reader(path);
     reader.set_output_rate_and_resampler(outputRate, backend, quality);
 
     // The length and the frames are the file's, at any output rate; the
@@ -214,7 +214,7 @@ int main()
         const QString path = dir.filePath(QString("end-%1.wav").arg(c.fileRate));
         check(write_wav(path, c.fileRate, file), "writing the file");
 
-        TResampleAudioReader reader(path);
+        TAudioReader reader(path);
         reader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t frames = reader.output_frame_count();
         TFileIOBuffer buffer;
@@ -258,7 +258,7 @@ int main()
         }
         const QString tonePath = dir.filePath(QString("tone-%1.wav").arg(c.fileRate));
         check(write_wav(tonePath, c.fileRate, tone), "writing the tone");
-        TResampleAudioReader toneReader(tonePath);
+        TAudioReader toneReader(tonePath);
         toneReader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t toneFrames = toneReader.output_frame_count();
         toneReader.read_from(buffer, nframes_t(0), toneFrames);

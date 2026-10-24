@@ -76,7 +76,7 @@ query only (`traverso_peak_benchmark`, best of three runs):
 | 65536 | 0.118 ms | 0.119 ms | +1% |
 
 At 40 and 63 frames per pixel the benchmark computes its samples with sin().
-Through the real reader (`TResampleAudioReader`, warm cache) the exact query
+Through the real reader (`TAudioReader`, warm cache) the exact query
 costs 2.15 and 3.16 ms for a WAV file and 6.8 and 10.7 ms for a FLAC file;
 the grid 0.22 and 0.34 ms for both.
 

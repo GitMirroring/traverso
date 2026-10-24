@@ -20,12 +20,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#include "TResampleAudioReader.h"
+#include "TAudioReader.h"
 #include "TLog.h"
 
 #include <algorithm>
 
-TResampleAudioReader::TResampleAudioReader(const QString& fileName)
+TAudioReader::TAudioReader(const QString& fileName)
     : m_decoder(open_audio_decoder(fileName))
 {
     if (!m_decoder) {
@@ -38,9 +38,9 @@ TResampleAudioReader::TResampleAudioReader(const QString& fileName)
     m_outputFrames = m_decoder->frame_count();
 }
 
-TResampleAudioReader::~TResampleAudioReader() = default;
+TAudioReader::~TAudioReader() = default;
 
-void TResampleAudioReader::set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality)
+void TAudioReader::set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality)
 {
     if (!m_decoder || rate == 0) {
         return;
@@ -69,7 +69,7 @@ void TResampleAudioReader::set_output_rate_and_resampler(uint rate, TAudioResamp
 // history the next output frames would be computed from, and input kept for
 // the next feed) and the frames still to drop after a seek: all of it belongs
 // to the position read before, and the next read is from another one
-void TResampleAudioReader::reset()
+void TAudioReader::reset()
 {
     if (m_resampler) {
         m_resampler->reset();
@@ -77,7 +77,7 @@ void TResampleAudioReader::reset()
     m_dropFrames = 0;
 }
 
-bool TResampleAudioReader::reposition(nframes_t frame)
+bool TAudioReader::reposition(nframes_t frame)
 {
     if (!m_resampler) {
         // A decoder that is there already does not seek
@@ -110,7 +110,7 @@ bool TResampleAudioReader::reposition(nframes_t frame)
     return true;
 }
 
-nframes_t TResampleAudioReader::read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count)
+nframes_t TAudioReader::read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count)
 {
     if (!m_decoder || count == 0) {
         return 0;
@@ -129,7 +129,7 @@ nframes_t TResampleAudioReader::read_from(TFileIOBuffer& buffer, nframes_t first
     return read;
 }
 
-nframes_t TResampleAudioReader::read_resampled(TFileIOBuffer& buffer, nframes_t count)
+nframes_t TAudioReader::read_resampled(TFileIOBuffer& buffer, nframes_t count)
 {
     // Not past the frames the file gives at the output rate
     const nframes_t frames = m_frame < m_outputFrames ? std::min(count, m_outputFrames - m_frame) : 0;
@@ -153,7 +153,7 @@ nframes_t TResampleAudioReader::read_resampled(TFileIOBuffer& buffer, nframes_t 
     return frames;
 }
 
-nframes_t TResampleAudioReader::resample_into(TFileIOBuffer& out, nframes_t count)
+nframes_t TAudioReader::resample_into(TFileIOBuffer& out, nframes_t count)
 {
     // The resampler gives what its input allows: after a seek it holds back
     // the length of its filter, and soxr releases its output in blocks of its
