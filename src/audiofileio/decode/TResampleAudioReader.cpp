@@ -20,36 +20,52 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 
-#include "ResampleAudioReader.h"
-#include "TAudioResampler.h"
-#include "TAudioBuffer.h"
+#include "TResampleAudioReader.h"
 #include "Debugger.h"
 
 #include <algorithm>
 
-TResampleAudioReader::TResampleAudioReader(const QString& filename)
-    : AbstractAudioReader(filename)
+TResampleAudioReader::TResampleAudioReader(const QString& fileName)
+    : m_decoder(open_audio_decoder(fileName))
 {
-    m_decoder = open_audio_decoder(filename);
     if (!m_decoder) {
-        PERROR("ResampleAudioReader: couldn't create AudioReader");
-        m_channels = m_fileFrames = 0;
-    } else {
-        m_channels = m_decoder->channel_count();
-        m_fileSampleRate = m_decoder->rate();
-        m_fileFrames = m_decoder->frame_count();
-        m_length = m_decoder->length();
-        m_outputSampleRate = m_fileSampleRate;
+        PERROR(QString("TResampleAudioReader: no decoder for %1").arg(fileName));
+        return;
+    }
+    m_channels = m_decoder->channel_count();
+    m_fileRate = m_decoder->rate();
+    m_outputRate = m_fileRate;
+    m_outputFrames = m_decoder->frame_count();
+}
+
+TResampleAudioReader::~TResampleAudioReader() = default;
+
+void TResampleAudioReader::set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality)
+{
+    if (!m_decoder || rate == 0) {
+        return;
     }
 
-    m_isResampleAvailable = false;
+    m_outputRate = rate;
+    // The length is the file's, at any output rate; the frames the file
+    // gives at the output rate end where it ends
+    m_outputFrames = rate == m_fileRate ? m_decoder->frame_count()
+                                        : TTimeRef::to_nframes(TTimeRef::frame_at_or_after(m_decoder->length(), rate));
+
+    // Another ratio is another resampler (soxr cannot change it once it ran)
+    m_resampler.reset();
+    if (rate != m_fileRate) {
+        m_resampler = std::make_unique<TAudioResampler>(backend, double(rate) / m_fileRate, quality, m_channels);
+    }
+    m_dropFrames = 0;
+
+    // The reader is where it was, now at this rate: the decoder sought again
+    // and the new resampler primed from the frame before it. The owner seeks
+    // too after a change of rate (TBufferedAudioStream::step()).
+    reposition(m_frame);
 }
 
-TResampleAudioReader::~TResampleAudioReader()
-{
-}
-
-// Forgets what the resamplers hold of the frames fed so far (the filter
+// Forgets what the resampler holds of the frames fed so far (the filter
 // history the next output frames would be computed from, and input kept for
 // the next feed) and the frames still to drop after a seek: all of it belongs
 // to the position read before, and the next read is from another one
@@ -61,151 +77,102 @@ void TResampleAudioReader::reset()
     m_dropFrames = 0;
 }
 
-void TResampleAudioReader::set_resampler(TAudioResampler::BackendType backend, int quality)
+bool TResampleAudioReader::reposition(nframes_t frame)
 {
-    PENTER;
-
-    m_backend = backend;
-    m_quality = quality;
-    m_isResampleAvailable = true;
-    create_resamplers();
-
-    seek_private(pos());
-}
-
-void TResampleAudioReader::create_resamplers()
-{
-    const double ratio = double(m_outputSampleRate) / m_fileSampleRate;
-    m_resampler = std::make_unique<TAudioResampler>(m_backend, ratio, m_quality, m_channels);
-}
-
-void TResampleAudioReader::set_output_rate(uint rate)
-{
-    if (!m_decoder) return;
-    if (m_outputSampleRate == rate) return;
-
-    m_outputSampleRate = rate;
-    // The length is the file's, at any output rate; the frames the file
-    // gives at the output rate end where it ends
-    m_length = m_decoder->length();
-    m_fileFrames = rate == m_fileSampleRate ? m_decoder->frame_count()
-                                            : nframes_t(TTimeRef::frame_at_or_after(m_length, m_outputSampleRate));
-
-    // Another ratio is another resampler
-    if (m_isResampleAvailable) {
-        create_resamplers();
-    }
-
-    // The new resamplers hold nothing yet; the frames to drop were those of a
-    // seek at the old rate, and the owner seeks again at the new one
-    // (TBufferedAudioStream::step())
-    reset();
-}
-
-bool TResampleAudioReader::seek_private(nframes_t start)
-{
-    Q_ASSERT(m_decoder);
-    if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
+    if (!m_resampler) {
         // A decoder that is there already does not seek
-        return m_decoder->frame() == start || m_decoder->seek(start);
+        if (m_decoder->frame() != frame && !m_decoder->seek(frame)) {
+            return false;
+        }
+        m_frame = frame;
+        return true;
     }
-    // The resamplers' filter history and kept input are from the position
+
+    // The resampler's filter history and kept input are from the position
     // read before: fed on, they would put that position's tail (a click, the
     // length of the filter) and its kept frames at the new position. Before
-    // the seek, since the seek sets the frames to drop and the reset clears
-    // them.
+    // the drop is set below, since the reset clears it.
     reset();
 
     // A position in output frames is mostly no whole frame of the file, and
     // a seek to the nearest file frame would shift the output by a fraction
-    // of a frame. The file is sought to the last frame before start where a
+    // of a frame. The file is sought to the last frame before frame where a
     // frame of both rates coincide (every 147 frames of 44.1 kHz and 160 of
-    // 48 kHz); the next read drops the output frames from there to start.
-    const TTimeRef position(start, m_outputSampleRate);
-    const TTimeRef common = TTimeRef::common_frame_at_or_before(position, m_fileSampleRate, m_outputSampleRate);
-    m_dropFrames = nframes_t(TTimeRef::frame_at_or_before(position - common, m_outputSampleRate));
-    const nframes_t fileFrame = nframes_t(TTimeRef::frame_at_or_before(common, m_fileSampleRate));
-    return m_decoder->frame() == fileFrame || m_decoder->seek(fileFrame);
+    // 48 kHz); the next read drops the output frames from there to frame.
+    const TTimeRef position(frame, m_outputRate);
+    const TTimeRef common = TTimeRef::common_frame_at_or_before(position, m_fileRate, m_outputRate);
+    const nframes_t fileFrame = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(common, m_fileRate));
+    if (m_decoder->frame() != fileFrame && !m_decoder->seek(fileFrame)) {
+        return false;
+    }
+    m_dropFrames = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(position - common, m_outputRate));
+    m_frame = frame;
+    return true;
 }
 
-nframes_t TResampleAudioReader::resample_turn(TFileIOBuffer& out, nframes_t at, nframes_t count, nframes_t& inputFrames)
+nframes_t TResampleAudioReader::read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count)
 {
-    nframes_t fileCnt = resampled_to_file_frame(count);
-    if (!fileCnt) {
-        fileCnt = 1;
+    if (!m_decoder || count == 0) {
+        return 0;
+    }
+    // The reader writes into the buffer, so it makes room in it
+    buffer.check_capacity(count, m_channels);
+
+    if (first != m_frame && !reposition(first)) {
+        // Nothing to read there: zeros, as past the end of the file
+        buffer.silence(0, count, m_channels);
+        return 0;
     }
 
-    // The decoder makes room in the buffer and leaves no stale frames in it
-    inputFrames = 0;
-    if (!m_decoder->at_end()) {
-        inputFrames = m_decoder->read(m_resampleDecodeBuffer, fileCnt);
-    }
-    if (inputFrames == 0 && m_decoder->at_end()) {
-        // The file is read to its end: what the resampler still holds
-        return m_resampler->flush(out.channel_buffers(), at, count);
-    }
-    return m_resampler->process(m_resampleDecodeBuffer.channel_buffers(), inputFrames, out.channel_buffers(), at, count);
+    const nframes_t read = m_resampler ? read_resampled(buffer, count) : m_decoder->read(buffer, count);
+    m_frame += read;
+    return read;
 }
 
-nframes_t TResampleAudioReader::resample(TFileIOBuffer& out, nframes_t count)
+nframes_t TResampleAudioReader::read_resampled(TFileIOBuffer& buffer, nframes_t count)
 {
-    // The resampler gives what its input allows: after a seek it holds back
-    // the length of its filter, and soxr releases its output in blocks of its
-    // own. So it is fed until it gave all that was asked for, reading as much
-    // of the file as that takes; once the file is read to its end, it is
-    // flushed.
-    nframes_t produced = 0;
-    while (produced < count) {
-        nframes_t inputFrames = 0;
-        const nframes_t generated = resample_turn(out, produced, count - produced, inputFrames);
-        produced += generated;
-        if (inputFrames == 0 && !m_decoder->at_end()) {
-            // A read error
-            break;
-        }
-        // At the end of the file the resampler is flushed until it gives
-        // nothing
-        if (generated == 0 && inputFrames == 0) {
-            break;
-        }
-    }
-    return produced;
-}
-
-nframes_t TResampleAudioReader::read_private(TFileIOBuffer& buffer, nframes_t frameCount)
-{
-    Q_ASSERT(m_decoder);
-
-    if (m_outputSampleRate == m_fileSampleRate || !m_isResampleAvailable) {
-        return m_decoder->read(buffer, frameCount);
-    }
-
-    nframes_t framesToConvert = frameCount;
-    if (frameCount > m_fileFrames - m_readPos) {
-        framesToConvert = m_fileFrames - m_readPos;
-    }
-    if (framesToConvert == 0) {
+    // Not past the frames the file gives at the output rate
+    const nframes_t frames = m_frame < m_outputFrames ? std::min(count, m_outputFrames - m_frame) : 0;
+    if (frames == 0) {
+        buffer.silence(0, count, m_channels);
         return 0;
     }
 
     // After a seek: the output frames between the common frame the file was
-    // sought to and the position asked for (seek_private()), in pieces the
-    // buffer holds; the output asked for writes over them
-    while (m_dropFrames) {
-        const nframes_t piece = std::min(m_dropFrames, framesToConvert);
-        m_dropFrames = resample(buffer, piece) < piece ? 0 : m_dropFrames - piece;
+    // sought to and the frame asked for (reposition()), in pieces the buffer
+    // holds; the output asked for writes over them
+    while (m_dropFrames > 0) {
+        const nframes_t toDrop = std::min(m_dropFrames, frames);
+        m_dropFrames = resample_into(buffer, toDrop) < toDrop ? 0 : m_dropFrames - toDrop;
     }
 
-    // Silence only past the end of what the resampler gives: padding a short
-    // read anywhere else would shift all that follows
-    const nframes_t produced = resample(buffer, framesToConvert);
-    if (produced < framesToConvert) {
-        for (uint chan = 0; chan < m_channels; chan++) {
-            buffer.get_channel_buffer(chan).set_data_start_offset(produced);
-            buffer.get_channel_buffer(chan).silence_data(framesToConvert - produced);
-            buffer.get_channel_buffer(chan).set_data_start_offset(0);
+    // Zeros only past what the resampler gives: padding a short read
+    // anywhere else would shift all that follows
+    const nframes_t produced = resample_into(buffer, frames);
+    buffer.silence(produced, count - produced, m_channels);
+    return frames;
+}
+
+nframes_t TResampleAudioReader::resample_into(TFileIOBuffer& out, nframes_t count)
+{
+    // The resampler gives what its input allows: after a seek it holds back
+    // the length of its filter, and soxr releases its output in blocks of its
+    // own. So it is fed until it gave all that was asked for, reading as much
+    // of the file as that takes; at the end of the file it is flushed, also
+    // over several reads when they ask for less than it holds.
+    nframes_t produced = 0;
+    while (produced < count) {
+        if (m_decoder->at_end()) {
+            produced += m_resampler->flush(out.channel_buffers(), produced, count - produced);
+            break;
         }
+        // The decoder makes room in its buffer and leaves no stale frames in it
+        const nframes_t inputFrames = m_decoder->read(m_decodeBuffer, file_frames_for(count - produced));
+        if (inputFrames == 0) {
+            // A read error: not at the end, and nothing came
+            break;
+        }
+        produced += m_resampler->process(m_decodeBuffer.channel_buffers(), inputFrames, out.channel_buffers(), produced, count - produced);
     }
-
-    return framesToConvert;
+    return produced;
 }

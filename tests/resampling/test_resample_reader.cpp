@@ -7,7 +7,7 @@
 // reader that pads a short read of the resampler with silence fails it: the
 // silence shifts all that follows.
 
-#include "ResampleAudioReader.h"
+#include "TResampleAudioReader.h"
 #include "TFileIOBuffer.h"
 #include "TTimeRef.h"
 #include "sweeps.h"
@@ -88,19 +88,18 @@ static std::vector<float> read_all(const QString& path, uint outputRate, TAudioR
                                    Pattern pattern, nframes_t& first, nframes_t fileFrames, uint fileRate)
 {
     TResampleAudioReader reader(path);
-    reader.set_output_rate(outputRate);
-    reader.set_resampler(backend, quality);
+    reader.set_output_rate_and_resampler(outputRate, backend, quality);
 
     // The length and the frames are the file's, at any output rate; the
     // frames at the output rate end where the file ends
-    check(reader.get_length() == TTimeRef(fileFrames, fileRate), "the length is the file's");
-    check(reader.get_file_frames() == fileFrames, "the frames of the file at its own rate");
-    check(qint64(reader.get_nframes()) == TTimeRef::frame_at_or_after(TTimeRef(fileFrames, fileRate), outputRate),
+    check(reader.length() == TTimeRef(fileFrames, fileRate), "the length is the file's");
+    check(reader.file_frame_count() == fileFrames, "the frames of the file at its own rate");
+    check(qint64(reader.output_frame_count()) == TTimeRef::frame_at_or_after(TTimeRef(fileFrames, fileRate), outputRate),
           "the frames at the output rate end where the file ends");
 
     const nframes_t bufferSize = 1024;
     const nframes_t slotCount = std::max<nframes_t>(5, outputRate / bufferSize);
-    const nframes_t total = nframes_t(double(reader.get_nframes()) / bufferSize);
+    const nframes_t total = nframes_t(double(reader.output_frame_count()) / bufferSize);
     first = pattern == Pattern::Seek ? nframes_t(3.3 * outputRate) / bufferSize * bufferSize
           : pattern == Pattern::SeekCommon ? 3 * outputRate : 0;
 
@@ -218,9 +217,8 @@ int main()
         check(write_wav(path, c.fileRate, file), "writing the file");
 
         TResampleAudioReader reader(path);
-        reader.set_output_rate(c.outputRate);
-        reader.set_resampler(backend, TAudioResampler::default_realtime_quality(backend));
-        const nframes_t frames = reader.get_nframes();
+        reader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+        const nframes_t frames = reader.output_frame_count();
         TFileIOBuffer buffer;
         std::vector<float> out;
         for (nframes_t at = 0; at < frames;) {
@@ -265,9 +263,8 @@ int main()
         const QString tonePath = dir.filePath(QString("tone-%1.wav").arg(c.fileRate));
         check(write_wav(tonePath, c.fileRate, tone), "writing the tone");
         TResampleAudioReader toneReader(tonePath);
-        toneReader.set_output_rate(c.outputRate);
-        toneReader.set_resampler(backend, TAudioResampler::default_realtime_quality(backend));
-        const nframes_t toneFrames = toneReader.get_nframes();
+        toneReader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+        const nframes_t toneFrames = toneReader.output_frame_count();
         buffer.check_capacity(toneFrames, 1);
         buffer.silence_buffers();
         toneReader.read_from(buffer, nframes_t(0), toneFrames);
