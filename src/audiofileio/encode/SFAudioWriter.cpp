@@ -106,6 +106,15 @@ bool SFAudioWriter::open_private()
         return false;
     }
 
+    // A file with a header gets it updated with every write: when the
+    // writing stops without a close (a kill, a crash), what was written can
+    // be read in full. libsndfile reads a WAV with data size 0 to its end,
+    // other programs and AIFF readers do not. The closed file is the same
+    // as without it.
+    if (sf_file_format == SF_FORMAT_WAV || sf_file_format == SF_FORMAT_W64 || sf_file_format == SF_FORMAT_AIFF) {
+        sf_command(m_sf, SFC_SET_UPDATE_HEADER_AUTO, nullptr, SF_TRUE);
+    }
+
     return true;
 }
 
