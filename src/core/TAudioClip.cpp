@@ -50,6 +50,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TInputEventDispatcher.h"
 #include "Debugger.h"
 
+#include <algorithm>
+
 /**
  *	\class TAudioClip
     \brief Represents (part of) an audiofile.
@@ -510,8 +512,9 @@ int TAudioClip::process(TProcessCallBackData &processData)
     nframes_t framesToProcess = nframes;
     nframes_t offset = 0;
     uint outputRate = m_readSource->get_output_rate();
-    uint channelcount = get_channel_count();
-    Q_ASSERT(bus->get_channel_count() >= channelcount);
+    // At most the channels of the clip render bus: of a source with more,
+    // the rest is not played until the routing knows where they go
+    const uint channelcount = std::min(get_channel_count(), bus->get_channel_count());
 
     if (startLocation < m_location->get_start()) {
         offset = TTimeRef::to_frame(m_location->get_start() - startLocation, outputRate);

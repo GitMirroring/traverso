@@ -35,6 +35,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QFile>
 #include <QThread>
 
+#include <algorithm>
+
 /**
  *	\class ReadSource
     \brief A class for (buffered) reading of audio files.
@@ -574,7 +576,9 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &proc
 
         if (slotFileLocation == fileLocation)
         {
-            for (uint chan=0; chan < m_channelCount; ++chan) {
+            // The channels the bus has (TAudioClip::process())
+            const uint channels = std::min(m_channelCount, bus->get_channel_count());
+            for (uint chan=0; chan < channels; ++chan) {
                 slot->read_buffer(bus->get_buffer(chan), chan, nframes);
             }
 
