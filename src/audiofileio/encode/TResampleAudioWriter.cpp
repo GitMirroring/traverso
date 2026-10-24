@@ -14,6 +14,7 @@ the Free Software Foundation; either version 2 of the License, or
 #include "TAudioResampler.h"
 #include "TFileIOBuffer.h"
 #include "gdither.h"
+#include "TLog.h"
 
 #include <algorithm>
 
@@ -113,10 +114,7 @@ nframes_t TResampleAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframe
         const nframes_t produced = m_resamplers[chan]->process(fileIOBuffer.get_channel_buffer(chan).get_data(frameCount), frameCount,
                                                                m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(maxOutputFrames),
                                                                maxOutputFrames, false);
-        // Equal resamplers fed alike give alike; the least decides, so no
-        // channel's unfilled tail is written
-        Q_ASSERT(chan == 0 || produced == frames);
-        frames = chan == 0 ? produced : std::min(frames, produced);
+        frames = least_frames(chan, produced, frames);
     }
     if (frames == 0) {
         return 0;
@@ -135,14 +133,29 @@ void TResampleAudioWriter::flush_resamplers()
         nframes_t frames = 0;
         for (uint chan = 0; chan < m_channelCount; ++chan) {
             const nframes_t produced = m_resamplers[chan]->flush(m_resampleEncodeBuffer.get_channel_buffer(chan).get_data(block), block);
-            Q_ASSERT(chan == 0 || produced == frames);
-            frames = chan == 0 ? produced : std::min(frames, produced);
+            frames = least_frames(chan, produced, frames);
         }
         if (frames == 0) {
             break;
         }
         write_interleaved(m_resampleEncodeBuffer, interleave(m_resampleEncodeBuffer, frames), frames);
     }
+}
+
+nframes_t TResampleAudioWriter::least_frames(uint chan, nframes_t produced, nframes_t least)
+{
+    if (chan == 0) {
+        return produced;
+    }
+    if (produced != least && !m_frameCountMismatchLogged) {
+        // Cannot be made good here: the least drops the surplus of the one
+        // channel, so the channels drift by the difference from here on
+        m_frameCountMismatchLogged = true;
+        TLOG_W("audiofileio", "the resamplers of channel 0 and channel {} gave {} and {} frames; the least is written",
+               chan, least, produced);
+        Q_ASSERT_X(false, "TResampleAudioWriter::least_frames", "the channels' resamplers gave different frame counts");
+    }
+    return std::min(least, produced);
 }
 
 float* TResampleAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
