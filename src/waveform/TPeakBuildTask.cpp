@@ -3,32 +3,32 @@
 
 #include "TPeakBuildTask.h"
 
-#include "TAudioDecoder.h"
+#include "TAudioReader.h"
 #include "TFileIOBuffer.h"
 #include "TLog.h"
 
 
 #include <algorithm>
 
-// An audio file read with Traverso's decoders at its own rate
+// An audio file read at its own rate
 class TAudioFileBuildSource final : public TPeakBuildSource
 {
 public:
     explicit TAudioFileBuildSource(const QString& fileName)
-        : m_decoder(open_audio_decoder(fileName))
+        : m_reader(fileName)
     {
     }
 
-    bool is_valid() { return m_decoder && m_decoder->is_valid(); }
+    bool is_valid() { return m_reader.is_valid(); }
 
-    uint rate() const override { return m_decoder->rate(); }
-    int channel_count() const override { return int(m_decoder->channel_count()); }
-    qint64 frame_count() const override { return qint64(m_decoder->frame_count()); }
+    uint rate() const override { return m_reader.file_rate(); }
+    int channel_count() const override { return int(m_reader.channel_count()); }
+    qint64 frame_count() const override { return qint64(m_reader.file_frame_count()); }
 
     qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override
     {
         const int channelCount = channel_count();
-        const qint64 read = qint64(m_decoder->read_from(m_buffer, nframes_t(firstFrame), nframes_t(count)));
+        const qint64 read = qint64(m_reader.read_file_frames(m_buffer, nframes_t(firstFrame), nframes_t(count)));
         const qint64 frames = std::min(read, count);
         for (int c = 0; c < channelCount; ++c) {
             std::copy_n(m_buffer.get_channel_buffer(uint(c)).get_data(nframes_t(frames)), frames, channels[c]);
@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    std::unique_ptr<TAudioDecoder> m_decoder;
+    TAudioReader m_reader;
     TFileIOBuffer m_buffer;
 };
 

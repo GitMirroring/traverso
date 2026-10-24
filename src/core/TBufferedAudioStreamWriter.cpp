@@ -150,7 +150,7 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
         }
     }
 
-    nframes_t writtenFrames = m_audioWriter->write_planar(fileIOBuffer, nframes);
+    nframes_t writtenFrames = m_audioWriter->write(fileIOBuffer, nframes);
     m_writtenFrames += writtenFrames;
 
     if (writtenFrames != nframes) {

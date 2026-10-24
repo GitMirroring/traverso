@@ -6,7 +6,7 @@
 // one too, which ends just before the end of the input. A writer that does
 // not flush its resampler at the end loses what the resampler still holds.
 
-#include "TAudioDecoder.h"
+#include "TAudioReader.h"
 #include "TAudioEncodeSettings.h"
 #include "TFileIOBuffer.h"
 #include "TAudioWriter.h"
@@ -104,18 +104,18 @@ int main()
                 const nframes_t n = std::min<nframes_t>(settings.blockSize, inputFrames - at);
                 buffer.check_capacity(n, 1);
                 std::copy(input.begin() + at, input.begin() + at + n, buffer.get_channel_buffer(0).get_data(n));
-                writer.write_planar(buffer, n);
+                writer.write(buffer, n);
             }
             writer.close();
         }
 
         // The file at its own rate
-        std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(path);
-        const nframes_t fileFrames = decoder ? decoder->frame_count() : 0;
+        TAudioReader reader(path);
+        const nframes_t fileFrames = reader.file_frame_count();
         std::vector<float> file(fileFrames, 0.0f);
         TFileIOBuffer buffer;
         if (fileFrames > 0) {
-            decoder->read(buffer, fileFrames);
+            reader.read_file_frames(buffer, 0, fileFrames);
         }
         std::copy_n(buffer.get_channel_buffer(0).get_data(fileFrames), fileFrames, file.begin());
 

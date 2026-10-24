@@ -10,7 +10,7 @@
 // Usage: traverso_measure_idle_builds <directory> [threads] [idle limit]
 // (default: half the cores, and as many idle steps as threads)
 
-#include "TAudioDecoder.h"
+#include "TAudioReader.h"
 #include "TIOScheduler.h"
 #include "TIOIdleTask.h"
 #include "TPeakBuildTask.h"
@@ -87,15 +87,15 @@ int main(int argc, char** argv)
     timer.start();
     for (const QString& name : files) {
         const QString path = directory.filePath(name);
-        std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(path);
-        if (!decoder || !decoder->is_valid()) {
+        const TAudioReader reader(path);
+        if (!reader.is_valid()) {
             std::printf("skipped: %s\n", qPrintable(name));
             done.fetch_add(1);
             continue;
         }
-        auto stream = std::make_shared<TPeakStream>(decoder->rate(), int(decoder->channel_count()), peaks.filePath(name + ".peaks"));
+        auto stream = std::make_shared<TPeakStream>(reader.file_rate(), int(reader.channel_count()), peaks.filePath(name + ".peaks"));
         auto task = std::make_unique<TPeakBuildTask>(TPeakBuildTask::audio_file(path), path, stream);
-        scheduler.add_idle_task(std::make_unique<MeasuredBuild>(std::move(task), qint64(decoder->frame_count()), done, failed, stepNanoseconds));
+        scheduler.add_idle_task(std::make_unique<MeasuredBuild>(std::move(task), qint64(reader.file_frame_count()), done, failed, stepNanoseconds));
     }
     while (done.load() < int(files.size())) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));

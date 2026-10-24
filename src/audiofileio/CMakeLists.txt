@@ -24,12 +24,14 @@ if(TARGET PkgConfig::FAAC)
     target_sources(traversoaudiofileio PRIVATE encode/FaacAudioWriter.cpp)
 endif()
 
-# Specify directory search paths for source compilation and downstream targets
-# Only its own directories: it never includes headers of libraries it does
-# not link
+# What the rest of Traverso reads and writes audio files with: TAudioReader
+# and TAudioWriter (with TFileIOBuffer and TAudioEncodeSettings), in this
+# directory. The decoders and encoders per library are the library's own.
+# It never includes headers of libraries it does not link.
 target_include_directories(traversoaudiofileio
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+    PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/decode
         ${CMAKE_CURRENT_SOURCE_DIR}/encode
 )

@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioTrackView.h"
 #include "TViewItem.h"
 #include "TAudioClipFactory.h"
-#include "decode/TAudioDecoder.h"
+#include "TAudioReader.h"
 #include "TInformUser.h"
 #include "TInputEventDispatcher.h"
 
@@ -107,7 +107,7 @@ void TClipsViewPort::dragEnterEvent( QDragEnterEvent * event )
 			
 			// Only probe the file here, it is imported on drop. If a file
 			// can't be decoded, the D&D is marked as failed.
-			if (!can_decode_audio(fileName)) {
+			if (!TAudioReader::can_read(fileName)) {
 				m_importFiles.clear();
 				break;
 			}

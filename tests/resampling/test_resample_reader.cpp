@@ -121,7 +121,7 @@ static std::vector<float> read_all(const QString& path, uint outputRate, TAudioR
         }
         if (count) {
             const nframes_t frames = count * bufferSize;
-            reader.read_from(buffer, location, frames);
+            reader.read(buffer, location, frames);
             const float* data = buffer.get_channel_buffer(0).get_data(frames);
             out.insert(out.end(), data, data + frames);
             location += TTimeRef(frames, outputRate);
@@ -221,7 +221,7 @@ int main()
         std::vector<float> out;
         for (nframes_t at = 0; at < frames;) {
             const nframes_t n = piece ? std::min(piece, frames - at) : frames;
-            reader.read_from(buffer, at, n);
+            reader.read(buffer, TTimeRef(at, c.outputRate), n);
             const float* data = buffer.get_channel_buffer(0).get_data(n);
             out.insert(out.end(), data, data + n);
             at += n;
@@ -261,7 +261,7 @@ int main()
         TAudioReader toneReader(tonePath);
         toneReader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t toneFrames = toneReader.output_frame_count();
-        toneReader.read_from(buffer, nframes_t(0), toneFrames);
+        toneReader.read(buffer, TTimeRef(), toneFrames);
         const std::vector<float> sequential(buffer.get_channel_buffer(0).get_data(toneFrames),
                                             buffer.get_channel_buffer(0).get_data(toneFrames) + toneFrames);
 
@@ -270,7 +270,7 @@ int main()
             last -= period;
         }
         const nframes_t left = toneFrames - last;
-        const nframes_t read = toneReader.read_from(buffer, last, left);
+        const nframes_t read = toneReader.read(buffer, TTimeRef(last, c.outputRate), left);
         const float* data = buffer.get_channel_buffer(0).get_data(left);
         float worstDiff = 0.0f;
         for (nframes_t i = 0; i < left; ++i) {
@@ -283,6 +283,39 @@ int main()
         check(lastOk, what);
         if (lastOk) {
             std::printf("ok:   %s\n", what);
+        }
+        // One reader, both ways: a read of the file's own frames between two
+        // reads at the output rate gives the file's samples, and leaves the
+        // output where it was (the second read goes on as one read would)
+        {
+            TAudioReader both(tonePath);
+            both.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+            const nframes_t half = toneFrames / 2;
+            TFileIOBuffer output;
+            both.read(output, TTimeRef(), half);
+            std::vector<float> resampled(output.get_channel_buffer(0).get_data(half), output.get_channel_buffer(0).get_data(half) + half);
+            TFileIOBuffer native;
+            const nframes_t nativeFirst = nframes_t(tone.size() / 3);
+            const nframes_t nativeRead = both.read_file_frames(native, nativeFirst, 500);
+            float nativeDiff = 0.0f;
+            for (nframes_t i = 0; i < nativeRead; ++i) {
+                nativeDiff = std::max(nativeDiff, std::fabs(native.get_channel_buffer(0).get_data(500)[i] - tone[nativeFirst + i]));
+            }
+            const nframes_t rest = toneFrames - half;
+            both.read(output, TTimeRef(half, c.outputRate), rest);
+            resampled.insert(resampled.end(), output.get_channel_buffer(0).get_data(rest), output.get_channel_buffer(0).get_data(rest) + rest);
+            float outputDiff = 0.0f;
+            for (nframes_t i = 0; i < toneFrames; ++i) {
+                outputDiff = std::max(outputDiff, std::fabs(resampled[i] - sequential[i]));
+            }
+            std::snprintf(what, sizeof(what), "%u -> %u Hz, %s, %s: the file's own frames between two reads at the output rate (%u, %.5f; %.5f off)",
+                          c.fileRate, c.outputRate, qPrintable(TAudioResampler::backend_name(backend)), piece ? "after pieces" : "after one go",
+                          nativeRead, double(nativeDiff), double(outputDiff));
+            const bool bothOk = nativeRead == 500 && nativeDiff < 1.0e-6f && outputDiff < 1.0e-6f;
+            check(bothOk, what);
+            if (bothOk) {
+                std::printf("ok:   %s\n", what);
+            }
         }
     }
     }

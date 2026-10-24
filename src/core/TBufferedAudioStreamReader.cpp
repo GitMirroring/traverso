@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TBufferedAudioStreamReader.h"
 #include "TAudioReader.h"
-#include "TAudioDecoder.h"
 
 #include "TProjectManager.h"
 #include "TProject.h"
@@ -76,8 +75,8 @@ TBufferedAudioStreamReader::TBufferedAudioStreamReader(const QString& dir, const
 {
     private_init();
 
-    std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(m_fileName);
-    m_channelCount = decoder ? decoder->channel_count() : 0;
+    const TAudioReader reader(m_fileName);
+    m_channelCount = reader.is_valid() ? reader.channel_count() : 0;
 
     m_silent = false;
 }
@@ -283,14 +282,14 @@ void TBufferedAudioStreamReader::set_source_start_location(const TTimeRef &sourc
 int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, const TTimeRef& fileLocation, nframes_t count) const
 {
     Q_ASSERT(m_audioReader);
-    return m_audioReader->read_from(buffer, fileLocation, count);
+    return m_audioReader->read(buffer, fileLocation, count);
 }
 
 
-int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count) const
+int TBufferedAudioStreamReader::file_read_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count) const
 {
     Q_ASSERT(m_audioReader);
-    return m_audioReader->read_from(buffer, firstFrame, count);
+    return m_audioReader->read_file_frames(buffer, firstFrame, count);
 }
 
 
@@ -482,7 +481,7 @@ void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDec
     nframes_t totalReadSize = slotsToFill * bufferSize;
     // The slots below take all totalReadSize frames, also past the end of
     // the file: file_read() fills every one of them, zeros where the file
-    // ends (the contract of TAudioDecoder::read()), so no stale audio
+    // ends (the contract of TAudioReader::read()), so no stale audio
     // reaches the ring
     nframes_t read = file_read(fileDecodeBuffer, slotFileLocation, totalReadSize);
     nframes_t offset = 0;

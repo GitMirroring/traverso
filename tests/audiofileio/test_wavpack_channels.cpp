@@ -5,8 +5,8 @@
 // has the channel mask of its channels (mono centre, stereo front left and
 // right, more channels none), and WPAudioReader reads all channels back.
 
-#include "TAudioEncoder.h"
-#include "TAudioDecoder.h"
+#include "TAudioReader.h"
+#include "TAudioWriter.h"
 #include "TFileIOBuffer.h"
 
 #include <QTemporaryDir>
@@ -35,6 +35,26 @@ static float sample(nframes_t frame, uint channel)
     return 0.1f * float(channel + 1) + 0.05f * std::sin(float(frame) * 0.01f * float(channel + 1));
 }
 
+// Frames frames of sample() in channels channels into a file, as Traverso
+// writes one
+static bool write_file(const QString& path, const TAudioEncodeSettings& settings)
+{
+    TAudioWriter writer(settings);
+    if (!writer.open(path, settings.sampleRate)) {
+        return false;
+    }
+    TFileIOBuffer buffer;
+    buffer.check_capacity(Frames, settings.channelCount);
+    for (uint channel = 0; channel < settings.channelCount; ++channel) {
+        float* samples = buffer.get_channel_buffer(channel).get_data(Frames);
+        for (nframes_t frame = 0; frame < Frames; ++frame) {
+            samples[frame] = sample(frame, channel);
+        }
+    }
+    const bool written = writer.write(buffer, Frames) == Frames;
+    return writer.close() && written;
+}
+
 int main()
 {
     QTemporaryDir dir;
@@ -56,20 +76,9 @@ int main()
         settings.channelCount = c.channels;
         settings.sampleRate = Rate;
         const QString path = dir.filePath(QStringLiteral("take-%1.wv").arg(c.channels));
-        {
-            std::unique_ptr<TAudioEncoder> writer = create_audio_encoder(settings);
-            if (!writer->open(path)) {
-                std::printf("%u channels: cannot open the writer\n", c.channels);
-                return 1;
-            }
-            std::vector<float> interleaved(size_t(Frames) * c.channels);
-            for (nframes_t frame = 0; frame < Frames; ++frame) {
-                for (uint channel = 0; channel < c.channels; ++channel) {
-                    interleaved[size_t(frame) * c.channels + channel] = sample(frame, channel);
-                }
-            }
-            writer->write(interleaved.data(), Frames);
-            writer->close();
+        if (!write_file(path, settings)) {
+            std::printf("%u channels: cannot write the file\n", c.channels);
+            return 1;
         }
 
         char what[96];
@@ -81,10 +90,10 @@ int main()
             WavpackCloseFile(wp);
         }
 
-        std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(path);
-        bool same = decoder && decoder->is_valid() && decoder->channel_count() == c.channels && decoder->frame_count() == Frames;
+        TAudioReader reader(path);
+        bool same = reader.is_valid() && reader.channel_count() == c.channels && reader.file_frame_count() == Frames;
         TFileIOBuffer buffer;
-        same = same && decoder->read(buffer, Frames) == Frames;
+        same = same && reader.read_file_frames(buffer, 0, Frames) == Frames;
         for (uint channel = 0; same && channel < c.channels; ++channel) {
             const float* samples = buffer.get_channel_buffer(channel).get_data(Frames);
             for (nframes_t frame = 0; frame < Frames; ++frame) {
@@ -116,13 +125,7 @@ int main()
         settings.sampleRate = Rate;
         settings.wavpackCompression = c.compression;
         const QString path = dir.filePath(QStringLiteral("compression-%1.wv").arg(int(c.compression)));
-        std::unique_ptr<TAudioEncoder> writer = create_audio_encoder(settings);
-        std::vector<float> interleaved(size_t(Frames) * 2);
-        for (nframes_t frame = 0; frame < Frames; ++frame) {
-            interleaved[size_t(frame) * 2] = sample(frame, 0);
-            interleaved[size_t(frame) * 2 + 1] = sample(frame, 1);
-        }
-        bool ok = writer->open(path) && writer->write(interleaved.data(), Frames) == Frames && writer->close();
+        const bool ok = write_file(path, settings);
         char error[80];
         WavpackContext* wp = WavpackOpenFileInput(path.toUtf8().constData(), error, 0, 0);
         const int mode = wp ? WavpackGetMode(wp) : 0;

@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of the audio decoders: every decoder reads a file of every
-// format it serves with the file's channels, rate and frames, and with the
+// Headless test of the audio decoders, through TAudioReader at the file's own
+// rate (read_file_frames()): every decoder reads a file of every format it
+// serves with the file's channels, rate and frames, and with the
 // audio where it was written; a read after a seek gives what a read from the
 // start gives at that place; a read that crosses the end of the file gives
 // what is left and zeros after it, whatever the buffer held before.
@@ -14,8 +15,8 @@
 // swapped or silent show, and audio that is shifted shows too (a sweep
 // matches itself at one place only).
 
-#include "TAudioEncoder.h"
-#include "TAudioDecoder.h"
+#include "TAudioReader.h"
+#include "TAudioWriter.h"
 #include "TFileIOBuffer.h"
 
 #include <QProcess>
@@ -109,28 +110,23 @@ static bool write_with_traverso(const QString& path, const Source& source, Trave
     TAudioEncodeSettings settings;
     settings.writerType = writer;
     settings.fileFormat = format;
-    // AAC: 16 bit input, as FaacAudioWriter takes it
+    // AAC: 16 bit (dithered there by TAudioWriter), as FaacAudioWriter takes it
     const bool aac = writer == TraversoDAW::WriterType::M4A;
     settings.dataFormat = aac ? TraversoDAW::DataFormat::PCM_16 : TraversoDAW::DataFormat::FLOAT;
     settings.channelCount = source.channels;
     settings.sampleRate = source.rate;
-    std::unique_ptr<TAudioEncoder> file = create_audio_encoder(settings);
-    if (!file || !file->open(path)) {
+    TAudioWriter file(settings);
+    if (!file.open(path, source.rate)) {
         return false;
     }
-    std::vector<float> samples = source.interleaved();
-    nframes_t written = 0;
-    if (aac) {
-        std::vector<int16_t> pcm(samples.size());
-        for (size_t i = 0; i < samples.size(); ++i) {
-            pcm[i] = int16_t(std::lround(samples[i] * 32767.0f));
-        }
-        written = file->write(pcm.data(), source.frames());
-    } else {
-        written = file->write(samples.data(), source.frames());
+    TFileIOBuffer buffer;
+    buffer.check_capacity(source.frames(), source.channels);
+    for (uint channel = 0; channel < source.channels; ++channel) {
+        const std::vector<float> samples = source.channel(channel);
+        std::copy(samples.begin(), samples.end(), buffer.get_channel_buffer(channel).get_data(source.frames()));
     }
-    file->close();
-    return written == source.frames();
+    const nframes_t written = file.write(buffer, source.frames());
+    return file.close() && written == source.frames();
 }
 
 // With ffmpeg, from a 16 bit WAV of the source; false when ffmpeg is not
@@ -232,18 +228,19 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         std::printf("%s: cannot be written here, skipped\n", format.name);
         return;
     }
-    std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(path);
-    std::snprintf(what, sizeof(what), "%s: opens (%s)", format.name, decoder ? qPrintable(decoder->decoder_type()) : "no decoder");
-    check(decoder && decoder->is_valid(), what);
-    if (!decoder || !decoder->is_valid()) {
+    TAudioReader reader(path);
+    std::snprintf(what, sizeof(what), "%s: opens (%s)", format.name, reader.is_valid() ? qPrintable(reader.decoder_type()) : "no decoder");
+    check(reader.is_valid(), what);
+    if (!reader.is_valid()) {
         return;
     }
+    TAudioReader* decoder = &reader;
 
-    const nframes_t frames = decoder->frame_count();
+    const nframes_t frames = decoder->file_frame_count();
     const long frameError = long(frames) - long(source.frames());
-    std::snprintf(what, sizeof(what), "%s: %u channels at %u Hz, %u frames (%+ld)", format.name, decoder->channel_count(), decoder->rate(),
+    std::snprintf(what, sizeof(what), "%s: %u channels at %u Hz, %u frames (%+ld)", format.name, decoder->channel_count(), decoder->file_rate(),
                   frames, frameError);
-    check_or_known(decoder->channel_count() == channels && decoder->rate() == source.rate && std::labs(frameError) <= format.frameTolerance,
+    check_or_known(decoder->channel_count() == channels && decoder->file_rate() == source.rate && std::labs(frameError) <= format.frameTolerance,
                    what, format);
     if (decoder->channel_count() != channels || frames == 0) {
         return;
@@ -256,7 +253,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
     for (nframes_t at = 0; at < frames; at += 1000) {
         const nframes_t count = std::min<nframes_t>(1000, frames - at);
         fill_with_garbage(buffer, count, channels);
-        const nframes_t read = decoder->read_from(buffer, at, count);
+        const nframes_t read = decoder->read_file_frames(buffer, at, count);
         total += read;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(count);
@@ -306,7 +303,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
     const float tolerance = format.lossless ? 0.0f : 0.02f;
     for (const nframes_t first : {total * 2 / 3, total / 8, nframes_t(1), total / 4 + 345, total - 1500}) {
         fill_with_garbage(buffer, seekCount, channels);
-        const nframes_t read = decoder->read_from(buffer, first, seekCount);
+        const nframes_t read = decoder->read_file_frames(buffer, first, seekCount);
         const nframes_t expected = std::min(seekCount, total - first);
         float worst = 0.0f;
         for (uint channel = 0; channel < channels; ++channel) {
@@ -331,7 +328,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         const nframes_t count = 500;
         const nframes_t first = total - 100;
         fill_with_garbage(buffer, count, channels);
-        const nframes_t read = decoder->read_from(buffer, first, count);
+        const nframes_t read = decoder->read_file_frames(buffer, first, count);
         bool zeros = true;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(count);
@@ -348,7 +345,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
     for (const bool seekPastEnd : {false, true}) {
         const nframes_t count = 500;
         fill_with_garbage(buffer, count, channels);
-        const nframes_t read = seekPastEnd ? decoder->read_from(buffer, frames + 10, count) : decoder->read(buffer, count);
+        const nframes_t read = decoder->read_file_frames(buffer, seekPastEnd ? frames + 10 : frames, count);
         bool zeros = true;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(count);

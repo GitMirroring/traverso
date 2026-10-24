@@ -21,9 +21,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 
 #include "TAudioReader.h"
+#include "TAudioDecoder.h"
 #include "TLog.h"
 
 #include <algorithm>
+
+bool TAudioReader::can_read(const QString& fileName)
+{
+    return can_decode_audio(fileName);
+}
 
 TAudioReader::TAudioReader(const QString& fileName)
     : m_decoder(open_audio_decoder(fileName))
@@ -32,13 +38,41 @@ TAudioReader::TAudioReader(const QString& fileName)
         TLOG_W("audiofile", "{}: no decoder for it", fileName.toStdString());
         return;
     }
-    m_channels = m_decoder->channel_count();
-    m_fileRate = m_decoder->rate();
-    m_outputRate = m_fileRate;
+    m_outputRate = m_decoder->rate();
     m_outputFrames = m_decoder->frame_count();
 }
 
 TAudioReader::~TAudioReader() = default;
+
+bool TAudioReader::is_valid() const
+{
+    return m_decoder && m_decoder->is_valid();
+}
+
+uint TAudioReader::channel_count() const
+{
+    return m_decoder ? m_decoder->channel_count() : 0;
+}
+
+uint TAudioReader::file_rate() const
+{
+    return m_decoder ? m_decoder->rate() : 0;
+}
+
+nframes_t TAudioReader::file_frame_count() const
+{
+    return m_decoder ? m_decoder->frame_count() : 0;
+}
+
+TTimeRef TAudioReader::length() const
+{
+    return m_decoder ? m_decoder->length() : TTimeRef();
+}
+
+QString TAudioReader::decoder_type() const
+{
+    return m_decoder ? m_decoder->decoder_type() : QString();
+}
 
 void TAudioReader::set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality)
 {
@@ -49,13 +83,13 @@ void TAudioReader::set_output_rate_and_resampler(uint rate, TAudioResampler::Bac
     m_outputRate = rate;
     // The length is the file's, at any output rate; the frames the file
     // gives at the output rate end where it ends
-    m_outputFrames = rate == m_fileRate ? m_decoder->frame_count()
-                                        : TTimeRef::to_nframes(TTimeRef::frame_at_or_after(m_decoder->length(), rate));
+    m_outputFrames = rate == file_rate() ? m_decoder->frame_count()
+                                         : TTimeRef::to_nframes(TTimeRef::frame_at_or_after(m_decoder->length(), rate));
 
     // Another ratio is another resampler (soxr cannot change it once it ran)
     m_resampler.reset();
-    if (rate != m_fileRate) {
-        m_resampler = std::make_unique<TAudioResampler>(backend, double(rate) / m_fileRate, quality, m_channels);
+    if (rate != file_rate()) {
+        m_resampler = std::make_unique<TAudioResampler>(backend, double(rate) / file_rate(), quality, channel_count());
     }
     m_dropFrames = 0;
 
@@ -85,6 +119,7 @@ bool TAudioReader::reposition(nframes_t frame)
             return false;
         }
         m_frame = frame;
+        m_decoderMoved = false;
         return true;
     }
 
@@ -100,27 +135,35 @@ bool TAudioReader::reposition(nframes_t frame)
     // frame of both rates coincide (every 147 frames of 44.1 kHz and 160 of
     // 48 kHz); the next read drops the output frames from there to frame.
     const TTimeRef position(frame, m_outputRate);
-    const TTimeRef common = TTimeRef::common_frame_at_or_before(position, m_fileRate, m_outputRate);
-    const nframes_t fileFrame = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(common, m_fileRate));
+    const TTimeRef common = TTimeRef::common_frame_at_or_before(position, file_rate(), m_outputRate);
+    const nframes_t fileFrame = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(common, file_rate()));
     if (m_decoder->frame() != fileFrame && !m_decoder->seek(fileFrame)) {
         return false;
     }
     m_dropFrames = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(position - common, m_outputRate));
     m_frame = frame;
+    m_decoderMoved = false;
     return true;
 }
 
-nframes_t TAudioReader::read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count)
+nframes_t TAudioReader::read(TFileIOBuffer& buffer, const TTimeRef& location, nframes_t count)
 {
     if (!m_decoder || count == 0) {
         return 0;
     }
     // The reader writes into the buffer, so it makes room in it
-    buffer.check_capacity(count, m_channels);
+    buffer.check_capacity(count, channel_count());
 
-    if (first != m_frame && !reposition(first)) {
+    // The output frame at or before location; before the file: frame 0
+    const nframes_t first = TTimeRef::to_nframes(std::max<qint64>(0, TTimeRef::frame_at_or_before(location, m_outputRate)));
+    // Where the output left off, after the file's own frames were read: the
+    // decoder back on its frame (where it cannot go, a seek as below)
+    if (first == m_frame && m_decoderMoved && (m_decoder->frame() == m_resumeFrame || m_decoder->seek(m_resumeFrame))) {
+        m_decoderMoved = false;
+    }
+    if ((first != m_frame || m_decoderMoved) && !reposition(first)) {
         // Nothing to read there: zeros, as past the end of the file
-        buffer.silence(0, count, m_channels);
+        buffer.silence(0, count, channel_count());
         return 0;
     }
 
@@ -129,12 +172,25 @@ nframes_t TAudioReader::read_from(TFileIOBuffer& buffer, nframes_t first, nframe
     return read;
 }
 
+nframes_t TAudioReader::read_file_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count)
+{
+    if (!m_decoder || count == 0) {
+        return 0;
+    }
+    // The decoder moves: where the output left it, for the next read()
+    if (!m_decoderMoved) {
+        m_resumeFrame = m_decoder->frame();
+        m_decoderMoved = true;
+    }
+    return m_decoder->read_from(buffer, firstFrame, count);
+}
+
 nframes_t TAudioReader::read_resampled(TFileIOBuffer& buffer, nframes_t count)
 {
     // Not past the frames the file gives at the output rate
     const nframes_t frames = m_frame < m_outputFrames ? std::min(count, m_outputFrames - m_frame) : 0;
     if (frames == 0) {
-        buffer.silence(0, count, m_channels);
+        buffer.silence(0, count, channel_count());
         return 0;
     }
 
@@ -149,8 +205,13 @@ nframes_t TAudioReader::read_resampled(TFileIOBuffer& buffer, nframes_t count)
     // Zeros only past what the resampler gives: padding a short read
     // anywhere else would shift all that follows
     const nframes_t produced = resample_into(buffer, frames);
-    buffer.silence(produced, count - produced, m_channels);
+    buffer.silence(produced, count - produced, channel_count());
     return frames;
+}
+
+nframes_t TAudioReader::file_frames_for(nframes_t outputFrames) const
+{
+    return TTimeRef::to_nframes(TTimeRef::frames_covering(outputFrames, m_outputRate, file_rate()));
 }
 
 nframes_t TAudioReader::resample_into(TFileIOBuffer& out, nframes_t count)

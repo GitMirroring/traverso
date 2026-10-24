@@ -7,8 +7,8 @@
 // WAV header has the data size (libsndfile reads to the end without it,
 // other programs do not).
 
-#include "TAudioEncoder.h"
-#include "TAudioDecoder.h"
+#include "TAudioReader.h"
+#include "TAudioWriter.h"
 #include "TFileIOBuffer.h"
 
 #include <QFile>
@@ -40,12 +40,12 @@ static float sample(nframes_t frame, uint channel)
 // The file holds frames frames of sample(), as a reader sees them
 static bool reads(const QString& path, nframes_t frames)
 {
-    std::unique_ptr<TAudioDecoder> decoder = open_audio_decoder(path);
-    if (!decoder || !decoder->is_valid() || decoder->frame_count() != frames || decoder->channel_count() != Channels) {
+    TAudioReader reader(path);
+    if (!reader.is_valid() || reader.file_frame_count() != frames || reader.channel_count() != Channels) {
         return false;
     }
     TFileIOBuffer buffer;
-    if (decoder->read(buffer, frames) != frames) {
+    if (reader.read_file_frames(buffer, 0, frames) != frames) {
         return false;
     }
     for (uint channel = 0; channel < Channels; ++channel) {
@@ -99,22 +99,24 @@ int main()
         settings.channelCount = Channels;
         settings.sampleRate = Rate;
         const QString path = dir.filePath(format.file);
-        std::unique_ptr<TAudioEncoder> writer = create_audio_encoder(settings);
-        if (!writer->open(path)) {
+        TAudioWriter writer(settings);
+        if (!writer.open(path, Rate)) {
             std::printf("%s: cannot open the writer\n", format.name);
             return 1;
         }
 
         // A second in pieces, as a recording writes it
-        std::vector<float> interleaved(size_t(Piece) * Channels);
+        TFileIOBuffer buffer;
+        buffer.check_capacity(Piece, Channels);
         nframes_t frame = 0;
         for (int piece = 0; piece < 10; ++piece) {
-            for (nframes_t i = 0; i < Piece; ++i) {
-                for (uint channel = 0; channel < Channels; ++channel) {
-                    interleaved[size_t(i) * Channels + channel] = sample(frame + i, channel);
+            for (uint channel = 0; channel < Channels; ++channel) {
+                float* samples = buffer.get_channel_buffer(channel).get_data(Piece);
+                for (nframes_t i = 0; i < Piece; ++i) {
+                    samples[i] = sample(frame + i, channel);
                 }
             }
-            writer->write(interleaved.data(), Piece);
+            writer.write(buffer, Piece);
             frame += Piece;
         }
 
@@ -124,7 +126,7 @@ int main()
         if (format.format == TraversoDAW::FileFormat::WAV) {
             check(wav_data_size(path) == qint64(frame) * Channels * qint64(sizeof(float)), "WAV: the header of a file still being written has its data size");
         }
-        writer->close();
+        writer.close();
         std::snprintf(what, sizeof(what), "%s: the closed file reads the same", format.name);
         check(reads(path, frame), what);
     }

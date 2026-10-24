@@ -248,8 +248,9 @@ qint64 TWaveform::read(qint64 firstFrame, qint64 count, float* const* channels)
         return 0;
     }
     const uint channelCount = uint(m_channelCount);
-    // The reader makes room in the buffer
-    const int read = source->file_read(*m_decodeBuffer, nframes_t(firstFrame), nframes_t(count));
+    // The file's own frames (the peaks' grid), whatever rate the source
+    // plays at; the reader makes room in the buffer
+    const int read = source->file_read_frames(*m_decodeBuffer, nframes_t(firstFrame), nframes_t(count));
     if (read <= 0) {
         return 0;
     }

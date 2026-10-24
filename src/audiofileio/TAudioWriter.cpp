@@ -82,7 +82,7 @@ bool TAudioWriter::close()
     return false;
 }
 
-nframes_t TAudioWriter::write_planar(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
+nframes_t TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
     if (!m_encoder || frameCount == 0) {
         return 0;

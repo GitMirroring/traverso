@@ -34,7 +34,7 @@ class TAudioResampler;
  * bit dithered through gdither, 32 bit scaled, float as it is). It owns the
  * codec writer, the resampler, the dither and the buffer the resampled
  * audio goes through; the caller's buffer is only read. One file per
- * instance: open(), write_planar() as the audio comes, close(). Not for the
+ * instance: open(), write() as the audio comes, close(). Not for the
  * audio thread: it allocates and does file IO.
  *
  * The only user is TBufferedAudioStreamWriter (recordings, imports, merges,
@@ -46,9 +46,19 @@ public:
     TAudioWriter(const TAudioEncodeSettings& settings);
     ~TAudioWriter();
 
+    // A new file at filename, for audio at inputSampleRate (the file's rate
+    // is the settings'; another input rate is resampled). The one way to
+    // write an audio file; the input rate is the caller's, planar, float.
     bool open(const QString& filename, uint inputSampleRate);
-    nframes_t write_planar(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
+    // frameCount frames of the channel buffers of fileIOBuffer, at the input
+    // rate; the frames taken (what is written may be fewer or more, at the
+    // file's rate)
+    nframes_t write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
     bool close();
+
+    uint input_rate() const { return m_inputSampleRate; }
+    uint file_rate() const { return m_settings.sampleRate; }
+    uint channel_count() const { return m_settings.channelCount; }
 
 private:
     // At close: what the resampler still holds into the file; false when it
