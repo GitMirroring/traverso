@@ -35,7 +35,10 @@ public:
 
     QString decoder_type() const override { return "sndfile"; }
 
-    static bool can_decode(QString filename);
+    static bool can_decode(QString filename) { return major_format(filename) != 0; }
+    // libsndfile's major format of filename (SF_FORMAT_WAV, ...), 0 when it
+    // cannot read it
+    static int major_format(const QString& filename);
 
     bool seek(nframes_t frame) override;
     nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;

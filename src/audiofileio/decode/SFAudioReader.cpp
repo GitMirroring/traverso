@@ -63,7 +63,7 @@ SFAudioReader::~SFAudioReader()
 }
 
 
-bool SFAudioReader::can_decode(QString filename)
+int SFAudioReader::major_format(const QString& filename)
 {
     SF_INFO infos;
 
@@ -76,25 +76,33 @@ bool SFAudioReader::can_decode(QString filename)
 
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning("SFAudioReader::can_decode: Couldn't open soundfile (%s)", QS_C(filename));
-        return false;
+        return 0;
     }
 
     SNDFILE* sndfile = sf_open_fd(file.handle(), SFM_READ, &infos, false);
 
     //is it supported by libsndfile?
     if (!sndfile) {
-        return false;
+        return 0;
     }
 
     sf_close(sndfile);
 
-    return true;
+    return infos.format & SF_FORMAT_TYPEMASK;
 }
 
 
 bool SFAudioReader::seek(nframes_t frame)
 {
     if (!m_sf || frame >= m_frames) {
+        return false;
+    }
+
+    // libsndfile's Ogg seek is exact from the start of the file only: from
+    // another position some seeks land a few hundred frames off (libsndfile
+    // 1.2.2, test_audio_decoders). Back to the start first; a seek there is
+    // cheap, the seek from it is a bisection of the file either way.
+    if ((m_sfinfo.format & SF_FORMAT_TYPEMASK) == SF_FORMAT_OGG && sf_seek(m_sf, 0, SEEK_SET) < 0) {
         return false;
     }
 

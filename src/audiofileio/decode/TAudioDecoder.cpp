@@ -39,7 +39,12 @@ enum class DecoderLibrary {
 // The library that can read fileName, tried in order of preference
 static DecoderLibrary find_decoder(const QString& fileName)
 {
-    if (SFAudioReader::can_decode(fileName)) {
+    if (const int format = SFAudioReader::major_format(fileName)) {
+        // MP3 through MAD, whose seeks are sample accurate; libsndfile's are
+        // not (1.2.2, mpg123 lands some hundreds of frames off)
+        if (format == SF_FORMAT_MPEG && MadAudioReader::can_decode(fileName)) {
+            return DecoderLibrary::Mad;
+        }
         return DecoderLibrary::SndFile;
     }
     if (WPAudioReader::can_decode(fileName)) {
