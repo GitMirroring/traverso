@@ -558,6 +558,12 @@ void TThemer::load_defaults()
     m_defaultColors.insert("TrackPanel:muteled", QColor(Qt::yellow));
     m_defaultColors.insert("TrackPanel:sololed", QColor(Qt::green));
     m_defaultColors.insert("TrackPanel:recled", QColor(Qt::red));
+    // The track panel's leds ask for "TrackPanel:" + their letter + "led"
+    m_defaultColors.insert("TrackPanel:Sled", QColor(Qt::green));
+    m_defaultColors.insert("TrackPanel:Mled", QColor(Qt::yellow));
+    m_defaultColors.insert("TrackPanel:Rled", QColor(Qt::red));
+    m_defaultColors.insert("TrackPanel:Pled", p.color(QPalette::Highlight));
+    m_defaultColors.insert("TrackPanel:Eled", p.color(QPalette::Highlight));
     m_defaultColors.insert("TrackPanel:led:inactive", p.color(QPalette::Button));
     m_defaultColors.insert("TrackPanel:trackseparation", p.color(QPalette::WindowText));
     m_defaultColors.insert("TrackPanel:led:margin:active", p.color(QPalette::Dark));
