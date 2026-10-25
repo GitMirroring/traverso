@@ -65,7 +65,7 @@ public:
         m_rate.store(uint(outputRate));
         m_quality.store(resampler.quality);
     }
-    uint get_channel_count() const override { return 1; }
+    uint get_channel_count() const T_REALTIME_SAFE override { return 1; }
     void prepare_ring_buffers(nframes_t) override { m_prepared.fetch_add(1); }
     void retire() override { m_retired.fetch_add(1); }
 

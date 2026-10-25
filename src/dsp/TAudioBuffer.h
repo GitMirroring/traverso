@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 #include "defines.h"
+#include "TRealtime.h"
 #include "Mixer.h"
 #include "Utils.h"
 
@@ -53,35 +54,35 @@ public:
     void resize(nframes_t size);
 
     // Silence whole buffer with zero's
-    void silence_data() {
+    void silence_data() T_REALTIME_SAFE {
         memset (m_buffer, 0, sizeof (audio_sample_t) * m_size);
     }
 
     // Silence the first nframes frames with zero's
-    void silence_data(nframes_t nframes) {
+    void silence_data(nframes_t nframes) T_REALTIME_SAFE {
         Q_ASSERT(nframes <= m_size);
         memset (m_buffer, 0, sizeof (audio_sample_t) * nframes);
     }
 
     // The frames [at, at + count), range checked in a debug build
-    audio_sample_t* data(nframes_t at, nframes_t count) {
+    audio_sample_t* data(nframes_t at, nframes_t count) T_REALTIME_SAFE {
         Q_ASSERT(at + count <= m_size);
         return m_buffer + at;
     }
-    const audio_sample_t* data(nframes_t at, nframes_t count) const {
+    const audio_sample_t* data(nframes_t at, nframes_t count) const T_REALTIME_SAFE {
         Q_ASSERT(at + count <= m_size);
         return m_buffer + at;
     }
 
     // Zeros for count frames from frame at
-    void silence(nframes_t at, nframes_t count) {
+    void silence(nframes_t at, nframes_t count) T_REALTIME_SAFE {
         Q_ASSERT(at + count <= m_size);
         memset(m_buffer + at, 0, sizeof(audio_sample_t) * count);
     }
 
     // The frames [at, at + count) multiplied by the first count values of
     // gains (a fade, a gain curve)
-    void multiply(nframes_t at, nframes_t count, const TAudioBuffer& gains) {
+    void multiply(nframes_t at, nframes_t count, const TAudioBuffer& gains) T_REALTIME_SAFE {
         Q_ASSERT(at + count <= m_size && count <= gains.m_size);
         for (nframes_t frame = 0; frame < count; ++frame) {
             m_buffer[at + frame] *= gains.m_buffer[frame];
@@ -89,45 +90,45 @@ public:
     }
 
     // The data from frame 0, nframes of it range checked in a debug build
-    audio_sample_t* get_data(nframes_t nframes) const {
+    audio_sample_t* get_data(nframes_t nframes) const T_REALTIME_SAFE {
         Q_ASSERT(nframes <= m_size);
         return m_buffer;
     }
 
-    nframes_t get_size() const {
+    nframes_t get_size() const T_REALTIME_SAFE {
         return m_size;
     }
 
     // return by reference to the item @ index. Range check in Debug build
-    audio_sample_t& operator[](nframes_t index) {
+    audio_sample_t& operator[](nframes_t index) T_REALTIME_SAFE {
         Q_ASSERT(index < m_size);
         return m_buffer[index];
     }
 
     // return by value to the item @ index.  Range check in Debug build
-    audio_sample_t at(nframes_t index) const {
+    audio_sample_t at(nframes_t index) const T_REALTIME_SAFE {
         Q_ASSERT(index < m_size);
         return m_buffer[index];
     }
 
     // calculate peak value for the first nframes frames
-    float compute_peak(nframes_t nframes, float current)
+    float compute_peak(nframes_t nframes, float current) T_REALTIME_SAFE
     {
         Q_ASSERT(nframes <= m_size);
         return Mixer::compute_peak(m_buffer, nframes, current);
     }
 
     // calculate peak value on whole buffer
-    float compute_peak()
+    float compute_peak() T_REALTIME_SAFE
     {
         return Mixer::compute_peak(m_buffer, m_size, 0.0f);
     }
 
-    static void mix_buffers_no_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) {
+    static void mix_buffers_no_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) T_REALTIME_SAFE {
         Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
     }
 
-    static void mix_buffers_with_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes, float gain) {
+    static void mix_buffers_with_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes, float gain) T_REALTIME_SAFE {
         if (TraversoDAW::Float::equals_1(gain)) {
             return Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
         }
@@ -137,16 +138,16 @@ public:
 
     // count frames of source, from its frame sourceAt, into this buffer from
     // frame at
-    void copy_from(nframes_t at, const TAudioBuffer& source, nframes_t sourceAt, nframes_t count) {
+    void copy_from(nframes_t at, const TAudioBuffer& source, nframes_t sourceAt, nframes_t count) T_REALTIME_SAFE {
         Q_ASSERT(at + count <= m_size && sourceAt + count <= source.m_size);
         memcpy(m_buffer + at, source.m_buffer + sourceAt, sizeof(audio_sample_t) * count);
     }
 
-    static void copy_data(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) {
+    static void copy_data(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) T_REALTIME_SAFE {
         memcpy(dest.get_data(nframes), src.get_data(nframes), nframes * sizeof(audio_sample_t));
     }
 
-    void apply_gain_to_buffer(nframes_t nframes, float gain) {
+    void apply_gain_to_buffer(nframes_t nframes, float gain) T_REALTIME_SAFE {
         Q_ASSERT(nframes <= m_size);
         Mixer::apply_gain_to_buffer(m_buffer, nframes, gain);
     }

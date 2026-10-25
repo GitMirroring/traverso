@@ -8,16 +8,16 @@
 #include <cmath>
 #include <numeric>
 
-TTimeRef::TTimeRef() {
+TTimeRef::TTimeRef() T_REALTIME_SAFE {
     m_universalFrame = 0;
 }
 
-TTimeRef::TTimeRef(nframes_t frame, uint rate)
+TTimeRef::TTimeRef(nframes_t frame, uint rate) T_REALTIME_SAFE
     : m_universalFrame(universal_frames(frame, rate))
 {
 }
 
-TTimeRef::TTimeRef(uint64_t frame, uint rate)
+TTimeRef::TTimeRef(uint64_t frame, uint rate) T_REALTIME_SAFE
     : m_universalFrame(universal_frames(frame, rate))
 {
 }
@@ -25,7 +25,7 @@ TTimeRef::TTimeRef(uint64_t frame, uint rate)
 // The whole seconds and the rest separately, so the multiplication of the
 // rest cannot overflow (the whole seconds only after some ten thousand
 // years); the rest rounded up, so frame_at_or_before() gives the frame back
-qint64 TTimeRef::universal_frames(uint64_t frames, uint rate)
+qint64 TTimeRef::universal_frames(uint64_t frames, uint rate) T_REALTIME_SAFE
 {
     Q_ASSERT(rate != 0);
     const uint64_t universal = uint64_t(UNIVERSAL_SAMPLE_RATE);
@@ -38,7 +38,7 @@ TTimeRef::TTimeRef(qreal frame, uint rate) {
     m_universalFrame = qint64((qreal(UNIVERSAL_SAMPLE_RATE) / rate) * frame);
 }
 
-qint64 TTimeRef::frame_at_or_before(const TTimeRef& time, uint rate, double* fraction)
+qint64 TTimeRef::frame_at_or_before(const TTimeRef& time, uint rate, double* fraction) T_REALTIME_SAFE
 {
     Q_ASSERT(rate != 0);
     const qint64 universal = time.m_universalFrame;
@@ -59,14 +59,14 @@ qint64 TTimeRef::frame_at_or_before(const TTimeRef& time, uint rate, double* fra
     return frame;
 }
 
-qint64 TTimeRef::frame_at_or_after(const TTimeRef& time, uint rate)
+qint64 TTimeRef::frame_at_or_after(const TTimeRef& time, uint rate) T_REALTIME_SAFE
 {
     double fraction;
     const qint64 frame = frame_at_or_before(time, rate, &fraction);
     return fraction > 0.0 ? frame + 1 : frame;
 }
 
-qint64 TTimeRef::frame_nearest(const TTimeRef& time, uint rate)
+qint64 TTimeRef::frame_nearest(const TTimeRef& time, uint rate) T_REALTIME_SAFE
 {
     // floor(x + 1/2). The fraction is a remainder below UNIVERSAL_SAMPLE_RATE
     // divided by it, so its compare with a half is exact.
@@ -75,13 +75,13 @@ qint64 TTimeRef::frame_nearest(const TTimeRef& time, uint rate)
     return fraction >= 0.5 ? frame + 1 : frame;
 }
 
-double TTimeRef::to_frames(const TTimeRef& duration, uint rate)
+double TTimeRef::to_frames(const TTimeRef& duration, uint rate) T_REALTIME_SAFE
 {
     Q_ASSERT(rate != 0);
     return double(duration.m_universalFrame) * double(rate) / double(UNIVERSAL_SAMPLE_RATE);
 }
 
-qint64 TTimeRef::frames_covering(qint64 count, uint fromRate, uint toRate)
+qint64 TTimeRef::frames_covering(qint64 count, uint fromRate, uint toRate) T_REALTIME_SAFE
 {
     Q_ASSERT(fromRate != 0 && count >= 0);
     Q_ASSERT_X(count <= LLONG_MAX / qint64(toRate == 0 ? 1 : toRate), "TTimeRef::frames_covering", "count * toRate does not fit in 64 bits");
@@ -89,7 +89,7 @@ qint64 TTimeRef::frames_covering(qint64 count, uint fromRate, uint toRate)
     return scaled / qint64(fromRate) + (scaled % qint64(fromRate) != 0 ? 1 : 0);
 }
 
-TTimeRef TTimeRef::common_frame_at_or_before(const TTimeRef& time, uint rateA, uint rateB)
+TTimeRef TTimeRef::common_frame_at_or_before(const TTimeRef& time, uint rateA, uint rateB) T_REALTIME_SAFE
 {
     Q_ASSERT(rateA != 0 && rateB != 0);
     // The frames of both rates coincide every UNIVERSAL_SAMPLE_RATE / gcd
@@ -129,7 +129,7 @@ TTimeRef TTimeRef::max_length()
     return TTimeRef(LLONG_MAX);
 }
 
-TTimeRef::TTimeRef(qint64 position)
+TTimeRef::TTimeRef(qint64 position) T_REALTIME_SAFE
     : m_universalFrame(position)
 {
 

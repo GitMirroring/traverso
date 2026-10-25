@@ -173,7 +173,7 @@ public:
         return m_audioDriverSetupMessages.values();
     }
 
-    uint get_sample_rate() const;
+    uint get_sample_rate() const T_REALTIME_SAFE;
     uint get_bit_depth() const;
     // From the start of a process cycle until the first frame of its buffer
     // leaves the output, as the driver knows it. Any thread
@@ -210,7 +210,7 @@ private:
     TAudioDevice(const TAudioDevice&) : QObject() {}
 
     // allow this function to create one instance
-    friend TAudioDevice& audiodevice();
+    friend TAudioDevice& audiodevice() T_REALTIME_SAFE;
 
     friend class TAlsaDriver;
     friend class TPortAudioDriver;
@@ -365,7 +365,7 @@ private slots:
 
 
 // use this function to get the audiodevice object
-TAudioDevice& audiodevice();
+TAudioDevice& audiodevice() T_REALTIME_SAFE;
 
 
 

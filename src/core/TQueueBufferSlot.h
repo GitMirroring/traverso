@@ -48,16 +48,18 @@ public:
 
     nframes_t get_buffer_write_offset() const {return m_bufferWriteOffset;}
 
-    void read_buffer(TAudioBuffer &dest, uint channel, nframes_t nframes) {
+    void read_buffer(TAudioBuffer &dest, uint channel, nframes_t nframes) T_REALTIME_SAFE {
         Q_ASSERT(nframes <= m_bufferSize);
         Q_ASSERT(nframes > 0);
-        TAudioBuffer::copy_data(dest, *m_buffers.at(channel), nframes);
+        // operator[]: at() throws
+        Q_ASSERT(channel < m_buffers.size());
+        TAudioBuffer::copy_data(dest, *m_buffers[channel], nframes);
     }
 
     // Where the slot's frames are: on the transport, in the file, and from
     // which slot position on they are the stream's (a clip after a seek
     // starts at offset). Once per slot, before write_channel()
-    void update_location_and_offset(const TTimeRef& transportLocation, const TTimeRef& fileLocation, nframes_t offset = 0) {
+    void update_location_and_offset(const TTimeRef& transportLocation, const TTimeRef& fileLocation, nframes_t offset = 0) T_REALTIME_SAFE {
         Q_ASSERT(offset < m_bufferSize);
         m_transportLocation = transportLocation;
         m_fileLocation = fileLocation;
@@ -67,10 +69,12 @@ public:
     // count frames of source, from its frame sourceAt, into channel from the
     // slot's offset on. The positions before the offset are silence: a slot
     // comes back from the free queue with what it held before
-    void write_channel(uint channel, const TAudioBuffer& source, nframes_t sourceAt, nframes_t count) {
+    void write_channel(uint channel, const TAudioBuffer& source, nframes_t sourceAt, nframes_t count) T_REALTIME_SAFE {
         Q_ASSERT(m_bufferWriteOffset + count <= m_bufferSize);
         Q_ASSERT(count > 0);
-        TAudioBuffer& buffer = *m_buffers.at(channel);
+        // operator[]: at() throws
+        Q_ASSERT(channel < m_buffers.size());
+        TAudioBuffer& buffer = *m_buffers[channel];
         buffer.silence(0, m_bufferWriteOffset);
         buffer.copy_from(m_bufferWriteOffset, source, sourceAt, count);
     }

@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include "TTimeRef.h"
+#include "TRealtime.h"
 #include "defines.h"
 
 /**
@@ -72,7 +73,8 @@ public:
     // On the owner's thread before add_stream() returns, then on the
     // scheduler thread, never while a step of the stream runs
     virtual void set_output_rate_and_resampler(int outputRate, const Resampler& resampler) = 0;
-    virtual uint get_channel_count() const = 0;
+    // Also asked in the audio thread
+    virtual uint get_channel_count() const T_REALTIME_SAFE = 0;
     // The ring buffers are made and freed only where the audio thread does
     // not use them: the scheduler knows when that is
     virtual void prepare_ring_buffers(nframes_t bufferSize) = 0;

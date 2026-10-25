@@ -4,6 +4,7 @@
 #include <limits>
 #include "Utils.h"
 #include "defines.h"
+#include "TRealtime.h"
 #include <QMetaType>
 #include <QString>
 
@@ -20,16 +21,16 @@ public:
     static const qint64 ONE_MINUTE_UNIVERSAL_SAMPLE_RATE = 1693440000;
     static const long long INVALID = LLONG_MIN;
 
-    TTimeRef();
-    explicit TTimeRef(int position) : TTimeRef(qint64(position)) {}
-    explicit TTimeRef(qint64 position);
+    TTimeRef() T_REALTIME_SAFE;
+    explicit TTimeRef(int position) T_REALTIME_SAFE : TTimeRef(qint64(position)) {}
+    explicit TTimeRef(qint64 position) T_REALTIME_SAFE;
     explicit TTimeRef(double position);
     // The time of frame frame at rate rate: exact where rate divides
     // UNIVERSAL_SAMPLE_RATE (every device rate), else the first universal
     // frame at or after it, so frame_at_or_before() gives frame back at any
     // rate. Fits 64 bits for some ten thousand years of frames.
-    explicit TTimeRef(nframes_t frame, uint rate);
-    explicit TTimeRef(uint64_t frame, uint rate);
+    explicit TTimeRef(nframes_t frame, uint rate) T_REALTIME_SAFE;
+    explicit TTimeRef(uint64_t frame, uint rate) T_REALTIME_SAFE;
 
     explicit TTimeRef(qreal frame, uint rate);
 
@@ -80,29 +81,29 @@ public:
 
     // The last frame at or before time; fraction (optional) is how far time is
     // past that frame, in frames, 0 <= fraction < 1
-    static qint64 frame_at_or_before(const TTimeRef& time, uint rate, double* fraction = nullptr);
+    static qint64 frame_at_or_before(const TTimeRef& time, uint rate, double* fraction = nullptr) T_REALTIME_SAFE;
     // The first frame at or after time
-    static qint64 frame_at_or_after(const TTimeRef& time, uint rate);
+    static qint64 frame_at_or_after(const TTimeRef& time, uint rate) T_REALTIME_SAFE;
     // The frame nearest to time; half a frame goes to the later one, also
     // before zero. The one rounding of a time onto the frames of a stream:
     // it moves with the time, frame_nearest(time + n frames) is
     // frame_nearest(time) + n (n frames as a time are exact at every rate
     // that divides UNIVERSAL_SAMPLE_RATE), so reads at times whole frames
     // apart join without a frame lost or doubled.
-    static qint64 frame_nearest(const TTimeRef& time, uint rate);
+    static qint64 frame_nearest(const TTimeRef& time, uint rate) T_REALTIME_SAFE;
     // The length of duration in frames, with fraction. For decisions and
     // ratios, not for positions.
-    static double to_frames(const TTimeRef& duration, uint rate);
+    static double to_frames(const TTimeRef& duration, uint rate) T_REALTIME_SAFE;
     // The last time at or before time where a frame of rateA and a frame of
     // rateB coincide (every 147 frames of 44.1 kHz and 160 of 48 kHz):
     // resampling from one rate to the other can start there without a
     // fraction of a frame. Exact when UNIVERSAL_SAMPLE_RATE is a multiple of
     // the greatest common divisor of the rates, which holds for every rate
     // it divides and for 384 kHz with most others; else time itself.
-    static TTimeRef common_frame_at_or_before(const TTimeRef& time, uint rateA, uint rateB);
+    static TTimeRef common_frame_at_or_before(const TTimeRef& time, uint rateA, uint rateB) T_REALTIME_SAFE;
     // The fewest frames at toRate that cover count frames at fromRate:
     // count * toRate / fromRate, rounded up. Exact; 0 for 0.
-    static qint64 frames_covering(qint64 count, uint fromRate, uint toRate);
+    static qint64 frames_covering(qint64 count, uint fromRate, uint toRate) T_REALTIME_SAFE;
     // A frame, or a count of frames, from the 64-bit functions above as a
     // stream's 32-bit nframes_t; a debug build checks that it fits
     static nframes_t to_nframes(qint64 frames) {
@@ -292,7 +293,7 @@ public:
     }
 
 private:
-    static qint64 universal_frames(uint64_t frames, uint rate);
+    static qint64 universal_frames(uint64_t frames, uint rate) T_REALTIME_SAFE;
 
     qint64 m_universalFrame;
 };

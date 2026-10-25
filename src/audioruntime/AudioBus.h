@@ -47,7 +47,7 @@ public:
     void add_channel(AudioChannel* chan);
     void add_channel(const QString& channel);
     void audiodevice_params_changed();
-    uint get_channel_count() const;
+    uint get_channel_count() const T_REALTIME_SAFE;
     QStringList get_channel_names() const;
     QString get_name() {return m_name;}
 
@@ -61,7 +61,7 @@ public:
 	 * @param nframes The buffer size to get
 	 * @return 
 	 */
-    TAudioBuffer& get_buffer(uint channel) {
+    TAudioBuffer& get_buffer(uint channel) T_REALTIME_SAFE {
         Q_ASSERT(channel < get_channel_count());
         return m_channels.at(channel)->get_buffer();
     }
@@ -76,13 +76,15 @@ public:
     void set_id(qint64 id) {m_id = id;}
     void set_name(const QString& name) {m_name = name;}
 
-    void process_monitoring() {
+    void process_monitoring() T_REALTIME_SAFE {
         for (int i=0; i<m_channels.size(); ++i) {
             m_channels.at(i)->process_monitoring();
         }
     }
 
-    void process_monitoring(QList<TVUMonitor*> vumonitors) {
+    // The monitors by reference: a copy of the list costs its atomic
+    // reference count in and out
+    void process_monitoring(const QList<TVUMonitor*>& vumonitors) T_REALTIME_SAFE {
         for (int i=0; i<m_channels.size(); ++i) {
             m_channels.at(i)->process_monitoring(vumonitors.at(i));
         }
@@ -92,15 +94,16 @@ public:
 	 *        Zero all AudioChannels buffers for
 	 * @param nframes size of the buffer
 	 */
-    void silence_buffers()
+    void silence_buffers() T_REALTIME_SAFE
     {
-        for (const auto channel : m_channels) {
+        // const: a non-const begin() may detach the list, a copy if it is shared
+        for (const auto channel : std::as_const(m_channels)) {
             channel->silence_buffer();
         }
     }
 
-    void apply_gain_to_buffers(nframes_t nframes, float gain) {
-        for (const auto channel : m_channels) {
+    void apply_gain_to_buffers(nframes_t nframes, float gain) T_REALTIME_SAFE {
+        for (const auto channel : std::as_const(m_channels)) {
             channel->get_buffer().apply_gain_to_buffer(nframes, gain);
         }
     }

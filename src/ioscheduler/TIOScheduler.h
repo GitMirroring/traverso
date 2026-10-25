@@ -117,10 +117,12 @@ public:
     // system semaphore only when the scheduler thread waits. The audio
     // thread and a request never wait for each other. The count of ticks
     // gives every stream one refill step per tick.
-    void tick()
+    void tick() T_REALTIME_SAFE
     {
         m_ticks.fetch_add(1, std::memory_order_relaxed);
-        m_wake.signal();
+        // Real-time safe by contract: an atomic add, and a post to the system
+        // semaphore only when the scheduler thread waits; never a wait
+        T_REALTIME_TRUSTED(m_wake.signal();)
     }
 
     // The owner's thread. A song (a sheet): its transport, its seek, whether

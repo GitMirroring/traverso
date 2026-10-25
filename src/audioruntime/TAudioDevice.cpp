@@ -143,9 +143,12 @@ RELAYTOOL_JACK
    TAudioDevice intance will be created automatically!
  * @return The TAudioDevice instance, it will be automatically created on first call
  */
-TAudioDevice& audiodevice()
-{ 
-    static TAudioDevice device;
+TAudioDevice& audiodevice() T_REALTIME_SAFE
+{
+    // Real-time safe by contract: made by the first call, in the GUI thread
+    // at start-up, before the audio thread it starts; later calls only find
+    // it made
+    T_REALTIME_TRUSTED(static TAudioDevice device;)
     return device;
 }
 
@@ -796,7 +799,7 @@ void TAudioDevice::delete_channel(AudioChannel* channel)
  *
  * @return The real audiodevices sample rate
  */
-uint TAudioDevice::get_sample_rate( ) const
+uint TAudioDevice::get_sample_rate( ) const T_REALTIME_SAFE
 {
     return m_rate;
 }

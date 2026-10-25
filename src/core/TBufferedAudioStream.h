@@ -55,7 +55,7 @@ public :
     qint64 get_id() const {return m_id;}
     qint64 get_orig_sheet_id() const {return m_origSheetId;}
     uint get_sample_rate() const;
-    uint get_channel_count() const override {return m_channelCount;}
+    uint get_channel_count() const T_REALTIME_SAFE override {return m_channelCount;}
     uint get_bit_depth() const;
 
     virtual TBufferedAudioStreamStatus& get_buffer_status() = 0;

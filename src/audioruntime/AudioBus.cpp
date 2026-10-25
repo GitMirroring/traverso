@@ -103,7 +103,7 @@ void AudioBus::add_channel(const QString &channel)
         m_channelNames.append(channel);
 }
 
-uint AudioBus::get_channel_count() const
+uint AudioBus::get_channel_count() const T_REALTIME_SAFE
 {
         return m_channels.size();
 }
