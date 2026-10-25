@@ -43,6 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TExportSpecification.h"
 #include "TIOScheduler.h"
 #include "TBufferedAudioStreamReader.h"
+#include "TResamplerSettings.h"
 #include "TBufferedAudioStreamWriter.h"
 #include "TAudioClipManager.h"
 #include "TAudioThreadMessageQueue.h"
@@ -136,7 +137,7 @@ void TSheet::init()
     m_readScheduler = pm().get_read_scheduler();
     m_readScheduler->set_output_sample_rate(audiodevice().get_sample_rate());
     m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
-    m_readScheduler->set_resampler(TBufferedAudioStreamReader::configured_resampler());
+    m_readScheduler->set_resampler(configured_resampler());
     m_readScheduler->add_group(&m_ioGroup);
     update_idle_limit();
 
@@ -1155,7 +1156,7 @@ void TSheet::set_transport_location(TTimeRef location)
 
 void TSheet::config_changed()
 {
-    const TIOStream::Resampler resampler = TBufferedAudioStreamReader::configured_resampler();
+    const TIOStream::Resampler resampler = configured_resampler();
     if (m_readScheduler->get_resampler() != resampler) {
         m_readScheduler->set_resampler(resampler);
     }

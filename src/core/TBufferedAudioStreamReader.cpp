@@ -29,7 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TQueueBufferSlot.h"
 #include "Utils.h"
 #include "TAudioDevice.h"
-#include "TConfig.h"
 #include "Debugger.h"
 
 #include <QFile>
@@ -210,7 +209,9 @@ int TBufferedAudioStreamReader::init( )
         return (m_error = COULD_NOT_OPEN_FILE);
     }
 
-    set_output_rate_and_resampler(m_audioReader->file_rate(), configured_resampler());
+    // At the file's own rate: no resampler, so no choice of one; the IO
+    // scheduler hands the configured one on with the device's rate
+    set_output_rate_and_resampler(m_audioReader->file_rate(), Resampler{});
 
     m_channelCount = m_audioReader->channel_count();
     m_rate = m_audioReader->file_rate();
@@ -219,22 +220,6 @@ int TBufferedAudioStreamReader::init( )
     return 1;
 }
 
-
-TAudioResampler::BackendType TBufferedAudioStreamReader::configured_backend()
-{
-    return TAudioResampler::backend_from_name(config().get_property("Conversion", "Resampler", "soxr").toString());
-}
-
-TBufferedAudioStreamReader::Resampler TBufferedAudioStreamReader::configured_resampler()
-{
-    const TAudioResampler::BackendType backend = configured_backend();
-    int quality = config().get_property("Conversion", "RTResamplingQuality", -1).toInt();
-    if (!TAudioResampler::qualities(backend).contains(quality)) {
-        quality = TAudioResampler::default_realtime_quality(backend);
-    }
-    const bool resample = config().get_property("Conversion", "DynamicResampling", true).toBool();
-    return {qint32(backend), qint16(quality), resample};
-}
 
 void TBufferedAudioStreamReader::set_output_rate_and_resampler(int outputRate, const Resampler& resampler)
 {

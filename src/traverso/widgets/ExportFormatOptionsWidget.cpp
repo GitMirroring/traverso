@@ -24,7 +24,7 @@
 #include "TAudioDevice.h"
 #include "TConfig.h"
 #include "TExportSpecification.h"
-#include "TBufferedAudioStreamReader.h"
+#include "TResamplerSettings.h"
 
 
 RELAYTOOL_WAVPACK;
@@ -53,7 +53,7 @@ ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
     }
 
     // The qualities of the resampler in use
-    m_resampler = TBufferedAudioStreamReader::configured_backend();
+    m_resampler = configured_resampler_backend();
     for (int quality : TAudioResampler::qualities(m_resampler)) {
         resampleQualityComboBox->addItem(TAudioResampler::quality_name(m_resampler, quality), quality);
     }

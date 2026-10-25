@@ -54,13 +54,6 @@ public :
 	
     TBufferedAudioStreamReader* deep_copy();
 
-    // The resampler backend of the settings (Conversion/Resampler: soxr or
-    // libsamplerate), for on-the-fly reading and for exports
-    static TAudioResampler::BackendType configured_backend();
-    // The resampler of on-the-fly reading: the backend and its quality
-    // (Conversion/RTResamplingQuality, the backend's own number; another
-    // number is the backend's default)
-    static Resampler configured_resampler();
 	
 	int set_state( const QDomNode& node );
 	QDomNode get_state(QDomDocument doc);

@@ -43,6 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDevice.h"
 #include "TPeakBuildService.h"
 #include "TBufferedAudioStreamReader.h"
+#include "TResamplerSettings.h"
 #include "TIOScheduler.h"
 #include "TRtTransaction.h"
 #include "Utils.h"
@@ -114,7 +115,7 @@ TIOScheduler* TProjectManager::get_read_scheduler()
         m_readScheduler = new TIOScheduler(std::max(QThread::idealThreadCount() / 2, 1) + 1);
         m_readScheduler->set_output_sample_rate(audiodevice().get_sample_rate());
         m_readScheduler->set_buffer_size(audiodevice().get_buffer_size());
-        m_readScheduler->set_resampler(TBufferedAudioStreamReader::configured_resampler());
+        m_readScheduler->set_resampler(configured_resampler());
         m_readScheduler->start();
     }
     return m_readScheduler;

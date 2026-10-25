@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QStyleFactory>
 
 #include "Pages.h"
-#include "TBufferedAudioStreamReader.h"
+#include "TResamplerSettings.h"
 #include "dialogs/ThemeModifierDialog.h"
 #include "TAudioDevice.h"
 #if defined (ALSA_SUPPORT)
@@ -1048,7 +1048,7 @@ RecordingConfigPage::RecordingConfigPage(QWidget * parent)
     wavpackCompressionComboBox->addItem("Fast", "fast");
 
     // The qualities of the resampler in use
-    const TAudioResampler::BackendType resampler = TBufferedAudioStreamReader::configured_backend();
+    const TAudioResampler::BackendType resampler = configured_resampler_backend();
     for (int quality : TAudioResampler::qualities(resampler)) {
         ontheflyResampleComboBox->addItem(TAudioResampler::quality_name(resampler, quality), quality);
     }
@@ -1147,7 +1147,7 @@ void RecordingConfigPage::load_config()
         wavpackCompressionComboBox->setCurrentIndex(2);
     }
 
-    int index = ontheflyResampleComboBox->findData(TBufferedAudioStreamReader::configured_resampler().quality);
+    int index = ontheflyResampleComboBox->findData(configured_resampler().quality);
     ontheflyResampleComboBox->setCurrentIndex(index);
 
     index = config().get_property("Conversion", "ExportResamplingConverterType", 1).toInt();
@@ -1172,7 +1172,7 @@ void RecordingConfigPage::reset_default_config()
 {
     config().set_property("Conversion", "DynamicResampling", true);
     config().set_property("Conversion", "RTResamplingQuality",
-                          TAudioResampler::default_realtime_quality(TBufferedAudioStreamReader::configured_backend()));
+                          TAudioResampler::default_realtime_quality(configured_resampler_backend()));
     config().set_property("Conversion", "ExportResamplingConverterType", 1);
     config().set_property("Recording", "FileFormat", "wav");
     config().set_property("Recording", "LatencyCompensation", true);

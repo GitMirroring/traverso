@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "PlayHeadMove.h"
 #include "TProject.h"
 #include "TBufferedAudioStreamReader.h"
+#include "TResamplerSettings.h"
 #include "TSheet.h"
 #include "TTrack.h"
 #include "TVUMonitor.h"
@@ -982,7 +983,7 @@ void TMainWindow::create_menus()
     // Submenu: Resample Quality, the qualities of the resampler in use
     m_resampleQualityMenu = settingsMenu->addMenu(tr("Resample &Quality"));
     m_resampleQualityMenu->setToolTipsVisible(true);
-    const TAudioResampler::BackendType resampler = TBufferedAudioStreamReader::configured_backend();
+    const TAudioResampler::BackendType resampler = configured_resampler_backend();
     for (int quality : TAudioResampler::qualities(resampler)) {
         action = m_resampleQualityMenu->addAction(TAudioResampler::quality_name(resampler, quality));
         action->setData(quality);
@@ -1344,7 +1345,7 @@ void TMainWindow::config_changed()
         }
     }
 
-    int quality = TBufferedAudioStreamReader::configured_resampler().quality;
+    int quality = configured_resampler().quality;
     actions = m_resampleQualityMenu->actions();
 
     bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
