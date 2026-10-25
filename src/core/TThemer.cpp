@@ -480,6 +480,9 @@ void TThemer::load_defaults()
     m_defaultColors.insert("AudioClip:invalidreadsource", QColor(Qt::red));
     m_defaultColors.insert("AudioClip:text", p.color(QPalette::WindowText));
     m_defaultColors.insert("Curve:active", p.color(QPalette::BrightText));
+    c = p.color(QPalette::BrightText);
+    c.setAlpha(100);
+    m_defaultColors.insert("Curve:inactive", c);
     m_defaultColors.insert("CurveNode:default", p.color(QPalette::BrightText));
     m_defaultColors.insert("CurveNode:blink", p.color(QPalette::BrightText));
     c = p.color(QPalette::Highlight);
