@@ -24,6 +24,26 @@ if(TRAVERSO_TSAN)
     target_link_options(traverso_compiler_settings INTERFACE -fsanitize=thread)
 endif()
 
+# The real-time requirement (doc/design/realtime-audio-path.md): Clang checks
+# every function marked T_REALTIME_SAFE (TRealtime.h). Warnings while the
+# audio processing path is being marked; an error once it is clean.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(traverso_compiler_settings INTERFACE -Wfunction-effects)
+endif()
+
+# RealtimeSanitizer (Clang 20 and later, development only): while a
+# T_REALTIME_SAFE function runs, an allocation, a lock, a sleep or a blocking
+# call anywhere below it is reported with a stack trace. In a build
+# directory of its own; run the headless tests on the null driver.
+option(ENABLE_RTSAN "Build with RealtimeSanitizer (Clang 20 and later)" OFF)
+if(ENABLE_RTSAN)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_VERSION VERSION_LESS 20)
+        message(FATAL_ERROR "ENABLE_RTSAN needs Clang 20 or later")
+    endif()
+    target_compile_options(traverso_compiler_settings INTERFACE -fsanitize=realtime -fno-omit-frame-pointer)
+    target_link_options(traverso_compiler_settings INTERFACE -fsanitize=realtime)
+endif()
+
 # ---------------------------------------------------------------------------
 # Debian Sid Production Hardening and LTO Optimization (STRICTLY RELEASE ONLY)
 # ---------------------------------------------------------------------------
