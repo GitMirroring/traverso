@@ -369,7 +369,7 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
         seekTransportLocation -= modulus;
 
         // convert the modulus to frames
-        nframes_t offset = TTimeRef::to_frame(modulus, m_outputRate);
+        nframes_t offset = TTimeRef::to_nframes(TTimeRef::frame_nearest(modulus, m_outputRate));
         // printf("file location after adjustment %s, offset nframes %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
 
         // and only read in the amount of frames needed for this buffer slot

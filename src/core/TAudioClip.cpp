@@ -524,7 +524,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
     const uint channelcount = std::min(get_channel_count(), bus->get_channel_count());
 
     if (startLocation < m_location->get_start()) {
-        offset = TTimeRef::to_frame(m_location->get_start() - startLocation, outputRate);
+        offset = TTimeRef::to_nframes(TTimeRef::frame_nearest(m_location->get_start() - startLocation, outputRate));
         framesToProcess -= offset;
         TLOG_RT_D("clip", "frames to process {}", framesToProcess);
         Q_ASSERT(offset < nframes);
@@ -537,7 +537,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
     }
 
     if (m_location->get_end() < endLocation) {
-        framesToProcess -= TTimeRef::to_frame(endLocation - m_location->get_end(), outputRate);
+        framesToProcess -= TTimeRef::to_nframes(TTimeRef::frame_nearest(endLocation - m_location->get_end(), outputRate));
         Q_ASSERT(framesToProcess > 0);
     }
 

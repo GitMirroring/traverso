@@ -66,6 +66,15 @@ qint64 TTimeRef::frame_at_or_after(const TTimeRef& time, uint rate)
     return fraction > 0.0 ? frame + 1 : frame;
 }
 
+qint64 TTimeRef::frame_nearest(const TTimeRef& time, uint rate)
+{
+    // floor(x + 1/2). The fraction is a remainder below UNIVERSAL_SAMPLE_RATE
+    // divided by it, so its compare with a half is exact.
+    double fraction;
+    const qint64 frame = frame_at_or_before(time, rate, &fraction);
+    return fraction >= 0.5 ? frame + 1 : frame;
+}
+
 double TTimeRef::to_frames(const TTimeRef& duration, uint rate)
 {
     Q_ASSERT(rate != 0);

@@ -12,6 +12,8 @@
 #include <QFile>
 #include <QTextStream>
 
+#include <algorithm>
+
 #include "Debugger.h"
 
 TExportSpecification::TExportSpecification()
@@ -380,7 +382,9 @@ void TExportSpecification::clear_extra_formats()
 
 nframes_t TExportSpecification::get_remaining_export_frames() const
 {
-    return TTimeRef::to_frame(m_exportEndLocation - m_exportLocation, m_sampleRate);
+    // None left also when the location went past the end (a rate that does
+    // not divide the universal rate adds up rounded per block)
+    return TTimeRef::to_nframes(std::max<qint64>(0, TTimeRef::frame_nearest(m_exportEndLocation - m_exportLocation, m_sampleRate)));
 }
 
 int TExportSpecification::create_cdrdao_toc(TProject* project, TExportSpecification* spec)

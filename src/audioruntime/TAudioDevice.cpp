@@ -1137,7 +1137,7 @@ int TAudioDevice::transport_locate(TAudioDeviceClient* client, const TTimeRef& l
     TJackDriver* jackdriver = slaved_jack_driver();
     if (jackdriver) {
         PMESG("using jack_transport_locate");
-        nframes_t frames = TTimeRef::to_frame(location, get_sample_rate());
+        nframes_t frames = TTimeRef::to_nframes(TTimeRef::frame_nearest(location, get_sample_rate()));
         return jack_transport_locate(jackdriver->get_client(), frames);
     }
 #endif

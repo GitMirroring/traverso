@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of TTimeRef conversions: nanoseconds to universal frames
-// (no rounding slack), and milliseconds to universal frames (rounded to the
-// nearest, exact for the values checked).
+// Headless test of TTimeRef conversions: frames to time and time to frames
+// (at or before, nearest), nanoseconds to universal frames (no rounding
+// slack), and milliseconds to universal frames (rounded to the nearest,
+// exact for the values checked).
 
 #include "TTimeRef.h"
 
@@ -55,9 +56,59 @@ static void frames_to_time()
     }
 }
 
+// A fixed sequence of numbers, the same every run
+static uint64_t next_random(uint64_t& state)
+{
+    state += 0x9e3779b97f4a7c15ull;
+    uint64_t z = state;
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
+    return z ^ (z >> 31);
+}
+
+// Time to the nearest frame: every universal frame of a frame's span, half a
+// frame to the later frame, before zero too; the same as the long double
+// rounding it replaces for times from zero on; and it moves with the time,
+// so times whole frames apart give frames as far apart (what keeps the
+// reads of a stream joined)
+static void nearest_frames()
+{
+    const qint64 universal = TTimeRef::UNIVERSAL_SAMPLE_RATE;
+    for (const uint rate : {8000u, 22050u, 32000u, 44100u, 48000u, 88200u, 96000u, 176400u, 192000u}) {
+        const qint64 span = universal / rate;
+
+        bool spans = true;
+        for (const qint64 frame : {qint64(-1000001), qint64(-2), qint64(-1), qint64(0), qint64(1), qint64(1023), qint64(1) << 33}) {
+            for (qint64 d = 0; d < span; ++d) {
+                const TTimeRef time(frame * span + d);
+                spans = spans && TTimeRef::frame_nearest(time, rate) == (2 * d >= span ? frame + 1 : frame);
+            }
+        }
+
+        bool same = true;
+        bool moves = true;
+        uint64_t state = rate;
+        for (int i = 0; i < 100000; ++i) {
+            const qint64 u = qint64(next_random(state) >> 24);       // 0 .. 2^40: some 11 hours
+            const long double old = std::round((long double)(u) * rate / universal);
+            same = same && TTimeRef::frame_nearest(TTimeRef(u), rate) == qint64(old);
+
+            const qint64 base = u - (qint64(1) << 39);                // before zero too
+            const nframes_t n = nframes_t(next_random(state) % (uint64_t(rate) * 600));
+            moves = moves && TTimeRef::frame_nearest(TTimeRef(base) + TTimeRef(n, rate), rate) ==
+                                 TTimeRef::frame_nearest(TTimeRef(base), rate) + qint64(n);
+        }
+
+        char what[112];
+        std::snprintf(what, sizeof(what), "%u Hz: nearest frame (half up, before zero too, as before, moves with the time)", rate);
+        check(spans && same && moves, what);
+    }
+}
+
 int main()
 {
     frames_to_time();
+    nearest_frames();
 
     const qint64 rate = TTimeRef::UNIVERSAL_SAMPLE_RATE;
 

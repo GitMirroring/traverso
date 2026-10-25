@@ -74,11 +74,6 @@ public:
         return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
     }
 
-    static nframes_t to_frame(const TTimeRef& timeRef, uint sampleRate) {
-        long double duration = timeRef.universal_frame() * sampleRate;
-        return  std::round(duration / UNIVERSAL_SAMPLE_RATE);
-    }
-
     // Exact conversions for any sample rate (also rates that do not divide
     // UNIVERSAL_SAMPLE_RATE), for negative times too. Frame n of a stream at
     // rate r sits at time n / r.
@@ -88,6 +83,13 @@ public:
     static qint64 frame_at_or_before(const TTimeRef& time, uint rate, double* fraction = nullptr);
     // The first frame at or after time
     static qint64 frame_at_or_after(const TTimeRef& time, uint rate);
+    // The frame nearest to time; half a frame goes to the later one, also
+    // before zero. The one rounding of a time onto the frames of a stream:
+    // it moves with the time, frame_nearest(time + n frames) is
+    // frame_nearest(time) + n (n frames as a time are exact at every rate
+    // that divides UNIVERSAL_SAMPLE_RATE), so reads at times whole frames
+    // apart join without a frame lost or doubled.
+    static qint64 frame_nearest(const TTimeRef& time, uint rate);
     // The length of duration in frames, with fraction. For decisions and
     // ratios, not for positions.
     static double to_frames(const TTimeRef& duration, uint rate);

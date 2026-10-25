@@ -41,7 +41,7 @@ static TTransportPosition cycle(qint64 bufferStartFrame, qint64 runStartFrame, q
 
 static qint64 frame_of(const TTimeRef& position)
 {
-    return TTimeRef::to_frame(position, rate);
+    return TTimeRef::frame_nearest(position, rate);
 }
 
 static void test_publish_read()

@@ -146,7 +146,7 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
     nframes_t offset = 0;
 
     if (startLocation < fadeStartLocation) {
-        offset = TTimeRef::to_frame(fadeStartLocation - startLocation, outputRate);
+        offset = TTimeRef::to_nframes(TTimeRef::frame_nearest(fadeStartLocation - startLocation, outputRate));
         Q_ASSERT(offset <= nframes);
         fadeLocation = TTimeRef();
         framesToProcess = framesToProcess - offset;
@@ -155,7 +155,7 @@ void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const T
     }
 
     if (fadeEndLocation < upperRange) {
-        framesToProcess -= TTimeRef::to_frame(upperRange - fadeEndLocation, outputRate);
+        framesToProcess -= TTimeRef::to_nframes(TTimeRef::frame_nearest(upperRange - fadeEndLocation, outputRate));
     }
 
     if (framesToProcess == 0) {
