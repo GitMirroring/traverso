@@ -83,7 +83,7 @@ public:
     // Audio thread
 
     // The snapshot the audio thread uses, nullptr until the first one is published
-    const T* rt_snapshot() const
+    const T* rt_snapshot() const T_REALTIME_SAFE
     {
         Q_ASSERT_X(!is_gui_thread(), "TRtValue::rt_snapshot", "RT side used in the GUI thread");
         return m_rtSide->snapshot.get();

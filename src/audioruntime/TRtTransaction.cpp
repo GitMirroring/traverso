@@ -48,9 +48,14 @@ struct TRtStepBatch
     }
 };
 
-bool TRtPublishable::is_gui_thread()
+bool TRtPublishable::is_gui_thread() T_REALTIME_SAFE
 {
-    return QThread::currentThread() == QCoreApplication::instance()->thread();
+    // QThread::isMainThread() compares thread ids (noexcept): real-time safe
+    // by contract. QThread::currentThread() was not: in a thread Qt did not
+    // start (JACK's, PipeWire's) its first call makes a QThread for it
+    bool gui = false;
+    T_REALTIME_TRUSTED(gui = QThread::isMainThread();)
+    return gui;
 }
 
 void TRtPublishable::publish_in(TRtTransaction& transaction)

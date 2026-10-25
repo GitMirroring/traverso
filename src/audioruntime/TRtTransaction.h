@@ -6,6 +6,8 @@
 #pragma once
 
 #include <QList>
+
+#include "TRealtime.h"
 #include <cstddef>
 #include <memory>
 
@@ -38,8 +40,8 @@ public:
     virtual ~TRtPublishable() = default;
 
     // Used by debug assertions to check that each side is only used from its
-    // own thread.
-    static bool is_gui_thread();
+    // own thread. Real-time safe: the audio thread's side asserts it too
+    static bool is_gui_thread() T_REALTIME_SAFE;
 
 protected:
     // GUI thread: publish this object's state when transaction ends.

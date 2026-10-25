@@ -76,7 +76,7 @@ public:
 
     // Audio thread
 
-    const std::vector<T*>& rt_items() const
+    const std::vector<T*>& rt_items() const T_REALTIME_SAFE
     {
         return *m_snapshot.rt_snapshot();
     }
