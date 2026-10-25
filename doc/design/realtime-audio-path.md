@@ -154,7 +154,7 @@ and the audio thread can be real-time safe. TLog follows the same term:
 ## 5. Deliberate exceptions
 
 Allowed only in a small named function, with a comment that links here, and
-only around the one statement (`TRealtime.h`). Three kinds:
+only around the one statement (`TRealtime.h`). Four kinds:
 
 - **The clock.** The driver's wait for the device (§2). Outside the path for
   ALSA and null; inside the cycle for PortAudio's blocking API, so there the
@@ -164,6 +164,11 @@ only around the one statement (`TRealtime.h`). Three kinds:
   scheduler (C++20 semaphore with timeout), if the scheduler instrumentation
   shows it prevents dropouts. `T_REALTIME_EXCEPTION(...)` too: a bounded wait
   still blocks; it is an exception, not real-time safe.
+- **Made once, at start-up.** `tsmp()` and `audiodevice()` make their object
+  on the first call, in the GUI thread before any audio thread runs; later
+  calls only find it made. The making is in a function of its own, called in
+  `T_REALTIME_EXCEPTION(...)`: RealtimeSanitizer counts every run of a
+  `T_REALTIME_SAFE` function as real time, the first one too.
 - **Code that is real-time safe by its contract** where Clang cannot see it:
   an LV2 plugin's `run()`, `jack_port_get_buffer()`,
   `pw_stream_dequeue_buffer()`, ALSA's mmap calls, the steady clock, a
@@ -187,17 +192,54 @@ only around the one statement (`TRealtime.h`). Three kinds:
    new violation fails that build.
 6. Rename `TLOG_RT_*` to `TLOG_REALTIME_*`.
 
-## 7. Found while checking (2026-10-25)
+## 7. Status on branch realtime-path (2026-10-25)
 
-What steps 2 and 4 will report first, at least:
+Steps 1 to 3 are done, and step 4 is done as far as the headless runs reach.
+Clang 21 marks the whole path from `TAudioDevice::run_cycle()` down. It reports
+7 calls, all of them the open points below. RealtimeSanitizer gives 0 reports
+for the 26 tests and for all projects run headless on the null driver (71,
+without blkafds). The headless runs load the projects and apply their
+transactions, but they do not play.
 
-- `TAudioThreadMessageQueue::post_rt_task()` accepts closures up to 64 bytes
-  (trivially copyable), but libstdc++'s `std::move_only_function` keeps a target
-  inline only up to 24 bytes (the size of its `_Delegate`). A closure of 25 to
-  64 bytes is allocated in the GUI thread and freed in the audio thread
-  (`event.rtTask = nullptr` in `process_posted_gui_events()`).
-- `qCritical()` in `TAudioDevice::run_cycle()` and `qDebug()` in
-  `run_one_cycle()`, on their failure paths.
+Fixed on the way, each in its commit:
+
+- `post_rt_task()` closures over 24 bytes were allocated in the GUI thread and
+  freed in the audio thread. The check is three pointers now, and a closure has
+  to be `T_REALTIME_SAFE`.
+- Messages that allocated or formatted in the audio thread: `qCritical()` and
+  `qDebug()` in `run_cycle()`/`run_one_cycle()`, ALSA's mmap error messages
+  (a `QString`), and the ring read's debug messages (`QString` times and status,
+  built before the call, also with debug off). TSheet's `PMESG` calls are now
+  `TLOG_RT_*`.
+- `is_gui_thread()` and asserts used `QThread::currentThread()`, which creates
+  a `QThread` in a thread Qt did not start (JACK's, PipeWire's).
+- `AudioBus` looped over a non-const `QList`, so `begin()` could detach it. Its
+  monitors were passed by value.
+- The slots used `std::vector::at()`, which throws.
+- The dither seed was a static local.
+
+Open, for the review (design choices, not made on the branch):
+
+1. `transport_control()` serves the audio thread (the transport follows JACK)
+   and the GUI thread. Its GUI branch calls `prepare_recording()` (files), and
+   `start_transport_rolling()` and `set_recording()` emit their signals directly
+   in their GUI branch. Proposal: the callback for the audio thread only, and a
+   function of its own for the GUI.
+2. The JACK driver's port pairs live in `QList`s that the audio thread appends
+   to and removes from (`post_rt_task()`). Proposal: a `TRtList`, like the rest
+   of the path.
+3. `TTrack::m_vumonitors` is a GUI `QList` that the audio thread reads
+   (`process_monitoring()`). Proposal: a `TRtList`. Clang does not report it:
+   reading a list is real-time safe; the shared access is the problem.
+4. The queue's closures are `std::move_only_function`, kept inline by a size
+   check. A closure type of its own (an inline buffer, `noexcept` by type) would
+   make that a property of the type.
+5. `USE_MLOCK` is not defined, so buffers can fault pages in during the cycle.
+6. A run that plays: the clips' read path, recording, fades and plugins ran
+   under RealtimeSanitizer only as far as the tests reach them. This waits for
+   the headless runner.
+7. Step 5 (`-Werror=function-effects`) once 1 and 2 are solved. Step 6 (the
+   `TLOG_REALTIME_*` name) after the review.
 
 Out of scope here: placing the audio thread on performance cores and thread
 priorities (parked, see the notes on `run_on_cpu(0)` in `TAudioDeviceThread`).
