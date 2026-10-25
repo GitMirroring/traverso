@@ -375,38 +375,43 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
         nframes_t offset = TTimeRef::to_nframes(TTimeRef::frame_nearest(modulus, m_outputRate));
         // printf("file location after adjustment %s, offset nframes %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
 
-        // and only read in the amount of frames needed for this buffer slot
-        nframes_t toRead = bufferSize - offset;
+        // A clip whose first frame rounds into the next slot has none in this
+        // one: TAudioClip::process() rounds the same time the same way and
+        // does not ask for it, the stream starts at the next slot
+        if (offset < bufferSize) {
+            // and only read in the amount of frames needed for this buffer slot
+            nframes_t toRead = bufferSize - offset;
 
-        // Read at the time of slot position offset, as every refill reads at
-        // the time of its slot: all reads of the stream lie whole frames
-        // apart, so the reader's one rounding (TTimeRef::frame_nearest())
-        // joins them, no frame lost or doubled (test_resample_reader). Not at
-        // the source start: that is off the slots' frames by offset - modulus,
-        // and the reads would join for some fractions only. The time is at
-        // most half a frame before the source start, so its frame is never
-        // before the file. The reader makes room in the buffer and gives zeros
-        // past the end of the file.
-        nframes_t read = file_read(fileDecodeBuffer, fileLocation + TTimeRef(offset, m_outputRate), toRead);
-        if (read != toRead) {
-            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not read %d frames, only %d", toRead, read);
-        }
+            // Read at the time of slot position offset, as every refill reads at
+            // the time of its slot: all reads of the stream lie whole frames
+            // apart, so the reader's one rounding (TTimeRef::frame_nearest())
+            // joins them, no frame lost or doubled (test_resample_reader). Not at
+            // the source start: that is off the slots' frames by offset - modulus,
+            // and the reads would join for some fractions only. The time is at
+            // most half a frame before the source start, so its frame is never
+            // before the file. The reader makes room in the buffer and gives zeros
+            // past the end of the file.
+            nframes_t read = file_read(fileDecodeBuffer, fileLocation + TTimeRef(offset, m_outputRate), toRead);
+            if (read != toRead) {
+                TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not read %d frames, only %d", toRead, read);
+            }
 
-        if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
-            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "ReadSource::rb_seek_to_transport_location:: try dequeue failed");
-            m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
-            return;
-        }
+            if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
+                TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "ReadSource::rb_seek_to_transport_location:: try dequeue failed");
+                m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_DEQUEUE_FAILURE);
+                return;
+            }
 
-        for (uint chan=0; chan<m_channelCount; ++chan) {
-            // and now write it into the buffer using the offset
-            slot->write_buffer(seekTransportLocation, fileLocation, fileDecodeBuffer.get_channel_buffer(chan).get_data(toRead), chan, toRead, offset);
-        }
+            for (uint chan=0; chan<m_channelCount; ++chan) {
+                // and now write it into the buffer using the offset
+                slot->write_buffer(seekTransportLocation, fileLocation, fileDecodeBuffer.get_channel_buffer(chan).get_data(toRead), chan, toRead, offset);
+            }
 
-        if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
-            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "ReadSource::fill_realtime_buffers: try enqueue failed");
-            m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
-            return;
+            if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
+                TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "ReadSource::fill_realtime_buffers: try enqueue failed");
+                m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::FILL_RTBUFFER_ENQUEUE_FAILURE);
+                return;
+            }
         }
 
         fileLocation = m_sourceStartLocation + m_bufferSlotDuration - modulus;

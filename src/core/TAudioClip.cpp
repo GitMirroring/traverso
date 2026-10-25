@@ -516,29 +516,30 @@ int TAudioClip::process(TProcessCallBackData &processData)
     Q_ASSERT(m_readSource);
 
     TTimeRef fileLocation;
-    nframes_t framesToProcess = nframes;
-    nframes_t offset = 0;
     uint outputRate = m_readSource->get_output_rate();
     // At most the channels of the clip render bus: of a source with more,
     // the rest is not played until the routing knows where they go
     const uint channelcount = std::min(get_channel_count(), bus->get_channel_count());
 
-    if (startLocation < m_location->get_start()) {
-        offset = TTimeRef::to_nframes(TTimeRef::frame_nearest(m_location->get_start() - startLocation, outputRate));
-        framesToProcess -= offset;
-        TLOG_RT_D("clip", "frames to process {}", framesToProcess);
-        Q_ASSERT(offset < nframes);
-        Q_ASSERT(framesToProcess > 0);
+    // The clip's frames in this cycle, from offset to end: its start and its
+    // end rounded onto the cycle's frames, with the one rounding the stream
+    // reader fills its slots with (TTimeRef::frame_nearest()). A clip whose
+    // first frame rounds into the next cycle has none in this one, nor one
+    // whose end rounds to the start of this one: the stream reader decides
+    // the same of the same times, so offset < nframes and framesToProcess > 0
+    // hold by construction.
+    const qint64 first = TTimeRef::frame_nearest(m_location->get_start() - startLocation, outputRate);
+    const qint64 end = std::min<qint64>(TTimeRef::frame_nearest(m_location->get_end() - startLocation, outputRate), nframes);
+    if (first >= qint64(nframes) || end <= std::max<qint64>(first, 0)) {
+        return 0;
     }
+    const nframes_t offset = TTimeRef::to_nframes(std::max<qint64>(first, 0));
+    const nframes_t framesToProcess = TTimeRef::to_nframes(end) - offset;
+    Q_ASSERT(offset < nframes && framesToProcess > 0 && offset + framesToProcess <= nframes);
 
     fileLocation = (startLocation - m_location->get_start() + m_sourceStartLocation);
     if (offset != 0) {
         TLOG_RT_D("clip", "file location with offset {}", offset);
-    }
-
-    if (m_location->get_end() < endLocation) {
-        framesToProcess -= TTimeRef::to_nframes(TTimeRef::frame_nearest(endLocation - m_location->get_end(), outputRate));
-        Q_ASSERT(framesToProcess > 0);
     }
 
     // Read the frames from the ringbuffers

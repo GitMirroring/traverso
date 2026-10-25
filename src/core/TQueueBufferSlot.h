@@ -54,10 +54,16 @@ public:
         TAudioBuffer::copy_data(dest, *m_buffers.at(channel), nframes);
     }
 
+    // nframes frames of source into channel from slot position offset on.
+    // The positions before offset are silence: the stream starts at offset
+    // (a clip after a seek), and a slot comes back from the free queue with
+    // what it held before.
     void write_buffer(const TTimeRef &transportLocation, const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes, nframes_t offset = 0) {
         Q_ASSERT(offset + nframes <= m_bufferSize);
         Q_ASSERT(nframes > 0);
-        memcpy(m_buffers.at(channel)->get_data(nframes) + offset, source, nframes * sizeof(audio_sample_t));
+        audio_sample_t* data = m_buffers.at(channel)->get_data(offset + nframes);
+        memset(data, 0, offset * sizeof(audio_sample_t));
+        memcpy(data + offset, source, nframes * sizeof(audio_sample_t));
         m_transportLocation = transportLocation;
         m_fileLocation = fileLocation;
         m_bufferWriteOffset = offset;
