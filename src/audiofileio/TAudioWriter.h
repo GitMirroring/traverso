@@ -59,8 +59,9 @@ public:
     // frameCount frames of the channel buffers of fileIOBuffer, at the input
     // rate. The input frames taken: frameCount, also when the resampler
     // holds some of them for a later write or close(); fewer only when the
-    // file could not take what they became (a write error). The file's own
-    // frames, at its rate, are another count.
+    // file could not take them (a write error: what the encoder took, or 0
+    // when the input was resampled). The file's own frames, at its rate, are
+    // another count.
     nframes_t write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
     // The file complete (the resampler's rest, the encoder's end, the
     // header); false when that failed. Once: the writer writes no more after.

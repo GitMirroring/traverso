@@ -104,13 +104,8 @@ nframes_t TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
         return frameCount;
     }
     interleave(m_resampleEncodeBuffer, frames);
-    const nframes_t written = write_interleaved(m_resampleEncodeBuffer, frames);
-    if (written == frames) {
-        return frameCount;
-    }
-    // The file took less than the input became: the share of the input it
-    // took, fewer than frameCount
-    return nframes_t(qint64(frameCount) * written / frames);
+    // The file took less than the input became: a write error
+    return write_interleaved(m_resampleEncodeBuffer, frames) == frames ? frameCount : 0;
 }
 
 bool TAudioWriter::flush_resampler()
