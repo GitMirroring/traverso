@@ -155,8 +155,10 @@ nframes_t TAudioReader::read(TFileIOBuffer& buffer, const TTimeRef& location, nf
     // The reader writes into the buffer, so it makes room in it
     buffer.check_capacity(count, channel_count());
 
-    // The output frame at or before location; before the file: frame 0
-    const nframes_t first = TTimeRef::to_nframes(std::max<qint64>(0, TTimeRef::frame_at_or_before(location, m_outputRate)));
+    // The output frame nearest to location; before the file: frame 0. The
+    // one rounding of a read: it moves with the location, so a read at the
+    // location where the last one ended goes on from there, no seek
+    const nframes_t first = TTimeRef::to_nframes(std::max<qint64>(0, TTimeRef::frame_nearest(location, m_outputRate)));
     // Where the output left off, after the file's own frames were read: the
     // decoder back on its frame (where it cannot go, a seek as below)
     if (first == m_frame && m_decoderMoved && (m_decoder->frame() == m_resumeFrame || m_decoder->seek(m_resumeFrame))) {

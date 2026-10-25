@@ -86,9 +86,12 @@ public:
     // or after its length, where read() ends
     nframes_t output_frame_count() const { return m_outputFrames; }
 
-    // count frames at the output rate into buffer, from the output frame at
-    // or before location (frame n sits at n / rate); the frames that came
-    // from the file. A seek only when the reader is elsewhere.
+    // count frames at the output rate into buffer, from the output frame
+    // nearest to location (frame n sits at n / rate,
+    // TTimeRef::frame_nearest()); the frames that came from the file. A seek
+    // only when the reader is elsewhere: reads at locations whole frames
+    // apart, each where the last one ended, are one read, whatever fraction
+    // of a frame the first location has.
     nframes_t read(TFileIOBuffer& buffer, const TTimeRef& location, nframes_t count);
     // count frames of the file at its own rate into buffer, from its frame
     // firstFrame; the frames that came from the file

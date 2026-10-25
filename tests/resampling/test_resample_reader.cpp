@@ -5,7 +5,9 @@
 // another rate the way the stream reader reads it, must come out with every
 // sweep where it belongs on the file's timeline, within a twentieth of a frame. A
 // reader that pads a short read of the resampler with silence fails it: the
-// silence shifts all that follows.
+// silence shifts all that follows. And the reads of the stream reader after
+// a seek before a clip, at any fraction of a frame, are one read, bit for
+// bit: no frame lost or doubled where they join.
 
 #include "TAudioReader.h"
 #include "TFileIOBuffer.h"
@@ -19,6 +21,7 @@
 #include <cstdio>
 #include <cstring>
 #include <numeric>
+#include <utility>
 #include <vector>
 
 static int failures = 0;
@@ -141,10 +144,135 @@ static std::vector<float> read_all(const QString& path, uint outputRate, TAudioR
     return out;
 }
 
+struct Read {
+    TTimeRef location;
+    nframes_t count;
+};
+
+static std::vector<float> read_sequence(TAudioReader& reader, const std::vector<Read>& reads)
+{
+    std::vector<float> out;
+    TFileIOBuffer buffer;
+    for (const Read& r : reads) {
+        reader.read(buffer, r.location, r.count);
+        const float* data = buffer.get_channel_buffer(0).get_data(r.count);
+        out.insert(out.end(), data, data + r.count);
+    }
+    return out;
+}
+
+// The reads of TBufferedAudioStreamReader after a seek before a clip: the
+// clip starts modulus into slot 0, its first frame goes to slot position
+// offset = frame_nearest(modulus), the first read fills the rest of that
+// slot (rb_seek_to_transport_location()), the refills whole slots
+// (fill_realtime_buffers()). onSlots: the first read at the time of slot
+// position offset, as every refill reads at the time of its slot; else at
+// the source start, as before 2026-10-25.
+static std::vector<Read> ring_reads(const TTimeRef& sourceStart, const TTimeRef& modulus, uint rate, bool onSlots)
+{
+    const nframes_t bufferSize = 1024;
+    const TTimeRef slotStart = sourceStart - modulus;
+    const nframes_t offset = TTimeRef::to_nframes(TTimeRef::frame_nearest(modulus, rate));
+
+    std::vector<Read> reads;
+    reads.push_back({onSlots ? slotStart + TTimeRef(offset, rate) : sourceStart, bufferSize - offset});
+    nframes_t slot = 1;
+    for (const nframes_t refill : {nframes_t(7), nframes_t(3), nframes_t(5)}) {
+        reads.push_back({slotStart + TTimeRef(slot * bufferSize, rate), refill * bufferSize});
+        slot += refill;
+    }
+    return reads;
+}
+
+// The largest difference between the reads and one read from the frame of
+// the first read on, by a reader of its own
+static float off_one_read(const QString& path, uint rate, TAudioResampler::BackendType backend, const std::vector<Read>& reads)
+{
+    const std::unique_ptr<TAudioReader> ringReader = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> oneReader = TAudioReader::open(path);
+    ringReader->set_output_rate_and_resampler(rate, backend, TAudioResampler::default_realtime_quality(backend));
+    oneReader->set_output_rate_and_resampler(rate, backend, TAudioResampler::default_realtime_quality(backend));
+
+    const std::vector<float> ring = read_sequence(*ringReader, reads);
+    const nframes_t first = TTimeRef::to_nframes(TTimeRef::frame_nearest(reads.front().location, rate));
+    const std::vector<float> one = read_sequence(*oneReader, {{TTimeRef(first, rate), nframes_t(ring.size())}});
+
+    float worst = 0.0f;
+    for (size_t i = 0; i < ring.size(); ++i) {
+        worst = std::max(worst, std::fabs(ring[i] - one[i]));
+    }
+    return worst;
+}
+
+// The ring's reads join, bit for bit one read, whatever fraction of a frame
+// the source start and the clip's place in its slot have. Their first read
+// at the source start, off the slots' grid, doubles a frame where the
+// fractions fall wrong (0.6 and 0.3): that must show.
+static void ring_reads_join(const QTemporaryDir& dir)
+{
+    struct Case { uint fileRate; uint outputRate; };
+    for (const Case& c : {Case{44100, 48000}, Case{48000, 44100}, Case{48000, 48000}}) {
+        std::vector<float> tone(size_t(2 * c.fileRate));
+        for (size_t i = 0; i < tone.size(); ++i) {
+            tone[i] = float(0.5 * std::sin(2.0 * M_PI * 1000.0 * double(i) / c.fileRate));
+        }
+        const QString path = dir.filePath(QString("ring-%1.wav").arg(c.fileRate));
+        check(write_wav(path, c.fileRate, tone), "writing the tone");
+
+        // whole + fraction output frames as a time
+        const qint64 span = TTimeRef::UNIVERSAL_SAMPLE_RATE / c.outputRate;
+        auto frames = [span](qint64 whole, double fraction) { return TTimeRef(whole * span + std::llround(fraction * double(span))); };
+
+        // Between two frames the nearest, half to the later one (the file
+        // as it is, so the frames are the file's samples)
+        if (c.fileRate == c.outputRate) {
+            const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+            bool nearest = true;
+            for (const auto& [fraction, frame] : {std::pair{0.4, size_t(1000)}, std::pair{0.5, size_t(1001)}, std::pair{0.6, size_t(1001)}}) {
+                const std::vector<float> one = read_sequence(*reader, {{frames(1000, fraction), 1}});
+                nearest = nearest && one.front() == tone[frame];
+            }
+            check(nearest, "a location between two frames reads the nearest frame");
+            if (nearest) {
+                std::printf("ok:   a location between two frames reads the nearest frame (1000.4, 1000.5, 1000.6)\n");
+            }
+        }
+
+        // The fractions of the source start and of the clip's place in its slot
+        const std::pair<double, double> fractions[] = {{0.0, 0.0}, {0.0, 0.3}, {0.0, 0.7}, {0.6, 0.3}, {0.4, 0.6}, {0.5, 0.5}, {0.3, 0.5}};
+
+        for (TAudioResampler::BackendType backend : {TAudioResampler::BackendType::LIBSOXR, TAudioResampler::BackendType::LIBSAMPLERATE}) {
+            for (const auto& [sourceFraction, modulusFraction] : fractions) {
+                const float worst = off_one_read(path, c.outputRate, backend,
+                                                 ring_reads(frames(1000, sourceFraction), frames(300, modulusFraction), c.outputRate, true));
+                char what[200];
+                std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: the ring's reads, source start 1000%+.1f, clip %.1f into its slot, are one read (%.7f off)",
+                              c.fileRate, c.outputRate, qPrintable(TAudioResampler::backend_name(backend)), sourceFraction,
+                              300 + modulusFraction, double(worst));
+                check(worst == 0.0f, what);
+                if (worst == 0.0f) {
+                    std::printf("ok:   %s\n", what);
+                }
+            }
+
+            const float before = off_one_read(path, c.outputRate, backend, ring_reads(frames(1000, 0.6), frames(300, 0.3), c.outputRate, false));
+            char what[200];
+            std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: the first read at the source start (1000.6, clip 300.3 into its slot) doubles a frame (%.5f off)",
+                          c.fileRate, c.outputRate, qPrintable(TAudioResampler::backend_name(backend)), double(before));
+            check(before > 0.01f, what);
+            if (before > 0.01f) {
+                std::printf("ok:   %s\n", what);
+            }
+        }
+    }
+}
+
 int main()
 {
     QTemporaryDir dir;
     check(dir.isValid(), "a temporary directory");
+
+    ring_reads_join(dir);
 
     // The common pairs, the lowest and highest rates, the largest drop
     // after a seek (11025 -> 64000: 2559 frames), and equal rates, which
