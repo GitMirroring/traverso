@@ -555,9 +555,13 @@ int TAlsaDriver::configure_stream(const QString &device_name,
         // channels. Any other device (default, pipewire, plughw, ...) converts
         // to whatever is asked, up to 128 channels (pipewire) or 16 million
         // (the plug layer): there a stereo pair, or what the device allows.
-        unsigned int channels_min, channels_max;
-        snd_pcm_hw_params_get_channels_min(hw_params, &channels_min);
-        snd_pcm_hw_params_get_channels_max(hw_params, &channels_max);
+        unsigned int channels_min = 0;
+        unsigned int channels_max = 0;
+        if ((err = snd_pcm_hw_params_get_channels_min(hw_params, &channels_min)) < 0 ||
+            (err = snd_pcm_hw_params_get_channels_max(hw_params, &channels_max)) < 0) {
+            TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot get the channel range for %s", stream_name);
+            return -1;
+        }
         if (snd_pcm_type(handle) == SND_PCM_TYPE_HW) {
             *nchns = channels_max;
         } else {
