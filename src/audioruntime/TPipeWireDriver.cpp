@@ -375,7 +375,7 @@ int TPipeWireDriver::_write( nframes_t nframes ) T_REALTIME_SAFE
     // libpipewire's buffer queue: real-time safe by contract (the process
     // callback's own calls)
     struct pw_buffer* b = nullptr;
-    T_REALTIME_TRUSTED(b = pw_stream_dequeue_buffer(m_playbackStream);)
+    T_REALTIME_SAFE_BY_CONTRACT(b = pw_stream_dequeue_buffer(m_playbackStream);)
     if (!b) return -1;
 
     struct spa_buffer* buf = b->buffer;
@@ -403,7 +403,7 @@ int TPipeWireDriver::_write( nframes_t nframes ) T_REALTIME_SAFE
         channel->silence_buffer();
     }
 
-    T_REALTIME_TRUSTED(pw_stream_queue_buffer(m_playbackStream, b);)
+    T_REALTIME_SAFE_BY_CONTRACT(pw_stream_queue_buffer(m_playbackStream, b);)
     return 1;
 }
 

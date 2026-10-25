@@ -4,7 +4,7 @@
 #pragma once
 
 #include <QtGlobal>
-#include "TRealtime.h"
+#include "TRealTime.h"
 #include <atomic>
 #include <chrono>
 
@@ -45,7 +45,7 @@ public:
     {
         // The steady clock reads the vDSO: real-time safe by contract
         std::chrono::steady_clock::time_point now;
-        T_REALTIME_TRUSTED(now = std::chrono::steady_clock::now();)
+        T_REALTIME_SAFE_BY_CONTRACT(now = std::chrono::steady_clock::now();)
         return std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     }
 

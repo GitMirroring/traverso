@@ -77,7 +77,7 @@ int TJackDriver::_read( nframes_t nframes ) T_REALTIME_SAFE
 
         // libjack's port buffers: real-time safe by contract
         audio_sample_t* buffer = nullptr;
-        T_REALTIME_TRUSTED(buffer = static_cast<audio_sample_t*>(jack_port_get_buffer(pcpair->jackport, nframes));)
+        T_REALTIME_SAFE_BY_CONTRACT(buffer = static_cast<audio_sample_t*>(jack_port_get_buffer(pcpair->jackport, nframes));)
         pcpair->channel->read_from_hardware_port(buffer, nframes);
     }
     return 1;
@@ -89,7 +89,7 @@ int TJackDriver::_write( nframes_t nframes ) T_REALTIME_SAFE
         PortChannelPair* pcpair = m_outputs.at(i);
 
         void* buffer = nullptr;
-        T_REALTIME_TRUSTED(buffer = jack_port_get_buffer(pcpair->jackport, nframes);)
+        T_REALTIME_SAFE_BY_CONTRACT(buffer = jack_port_get_buffer(pcpair->jackport, nframes);)
         memcpy (buffer, pcpair->channel->get_buffer().get_data(nframes), sizeof (jack_default_audio_sample_t) * nframes);
         pcpair->channel->silence_buffer();
     }

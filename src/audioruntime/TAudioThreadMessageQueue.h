@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <functional>
 #include <type_traits>
 #include "cameron/readerwritercircularbuffer.h"
-#include "TRealtime.h"
+#include "TRealTime.h"
 
 /**
  * @brief An event passed between the GUI thread, the audio thread and the

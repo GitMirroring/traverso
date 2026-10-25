@@ -7,7 +7,7 @@
 
 #include <QList>
 
-#include "TRealtime.h"
+#include "TRealTime.h"
 #include <cstddef>
 #include <memory>
 

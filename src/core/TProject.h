@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TRtList.h"
 #include "TProcessContext.h"
 #include "TAudioDeviceSetup.h"
-#include "TRealtime.h"
+#include "TRealTime.h"
 
 class AudioBus;
 class AudioChannel;

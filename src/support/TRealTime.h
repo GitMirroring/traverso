@@ -20,11 +20,9 @@
 // T_REALTIME_SAFE when condition is true: for a template that serves both
 #define T_REALTIME_SAFE_IF(condition) noexcept(condition) [[clang::nonblocking(condition)]]
 
-// One statement that is real-time safe by its contract where Clang cannot
-// see it (§5): a call into a library (the clock, an LV2 plugin's run()), a
-// thread_local that is constant initialised. Clang's warning is off for that
-// statement only; RealtimeSanitizer still checks what it does.
-#define T_REALTIME_TRUSTED(...) \
+// Clang's real-time warning off for one statement: the two statement
+// markers below, not for direct use
+#define T_REALTIME_WARNING_OFF(...) \
     _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wfunction-effects\"") __VA_ARGS__ _Pragma("clang diagnostic pop")
 
 #if defined(__has_feature)
@@ -39,7 +37,7 @@
 #define T_REALTIME_SAFE noexcept
 #define T_BLOCKING
 #define T_REALTIME_SAFE_IF(condition) noexcept(condition)
-#define T_REALTIME_TRUSTED(...) __VA_ARGS__
+#define T_REALTIME_WARNING_OFF(...) __VA_ARGS__
 
 #endif
 
@@ -47,12 +45,18 @@
 #define T_REALTIME_SANITIZER_OFF
 #endif
 
+// One statement that is real-time safe by its contract where Clang cannot
+// see it (§5): a call into a library (the clock, an LV2 plugin's run()), a
+// thread_local that is constant initialised. Clang's warning is off for that
+// statement only; RealtimeSanitizer still checks what it does.
+#define T_REALTIME_SAFE_BY_CONTRACT(...) T_REALTIME_WARNING_OFF(__VA_ARGS__)
+
 // One statement that blocks by design inside the audio processing path (§5):
 // the clock of a driver that waits inside the cycle, a bounded wait. Neither
 // Clang nor RealtimeSanitizer reports it. Only in a small named function,
 // with a comment that says why.
-#define T_REALTIME_EXCEPTION(...) \
+#define T_BLOCKING_BY_DESIGN(...) \
     { \
         T_REALTIME_SANITIZER_OFF \
-        T_REALTIME_TRUSTED(__VA_ARGS__) \
+        T_REALTIME_WARNING_OFF(__VA_ARGS__) \
     }

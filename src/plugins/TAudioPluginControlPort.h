@@ -1,7 +1,7 @@
 #pragma once
 
 #include "TAudioPluginPort.h"
-#include "TRealtime.h"
+#include "TRealTime.h"
 
 class TAudioPlugin;
 class TCurve;

@@ -122,7 +122,7 @@ public:
         m_ticks.fetch_add(1, std::memory_order_relaxed);
         // Real-time safe by contract: an atomic add, and a post to the system
         // semaphore only when the scheduler thread waits; never a wait
-        T_REALTIME_TRUSTED(m_wake.signal();)
+        T_REALTIME_SAFE_BY_CONTRACT(m_wake.signal();)
     }
 
     // The owner's thread. A song (a sheet): its transport, its seek, whether

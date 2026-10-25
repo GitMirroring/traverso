@@ -25,7 +25,7 @@ if(TRAVERSO_TSAN)
 endif()
 
 # The real-time requirement (doc/design/realtime-audio-path.md): Clang checks
-# every function marked T_REALTIME_SAFE (TRealtime.h). Warnings while the
+# every function marked T_REALTIME_SAFE (TRealTime.h). Warnings while the
 # audio processing path is being marked; an error once it is clean.
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(traverso_compiler_settings INTERFACE -Wfunction-effects)

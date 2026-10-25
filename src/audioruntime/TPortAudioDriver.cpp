@@ -91,10 +91,10 @@ int TPortAudioDriver::_read(nframes_t nframes) T_REALTIME_SAFE
 
     // The clock: the blocking API waits here for the device
     // (doc/design/realtime-audio-path.md §5)
-    T_REALTIME_EXCEPTION(Pa_ReadStream(m_paStream, m_paInputBuffer.get_data(nframes), nframes);)
+    T_BLOCKING_BY_DESIGN(Pa_ReadStream(m_paStream, m_paInputBuffer.get_data(nframes), nframes);)
 
     trav_time_t now = 0;
-    T_REALTIME_TRUSTED(now = TTimeRef::get_nanoseconds_since_epoch();)
+    T_REALTIME_SAFE_BY_CONTRACT(now = TTimeRef::get_nanoseconds_since_epoch();)
     m_device->set_transport_cycle_start_time(now);
 
     uint channelCount = m_captureChannels.size();
@@ -129,11 +129,11 @@ int TPortAudioDriver::_write(nframes_t nframes) T_REALTIME_SAFE
     }
 
     trav_time_t now = 0;
-    T_REALTIME_TRUSTED(now = TTimeRef::get_nanoseconds_since_epoch();)
+    T_REALTIME_SAFE_BY_CONTRACT(now = TTimeRef::get_nanoseconds_since_epoch();)
     m_device->set_transport_cycle_end_time(now);
 
     // The clock: the blocking API waits here for the device
-    T_REALTIME_EXCEPTION(Pa_WriteStream(m_paStream, m_paOutputBuffer.get_data(nframes), nframes);)
+    T_BLOCKING_BY_DESIGN(Pa_WriteStream(m_paStream, m_paOutputBuffer.get_data(nframes), nframes);)
 
     return 1;
 }

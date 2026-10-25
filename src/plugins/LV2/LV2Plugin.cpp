@@ -261,7 +261,7 @@ void LV2Plugin::process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE
         // real-time safe by the LV2 contract (the plugin's own code is not
         // Traverso's to check; RealtimeSanitizer sees what it does)
         float* data = bus->get_buffer(i).get_data(nframes);
-        T_REALTIME_TRUSTED(lilv_instance_connect_port(m_instance, uint32_t(index), data);)
+        T_REALTIME_SAFE_BY_CONTRACT(lilv_instance_connect_port(m_instance, uint32_t(index), data);)
 	}
 	
 	for (int i=0; i<m_audioOutputPorts.size(); ++i) {
@@ -273,11 +273,11 @@ void LV2Plugin::process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE
         // real-time safe by the LV2 contract (the plugin's own code is not
         // Traverso's to check; RealtimeSanitizer sees what it does)
         float* data = bus->get_buffer(i).get_data(nframes);
-        T_REALTIME_TRUSTED(lilv_instance_connect_port(m_instance, uint32_t(index), data);)
+        T_REALTIME_SAFE_BY_CONTRACT(lilv_instance_connect_port(m_instance, uint32_t(index), data);)
 	}
 	
 	/* Run plugin for this cycle */
-	T_REALTIME_TRUSTED(lilv_instance_run(m_instance, nframes);)
+	T_REALTIME_SAFE_BY_CONTRACT(lilv_instance_run(m_instance, nframes);)
 	
 	// If we have a slave, and the bus has 2 channels, process the slave too!
 	if (m_slave && bus->get_channel_count() == 2) {

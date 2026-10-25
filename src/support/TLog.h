@@ -7,7 +7,7 @@
 #include <QString>
 #include <QtGlobal>
 
-#include "TRealtime.h"
+#include "TRealTime.h"
 
 #include <atomic>
 #include <cstddef>

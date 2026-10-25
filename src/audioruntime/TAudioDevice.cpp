@@ -156,7 +156,7 @@ TAudioDevice& audiodevice() T_REALTIME_SAFE
     // the audio thread it starts; later calls only find it made. Made once:
     // a deliberate exception (realtime-audio-path.md §5)
     TAudioDevice* device = nullptr;
-    T_REALTIME_EXCEPTION(device = &TAudioDevice::make_instance();)
+    T_BLOCKING_BY_DESIGN(device = &TAudioDevice::make_instance();)
     return *device;
 }
 

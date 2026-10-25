@@ -29,14 +29,14 @@ struct TRtStepBatch
         // Reading the monotonic clock does not block (the vDSO): real-time
         // safe by contract
         std::chrono::steady_clock::time_point start;
-        T_REALTIME_TRUSTED(start = std::chrono::steady_clock::now();)
+        T_REALTIME_SAFE_BY_CONTRACT(start = std::chrono::steady_clock::now();)
 
         for (auto& step : steps) {
             step->apply_in_audio_thread();
         }
 
         std::chrono::steady_clock::time_point end;
-        T_REALTIME_TRUSTED(end = std::chrono::steady_clock::now();)
+        T_REALTIME_SAFE_BY_CONTRACT(end = std::chrono::steady_clock::now();)
         applyDuration = end - start;
         // The cycle the audio thread's own records carry
         cycle = TLog::audio_cycle();
@@ -58,7 +58,7 @@ bool TRtPublishable::is_gui_thread() T_REALTIME_SAFE
     // by contract. QThread::currentThread() was not: in a thread Qt did not
     // start (JACK's, PipeWire's) its first call makes a QThread for it
     bool gui = false;
-    T_REALTIME_TRUSTED(gui = QThread::isMainThread();)
+    T_REALTIME_SAFE_BY_CONTRACT(gui = QThread::isMainThread();)
     return gui;
 }
 

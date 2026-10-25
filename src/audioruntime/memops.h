@@ -23,7 +23,7 @@
 
 #include <string.h>
 #include "defines.h"
-#include "TRealtime.h"
+#include "TRealTime.h"
 
 typedef	enum  {
 	None,

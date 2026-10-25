@@ -68,23 +68,23 @@ float accel_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float c
 {
 	float tmpmax = 0.0f;
 	// Accelerate's vDSP: real-time safe by contract
-	T_REALTIME_TRUSTED(vDSP_maxmgv(buf, 1, &tmpmax, nsamples);)
+	T_REALTIME_SAFE_BY_CONTRACT(vDSP_maxmgv(buf, 1, &tmpmax, nsamples);)
 	return f_max(current, tmpmax);
 }
 
 void accel_apply_gain_to_buffer (audio_sample_t * buf, nframes_t nframes, float gain) T_REALTIME_SAFE
 {
-	T_REALTIME_TRUSTED(vDSP_vsmul(buf, 1, &gain, buf, 1, nframes);)
+	T_REALTIME_SAFE_BY_CONTRACT(vDSP_vsmul(buf, 1, &gain, buf, 1, nframes);)
 }
 
 void accel_mix_buffers_with_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes, float gain) T_REALTIME_SAFE
 {
-	T_REALTIME_TRUSTED(vDSP_vsma(src, 1, &gain, dst, 1, dst, 1, nframes);)
+	T_REALTIME_SAFE_BY_CONTRACT(vDSP_vsma(src, 1, &gain, dst, 1, dst, 1, nframes);)
 }
 
 void accel_mix_buffers_no_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes) T_REALTIME_SAFE
 {
-	T_REALTIME_TRUSTED(vDSP_vadd(src, 1, dst, 1, dst, 1, nframes);)
+	T_REALTIME_SAFE_BY_CONTRACT(vDSP_vadd(src, 1, dst, 1, dst, 1, nframes);)
 }
 
 #endif

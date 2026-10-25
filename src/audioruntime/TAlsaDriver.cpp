@@ -933,7 +933,7 @@ int TAlsaDriver::get_channel_addresses (snd_pcm_uframes_t *capture_avail,
 
     if (capture_avail) {
         // ALSA's mmap calls: real-time safe by contract (no allocation, no wait)
-        T_REALTIME_TRUSTED(err = snd_pcm_mmap_begin (capture_handle, &capture_areas, capture_offset, capture_avail);)
+        T_REALTIME_SAFE_BY_CONTRACT(err = snd_pcm_mmap_begin (capture_handle, &capture_areas, capture_offset, capture_avail);)
         if (err < 0) {
             //			PERROR ("AlsaDriver: %s: mmap areas info error", alsa_name_capture);
             return -1;
@@ -947,7 +947,7 @@ int TAlsaDriver::get_channel_addresses (snd_pcm_uframes_t *capture_avail,
     }
 
     if (playback_avail) {
-        T_REALTIME_TRUSTED(err = snd_pcm_mmap_begin (playback_handle, &playback_areas, playback_offset, playback_avail);)
+        T_REALTIME_SAFE_BY_CONTRACT(err = snd_pcm_mmap_begin (playback_handle, &playback_areas, playback_offset, playback_avail);)
         if (err < 0) {
             //			PERROR ("AlsaDriver: %s: mmap areas info error ", alsa_name_playback);
             return -1;
@@ -1488,10 +1488,10 @@ int TAlsaDriver::_read(nframes_t nframes) T_REALTIME_SAFE
             channel->read_from_hardware_port(buf, nframes);
         }
 
-        T_REALTIME_TRUSTED(err = snd_pcm_mmap_commit (capture_handle, offset, contiguous);)
+        T_REALTIME_SAFE_BY_CONTRACT(err = snd_pcm_mmap_commit (capture_handle, offset, contiguous);)
         if (err < 0) {
             const char* reason = nullptr;
-            T_REALTIME_TRUSTED(reason = snd_strerror(err);)
+            T_REALTIME_SAFE_BY_CONTRACT(reason = snd_strerror(err);)
             TLOG_RT_E("alsa", "could not complete read of {} frames: {}", contiguous, reason);
             return -1;
         }
@@ -1544,10 +1544,10 @@ int TAlsaDriver::_write(nframes_t nframes) T_REALTIME_SAFE
             silence_untouched_channels (contiguous);
         }
 
-        T_REALTIME_TRUSTED(err = snd_pcm_mmap_commit (playback_handle, offset, contiguous);)
+        T_REALTIME_SAFE_BY_CONTRACT(err = snd_pcm_mmap_commit (playback_handle, offset, contiguous);)
         if (err < 0) {
             const char* reason = nullptr;
-            T_REALTIME_TRUSTED(reason = snd_strerror(err);)
+            T_REALTIME_SAFE_BY_CONTRACT(reason = snd_strerror(err);)
             TLOG_RT_E("alsa", "could not complete playback of {} frames: {}", contiguous, reason);
             if (err != EPIPE && err != ESTRPIPE)
                 return -1;

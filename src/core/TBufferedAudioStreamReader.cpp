@@ -523,7 +523,7 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
             while(m_bufferstatus.out_of_sync() && (counter < 100000)) {
                 // Freewheeling has no deadline: the wait for the disk thread
                 // is by design (doc/design/realtime-audio-path.md §5)
-                T_REALTIME_EXCEPTION(QThread::sleep(std::chrono::nanoseconds(10000));)
+                T_BLOCKING_BY_DESIGN(QThread::sleep(std::chrono::nanoseconds(10000));)
                 counter++;
             }
             if (m_bufferstatus.out_of_sync()) {
@@ -547,7 +547,7 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
     // allocation, no wait (try_enqueue() wakes the disk thread's semaphore
     // when it sleeps)
     size_t availableSlots = 0;
-    T_REALTIME_TRUSTED(availableSlots = m_rtBufferSlotsQueue->size_approx();)
+    T_REALTIME_SAFE_BY_CONTRACT(availableSlots = m_rtBufferSlotsQueue->size_approx();)
 
     while ((slot = dequeue_from_rt_queue(context)))
     {
@@ -569,7 +569,7 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
 
             read = slot->get_read_nframes();
 
-            T_REALTIME_TRUSTED(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
+            T_REALTIME_SAFE_BY_CONTRACT(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
         }
 
@@ -583,13 +583,13 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
 
             m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
             read = 0;
-            T_REALTIME_TRUSTED(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
+            T_REALTIME_SAFE_BY_CONTRACT(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
         }
 
         TLOG_RT_D("diskio", "ring read: skipping slot {}, location {} (universal frames)", slot->get_slot_number(), slotFileLocation.universal_frame());
 
-        T_REALTIME_TRUSTED(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
+        T_REALTIME_SAFE_BY_CONTRACT(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
     }
 
     // auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
@@ -609,7 +609,7 @@ TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessCont
     if (context.get_is_real_time()) {
         bool dequeued = false;
         // Real-time safe by contract: moodycamel's try_dequeue does not wait
-        T_REALTIME_TRUSTED(dequeued = m_rtBufferSlotsQueue->try_dequeue(slot);)
+        T_REALTIME_SAFE_BY_CONTRACT(dequeued = m_rtBufferSlotsQueue->try_dequeue(slot);)
         if (!dequeued) {
             // FIXME
             // What about feedback to user that we're missing out on the
@@ -618,11 +618,11 @@ TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessCont
     } else {
         trav_time_t startTime = 0;
         trav_time_t endTime = 0;
-        T_REALTIME_TRUSTED(startTime = TTimeRef::get_nanoseconds_since_epoch();)
+        T_REALTIME_SAFE_BY_CONTRACT(startTime = TTimeRef::get_nanoseconds_since_epoch();)
         // Freewheeling has no deadline: the wait for the disk thread is by
         // design (doc/design/realtime-audio-path.md §5)
-        T_REALTIME_EXCEPTION(m_rtBufferSlotsQueue->wait_dequeue(slot);)
-        T_REALTIME_TRUSTED(endTime = TTimeRef::get_nanoseconds_since_epoch();)
+        T_BLOCKING_BY_DESIGN(m_rtBufferSlotsQueue->wait_dequeue(slot);)
+        T_REALTIME_SAFE_BY_CONTRACT(endTime = TTimeRef::get_nanoseconds_since_epoch();)
         context.add_ringbuffer_read_wait_time(endTime - startTime);
     }
 

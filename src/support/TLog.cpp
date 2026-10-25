@@ -54,7 +54,7 @@ static qint64 now_nanoseconds() T_REALTIME_SAFE
 {
     // The steady clock reads the vDSO: real-time safe by contract
     std::chrono::steady_clock::time_point now;
-    T_REALTIME_TRUSTED(now = std::chrono::steady_clock::now();)
+    T_REALTIME_SAFE_BY_CONTRACT(now = std::chrono::steady_clock::now();)
     return std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
 }
 
@@ -70,13 +70,13 @@ static TLogThreadBuffer* thread_buffer() T_REALTIME_SAFE
 {
     TLogThreadBuffer* buffer = nullptr;
     bool claimTried = false;
-    T_REALTIME_TRUSTED(buffer = t_buffer; claimTried = t_claimTried;)
+    T_REALTIME_SAFE_BY_CONTRACT(buffer = t_buffer; claimTried = t_claimTried;)
     if (buffer || claimTried) {
         return buffer;
     }
     const int index = s_claimed.fetch_add(1, std::memory_order_acq_rel);
     buffer = index < MaxThreads ? &s_buffers[index] : nullptr;
-    T_REALTIME_TRUSTED(t_claimTried = true; t_buffer = buffer;)
+    T_REALTIME_SAFE_BY_CONTRACT(t_claimTried = true; t_buffer = buffer;)
     return buffer;
 }
 

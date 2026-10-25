@@ -148,7 +148,7 @@ void CorrelationMeter::process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE
 	// place them into an array, but well, there's only one now :-)
     // Real-time safe by contract: moodycamel's try_enqueue does not allocate
     // or wait, it wakes the reader's semaphore when the reader sleeps
-    T_REALTIME_TRUSTED(m_dataBuffer->try_enqueue(data);)
+    T_REALTIME_SAFE_BY_CONTRACT(m_dataBuffer->try_enqueue(data);)
 }
 
 

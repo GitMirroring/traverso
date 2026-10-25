@@ -6,7 +6,7 @@
 #pragma once
 
 #include "defines.h"
-#include "TRealtime.h"
+#include "TRealTime.h"
 #include <cmath>
 #include <algorithm>
 

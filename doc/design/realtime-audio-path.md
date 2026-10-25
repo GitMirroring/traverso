@@ -73,7 +73,7 @@ requirement can be made part of the type (§3.3).
 
 ## 3. Markers
 
-One header, `src/support/TRealtime.h` (next to TLog, which the path uses
+One header, `src/support/TRealTime.h` (next to TLog, which the path uses
 everywhere):
 
 ```cpp
@@ -151,34 +151,47 @@ and the audio thread can be real-time safe. TLog follows the same term:
   inside Qt and system libraries, and reports them with a stack trace. Run the
   headless tests and the headless project runs on the null driver under it.
 
-## 5. Deliberate exceptions
+## 5. Statements the compiler cannot judge
 
-Allowed only in a small named function, with a comment that links here, and
-only around the one statement (`TRealtime.h`). Four kinds:
+Every marker is a statement about the code. Two families, each with a form
+for a function and a form for one statement:
+
+| | function | one statement |
+|---|---|---|
+| safe | `T_REALTIME_SAFE` | `T_REALTIME_SAFE_BY_CONTRACT(...)` |
+| blocks | `T_BLOCKING` | `T_BLOCKING_BY_DESIGN(...)` |
+
+The function markers are an agreement between caller and writer, checked by
+Clang on both sides. The statement markers are for the writer only: the
+places where Clang cannot see, and a person answers for the claim. "By
+contract": the called code promises it is real-time safe. "By design": it
+blocks, and that was chosen. Allowed only in a small named function, with a
+comment that links here, and only around the one statement (`TRealTime.h`).
+Four kinds:
 
 - **The clock.** The driver's wait for the device (§2). Outside the path for
   ALSA and null; inside the cycle for PortAudio's blocking API, so there the
-  read and write callbacks wrap it in `T_REALTIME_EXCEPTION(...)`: Clang's
+  read and write callbacks wrap it in `T_BLOCKING_BY_DESIGN(...)`: Clang's
   warning and RealtimeSanitizer off for that statement.
 - **A bounded wait.** Known candidate: the audio thread waiting on the IO
   scheduler (C++20 semaphore with timeout), if the scheduler instrumentation
-  shows it prevents dropouts. `T_REALTIME_EXCEPTION(...)` too: a bounded wait
-  still blocks; it is an exception, not real-time safe.
+  shows it prevents dropouts. `T_BLOCKING_BY_DESIGN(...)` too: a bounded wait
+  still blocks, by design; it is not real-time safe.
 - **Made once, at start-up.** `tsmp()` and `audiodevice()` make their object
   on the first call, in the GUI thread before any audio thread runs; later
   calls only find it made. The making is in a function of its own, called in
-  `T_REALTIME_EXCEPTION(...)`: RealtimeSanitizer counts every run of a
+  `T_BLOCKING_BY_DESIGN(...)`: RealtimeSanitizer counts every run of a
   `T_REALTIME_SAFE` function as real time, the first one too.
 - **Code that is real-time safe by its contract** where Clang cannot see it:
   an LV2 plugin's `run()`, `jack_port_get_buffer()`,
   `pw_stream_dequeue_buffer()`, ALSA's mmap calls, the steady clock, a
-  `thread_local` that is constant initialised. `T_REALTIME_TRUSTED(...)`:
+  `thread_local` that is constant initialised. `T_REALTIME_SAFE_BY_CONTRACT(...)`:
   Clang's warning off for that statement; RealtimeSanitizer still checks at
   run time what it really does.
 
 ## 6. Order of work
 
-1. `TRealtime.h`, `ENABLE_RTSAN` in `cmake/CompilerFlags.cmake`, and the Clang
+1. `TRealTime.h`, `ENABLE_RTSAN` in `cmake/CompilerFlags.cmake`, and the Clang
    warning in the Clang build; the markers for TLog's real-time entry and
    `T_BLOCKING` on the known blocking functions (§3.2): they make the reports
    of step 2 right from the start.

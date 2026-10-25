@@ -50,7 +50,7 @@ TAudioThreadMessageQueue& tsmp() T_REALTIME_SAFE
     // in Traverso.cpp), before any audio thread runs; later calls only find
     // it made. Made once: a deliberate exception (realtime-audio-path.md §5)
     TAudioThreadMessageQueue* queue = nullptr;
-    T_REALTIME_EXCEPTION(queue = &TAudioThreadMessageQueue::make_instance();)
+    T_BLOCKING_BY_DESIGN(queue = &TAudioThreadMessageQueue::make_instance();)
     return *queue;
 }
 
@@ -135,7 +135,7 @@ void TAudioThreadMessageQueue::post_to_gui_thread(TAudioThreadMessageQueueEvent 
     // it moves the event (inline closures, no allocation) and wakes the
     // worker's semaphore when it sleeps
     bool enqueued = false;
-    T_REALTIME_TRUSTED(enqueued = m_postedFromRTThreadQueue->try_enqueue(std::move(event));)
+    T_REALTIME_SAFE_BY_CONTRACT(enqueued = m_postedFromRTThreadQueue->try_enqueue(std::move(event));)
     if (!enqueued) {
         m_droppedRtEvents.fetch_add(1, std::memory_order_relaxed);
     }
@@ -151,25 +151,25 @@ void TAudioThreadMessageQueue::process_posted_gui_events() T_REALTIME_SAFE
     // wait, and the closures are inline in the event (post_rt_task() checks
     // their size), so moving and clearing them frees nothing; an rtTask is a
     // T_REALTIME_SAFE closure (post_rt_task() checks that it is noexcept)
-    T_REALTIME_TRUSTED(TAudioThreadMessageQueueEvent event;)
+    T_REALTIME_SAFE_BY_CONTRACT(TAudioThreadMessageQueueEvent event;)
 
     while (true) {
         bool dequeued = false;
-        T_REALTIME_TRUSTED(dequeued = m_postedFromGuiThreadQueue->try_dequeue(event);)
+        T_REALTIME_SAFE_BY_CONTRACT(dequeued = m_postedFromGuiThreadQueue->try_dequeue(event);)
         if (!dequeued) {
             break;
         }
         if (event.rtTask) {
-            T_REALTIME_TRUSTED(event.rtTask();)
+            T_REALTIME_SAFE_BY_CONTRACT(event.rtTask();)
             // Real-time Safety: Erase closures immediately to clean up stack space inside the cycle loop
-            T_REALTIME_TRUSTED(event.rtTask = nullptr;)
+            T_REALTIME_SAFE_BY_CONTRACT(event.rtTask = nullptr;)
         }
 
         if (event.guiCallback) {
             // Real-time Safety: Utilize strict non-blocking try-semantics. Dropping an overflowing
             // callback event prevents kernel locks from disrupting the audio streaming deadline.
             bool enqueued = false;
-            T_REALTIME_TRUSTED(enqueued = m_processedByRTThreadQueue->try_enqueue(std::move(event));)
+            T_REALTIME_SAFE_BY_CONTRACT(enqueued = m_processedByRTThreadQueue->try_enqueue(std::move(event));)
             if (!enqueued) {
                 m_droppedRtEvents.fetch_add(1, std::memory_order_relaxed);
             }
