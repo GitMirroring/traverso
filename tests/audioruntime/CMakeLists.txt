@@ -15,3 +15,9 @@ add_executable(traverso_transport_position_test test_transport_position.cpp)
 target_include_directories(traverso_transport_position_test PRIVATE ${CMAKE_SOURCE_DIR}/src/audioruntime)
 target_link_libraries(traverso_transport_position_test PRIVATE traverso_compiler_settings traversosupport Qt6::Core)
 add_test(NAME transport_position COMMAND traverso_transport_position_test)
+
+# Headless test of the audio thread's closure type
+add_executable(traverso_realtime_closure_test test_realtime_closure.cpp)
+target_include_directories(traverso_realtime_closure_test PRIVATE ${CMAKE_SOURCE_DIR}/src/audioruntime)
+target_link_libraries(traverso_realtime_closure_test PRIVATE traverso_compiler_settings traversosupport)
+add_test(NAME realtime_closure COMMAND traverso_realtime_closure_test)

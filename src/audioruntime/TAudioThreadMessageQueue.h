@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <type_traits>
 #include "cameron/readerwritercircularbuffer.h"
 #include "TRealTime.h"
+#include "TRealTimeClosure.h"
 
 /**
  * @brief An event passed between the GUI thread, the audio thread and the
@@ -47,7 +48,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  * GUI thread, e.g. by calling deleteLater() on them.
  */
 struct TAudioThreadMessageQueueEvent {
-    std::move_only_function<void()> rtTask{nullptr};
+    TRealTimeClosure                rtTask;
     std::move_only_function<void()> guiCallback{nullptr};
 };
 
@@ -63,38 +64,18 @@ class TAudioThreadMessageQueue : public QObject
 
 public:
     /**
-     * @brief Pure C++23 Task Dispatcher.
-     *        Statically vefifies that lambda captures fit within real-time limits (64 bytes)
-     *        and are trivially copyable to prevent heap allocation inside the audio thread.
-     *
-     *        rtTask runs in the audio thread, guiSignal runs afterwards in the message
-     *        queue worker thread, not in the GUI thread. See TAudioThreadMessageQueueEvent
-     *        for what guiSignal may and may not do.
+     * rtTask runs in the audio thread: a TRealTimeClosure, whose type checks
+     * at compile time that it is real-time safe. guiSignal runs afterwards in
+     * the message queue worker thread, not in the GUI thread. See
+     * TAudioThreadMessageQueueEvent for what guiSignal may and may not do.
      */
     template<typename RTTask, typename GuiSignal = std::nullptr_t>
     void post_rt_task(RTTask&& rtTask, GuiSignal&& guiSignal = nullptr)
     {
-        using DecayedRTTask = std::decay_t<RTTask>;
         using DecayedGuiSignal = std::decay_t<GuiSignal>;
         using TargetType = std::move_only_function<void()>;
 
-        // 1. Real-Time Security Assertions for the Audio Thread
-        if constexpr (!std::is_same_v<DecayedRTTask, TargetType>) {
-            // Stored inline by std::move_only_function, so the audio thread
-            // never frees it: libstdc++ keeps a target inline up to the size
-            // of three pointers (its _Delegate), here 24 bytes; larger ones go
-            // on the heap and were freed in the audio thread
-            static_assert(sizeof(DecayedRTTask) <= 3 * sizeof(void*) && alignof(DecayedRTTask) <= alignof(void*),
-                          "post_rt_task: the closure must fit in three pointers (stored inline, never freed in the audio thread)");
-            // Run in the audio thread: a real-time safe closure, a lambda marked
-            // T_REALTIME_SAFE (doc/design/realtime-audio-path.md)
-            static_assert(std::is_nothrow_invocable_v<DecayedRTTask&>,
-                          "post_rt_task: the closure runs in the audio thread, mark the lambda T_REALTIME_SAFE");
-            static_assert(std::is_trivially_copyable_v<DecayedRTTask>,
-                          "CRITICAL C++23 ERROR: Lambda contains non-trivial captures which violates lock-free safety!");
-        }
-
-        // 2. Security Assertions for the GUI Return Signal
+        // The GUI return signal
         if constexpr (!std::is_same_v<DecayedGuiSignal, TargetType> && !std::is_same_v<DecayedGuiSignal, std::nullptr_t>) {
             static_assert(sizeof(DecayedGuiSignal) <= 64,
                           "CRITICAL C++23 ERROR: GUI Signal lambda exceeds 64 bytes!");
@@ -103,7 +84,7 @@ public:
         }
 
         TAudioThreadMessageQueueEvent event{};
-        event.rtTask = std::forward<RTTask>(rtTask);
+        event.rtTask = TRealTimeClosure(std::forward<RTTask>(rtTask));
         event.guiCallback = std::forward<GuiSignal>(guiSignal);
         post_gui_event(std::move(event));
     }

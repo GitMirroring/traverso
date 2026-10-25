@@ -247,9 +247,11 @@ Open, for the review (design choices, not made on the branch):
    and drivers' channel lists change only in `TAudioDevice::set_parameters()`
    between `shutdown()` and the new audio thread. Not checked: the old FIXME in
    `~TTrack` about monitors still in use when a track is deleted.)
-4. The queue's closures are `std::move_only_function`, kept inline by a size
-   check. A closure type of its own (an inline buffer, `noexcept` by type) would
-   make that a property of the type.
+4. (Done 2026-10-25.) The queue's closures for the audio thread are a
+   `TRealTimeClosure`: captures inline (three pointers), trivially copyable,
+   `noexcept`, and with Clang checked as real-time safe where the closure is
+   made. That holds with every standard library; the size check on
+   `std::move_only_function` held for libstdc++ only.
 5. Page faults and other stalls. `USE_MLOCK` is defined (CMakeLists.txt,
    where the system has `mlock()`), so `TRealTimeAudioBuffer`s are locked; a
    failed lock is only logged, and other memory of the path is not locked.

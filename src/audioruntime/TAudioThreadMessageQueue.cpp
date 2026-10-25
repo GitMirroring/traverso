@@ -148,9 +148,9 @@ void TAudioThreadMessageQueue::post_to_gui_thread(TAudioThreadMessageQueueEvent 
 void TAudioThreadMessageQueue::process_posted_gui_events() T_REALTIME_SAFE
 {
     // Real-time safe by contract: the queues' try_ calls do not allocate or
-    // wait, and the closures are inline in the event (post_rt_task() checks
-    // their size), so moving and clearing them frees nothing; an rtTask is a
-    // T_REALTIME_SAFE closure (post_rt_task() checks that it is noexcept)
+    // wait, and moving an event frees nothing (its rtTask is trivially
+    // copyable, its guiCallback only changes owner). The rtTask is real-time
+    // safe by its type (TRealTimeClosure)
     T_REALTIME_SAFE_BY_CONTRACT(TAudioThreadMessageQueueEvent event;)
 
     while (true) {
@@ -160,9 +160,8 @@ void TAudioThreadMessageQueue::process_posted_gui_events() T_REALTIME_SAFE
             break;
         }
         if (event.rtTask) {
-            T_REALTIME_SAFE_BY_CONTRACT(event.rtTask();)
-            // Real-time Safety: Erase closures immediately to clean up stack space inside the cycle loop
-            T_REALTIME_SAFE_BY_CONTRACT(event.rtTask = nullptr;)
+            event.rtTask();
+            event.rtTask = nullptr;
         }
 
         if (event.guiCallback) {

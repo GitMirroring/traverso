@@ -19,6 +19,7 @@ set(TRAVERSO_AUDIORUNTIME_SOURCES
     TVUMonitor.cpp
     memops.cpp
     TAudioThreadMessageQueue.h TAudioThreadMessageQueue.cpp
+    TRealTimeClosure.h
     TTransportControl.h TTransportControl.cpp
     TProcessContext.h
     TRtTransaction.h TRtTransaction.cpp
