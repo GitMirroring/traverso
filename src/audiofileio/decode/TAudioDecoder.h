@@ -43,7 +43,9 @@ public:
     uint rate() const { return m_rate; }
     nframes_t frame_count() const { return m_frames; }
     TTimeRef length() const { return TTimeRef(m_frames, m_rate); }
-    bool is_valid() const { return m_channels > 0 && m_frames > 0; }
+    // Channels, a rate and frames: a decoder without one of them reads
+    // nothing (and a rate of 0 would be divided by)
+    bool is_valid() const { return m_channels > 0 && m_rate > 0 && m_frames > 0; }
     // The library, for messages
     virtual QString decoder_type() const = 0;
 
