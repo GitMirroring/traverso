@@ -119,6 +119,8 @@ private:
     TAudioThreadMessageQueue(const TAudioThreadMessageQueue&) = delete;
 
     friend TAudioThreadMessageQueue& tsmp() T_REALTIME_SAFE;
+    // The one queue, made by the first call (tsmp())
+    static TAudioThreadMessageQueue& make_instance();
 
     friend class TAudioDevice;
     friend class TAudioThreadMessageQueueThread;

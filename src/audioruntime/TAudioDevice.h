@@ -211,6 +211,8 @@ private:
 
     // allow this function to create one instance
     friend TAudioDevice& audiodevice() T_REALTIME_SAFE;
+    // The one device, made by the first call (audiodevice())
+    static TAudioDevice& make_instance();
 
     friend class TAlsaDriver;
     friend class TPortAudioDriver;

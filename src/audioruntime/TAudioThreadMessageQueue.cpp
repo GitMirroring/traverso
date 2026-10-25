@@ -37,13 +37,21 @@ void TAudioThreadMessageQueueThread::run()
 /**
  * @brief Thread-safe Meyer's Singleton accessor for global queue coordination.
  */
+// The queue, made by the first call
+TAudioThreadMessageQueue& TAudioThreadMessageQueue::make_instance()
+{
+    static TAudioThreadMessageQueue ThreadSaveAddRemove;
+    return ThreadSaveAddRemove;
+}
+
 TAudioThreadMessageQueue& tsmp() T_REALTIME_SAFE
 {
-    // Real-time safe by contract: made by the first call, in the GUI thread at
-    // start-up (main() in Traverso.cpp), before any audio thread runs; later
-    // calls only find it made
-    T_REALTIME_TRUSTED(static TAudioThreadMessageQueue ThreadSaveAddRemove;)
-    return ThreadSaveAddRemove;
+    // The first call makes the queue, in the GUI thread at start-up (main()
+    // in Traverso.cpp), before any audio thread runs; later calls only find
+    // it made. Made once: a deliberate exception (realtime-audio-path.md §5)
+    TAudioThreadMessageQueue* queue = nullptr;
+    T_REALTIME_EXCEPTION(queue = &TAudioThreadMessageQueue::make_instance();)
+    return *queue;
 }
 
 /**

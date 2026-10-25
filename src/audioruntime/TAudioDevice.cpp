@@ -143,13 +143,21 @@ RELAYTOOL_JACK
    TAudioDevice intance will be created automatically!
  * @return The TAudioDevice instance, it will be automatically created on first call
  */
+// The device, made by the first call
+TAudioDevice& TAudioDevice::make_instance()
+{
+    static TAudioDevice device;
+    return device;
+}
+
 TAudioDevice& audiodevice() T_REALTIME_SAFE
 {
-    // Real-time safe by contract: made by the first call, in the GUI thread
-    // at start-up, before the audio thread it starts; later calls only find
-    // it made
-    T_REALTIME_TRUSTED(static TAudioDevice device;)
-    return device;
+    // The first call makes the device, in the GUI thread at start-up, before
+    // the audio thread it starts; later calls only find it made. Made once:
+    // a deliberate exception (realtime-audio-path.md §5)
+    TAudioDevice* device = nullptr;
+    T_REALTIME_EXCEPTION(device = &TAudioDevice::make_instance();)
+    return *device;
 }
 
 TAudioDevice::TAudioDevice()
