@@ -38,9 +38,9 @@ are lock-free on every platform Traverso builds for (`static_assert` on
 ARM); memory that is allocated before the cycle and only reused.
 
 Memory that is touched for the first time in the cycle can still fault a page
-in. `USE_MLOCK` (`TRealTimeAudioBuffer` locks its memory) is not defined by the
-build today; whether to define it is part of step 4. RealtimeSanitizer does
-not see page faults.
+in. `TRealTimeAudioBuffer` locks its memory (`USE_MLOCK`, defined by the build
+where the system has `mlock()`); a failed lock (`RLIMIT_MEMLOCK`) is only
+logged. RealtimeSanitizer does not see page faults.
 
 ## 2. The audio processing path
 
@@ -187,7 +187,7 @@ only around the one statement (`TRealtime.h`). Four kinds:
    while this is ongoing.
 3. Wrap what is real-time safe by contract and the PortAudio clock (§5).
 4. Run the headless tests and project runs on the null driver with
-   `ENABLE_RTSAN`; fix what it reports. Decide `USE_MLOCK` (§1).
+   `ENABLE_RTSAN`; fix what it reports.
 5. When the path is clean: `-Werror=function-effects` in the Clang build, so a
    new violation fails that build.
 6. Rename `TLOG_RT_*` to `TLOG_REALTIME_*`.
@@ -234,13 +234,15 @@ Open, for the review (design choices, not made on the branch):
 4. The queue's closures are `std::move_only_function`, kept inline by a size
    check. A closure type of its own (an inline buffer, `noexcept` by type) would
    make that a property of the type.
-5. `USE_MLOCK` is not defined, so buffers can fault pages in during the cycle.
+5. Page faults and other stalls. `USE_MLOCK` is defined (CMakeLists.txt,
+   where the system has `mlock()`), so `TRealTimeAudioBuffer`s are locked; a
+   failed lock is only logged, and other memory of the path is not locked.
    Stalls that no check sees (they are not calls): a page fault on memory the
    cycle touches for the first time or that was swapped out; a TLB shootdown
    when another thread unmaps memory (a large `free()`, the allocator handing
    memory back, a mapped file closed), which interrupts the audio thread's
-   core too. Against them: lock the path's buffers (`mlock`, decide
-   `USE_MLOCK`), and keep other threads from unmapping and mapping again and
+   core too. Against them: the path's buffers locked (and a failed lock made
+   visible), and keep other threads from unmapping and mapping again and
    again (reuse buffers, keep the peak files' mappings open): a note for the
    next work on the peak and DiskIO side.
 6. A run that plays: the clips' read path, recording, fades and plugins ran
