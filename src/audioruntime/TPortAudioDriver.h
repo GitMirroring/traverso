@@ -57,8 +57,8 @@ public:
     nframes_t get_capture_latency_frames() const override;
 
 protected:
-    int _read(nframes_t nframes) override;
-    int _write(nframes_t nframes) override;
+    int _read(nframes_t nframes) T_REALTIME_SAFE override;
+    int _write(nframes_t nframes) T_REALTIME_SAFE override;
     int _run_cycle() override;
 
 private:

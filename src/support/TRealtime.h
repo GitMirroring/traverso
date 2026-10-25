@@ -17,6 +17,8 @@
 // The function blocks by design (a wait, disk IO): Clang reports a call to it
 // from a real-time safe function, also where it cannot see its body.
 #define T_BLOCKING [[clang::blocking]]
+// T_REALTIME_SAFE when condition is true: for a template that serves both
+#define T_REALTIME_SAFE_IF(condition) noexcept(condition) [[clang::nonblocking(condition)]]
 
 // One statement that is real-time safe by its contract where Clang cannot
 // see it (§5): a call into a library (the clock, an LV2 plugin's run()), a
@@ -36,6 +38,7 @@
 
 #define T_REALTIME_SAFE noexcept
 #define T_BLOCKING
+#define T_REALTIME_SAFE_IF(condition) noexcept(condition)
 #define T_REALTIME_TRUSTED(...) __VA_ARGS__
 
 #endif

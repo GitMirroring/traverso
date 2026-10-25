@@ -1604,7 +1604,7 @@ void TProject::set_sheets_are_tracks_folder(bool isFolder)
 }
 
 
-int TProject::process(TProcessContext &context)
+int TProject::process(TProcessContext &context) T_REALTIME_SAFE
 {
     int result = 0;
     nframes_t nframes = context.get_nframes_to_process();
@@ -1649,7 +1649,7 @@ int TProject::process(TProcessContext &context)
     return result;
 }
 
-int TProject::transport_control(TTransportControl *transportControl)
+int TProject::transport_control(TTransportControl *transportControl) T_REALTIME_SAFE
 {
     bool result = true;
 

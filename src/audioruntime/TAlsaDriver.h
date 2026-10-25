@@ -51,8 +51,8 @@ public:
 
 	int start() override;
 	int stop() override;
-	int _read(nframes_t nframes) override;
-	int _write(nframes_t nframes) override;
+	int _read(nframes_t nframes) T_REALTIME_SAFE override;
+	int _write(nframes_t nframes) T_REALTIME_SAFE override;
 	int _null_cycle(nframes_t nframes) override;
 	int _run_cycle() override;
 	int attach() override;

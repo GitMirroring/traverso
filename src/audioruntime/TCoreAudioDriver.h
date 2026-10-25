@@ -37,8 +37,8 @@ public:
     explicit TCoreAudioDriver(TAudioDevice* device);
     ~TCoreAudioDriver() override;
 
-    int _read(nframes_t nframes) override;
-    int _write(nframes_t nframes) override;
+    int _read(nframes_t nframes) T_REALTIME_SAFE override;
+    int _write(nframes_t nframes) T_REALTIME_SAFE override;
     int _run_cycle() override { return 1; }
     int setup(bool capture = true, bool playback = true, const QString& device = "none");
     int attach() override;

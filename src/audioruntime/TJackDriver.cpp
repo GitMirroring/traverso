@@ -70,7 +70,7 @@ TJackDriver::~TJackDriver( )
     jack_client_close (m_jackClient);
 }
 
-int TJackDriver::_read( nframes_t nframes )
+int TJackDriver::_read( nframes_t nframes ) T_REALTIME_SAFE
 {
     for (int i=0; i<m_inputs.size(); i++) {
         PortChannelPair* pcpair = m_inputs.at(i);
@@ -80,7 +80,7 @@ int TJackDriver::_read( nframes_t nframes )
     return 1;
 }
 
-int TJackDriver::_write( nframes_t nframes )
+int TJackDriver::_write( nframes_t nframes ) T_REALTIME_SAFE
 {
     for (int i=0; i<m_outputs.size(); i++) {
         PortChannelPair* pcpair = m_outputs.at(i);

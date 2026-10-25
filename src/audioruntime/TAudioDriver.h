@@ -113,8 +113,10 @@ protected:
     std::atomic<nframes_t>  m_playbackFrameLatency{0};
     bool                    m_isFreeWheeling;
 
-    virtual int _read(nframes_t nframes);
-    virtual int _write(nframes_t nframes);
+    // On the audio processing path (TAudioDevice::run_one_cycle())
+
+    virtual int _read(nframes_t nframes) T_REALTIME_SAFE;
+    virtual int _write(nframes_t nframes) T_REALTIME_SAFE;
     virtual int _run_cycle();
 
 signals:

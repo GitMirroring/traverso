@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TRtList.h"
 #include "TProcessContext.h"
 #include "TAudioDeviceSetup.h"
+#include "TRealtime.h"
 
 class AudioBus;
 class AudioChannel;
@@ -56,9 +57,9 @@ class TProject : public TSession
 public :
     ~TProject();
 
-    int process(TProcessContext &context);
+    int process(TProcessContext &context) T_REALTIME_SAFE;
     // jackd only feature
-    int transport_control(TTransportControl* transportControl);
+    int transport_control(TTransportControl* transportControl) T_REALTIME_SAFE;
 
     AudioBus* get_playback_bus(const QString& name) const;
     AudioBus* get_capture_bus(const QString& name) const;

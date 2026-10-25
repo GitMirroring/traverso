@@ -1448,7 +1448,7 @@ int TAlsaDriver::bufsize(nframes_t nframes)
     return reset_parameters (nframes, user_nperiods,m_frameRate);
 }
 
-int TAlsaDriver::_read(nframes_t nframes)
+int TAlsaDriver::_read(nframes_t nframes) T_REALTIME_SAFE
 {
     snd_pcm_uframes_t contiguous;
     snd_pcm_uframes_t nread;
@@ -1497,7 +1497,7 @@ int TAlsaDriver::_read(nframes_t nframes)
     return 0;
 }
 
-int TAlsaDriver::_write(nframes_t nframes)
+int TAlsaDriver::_write(nframes_t nframes) T_REALTIME_SAFE
 {
     audio_sample_t* buf;
     snd_pcm_uframes_t nwritten;

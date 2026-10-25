@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TSession.h"
 #include <QDomNode>
 #include "defines.h"
+#include "TRealtime.h"
 
 #include <memory>
 #include <vector>
@@ -107,10 +108,10 @@ public:
     void set_recording(bool recording, bool realtime);
     void set_audio_sources_dir(const QString& dir);
 
-    int process(TProcessContext &context);
+    int process(TProcessContext &context) T_REALTIME_SAFE;
 
     // jackd only feature
-    int transport_control(TTransportControl* state);
+    int transport_control(TTransportControl* state) T_REALTIME_SAFE;
 
     bool get_cd_export_range(TTimeRef &startLocation, TTimeRef &endLocation);
     bool get_export_range(TTimeRef &exportStartLocation, TTimeRef &exportEndLocation);

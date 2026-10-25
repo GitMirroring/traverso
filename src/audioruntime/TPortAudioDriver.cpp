@@ -84,7 +84,7 @@ nframes_t TPortAudioDriver::get_capture_latency_frames() const
     return TAudioDriver::get_capture_latency_frames();
 }
 
-int TPortAudioDriver::_read(nframes_t nframes)
+int TPortAudioDriver::_read(nframes_t nframes) T_REALTIME_SAFE
 {
     Q_ASSERT(m_captureChannels.size() > 0);
     Q_ASSERT(m_paStream);
@@ -106,7 +106,7 @@ int TPortAudioDriver::_read(nframes_t nframes)
     return 1;
 }
 
-int TPortAudioDriver::_write(nframes_t nframes)
+int TPortAudioDriver::_write(nframes_t nframes) T_REALTIME_SAFE
 {
     Q_ASSERT(m_playbackChannels.size() > 0);
     Q_ASSERT(m_paStream);

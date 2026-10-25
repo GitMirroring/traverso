@@ -71,12 +71,12 @@ int TAudioDriver::_run_cycle( )
     return m_device->run_cycle( m_framesPerCycle, 0);
 }
 
-int TAudioDriver::_read( nframes_t  )
+int TAudioDriver::_read( nframes_t  ) T_REALTIME_SAFE
 {
 	return 1;
 }
 
-int TAudioDriver::_write( nframes_t )
+int TAudioDriver::_write( nframes_t ) T_REALTIME_SAFE
 {
         return 1;
 }

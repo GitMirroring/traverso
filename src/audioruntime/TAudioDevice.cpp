@@ -266,7 +266,7 @@ int TAudioDevice::_run_cycle()
     return result;
 }
 
-int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
+int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs ) T_REALTIME_SAFE
 {
     nframes_t left;
 
@@ -304,7 +304,7 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs )
     return 1;
 }
 
-int TAudioDevice::run_one_cycle( nframes_t nframes, float  )
+int TAudioDevice::run_one_cycle( nframes_t nframes, float  ) T_REALTIME_SAFE
 {
 
     if (m_isRealTime && m_driver->read(nframes) < 0) {

@@ -363,14 +363,14 @@ int TPipeWireDriver::process_callback()
 }
 
 // Called in RT thread from TAudioDevice
-int TPipeWireDriver::_read( nframes_t /*nframes*/ )
+int TPipeWireDriver::_read( nframes_t /*nframes*/ ) T_REALTIME_SAFE
 {
     // allready got data in _on_process_capture() callback
     return 1;
 }
 
 // Called in RT thread from TAudioDevice
-int TPipeWireDriver::_write( nframes_t nframes )
+int TPipeWireDriver::_write( nframes_t nframes ) T_REALTIME_SAFE
 {
     struct pw_buffer* b = pw_stream_dequeue_buffer(m_playbackStream);
     if (!b) return -1;

@@ -41,6 +41,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTransportControl.h"
 #include "TProcessContext.h"
 #include "defines.h"
+#include "TRealtime.h"
 
 class TAudioDeviceThread;
 class TAudioDriver;
@@ -59,27 +60,32 @@ class TCoreAudioDriver;
 class TPipeWireDriver;
 #endif
 
-template <typename Signature>
+// A member function bound to a function pointer, called like one. On the
+// audio processing path (RealtimeSafe, the default) the bound function has to
+// be T_REALTIME_SAFE: one that is not does not bind (noexcept, every
+// compiler), and Clang checks the call as real-time safe
+// (doc/design/realtime-audio-path.md).
+template <typename Signature, bool RealtimeSafe = true>
 class TRealTimeCallBack;
 
-template <typename ReturnType, typename... Args>
-class TRealTimeCallBack<ReturnType(Args...)> {
+template <typename ReturnType, typename... Args, bool RealtimeSafe>
+class TRealTimeCallBack<ReturnType(Args...), RealtimeSafe> {
 public:
     TRealTimeCallBack() : m_instance(nullptr), m_stub(nullptr) {}
 
     // Safely binds any member function at compile time
-    template <typename T, ReturnType(T::*Method)(Args...)>
+    template <typename T, ReturnType(T::*Method)(Args...) T_REALTIME_SAFE_IF(RealtimeSafe)>
     static TRealTimeCallBack from_method(T* instance) {
         TRealTimeCallBack d;
         d.m_instance = instance;
-        d.m_stub = [](void* obj_ptr, Args... args) -> ReturnType {
+        d.m_stub = [](void* obj_ptr, Args... args) T_REALTIME_SAFE_IF(RealtimeSafe) -> ReturnType {
             return (static_cast<T*>(obj_ptr)->*Method)(args...);
         };
         return d;
     }
 
     // Invocation operator: executes exactly like a raw function pointer
-    ReturnType operator()(Args... args) const {
+    ReturnType operator()(Args... args) const T_REALTIME_SAFE_IF(RealtimeSafe) {
         return (*m_stub)(m_instance, args...);
     }
 
@@ -87,12 +93,14 @@ public:
 
 private:
     void* m_instance;
-    ReturnType (*m_stub)(void*, Args...);
+    ReturnType (*m_stub)(void*, Args...) T_REALTIME_SAFE_IF(RealtimeSafe);
 };
 
 using TAudioDriverReadWriteCallBack = TRealTimeCallBack<int(nframes_t)>;
 using TProcessCallBack              = TRealTimeCallBack<int(TProcessContext&)>;
-using TRunCycleCallBack             = TRealTimeCallBack<int()>;
+// The driver's loop: its clock waits for the device, by design not real-time
+// safe; the path starts at TAudioDevice::run_cycle()
+using TRunCycleCallBack             = TRealTimeCallBack<int(), false>;
 using TTransportControlCallBack      = TRealTimeCallBack<int(TTransportControl*)>;
 
 struct TAudioDriverSetupMessage
@@ -260,8 +268,9 @@ private:
     QString			m_ditherShape;
 
 
-    int run_cycle(nframes_t nframes, float delayed_usecs);
-    int run_one_cycle(nframes_t nframes, float delayed_usecs);
+    // The audio processing path starts here, after the driver's clock
+    int run_cycle(nframes_t nframes, float delayed_usecs) T_REALTIME_SAFE;
+    int run_one_cycle(nframes_t nframes, float delayed_usecs) T_REALTIME_SAFE;
 
     int _run_cycle(); // called by AudioDeviceThread;
     int start_driver();

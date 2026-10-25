@@ -599,12 +599,12 @@ int TCoreAudioDriver::stop()
     return 1;
 }
 
-int TCoreAudioDriver::_read(nframes_t)
+int TCoreAudioDriver::_read(nframes_t) T_REALTIME_SAFE
 {
     return 1;
 }
 
-int TCoreAudioDriver::_write(nframes_t)
+int TCoreAudioDriver::_write(nframes_t) T_REALTIME_SAFE
 {
     return 1;
 }

@@ -506,7 +506,7 @@ void TSheet::solo_track(TTrack *track)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int TSheet::process(TProcessContext &context)
+int TSheet::process(TProcessContext &context) T_REALTIME_SAFE
 {
     // The schedulers are woken by the project, once per cycle after all
     // sheets (TProject::process())
@@ -752,7 +752,7 @@ TCommand* TSheet::start_transport()
 
 // Function can be called either from the GUI or RT thread.
 // So ALL functions called here need to be RT thread save!!
-int TSheet::transport_control(TTransportControl *transportControl)
+int TSheet::transport_control(TTransportControl *transportControl) T_REALTIME_SAFE
 {
     switch(transportControl->get_state())
     {
