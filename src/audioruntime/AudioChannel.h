@@ -73,7 +73,6 @@ private:
     uint 			m_number;
     qint64                  m_id;
     int                     m_type;
-    bool			m_mlocked;
     bool			m_monitoring;
     QString 		m_name;
 
