@@ -146,7 +146,7 @@ int SpectralMeter::get_windowing_function()
 	return m_windowingFunction;
 }
 
-void SpectralMeter::process(AudioBus* bus, nframes_t nframes)
+void SpectralMeter::process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE
 {
 	if ( is_bypassed() ) {
 		return;

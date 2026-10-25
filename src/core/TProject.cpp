@@ -1682,7 +1682,7 @@ TTimeRef TProject::get_last_location() const
     return lastLocation;
 }
 
-TTimeRef TProject::get_transport_location() const
+TTimeRef TProject::get_transport_location() const T_REALTIME_SAFE
 {
     if (!m_activeSheet) return TTimeRef();
 

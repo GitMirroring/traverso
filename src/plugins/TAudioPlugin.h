@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 #include "TContextItem.h"
+#include "TRealtime.h"
 #include <QString>
 #include <QDomNode>
 
@@ -57,7 +58,7 @@ public:
     virtual int init() {return 1;}
     virtual	QDomNode get_state(QDomDocument doc);
     virtual int set_state(const QDomNode & node );
-    virtual void process(AudioBus* bus, nframes_t nframes) = 0;
+    virtual void process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE = 0;
     virtual QString get_name() = 0;
 
     TAudioPluginControlPort* get_control_port_by_index(int index) const;

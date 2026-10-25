@@ -80,7 +80,7 @@ public:
 
 
     // Audio thread
-    void process(const TAudioBuffer &curveBuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes);
+    void process(const TAudioBuffer &curveBuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes) T_REALTIME_SAFE;
 
     // GUI thread
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TAudioPluginPort.h"
+#include "TRealtime.h"
 
 class TAudioPlugin;
 class TCurve;
@@ -24,7 +25,7 @@ public:
     void set_default(float def) {m_default = def;}
     void set_use_automation(bool automation);
 
-    bool use_automation();
+    bool use_automation() T_REALTIME_SAFE;
     TCurve* get_curve() const {return m_curve;}
 
     virtual QDomNode get_state(QDomDocument doc);

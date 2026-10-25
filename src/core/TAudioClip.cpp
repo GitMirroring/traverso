@@ -473,7 +473,7 @@ void TAudioClip::set_selected(bool /*selected*/)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int TAudioClip::process(TProcessContext &context)
+int TAudioClip::process(TProcessContext &context) T_REALTIME_SAFE
 {
     // Handle silence clips
     if (get_channel_count() == 0) {
@@ -594,7 +594,7 @@ int TAudioClip::process(TProcessContext &context)
 //
 //  Function called in RealTime AudioThread processing path
 //
-void TAudioClip::process_capture(TProcessContext &context)
+void TAudioClip::process_capture(TProcessContext &context) T_REALTIME_SAFE
 {
     AudioBus* bus = m_track->get_input_bus();
 
@@ -856,7 +856,7 @@ void TAudioClip::finish_recording()
     disconnect(m_sheet, &TSheet::transportStopped, this, &TAudioClip::finish_recording);
 }
 
-uint TAudioClip::get_channel_count( ) const
+uint TAudioClip::get_channel_count( ) const T_REALTIME_SAFE
 {
     if (m_readSource) {
         return m_readSource->get_channel_count();
@@ -953,7 +953,7 @@ TTimeRef TAudioClip::get_source_length( ) const
     return m_sourceLength;
 }
 
-int TAudioClip::recording_state( ) const
+int TAudioClip::recording_state( ) const T_REALTIME_SAFE
 {
     return m_recordingStatus;
 }

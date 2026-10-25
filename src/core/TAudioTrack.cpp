@@ -179,7 +179,7 @@ int TAudioTrack::disarm()
     return 1;
 }
 
-bool TAudioTrack::armed()
+bool TAudioTrack::armed() T_REALTIME_SAFE
 {
     return m_isArmed;
 }
@@ -253,7 +253,7 @@ void TAudioTrack::add_input_bus(AudioBus *bus)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int TAudioTrack::process(TProcessContext &context)
+int TAudioTrack::process(TProcessContext &context) T_REALTIME_SAFE
 {
     int processResult = 0;
 

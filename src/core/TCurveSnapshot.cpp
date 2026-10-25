@@ -123,7 +123,7 @@ double TCurveSnapshot::evaluate(double x, TCurveLookupCache& cache) const
     return s.a + u * (s.b + u * (s.c + u * s.d));
 }
 
-void TCurveSnapshot::get_vector(double x0, double x1, float* vec, nframes_t veclen, TCurveLookupCache& cache) const
+void TCurveSnapshot::get_vector(double x0, double x1, float* vec, nframes_t veclen, TCurveLookupCache& cache) const T_REALTIME_SAFE
 {
     const int npoints = int(m_points.size());
 

@@ -38,8 +38,8 @@ public:
 
     QDomNode get_state(QDomDocument doc);
     int set_state(const QDomNode & node );
-    void process(AudioBus* bus, nframes_t nframes);
-    void process_gain(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels);
+    void process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE;
+    void process_gain(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels) T_REALTIME_SAFE;
 
     void set_session(TSession* session);
     void set_gain(float gain);

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "defines.h"
+#include "TRealtime.h"
 
 #include <memory>
 #include <vector>
@@ -61,7 +62,7 @@ public:
     double get_range() const { return m_points.empty() ? 0.0 : m_points.back().when; }
 
     // Fills vec with veclen values of the curve between x0 and x1. Real-time safe.
-    void get_vector(double x0, double x1, float* vec, nframes_t veclen, TCurveLookupCache& cache) const;
+    void get_vector(double x0, double x1, float* vec, nframes_t veclen, TCurveLookupCache& cache) const T_REALTIME_SAFE;
 
     // The value of the curve at x, for x between the first and the last point
     double evaluate(double x, TCurveLookupCache& cache) const;

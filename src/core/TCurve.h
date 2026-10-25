@@ -44,7 +44,7 @@ public:
 
     // Audio thread
     // Modernized signature to process both vector curves and manual fader metrics simultaneously
-    int process(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels, float makeupgain=1.0f);
+    int process(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels, float makeupgain=1.0f) T_REALTIME_SAFE;
 
     // GUI thread
 

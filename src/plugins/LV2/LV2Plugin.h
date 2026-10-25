@@ -45,7 +45,7 @@ public:
         LV2Plugin(TSession* session, char* pluginUri);
 	~LV2Plugin();
 
-    void process(AudioBus* bus, nframes_t nframes);
+    void process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE;
 
 	LilvInstance*  get_instance() const {return m_instance; }
 	const LilvPlugin* get_slv2_plugin() const {return m_plugin; }

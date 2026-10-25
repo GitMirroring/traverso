@@ -194,7 +194,7 @@ QList<TAudioPlugin *> TAudioPluginChain::get_post_fader_plugins()
 }
 
 
-void TAudioPluginChain::process_pre_fader(AudioBus *bus, nframes_t nframes)
+void TAudioPluginChain::process_pre_fader(AudioBus *bus, nframes_t nframes) T_REALTIME_SAFE
 {
     for (TAudioPlugin* plugin : m_plugins.rt_items()) {
         if (plugin == m_fader) {
@@ -204,7 +204,7 @@ void TAudioPluginChain::process_pre_fader(AudioBus *bus, nframes_t nframes)
     }
 }
 
-int TAudioPluginChain::process_post_fader(AudioBus *bus, nframes_t nframes)
+int TAudioPluginChain::process_post_fader(AudioBus *bus, nframes_t nframes) T_REALTIME_SAFE
 {
     const std::vector<TAudioPlugin*>& plugins = m_plugins.rt_items();
     if (plugins.empty()) {

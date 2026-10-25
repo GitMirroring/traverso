@@ -93,7 +93,7 @@ void GainEnvelope::set_gain(float gain) {
 
 }
 
-void GainEnvelope::process(AudioBus * bus, nframes_t nframes)
+void GainEnvelope::process(AudioBus * bus, nframes_t nframes) T_REALTIME_SAFE
 {
     for (uint chan=0; chan<bus->get_channel_count(); ++chan) {
         bus->get_buffer(chan).apply_gain_to_buffer(nframes, m_gain);
@@ -110,7 +110,7 @@ TCurve * GainEnvelope::get_curve()
 }
 
 
-void GainEnvelope::process_gain(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels)
+void GainEnvelope::process_gain(AudioBus* audioBus, const TTimeRef& startlocation, const TTimeRef& endlocation, nframes_t nframes, uint channels) T_REALTIME_SAFE
 {
     TAudioPluginControlPort* port = m_controlPorts.at(0);
 

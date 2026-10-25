@@ -105,7 +105,7 @@ public:
     void set_work_at(const TTimeRef &location, const bool isFolder=false) override;
     void set_work_at_for_sheet_as_track_folder(const TTimeRef& location);
     void set_snapping(bool snap);
-    void set_recording(bool recording, bool realtime);
+    void set_recording(bool recording, bool realtime) T_REALTIME_SAFE;
     void set_audio_sources_dir(const QString& dir);
 
     int process(TProcessContext &context) T_REALTIME_SAFE;
@@ -183,7 +183,7 @@ private:
     inline void set_transport_seeking_state(bool seeking) {
         m_isSeeking.store(seeking);
     }
-    inline bool is_seeking() const override {
+    inline bool is_seeking() const T_REALTIME_SAFE override {
         return m_isSeeking.load();
     }
     void set_transport_stop_requested_state(bool stop) {
@@ -202,10 +202,10 @@ private:
 
     void init();
 
-    void rt_inititate_seek();
-    void initiate_seek_start(TTimeRef location);
-    void start_transport_rolling(bool realtime);
-    void stop_transport_rolling();
+    void rt_inititate_seek() T_REALTIME_SAFE;
+    void initiate_seek_start(TTimeRef location) T_REALTIME_SAFE;
+    void start_transport_rolling(bool realtime) T_REALTIME_SAFE;
+    void stop_transport_rolling() T_REALTIME_SAFE;
 
     void resize_buffers(nframes_t size);
 

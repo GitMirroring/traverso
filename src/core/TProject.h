@@ -84,7 +84,7 @@ public :
     uint get_rate() const;
     uint get_bitdepth() const;
     TTimeRef get_last_location() const;
-    TTimeRef get_transport_location() const;
+    TTimeRef get_transport_location() const T_REALTIME_SAFE;
 
     TResourcesManager* get_audiosource_manager() const;
     TPeakBuildService* get_peak_builds() const { return m_peakBuilds.get(); }

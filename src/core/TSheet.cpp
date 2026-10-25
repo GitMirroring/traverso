@@ -797,7 +797,7 @@ int TSheet::transport_control(TTransportControl *transportControl) T_REALTIME_SA
                 // so we delegate the prepare_recording() function call via a
                 // RT thread save signal!
                 Q_ASSERT(transportControl->is_realtime());
-                Q_ASSERT(this->thread() != QThread::currentThread());
+                Q_ASSERT(!TRtPublishable::is_gui_thread());
                 tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
                     .rtTask = nullptr,
                     .guiCallback = [this]() { emit prepareRecording(); }
@@ -806,12 +806,12 @@ int TSheet::transport_control(TTransportControl *transportControl) T_REALTIME_SA
                 return false;
             }
             if (!m_readyToRecord) {
-                PMESG("transport starting: still preparing for record");
+                TLOG_RT_D("transport", "transport starting: still preparing for record");
                 return false;
             }
             TLOG_RT_I("transport", "starting: ready for recording");
         }
-        PMESG("tranport starting: seek finished");
+        TLOG_RT_D("transport", "tranport starting: seek finished");
         return true;
 
 
@@ -834,7 +834,7 @@ int TSheet::transport_control(TTransportControl *transportControl) T_REALTIME_SA
 }
 
 // can be called from GUI and RT thread
-void TSheet::initiate_seek_start(TTimeRef location)
+void TSheet::initiate_seek_start(TTimeRef location) T_REALTIME_SAFE
 {
     if (is_seeking()) {
         TLOG_RT_D("transport", "already seeking, not starting the seek again");
@@ -847,16 +847,16 @@ void TSheet::initiate_seek_start(TTimeRef location)
 
     set_transport_locate_requested_state(true);
 
-    PMESG("tranport starting: initiating seek");
+    TLOG_RT_D("transport", "tranport starting: initiating seek");
 }
 
 //
 //  Function is ALWAYS called in RealTime AudioThread processing path
 //  Be EXTREMELY carefull to not call functions() that have blocking behavior!!
 //
-void TSheet::rt_inititate_seek()
+void TSheet::rt_inititate_seek() T_REALTIME_SAFE
 {
-    Q_ASSERT(this->thread() != QThread::currentThread());
+    Q_ASSERT(!TRtPublishable::is_gui_thread());
 
     if (is_transport_rolling()) {
         m_resumeTransport = true;
@@ -902,7 +902,7 @@ void TSheet::seek_finished()
 
 
 // RT thread save function
-void TSheet::start_transport_rolling(bool realtime)
+void TSheet::start_transport_rolling(bool realtime) T_REALTIME_SAFE
 {
     m_runStartPending.store(true, std::memory_order_relaxed);
     set_transport_rolling_state(true);
@@ -918,18 +918,18 @@ void TSheet::start_transport_rolling(bool realtime)
         emit transportStarted();
     }
 
-    PMESG("transport rolling");
+    TLOG_RT_D("transport", "transport rolling");
 }
 
 // RT thread save function
-void TSheet::stop_transport_rolling()
+void TSheet::stop_transport_rolling() T_REALTIME_SAFE
 {
     set_transport_stop_requested_state(true);
-    PMESG("transport stopped");
+    TLOG_RT_D("transport", "transport stopped");
 }
 
 // RT thread save function
-void TSheet::set_recording(bool recording, bool realtime)
+void TSheet::set_recording(bool recording, bool realtime) T_REALTIME_SAFE
 {
     m_isRecording = recording;
 

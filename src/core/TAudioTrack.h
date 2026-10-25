@@ -69,11 +69,11 @@ public :
     int set_state( const QDomNode& node );
 
     int arm();
-    bool armed();
+    bool armed() T_REALTIME_SAFE;
     int disarm();
     void toggle_show_clip_volume_automation();
 
-    int process(TProcessContext &context);
+    int process(TProcessContext &context) T_REALTIME_SAFE;
 
     bool operator<(const TAudioTrack &other) {
         printf("bool operator<(const AudioTrack &other)\n");

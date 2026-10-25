@@ -252,7 +252,7 @@ TTimeRef TSession::get_last_location() const
 	return TTimeRef();
 }
 
-TTimeRef TSession::get_transport_location() const
+TTimeRef TSession::get_transport_location() const T_REALTIME_SAFE
 {
 	if (m_parentSession) {
 		return m_parentSession->get_transport_location();
@@ -325,7 +325,7 @@ QPoint TSession::get_scrollbar_xy()
 	return point;
 }
 
-bool TSession::is_transport_rolling() const
+bool TSession::is_transport_rolling() const T_REALTIME_SAFE
 {
 	if (m_parentSession) {
 		return m_parentSession->is_transport_rolling();

@@ -42,7 +42,7 @@ public:
 	int init();
 	QDomNode get_state(QDomDocument doc);
 	int set_state(const QDomNode & node );
-    void process(AudioBus* bus, nframes_t nframes);
+    void process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE;
 	QString get_name();
 	int get_fr_size();
 	void set_fr_size(int);

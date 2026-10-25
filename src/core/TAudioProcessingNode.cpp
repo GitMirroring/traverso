@@ -76,7 +76,7 @@ void TAudioProcessingNode::set_gain(float gain)
     emit gainChanged();
 }
 
-float TAudioProcessingNode::get_gain() {
+float TAudioProcessingNode::get_gain() T_REALTIME_SAFE {
     return m_fader ? m_fader->get_gain() : 1.0f;
 }
 

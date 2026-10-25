@@ -246,7 +246,7 @@ int LV2Plugin::create_instance()
 }
 
 
-void LV2Plugin::process(AudioBus* bus, nframes_t nframes)
+void LV2Plugin::process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE
 {
 	if ( is_bypassed() ) {
 		return;
@@ -257,7 +257,11 @@ void LV2Plugin::process(AudioBus* bus, nframes_t nframes)
 		int index = port->get_index();
 		// If we are a slave, then we are meant to operate on the second channel of the Bus!
 		if (m_isSlave) i = 1;
-        lilv_instance_connect_port(m_instance, uint32_t(index), bus->get_buffer(i).get_data(nframes));
+        // LV2's connect_port() and run() are in the plugin's audio class:
+        // real-time safe by the LV2 contract (the plugin's own code is not
+        // Traverso's to check; RealtimeSanitizer sees what it does)
+        float* data = bus->get_buffer(i).get_data(nframes);
+        T_REALTIME_TRUSTED(lilv_instance_connect_port(m_instance, uint32_t(index), data);)
 	}
 	
 	for (int i=0; i<m_audioOutputPorts.size(); ++i) {
@@ -265,11 +269,15 @@ void LV2Plugin::process(AudioBus* bus, nframes_t nframes)
 		int index = port->get_index();
 		// If we are a slave, then we are meant to operate on the second channel of the Bus!
 		if (m_isSlave) i = 1;
-        lilv_instance_connect_port(m_instance, uint32_t(index), bus->get_buffer(i).get_data(nframes));
+        // LV2's connect_port() and run() are in the plugin's audio class:
+        // real-time safe by the LV2 contract (the plugin's own code is not
+        // Traverso's to check; RealtimeSanitizer sees what it does)
+        float* data = bus->get_buffer(i).get_data(nframes);
+        T_REALTIME_TRUSTED(lilv_instance_connect_port(m_instance, uint32_t(index), data);)
 	}
 	
 	/* Run plugin for this cycle */
-	lilv_instance_run(m_instance, nframes);
+	T_REALTIME_TRUSTED(lilv_instance_run(m_instance, nframes);)
 	
 	// If we have a slave, and the bus has 2 channels, process the slave too!
 	if (m_slave && bus->get_channel_count() == 2) {

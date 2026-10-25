@@ -78,7 +78,7 @@ int CorrelationMeter::init()
 }
 
 
-void CorrelationMeter::process(AudioBus* bus, nframes_t nframes)
+void CorrelationMeter::process(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE
 {
 	if ( is_bypassed() ) {
 		return;
@@ -146,7 +146,9 @@ void CorrelationMeter::process(AudioBus* bus, nframes_t nframes)
 	// 
 	// If we want to write more then 1 CorrelationMeterData struct, we have to 
 	// place them into an array, but well, there's only one now :-)
-    m_dataBuffer->try_enqueue(data);
+    // Real-time safe by contract: moodycamel's try_enqueue does not allocate
+    // or wait, it wakes the reader's semaphore when the reader sleeps
+    T_REALTIME_TRUSTED(m_dataBuffer->try_enqueue(data);)
 }
 
 

@@ -111,7 +111,7 @@ int TFadeCurve::set_state( const QDomNode & node )
 }
 
 
-void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes)
+void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes) T_REALTIME_SAFE
 {
     Q_ASSERT(bus->get_channel_count() == 2);
     Q_ASSERT(m_parentTimeLineEntity != nullptr);

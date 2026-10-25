@@ -120,8 +120,8 @@ protected:
     TRtValue<AudioBus*>  m_rtInputBus;
     QString              m_busInName;
 
-    void process_post_sends(nframes_t nframes);
-    void process_pre_sends(nframes_t nframes);
+    void process_post_sends(nframes_t nframes) T_REALTIME_SAFE;
+    void process_pre_sends(nframes_t nframes) T_REALTIME_SAFE;
     void set_input_bus(AudioBus* bus, TRtTransaction& transaction);
 
 private:

@@ -46,8 +46,8 @@ public:
 
     TCommand* add_plugin(TAudioPlugin* plugin, bool historable=true);
     TCommand* remove_plugin(TAudioPlugin* plugin, bool historable=true);
-    void process_pre_fader(AudioBus* bus, nframes_t nframes);
-    int process_post_fader(AudioBus* bus, nframes_t nframes);
+    void process_pre_fader(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE;
+    int process_post_fader(AudioBus* bus, nframes_t nframes) T_REALTIME_SAFE;
 
     void set_session(TSession* session);
 

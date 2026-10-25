@@ -82,7 +82,7 @@ void TAudioPluginControlPort::set_use_automation(bool automation)
 	}
 }
 
-bool TAudioPluginControlPort::use_automation()
+bool TAudioPluginControlPort::use_automation() T_REALTIME_SAFE
 {
 	return m_automation;
 }

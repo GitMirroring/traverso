@@ -138,7 +138,7 @@ int TCurve::process(
     nframes_t nframes,
     uint channels,
     audio_sample_t makeupgain
-    )
+    ) T_REALTIME_SAFE
 {
     const TCurveSnapshot* snapshot = rt_snapshot();
 

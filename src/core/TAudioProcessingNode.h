@@ -54,7 +54,7 @@ private:
     QPointer<QPropertyAnimation>  m_gainAnimation;
 
 public slots:
-    float get_gain();
+    float get_gain() T_REALTIME_SAFE;
     QString get_gain_db_string(int decimals=1);
 
     void set_gain(float gain);

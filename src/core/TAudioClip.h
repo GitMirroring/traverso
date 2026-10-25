@@ -57,7 +57,7 @@ public:
 
     void set_audio_source(TBufferedAudioStreamReader* source);
     int init_recording();
-    int process(TProcessContext &context);
+    int process(TProcessContext &context) T_REALTIME_SAFE;
 
     void move_to_location(const TTimeRef& location) final;
     unsigned int get_timeline_entity_type() const final { return TTimeLineEntity::Type::TypeAudioClip; }
@@ -100,7 +100,7 @@ public:
     TTimeRef extandable_length_right() const;
     TTimeRef extandable_lenght_left() const;
 
-    uint get_channel_count() const;
+    uint get_channel_count() const T_REALTIME_SAFE;
     uint get_rate() const;
     uint get_bitdepth() const;
     inline qint64 get_readsource_id( ) const {return m_readSourceId;}
@@ -123,7 +123,7 @@ public:
 
     bool is_moving() const {return m_isMoving;}
 
-    int recording_state() const;
+    int recording_state() const T_REALTIME_SAFE;
 
     float calculate_normalization_factor(float targetdB = 0.0);
 
@@ -168,7 +168,7 @@ private:
     void set_source_start_location(const TTimeRef& location);
     void set_track_end_location(const TTimeRef& location);
     void set_sources_active_state();
-    void process_capture(TProcessContext &context);
+    void process_capture(TProcessContext &context) T_REALTIME_SAFE;
 
     friend class TResourcesManager;
 

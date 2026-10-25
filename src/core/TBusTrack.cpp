@@ -103,7 +103,7 @@ void TBusTrack::set_name( const QString & name )
         TTrack::set_name(name);
 }
 
-int TBusTrack::process(TProcessContext &context)
+int TBusTrack::process(TProcessContext &context) T_REALTIME_SAFE
 {
     // Real-time Accumulation Protection: If the bus is muted or resting at absolute silence,
     // we MUST evacuate the streaming buffers to prevent scaling explosions from incoming track sends.

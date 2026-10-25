@@ -448,14 +448,14 @@ void TTrack::add_input_bus(const QString &name)
     }
 }
 
-void TTrack::process_post_sends(nframes_t nframes)
+void TTrack::process_post_sends(nframes_t nframes) T_REALTIME_SAFE
 {
     for (TSend* send : m_postSends.rt_items()) {
         process_send(send, nframes);
     }
 }
 
-void TTrack::process_pre_sends(nframes_t nframes)
+void TTrack::process_pre_sends(nframes_t nframes) T_REALTIME_SAFE
 {
     for (TSend* send : m_preSends.rt_items()) {
         process_send(send, nframes);

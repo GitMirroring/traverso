@@ -56,15 +56,15 @@ public:
 
 	qreal get_hzoom() const;
 	QPoint get_scrollbar_xy();
-    bool is_transport_rolling() const;
+    bool is_transport_rolling() const T_REALTIME_SAFE;
 	TTimeRef get_work_location() const;
 	virtual TTimeRef get_last_location() const;
     TTimeRef get_seek_transport_location() const {return m_seekTransportLocation;}
     // GUI thread. While rolling: the end of the buffer the audio thread
     // published last, see get_published_transport_position()
-	virtual TTimeRef get_transport_location() const;
+	virtual TTimeRef get_transport_location() const T_REALTIME_SAFE;
     // A seek is requested and not confirmed by the audio thread yet
-    virtual bool is_seeking() const { return false; }
+    virtual bool is_seeking() const T_REALTIME_SAFE { return false; }
     // The position the audio thread published last (the parent's for a
     // child session). Any thread
     TTransportPosition get_published_transport_position() const;
