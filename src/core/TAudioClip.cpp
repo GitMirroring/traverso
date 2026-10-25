@@ -562,9 +562,10 @@ int TAudioClip::process(TProcessCallBackData &processData)
         }
     }
 
-    if (readFrames != framesToProcess) {
-        TLOG_RT_W("clip", "read {} frames of the {} to process", readFrames, framesToProcess);
-    }
+    // The slot holds the file from the clip's first frame to the end of the
+    // cycle: the stream reader put its offset where the clip starts, with
+    // the same rounding as above
+    Q_ASSERT(readFrames == nframes - offset);
 
     for (TFadeCurve* fade : m_fades.rt_items()) {
         fade->process(m_sheet->get_curve_buffer(), bus, startLocation, endLocation, nframes);
