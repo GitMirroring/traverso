@@ -7,7 +7,7 @@
 
 #include "TAudioDevice.h"
 #include "TAudioThreadMessageQueue.h"
-#include "Debugger.h"
+#include "TLog.h"
 
 #include <QCoreApplication>
 #include <QThread>
@@ -41,9 +41,9 @@ struct TRtStepBatch
     {
         const auto microseconds = double(applyDuration.count()) / 1000.0;
         if (steps.size() >= 10) {
-            PMESG("TRtTransaction: applied %d steps in %.1f us", int(steps.size()), microseconds);
+            TLOG_D("rt", "applied {} steps in {:.1f} us", steps.size(), microseconds);
         } else {
-            PMESG2("TRtTransaction: applied %d steps in %.1f us", int(steps.size()), microseconds);
+            TLOG_T("rt", "applied {} steps in {:.1f} us", steps.size(), microseconds);
         }
     }
 };
@@ -112,7 +112,7 @@ void TRtTransaction::commit()
     // driver's thread applies the changes then. Steps may outlive the lists
     // they publish (they share the RT side), so that is safe.
     if (!audiodevice().is_driver_loaded()) {
-        PWARN("TRtTransaction: no audio driver loaded, the changes wait for the next one");
+        TLOG_W("rt", "no audio driver loaded, the changes wait for the next one");
     }
 
     tsmp().post_rt_task(
