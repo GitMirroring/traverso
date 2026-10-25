@@ -45,7 +45,6 @@ target_link_libraries(traversoaudiofileio
         Qt6::Core
         PkgConfig::SNDFILE
         PkgConfig::WAVPACK
-        PkgConfig::SAMPLERATE
         PkgConfig::MAD
 )
 
