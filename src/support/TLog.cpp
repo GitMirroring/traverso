@@ -110,6 +110,12 @@ void TLog::set_audio_cycle(quint64 cycle)
     }
 }
 
+quint64 TLog::audio_cycle()
+{
+    TLogThreadBuffer* buffer = thread_buffer();
+    return buffer ? buffer->cycle : 0;
+}
+
 TLog::Record* TLog::begin_record(TLogLevel level, const char* category)
 {
     TLogThreadBuffer* buffer = thread_buffer();

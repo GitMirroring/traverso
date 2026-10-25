@@ -22,6 +22,7 @@ struct TRtStepBatch
 {
     std::vector<std::unique_ptr<TRtStep>> steps;
     std::chrono::nanoseconds              applyDuration{0};
+    quint64                               cycle{0};
 
     void apply_in_audio_thread()
     {
@@ -33,14 +34,17 @@ struct TRtStepBatch
         }
 
         applyDuration = std::chrono::steady_clock::now() - start;
+        // The cycle the audio thread's own records carry
+        cycle = TLog::audio_cycle();
     }
 
     // Message queue worker thread: how long the audio thread spent on the batch,
-    // in the session log, a metric for every build
+    // in which cycle, in the session log, a metric for every build. Written
+    // later than the batch was applied, so the cycle tells when it was.
     void report() const
     {
         const auto microseconds = double(applyDuration.count()) / 1000.0;
-        TLOG_I("rt", "applied {} steps in {:.1f} us", steps.size(), microseconds);
+        TLOG_I("rt", "cycle {}: applied {} steps in {:.1f} us", cycle, steps.size(), microseconds);
     }
 };
 

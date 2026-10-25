@@ -85,6 +85,8 @@ public:
     static void name_thread(const char* name);
     // The audio thread tells which cycle it is processing; its records carry it
     static void set_audio_cycle(quint64 cycle);
+    // The cycle the calling thread set last, 0 in threads that never set one
+    static quint64 audio_cycle();
 
     // Formatted at the call, any thread but the audio thread
     template <class... Args>
