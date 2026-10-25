@@ -402,9 +402,10 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
                 return;
             }
 
+            // and now write it into the buffer using the offset
+            slot->update_location_and_offset(seekTransportLocation, fileLocation, offset);
             for (uint chan=0; chan<m_channelCount; ++chan) {
-                // and now write it into the buffer using the offset
-                slot->write_buffer(seekTransportLocation, fileLocation, fileDecodeBuffer.get_channel_buffer(chan).get_data(toRead), chan, toRead, offset);
+                slot->write_channel(chan, fileDecodeBuffer.get_channel_buffer(chan), 0, toRead);
             }
 
             if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
@@ -488,8 +489,9 @@ void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDec
             return;
         }
 
+        slot->update_location_and_offset(transportLocation, slotFileLocation);
         for (uint chan=0; chan<m_channelCount; ++chan) {
-            slot->write_buffer(transportLocation, slotFileLocation, fileDecodeBuffer.get_channel_buffer(chan).get_data(totalReadSize) + offset, chan, bufferSize);
+            slot->write_channel(chan, fileDecodeBuffer.get_channel_buffer(chan), offset, bufferSize);
         }
 
         offset += bufferSize;

@@ -119,9 +119,9 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
 
         TQueueBufferSlot virtualSlot(0, task.spec->get_channel_count(), nframes);
 
+        virtualSlot.update_location_and_offset(TTimeRef(), TTimeRef());
         for (uint chan = 0; chan < task.spec->get_channel_count(); ++chan) {
-            float* channelDataPtr = fileIOBuffer.get_channel_buffer(chan).get_data(nframes);
-            virtualSlot.write_buffer(TTimeRef(), TTimeRef(), channelDataPtr, chan, nframes);
+            virtualSlot.write_channel(chan, fileIOBuffer.get_channel_buffer(chan), 0, nframes);
         }
 
         writesource->rb_file_write(&virtualSlot, fileIOBuffer);

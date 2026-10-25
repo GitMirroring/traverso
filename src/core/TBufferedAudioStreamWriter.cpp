@@ -175,8 +175,9 @@ nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessCallBackData &pro
 
     TQueueBufferSlot* slot = dequeue_from_free_queue(processData);
     if (slot) {
+        slot->update_location_and_offset(processData.get_start_location(), TTimeRef());
         for (uint chan = 0; chan < m_channelCount; ++chan) {
-            slot->write_buffer(processData.get_start_location(), TTimeRef(), bus->get_buffer(chan).get_data(nframes), chan, nframes);
+            slot->write_channel(chan, bus->get_buffer(chan), 0, nframes);
         }
 
         if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {

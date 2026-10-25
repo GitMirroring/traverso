@@ -127,6 +127,13 @@ public:
         Mixer::mix_buffers_with_gain(dest.get_data(nframes), src.get_data(nframes), nframes, gain);
     }
 
+    // count frames of source, from its frame sourceAt, into this buffer from
+    // frame at
+    void copy_from(nframes_t at, const TAudioBuffer& source, nframes_t sourceAt, nframes_t count) {
+        Q_ASSERT(at + count <= m_size && sourceAt + count <= source.m_size);
+        memcpy(m_buffer + at, source.m_buffer + sourceAt, sizeof(audio_sample_t) * count);
+    }
+
     static void copy_data(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) {
         memcpy(dest.get_data(nframes), src.get_data(nframes), nframes * sizeof(audio_sample_t));
     }

@@ -107,12 +107,10 @@ void TAudioFileMerger::process_task(MergeTask task)
         task.readsource0->file_read(decodebuffer0, spec.get_export_location(), nframes);
         task.readsource1->file_read(decodebuffer1, spec.get_export_location(), nframes);
 
-        float* destinationLeft = decodebuffer0.get_channel_buffer(0).get_data(nframes);
-        float* destinationRight = decodebuffer1.get_channel_buffer(0).get_data(nframes);
-
         TQueueBufferSlot virtualSlot(0, 2, nframes);
-        virtualSlot.write_buffer(TTimeRef(), TTimeRef(), destinationLeft, 0, nframes);
-        virtualSlot.write_buffer(TTimeRef(), TTimeRef(), destinationRight, 1, nframes);
+        virtualSlot.update_location_and_offset(TTimeRef(), TTimeRef());
+        virtualSlot.write_channel(0, decodebuffer0.get_channel_buffer(0), 0, nframes);
+        virtualSlot.write_channel(1, decodebuffer1.get_channel_buffer(0), 0, nframes);
 
         writesource.rb_file_write(&virtualSlot, fileIOBuffer);
 

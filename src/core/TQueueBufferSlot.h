@@ -54,19 +54,25 @@ public:
         TAudioBuffer::copy_data(dest, *m_buffers.at(channel), nframes);
     }
 
-    // nframes frames of source into channel from slot position offset on.
-    // The positions before offset are silence: the stream starts at offset
-    // (a clip after a seek), and a slot comes back from the free queue with
-    // what it held before.
-    void write_buffer(const TTimeRef &transportLocation, const TTimeRef &fileLocation, audio_sample_t* source, uint channel, nframes_t nframes, nframes_t offset = 0) {
-        Q_ASSERT(offset + nframes <= m_bufferSize);
-        Q_ASSERT(nframes > 0);
-        audio_sample_t* data = m_buffers.at(channel)->get_data(offset + nframes);
-        memset(data, 0, offset * sizeof(audio_sample_t));
-        memcpy(data + offset, source, nframes * sizeof(audio_sample_t));
+    // Where the slot's frames are: on the transport, in the file, and from
+    // which slot position on they are the stream's (a clip after a seek
+    // starts at offset). Once per slot, before write_channel()
+    void update_location_and_offset(const TTimeRef& transportLocation, const TTimeRef& fileLocation, nframes_t offset = 0) {
+        Q_ASSERT(offset < m_bufferSize);
         m_transportLocation = transportLocation;
         m_fileLocation = fileLocation;
         m_bufferWriteOffset = offset;
+    }
+
+    // count frames of source, from its frame sourceAt, into channel from the
+    // slot's offset on. The positions before the offset are silence: a slot
+    // comes back from the free queue with what it held before
+    void write_channel(uint channel, const TAudioBuffer& source, nframes_t sourceAt, nframes_t count) {
+        Q_ASSERT(m_bufferWriteOffset + count <= m_bufferSize);
+        Q_ASSERT(count > 0);
+        TAudioBuffer& buffer = *m_buffers.at(channel);
+        buffer.silence(0, m_bufferWriteOffset);
+        buffer.copy_from(m_bufferWriteOffset, source, sourceAt, count);
     }
 
     void set_file_location(const TTimeRef& fileLocation) {
@@ -75,12 +81,6 @@ public:
 
     void set_transport_location(const TTimeRef& transportLocation) {
         m_transportLocation = transportLocation;
-    }
-
-    void silence_buffers() {
-        for(size_t i=0; i<m_buffers.size(); ++i) {
-            m_buffers.at(i)->silence_data();
-        }
     }
 
 private:
