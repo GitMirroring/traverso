@@ -232,7 +232,8 @@ TBufferedAudioStreamReader::Resampler TBufferedAudioStreamReader::configured_res
     if (!TAudioResampler::qualities(backend).contains(quality)) {
         quality = TAudioResampler::default_realtime_quality(backend);
     }
-    return {int(backend), quality};
+    const bool resample = config().get_property("Conversion", "DynamicResampling", true).toBool();
+    return {qint32(backend), qint16(quality), resample};
 }
 
 void TBufferedAudioStreamReader::set_output_rate_and_resampler(int outputRate, const Resampler& resampler)
@@ -241,9 +242,10 @@ void TBufferedAudioStreamReader::set_output_rate_and_resampler(int outputRate, c
     Q_ASSERT_X(m_audioReader, "ReadSource::set_output_rate_and_resampler", "No Resample Audio Reader");
 
     // Without resampling the file is read at its own rate (and plays at
-    // another pitch when the device's rate is not the file's)
-    const bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();
-    const uint readRate = useResampling ? uint(outputRate) : m_audioReader->file_rate();
+    // another pitch when the device's rate is not the file's). The choice
+    // comes with the resampler, from the owner's thread: this runs in the
+    // IO scheduler's threads too, where TConfig must not be read
+    const uint readRate = resampler.resample ? uint(outputRate) : m_audioReader->file_rate();
     m_audioReader->set_output_rate_and_resampler(readRate, TAudioResampler::BackendType(resampler.backend), resampler.quality);
 
     m_outputRate = outputRate;

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <atomic>
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -30,12 +31,17 @@ public:
     };
 
     // The resampler of a stream that reads at another rate than its file's:
-    // a TAudioResampler backend and one of its qualities, as the owner chose
-    // them; the scheduler only hands them on
+    // a TAudioResampler backend and one of its qualities, and whether to
+    // resample at all, as the owner chose them in its thread; the scheduler
+    // only hands them on
     struct Resampler
     {
-        int backend{0};
-        int quality{0};
+        qint32 backend{0};
+        // A backend's quality number (small)
+        qint16 quality{0};
+        // false: the file is read at its own rate (and plays at another
+        // pitch when the device's rate is not the file's)
+        bool resample{true};
         bool operator==(const Resampler&) const = default;
     };
 
@@ -75,3 +81,7 @@ public:
     // it once remove_stream() returned.
     virtual void retire() = 0;
 };
+
+// 8 bytes: the scheduler keeps it in a lock-free std::atomic (after the
+// class: its default member initialisers are usable only once it is complete)
+static_assert(sizeof(TIOStream::Resampler) == 8 && std::atomic<TIOStream::Resampler>::is_always_lock_free);
