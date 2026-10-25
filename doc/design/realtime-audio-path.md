@@ -226,11 +226,14 @@ Open, for the review (design choices, not made on the branch):
    in their GUI branch. Proposal: the callback for the audio thread only, and a
    function of its own for the GUI.
 2. The JACK driver's port pairs live in `QList`s that the audio thread appends
-   to and removes from (`post_rt_task()`). Proposal: a `TRtList`, like the rest
-   of the path.
-3. `TTrack::m_vumonitors` is a GUI `QList` that the audio thread reads
-   (`process_monitoring()`). Proposal: a `TRtList`. Clang does not report it:
-   reading a list is real-time safe; the shared access is the problem.
+   to and removes from (`post_rt_task()`): one writer, no race, but `append()`
+   allocates in the cycle. Proposal: a `TRtList` (a `std::vector` snapshot the
+   GUI thread builds), like the rest of the path.
+3. (Checked 2026-10-25, no problem: `TTrack::m_vumonitors` is filled in the
+   constructor and never changed, the audio thread only reads it; the buses'
+   and drivers' channel lists change only in `TAudioDevice::set_parameters()`
+   between `shutdown()` and the new audio thread. Not checked: the old FIXME in
+   `~TTrack` about monitors still in use when a track is deleted.)
 4. The queue's closures are `std::move_only_function`, kept inline by a size
    check. A closure type of its own (an inline buffer, `noexcept` by type) would
    make that a property of the type.
