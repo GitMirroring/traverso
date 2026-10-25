@@ -245,10 +245,17 @@ Open, for the review (design choices, not made on the branch):
    visible), and keep other threads from unmapping and mapping again and
    again (reuse buffers, keep the peak files' mappings open): a note for the
    next work on the peak and DiskIO side.
-6. A run that plays: the clips' read path, recording, fades and plugins ran
+6. The buffers the path uses are `TRealTimeAudioBuffer`s (locked), and code off
+   the path does not use them where a plain `TAudioBuffer` will do (user
+   2026-10-25): check every `TAudioBuffer` the path reads or writes (the
+   buses' channels, the slots, the curve buffer, the clip's and plugins'
+   buffers, `TFileIOBuffer`s the audio thread touches) and every
+   `TRealTimeAudioBuffer` outside it. `TAudioBuffer::is_memory_locked()`
+   (review-stack 2b39ca5b) tells whether a lock was granted.
+7. A run that plays: the clips' read path, recording, fades and plugins ran
    under RealtimeSanitizer only as far as the tests reach them. This waits for
    the headless runner.
-7. Step 5 (`-Werror=function-effects`) once 1 and 2 are solved. Step 6 (the
+8. Step 5 (`-Werror=function-effects`) once 1 and 2 are solved. Step 6 (the
    `TLOG_REALTIME_*` name) after the review.
 
 Out of scope here: placing the audio thread on performance cores and thread
