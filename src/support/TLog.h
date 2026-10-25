@@ -7,6 +7,8 @@
 #include <QString>
 #include <QtGlobal>
 
+#include "TRealtime.h"
+
 #include <atomic>
 #include <cstddef>
 #include <format>
@@ -73,9 +75,9 @@ public:
     };
 
     // The runtime level: records above it are not recorded
-    static TLogLevel level() { return s_level.load(std::memory_order_relaxed); }
+    static TLogLevel level() T_REALTIME_SAFE { return s_level.load(std::memory_order_relaxed); }
     static void set_level(TLogLevel level);
-    static bool enabled(TLogLevel level) { return quint8(level) <= quint8(TLog::level()); }
+    static bool enabled(TLogLevel level) T_REALTIME_SAFE { return quint8(level) <= quint8(TLog::level()); }
     // "error", "warning", "info", "debug", "trace"; false for anything else
     static bool level_from_name(std::string_view name, TLogLevel& level);
 
@@ -84,9 +86,9 @@ public:
     // call does anything
     static void name_thread(const char* name);
     // The audio thread tells which cycle it is processing; its records carry it
-    static void set_audio_cycle(quint64 cycle);
+    static void set_audio_cycle(quint64 cycle) T_REALTIME_SAFE;
     // The cycle the calling thread set last, 0 in threads that never set one
-    static quint64 audio_cycle();
+    static quint64 audio_cycle() T_REALTIME_SAFE;
 
     // Formatted at the call, any thread but the audio thread
     template <class... Args>
@@ -114,7 +116,7 @@ public:
     // like {:.2f} is allowed), args are numbers, bools or string literals.
     // Formatted in the drain thread
     template <class... Args>
-    static void write_rt(TLogLevel level, const char* category, const char* fmt, Args... args)
+    static void write_rt(TLogLevel level, const char* category, const char* fmt, Args... args) T_REALTIME_SAFE
     {
         static_assert(sizeof...(Args) <= MaxArgs, "TLOG_RT: at most six arguments");
         if (!enabled(level)) {
@@ -149,11 +151,13 @@ public:
     static std::string format_deferred(const Record& record);
 
 private:
-    static Record* begin_record(TLogLevel level, const char* category);
-    static void commit_record();
+    // Real-time safe: a slot of the calling thread's ring, claimed for the
+    // thread on its first record, and its release to the drain
+    static Record* begin_record(TLogLevel level, const char* category) T_REALTIME_SAFE;
+    static void commit_record() T_REALTIME_SAFE;
 
     template <class T>
-    static void set_arg(Arg& arg, T value)
+    static void set_arg(Arg& arg, T value) T_REALTIME_SAFE
     {
         using Type = std::remove_cvref_t<T>;
         if constexpr (std::is_same_v<Type, bool>) {

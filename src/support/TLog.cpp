@@ -50,9 +50,12 @@ static std::atomic<quint32>   s_unclaimedDropped{0};
 static thread_local TLogThreadBuffer* t_buffer = nullptr;
 static thread_local bool              t_claimTried = false;
 
-static qint64 now_nanoseconds()
+static qint64 now_nanoseconds() T_REALTIME_SAFE
 {
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    // The steady clock reads the vDSO: real-time safe by contract
+    std::chrono::steady_clock::time_point now;
+    T_REALTIME_TRUSTED(now = std::chrono::steady_clock::now();)
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
 }
 
 // The seconds in the log count from the start of the process, so records
@@ -61,19 +64,20 @@ static const qint64 s_processStartNs = now_nanoseconds();
 static const qint64 s_processStartWallMs = QDateTime::currentMSecsSinceEpoch();
 
 // The calling thread's buffer, claimed from the pool on the first call.
-// nullptr when the pool is exhausted
-static TLogThreadBuffer* thread_buffer()
+// nullptr when the pool is exhausted. Real-time safe: the thread_locals are
+// constant initialised (no TLS allocation) and the claim is an atomic add
+static TLogThreadBuffer* thread_buffer() T_REALTIME_SAFE
 {
-    if (t_buffer || t_claimTried) {
-        return t_buffer;
+    TLogThreadBuffer* buffer = nullptr;
+    bool claimTried = false;
+    T_REALTIME_TRUSTED(buffer = t_buffer; claimTried = t_claimTried;)
+    if (buffer || claimTried) {
+        return buffer;
     }
-    t_claimTried = true;
     const int index = s_claimed.fetch_add(1, std::memory_order_acq_rel);
-    if (index >= MaxThreads) {
-        return nullptr;
-    }
-    t_buffer = &s_buffers[index];
-    return t_buffer;
+    buffer = index < MaxThreads ? &s_buffers[index] : nullptr;
+    T_REALTIME_TRUSTED(t_claimTried = true; t_buffer = buffer;)
+    return buffer;
 }
 
 void TLog::set_level(TLogLevel level)
@@ -103,20 +107,20 @@ void TLog::name_thread(const char* name)
     buffer->named.store(true, std::memory_order_release);
 }
 
-void TLog::set_audio_cycle(quint64 cycle)
+void TLog::set_audio_cycle(quint64 cycle) T_REALTIME_SAFE
 {
     if (TLogThreadBuffer* buffer = thread_buffer()) {
         buffer->cycle = cycle;
     }
 }
 
-quint64 TLog::audio_cycle()
+quint64 TLog::audio_cycle() T_REALTIME_SAFE
 {
     TLogThreadBuffer* buffer = thread_buffer();
     return buffer ? buffer->cycle : 0;
 }
 
-TLog::Record* TLog::begin_record(TLogLevel level, const char* category)
+TLog::Record* TLog::begin_record(TLogLevel level, const char* category) T_REALTIME_SAFE
 {
     TLogThreadBuffer* buffer = thread_buffer();
     if (!buffer) {
@@ -141,9 +145,9 @@ TLog::Record* TLog::begin_record(TLogLevel level, const char* category)
     return &record;
 }
 
-void TLog::commit_record()
+void TLog::commit_record() T_REALTIME_SAFE
 {
-    TLogThreadBuffer* buffer = t_buffer;
+    TLogThreadBuffer* buffer = thread_buffer();
     buffer->head.store(buffer->head.load(std::memory_order_relaxed) + 1, std::memory_order_release);
 }
 

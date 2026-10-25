@@ -4,15 +4,16 @@
 #pragma once
 
 // The real-time requirement as a property of a function, checked by Clang 20
-// and later (-Wfunction-effects, RealtimeSanitizer); empty for other
-// compilers. What it means and where it applies:
+// and later (-Wfunction-effects, RealtimeSanitizer); with other compilers
+// only the noexcept. What it means and where it applies:
 // doc/design/realtime-audio-path.md.
 
 #if defined(__clang__) && __clang_major__ >= 20
 
 // The function meets the real-time requirement: it does not allocate, lock,
-// wait, block or throw. Clang checks its body and every call it makes.
-#define T_REALTIME_SAFE [[clang::nonblocking]]
+// wait, block or throw. noexcept with every compiler (the function type is
+// the same everywhere); Clang also checks its body and every call it makes.
+#define T_REALTIME_SAFE noexcept [[clang::nonblocking]]
 // The function blocks by design (a wait, disk IO): Clang reports a call to it
 // from a real-time safe function, also where it cannot see its body.
 #define T_BLOCKING [[clang::blocking]]
@@ -33,7 +34,7 @@
 
 #else
 
-#define T_REALTIME_SAFE
+#define T_REALTIME_SAFE noexcept
 #define T_BLOCKING
 #define T_REALTIME_TRUSTED(...) __VA_ARGS__
 

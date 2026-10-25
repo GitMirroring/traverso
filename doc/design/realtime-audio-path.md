@@ -85,15 +85,20 @@ everywhere):
 // The function meets the real-time requirement (doc/design/realtime-audio-path.md).
 // Checked by Clang 20 and later; empty for other compilers.
 #if defined(__clang__) && __clang_major__ >= 20
-#define T_REALTIME_SAFE [[clang::nonblocking]]
+#define T_REALTIME_SAFE noexcept [[clang::nonblocking]]
 #define T_BLOCKING      [[clang::blocking]]
 #else
-#define T_REALTIME_SAFE
+#define T_REALTIME_SAFE noexcept
 #define T_BLOCKING
 #endif
 ```
 
 ### 3.1 T_REALTIME_SAFE
+
+`noexcept` with every compiler, so the function type is the same everywhere
+and a real-time safe function cannot let an exception out (§1); Clang asks
+for it too (`-Wperf-constraint-implies-noexcept`). An override of a marked
+virtual has to be `noexcept` with every compiler.
 
 On every function of the audio processing path: `TAudioDevice::run_cycle()`
 and the functions it calls. With Clang, the body is checked at compile time
