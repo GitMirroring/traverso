@@ -59,7 +59,8 @@ static double level_after(TAudioResampler::BackendType backend, int quality, dou
     const nframes_t pending = resampler.pending_frames();
     if (produced + pending <= out.get_size()) {
         produced += resampler.flush(&outBuffer, produced, pending);
-        flushedAll = flushedAll && resampler.flush(&outBuffer, produced, std::min<nframes_t>(16, out.get_size() - produced)) == 0;
+        const nframes_t again = resampler.flush(&outBuffer, produced, std::min<nframes_t>(16, out.get_size() - produced));
+        flushedAll = flushedAll && again == 0;
     }
     const float* output = out.data(0, produced);
 
@@ -75,8 +76,9 @@ static double level_after(TAudioResampler::BackendType backend, int quality, dou
 }
 
 // At the end of the input one flush of pending_frames() gives all that is
-// left, and the output is the input's length at the new rate: at every
-// quality of a backend, converting up and down, by small and large ratios
+// left, and the output is the input's length at the new rate within a
+// frame: at every quality of a backend, converting up and down, by small and
+// large ratios
 static void flush_gives_all(TAudioResampler::BackendType backend, uint inputRate, uint outputRate)
 {
     const double ratio = double(outputRate) / inputRate;
@@ -112,7 +114,7 @@ static void flush_gives_all(TAudioResampler::BackendType backend, uint inputRate
         std::snprintf(what, sizeof(what), "%s %s, %u -> %u Hz: one flush of pending_frames() (%u) gives all, %u frames of %.1f",
                       name.constData(), TAudioResampler::quality_name(backend, quality).toLatin1().constData(), inputRate, outputRate,
                       pending, produced, expected);
-        check(room && again == 0 && std::fabs(double(produced) - expected) <= 2.0, what);
+        check(room && again == 0 && std::fabs(double(produced) - expected) <= 1.0, what);
     }
 }
 

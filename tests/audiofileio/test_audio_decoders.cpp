@@ -164,6 +164,8 @@ static bool write_mp3_with_padding(const QString& path, const Source& source, in
     if (lame < 0 || lame + 24 > head.size()) {
         return false;
     }
+    // The tag's CRC (its last two bytes) is not made again: Traverso's
+    // parser does not check it (mpg123 does)
     head[lame + 22] = char((uchar(head[lame + 22]) & 0xf0) | ((padding >> 8) & 0x0f));
     head[lame + 23] = char(padding & 0xff);
     return file.seek(0) && file.write(head) == head.size();
@@ -220,7 +222,8 @@ struct Format
     float seekTolerance = 0.0f;
     // A defect known of the writer of this file, and only that (review of
     // 2026-10-24): its audio lies knownLag frames off where it was written.
-    // The placement check takes exactly that lag as known; every other
+    // The placement check takes exactly that lag as known, and fails once
+    // the audio is in place (the entry is out of date then); every other
     // check counts, as for any file.
     long knownLag = 0;
     const char* knownWhy = nullptr;
@@ -317,8 +320,13 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
             const size_t from = total / 3;
             const long lag = best_lag(source.channel(channel), from, sequential[channel], from, 4096, 3000);
             std::snprintf(what, sizeof(what), "%s: channel %u where it was written (%+ld frames)", format.name, channel, lag);
-            if (lag != 0 && format.knownWhy && lag == format.knownLag) {
+            if (format.knownWhy && lag == format.knownLag) {
                 std::printf("%s: KNOWN (%s)\n", what, format.knownWhy);
+            } else if (format.knownWhy && lag == 0) {
+                // The defect is gone: its entry has to go too
+                char fixed[240];
+                std::snprintf(fixed, sizeof(fixed), "%s: in place now, the KNOWN entry (%s) is out of date: remove it", what, format.knownWhy);
+                check(false, fixed);
             } else {
                 check(lag == 0, what);
             }
