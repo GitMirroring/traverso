@@ -887,7 +887,7 @@ void TSheet::seek_finished()
         // The new takes reach their tracks through the audio thread's queue:
         // rolling starts through the same queue, behind them, so the first
         // cycle records into them
-        tsmp().post_rt_task([this]() { start_transport_rolling(true); });
+        tsmp().post_rt_task([this]() T_REALTIME_SAFE { start_transport_rolling(true); });
         m_resumeTransport = false;
     }
 

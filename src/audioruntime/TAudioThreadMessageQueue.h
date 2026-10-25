@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <functional>
 #include <type_traits>
 #include "cameron/readerwritercircularbuffer.h"
+#include "TRealtime.h"
 
 /**
  * @brief An event passed between the GUI thread, the audio thread and the
@@ -79,8 +80,16 @@ public:
 
         // 1. Real-Time Security Assertions for the Audio Thread
         if constexpr (!std::is_same_v<DecayedRTTask, TargetType>) {
-            static_assert(sizeof(DecayedRTTask) <= 64,
-                          "CRITICAL C++23 ERROR: Lambda closure exceeds the 64-byte real-time stack limit!");
+            // Stored inline by std::move_only_function, so the audio thread
+            // never frees it: libstdc++ keeps a target inline up to the size
+            // of three pointers (its _Delegate), here 24 bytes; larger ones go
+            // on the heap and were freed in the audio thread
+            static_assert(sizeof(DecayedRTTask) <= 3 * sizeof(void*) && alignof(DecayedRTTask) <= alignof(void*),
+                          "post_rt_task: the closure must fit in three pointers (stored inline, never freed in the audio thread)");
+            // Run in the audio thread: a real-time safe closure, a lambda marked
+            // T_REALTIME_SAFE (doc/design/realtime-audio-path.md)
+            static_assert(std::is_nothrow_invocable_v<DecayedRTTask&>,
+                          "post_rt_task: the closure runs in the audio thread, mark the lambda T_REALTIME_SAFE");
             static_assert(std::is_trivially_copyable_v<DecayedRTTask>,
                           "CRITICAL C++23 ERROR: Lambda contains non-trivial captures which violates lock-free safety!");
         }
@@ -102,19 +111,19 @@ public:
     void post_gui_event(TAudioThreadMessageQueueEvent &&event);
     // Called from the audio thread. Despite the name, event.guiCallback runs in the
     // message queue worker thread, see TAudioThreadMessageQueueEvent.
-    void post_to_gui_thread(TAudioThreadMessageQueueEvent &&event);
+    void post_to_gui_thread(TAudioThreadMessageQueueEvent &&event) T_REALTIME_SAFE;
 
 private:
     TAudioThreadMessageQueue();
     ~TAudioThreadMessageQueue() override;
     TAudioThreadMessageQueue(const TAudioThreadMessageQueue&) = delete;
 
-    friend TAudioThreadMessageQueue& tsmp();
+    friend TAudioThreadMessageQueue& tsmp() T_REALTIME_SAFE;
 
     friend class TAudioDevice;
     friend class TAudioThreadMessageQueueThread;
 
-    void process_posted_gui_events();
+    void process_posted_gui_events() T_REALTIME_SAFE;
     void process_processed_events_by_rt_thread_queue();
 
     std::unique_ptr<moodycamel::BlockingReaderWriterCircularBuffer<TAudioThreadMessageQueueEvent>> m_postedFromGuiThreadQueue;
@@ -135,4 +144,4 @@ signals:
     void queueOverflowDetected();
 };
 
-TAudioThreadMessageQueue& tsmp();
+TAudioThreadMessageQueue& tsmp() T_REALTIME_SAFE;

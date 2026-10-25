@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioThreadMessageQueue.h"
 #include "Debugger.h"
+#include "TRtTransaction.h"
 
 /**
  * @brief Continuous background execution loop for processing thread-safe events.
@@ -36,9 +37,12 @@ void TAudioThreadMessageQueueThread::run()
 /**
  * @brief Thread-safe Meyer's Singleton accessor for global queue coordination.
  */
-TAudioThreadMessageQueue& tsmp()
+TAudioThreadMessageQueue& tsmp() T_REALTIME_SAFE
 {
-    static TAudioThreadMessageQueue ThreadSaveAddRemove;
+    // Real-time safe by contract: made by the first call, in the GUI thread at
+    // start-up (main() in Traverso.cpp), before any audio thread runs; later
+    // calls only find it made
+    T_REALTIME_TRUSTED(static TAudioThreadMessageQueue ThreadSaveAddRemove;)
     return ThreadSaveAddRemove;
 }
 
@@ -111,13 +115,20 @@ void TAudioThreadMessageQueue::post_gui_event(TAudioThreadMessageQueueEvent &&ev
  * @brief Enqueues feedback indicators or execution callbacks originating from the RT audio context.
  *        Guarantees strict non-blocking behavior to prevent priority inversion glitches.
  */
-void TAudioThreadMessageQueue::post_to_gui_thread(TAudioThreadMessageQueueEvent &&event)
+void TAudioThreadMessageQueue::post_to_gui_thread(TAudioThreadMessageQueueEvent &&event) T_REALTIME_SAFE
 {
-    Q_ASSERT_X(this->thread() != QThread::currentThread(), "TSMP::post_to_gui_thread", "Adding event from NON-RT Thread!!");
+    // The queue lives in the GUI thread; not QThread::currentThread(), which
+    // makes a QThread object in a thread Qt did not start
+    Q_ASSERT_X(!TRtPublishable::is_gui_thread(), "TSMP::post_to_gui_thread", "Adding event from NON-RT Thread!!");
 
     // Real-time Safety: Never fall back to wait_enqueue. If the queue is entirely full,
     // drop the execution signal to maintain audio integrity and record the failure via an atomic counter.
-    if (!m_postedFromRTThreadQueue->try_enqueue(std::move(event))) {
+    // Real-time safe by contract: the try_ call does not allocate or wait;
+    // it moves the event (inline closures, no allocation) and wakes the
+    // worker's semaphore when it sleeps
+    bool enqueued = false;
+    T_REALTIME_TRUSTED(enqueued = m_postedFromRTThreadQueue->try_enqueue(std::move(event));)
+    if (!enqueued) {
         m_droppedRtEvents.fetch_add(1, std::memory_order_relaxed);
     }
 }
@@ -126,21 +137,32 @@ void TAudioThreadMessageQueue::post_to_gui_thread(TAudioThreadMessageQueueEvent 
  * @brief Flushes tasks dispatched by the GUI layer. Executed entirely inside the RT processing context.
  *        Guarantees immediate zero-heap cleanup of task structures right after execution.
  */
-void TAudioThreadMessageQueue::process_posted_gui_events()
+void TAudioThreadMessageQueue::process_posted_gui_events() T_REALTIME_SAFE
 {
-    TAudioThreadMessageQueueEvent event;
+    // Real-time safe by contract: the queues' try_ calls do not allocate or
+    // wait, and the closures are inline in the event (post_rt_task() checks
+    // their size), so moving and clearing them frees nothing; an rtTask is a
+    // T_REALTIME_SAFE closure (post_rt_task() checks that it is noexcept)
+    T_REALTIME_TRUSTED(TAudioThreadMessageQueueEvent event;)
 
-    while (m_postedFromGuiThreadQueue->try_dequeue(event)) {
+    while (true) {
+        bool dequeued = false;
+        T_REALTIME_TRUSTED(dequeued = m_postedFromGuiThreadQueue->try_dequeue(event);)
+        if (!dequeued) {
+            break;
+        }
         if (event.rtTask) {
-            event.rtTask();
+            T_REALTIME_TRUSTED(event.rtTask();)
             // Real-time Safety: Erase closures immediately to clean up stack space inside the cycle loop
-            event.rtTask = nullptr;
+            T_REALTIME_TRUSTED(event.rtTask = nullptr;)
         }
 
         if (event.guiCallback) {
             // Real-time Safety: Utilize strict non-blocking try-semantics. Dropping an overflowing
             // callback event prevents kernel locks from disrupting the audio streaming deadline.
-            if (!m_processedByRTThreadQueue->try_enqueue(std::move(event))) {
+            bool enqueued = false;
+            T_REALTIME_TRUSTED(enqueued = m_processedByRTThreadQueue->try_enqueue(std::move(event));)
+            if (!enqueued) {
                 m_droppedRtEvents.fetch_add(1, std::memory_order_relaxed);
             }
         }

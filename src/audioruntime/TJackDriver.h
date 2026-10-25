@@ -117,8 +117,9 @@ private:
     static int  _jack_sync_callback (jack_transport_state_t, jack_position_t*, void *arg);
 
 private slots:
-    void private_add_port_channel_pair(PortChannelPair* pair);
-    void private_remove_port_channel_pair(PortChannelPair* pair);
+    // In the audio thread (post_rt_task())
+    void private_add_port_channel_pair(PortChannelPair* pair) T_REALTIME_SAFE;
+    void private_remove_port_channel_pair(PortChannelPair* pair) T_REALTIME_SAFE;
     void cleanup_removed_port_channel_pair(PortChannelPair* pair);
 
 signals:

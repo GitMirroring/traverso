@@ -154,14 +154,14 @@ void TJackDriver::add_channel(AudioChannel* channel)
 
     if (is_running()) {
         tsmp().post_rt_task(
-            [this, pcpair]() { private_add_port_channel_pair(pcpair); }
+            [this, pcpair]() T_REALTIME_SAFE { private_add_port_channel_pair(pcpair); }
             );
     } else {
         private_add_port_channel_pair(pcpair);
     }
 }
 
-void TJackDriver::private_add_port_channel_pair(PortChannelPair *pair)
+void TJackDriver::private_add_port_channel_pair(PortChannelPair *pair) T_REALTIME_SAFE
 {
     if (pair->channel->get_type() == AudioChannel::ChannelIsInput) {
         m_inputs.append(pair);
@@ -171,7 +171,7 @@ void TJackDriver::private_add_port_channel_pair(PortChannelPair *pair)
     }
 }
 
-void TJackDriver::private_remove_port_channel_pair(PortChannelPair *pair)
+void TJackDriver::private_remove_port_channel_pair(PortChannelPair *pair) T_REALTIME_SAFE
 {
     if (pair->channel->get_type() == AudioChannel::ChannelIsInput) {
         m_inputs.removeAll(pair);
@@ -188,7 +188,7 @@ void TJackDriver::remove_channel(AudioChannel* channel)
     for (PortChannelPair* pcpair : m_outputs) {
         if (pcpair->channel == channel) {
             tsmp().post_rt_task(
-                [this, pcpair]() {
+                [this, pcpair]() T_REALTIME_SAFE {
                     this->private_remove_port_channel_pair(pcpair);
                 },
                 [this, pcpair]() {
@@ -202,7 +202,7 @@ void TJackDriver::remove_channel(AudioChannel* channel)
     for (PortChannelPair* pcpair : m_inputs) {
         if (pcpair->channel == channel) {
             tsmp().post_rt_task(
-                [this, pcpair]() {this->private_remove_port_channel_pair(pcpair);},
+                [this, pcpair]() T_REALTIME_SAFE {this->private_remove_port_channel_pair(pcpair);},
                 [this, pcpair]() { emit pcpairRemoved(pcpair);}
                 );
             return;

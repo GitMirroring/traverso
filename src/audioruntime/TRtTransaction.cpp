@@ -24,16 +24,20 @@ struct TRtStepBatch
     std::chrono::nanoseconds              applyDuration{0};
     quint64                               cycle{0};
 
-    void apply_in_audio_thread()
+    void apply_in_audio_thread() T_REALTIME_SAFE
     {
-        // Reading the monotonic clock does not block
-        const auto start = std::chrono::steady_clock::now();
+        // Reading the monotonic clock does not block (the vDSO): real-time
+        // safe by contract
+        std::chrono::steady_clock::time_point start;
+        T_REALTIME_TRUSTED(start = std::chrono::steady_clock::now();)
 
         for (auto& step : steps) {
             step->apply_in_audio_thread();
         }
 
-        applyDuration = std::chrono::steady_clock::now() - start;
+        std::chrono::steady_clock::time_point end;
+        T_REALTIME_TRUSTED(end = std::chrono::steady_clock::now();)
+        applyDuration = end - start;
         // The cycle the audio thread's own records carry
         cycle = TLog::audio_cycle();
     }
@@ -121,6 +125,6 @@ void TRtTransaction::commit()
     }
 
     tsmp().post_rt_task(
-        [batch]() { batch->apply_in_audio_thread(); },
+        [batch]() T_REALTIME_SAFE { batch->apply_in_audio_thread(); },
         [batch]() { batch->report(); delete batch; });
 }

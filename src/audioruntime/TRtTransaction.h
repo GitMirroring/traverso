@@ -27,7 +27,7 @@ public:
     virtual ~TRtStep() = default;
 
     // Runs in the audio thread: no allocation, no freeing, no locks.
-    virtual void apply_in_audio_thread() = 0;
+    virtual void apply_in_audio_thread() T_REALTIME_SAFE = 0;
 };
 
 /**

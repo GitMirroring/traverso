@@ -108,7 +108,7 @@ private:
 
         // Swapping two shared pointers only exchanges pointers, it does not
         // allocate, release or touch the reference counts
-        void apply_in_audio_thread() override { m_rtSide->snapshot.swap(m_snapshot); }
+        void apply_in_audio_thread() T_REALTIME_SAFE override { m_rtSide->snapshot.swap(m_snapshot); }
 
     private:
         std::shared_ptr<RtSide>  m_rtSide;
