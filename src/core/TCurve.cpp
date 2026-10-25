@@ -166,13 +166,10 @@ int TCurve::process(
     snapshot->get_vector(double(startlocation.universal_frame()), double(endlocation.universal_frame()),
                          curveBuffer.get_data(nframes), nframes, m_rtLookupCache);
 
+    // The makeup gain into the curve once, then the curve onto each channel
+    curveBuffer.apply_gain_to_buffer(nframes, makeupgain);
     for (uint chan = 0; chan < channels; ++chan) {
-        audio_sample_t* buffer = audioBus->get_buffer(chan).get_data(nframes);
-        const float* cBuffer = curveBuffer.get_data(nframes);
-
-        for (nframes_t n = 0; n < nframes; ++n) {
-            buffer[n] *= (cBuffer[n] * makeupgain);
-        }
+        audioBus->get_buffer(chan).multiply(0, nframes, curveBuffer);
     }
 
     return 1;
