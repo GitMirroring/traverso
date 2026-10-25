@@ -446,7 +446,7 @@ int main()
          [](const QString& path, const Source& source) {
              return write_with_traverso(path, source, TraversoDAW::WriterType::M4A, TraversoDAW::FileFormat::UNKNOWN);
          },
-         false, 0.0f, 1024, true, 0.0f, -2048, "libfaac leaves out the first 2048 frames (task R4)"},
+         false, 0.0f, 1024, true, 0.0f, -2048, "libfaac leaves out the first 2048 frames (task: Traverso's AAC writer)"},
 #endif
     };
     for (const Format& format : formats) {
