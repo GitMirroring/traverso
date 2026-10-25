@@ -47,24 +47,36 @@ int main()
     // Float, and PCM as an export or a recording describes it (24 bits:
     // three bytes a sample, dithered into 32 bit words); WAV through
     // sndfile, and WavPack. Not 8 bits in a WAV: sndfile has no signed 8 bit
-    // WAV, and the writer does not open. soxr, and libsamplerate.
+    // WAV, and the writer does not open. Every case that converts the rate
+    // with both resamplers, soxr and libsamplerate.
     const TraversoDAW::WriterType wav = TraversoDAW::WriterType::SNDFILE;
     const TraversoDAW::WriterType wavpack = TraversoDAW::WriterType::WAVPACK;
-    const TAudioResampler::BackendType src = TAudioResampler::BackendType::LIBSAMPLERATE;
+    struct Format {
+        uint inputRate;
+        uint fileRate;
+        TraversoDAW::DataFormat format;
+        TraversoDAW::WriterType writer;
+    };
     struct Case {
         uint inputRate;
         uint fileRate;
         TraversoDAW::DataFormat format;
         TraversoDAW::WriterType writer;
-        TAudioResampler::BackendType backend{TAudioResampler::BackendType::LIBSOXR};
+        TAudioResampler::BackendType backend;
     };
-    for (const Case c : {Case{48000, 44100, TraversoDAW::DataFormat::FLOAT, wav}, Case{44100, 48000, TraversoDAW::DataFormat::FLOAT, wav},
-                         Case{96000, 48000, TraversoDAW::DataFormat::FLOAT, wav}, Case{48000, 44100, TraversoDAW::DataFormat::PCM_24, wav},
-                         Case{48000, 48000, TraversoDAW::DataFormat::PCM_24, wav}, Case{48000, 44100, TraversoDAW::DataFormat::FLOAT, wavpack},
-                         Case{48000, 44100, TraversoDAW::DataFormat::PCM_24, wavpack}, Case{48000, 48000, TraversoDAW::DataFormat::PCM_24, wavpack},
-                         Case{48000, 48000, TraversoDAW::DataFormat::PCM_16, wav}, Case{48000, 48000, TraversoDAW::DataFormat::PCM_16, wavpack},
-                         Case{48000, 48000, TraversoDAW::DataFormat::PCM_S8, wavpack},
-                         Case{48000, 44100, TraversoDAW::DataFormat::FLOAT, wav, src}, Case{44100, 48000, TraversoDAW::DataFormat::PCM_24, wav, src}}) {
+    std::vector<Case> cases;
+    for (const Format f : {Format{48000, 44100, TraversoDAW::DataFormat::FLOAT, wav}, Format{44100, 48000, TraversoDAW::DataFormat::FLOAT, wav},
+                           Format{96000, 48000, TraversoDAW::DataFormat::FLOAT, wav}, Format{48000, 44100, TraversoDAW::DataFormat::PCM_24, wav},
+                           Format{44100, 48000, TraversoDAW::DataFormat::PCM_24, wav}, Format{48000, 48000, TraversoDAW::DataFormat::PCM_24, wav},
+                           Format{48000, 44100, TraversoDAW::DataFormat::FLOAT, wavpack}, Format{48000, 44100, TraversoDAW::DataFormat::PCM_24, wavpack},
+                           Format{48000, 48000, TraversoDAW::DataFormat::PCM_24, wavpack}, Format{48000, 48000, TraversoDAW::DataFormat::PCM_16, wav},
+                           Format{48000, 48000, TraversoDAW::DataFormat::PCM_16, wavpack}, Format{48000, 48000, TraversoDAW::DataFormat::PCM_S8, wavpack}}) {
+        cases.push_back({f.inputRate, f.fileRate, f.format, f.writer, TAudioResampler::BackendType::LIBSOXR});
+        if (f.inputRate != f.fileRate) {
+            cases.push_back({f.inputRate, f.fileRate, f.format, f.writer, TAudioResampler::BackendType::LIBSAMPLERATE});
+        }
+    }
+    for (const Case& c : cases) {
         // The input: sweeps, the last one ending 3 ms before the end
         const std::vector<float> s = sweep(c.inputRate);
         const nframes_t inputFrames = nframes_t(std::lround((sweep_start(SweepCount - 1) + SweepSeconds + 0.003) * c.inputRate));
@@ -103,13 +115,19 @@ int main()
                 continue;
             }
             TFileIOBuffer buffer;
+            bool allTaken = true;
             for (nframes_t at = 0; at < inputFrames; at += settings.blockSize) {
                 const nframes_t n = std::min<nframes_t>(settings.blockSize, inputFrames - at);
                 buffer.check_capacity(n, 1);
                 std::copy(input.begin() + at, input.begin() + at + n, buffer.get_channel_buffer(0).get_data(n));
-                writer->write(buffer, n);
+                const nframes_t taken = writer->write(buffer, n);
+                allTaken = allTaken && taken == n;
             }
-            writer->close();
+            const bool closed = writer->close();
+            char what[200];
+            std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: every write takes all of its input, close() succeeds", c.inputRate, c.fileRate,
+                          format);
+            check(allTaken && closed, what);
         }
 
         // The file at its own rate

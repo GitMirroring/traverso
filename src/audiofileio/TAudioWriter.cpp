@@ -81,6 +81,10 @@ nframes_t TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
     if (m_closed || frameCount == 0) {
         return 0;
     }
+    // Every channel of the file in the caller's buffer (one it lacks is
+    // silence), so the resampler and the interleaving read no further than
+    // the buffer goes
+    fileIOBuffer.check_capacity(frameCount, m_settings.channelCount);
 
     if (!m_resampler) {
         interleave(fileIOBuffer, frameCount);
@@ -94,11 +98,19 @@ nframes_t TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
     m_resampleEncodeBuffer.check_capacity(maxOutputFrames, m_settings.channelCount);
     const nframes_t frames = m_resampler->process(fileIOBuffer.channel_buffers(), frameCount, m_resampleEncodeBuffer.channel_buffers(), 0,
                                                   maxOutputFrames);
+    // All input is taken, also when the resampler holds it for now (it gives
+    // it at a later write, the rest at close())
     if (frames == 0) {
-        return 0;
+        return frameCount;
     }
     interleave(m_resampleEncodeBuffer, frames);
-    return write_interleaved(m_resampleEncodeBuffer, frames);
+    const nframes_t written = write_interleaved(m_resampleEncodeBuffer, frames);
+    if (written == frames) {
+        return frameCount;
+    }
+    // The file took less than the input became: the share of the input it
+    // took, fewer than frameCount
+    return nframes_t(qint64(frameCount) * written / frames);
 }
 
 bool TAudioWriter::flush_resampler()

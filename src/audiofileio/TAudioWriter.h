@@ -33,9 +33,12 @@ class TAudioResampler;
  * channels, and converts float to the file's sample format (8, 16 and 24
  * bit dithered through gdither, 32 bit scaled, float as it is). It owns the
  * codec writer, the resampler, the dither and the buffer the resampled
- * audio goes through; the caller's buffer is only read. One file per
- * instance: open(), write() as the audio comes, close(). Not for the
- * audio thread: it allocates and does file IO.
+ * audio goes through. Of the caller's buffer it reads the channels, after
+ * making room for all of the file's (a channel the buffer lacks is
+ * silence); without resampling it interleaves and packs in that buffer's
+ * own interleaved and byte parts. One file per instance: open(), write() as
+ * the audio comes, close(). Not for the audio thread: it allocates and does
+ * file IO.
  *
  * The only user is TBufferedAudioStreamWriter (recordings, imports, merges,
  * exports); the codec writers know nothing of rates or planar buffers.
@@ -54,8 +57,10 @@ public:
     ~TAudioWriter();
 
     // frameCount frames of the channel buffers of fileIOBuffer, at the input
-    // rate; the frames taken (what is written may be fewer or more, at the
-    // file's rate)
+    // rate. The input frames taken: frameCount, also when the resampler
+    // holds some of them for a later write or close(); fewer only when the
+    // file could not take what they became (a write error). The file's own
+    // frames, at its rate, are another count.
     nframes_t write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
     // The file complete (the resampler's rest, the encoder's end, the
     // header); false when that failed. Once: the writer writes no more after.
@@ -89,7 +94,7 @@ private:
     std::unique_ptr<TAudioResampler>                m_resampler;
     GDither                                         m_dither;
     // What the resampler gives, interleaved and packed there, like the
-    // decode buffer of TAudioReader; the caller's buffer is only
-    // read then
+    // decode buffer of TAudioReader; of the caller's buffer only the
+    // channels are read then
     TFileIOBuffer                                   m_resampleEncodeBuffer;
 };

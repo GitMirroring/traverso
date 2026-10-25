@@ -150,11 +150,13 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
         }
     }
 
-    nframes_t writtenFrames = m_audioWriter->write(fileIOBuffer, nframes);
-    m_writtenFrames += writtenFrames;
+    // The frames taken, at the stream's rate: all of them, unless the file
+    // could not take them (TAudioWriter::write())
+    const nframes_t taken = m_audioWriter->write(fileIOBuffer, nframes);
+    m_writtenFrames += taken;
 
-    if (writtenFrames != nframes) {
-        PERROR(QString("Export write failure! Requested: %1, Written: %2").arg(nframes).arg(writtenFrames));
+    if (taken != nframes) {
+        PERROR(QString("Write failure! Requested: %1, taken: %2").arg(nframes).arg(taken));
         return 0;
     }
 
