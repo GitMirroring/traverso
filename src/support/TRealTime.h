@@ -55,8 +55,10 @@
 // the clock of a driver that waits inside the cycle, a bounded wait. Neither
 // Clang nor RealtimeSanitizer reports it. Only in a small named function,
 // with a comment that says why.
+// The sanitizer's switch is inside the warning-off: its constructor and
+// destructor are not real-time safe either.
 #define T_BLOCKING_BY_DESIGN(...) \
-    { \
+    T_REALTIME_WARNING_OFF({ \
         T_REALTIME_SANITIZER_OFF \
-        T_REALTIME_WARNING_OFF(__VA_ARGS__) \
-    }
+        __VA_ARGS__ \
+    })
