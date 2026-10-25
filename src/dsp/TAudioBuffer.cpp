@@ -6,6 +6,8 @@
 
 #include "TAudioBuffer.h"
 
+#include "TLog.h"
+
 #include <algorithm>
 #include <new>
 
@@ -65,7 +67,7 @@ void TAudioBuffer::allocate_buffer_data(nframes_t size)
 #ifdef USE_MLOCK
     if (m_wantsMemLock) {
         if (mlock (m_buffer, size * sizeof(audio_sample_t)) == -1) {
-            PERROR("Couldn't lock buffer into memory");
+            TLOG_E("dsp", "could not lock a buffer of {} frames into memory", size);
         } else {
             m_memLocked = true;
         }
@@ -80,7 +82,7 @@ void TAudioBuffer::delete_buffer_data()
 #ifdef USE_MLOCK
     if (m_memLocked) {
         if (munlock (m_buffer, m_size * sizeof(audio_sample_t)) == -1) {
-            PERROR("Couldn't unlock buffer from memory");
+            TLOG_E("dsp", "could not unlock a buffer of {} frames from memory", m_size);
         }
         m_memLocked = false;
     }

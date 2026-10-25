@@ -6,6 +6,8 @@
 #include "TProject.h"
 #include "TProjectManager.h"
 
+#include "Debugger.h"
+
 static const int STOP_DELAY = 6000; // in ms
 
 

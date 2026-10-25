@@ -25,6 +25,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProject.h"
 #include "TSheet.h"
 
+#include "Debugger.h"
+
 TGlobalContext::TGlobalContext(QObject *parent) :
     QObject(parent)
 {

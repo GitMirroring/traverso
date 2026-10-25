@@ -9,6 +9,8 @@
 #include "TConfig.h"
 #include "qapplication.h"
 
+#include "Debugger.h"
+
 #define ANIME_DURATION		1000
 #define AUTO_SCROLL_MARGIN	0.05  // autoscroll when
 

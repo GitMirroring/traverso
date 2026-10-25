@@ -30,6 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TTimeLineRuler.h"
 
+#include "Debugger.h"
+
 TTransport::TTransport()
 {
     m_skipTimer.setSingleShot(true);

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "TAudioResampler.h"
-#include "Debugger.h"
+#include "TLog.h"
 #include <samplerate.h>
 #include <soxr.h>
 #include <algorithm>
@@ -39,7 +39,7 @@ public:
         int err = 0;
         m_state = src_new(quality, int(channels), &err);
         if (!m_state) {
-            PERROR("LibSampleRateBackend: src_new failed");
+            TLOG_E("dsp", "libsamplerate: no converter ({})", src_strerror(err));
             return;
         }
         src_set_ratio(m_state, ratio);
@@ -85,7 +85,7 @@ public:
 
         const int err = src_process(m_state, &data);
         if (err != 0) {
-            PWARN(QString("libsamplerate error: %1").arg(src_strerror(err)).toLatin1().data());
+            TLOG_W("dsp", "libsamplerate: {}", src_strerror(err));
             return 0;
         }
 
@@ -128,7 +128,7 @@ public:
         soxr_error_t err = nullptr;
         m_soxr = soxr_create(1.0, ratio, channels, &err, &ioSpec, &qualitySpec, nullptr);
         if (err) {
-            PERROR("LibSoxrBackend: soxr_create failed");
+            TLOG_E("dsp", "soxr: no resampler ({})", err);
             m_soxr = nullptr;
         }
     }
