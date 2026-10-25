@@ -235,6 +235,14 @@ Open, for the review (design choices, not made on the branch):
    check. A closure type of its own (an inline buffer, `noexcept` by type) would
    make that a property of the type.
 5. `USE_MLOCK` is not defined, so buffers can fault pages in during the cycle.
+   Stalls that no check sees (they are not calls): a page fault on memory the
+   cycle touches for the first time or that was swapped out; a TLB shootdown
+   when another thread unmaps memory (a large `free()`, the allocator handing
+   memory back, a mapped file closed), which interrupts the audio thread's
+   core too. Against them: lock the path's buffers (`mlock`, decide
+   `USE_MLOCK`), and keep other threads from unmapping and mapping again and
+   again (reuse buffers, keep the peak files' mappings open): a note for the
+   next work on the peak and DiskIO side.
 6. A run that plays: the clips' read path, recording, fades and plugins ran
    under RealtimeSanitizer only as far as the tests reach them. This waits for
    the headless runner.
