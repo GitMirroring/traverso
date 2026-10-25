@@ -36,15 +36,11 @@ struct TRtStepBatch
     }
 
     // Message queue worker thread: how long the audio thread spent on the batch,
-    // big batches (a sheet or project load) at debug level 1, all at level 2
+    // in the session log, a metric for every build
     void report() const
     {
         const auto microseconds = double(applyDuration.count()) / 1000.0;
-        if (steps.size() >= 10) {
-            TLOG_D("rt", "applied {} steps in {:.1f} us", steps.size(), microseconds);
-        } else {
-            TLOG_T("rt", "applied {} steps in {:.1f} us", steps.size(), microseconds);
-        }
+        TLOG_I("rt", "applied {} steps in {:.1f} us", steps.size(), microseconds);
     }
 };
 
