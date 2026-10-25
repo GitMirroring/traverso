@@ -19,6 +19,7 @@
 #include "TAudioWriter.h"
 #include "TFileIOBuffer.h"
 
+#include <QFile>
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -143,6 +144,31 @@ static bool write_with_ffmpeg(const QString& path, const Source& source, const Q
     return QProcess::execute(ffmpeg, arguments) == 0;
 }
 
+// An MP3 (libsndfile's, with a LAME tag) whose tag says padding samples at
+// the end. Below the decoder's own delay of 529, which no encoder writes
+// (LAME and ffmpeg pad at least that), the tag promises frames past what the
+// decoder gives: the decoder must say no more frames than it gives.
+static bool write_mp3_with_padding(const QString& path, const Source& source, int padding)
+{
+    if (!write_with_sndfile(path, source, SF_FORMAT_MPEG | SF_FORMAT_MPEG_LAYER_III)) {
+        return false;
+    }
+    QFile file(path);
+    if (!file.open(QIODevice::ReadWrite)) {
+        return false;
+    }
+    QByteArray head = file.read(4096);
+    // The LAME extension: the encoder's name, then 21 bytes in the delay and
+    // the padding, 12 bits each
+    const qsizetype lame = head.indexOf("LAME");
+    if (lame < 0 || lame + 24 > head.size()) {
+        return false;
+    }
+    head[lame + 22] = char((uchar(head[lame + 22]) & 0xf0) | ((padding >> 8) & 0x0f));
+    head[lame + 23] = char(padding & 0xff);
+    return file.seek(0) && file.write(head) == head.size();
+}
+
 // How far b is shifted against a around their frames aFrom and bFrom: the lag
 // within search frames either way at which length frames match best (b
 // later than a: a positive lag)
@@ -186,20 +212,19 @@ struct Format
     // Whether the file says where the audio starts (an MP3 without a LAME
     // tag does not: the encoder's delay stays in)
     bool placement = true;
-    // What is known wrong with this file (review of 2026-10-24): its failing
-    // checks are printed as known, not counted
-    const char* known = nullptr;
+    // How far a read after a seek may differ from the read from the start:
+    // nothing, bit for bit, but for AAC with noise substitution (PNS, on in
+    // ffmpeg's encoder): FAAD fills those bands from a random generator,
+    // which a seek starts anew (with -aac_pns 0 those seeks are bit exact
+    // too, measured 2026-10-25)
+    float seekTolerance = 0.0f;
+    // A defect known of the writer of this file, and only that (review of
+    // 2026-10-24): its audio lies knownLag frames off where it was written.
+    // The placement check takes exactly that lag as known; every other
+    // check counts, as for any file.
+    long knownLag = 0;
+    const char* knownWhy = nullptr;
 };
-
-// A check this format is known to fail: reported, not counted
-static void check_or_known(bool ok, const char* what, const Format& format)
-{
-    if (ok || !format.known) {
-        check(ok, what);
-        return;
-    }
-    std::printf("%s: KNOWN (%s)\n", what, format.known);
-}
 
 static void fill_with_garbage(TFileIOBuffer& buffer, nframes_t count, uint channels)
 {
@@ -240,8 +265,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
     const long frameError = long(frames) - long(source.frames());
     std::snprintf(what, sizeof(what), "%s: %u channels at %u Hz, %u frames (%+ld)", format.name, decoder->channel_count(), decoder->file_rate(),
                   frames, frameError);
-    check_or_known(decoder->channel_count() == channels && decoder->file_rate() == source.rate && std::labs(frameError) <= format.frameTolerance,
-                   what, format);
+    check(decoder->channel_count() == channels && decoder->file_rate() == source.rate && std::labs(frameError) <= format.frameTolerance, what);
     if (decoder->channel_count() != channels || frames == 0) {
         return;
     }
@@ -264,7 +288,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         }
     }
     std::snprintf(what, sizeof(what), "%s: read from the start, %u of %u frames", format.name, total, frames);
-    check_or_known(total == frames, what, format);
+    check(total == frames, what);
     if (total < 3 * 4096) {
         return;
     }
@@ -293,14 +317,18 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
             const size_t from = total / 3;
             const long lag = best_lag(source.channel(channel), from, sequential[channel], from, 4096, 3000);
             std::snprintf(what, sizeof(what), "%s: channel %u where it was written (%+ld frames)", format.name, channel, lag);
-            check_or_known(lag == 0, what, format);
+            if (lag != 0 && format.knownWhy && lag == format.knownLag) {
+                std::printf("%s: KNOWN (%s)\n", what, format.knownWhy);
+            } else {
+                check(lag == 0, what);
+            }
         }
     }
 
     // A read after a seek gives what the read from the start gave there:
     // forwards, backwards, near the start, and into the last frames
     const nframes_t seekCount = 2000;
-    const float tolerance = format.lossless ? 0.0f : 0.02f;
+    const float tolerance = format.seekTolerance;
     for (const nframes_t first : {total * 2 / 3, total / 8, nframes_t(1), total / 4 + 345, total - 1500}) {
         fill_with_garbage(buffer, seekCount, channels);
         const nframes_t read = decoder->read_file_frames(buffer, first, seekCount);
@@ -320,7 +348,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         }
         std::snprintf(what, sizeof(what), "%s: a seek to frame %u reads what was there (%u of %u frames, worst %.2g, %+ld frames)", format.name,
                       first, read, expected, double(worst), lag);
-        check_or_known(read == expected && worst <= tolerance, what, format);
+        check(read == expected && worst <= tolerance, what);
     }
 
     // Across the end of the file: what is left, zeros after it
@@ -337,7 +365,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
             }
         }
         std::snprintf(what, sizeof(what), "%s: a read across the end gives the last %u frames and zeros after them", format.name, read);
-        check_or_known(read == 100 && zeros, what, format);
+        check(read == 100 && zeros, what);
     }
 
     // Past the end: nothing to read, only zeros (no stale audio), whether
@@ -355,7 +383,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         }
         std::snprintf(what, sizeof(what), "%s: a read %s gives no frames, only zeros (%u)", format.name,
                       seekPastEnd ? "of a frame past the end" : "at the end", read);
-        check_or_known(read == 0 && zeros, what, format);
+        check(read == 0 && zeros, what);
     }
 }
 
@@ -382,6 +410,10 @@ int main()
         {"Ogg Vorbis (sndfile)", "ogg", stereo, sndfile(SF_FORMAT_OGG | SF_FORMAT_VORBIS), false, 0.0f},
         {"MP3 with a LAME tag", "mp3", stereo, sndfile(SF_FORMAT_MPEG | SF_FORMAT_MPEG_LAYER_III), false, 0.0f},
         {"MP3 MPEG-2 mono 22.05 kHz", "22.mp3", mono22, sndfile(SF_FORMAT_MPEG | SF_FORMAT_MPEG_LAYER_III), false, 0.0f},
+        // The tag's padding is a lie here: the file holds more frames than
+        // were written, the last of them silence
+        {"MP3 with a LAME padding below 529", "pad.mp3", stereo,
+         [](const QString& path, const Source& source) { return write_mp3_with_padding(path, source, 100); }, false, 0.0f, 2304},
         {"MP3 without gapless information (ffmpeg)", "nolame.mp3", stereo,
          ffmpeg({QStringLiteral("-c:a"), QStringLiteral("libmp3lame"), QStringLiteral("-b:a"), QStringLiteral("128k"), QStringLiteral("-write_xing"),
                  QStringLiteral("0")}),
@@ -395,18 +427,18 @@ int main()
         {"AAC in ADTS (ffmpeg)", "aac", stereo,
          ffmpeg({QStringLiteral("-c:a"), QStringLiteral("aac"), QStringLiteral("-b:a"), QStringLiteral("128k"), QStringLiteral("-f"),
                  QStringLiteral("adts")}),
-         false, 0.0f, 1024},
+         false, 0.0f, 1024, true, 0.002f},
         // ffmpeg's edit list says 23 frames fewer than it was given (ffprobe
         // too): the decoder takes the file's word
         {"AAC in M4A (ffmpeg)", "m4a", stereo, ffmpeg({QStringLiteral("-c:a"), QStringLiteral("aac"), QStringLiteral("-b:a"), QStringLiteral("128k")}),
-         false, 0.0f, 64},
+         false, 0.0f, 64, true, 0.002f},
 #endif
 #if defined(M4A_ENCODE_SUPPORT) && defined(M4A_DECODE_SUPPORT)
         {"AAC in ADTS (Traverso's writer)", "traverso.aac", stereo,
          [](const QString& path, const Source& source) {
              return write_with_traverso(path, source, TraversoDAW::WriterType::M4A, TraversoDAW::FileFormat::UNKNOWN);
          },
-         false, 0.0f, 1024, true, "libfaac leaves out the first 2048 frames"},
+         false, 0.0f, 1024, true, 0.0f, -2048, "libfaac leaves out the first 2048 frames (task R4)"},
 #endif
     };
     for (const Format& format : formats) {

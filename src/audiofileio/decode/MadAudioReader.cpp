@@ -569,8 +569,12 @@ MadAudioReader::MadAudioReader(const QString& filename)
     const qint64 samples = qint64(audioFrames) * d->samplesPerFrame;
     const int delay = d->handle->encoderDelay;
     const int padding = d->handle->encoderPadding;
-    if (delay >= 0 && padding >= 0 && samples - delay - padding > 0) {
-        m_frames = nframes_t(samples - delay - padding);
+    // The decoder's delay is part of the padding (LAME and ffmpeg pad at
+    // least 529): of a smaller padding the audio ends past what the decoder
+    // gives, so the frames end where its samples end
+    const qint64 audio = samples - delay - std::max<qint64>(padding, DecoderDelay);
+    if (delay >= 0 && padding >= 0 && audio > 0) {
+        m_frames = nframes_t(audio);
         d->skip = nframes_t(delay) + DecoderDelay;
     } else {
         m_frames = nframes_t(samples);
@@ -673,9 +677,9 @@ bool MadAudioReader::seek(nframes_t frame)
         return false;
     }
 
-    // The frame in the decoder's samples, and the audio frame it is in
-    const qint64 sample = qint64(frame) + d->skip;
-    const qint64 target = sample / d->samplesPerFrame;
+    // The frame in the decoder's output, and the audio frame it is in
+    const qint64 decoderFrame = qint64(frame) + d->skip;
+    const qint64 target = decoderFrame / d->samplesPerFrame;
     if (target >= d->seekPositions.size()) {
         return false;
     }
@@ -698,7 +702,7 @@ bool MadAudioReader::seek(nframes_t frame)
             return false;
         }
     }
-    d->pcmStart = std::min(nframes_t(sample - target * d->samplesPerFrame), d->pcmCount);
+    d->pcmStart = std::min(nframes_t(decoderFrame - target * d->samplesPerFrame), d->pcmCount);
 
     m_frame = frame;
     return true;
@@ -852,8 +856,9 @@ bool MadAudioReader::decode_next_frame()
             for (uint channel = 0; channel < m_channels; ++channel) {
                 std::fill_n(d->pcm[channel], length, 0.0f);
             }
-            if (skipped) {
-                // Decode the frame found again when its turn comes
+            if (skipped && d->nextFrame + 1 < d->seekPositions.size()) {
+                // Decode the frame found again when its turn comes (after
+                // the last frame there is none: the next call ends)
                 mad->inputSeek(qint64(d->seekPositions[d->nextFrame + 1]));
             }
         }

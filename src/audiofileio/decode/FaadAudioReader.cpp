@@ -593,8 +593,8 @@ bool FaadAudioReader::seek(nframes_t frame)
 	}
 
 	// The frame in the decoder's output, and the packet that gives it
-	const qint64 sample = qint64(frame) + d->skip;
-	const int target = int(sample / d->frameLength) + d->leadingEmpty;
+	const qint64 decoderFrame = qint64(frame) + d->skip;
+	const int target = int(decoderFrame / d->frameLength) + d->leadingEmpty;
 	if (target >= d->packet_count()) {
 		return false;
 	}
@@ -613,7 +613,7 @@ bool FaadAudioReader::seek(nframes_t frame)
 			return false;
 		}
 	}
-	d->pendingStart = std::min(nframes_t(sample - qint64(target - d->leadingEmpty) * d->frameLength), d->pendingCount);
+	d->pendingStart = std::min(nframes_t(decoderFrame - qint64(target - d->leadingEmpty) * d->frameLength), d->pendingCount);
 
 	m_frame = frame;
 	return true;
