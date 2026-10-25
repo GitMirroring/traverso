@@ -163,7 +163,7 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
     return nframes;
 }
 
-nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessContext &context)
+nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessContext &context) T_REALTIME_SAFE
 {
     Q_ASSERT(m_rtBufferSlotsQueue);
     Q_ASSERT(m_freeBufferSlotsQueue);
@@ -180,8 +180,12 @@ nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessContext &context)
             slot->write_channel(chan, bus->get_buffer(chan), 0, nframes);
         }
 
-        if (!m_rtBufferSlotsQueue->try_enqueue(slot)) {
-            TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "WriteSource::ringbuffer_write: Failed to write to rt buffer queue");
+        // Real-time safe by contract: moodycamel's try_enqueue does not
+        // allocate or wait, it wakes the disk thread's semaphore when it sleeps
+        bool enqueued = false;
+        T_REALTIME_TRUSTED(enqueued = m_rtBufferSlotsQueue->try_enqueue(slot);)
+        if (!enqueued) {
+            TLOG_RT_W("diskio", "ring write: the queue to the disk thread is full, a buffer of the recording is lost");
             return 0;
         }
 
@@ -191,16 +195,22 @@ nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessContext &context)
     return 0;
 }
 
-TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessContext &context)
+TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessContext &context) T_REALTIME_SAFE
 {
     TQueueBufferSlot* slot = nullptr;
 
     if (context.get_is_real_time()) {
-        m_freeBufferSlotsQueue->try_dequeue(slot);
+        // Real-time safe by contract: moodycamel's try_dequeue does not wait
+        T_REALTIME_TRUSTED(m_freeBufferSlotsQueue->try_dequeue(slot);)
     } else {
-        auto startTime = TTimeRef::get_nanoseconds_since_epoch();
-        m_freeBufferSlotsQueue->wait_dequeue(slot);
-        context.add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
+        trav_time_t startTime = 0;
+        trav_time_t endTime = 0;
+        T_REALTIME_TRUSTED(startTime = TTimeRef::get_nanoseconds_since_epoch();)
+        // Freewheeling has no deadline: the wait for the disk thread is by
+        // design (doc/design/realtime-audio-path.md §5)
+        T_REALTIME_EXCEPTION(m_freeBufferSlotsQueue->wait_dequeue(slot);)
+        T_REALTIME_TRUSTED(endTime = TTimeRef::get_nanoseconds_since_epoch();)
+        context.add_ringbuffer_read_wait_time(endTime - startTime);
     }
 
     return slot;

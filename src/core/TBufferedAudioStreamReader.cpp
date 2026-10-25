@@ -502,13 +502,14 @@ void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDec
 }
 
 
-nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, const TTimeRef &fileLocation)
+nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, const TTimeRef &fileLocation) T_REALTIME_SAFE
 {
     if (m_bufferstatus.out_of_sync()) {
         if (context.get_is_real_time()) {
-            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: RealTime: Buffer out of sync, skipping file location %s",
-                   QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
-            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: RealTime: Buffer status %s", QS_C(m_bufferstatus.get_readable_sync_status()));
+            // Numbers only: a time as text is a QString, built before the
+            // log call, also when debug is off
+            TLOG_RT_D("diskio", "ring read: out of sync, skipping file location {} (universal frames), status {}",
+                      fileLocation.universal_frame(), m_bufferstatus.get_sync_status());
             return 0;
         } else {
             // During freewheeling the status of the buffers can get out of sync
@@ -517,17 +518,19 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
             // is slow or overloaded compared to the audio thread, the latter one can get in front of the disk thread
             // It's perfectly valid and in fact mandatory to start waiting here to let the disk thread
             // fill the buffers and then continue freewheeling
-            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: FreeWheeling: Buffer status %s, waiting for buffers to get back in sync", QS_C(m_bufferstatus.get_readable_sync_status()));
+            TLOG_RT_D("diskio", "ring read: freewheeling, status {}, waiting for the buffers to get back in sync", m_bufferstatus.get_sync_status());
             uint counter = 0;
             while(m_bufferstatus.out_of_sync() && (counter < 100000)) {
-                QThread::sleep(std::chrono::nanoseconds(10000));
+                // Freewheeling has no deadline: the wait for the disk thread
+                // is by design (doc/design/realtime-audio-path.md §5)
+                T_REALTIME_EXCEPTION(QThread::sleep(std::chrono::nanoseconds(10000));)
                 counter++;
             }
             if (m_bufferstatus.out_of_sync()) {
-                TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: FreeWheeling: Buffers still out of sync after 1 second wait, giving up");
+                TLOG_RT_D("diskio", "ring read: freewheeling, the buffers still out of sync after a second, giving up");
                 return 0;
             } else {
-                TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: Buffers back in sync after %d micro second, continuing processing now", counter);
+                TLOG_RT_D("diskio", "ring read: the buffers back in sync after {} waits of 10 microseconds, continuing", counter);
             }
         }
     }
@@ -540,7 +543,11 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
     AudioBus* bus = context.get_ringbuffer_read_bus();
 
 
-    auto availableSlots = m_rtBufferSlotsQueue->size_approx();
+    // Real-time safe by contract, as the moodycamel calls below: no
+    // allocation, no wait (try_enqueue() wakes the disk thread's semaphore
+    // when it sleeps)
+    size_t availableSlots = 0;
+    T_REALTIME_TRUSTED(availableSlots = m_rtBufferSlotsQueue->size_approx();)
 
     while ((slot = dequeue_from_rt_queue(context)))
     {
@@ -562,7 +569,7 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
 
             read = slot->get_read_nframes();
 
-            m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
+            T_REALTIME_TRUSTED(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
         }
 
@@ -571,21 +578,18 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
         // check if this slot or any available is a candidate slot, if not, no need to process the
         // whole queue, instead start a resync
         if ((fileLocation < slotFileLocation) || (fileLocation > lastAvailableSlotFileLocation)) {
-            TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: FileLocation not in queue range: %s (%s - %s)",
-                   QS_C(TTimeRef::timeref_to_ms_3(fileLocation)),
-                   QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)),
-                   QS_C(TTimeRef::timeref_to_ms_3(lastAvailableSlotFileLocation)));
+            TLOG_RT_D("diskio", "ring read: file location {} not in the queue's range {} - {} (universal frames)",
+                      fileLocation.universal_frame(), slotFileLocation.universal_frame(), lastAvailableSlotFileLocation.universal_frame());
 
             m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::SyncStatus::OUT_OF_SYNC);
             read = 0;
-            m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
+            T_REALTIME_TRUSTED(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
             break;
         }
 
-        TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::rb_read: Skipping slot %d, location %s",
-               slot->get_slot_number(), QS_C(TTimeRef::timeref_to_ms_3(slotFileLocation)));
+        TLOG_RT_D("diskio", "ring read: skipping slot {}, location {} (universal frames)", slot->get_slot_number(), slotFileLocation.universal_frame());
 
-        m_freeBufferSlotsQueue->try_enqueue(slot); // always put the dequeued slot on the free slots queue so we don't lose slots
+        T_REALTIME_TRUSTED(m_freeBufferSlotsQueue->try_enqueue(slot);) // always put the dequeued slot on the free slots queue so we don't lose slots
     }
 
     // auto totalTime = TTimeRef::get_nanoseconds_since_epoch() - startTime;
@@ -594,7 +598,7 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, 
     return read;
 }
 
-TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessContext &context)
+TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessContext &context) T_REALTIME_SAFE
 {
     Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
     Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
@@ -603,15 +607,23 @@ TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessCont
     TQueueBufferSlot* slot = nullptr;
 
     if (context.get_is_real_time()) {
-        if (!m_rtBufferSlotsQueue->try_dequeue(slot)) {
+        bool dequeued = false;
+        // Real-time safe by contract: moodycamel's try_dequeue does not wait
+        T_REALTIME_TRUSTED(dequeued = m_rtBufferSlotsQueue->try_dequeue(slot);)
+        if (!dequeued) {
             // FIXME
             // What about feedback to user that we're missing out on the
             // audio stream?
         }
     } else {
-        auto startTime = TTimeRef::get_nanoseconds_since_epoch();
-        m_rtBufferSlotsQueue->wait_dequeue(slot);
-        context.add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
+        trav_time_t startTime = 0;
+        trav_time_t endTime = 0;
+        T_REALTIME_TRUSTED(startTime = TTimeRef::get_nanoseconds_since_epoch();)
+        // Freewheeling has no deadline: the wait for the disk thread is by
+        // design (doc/design/realtime-audio-path.md §5)
+        T_REALTIME_EXCEPTION(m_rtBufferSlotsQueue->wait_dequeue(slot);)
+        T_REALTIME_TRUSTED(endTime = TTimeRef::get_nanoseconds_since_epoch();)
+        context.add_ringbuffer_read_wait_time(endTime - startTime);
     }
 
     return slot;

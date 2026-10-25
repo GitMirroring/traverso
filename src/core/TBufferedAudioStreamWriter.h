@@ -40,7 +40,7 @@ public :
     TBufferedAudioStreamWriter(const QString& exportDir, const QString &exportFileName);
     ~TBufferedAudioStreamWriter();
 
-    nframes_t ringbuffer_write(TProcessContext &context);
+    nframes_t ringbuffer_write(TProcessContext &context) T_REALTIME_SAFE;
     int rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer);
 
     TBufferedAudioStreamStatus& get_buffer_status() final;
@@ -82,7 +82,7 @@ private:
     qint64          m_framesToDrop{0};   // the writer's steps once it is added
     qint64          m_writtenFrames{0};
 
-    TQueueBufferSlot* dequeue_from_free_queue(TProcessContext &context);
+    TQueueBufferSlot* dequeue_from_free_queue(TProcessContext &context) T_REALTIME_SAFE;
 
     void process_realtime_buffers(TFileIOBuffer &fileIOBuffer) final;
     void rb_seek_to_transport_location(TFileIOBuffer&, const TTimeRef &/*transportLocation*/) final {}
