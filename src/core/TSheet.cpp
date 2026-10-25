@@ -205,8 +205,6 @@ int TSheet::set_state( const QDomNode & node )
     m_name = e.attribute( "title", "" );
     m_artists = e.attribute( "artists", "" );
     set_audio_sources_dir(e.attribute("audiosourcesdir", ""));
-    qreal zoom = e.attribute("hzoom", "4096").toDouble();
-    set_hzoom(zoom);
     m_scrollBarXValue = e.attribute("sbx", "0").toInt();
     m_scrollBarYValue = e.attribute("sby", "0").toInt();
 
@@ -263,6 +261,9 @@ int TSheet::set_state( const QDomNode & node )
 
         workSheetNode = workSheetNode.nextSibling();
     }
+
+    // After the clips: the largest zoom out follows the sheet's length
+    set_hzoom(e.attribute("hzoom", "4096").toDouble());
 
     return 1;
 }
