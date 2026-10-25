@@ -22,6 +22,7 @@
 #include "TInformUser.h"
 #include "Utils.h"
 #include "TAudioDevice.h"
+#include "TAudioBuffer.h"
 
 #include <QCoreApplication>
 #include <QMessageBox>
@@ -36,8 +37,29 @@ TInformUser& tInformUser()
 }
 
 
+// A buffer can be made in any thread, and a failure from before TInformUser
+// existed is passed while it is being made: the message goes through the
+// application's event loop, where tInformUser() exists
+static void tell_memory_lock_failure(TAudioBuffer::MemoryLockFailure failure)
+{
+    QMetaObject::invokeMethod(QCoreApplication::instance(), [failure]() {
+        if (failure == TAudioBuffer::MemoryLockFailure::NoPermission) {
+            tInformUser().warning(TInformUser::tr(
+                "Traverso has no permission to lock its audio buffers in memory. Now and then this can cause "
+                "a dropout. Make your user a member of the audio group, or allow memlock in "
+                "/etc/security/limits.conf, and log in again."));
+        } else {
+            tInformUser().warning(TInformUser::tr(
+                "Traverso reached the limit on locked memory: not all of its audio buffers are locked in "
+                "memory. Now and then this can cause a dropout. Raise memlock for your user in "
+                "/etc/security/limits.conf, or make your user a member of the audio group, and log in again."));
+        }
+    }, Qt::QueuedConnection);
+}
+
 TInformUser::TInformUser()
 {
+    TAudioBuffer::set_memory_lock_failure_handler(tell_memory_lock_failure);
     connect(&audiodevice(), &TAudioDevice::newDriverSetupMessage, this, &TInformUser::audiodevice_message);
     connect(&audiodevice(), &TAudioDevice::audioThreadStalled, this, &TInformUser::audio_thread_stalled);
     connect(&audiodevice(), &TAudioDevice::audioThreadDead, this, &TInformUser::audio_thread_dead);

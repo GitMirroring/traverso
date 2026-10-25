@@ -46,9 +46,18 @@ public:
         delete_buffer_data();
     }
 
-    // Whether the memory is locked now: asked for and granted. A lock can fail
-    // (RLIMIT_MEMLOCK); that is logged, and the buffer works unlocked
+    // Whether the memory is locked now: asked for and granted. A lock can fail;
+    // the buffer then works unlocked
     bool is_memory_locked() const { return m_memLocked; }
+
+    // Why a lock failed: no permission to lock memory (EPERM), or the limit
+    // on locked memory reached (ENOMEM, EAGAIN)
+    enum class MemoryLockFailure { NoPermission, LimitReached };
+    // Called once per kind of failure, in the thread that made the buffer:
+    // for the application to tell the user. A failure from before the
+    // handler was set is passed to it when it is set.
+    using MemoryLockFailureHandler = void (*)(MemoryLockFailure failure);
+    static void set_memory_lock_failure_handler(MemoryLockFailureHandler handler);
 
     // Not in the audio thread: allocates
     void resize(nframes_t size);

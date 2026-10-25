@@ -9,10 +9,54 @@
 #include "TLog.h"
 
 #include <algorithm>
+#include <atomic>
+#include <cerrno>
 #include <new>
 
 #ifdef USE_MLOCK
 #include <sys/mman.h>
+#endif /* USE_MLOCK */
+
+// Each kind of lock failure is told once: one log line and one call of the
+// handler, also when thousands of buffers fail the same way
+static std::atomic<TAudioBuffer::MemoryLockFailureHandler> s_lockFailureHandler{nullptr};
+static std::atomic<bool> s_lockFailed[2]{false, false};
+static std::atomic<bool> s_lockFailureTold[2]{false, false};
+
+static void tell_lock_failure(TAudioBuffer::MemoryLockFailure failure)
+{
+    const int kind = int(failure);
+    TAudioBuffer::MemoryLockFailureHandler handler = s_lockFailureHandler.load();
+    if (handler && !s_lockFailureTold[kind].exchange(true)) {
+        handler(failure);
+    }
+}
+
+void TAudioBuffer::set_memory_lock_failure_handler(MemoryLockFailureHandler handler)
+{
+    s_lockFailureHandler.store(handler);
+    for (MemoryLockFailure failure : {MemoryLockFailure::NoPermission, MemoryLockFailure::LimitReached}) {
+        if (s_lockFailed[int(failure)].load()) {
+            tell_lock_failure(failure);
+        }
+    }
+}
+
+#ifdef USE_MLOCK
+static void lock_failed(int error, nframes_t size)
+{
+    const auto failure = (error == EPERM) ? TAudioBuffer::MemoryLockFailure::NoPermission
+                                          : TAudioBuffer::MemoryLockFailure::LimitReached;
+    if (s_lockFailed[int(failure)].exchange(true)) {
+        return;
+    }
+    if (failure == TAudioBuffer::MemoryLockFailure::NoPermission) {
+        TLOG_W("dsp", "no permission to lock audio buffers into memory (a buffer of {} frames), they work unlocked", size);
+    } else {
+        TLOG_W("dsp", "the limit on locked memory is reached (a buffer of {} frames), the next buffers work unlocked", size);
+    }
+    tell_lock_failure(failure);
+}
 #endif /* USE_MLOCK */
 
 void TAudioBuffer::resize(nframes_t size)
@@ -67,7 +111,7 @@ void TAudioBuffer::allocate_buffer_data(nframes_t size)
 #ifdef USE_MLOCK
     if (m_memoryLock == MemoryLock::Yes) {
         if (mlock (m_buffer, size * sizeof(audio_sample_t)) == -1) {
-            TLOG_E("dsp", "could not lock a buffer of {} frames into memory", size);
+            lock_failed(errno, size);
         } else {
             m_memLocked = true;
         }

@@ -253,8 +253,10 @@ Open, for the review (design choices, not made on the branch):
    made. That holds with every standard library; the size check on
    `std::move_only_function` held for libstdc++ only.
 5. Page faults and other stalls. `USE_MLOCK` is defined (CMakeLists.txt,
-   where the system has `mlock()`), so `TRealTimeAudioBuffer`s are locked; a
-   failed lock is only logged, and other memory of the path is not locked.
+   where the system has `mlock()`), so `TRealTimeAudioBuffer`s are locked. A
+   failed lock is told once per kind, no permission or the limit reached: one
+   log line and one message to the user (2026-10-25). Other memory of the
+   path is not locked.
    Stalls that no check sees (they are not calls): a page fault on memory the
    cycle touches for the first time or that was swapped out; a TLB shootdown
    when another thread unmaps memory (a large `free()`, the allocator handing
