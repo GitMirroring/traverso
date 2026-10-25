@@ -559,7 +559,7 @@ int TAlsaDriver::configure_stream(const QString &device_name,
         unsigned int channels_max = 0;
         if ((err = snd_pcm_hw_params_get_channels_min(hw_params, &channels_min)) < 0 ||
             (err = snd_pcm_hw_params_get_channels_max(hw_params, &channels_max)) < 0) {
-            TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot get the channel range for %s", stream_name);
+            TLog::write_printf(TLogLevel::Warning, "alsa", "AlsaDriver: cannot get the channel range for %s: %s", stream_name, snd_strerror(err));
             return -1;
         }
         if (snd_pcm_type(handle) == SND_PCM_TYPE_HW) {
