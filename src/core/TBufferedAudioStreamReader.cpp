@@ -363,21 +363,31 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
     nframes_t bufferSize = audiodevice().get_buffer_size();
     // if modules != 0 then the seek transport location is not a multiple of transport location + x * buffer slot duration
     if (modulus != TTimeRef()) {
-        // effectively this means that the start location of a buffer and the corresponding file location becomes negative
+        // The file location of the slot's start: before the source start,
+        // before the file's start for a clip that plays it from its start
         fileLocation -= modulus;
         // keep track of the seek transport location as well, probably not usefull to keep track of 2 locations in slot buffers?
         seekTransportLocation -= modulus;
 
-        // convert the modulus to frames
+        // The clip starts modulus into this slot: its first frame goes to
+        // slot position offset, the frame nearest to modulus (the same
+        // rounding of the same time as TAudioClip::process())
         nframes_t offset = TTimeRef::to_nframes(TTimeRef::frame_nearest(modulus, m_outputRate));
         // printf("file location after adjustment %s, offset nframes %d\n", QS_C(TTimeRef::timeref_to_ms_3(fileLocation)), offset);
 
         // and only read in the amount of frames needed for this buffer slot
         nframes_t toRead = bufferSize - offset;
 
-        // and read in the samples (the reader makes room in the buffer, and
-        // gives zeros past the end of the file). We have to use the source start location as the start location, see explanation above
-        nframes_t read = file_read(fileDecodeBuffer, m_sourceStartLocation, toRead);
+        // Read at the time of slot position offset, as every refill reads at
+        // the time of its slot: all reads of the stream lie whole frames
+        // apart, so the reader's one rounding (TTimeRef::frame_nearest())
+        // joins them, no frame lost or doubled (test_resample_reader). Not at
+        // the source start: that is off the slots' frames by offset - modulus,
+        // and the reads would join for some fractions only. The time is at
+        // most half a frame before the source start, so its frame is never
+        // before the file. The reader makes room in the buffer and gives zeros
+        // past the end of the file.
+        nframes_t read = file_read(fileDecodeBuffer, fileLocation + TTimeRef(offset, m_outputRate), toRead);
         if (read != toRead) {
             TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not read %d frames, only %d", toRead, read);
         }
