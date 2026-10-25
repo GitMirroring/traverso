@@ -100,9 +100,11 @@ public:
     }
 
     // libsamplerate does not say. Its longest filter (best sinc) reaches
-    // about 143 frames to either side at the input rate, wider by the ratio
-    // when it converts down; 1024 output frames, more when it converts up,
-    // is well above it
+    // about 143 frames to either side: of the input when it converts up, so
+    // some 143 x ratio output frames; when it converts down it is wider at
+    // the input rate by 1 / ratio, the same 143 or so output frames.
+    // 1024 x max(1, ratio) output frames is several times that at any ratio
+    // (test_resampler_quality flushes at ratios from 1/6 to 8.7)
     nframes_t delay_frames() const override { return nframes_t(std::ceil(1024.0 * std::max(1.0, m_ratio))); }
 
 private:

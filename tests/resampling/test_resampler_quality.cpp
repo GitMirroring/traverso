@@ -6,7 +6,8 @@
 // tone above the new Nyquist frequency must go (rejection), a tone below it
 // must stay (passband). Down the list (best first) neither gets better, and
 // the best quality of each backend rejects and passes well. Fed the numbers
-// of the other backend, the order breaks.
+// of the other backend, the order breaks. And at the end of the input one
+// flush of pending_frames() gives all that is left, at ratios from 1/6 to 8.7.
 
 #include "TAudioResampler.h"
 
@@ -73,6 +74,48 @@ static double level_after(TAudioResampler::BackendType backend, int quality, dou
     return 20.0 * std::log10(std::max(rms, 1e-12) / (0.5 / std::sqrt(2.0)));
 }
 
+// At the end of the input one flush of pending_frames() gives all that is
+// left, and the output is the input's length at the new rate: at every
+// quality of a backend, converting up and down, by small and large ratios
+static void flush_gives_all(TAudioResampler::BackendType backend, uint inputRate, uint outputRate)
+{
+    const double ratio = double(outputRate) / inputRate;
+    const nframes_t frames = inputRate;
+    const QByteArray name = TAudioResampler::backend_name(backend).toLatin1();
+    for (const int quality : TAudioResampler::qualities(backend)) {
+        TAudioResampler resampler(backend, ratio, quality, 2);
+        const nframes_t outSize = nframes_t(std::ceil(frames * ratio)) + 1024 * 10;
+        TAudioBuffer in[] = {TAudioBuffer(1024), TAudioBuffer(1024)};
+        TAudioBuffer out[] = {TAudioBuffer(outSize), TAudioBuffer(outSize)};
+        TAudioBuffer* inBuffers[] = {&in[0], &in[1]};
+        TAudioBuffer* outBuffers[] = {&out[0], &out[1]};
+        nframes_t produced = 0;
+        for (nframes_t at = 0; at < frames; at += 1024) {
+            const nframes_t n = std::min<nframes_t>(1024, frames - at);
+            for (uint channel = 0; channel < 2; ++channel) {
+                float* data = in[channel].data(0, n);
+                for (nframes_t i = 0; i < n; ++i) {
+                    data[i] = float(0.5 * std::sin(2.0 * M_PI * 440.0 * (at + i) / inputRate + channel));
+                }
+            }
+            produced += resampler.process(inBuffers, n, outBuffers, produced, out[0].get_size() - produced);
+        }
+        const nframes_t pending = resampler.pending_frames();
+        const bool room = produced + pending + 16 <= out[0].get_size();
+        nframes_t again = 1;
+        if (room) {
+            produced += resampler.flush(outBuffers, produced, pending);
+            again = resampler.flush(outBuffers, produced, 16);
+        }
+        const double expected = frames * ratio;
+        char what[200];
+        std::snprintf(what, sizeof(what), "%s %s, %u -> %u Hz: one flush of pending_frames() (%u) gives all, %u frames of %.1f",
+                      name.constData(), TAudioResampler::quality_name(backend, quality).toLatin1().constData(), inputRate, outputRate,
+                      pending, produced, expected);
+        check(room && again == 0 && std::fabs(double(produced) - expected) <= 2.0, what);
+    }
+}
+
 int main()
 {
     for (TAudioResampler::BackendType backend : {TAudioResampler::BackendType::LIBSOXR, TAudioResampler::BackendType::LIBSAMPLERATE}) {
@@ -105,6 +148,14 @@ int main()
     }
 
     check(flushedAll, "every quality of both backends: one flush of pending_frames() frames gives all it holds");
+
+    struct Rates { uint input; uint output; };
+    for (TAudioResampler::BackendType backend : {TAudioResampler::BackendType::LIBSOXR, TAudioResampler::BackendType::LIBSAMPLERATE}) {
+        for (const Rates r : {Rates{44100, 48000}, Rates{48000, 44100}, Rates{8000, 48000}, Rates{48000, 8000}, Rates{11025, 64000},
+                              Rates{192000, 44100}, Rates{22050, 192000}}) {
+            flush_gives_all(backend, r.input, r.output);
+        }
+    }
 
     if (failures) {
         std::printf("%d check(s) failed\n", failures);
