@@ -110,7 +110,7 @@ void TAudioFileMerger::process_task(MergeTask task)
         float* destinationLeft = decodebuffer0.get_channel_buffer(0).get_data(nframes);
         float* destinationRight = decodebuffer1.get_channel_buffer(0).get_data(nframes);
 
-        TQueueBufferSlot virtualSlot(nframes, 2, 0);
+        TQueueBufferSlot virtualSlot(0, 2, nframes);
         virtualSlot.write_buffer(TTimeRef(), TTimeRef(), destinationLeft, 0, nframes);
         virtualSlot.write_buffer(TTimeRef(), TTimeRef(), destinationRight, 1, nframes);
 
