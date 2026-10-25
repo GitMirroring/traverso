@@ -91,8 +91,8 @@ std::unique_ptr<TAudioDecoder> open_audio_decoder(const QString& fileName)
     }
 
     if (decoder && !decoder->is_valid()) {
-        TLOG_W("audiofile", "{}: the {} decoder cannot read it ({} channels, {} frames)", fileName.toStdString(),
-               decoder->decoder_type().toStdString(), decoder->channel_count(), decoder->frame_count());
+        TLOG_W("audiofile", "{}: the {} decoder cannot read it ({} channels, {} Hz, {} frames)", fileName.toStdString(),
+               decoder->decoder_type().toStdString(), decoder->channel_count(), decoder->rate(), decoder->frame_count());
         return nullptr;
     }
 
