@@ -6,8 +6,6 @@
 #include "TTimeLineRuler.h"
 #include "Utils.h"
 
-#include <sndfile.h>
-
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
