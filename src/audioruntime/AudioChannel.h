@@ -24,6 +24,7 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 
 #include "TAudioBuffer.h"
 #include "defines.h"
+#include "TRealtime.h"
 #include <QString>
 #include <QObject>
 #include "TRtList.h"
@@ -55,7 +56,7 @@ public:
 
     void set_buffer_size(nframes_t size);
     void set_monitoring(bool monitor);
-    void process_monitoring(TVUMonitor* monitor=nullptr);
+    void process_monitoring(TVUMonitor* monitor=nullptr) T_REALTIME_SAFE;
 
     void add_monitor(TVUMonitor* monitor);
     void remove_monitor(TVUMonitor* monitor);
@@ -83,7 +84,7 @@ private:
     friend class TCoreAudioDriver;
     friend class TPipeWireDriver;
 
-    void read_from_hardware_port(audio_sample_t* buf, nframes_t nframes);
+    void read_from_hardware_port(audio_sample_t* buf, nframes_t nframes) T_REALTIME_SAFE;
     void read_from_hardware_port_interleaved(const audio_sample_t* buf, nframes_t nframes, uint channelCount, uint channelNumber);
 
 signals:

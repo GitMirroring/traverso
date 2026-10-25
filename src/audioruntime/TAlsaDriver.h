@@ -73,7 +73,7 @@ public:
 
 private:
 	void setup_io_function_pointers();
-	void silence_untouched_channels(nframes_t nframes);
+	void silence_untouched_channels(nframes_t nframes) T_REALTIME_SAFE;
 	void release_channel_dependent_memory();
     int configure_stream(const QString &device_name,
 			const char *stream_name,
@@ -91,7 +91,7 @@ private:
 				snd_pcm_uframes_t *playback_avail,
 				snd_pcm_uframes_t *capture_offset,
 				snd_pcm_uframes_t *playback_offset
-				);
+				) T_REALTIME_SAFE;
     int get_device_id_by_name(const QString& name);
     static QString alsa_device_name(bool longname, int devicenumber);
 
@@ -159,19 +159,19 @@ private:
                     const char *src,
 					unsigned long src_bytes,
 					unsigned long src_skip_bytes
-					);
+					) T_REALTIME_SAFE;
 	typedef void (*WriteCopyFunction) (	char *dst,
 					audio_sample_t *src,
 					unsigned long src_bytes,
 					unsigned long dst_skip_bytes,
 					dither_state_t *state
-					);
+					) T_REALTIME_SAFE;
 	typedef void (*CopyCopyFunction)  (	char *dst,
                     const char *src,
 					unsigned long src_bytes,
 					unsigned long dst_skip_bytes,
 					unsigned long src_skip_byte
-					);
+					) T_REALTIME_SAFE;
 
 	int                           poll_timeout{};
 	trav_time_t                   poll_last{};

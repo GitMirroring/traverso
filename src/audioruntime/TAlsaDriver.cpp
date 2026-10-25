@@ -926,13 +926,15 @@ int TAlsaDriver::reset_parameters (nframes_t frames_per_cycle,
 int TAlsaDriver::get_channel_addresses (snd_pcm_uframes_t *capture_avail,
                                        snd_pcm_uframes_t *playback_avail,
                                        snd_pcm_uframes_t *capture_offset,
-                                       snd_pcm_uframes_t *playback_offset)
+                                       snd_pcm_uframes_t *playback_offset) T_REALTIME_SAFE
 {
     int err;
     channel_t chn;
 
     if (capture_avail) {
-        if ((err = snd_pcm_mmap_begin (capture_handle, &capture_areas, capture_offset, capture_avail)) < 0) {
+        // ALSA's mmap calls: real-time safe by contract (no allocation, no wait)
+        T_REALTIME_TRUSTED(err = snd_pcm_mmap_begin (capture_handle, &capture_areas, capture_offset, capture_avail);)
+        if (err < 0) {
             //			PERROR ("AlsaDriver: %s: mmap areas info error", alsa_name_capture);
             return -1;
         }
@@ -945,7 +947,8 @@ int TAlsaDriver::get_channel_addresses (snd_pcm_uframes_t *capture_avail,
     }
 
     if (playback_avail) {
-        if ((err = snd_pcm_mmap_begin (playback_handle, &playback_areas, playback_offset, playback_avail)) < 0) {
+        T_REALTIME_TRUSTED(err = snd_pcm_mmap_begin (playback_handle, &playback_areas, playback_offset, playback_avail);)
+        if (err < 0) {
             //			PERROR ("AlsaDriver: %s: mmap areas info error ", alsa_name_playback);
             return -1;
         }
@@ -1120,7 +1123,7 @@ int TAlsaDriver::xrun_recovery (float *delayed_usecs)
     return 0;
 }
 
-void TAlsaDriver::silence_untouched_channels (nframes_t nframes)
+void TAlsaDriver::silence_untouched_channels (nframes_t nframes) T_REALTIME_SAFE
 {
     channel_t chn;
     nframes_t buffer_frames = m_framesPerCycle * playback_nperiods;
@@ -1485,8 +1488,11 @@ int TAlsaDriver::_read(nframes_t nframes) T_REALTIME_SAFE
             channel->read_from_hardware_port(buf, nframes);
         }
 
-        if ((err = snd_pcm_mmap_commit (capture_handle, offset, contiguous)) < 0) {
-            PERROR (QString("AlsaDriver: could not complete read of %1 frames: error = %2").arg(contiguous).arg(snd_strerror(err)));
+        T_REALTIME_TRUSTED(err = snd_pcm_mmap_commit (capture_handle, offset, contiguous);)
+        if (err < 0) {
+            const char* reason = nullptr;
+            T_REALTIME_TRUSTED(reason = snd_strerror(err);)
+            TLOG_RT_E("alsa", "could not complete read of {} frames: {}", contiguous, reason);
             return -1;
         }
 
@@ -1538,8 +1544,11 @@ int TAlsaDriver::_write(nframes_t nframes) T_REALTIME_SAFE
             silence_untouched_channels (contiguous);
         }
 
-        if ((err = snd_pcm_mmap_commit (playback_handle, offset, contiguous)) < 0) {
-            PERROR (QString("AlsaDriver: could not complete playback of %1 frames: error = %2").arg(contiguous).arg(snd_strerror(err)));
+        T_REALTIME_TRUSTED(err = snd_pcm_mmap_commit (playback_handle, offset, contiguous);)
+        if (err < 0) {
+            const char* reason = nullptr;
+            T_REALTIME_TRUSTED(reason = snd_strerror(err);)
+            TLOG_RT_E("alsa", "could not complete playback of {} frames: {}", contiguous, reason);
             if (err != EPIPE && err != ESTRPIPE)
                 return -1;
         }

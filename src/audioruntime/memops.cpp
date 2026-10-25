@@ -39,14 +39,17 @@
 #define f_round(f) lrintf(f)
 
 
-inline unsigned int fast_rand() {
-	static unsigned int seed = 22222;
-	seed = (seed * 96314165) + 907633515;
+// The dither's random numbers; the seed at file scope (a static local is no
+// real-time safe function's): only the audio thread uses it
+static unsigned int s_fastRandSeed = 22222;
 
-	return seed;
+inline unsigned int fast_rand() T_REALTIME_SAFE {
+	s_fastRandSeed = (s_fastRandSeed * 96314165) + 907633515;
+
+	return s_fastRandSeed;
 } 
 
-void sample_move_d32u24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/)
+void sample_move_d32u24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/) T_REALTIME_SAFE
 
 {
 	long long y;
@@ -78,7 +81,7 @@ void sample_move_d32u24_sSs (char *dst, audio_sample_t *src, unsigned long nsamp
 }	
 
 
-void sample_move_d32u24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t*)
+void sample_move_d32u24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t*) T_REALTIME_SAFE
 
 {
         long long y;
@@ -97,7 +100,7 @@ void sample_move_d32u24_sS (char *dst, audio_sample_t *src, unsigned long nsampl
 	}
 }	
 
-void sample_move_dS_s32u24 (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip)
+void sample_move_dS_s32u24 (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip) T_REALTIME_SAFE
 {
 	/* ALERT: signed sign-extension portability !!! */
 
@@ -108,7 +111,7 @@ void sample_move_dS_s32u24 (audio_sample_t *dst, const char *src, unsigned long 
 	}
 }	
 
-void sample_move_dither_rect_d32u24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *)
+void sample_move_dither_rect_d32u24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *) T_REALTIME_SAFE
 
 {
 	/* ALERT: signed sign-extension portability !!! */
@@ -132,7 +135,7 @@ void sample_move_dither_rect_d32u24_sS (char *dst, audio_sample_t *src, unsigned
 	}
 }	
 
-void sample_move_dither_tri_d32u24_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_tri_d32u24_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t  x;
@@ -162,7 +165,7 @@ void sample_move_dither_tri_d32u24_sS (char *dst,  audio_sample_t *src, unsigned
 	state->rm1 = rm1;
 }
 
-void sample_move_dS_s32u24s (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip)
+void sample_move_dS_s32u24s (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip) T_REALTIME_SAFE
 {
 	/* ALERT: signed sign-extension portability !!! */
 
@@ -191,7 +194,7 @@ void sample_move_dS_s32u24s (audio_sample_t *dst, const char *src, unsigned long
 	}
 }	
 
-void sample_move_dither_shaped_d32u24_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_shaped_d32u24_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t     x;
@@ -239,7 +242,7 @@ void sample_move_dither_shaped_d32u24_sS (char *dst,  audio_sample_t *src, unsig
 	state->idx = idx;
 }
 
-void sample_move_dither_rect_d32u24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/)
+void sample_move_dither_rect_d32u24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/) T_REALTIME_SAFE
 
 {
 	/* ALERT: signed sign-extension portability !!! */
@@ -275,7 +278,7 @@ void sample_move_dither_rect_d32u24_sSs (char *dst, audio_sample_t *src, unsigne
 	}
 }	
 
-void sample_move_dither_tri_d32u24_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_tri_d32u24_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t  x;
@@ -316,7 +319,7 @@ void sample_move_dither_tri_d32u24_sSs (char *dst,  audio_sample_t *src, unsigne
 	state->rm1 = rm1;
 }
 
-void sample_move_dither_shaped_d32u24_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_shaped_d32u24_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t     x;
@@ -378,7 +381,7 @@ void sample_move_dither_shaped_d32u24_sSs (char *dst,  audio_sample_t *src, unsi
 
 
 
-void sample_move_d24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *)
+void sample_move_d24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *) T_REALTIME_SAFE
 
 {
         long long y;
@@ -401,7 +404,7 @@ void sample_move_d24_sS (char *dst, audio_sample_t *src, unsigned long nsamples,
 	}
 }	
 
-void sample_move_d24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/)
+void sample_move_d24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/) T_REALTIME_SAFE
 
 {
 	long long y;
@@ -431,7 +434,7 @@ void sample_move_d24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples
 	}
 }	
 
-void sample_move_dS_s24 (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip)
+void sample_move_dS_s24 (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip) T_REALTIME_SAFE
 {
 	/* ALERT: signed sign-extension portability !!! */
 
@@ -449,7 +452,7 @@ void sample_move_dS_s24 (audio_sample_t *dst, const char *src, unsigned long nsa
 	}
 }	
 
-void sample_move_dither_rect_d24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *)
+void sample_move_dither_rect_d24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *) T_REALTIME_SAFE
 
 {
 	/* ALERT: signed sign-extension portability !!! */
@@ -479,7 +482,7 @@ void sample_move_dither_rect_d24_sS (char *dst, audio_sample_t *src, unsigned lo
 	}
 }	
 
-void sample_move_dS_s24s (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip)
+void sample_move_dS_s24s (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip) T_REALTIME_SAFE
 {
 	/* ALERT: signed sign-extension portability !!! */
 
@@ -514,7 +517,7 @@ void sample_move_dS_s24s (audio_sample_t *dst, const char *src, unsigned long ns
 
 
 
-void sample_move_dither_rect_d24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/)
+void sample_move_dither_rect_d24_sSs (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/) T_REALTIME_SAFE
 
 {
 	/* ALERT: signed sign-extension portability !!! */
@@ -550,7 +553,7 @@ void sample_move_dither_rect_d24_sSs (char *dst, audio_sample_t *src, unsigned l
 	}
 }	
 
-void sample_move_dither_tri_d24_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_tri_d24_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t  x;
@@ -590,7 +593,7 @@ void sample_move_dither_tri_d24_sSs (char *dst,  audio_sample_t *src, unsigned l
 	state->rm1 = rm1;
 }
 
-void sample_move_dither_tri_d24_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_tri_d24_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t  x;
@@ -624,7 +627,7 @@ void sample_move_dither_tri_d24_sS (char *dst,  audio_sample_t *src, unsigned lo
 	state->rm1 = rm1;
 }
 
-void sample_move_dither_shaped_d24_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_shaped_d24_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t     x;
@@ -676,7 +679,7 @@ void sample_move_dither_shaped_d24_sS (char *dst,  audio_sample_t *src, unsigned
 	state->idx = idx;
 }
 
-void sample_move_dither_shaped_d24_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_shaped_d24_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t     x;
@@ -734,7 +737,7 @@ void sample_move_dither_shaped_d24_sSs (char *dst,  audio_sample_t *src, unsigne
 	state->idx = idx;
 }
 
-void sample_move_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t* )
+void sample_move_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t* ) T_REALTIME_SAFE
 	
 {
 	int tmp;
@@ -755,7 +758,7 @@ void sample_move_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples
 	}
 }
 
-void sample_move_dither_rect_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/)
+void sample_move_dither_rect_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/) T_REALTIME_SAFE
 	
 {
 	audio_sample_t val;
@@ -782,7 +785,7 @@ void sample_move_dither_rect_d16_sSs (char *dst,  audio_sample_t *src, unsigned 
 	}
 }
 
-void sample_move_dither_rect_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t* )
+void sample_move_dither_rect_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t* ) T_REALTIME_SAFE
 	
 {
 	audio_sample_t val;
@@ -804,7 +807,7 @@ void sample_move_dither_rect_d16_sS (char *dst,  audio_sample_t *src, unsigned l
 	}
 }
 
-void sample_move_dither_tri_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_tri_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t x;
@@ -837,7 +840,7 @@ void sample_move_dither_tri_d16_sSs (char *dst,  audio_sample_t *src, unsigned l
 	state->rm1 = rm1;
 }
 
-void sample_move_dither_tri_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_tri_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t x;
@@ -866,7 +869,7 @@ void sample_move_dither_tri_d16_sS (char *dst,  audio_sample_t *src, unsigned lo
 	state->rm1 = rm1;
 }
 
-void sample_move_dither_shaped_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_shaped_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t     x;
@@ -917,7 +920,7 @@ void sample_move_dither_shaped_d16_sSs (char *dst,  audio_sample_t *src, unsigne
 	state->idx = idx;
 }
 
-void sample_move_dS_s16s (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip) 
+void sample_move_dS_s16s (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip) T_REALTIME_SAFE 
 	
 {
 	short z;
@@ -939,7 +942,7 @@ void sample_move_dS_s16s (audio_sample_t *dst, const char *src, unsigned long ns
 	}
 }	
 
-void sample_move_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/)
+void sample_move_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t * /*state*/) T_REALTIME_SAFE
 	
 {
 	int tmp;
@@ -965,7 +968,7 @@ void sample_move_d16_sSs (char *dst,  audio_sample_t *src, unsigned long nsample
 	}
 }
 
-void sample_move_dither_shaped_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state)
+void sample_move_dither_shaped_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *state) T_REALTIME_SAFE
 	
 {
 	audio_sample_t     x;
@@ -1011,7 +1014,7 @@ void sample_move_dither_shaped_d16_sS (char *dst,  audio_sample_t *src, unsigned
 	state->idx = idx;
 }
 
-void sample_move_dS_s16 (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip) 
+void sample_move_dS_s16 (audio_sample_t *dst, const char *src, unsigned long nsamples, unsigned long src_skip) T_REALTIME_SAFE 
 	
 {
 	/* ALERT: signed sign-extension portability !!! */
@@ -1022,7 +1025,7 @@ void sample_move_dS_s16 (audio_sample_t *dst, const char *src, unsigned long nsa
 	}
 }	
 
-void sample_merge_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *)
+void sample_merge_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *) T_REALTIME_SAFE
 {
 	short val;
 
@@ -1043,7 +1046,7 @@ void sample_merge_d16_sS (char *dst,  audio_sample_t *src, unsigned long nsample
 	}
 }	
 
-void sample_merge_d32u24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *)
+void sample_merge_d32u24_sS (char *dst, audio_sample_t *src, unsigned long nsamples, unsigned long dst_skip, dither_state_t *) T_REALTIME_SAFE
 
 {
 	/* ALERT: signed sign-extension portability !!! */
@@ -1057,7 +1060,7 @@ void sample_merge_d32u24_sS (char *dst, audio_sample_t *src, unsigned long nsamp
 
 void memset_interleave (char *dst, char val, unsigned long bytes, 
 			unsigned long unit_bytes, 
-			unsigned long skip_bytes) 
+			unsigned long skip_bytes) T_REALTIME_SAFE 
 {
 	switch (unit_bytes) {
 	case 1:
@@ -1098,14 +1101,14 @@ void memset_interleave (char *dst, char val, unsigned long bytes,
 */
 
 void 
-memcpy_fake (char *dst, const char *src, unsigned long src_bytes, unsigned long , unsigned long )
+memcpy_fake (char *dst, const char *src, unsigned long src_bytes, unsigned long , unsigned long ) T_REALTIME_SAFE
 {
 	memcpy (dst, src, src_bytes);
 }
 
 void 
 merge_memcpy_d16_s16 (char *dst, const char *src, unsigned long src_bytes,
-		      unsigned long , unsigned long )
+		      unsigned long , unsigned long ) T_REALTIME_SAFE
 {
 	while (src_bytes) {
 		*((short *) dst) += *((short *) src);
@@ -1117,7 +1120,7 @@ merge_memcpy_d16_s16 (char *dst, const char *src, unsigned long src_bytes,
 
 void 
 merge_memcpy_d32_s32 (char *dst, const char *src, unsigned long src_bytes,
-		      unsigned long , unsigned long )
+		      unsigned long , unsigned long ) T_REALTIME_SAFE
 
 {
 	while (src_bytes) {
@@ -1130,7 +1133,7 @@ merge_memcpy_d32_s32 (char *dst, const char *src, unsigned long src_bytes,
 
 void 
 merge_memcpy_interleave_d16_s16 (char *dst, const char *src, unsigned long src_bytes, 
-				 unsigned long dst_skip_bytes, unsigned long src_skip_bytes)
+				 unsigned long dst_skip_bytes, unsigned long src_skip_bytes) T_REALTIME_SAFE
 
 {
 	while (src_bytes) {
@@ -1143,7 +1146,7 @@ merge_memcpy_interleave_d16_s16 (char *dst, const char *src, unsigned long src_b
 
 void 
 merge_memcpy_interleave_d32_s32 (char *dst, const char *src, unsigned long src_bytes,
-				 unsigned long dst_skip_bytes, unsigned long src_skip_bytes)
+				 unsigned long dst_skip_bytes, unsigned long src_skip_bytes) T_REALTIME_SAFE
 {
 	while (src_bytes) {
 		*((int *) dst) += *((int *) src);
@@ -1155,7 +1158,7 @@ merge_memcpy_interleave_d32_s32 (char *dst, const char *src, unsigned long src_b
 
 void 
 merge_memcpy_interleave_d24_s24 (char *dst, const char *src, unsigned long src_bytes,
-				 unsigned long dst_skip_bytes, unsigned long src_skip_bytes)
+				 unsigned long dst_skip_bytes, unsigned long src_skip_bytes) T_REALTIME_SAFE
 {
 	while (src_bytes) {
 		int acc = (*(int *)dst & 0xFFFFFF) + (*(int *)src & 0xFFFFFF);
@@ -1168,7 +1171,7 @@ merge_memcpy_interleave_d24_s24 (char *dst, const char *src, unsigned long src_b
 
 void 
 memcpy_interleave_d16_s16 (char *dst, const char *src, unsigned long src_bytes,
-			   unsigned long dst_skip_bytes, unsigned long src_skip_bytes)
+			   unsigned long dst_skip_bytes, unsigned long src_skip_bytes) T_REALTIME_SAFE
 {
 	while (src_bytes) {
 		*((short *) dst) = *((short *) src);
@@ -1180,7 +1183,7 @@ memcpy_interleave_d16_s16 (char *dst, const char *src, unsigned long src_bytes,
 
 void 
 memcpy_interleave_d24_s24 (char *dst, const char *src, unsigned long src_bytes,
-			   unsigned long dst_skip_bytes, unsigned long src_skip_bytes)
+			   unsigned long dst_skip_bytes, unsigned long src_skip_bytes) T_REALTIME_SAFE
 
 {
 	while (src_bytes) {
@@ -1193,7 +1196,7 @@ memcpy_interleave_d24_s24 (char *dst, const char *src, unsigned long src_bytes,
 
 void 
 memcpy_interleave_d32_s32 (char *dst, const char *src, unsigned long src_bytes,
-			   unsigned long dst_skip_bytes, unsigned long src_skip_bytes)
+			   unsigned long dst_skip_bytes, unsigned long src_skip_bytes) T_REALTIME_SAFE
 
 {
 	while (src_bytes) {

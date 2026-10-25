@@ -70,7 +70,7 @@ void AudioChannel::set_buffer_size( nframes_t size )
 }
 
 
-void AudioChannel::process_monitoring(TVUMonitor* monitor)
+void AudioChannel::process_monitoring(TVUMonitor* monitor) T_REALTIME_SAFE
 {
     float peakValue = m_audioBuffer.compute_peak();
 
@@ -114,7 +114,7 @@ void AudioChannel::remove_monitor(TVUMonitor *monitor)
     emit vuMonitorRemoved(monitor);
 }
 
-void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes)
+void AudioChannel::read_from_hardware_port(audio_sample_t *buf, nframes_t nframes) T_REALTIME_SAFE
 {
     memcpy (m_audioBuffer.get_data(nframes), buf, sizeof(audio_sample_t) * nframes);
 

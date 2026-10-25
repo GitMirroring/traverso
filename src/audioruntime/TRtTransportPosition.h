@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QtGlobal>
+#include "TRealtime.h"
 #include <atomic>
 #include <chrono>
 
@@ -40,10 +41,12 @@ public:
                   "the transport position must be published without locks");
 
     // The clock of TTransportPosition::cycleTimeNanoseconds: monotonic, any thread
-    static qint64 now_nanoseconds()
+    static qint64 now_nanoseconds() T_REALTIME_SAFE
     {
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(
-                   std::chrono::steady_clock::now().time_since_epoch()).count();
+        // The steady clock reads the vDSO: real-time safe by contract
+        std::chrono::steady_clock::time_point now;
+        T_REALTIME_TRUSTED(now = std::chrono::steady_clock::now();)
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     }
 
     // Audio thread only

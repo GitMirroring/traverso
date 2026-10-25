@@ -32,7 +32,7 @@ Mixer::apply_gain_to_buffer_t		Mixer::apply_gain_to_buffer 	= nullptr;
 Mixer::mix_buffers_with_gain_t		Mixer::mix_buffers_with_gain 	= nullptr;
 Mixer::mix_buffers_no_gain_t		Mixer::mix_buffers_no_gain 	= nullptr;
 
-float default_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current)
+float default_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current) T_REALTIME_SAFE
 {
         for (nframes_t i = 0; i < nsamples; ++i) {
                 current = f_max (current, fabsf (buf[i]));
@@ -41,20 +41,20 @@ float default_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float
         return current;
 }
 
-void default_apply_gain_to_buffer (audio_sample_t* buf, nframes_t nframes, float gain)
+void default_apply_gain_to_buffer (audio_sample_t* buf, nframes_t nframes, float gain) T_REALTIME_SAFE
 {
         for (nframes_t i=0; i<nframes; i++)
                 buf[i] *= gain;
 }
 
-void default_mix_buffers_with_gain (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes, float gain)
+void default_mix_buffers_with_gain (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes, float gain) T_REALTIME_SAFE
 {
         for (nframes_t i = 0; i < nframes; i++) {
                 dst[i] += src[i] * gain;
         }
 }
 
-void default_mix_buffers_no_gain (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes)
+void default_mix_buffers_no_gain (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes) T_REALTIME_SAFE
 {
         for (nframes_t i=0; i < nframes; i++) {
                 dst[i] += src[i];
@@ -64,26 +64,27 @@ void default_mix_buffers_no_gain (audio_sample_t* dst, const audio_sample_t* src
 
 #if defined (Q_OS_MACOS)
 
-float accel_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current)
+float accel_compute_peak (const audio_sample_t* buf, nframes_t nsamples, float current) T_REALTIME_SAFE
 {
 	float tmpmax = 0.0f;
-	vDSP_maxmgv(buf, 1, &tmpmax, nsamples);
+	// Accelerate's vDSP: real-time safe by contract
+	T_REALTIME_TRUSTED(vDSP_maxmgv(buf, 1, &tmpmax, nsamples);)
 	return f_max(current, tmpmax);
 }
 
-void accel_apply_gain_to_buffer (audio_sample_t * buf, nframes_t nframes, float gain)
+void accel_apply_gain_to_buffer (audio_sample_t * buf, nframes_t nframes, float gain) T_REALTIME_SAFE
 {
-	vDSP_vsmul(buf, 1, &gain, buf, 1, nframes);
+	T_REALTIME_TRUSTED(vDSP_vsmul(buf, 1, &gain, buf, 1, nframes);)
 }
 
-void accel_mix_buffers_with_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes, float gain)
+void accel_mix_buffers_with_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes, float gain) T_REALTIME_SAFE
 {
-	vDSP_vsma(src, 1, &gain, dst, 1, dst, 1, nframes);
+	T_REALTIME_TRUSTED(vDSP_vsma(src, 1, &gain, dst, 1, dst, 1, nframes);)
 }
 
-void accel_mix_buffers_no_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes)
+void accel_mix_buffers_no_gain (audio_sample_t * dst, const audio_sample_t * src, nframes_t nframes) T_REALTIME_SAFE
 {
-	vDSP_vadd(src, 1, dst, 1, dst, 1, nframes);
+	T_REALTIME_TRUSTED(vDSP_vadd(src, 1, dst, 1, dst, 1, nframes);)
 }
 
 #endif

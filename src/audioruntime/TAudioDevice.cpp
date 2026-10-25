@@ -287,7 +287,7 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs ) T_REALTIME
     /* run as many cycles as it takes to consume nframes (Should be 1 cycle!!)*/
     for (left = nframes; left >= m_bufferSize; left -= m_bufferSize) {
         if (run_one_cycle (m_bufferSize, delayed_usecs) < 0) {
-            qCritical ("cycle execution failure, exiting");
+            TLOG_RT_E("audio", "cycle execution failure, exiting");
             return -1;
         }
     }
@@ -308,7 +308,7 @@ int TAudioDevice::run_one_cycle( nframes_t nframes, float  ) T_REALTIME_SAFE
 {
 
     if (m_isRealTime && m_driver->read(nframes) < 0) {
-        qDebug("driver read failed!");
+        TLOG_RT_E("audio", "driver read failed");
         return -1;
     }
 
@@ -321,7 +321,7 @@ int TAudioDevice::run_one_cycle( nframes_t nframes, float  ) T_REALTIME_SAFE
     }
 
     if (m_isRealTime && m_driver->write(nframes) < 0) {
-        qDebug("driver write failed!");
+        TLOG_RT_E("audio", "driver write failed");
         return -1;
     }
 
