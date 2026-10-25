@@ -31,15 +31,23 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 class TAudioBuffer
 {
 public:
+    // Whether the buffer's memory is kept in RAM (mlock()), so that the audio
+    // thread never faults a page of it in: a TRealTimeAudioBuffer asks for it
+    enum class MemoryLock { No, Yes };
+
     explicit TAudioBuffer(nframes_t size)
-        : TAudioBuffer (size, false)
+        : TAudioBuffer (size, MemoryLock::No)
     {
     }
 
-    virtual ~TAudioBuffer()
+    ~TAudioBuffer()
     {
         delete_buffer_data();
     }
+
+    // Whether the memory is locked now: asked for and granted. A lock can fail
+    // (RLIMIT_MEMLOCK); that is logged, and the buffer works unlocked
+    bool is_memory_locked() const { return m_memLocked; }
 
     // Not in the audio thread: allocates
     void resize(nframes_t size);
@@ -143,15 +151,16 @@ public:
         Mixer::apply_gain_to_buffer(m_buffer, nframes, gain);
     }
 
-private:
-    static constexpr size_t AUDIO_BUFFER_ALIGNMENT = 64;
-
-    friend class TRealTimeAudioBuffer;
-    explicit TAudioBuffer(nframes_t size, bool wantsMemLock)
-        : m_wantsMemLock(wantsMemLock)
+protected:
+    // For TRealTimeAudioBuffer
+    TAudioBuffer(nframes_t size, MemoryLock memoryLock)
+        : m_memoryLock(memoryLock)
     {
         resize(size);
     }
+
+private:
+    static constexpr size_t AUDIO_BUFFER_ALIGNMENT = 64;
 
     void allocate_buffer_data(nframes_t size);
     void delete_buffer_data();
@@ -159,13 +168,15 @@ private:
     audio_sample_t* m_buffer{nullptr};
     nframes_t       m_size{0};
     bool            m_memLocked{false};
-    bool            m_wantsMemLock{false};
+    MemoryLock      m_memoryLock{MemoryLock::No};
 };
 
-class TRealTimeAudioBuffer : public TAudioBuffer
+// A buffer of the audio processing path: its memory locked in RAM. The type
+// says so where the buffer is declared; it adds nothing else, and is never
+// deleted through a TAudioBuffer pointer (no virtual destructor)
+class TRealTimeAudioBuffer final : public TAudioBuffer
 {
 public:
-    TRealTimeAudioBuffer(nframes_t size) : TAudioBuffer(size, true) {}
-    ~TRealTimeAudioBuffer() {}
+    explicit TRealTimeAudioBuffer(nframes_t size) : TAudioBuffer(size, MemoryLock::Yes) {}
 };
 

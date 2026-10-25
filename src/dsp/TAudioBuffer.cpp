@@ -65,7 +65,7 @@ void TAudioBuffer::allocate_buffer_data(nframes_t size)
     m_size = size;
 
 #ifdef USE_MLOCK
-    if (m_wantsMemLock) {
+    if (m_memoryLock == MemoryLock::Yes) {
         if (mlock (m_buffer, size * sizeof(audio_sample_t)) == -1) {
             TLOG_E("dsp", "could not lock a buffer of {} frames into memory", size);
         } else {
