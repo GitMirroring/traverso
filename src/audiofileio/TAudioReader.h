@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QString>
 
 #include <memory>
+#include <optional>
 
 class TAudioDecoder;
 
@@ -39,13 +40,18 @@ class TAudioDecoder;
  *
  * It opens the file with the decoder for its format (libsndfile, WavPack,
  * MP3, AAC) and gives the file's facts: channels, rate, frames, length. The
- * audio comes two ways, from the same reader, side by side:
+ * audio comes two ways:
  * - read(): at the output rate, from a location in time. With the output
  *   rate the file's own, the file as it is; with another, through a
  *   TAudioResampler for all channels, sample exact: every output frame is
  *   where it belongs on the file's timeline (test_resample_reader).
  * - read_file_frames(): the file's own frames, at its own rate, whatever the
  *   output rate: for what works on the file's grid (peaks, a waveform).
+ *
+ * One reader per use: a stream, a waveform and a peak build each open their
+ * own. Both ways on one reader read right, but a read_file_frames() moves
+ * the decoder under the output, so the next read() seeks and its resampler
+ * starts anew.
  *
  * Both keep the contract of TAudioDecoder::read(): count frames of every
  * channel are filled, what the file gives and zeros for the rest, also past
@@ -78,8 +84,9 @@ public:
 
     // The output rate of read(), and the resampler for it when it is not the
     // file's rate: a backend and one of its qualities
-    // (TAudioResampler::qualities()). The reader stays where it was, now at
-    // rate. Until it is called, the output rate is the file's.
+    // (TAudioResampler::qualities()). The reader has no position at the new
+    // rate: the next read() gives it one. Until it is called, the output
+    // rate is the file's.
     void set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality);
     uint output_rate() const { return m_outputRate; }
     // The frames the file gives at the output rate: the first output frame at
@@ -124,13 +131,10 @@ private:
 
     uint m_outputRate{0};
     nframes_t m_outputFrames{0};
-    // The position of read(), in output frames
-    nframes_t m_frame{0};
-    // A read_file_frames() moved the decoder: the next read() puts it back
-    // on the frame where the output left it (the resampler is untouched, so
-    // the output goes on as one read would)
-    bool m_decoderMoved{false};
-    nframes_t m_resumeFrame{0};
+    // The position of read(), in output frames. None after a new output
+    // rate, a read of the file's own frames (the decoder moved) or a seek
+    // that failed: the next read() seeks.
+    std::optional<nframes_t> m_frame{0};
     // After a seek: output frames to drop before the frame asked for
     nframes_t m_dropFrames{0};
 };

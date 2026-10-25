@@ -427,9 +427,11 @@ int main()
         if (lastOk) {
             std::printf("ok:   %s\n", what);
         }
-        // One reader, both ways: a read of the file's own frames between two
-        // reads at the output rate gives the file's samples, and leaves the
-        // output where it was (the second read goes on as one read would)
+        // Both ways on one reader (one reader per use is the rule): a read of
+        // the file's own frames between two reads at the output rate gives
+        // the file's samples, and the second read goes on at its frame: it
+        // seeks, its resampler starts anew (no frame lost or doubled; a
+        // frame off is some 0.07 for this tone)
         {
             const std::unique_ptr<TAudioReader> bothOpened = TAudioReader::open(tonePath);
             TAudioReader& both = *bothOpened;
@@ -455,9 +457,36 @@ int main()
             std::snprintf(what, sizeof(what), "%u -> %u Hz, %s, %s: the file's own frames between two reads at the output rate (%u, %.5f; %.5f off)",
                           c.fileRate, c.outputRate, qPrintable(TAudioResampler::backend_name(backend)), piece ? "after pieces" : "after one go",
                           nativeRead, double(nativeDiff), double(outputDiff));
-            const bool bothOk = nativeRead == 500 && nativeDiff < 1.0e-6f && outputDiff < 1.0e-6f;
+            const bool bothOk = nativeRead == 500 && nativeDiff < 1.0e-6f && outputDiff < 1.0e-3f;
             check(bothOk, what);
             if (bothOk) {
+                std::printf("ok:   %s\n", what);
+            }
+        }
+        // A new output rate leaves the reader without a position: a read
+        // after it at a location reads there as a new reader does, also where
+        // that location's frame at the new rate is the frame the reader was
+        // at before (1000)
+        {
+            const uint otherRate = c.outputRate == 48000 ? 44100 : 48000;
+            const std::unique_ptr<TAudioReader> changed = TAudioReader::open(tonePath);
+            const std::unique_ptr<TAudioReader> fresh = TAudioReader::open(tonePath);
+            changed->set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+            fresh->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
+            TFileIOBuffer output;
+            changed->read(output, TTimeRef(), 1000);
+            changed->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
+            changed->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);
+            const std::vector<float> afterChange(output.get_channel_buffer(0).get_data(2000), output.get_channel_buffer(0).get_data(2000) + 2000);
+            fresh->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);
+            float changeDiff = 0.0f;
+            for (nframes_t i = 0; i < 2000; ++i) {
+                changeDiff = std::max(changeDiff, std::fabs(afterChange[i] - output.get_channel_buffer(0).get_data(2000)[i]));
+            }
+            std::snprintf(what, sizeof(what), "%u Hz file, %u -> %u Hz output, %s: after a new rate a read reads where it is asked (%.5f off)",
+                          c.fileRate, c.outputRate, otherRate, qPrintable(TAudioResampler::backend_name(backend)), double(changeDiff));
+            check(changeDiff == 0.0f, what);
+            if (changeDiff == 0.0f) {
                 std::printf("ok:   %s\n", what);
             }
         }
