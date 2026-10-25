@@ -551,6 +551,17 @@ int TAudioClip::process(TProcessCallBackData &processData)
         return 0;
     }
 
+    // The slot holds the file on past the clip's end: in the clip's last
+    // cycle the frames after its end are silence, so they do not sound with
+    // what follows (a clip split there plays them itself, from the same
+    // rounded position on)
+    const nframes_t clipEnd = offset + framesToProcess;
+    if (clipEnd < nframes) {
+        for (uint chan = 0; chan < channelcount; ++chan) {
+            bus->get_buffer(chan).silence(clipEnd, nframes - clipEnd);
+        }
+    }
+
     if (readFrames != framesToProcess) {
         TLOG_RT_W("clip", "read {} frames of the {} to process", readFrames, framesToProcess);
     }
