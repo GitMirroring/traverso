@@ -23,7 +23,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QObject>
 #include <QThread>
 #include <memory>
-#include <functional>
 #include <type_traits>
 #include "cameron/readerwritercircularbuffer.h"
 #include "TRealTime.h"
@@ -48,8 +47,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
  * GUI thread, e.g. by calling deleteLater() on them.
  */
 struct TAudioThreadMessageQueueEvent {
-    TRealTimeClosure                rtTask;
-    std::move_only_function<void()> guiCallback{nullptr};
+    TRealTimeClosure rtTask;
+    TGuiClosure      guiCallback;
 };
 
 class TAudioThreadMessageQueueThread : public QThread
@@ -65,30 +64,18 @@ class TAudioThreadMessageQueue : public QObject
 public:
     /**
      * rtTask runs in the audio thread: a TRealTimeClosure, whose type checks
-     * at compile time that it is real-time safe. guiSignal runs afterwards in
-     * the message queue worker thread, not in the GUI thread. See
+     * at compile time that it is real-time safe. guiSignal becomes a
+     * TGuiClosure (it passes through the audio thread, which may drop it) and
+     * runs afterwards in the message queue worker thread, not in the GUI
+     * thread. See
      * TAudioThreadMessageQueueEvent for what guiSignal may and may not do.
      */
     template<typename RTTask, typename GuiSignal = std::nullptr_t>
     void post_rt_task(RTTask&& rtTask, GuiSignal&& guiSignal = nullptr)
     {
-        using DecayedGuiSignal = std::decay_t<GuiSignal>;
-        using TargetType = std::move_only_function<void()>;
-
-        // The GUI callback passes through the audio thread, and when the
-        // return queue is full it is dropped there: so it must be stored
-        // inline and have nothing to destroy. libstdc++ keeps a target inline
-        // up to three pointers; libc++ and MSVC keep other sizes
-        if constexpr (!std::is_same_v<DecayedGuiSignal, TargetType> && !std::is_same_v<DecayedGuiSignal, std::nullptr_t>) {
-            static_assert(sizeof(DecayedGuiSignal) <= 3 * sizeof(void*) && alignof(DecayedGuiSignal) <= alignof(void*),
-                          "post_rt_task: the GUI callback must fit in three pointers (it may be dropped in the audio thread)");
-            static_assert(std::is_trivially_copyable_v<DecayedGuiSignal> && std::is_trivially_destructible_v<DecayedGuiSignal>,
-                          "post_rt_task: the GUI callback may capture pointers and plain values only (it may be dropped in the audio thread)");
-        }
-
         TAudioThreadMessageQueueEvent event{};
         event.rtTask = TRealTimeClosure(std::forward<RTTask>(rtTask));
-        event.guiCallback = std::forward<GuiSignal>(guiSignal);
+        event.guiCallback = TGuiClosure(std::forward<GuiSignal>(guiSignal));
         post_gui_event(std::move(event));
     }
 

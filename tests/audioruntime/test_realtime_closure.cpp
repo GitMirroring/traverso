@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of TRealTimeClosure: it runs its captures, a copy runs the
-// same, and an empty one says so. What may not be captured is checked by the
+// Headless test of TRealTimeClosure and TGuiClosure: it runs its captures, a
+// copy runs the same, and an empty one says so. What may not be captured is checked by the
 // compiler (static_assert), not here.
 
 #include "TRealTimeClosure.h"
@@ -49,6 +49,16 @@ int main()
     check(!closure, "cleared, it is empty");
 
     check(sizeof(TRealTimeClosure) == 4 * sizeof(void*), "the closure is four pointers: storage and the call");
+
+    // The GUI kind: its call need not be real-time safe (not noexcept here)
+    int guiTarget = 0;
+    int* guiWhere = &guiTarget;
+    TGuiClosure gui([guiWhere]() { *guiWhere = 7; });
+    TGuiClosure guiCopy = gui;
+    guiCopy();
+    check(guiTarget == 7, "a GUI closure runs its captures, also as a copy");
+    TGuiClosure guiEmpty = nullptr;
+    check(!guiEmpty, "a GUI closure from nullptr is empty");
 
     return failures == 0 ? 0 : 1;
 }

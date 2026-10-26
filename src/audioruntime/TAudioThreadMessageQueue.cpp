@@ -149,9 +149,8 @@ void TAudioThreadMessageQueue::process_posted_gui_events() T_REALTIME_SAFE
 {
     // Real-time safe by contract: the queues' try_ calls do not allocate or
     // wait, and moving or overwriting an event frees nothing: its rtTask is
-    // trivially copyable, and its guiCallback, also when a full return queue
-    // drops it here, is inline with nothing to destroy (post_rt_task()
-    // checks that). The rtTask is real-time safe by its type
+    // trivially copyable, and so is its guiCallback, also when a full return
+    // queue drops it here (TGuiClosure). The rtTask is real-time safe by its type
     // (TRealTimeClosure)
     T_REALTIME_SAFE_BY_CONTRACT(TAudioThreadMessageQueueEvent event;)
 
