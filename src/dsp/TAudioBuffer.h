@@ -53,9 +53,9 @@ public:
     // Why a lock failed: no permission to lock memory (EPERM), or the limit
     // on locked memory reached (ENOMEM, EAGAIN)
     enum class MemoryLockFailure { NoPermission, LimitReached };
-    // Called once per kind of failure, in the thread that made the buffer:
-    // for the application to tell the user. A failure from before the
-    // handler was set is passed to it when it is set.
+    // Called once per kind of failure, for the application to tell the user:
+    // in the thread that made the buffer, or, for a failure from before the
+    // handler was set, in the thread that sets it.
     using MemoryLockFailureHandler = void (*)(MemoryLockFailure failure);
     static void set_memory_lock_failure_handler(MemoryLockFailureHandler handler);
 

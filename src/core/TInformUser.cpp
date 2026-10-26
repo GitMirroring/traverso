@@ -43,6 +43,7 @@ TInformUser& tInformUser()
 static void tell_memory_lock_failure(TAudioBuffer::MemoryLockFailure failure)
 {
     QMetaObject::invokeMethod(QCoreApplication::instance(), [failure]() {
+#if defined(Q_OS_LINUX)
         if (failure == TAudioBuffer::MemoryLockFailure::NoPermission) {
             tInformUser().warning(TInformUser::tr(
                 "Traverso has no permission to lock its audio buffers in memory. Now and then this can cause "
@@ -54,6 +55,17 @@ static void tell_memory_lock_failure(TAudioBuffer::MemoryLockFailure failure)
                 "memory. Now and then this can cause a dropout. Raise memlock for your user in "
                 "/etc/security/limits.conf, or make your user a member of the audio group, and log in again."));
         }
+#else
+        if (failure == TAudioBuffer::MemoryLockFailure::NoPermission) {
+            tInformUser().warning(TInformUser::tr(
+                "Traverso has no permission to lock its audio buffers in memory. Now and then this can cause "
+                "a dropout."));
+        } else {
+            tInformUser().warning(TInformUser::tr(
+                "Traverso reached the limit on locked memory: not all of its audio buffers are locked in "
+                "memory. Now and then this can cause a dropout."));
+        }
+#endif
     }, Qt::QueuedConnection);
 }
 
