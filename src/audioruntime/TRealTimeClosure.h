@@ -5,6 +5,8 @@
 
 #include "TRealTime.h"
 
+#include <QtGlobal>
+
 #include <cstddef>
 #include <new>
 #include <type_traits>
@@ -16,15 +18,23 @@
 // - they are trivially copyable and destructible, so a copy is a memcpy and
 //   nothing runs when it goes away;
 // - the closure is noexcept: without it, it does not compile; with Clang it
-//   is also checked as real-time safe where it is made, and a lambda that is
-//   not marked T_REALTIME_SAFE is reported (-Wfunction-effects).
+//   is also checked as real-time safe where it is made. A lambda that is not
+//   marked T_REALTIME_SAFE is a Clang warning (-Wfunction-effects), an error
+//   once step 5 of doc/design/realtime-audio-path.md is done.
 // A closure that does not fit is a compile error, not a heap allocation.
+//
+// The type guarantees that making, copying and calling it is real-time safe,
+// not that the pointers it captures are still valid when it runs: that is the
+// business of the queue and of the owner of what they point to.
 class TRealTimeClosure
 {
 public:
     TRealTimeClosure() = default;
     TRealTimeClosure(std::nullptr_t) {}
 
+    // The requires clause only keeps the copy and the nullptr constructors
+    // for their own types; what a closure must be is checked by the
+    // static_asserts, whose messages say what is wrong
     template <typename Closure>
         requires (!std::is_same_v<std::decay_t<Closure>, TRealTimeClosure>
                   && !std::is_same_v<std::decay_t<Closure>, std::nullptr_t>)
@@ -45,6 +55,7 @@ public:
 
     void operator()() T_REALTIME_SAFE
     {
+        Q_ASSERT(m_invoke);
         m_invoke(m_storage);
     }
 
