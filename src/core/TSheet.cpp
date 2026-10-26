@@ -506,7 +506,7 @@ void TSheet::solo_track(TTrack *track)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int TSheet::process(TProcessCallBackData &processData)
+int TSheet::process(TProcessContext &context)
 {
     // The schedulers are woken by the project, once per cycle after all
     // sheets (TProject::process())
@@ -540,12 +540,12 @@ int TSheet::process(TProcessCallBackData &processData)
 
     int processResult = 0;
 
-    nframes_t nframes = processData.get_nframes_to_process();
-    processData.set_ringbuffer_read_bus(m_clipRenderBus);
+    nframes_t nframes = context.get_nframes_to_process();
+    context.set_ringbuffer_read_bus(m_clipRenderBus);
 
     // Process all Tracks.
     for(TAudioTrack* track : m_audioTracks.rt_items()) {
-        processResult |= track->process(processData);
+        processResult |= track->process(context);
     }
 
     // Where this buffer starts and when its cycle began, for the GUI's
@@ -556,9 +556,9 @@ int TSheet::process(TProcessCallBackData &processData)
     publish_transport_position(TTransportPosition{
         .universalFrame = m_transportLocation.universal_frame(),
         .runStartUniversalFrame = m_rtRunStart.universal_frame(),
-        .cycleTimeNanoseconds = processData.get_cycle_start_nanoseconds(),
+        .cycleTimeNanoseconds = context.get_cycle_start_nanoseconds(),
         .frames = nframes,
-        .sampleRate = processData.get_sample_rate()
+        .sampleRate = context.get_sample_rate()
     });
 
     // update the transport location
@@ -570,14 +570,14 @@ int TSheet::process(TProcessCallBackData &processData)
     }
 
     for(TBusTrack* busTrack : m_busTracks.rt_items()) {
-        busTrack->process(processData);
+        busTrack->process(context);
     }
 
     // Mix the result into the AudioDevice "physical" buffers
-    m_masterOutBusTrack->process(processData);
+    m_masterOutBusTrack->process(context);
 
     if (m_bounceTrack->armed()) {
-        m_bounceTrack->process(processData);
+        m_bounceTrack->process(context);
     } else {
         // FIXME: should only be done when arm state changes for BouncTrack
         if (AudioBus* bounceInputBus = m_bounceTrack->rt_input_bus()) {

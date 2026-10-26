@@ -502,10 +502,10 @@ void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDec
 }
 
 
-nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation)
+nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessContext &context, const TTimeRef &fileLocation)
 {
     if (m_bufferstatus.out_of_sync()) {
-        if (processData.get_is_real_time()) {
+        if (context.get_is_real_time()) {
             TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: RealTime: Buffer out of sync, skipping file location %s",
                    QS_C(TTimeRef::timeref_to_ms_3(fileLocation)));
             TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ReadSource::ringbuffer_read: RealTime: Buffer status %s", QS_C(m_bufferstatus.get_readable_sync_status()));
@@ -536,13 +536,13 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &proc
 
     // auto startTime = TTimeRef::get_nanoseconds_since_epoch();
     nframes_t read = 0;
-    nframes_t nframes = processData.get_nframes_to_process();
-    AudioBus* bus = processData.get_ringbuffer_read_bus();
+    nframes_t nframes = context.get_nframes_to_process();
+    AudioBus* bus = context.get_ringbuffer_read_bus();
 
 
     auto availableSlots = m_rtBufferSlotsQueue->size_approx();
 
-    while ((slot = dequeue_from_rt_queue(processData)))
+    while ((slot = dequeue_from_rt_queue(context)))
     {
         Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
         Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
@@ -594,7 +594,7 @@ nframes_t TBufferedAudioStreamReader::ringbuffer_read(TProcessCallBackData &proc
     return read;
 }
 
-TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessCallBackData &processData)
+TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessContext &context)
 {
     Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
     Q_ASSERT(m_bufferstatus.get_sync_status() != TBufferedAudioStreamStatus::QUEUE_ABOUT_TO_BE_DELETED);
@@ -602,7 +602,7 @@ TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessCall
 
     TQueueBufferSlot* slot = nullptr;
 
-    if (processData.get_is_real_time()) {
+    if (context.get_is_real_time()) {
         if (!m_rtBufferSlotsQueue->try_dequeue(slot)) {
             // FIXME
             // What about feedback to user that we're missing out on the
@@ -611,7 +611,7 @@ TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessCall
     } else {
         auto startTime = TTimeRef::get_nanoseconds_since_epoch();
         m_rtBufferSlotsQueue->wait_dequeue(slot);
-        processData.add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
+        context.add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
     }
 
     return slot;

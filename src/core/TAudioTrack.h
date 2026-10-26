@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QList>
 
 #include "TContextItem.h"
-#include "TProcessCallBackData.h"
+#include "TProcessContext.h"
 #include "TRtList.h"
 #include "TTimeRef.h"
 #include "TTrack.h"
@@ -73,7 +73,7 @@ public :
     int disarm();
     void toggle_show_clip_volume_automation();
 
-    int process(TProcessCallBackData &processData);
+    int process(TProcessContext &context);
 
     bool operator<(const TAudioTrack &other) {
         printf("bool operator<(const AudioTrack &other)\n");

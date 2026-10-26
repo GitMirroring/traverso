@@ -103,7 +103,7 @@ void TBusTrack::set_name( const QString & name )
         TTrack::set_name(name);
 }
 
-int TBusTrack::process(TProcessCallBackData &processData)
+int TBusTrack::process(TProcessContext &context)
 {
     // Real-time Accumulation Protection: If the bus is muted or resting at absolute silence,
     // we MUST evacuate the streaming buffers to prevent scaling explosions from incoming track sends.
@@ -115,9 +115,9 @@ int TBusTrack::process(TProcessCallBackData &processData)
         return 0; // Terminate early safely; buffer is clear and zeroed
     }
 
-    nframes_t nframes = processData.get_nframes_to_process();
-    const TTimeRef startLocation = processData.get_start_location();
-    const TTimeRef endLocation = processData.get_end_location();
+    nframes_t nframes = context.get_nframes_to_process();
+    const TTimeRef startLocation = context.get_start_location();
+    const TTimeRef endLocation = context.get_end_location();
 
 
     process_pre_sends(nframes);

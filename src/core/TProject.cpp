@@ -1604,20 +1604,20 @@ void TProject::set_sheets_are_tracks_folder(bool isFolder)
 }
 
 
-int TProject::process(TProcessCallBackData &processData)
+int TProject::process(TProcessContext &context)
 {
     int result = 0;
-    nframes_t nframes = processData.get_nframes_to_process();
+    nframes_t nframes = context.get_nframes_to_process();
 
-    processData.set_start_location(get_transport_location());
+    context.set_start_location(get_transport_location());
 
     for (TSheet* sheet : m_sheets.rt_items()) {
-        result |= sheet->process(processData);
+        result |= sheet->process(context);
     }
 
 
     for(TBusTrack* busTrack : m_busTracks.rt_items()) {
-        busTrack->process(processData);
+        busTrack->process(context);
     }
 
 
@@ -1638,7 +1638,7 @@ int TProject::process(TProcessCallBackData &processData)
     }
 
     // Mix the result into the AudioDevice "physical" buffers
-    m_masterOutBusTrack->process(processData);
+    m_masterOutBusTrack->process(context);
 
     // The schedulers are woken once per cycle, after the sheets took from
     // the rings and asked for their seeks; also with the transport stopped

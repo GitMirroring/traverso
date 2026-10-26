@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioDeviceSetup.h"
 #include "TTimeRef.h"
 #include "TTransportControl.h"
-#include "TProcessCallBackData.h"
+#include "TProcessContext.h"
 #include "defines.h"
 
 class TAudioDeviceThread;
@@ -91,7 +91,7 @@ private:
 };
 
 using TAudioDriverReadWriteCallBack = TRealTimeCallBack<int(nframes_t)>;
-using TProcessCallBack              = TRealTimeCallBack<int(TProcessCallBackData&)>;
+using TProcessCallBack              = TRealTimeCallBack<int(TProcessContext&)>;
 using TRunCycleCallBack             = TRealTimeCallBack<int()>;
 using TTransportControlCallBack      = TRealTimeCallBack<int(TTransportControl*)>;
 
@@ -216,7 +216,7 @@ private:
 #endif
     TRtList<TAudioDeviceClient> m_clients;
 
-    TProcessCallBackData    m_processCallBackData;
+    TProcessContext    m_processCallBackData;
     TTransportControl   m_transportControl;
 
     TAudioDeviceSetup   m_setup;

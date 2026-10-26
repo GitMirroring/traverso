@@ -473,20 +473,20 @@ void TAudioClip::set_selected(bool /*selected*/)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int TAudioClip::process(TProcessCallBackData &processData)
+int TAudioClip::process(TProcessContext &context)
 {
     // Handle silence clips
     if (get_channel_count() == 0) {
         return 0;
     }
 
-    nframes_t nframes = processData.get_nframes_to_process();
-    const TTimeRef startLocation = processData.get_start_location();
-    const TTimeRef endLocation = processData.get_end_location();
-    AudioBus* bus = processData.get_ringbuffer_read_bus();
+    nframes_t nframes = context.get_nframes_to_process();
+    const TTimeRef startLocation = context.get_start_location();
+    const TTimeRef endLocation = context.get_end_location();
+    AudioBus* bus = context.get_ringbuffer_read_bus();
 
     if (m_recordingStatus == RECORDING) {
-        process_capture(processData);
+        process_capture(context);
         return 0;
     }
 
@@ -543,7 +543,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
     }
 
     // Read the frames from the ringbuffers
-    nframes_t readFrames = m_readSource->ringbuffer_read(processData, fileLocation);
+    nframes_t readFrames = m_readSource->ringbuffer_read(context, fileLocation);
 
 
     if (readFrames == 0) {
@@ -594,7 +594,7 @@ int TAudioClip::process(TProcessCallBackData &processData)
 //
 //  Function called in RealTime AudioThread processing path
 //
-void TAudioClip::process_capture(TProcessCallBackData &processData)
+void TAudioClip::process_capture(TProcessContext &context)
 {
     AudioBus* bus = m_track->get_input_bus();
 
@@ -602,8 +602,8 @@ void TAudioClip::process_capture(TProcessCallBackData &processData)
         return;
     }
 
-    processData.set_ringbuffer_write_bus(bus);
-    nframes_t written = m_writer->ringbuffer_write(processData);
+    context.set_ringbuffer_write_bus(bus);
+    nframes_t written = m_writer->ringbuffer_write(context);
 
     // The take grows past the frames the writer drops only
     const qint64 before = TRecordingLatency::visible_frames(m_capturedFrames, m_captureCompensation);
@@ -611,7 +611,7 @@ void TAudioClip::process_capture(TProcessCallBackData &processData)
     const qint64 after = TRecordingLatency::visible_frames(m_capturedFrames, m_captureCompensation);
     m_length.add_frames(nframes_t(after - before), m_captureRate);
 
-    nframes_t toWrite = processData.get_nframes_to_process();
+    nframes_t toWrite = context.get_nframes_to_process();
     if (written != toWrite) {
         TLOG_RT_W("clip", "recording buffer: could only write {} of {} frames", written, toWrite);
     }

@@ -163,19 +163,19 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
     return nframes;
 }
 
-nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessCallBackData &processData)
+nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessContext &context)
 {
     Q_ASSERT(m_rtBufferSlotsQueue);
     Q_ASSERT(m_freeBufferSlotsQueue);
 
-    nframes_t nframes = processData.get_nframes_to_process();
-    AudioBus* bus = processData.get_ringbuffer_write_bus();
+    nframes_t nframes = context.get_nframes_to_process();
+    AudioBus* bus = context.get_ringbuffer_write_bus();
     Q_ASSERT(bus);
     Q_ASSERT(bus->get_channel_count() == m_channelCount);
 
-    TQueueBufferSlot* slot = dequeue_from_free_queue(processData);
+    TQueueBufferSlot* slot = dequeue_from_free_queue(context);
     if (slot) {
-        slot->update_location_and_offset(processData.get_start_location(), TTimeRef());
+        slot->update_location_and_offset(context.get_start_location(), TTimeRef());
         for (uint chan = 0; chan < m_channelCount; ++chan) {
             slot->write_channel(chan, bus->get_buffer(chan), 0, nframes);
         }
@@ -191,16 +191,16 @@ nframes_t TBufferedAudioStreamWriter::ringbuffer_write(TProcessCallBackData &pro
     return 0;
 }
 
-TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessCallBackData &processData)
+TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessContext &context)
 {
     TQueueBufferSlot* slot = nullptr;
 
-    if (processData.get_is_real_time()) {
+    if (context.get_is_real_time()) {
         m_freeBufferSlotsQueue->try_dequeue(slot);
     } else {
         auto startTime = TTimeRef::get_nanoseconds_since_epoch();
         m_freeBufferSlotsQueue->wait_dequeue(slot);
-        processData.add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
+        context.add_ringbuffer_read_wait_time(TTimeRef::get_nanoseconds_since_epoch() - startTime);
     }
 
     return slot;

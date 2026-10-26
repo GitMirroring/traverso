@@ -253,7 +253,7 @@ void TAudioTrack::add_input_bus(AudioBus *bus)
 //
 //  Function called in RealTime AudioThread processing path
 //
-int TAudioTrack::process(TProcessCallBackData &processData)
+int TAudioTrack::process(TProcessContext &context)
 {
     int processResult = 0;
 
@@ -261,9 +261,9 @@ int TAudioTrack::process(TProcessCallBackData &processData)
         return 0;
     }
 
-    nframes_t nframes = processData.get_nframes_to_process();
-    const TTimeRef startLocation = processData.get_start_location();
-    const TTimeRef endLocation = processData.get_end_location();
+    nframes_t nframes = context.get_nframes_to_process();
+    const TTimeRef startLocation = context.get_start_location();
+    const TTimeRef endLocation = context.get_end_location();
 
 
     // Get the 'render bus' from sheet, a bit hackish solution, but
@@ -284,7 +284,7 @@ int TAudioTrack::process(TProcessCallBackData &processData)
             }
         }
 
-        result = clip->process(processData);
+        result = clip->process(context);
 
         if (result <= 0) {
             continue;

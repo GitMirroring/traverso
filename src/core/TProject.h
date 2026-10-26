@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TSession.h"
 #include "TRtList.h"
-#include "TProcessCallBackData.h"
+#include "TProcessContext.h"
 #include "TAudioDeviceSetup.h"
 
 class AudioBus;
@@ -56,7 +56,7 @@ class TProject : public TSession
 public :
     ~TProject();
 
-    int process(TProcessCallBackData &processData);
+    int process(TProcessContext &context);
     // jackd only feature
     int transport_control(TTransportControl* transportControl);
 

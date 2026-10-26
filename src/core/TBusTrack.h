@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include "TProcessCallBackData.h"
+#include "TProcessContext.h"
 #include "TTimeRef.h"
 #include "TTrack.h"
 
@@ -38,7 +38,7 @@ public:
     QDomNode get_state(QDomDocument doc, bool istemplate=false);
     virtual int set_state( const QDomNode & node );
     void set_name(const QString& name);
-    int process(TProcessCallBackData &processData);
+    int process(TProcessContext &context);
 
     bool operator<(const TBusTrack& other) {
         return this->get_sort_index() < other.get_sort_index();

@@ -27,10 +27,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 class AudioBus;
 
-class TProcessCallBackData {
+class TProcessContext {
 
 public:
-    TProcessCallBackData() {
+    TProcessContext() {
         m_ringBufferReadBus = nullptr;
         m_ringBufferWriteBus = nullptr;
         m_nFramesToProcess = 0;

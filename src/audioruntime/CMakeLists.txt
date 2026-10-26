@@ -20,7 +20,7 @@ set(TRAVERSO_AUDIORUNTIME_SOURCES
     memops.cpp
     TAudioThreadMessageQueue.h TAudioThreadMessageQueue.cpp
     TTransportControl.h TTransportControl.cpp
-    TProcessCallBackData.h
+    TProcessContext.h
     TRtTransaction.h TRtTransaction.cpp
     TRtValue.h
     TRtList.h

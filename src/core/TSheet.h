@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include "TProcessCallBackData.h"
+#include "TProcessContext.h"
 #include "TPeakBuildService.h"
 #include "TIOGroup.h"
 #include "TSession.h"
@@ -107,7 +107,7 @@ public:
     void set_recording(bool recording, bool realtime);
     void set_audio_sources_dir(const QString& dir);
 
-    int process(TProcessCallBackData &processData);
+    int process(TProcessContext &context);
 
     // jackd only feature
     int transport_control(TTransportControl* state);

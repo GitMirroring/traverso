@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioResampler.h"
 #include "TBufferedAudioStream.h"
-#include "TProcessCallBackData.h"
+#include "TProcessContext.h"
 
 #include <QDomDocument>
 
@@ -58,7 +58,7 @@ public :
 	int set_state( const QDomNode& node );
 	QDomNode get_state(QDomDocument doc);
 
-    nframes_t ringbuffer_read(TProcessCallBackData &processData, const TTimeRef &fileLocation);
+    nframes_t ringbuffer_read(TProcessContext &context, const TTimeRef &fileLocation);
 
     // count frames at the output rate into buffer, from the file's location
     // (a time); and count frames of the file at its own rate from its frame
@@ -103,7 +103,7 @@ private:
     TTimeRef            m_sourceStartLocation;
     TTimeRef            m_aboutOneToFourSecondsTime;
 
-    TQueueBufferSlot* dequeue_from_rt_queue(TProcessCallBackData &processData);
+    TQueueBufferSlot* dequeue_from_rt_queue(TProcessContext &context);
 	
 	int ref() { return m_refcount++;}
 	

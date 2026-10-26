@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 
 #include "TAudioProcessingNode.h"
-#include "TProcessCallBackData.h"
+#include "TProcessContext.h"
 #include "TRtList.h"
 #include "TSplitableTimeLineEntity.h"
 #include "TTimeRef.h"
@@ -57,7 +57,7 @@ public:
 
     void set_audio_source(TBufferedAudioStreamReader* source);
     int init_recording();
-    int process(TProcessCallBackData &processData);
+    int process(TProcessContext &context);
 
     void move_to_location(const TTimeRef& location) final;
     unsigned int get_timeline_entity_type() const final { return TTimeLineEntity::Type::TypeAudioClip; }
@@ -168,7 +168,7 @@ private:
     void set_source_start_location(const TTimeRef& location);
     void set_track_end_location(const TTimeRef& location);
     void set_sources_active_state();
-    void process_capture(TProcessCallBackData &processData);
+    void process_capture(TProcessContext &context);
 
     friend class TResourcesManager;
 

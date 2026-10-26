@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <memory>
 #include <vector>
-#include "TProcessCallBackData.h"
+#include "TProcessContext.h"
 
 class TExportSpecification;
 class TPeakStream;
@@ -40,7 +40,7 @@ public :
     TBufferedAudioStreamWriter(const QString& exportDir, const QString &exportFileName);
     ~TBufferedAudioStreamWriter();
 
-    nframes_t ringbuffer_write(TProcessCallBackData &processData);
+    nframes_t ringbuffer_write(TProcessContext &context);
     int rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer);
 
     TBufferedAudioStreamStatus& get_buffer_status() final;
@@ -82,7 +82,7 @@ private:
     qint64          m_framesToDrop{0};   // the writer's steps once it is added
     qint64          m_writtenFrames{0};
 
-    TQueueBufferSlot* dequeue_from_free_queue(TProcessCallBackData &processData);
+    TQueueBufferSlot* dequeue_from_free_queue(TProcessContext &context);
 
     void process_realtime_buffers(TFileIOBuffer &fileIOBuffer) final;
     void rb_seek_to_transport_location(TFileIOBuffer&, const TTimeRef &/*transportLocation*/) final {}
