@@ -75,12 +75,15 @@ public:
         using DecayedGuiSignal = std::decay_t<GuiSignal>;
         using TargetType = std::move_only_function<void()>;
 
-        // The GUI return signal
+        // The GUI callback passes through the audio thread, and when the
+        // return queue is full it is dropped there: so it must be stored
+        // inline and have nothing to destroy. libstdc++ keeps a target inline
+        // up to three pointers; libc++ and MSVC keep other sizes
         if constexpr (!std::is_same_v<DecayedGuiSignal, TargetType> && !std::is_same_v<DecayedGuiSignal, std::nullptr_t>) {
-            static_assert(sizeof(DecayedGuiSignal) <= 64,
-                          "CRITICAL C++23 ERROR: GUI Signal lambda exceeds 64 bytes!");
-            static_assert(std::is_trivially_copyable_v<DecayedGuiSignal>,
-                          "CRITICAL C++23 ERROR: GUI Signal lambda contains non-trivial captures!");
+            static_assert(sizeof(DecayedGuiSignal) <= 3 * sizeof(void*) && alignof(DecayedGuiSignal) <= alignof(void*),
+                          "post_rt_task: the GUI callback must fit in three pointers (it may be dropped in the audio thread)");
+            static_assert(std::is_trivially_copyable_v<DecayedGuiSignal> && std::is_trivially_destructible_v<DecayedGuiSignal>,
+                          "post_rt_task: the GUI callback may capture pointers and plain values only (it may be dropped in the audio thread)");
         }
 
         TAudioThreadMessageQueueEvent event{};
