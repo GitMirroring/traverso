@@ -15,8 +15,9 @@
 //   and clearing it never allocates or frees;
 // - they are trivially copyable and destructible, so a copy is a memcpy and
 //   nothing runs when it goes away;
-// - the closure is noexcept, and with Clang checked as T_REALTIME_SAFE where
-//   it is made: a lambda that is not marked T_REALTIME_SAFE does not compile.
+// - the closure is noexcept: without it, it does not compile; with Clang it
+//   is also checked as real-time safe where it is made, and a lambda that is
+//   not marked T_REALTIME_SAFE is reported (-Wfunction-effects).
 // A closure that does not fit is a compile error, not a heap allocation.
 class TRealTimeClosure
 {
