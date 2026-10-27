@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QFile>
 #include <QVector>
 #include <algorithm>
+#include <optional>
 
 #define MINIMP4_IMPLEMENTATION
 #include "minimp4.h"
@@ -243,11 +244,12 @@ public:
 		return file.read(size);
 	}
 
-	// The AAC packets of the file: MP4 samples, or ADTS frames. Empty when
+	// The AAC packets of the file: MP4 samples, or ADTS frames. Nothing when
 	// the file gives fewer bytes than the packet has (a file cut short, a
-	// read that failed): a read error, not a packet that does not decode.
+	// read that failed): a read error, not a packet that does not decode (an
+	// empty packet is one that does not decode).
 	int packet_count() const { return isMp4 ? int(sampleCount) : adtsFrameOffsets.size(); }
-	QByteArray packet(int index)
+	std::optional<QByteArray> packet(int index)
 	{
 		qint64 offset = 0;
 		int bytes = 0;
@@ -260,7 +262,10 @@ public:
 			bytes = adtsFrameSizes[index];
 		}
 		QByteArray data = readBytes(offset, bytes);
-		return data.size() == bytes ? data : QByteArray();
+		if (data.size() != qsizetype(std::max(bytes, 0))) {
+			return std::nullopt;
+		}
+		return data;
 	}
 
 	QFile file;
@@ -479,7 +484,9 @@ bool FaadAudioReader::initDecoderInternal()
 				frames = qint64(double(duration) / timescale * m_rate + 0.5) - own;
 			}
 			m_frames = nframes_t(std::clamp<qint64>(frames, 0, std::max<qint64>(0, decodable - d->skip)));
-			return seek(0);
+			// No frames: it cannot be read (and seek() is asked below the
+			// frame count only)
+			return m_frames > 0 && seek(0);
 		}
 	}
 
@@ -544,7 +551,7 @@ bool FaadAudioReader::initDecoderInternal()
 	// leaves out as much as most encoders prime), up to an AAC frame more
 	// than the encoder was given
 	m_frames = nframes_t(qint64(d->packet_count() - d->leadingEmpty) * d->frameLength);
-	return seek(0);
+	return m_frames > 0 && seek(0);
 }
 
 bool FaadAudioReader::open_decoder()
@@ -578,7 +585,7 @@ bool FaadAudioReader::measure_decoder()
 	}
 	d->leadingEmpty = 0;
 	for (int i = 0; i < std::min(d->packet_count(), 8); ++i) {
-		QByteArray data = d->packet(i);
+		QByteArray data = d->packet(i).value_or(QByteArray());
 		NeAACDecFrameInfo info;
 		NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(data.data()), (unsigned long)data.size());
 		if (info.error == 0 && info.samples > 0 && info.channels > 0) {
@@ -664,11 +671,12 @@ bool FaadAudioReader::decode_next_packet()
 	if (d->nextPacket >= d->packet_count()) {
 		return false;
 	}
-	QByteArray data = d->packet(d->nextPacket);
-	if (data.isEmpty()) {
+	std::optional<QByteArray> packet = d->packet(d->nextPacket);
+	if (!packet) {
 		// The file did not give the packet: an error (contract point 4)
 		return false;
 	}
+	QByteArray& data = *packet;
 	NeAACDecFrameInfo info;
 	void* pcm = NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(data.data()), (unsigned long)data.size());
 	++d->nextPacket;
