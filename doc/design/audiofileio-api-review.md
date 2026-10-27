@@ -161,9 +161,30 @@ read. With W1, which touches the same headers.
 ## Work order
 
 This document is the work order (see Status): the tasks below, in this
-order, each its own commits on one branch, tests green on GCC and Clang
+order (W0 first), each its own commits on one branch, tests green on GCC and Clang
 before the review.
 
+- **W0 (T44) A round-trip test of every writer and reader, first**
+  (`tests/audiofileio/test_audio_round_trip.cpp`), so W1–W4 are checked by
+  it. Today's coverage is partial: sample-exact reading only for WAV
+  float/16, FLAC 24, WavPack float and the scenario; writing through
+  `TAudioWriter` exact only for WAV and WavPack float, the integer formats
+  only by a sine's level and phase in mono (`test_resample_writer`); never
+  through `TAudioWriter`: FLAC, Ogg, MP3, 32 bit, 8 bit WAV, integer formats
+  with more than one channel, WavPack's integer read paths
+  (`WPAudioReader::unpack()`). The test writes, through `TAudioWriter`, every
+  writer × data format it supports × 1, 2 and 6 channels (a channel count a
+  format does not take is skipped with the reason: MP3 and Ogg in libsndfile
+  take at most 2, AAC per FAAC) and reads back through `TAudioReader`; the
+  source is the scenario decoder (each channel its own signal from
+  `test_signals.h`: the ramp in channel 0, sweeps in the others, so a
+  swapped or silent channel shows). Expected: float exact; 8/16/24 bit
+  within about 2 LSB of their resolution (gdither); 32 bit within 1 LSB;
+  lossy formats (Ogg, MP3, AAC) the level of each channel, its placement
+  (`best_lag` as in `test_audio_decoders`) and the channel order; the frame
+  count of every file. Built and run on the code before W1; what fails there
+  is recorded (a KNOWN entry with the reason, or a task) before W1 starts;
+  then run again after every W step.
 - **W1 (I1 + I4) Buffers**, three steps, each its own commit:
   1. The interleaved and packed buffers out of `TFileIOBuffer` into
      audiofileio. `SFAudioReader.cpp`: a `static` helper returning a
