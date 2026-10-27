@@ -60,19 +60,22 @@ public:
     static QTime timeref_to_qtime(const TTimeRef& ref);
 
 
-    static inline long get_milliseconds_since_epoch()
+    // The clock, real-time safe by contract: a vDSO call (clock_gettime) the
+    // audio thread may make; Clang cannot see that inside std::chrono
+    static inline long get_milliseconds_since_epoch() T_REALTIME_SAFE
     {
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() / 1000000;
+        return get_nanoseconds_since_epoch() / 1000000;
     }
 
-    static inline long get_microseconds_since_epoch()
+    static inline long get_microseconds_since_epoch() T_REALTIME_SAFE
     {
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() / 1000;
+        return get_nanoseconds_since_epoch() / 1000;
     }
 
-    static inline long get_nanoseconds_since_epoch()
+    static inline long get_nanoseconds_since_epoch() T_REALTIME_SAFE
     {
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+        T_REALTIME_SAFE_BY_CONTRACT(auto const now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();)
+        return now;
     }
 
     // Exact conversions for any sample rate (also rates that do not divide

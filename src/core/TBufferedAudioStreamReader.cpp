@@ -616,13 +616,11 @@ TQueueBufferSlot* TBufferedAudioStreamReader::dequeue_from_rt_queue(TProcessCont
             // audio stream?
         }
     } else {
-        trav_time_t startTime = 0;
-        trav_time_t endTime = 0;
-        T_REALTIME_SAFE_BY_CONTRACT(startTime = TTimeRef::get_nanoseconds_since_epoch();)
+        const trav_time_t startTime = TTimeRef::get_nanoseconds_since_epoch();
         // Freewheeling has no deadline: the wait for the disk thread is by
         // design (doc/design/realtime-audio-path.md §5)
         T_BLOCKING_BY_DESIGN(m_rtBufferSlotsQueue->wait_dequeue(slot);)
-        T_REALTIME_SAFE_BY_CONTRACT(endTime = TTimeRef::get_nanoseconds_since_epoch();)
+        const trav_time_t endTime = TTimeRef::get_nanoseconds_since_epoch();
         context.add_ringbuffer_read_wait_time(endTime - startTime);
     }
 

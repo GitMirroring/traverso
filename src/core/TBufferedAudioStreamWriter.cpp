@@ -203,13 +203,11 @@ TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessCo
         // Real-time safe by contract: moodycamel's try_dequeue does not wait
         T_REALTIME_SAFE_BY_CONTRACT(m_freeBufferSlotsQueue->try_dequeue(slot);)
     } else {
-        trav_time_t startTime = 0;
-        trav_time_t endTime = 0;
-        T_REALTIME_SAFE_BY_CONTRACT(startTime = TTimeRef::get_nanoseconds_since_epoch();)
+        const trav_time_t startTime = TTimeRef::get_nanoseconds_since_epoch();
         // Freewheeling has no deadline: the wait for the disk thread is by
         // design (doc/design/realtime-audio-path.md §5)
         T_BLOCKING_BY_DESIGN(m_freeBufferSlotsQueue->wait_dequeue(slot);)
-        T_REALTIME_SAFE_BY_CONTRACT(endTime = TTimeRef::get_nanoseconds_since_epoch();)
+        const trav_time_t endTime = TTimeRef::get_nanoseconds_since_epoch();
         context.add_ringbuffer_read_wait_time(endTime - startTime);
     }
 
