@@ -27,15 +27,11 @@ or another one is finished or parked first.
 
 ## Repository
 
-- `master` = `184eca11` (`realtime-path` and `scenario-decoder` merged
-  2026-10-27), 42 commits ahead of `origin/master` (`6dc4fe2b`), not pushed.
-- Worktrees: `traverso` (master), `traverso-realtime-path` (merged, to be
-  removed), `traverso-scenario-decoder` (merged, to be removed),
-  `traverso-input-controllers`,
-  `traverso-curve-gpu-bench`.
-- Other branches: `realtime-path-before-rebase`,
-  `realtime-path-before-rebase-2`, `realtime-path-before-rebase-3` (backups of
-  the merged branch, to be deleted).
+- `master`: `realtime-path` and `scenario-decoder` merged 2026-10-27, not
+  pushed (`origin/master` = `6dc4fe2b`).
+- Worktrees: `traverso` (master), `traverso-input-controllers`,
+  `traverso-curve-gpu-bench`. The merged branches `realtime-path` and
+  `scenario-decoder` are deleted, with their backups and build directories.
 
 ## Foundations
 
