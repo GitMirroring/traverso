@@ -38,3 +38,9 @@ add_test(NAME scenario_decoder COMMAND traverso_scenario_decoder_test)
 add_executable(traverso_reader_faults_test test_reader_faults.cpp)
 target_link_libraries(traverso_reader_faults_test PRIVATE traverso_compiler_settings traverso_test_common traversoaudiofileio traversodsp traversosupport Qt6::Core)
 add_test(NAME reader_faults COMMAND traverso_reader_faults_test)
+
+# Headless test of why the library says a call failed: NotFound and
+# CannotOpen at open, the writer's open, close and write after close
+add_executable(traverso_audio_file_errors_test test_audio_file_errors.cpp)
+target_link_libraries(traverso_audio_file_errors_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
+add_test(NAME audio_file_errors COMMAND traverso_audio_file_errors_test)
