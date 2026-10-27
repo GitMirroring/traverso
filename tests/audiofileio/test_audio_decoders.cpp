@@ -6,7 +6,9 @@
 // serves with the file's channels, rate and frames, and with the
 // audio where it was written; a read after a seek gives what a read from the
 // start gives at that place; a read that crosses the end of the file gives
-// what is left and zeros after it, whatever the buffer held before.
+// what is left and zeros after it, whatever the buffer held before. A file
+// cut short while it is open reads short before its end, its frames until
+// then, zeros and 0 after (the error state of TAudioDecoder's contract).
 //
 // The files are made here: WAV, FLAC, Ogg Vorbis and MP3 with libsndfile,
 // WavPack and AAC (ADTS) with Traverso's own writers, and when ffmpeg is
@@ -53,8 +55,10 @@ struct Source
 {
     uint rate{44100};
     uint channels{2};
+    // Longer, for the cut file: more than a decoder keeps in its buffers
+    uint extraSeconds{0};
 
-    nframes_t frames() const { return rate + 1037; }
+    nframes_t frames() const { return rate * (1 + extraSeconds) + 1037; }
 
     float sample(nframes_t frame, uint channel) const
     {
@@ -392,6 +396,119 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
     }
 }
 
+#if !defined(Q_OS_WIN)
+// A file cut short while a reader has it open (a file on a disk that went
+// away, a copy that did not finish): contract points 3 and 4. Buffers and
+// blocks (WavPack blocks, MAD's input buffer, AAC packets) may end the audio
+// before the cut, so: a read comes short before the frame count; the frames
+// before it are the file's; after it zeros and 0. A seek back into the part
+// still there clears the error where it can land (WAV): that part reads
+// again. WavPack refuses every seek in a cut file (the library reads the
+// last block on each, "can't read all of last block!"), so the error stays:
+// within the contract, a seek that fails is an error. (Windows refuses to
+// resize a file another handle holds open.)
+enum class SeekBack { NotTried, Reads, Refused };
+
+static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBack seekBack)
+{
+    char what[240];
+    Source source = format.source;
+    // Long enough that half of it is more than a decoder keeps in its buffers
+    source.extraSeconds = 29;
+    const QString path = dir.filePath(QStringLiteral("cut.%1").arg(QLatin1String(format.suffix)));
+    if (!format.write(path, source)) {
+        return;
+    }
+    const std::unique_ptr<TAudioReader> whole = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> cut = TAudioReader::open(path);
+    if (!whole || !cut) {
+        check(false, "a cut file: opens");
+        return;
+    }
+    const uint channels = whole->channel_count();
+    const nframes_t frames = whole->file_frame_count();
+    std::vector<std::vector<float>> reference(channels);
+    TFileIOBuffer buffer;
+    for (nframes_t at = 0; at < frames; at += 1000) {
+        const nframes_t count = std::min<nframes_t>(1000, frames - at);
+        const nframes_t read = whole->read_file_frames(buffer, at, count);
+        for (uint channel = 0; channel < channels; ++channel) {
+            const float* data = buffer.get_channel_buffer(channel).get_data(count);
+            reference[channel].insert(reference[channel].end(), data, data + read);
+        }
+    }
+
+    // A decoder may hold all of a small file in its buffers from the start
+    // (MAD reads 40 KB at a time): the cut is no cut for it then
+    QFile file(path);
+    if (file.size() < 64 * 1024) {
+        std::printf("%s: a cut file: %lld bytes, a decoder may hold it all, skipped\n", format.name, static_cast<long long>(file.size()));
+        return;
+    }
+    if (!file.resize(file.size() / 2)) {
+        check(false, "a cut file: the file cut");
+        return;
+    }
+
+    // From the start in reads of 1000 frames, until one comes short
+    nframes_t shortAt = frames;
+    bool before = true;
+    bool after = true;
+    for (nframes_t at = 0; at < frames; at += 1000) {
+        const nframes_t count = std::min<nframes_t>(1000, frames - at);
+        fill_with_garbage(buffer, count, channels);
+        const nframes_t read = cut->read_file_frames(buffer, at, count);
+        if (shortAt == frames && read < count) {
+            shortAt = at + read;
+        }
+        for (uint channel = 0; channel < channels; ++channel) {
+            const float* data = buffer.get_channel_buffer(channel).get_data(count);
+            for (nframes_t i = 0; i < count; ++i) {
+                const nframes_t frame = at + i;
+                if (frame < shortAt) {
+                    before = before && data[i] == reference[channel][frame];
+                } else {
+                    after = after && data[i] == 0.0f;
+                }
+            }
+        }
+        if (at >= shortAt && read != 0) {
+            after = false;
+        }
+    }
+    std::snprintf(what, sizeof(what), "%s: a file cut to half reads short before its end (at frame %u of %u)", format.name, shortAt, frames);
+    check(shortAt < frames, what);
+    std::snprintf(what, sizeof(what), "%s: a file cut to half, the frames before the error are the file's", format.name);
+    check(before, what);
+    std::snprintf(what, sizeof(what), "%s: a file cut to half, after the error zeros and 0", format.name);
+    check(after, what);
+
+    // A seek back into what is still there: it clears the error, or the
+    // library refuses it and the error stays
+    if (seekBack != SeekBack::NotTried && shortAt > 3000) {
+        const nframes_t first = shortAt / 3;
+        fill_with_garbage(buffer, 1000, channels);
+        const nframes_t read = cut->read_file_frames(buffer, first, 1000);
+        bool same = true;
+        for (uint channel = 0; channel < channels; ++channel) {
+            const float* data = buffer.get_channel_buffer(channel).get_data(1000);
+            if (seekBack == SeekBack::Reads) {
+                same = same && std::equal(data, data + 1000, reference[channel].begin() + first);
+            } else {
+                same = same && std::all_of(data, data + 1000, [](float sample) { return sample == 0.0f; });
+            }
+        }
+        if (seekBack == SeekBack::Reads) {
+            std::snprintf(what, sizeof(what), "%s: after the error a seek back reads again (%u frames)", format.name, read);
+            check(read == 1000 && same, what);
+        } else {
+            std::snprintf(what, sizeof(what), "%s: after the error a seek back is refused, zeros and 0 (%u frames)", format.name, read);
+            check(read == 0 && same, what);
+        }
+    }
+}
+#endif
+
 int main()
 {
     QTemporaryDir dir;
@@ -449,6 +566,15 @@ int main()
     for (const Format& format : formats) {
         test_format(dir, format);
     }
+#if !defined(Q_OS_WIN)
+    for (const Format& format : formats) {
+        const QLatin1String suffix(format.suffix);
+        const SeekBack seekBack = suffix == QLatin1String("wav") || suffix == QLatin1String("16.wav") ? SeekBack::Reads
+                                  : suffix == QLatin1String("wv")                                    ? SeekBack::Refused
+                                                                                                     : SeekBack::NotTried;
+        test_cut_file(dir, format, seekBack);
+    }
+#endif
 
     if (failures) {
         std::printf("%d check(s) failed\n", failures);
