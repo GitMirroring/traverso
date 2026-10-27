@@ -22,7 +22,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "WPAudioWriter.h"
 
 #include <QString>
-#include "TLog.h"
+
+#include <cerrno>
+#include <cstring>
+#include <tuple>
 
 WPAudioWriter::WPAudioWriter(const TAudioEncodeSettings& settings)
     : TAudioEncoder(settings)
@@ -32,24 +35,27 @@ WPAudioWriter::WPAudioWriter(const TAudioEncodeSettings& settings)
 
 WPAudioWriter::~WPAudioWriter()
 {
-    WPAudioWriter::close();
+    // TAudioWriter closes it and reports how that went; this is the last
+    // resort for an encoder destroyed with its file open
+    std::ignore = WPAudioWriter::close();
     delete [] m_firstBlock;
 }
 
 
-bool WPAudioWriter::open(const QString& fileName)
+TAudioFileStatus WPAudioWriter::open(const QString& fileName)
 {
-	close();
+	std::ignore = close();
+	m_writeError.clear();
 	m_file = fopen(fileName.toUtf8().data(), "wb");
 	if (!m_file) {
-		TLOG_W("audiofile", "{}: cannot create it", fileName.toStdString());
-		return false;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, QString::fromUtf8(std::strerror(errno))});
 	}
 	
 	m_wp = WavpackOpenFileOutput(WPAudioWriter::write_block, (void *)this, NULL);
 	if (!m_wp) {
 		fclose(m_file);
-		return false;
+		m_file = nullptr;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, QStringLiteral("WavPack cannot start an encoder")});
 	}
 
 	memset (&m_config, 0, sizeof(m_config));
@@ -88,16 +94,18 @@ bool WPAudioWriter::open(const QString& fileName)
 	WavpackSetConfiguration(m_wp, &m_config, -1);
 	
 	if (!WavpackPackInit(m_wp)) {
+		const QString why = QString::fromUtf8(WavpackGetErrorMessage(m_wp));
 		fclose(m_file);
+		m_file = nullptr;
 		WavpackCloseFile(m_wp);
-		m_wp = 0;
-		return false;
+		m_wp = nullptr;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, why});
 	}
 	
 	m_firstBlock = 0;
 	m_firstBlockSize = 0;
 	
-	return true;
+	return {};
 }
 
 
@@ -135,8 +143,9 @@ int WPAudioWriter::write_block(void *id, void *data, int32_t length)
 			writer->m_firstBlockSize = length;
 		}
 		if (!writer->write_to_file(data, (uint32_t)length, (uint32_t*)&bcount) || bcount != (uint32_t)length) {
-			fclose(writer->m_file);
-			writer->m_wp = 0;
+			// The context stays: WavPack is inside it now, and close()
+			// releases it and the file
+			writer->m_writeError = QString::fromUtf8(std::strerror(errno));
 			return false;
 		}
 	}
@@ -162,11 +171,20 @@ bool WPAudioWriter::rewrite_first_block()
 }
 
 
-nframes_t WPAudioWriter::write(void* buffer, nframes_t frameCount)
+TAudioFileResult WPAudioWriter::write(void* buffer, nframes_t frameCount)
 {
-    if (!m_wp || !buffer || frameCount == 0) {
-        return 0;
+    if (frameCount == 0) {
+        return {};
     }
+    if (!m_wp || !buffer) {
+        return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("no file open")}};
+    }
+    // Why packing failed: the file did not take a block, or WavPack's own
+    // reason
+    const auto failed = [this]() -> TAudioFileResult {
+        return {0, TAudioFileError{TAudioFileError::Code::WriteFailed,
+                                   m_writeError.isEmpty() ? QString::fromUtf8(WavpackGetErrorMessage(m_wp)) : m_writeError}};
+    };
 
     uint channels = m_settings.channelCount;
     nframes_t totalSamples = frameCount * channels;
@@ -216,10 +234,9 @@ nframes_t WPAudioWriter::write(void* buffer, nframes_t frameCount)
 
         // Push the aligned int32_t block to the WavPack compression engine
         if (WavpackPackSamples(m_wp, m_tmp_buffer, frameCount) == false) {
-            TLOG_E("audiofile", "WavPack cannot pack the samples ({})", WavpackGetErrorMessage(m_wp));
-            return 0;
+            return failed();
         }
-        return frameCount;
+        return {frameCount, std::nullopt};
     }
 
     // =========================================================================
@@ -227,26 +244,27 @@ nframes_t WPAudioWriter::write(void* buffer, nframes_t frameCount)
     // Audio data already occupies 4-byte boundaries, pass directly to compression
     // =========================================================================
     if (WavpackPackSamples(m_wp, static_cast<int32_t*>(buffer), frameCount) == false) {
-        TLOG_E("audiofile", "WavPack cannot pack the samples ({})", WavpackGetErrorMessage(m_wp));
-        return 0;
+        return failed();
     }
 
-    return frameCount;
+    return {frameCount, std::nullopt};
 }
 
 
-bool WPAudioWriter::close()
+TAudioFileStatus WPAudioWriter::close()
 {
 	if (!m_wp) {
-		return false;
+		return {};
 	}
-	bool success = true;
+	std::optional<TAudioFileError> error;
 	
 	if (WavpackFlushSamples(m_wp) == false) {
-		success = false;
+		error = TAudioFileError{TAudioFileError::Code::WriteFailed,
+		                        m_writeError.isEmpty() ? QString::fromUtf8(WavpackGetErrorMessage(m_wp)) : m_writeError};
 	}
-	if (rewrite_first_block() == false) {
-		success = false;
+	if (rewrite_first_block() == false && !error) {
+		error = TAudioFileError{TAudioFileError::Code::WriteFailed,
+		                        m_writeError.isEmpty() ? QStringLiteral("the first block could not be written again") : m_writeError};
 	}
 	
 	WavpackCloseFile(m_wp);
@@ -267,6 +285,9 @@ bool WPAudioWriter::close()
 		m_firstBlockSize = 0;
 	}
 	
-	return success;
+	if (error) {
+		return std::unexpected(std::move(*error));
+	}
+	return {};
 }
 

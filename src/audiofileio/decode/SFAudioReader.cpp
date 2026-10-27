@@ -38,12 +38,14 @@ SFAudioReader::SFAudioReader(const QString& filename)
     m_file.setFileName(m_fileName);
 
     if (!m_file.open(QIODevice::ReadOnly)) {
-        TLOG_W("audiofile", "{}: cannot open it ({})", m_fileName.toStdString(), m_file.errorString().toStdString());
+        m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, m_file.errorString()};
         return;
     }
 
     if ((m_sf = sf_open_fd (m_file.handle(), SFM_READ, &m_sfinfo, false)) == nullptr) {
-        TLOG_W("audiofile", "{}: libsndfile cannot read it ({})", m_fileName.toStdString(), sf_strerror(nullptr));
+        // libsndfile's last open error is global: with files opened at the
+        // same time on other threads it may be theirs (task R25)
+        m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, QString::fromUtf8(sf_strerror(nullptr))};
         return;
     }
 
@@ -92,11 +94,11 @@ int SFAudioReader::major_format(const QString& filename)
 }
 
 
-bool SFAudioReader::seek(nframes_t frame)
+TAudioFileStatus SFAudioReader::seek(nframes_t frame)
 {
     Q_ASSERT(frame < m_frames);
     if (!m_sf) {
-        return seek_failed();
+        return seek_failed(frame);
     }
 
     // libsndfile's Ogg seek is exact from the start of the file only: from
@@ -104,21 +106,21 @@ bool SFAudioReader::seek(nframes_t frame)
     // 1.2.2, test_audio_decoders). Back to the start first; a seek there is
     // cheap, the seek from it is a bisection of the file either way.
     if ((m_sfinfo.format & SF_FORMAT_TYPEMASK) == SF_FORMAT_OGG && sf_seek(m_sf, 0, SEEK_SET) < 0) {
-        return seek_failed();
+        return seek_failed(frame, QString::fromUtf8(sf_strerror(m_sf)));
     }
 
     if (sf_seek (m_sf, (off_t) frame, SEEK_SET) < 0) {
-        return seek_failed();
+        return seek_failed(frame, QString::fromUtf8(sf_strerror(m_sf)));
     }
 
     return seek_landed(frame);
 }
 
 
-nframes_t SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+TAudioFileResult SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
-        return 0;
+        return {};
     }
     fileIOBuffer.check_capacity(count, m_channels);
 
@@ -128,8 +130,6 @@ nframes_t SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 
     // De-interlace
     switch (m_channels) {
-    case 0:
-        return 0;
     case 1:
     {
         TAudioBuffer::copy_data(fileIOBuffer.get_channel_buffer(0), readBuffer, readFrames);
@@ -157,6 +157,9 @@ nframes_t SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
     }
     }
 
-    return read_done(fileIOBuffer, readFrames, count);
+    // libsndfile says why when it knows (a codec error); a file that ends
+    // early it does not
+    const bool libraryError = m_sf && sf_error(m_sf) != SF_ERR_NO_ERROR;
+    return read_done(fileIOBuffer, readFrames, count, libraryError ? QString::fromUtf8(sf_strerror(m_sf)) : QString());
 }
 

@@ -17,6 +17,7 @@
 #include <cmath>
 #include <cstdio>
 #include <vector>
+#include <tuple>
 
 static int failures = 0;
 
@@ -40,12 +41,12 @@ static float sample(nframes_t frame, uint channel)
 // The file holds frames frames of sample(), as a reader sees them
 static bool reads(const QString& path, nframes_t frames)
 {
-    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     if (!reader || reader->file_frame_count() != frames || reader->channel_count() != Channels) {
         return false;
     }
     TFileIOBuffer buffer;
-    if (reader->read_file_frames(buffer, 0, frames) != frames) {
+    if (reader->read_file_frames(buffer, 0, frames).frames != frames) {
         return false;
     }
     for (uint channel = 0; channel < Channels; ++channel) {
@@ -99,7 +100,7 @@ int main()
         settings.channelCount = Channels;
         settings.sampleRate = Rate;
         const QString path = dir.filePath(format.file);
-        const std::unique_ptr<TAudioWriter> writer = TAudioWriter::open(settings, path, Rate);
+        const std::unique_ptr<TAudioWriter> writer = TAudioWriter::open(settings, path, Rate).value_or(nullptr);
         if (!writer) {
             std::printf("%s: cannot open the writer\n", format.name);
             return 1;
@@ -116,7 +117,7 @@ int main()
                     samples[i] = sample(frame + i, channel);
                 }
             }
-            writer->write(buffer, Piece);
+            std::ignore = writer->write(buffer, Piece);
             frame += Piece;
         }
 
@@ -126,7 +127,7 @@ int main()
         if (format.format == TraversoDAW::FileFormat::WAV) {
             check(wav_data_size(path) == qint64(frame) * Channels * qint64(sizeof(float)), "WAV: the header of a file still being written has its data size");
         }
-        writer->close();
+        std::ignore = writer->close();
         std::snprintf(what, sizeof(what), "%s: the closed file reads the same", format.name);
         check(reads(path, frame), what);
     }

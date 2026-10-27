@@ -121,8 +121,8 @@ public:
 
     static bool can_decode(const QString& filename);
 
-    bool seek(nframes_t frame) override;
-    nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+    TAudioFileStatus seek(nframes_t frame) override;
+    TAudioFileResult read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
 
 protected:
     // The decoder's delay in samples (the synthesis filter), as mpg123 and

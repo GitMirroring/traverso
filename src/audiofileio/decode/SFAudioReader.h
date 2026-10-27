@@ -40,8 +40,8 @@ public:
     // cannot read it
     static int major_format(const QString& filename);
 
-    bool seek(nframes_t frame) override;
-    nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+    TAudioFileStatus seek(nframes_t frame) override;
+    TAudioFileResult read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
 
 private:
     SNDFILE*	m_sf{nullptr};

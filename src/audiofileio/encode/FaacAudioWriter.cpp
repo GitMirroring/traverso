@@ -31,7 +31,9 @@ RELAYTOOL_FAAC;
 
 // Always put me below _all_ includes, this is needed
 // in case we run with memory leak detection enabled!
-#include "TLog.h"
+#include <cerrno>
+#include <cstring>
+#include <tuple>
 
 
 struct FaacAudioWriter::FaacInfo {
@@ -77,7 +79,9 @@ FaacAudioWriter::FaacAudioWriter(const TAudioEncodeSettings& settings)
 
 FaacAudioWriter::~FaacAudioWriter()
 {
-	FaacAudioWriter::close();
+	// TAudioWriter closes it and reports how that went; this is the last
+	// resort for an encoder destroyed with its file open
+	std::ignore = FaacAudioWriter::close();
 	if (m_buffer) {
 		delete [] m_buffer;
 	}
@@ -85,23 +89,23 @@ FaacAudioWriter::~FaacAudioWriter()
 }
 
 
-bool FaacAudioWriter::open(const QString& fileName)
+TAudioFileStatus FaacAudioWriter::open(const QString& fileName)
 {
-	close();
+	std::ignore = close();
+	QString why;
 	m_fid = fopen(fileName.toUtf8().data(), "wb+");
 	if (!m_fid) {
-		TLOG_W("audiofile", "{}: cannot create it", fileName.toStdString());
-		return false;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, QString::fromUtf8(std::strerror(errno))});
 	}
 
 #if defined(FAAC_VERSION_MAJOR) && (FAAC_VERSION_MAJOR >= 1)
 	faac_params params;
 	faac_status st = faac_params_init(&params);
 	if (st != FAAC_OK) {
-		TLOG_W("audiofile", "AAC: faac_params_init failed: {}", faac_strerror(st));
+		why = QStringLiteral("AAC: faac_params_init failed: %1").arg(QString::fromUtf8(faac_strerror(st)));
 		fclose(m_fid);
 		m_fid = nullptr;
-		return false;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, why});
 	}
 
 	params.sample_rate = m_settings.sampleRate;
@@ -124,21 +128,21 @@ bool FaacAudioWriter::open(const QString& fileName)
 
 	st = faac_encoder_open(&params, &m_faacInfo->encoder);
 	if (st != FAAC_OK || !m_faacInfo->encoder) {
-		TLOG_W("audiofile", "AAC: faac_encoder_open failed: {}", faac_strerror(st));
+		why = QStringLiteral("AAC: faac_encoder_open failed: %1").arg(QString::fromUtf8(faac_strerror(st)));
 		fclose(m_fid);
 		m_fid = nullptr;
-		return false;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, why});
 	}
 
 	faac_encoder_info info;
 	info.struct_size = sizeof(info);
 	st = faac_encoder_get_info(m_faacInfo->encoder, &info);
 	if (st != FAAC_OK) {
-		TLOG_W("audiofile", "AAC: faac_encoder_get_info failed: {}", faac_strerror(st));
+		why = QStringLiteral("AAC: faac_encoder_get_info failed: %1").arg(QString::fromUtf8(faac_strerror(st)));
 		faac_encoder_close(&m_faacInfo->encoder);
 		fclose(m_fid);
 		m_fid = nullptr;
-		return false;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, why});
 	}
 
 	m_faacInfo->frameSamples = info.frame_samples;
@@ -146,20 +150,20 @@ bool FaacAudioWriter::open(const QString& fileName)
 #else
 	m_faacInfo->handle = faacEncOpen(m_settings.sampleRate, m_settings.channelCount, &m_faacInfo->inputSamples, &m_faacInfo->maxOutputBytes);
 	if (!m_faacInfo->handle) {
-		TLOG_W("audiofile", "AAC: faacEncOpen failed");
+		why = QStringLiteral("AAC: faacEncOpen failed");
 		fclose(m_fid);
 		m_fid = nullptr;
-		return false;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, why});
 	}
 
 	faacEncConfigurationPtr cfg = faacEncGetCurrentConfiguration(m_faacInfo->handle);
 	if (!cfg) {
-		TLOG_W("audiofile", "AAC: faacEncGetCurrentConfiguration failed");
+		why = QStringLiteral("AAC: faacEncGetCurrentConfiguration failed");
 		faacEncClose(m_faacInfo->handle);
 		m_faacInfo->handle = nullptr;
 		fclose(m_fid);
 		m_fid = nullptr;
-		return false;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, why});
 	}
 
 	cfg->aacObjectType = (m_objectType == 5) ? 5 : LOW;
@@ -179,23 +183,26 @@ bool FaacAudioWriter::open(const QString& fileName)
 	}
 
 	if (!faacEncSetConfiguration(m_faacInfo->handle, cfg)) {
-		TLOG_W("audiofile", "AAC: faacEncSetConfiguration failed");
+		why = QStringLiteral("AAC: faacEncSetConfiguration failed");
 		faacEncClose(m_faacInfo->handle);
 		m_faacInfo->handle = nullptr;
 		fclose(m_fid);
 		m_fid = nullptr;
-		return false;
+		return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, why});
 	}
 #endif
 
-	return true;
+	return {};
 }
 
 
-nframes_t FaacAudioWriter::write(void* buffer, nframes_t frameCount)
+TAudioFileResult FaacAudioWriter::write(void* buffer, nframes_t frameCount)
 {
-	if (!m_fid || !buffer || frameCount == 0) {
-		return 0;
+	if (frameCount == 0) {
+		return {};
+	}
+	if (!m_fid || !buffer) {
+		return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("no file open")}};
 	}
 
 	if (m_bufferSize < (long)m_faacInfo->maxOutputBytes) {
@@ -221,14 +228,12 @@ nframes_t FaacAudioWriter::write(void* buffer, nframes_t frameCount)
 							 m_bufferSize,
 							 &bytesWritten);
 		if (status < 0) {
-			TLOG_W("audiofile", "AAC: faac_encoder_encode failed: {}", faac_strerror(status));
-			return 0;
+			return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("AAC: faac_encoder_encode failed: %1").arg(QString::fromUtf8(faac_strerror(status)))}};
 		}
 
 		if (bytesWritten > 0) {
 			if (fwrite(m_buffer, 1, bytesWritten, m_fid) != bytesWritten) {
-				TLOG_W("audiofile", "AAC: fwrite failed");
-				return 0;
+				return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("AAC: fwrite failed (%1)").arg(QString::fromUtf8(std::strerror(errno)))}};
 			}
 		}
 
@@ -246,14 +251,12 @@ nframes_t FaacAudioWriter::write(void* buffer, nframes_t frameCount)
 						reinterpret_cast<unsigned char*>(m_buffer),
 						m_bufferSize);
 		if (bytesWritten < 0) {
-			TLOG_W("audiofile", "AAC: faacEncEncode failed");
-			return 0;
+			return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("AAC: faacEncEncode failed")}};
 		}
 
 		if (bytesWritten > 0) {
 			if (fwrite(m_buffer, 1, bytesWritten, m_fid) != (size_t)bytesWritten) {
-				TLOG_W("audiofile", "AAC: fwrite failed");
-				return 0;
+				return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("AAC: fwrite failed (%1)").arg(QString::fromUtf8(std::strerror(errno)))}};
 			}
 		}
 
@@ -261,16 +264,16 @@ nframes_t FaacAudioWriter::write(void* buffer, nframes_t frameCount)
 	}
 #endif
 
-	return frameCount;
+	return {frameCount, std::nullopt};
 }
 
 
-bool FaacAudioWriter::close()
+TAudioFileStatus FaacAudioWriter::close()
 {
 	if (!m_fid) {
-		return false;
+		return {};
 	}
-	bool success = true;
+	std::optional<TAudioFileError> error;
 
 	if (m_bufferSize < (long)m_faacInfo->maxOutputBytes) {
 		delete [] m_buffer;
@@ -290,14 +293,12 @@ bool FaacAudioWriter::close()
 								 m_bufferSize,
 								 &bytesWritten);
 			if (status < 0) {
-				TLOG_W("audiofile", "AAC: faac_encoder_encode flush failed: {}", faac_strerror(status));
-				success = false;
+				error = TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("AAC: faac_encoder_encode flush failed: %1").arg(QString::fromUtf8(faac_strerror(status)))};
 				break;
 			}
 			if (bytesWritten > 0) {
 				if (fwrite(m_buffer, 1, bytesWritten, m_fid) != bytesWritten) {
-					TLOG_W("audiofile", "AAC: flush fwrite failed");
-					success = false;
+					error = TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("AAC: flush fwrite failed (%1)").arg(QString::fromUtf8(std::strerror(errno)))};
 					break;
 				}
 			}
@@ -316,14 +317,12 @@ bool FaacAudioWriter::close()
 						     reinterpret_cast<unsigned char*>(m_buffer),
 						     m_bufferSize);
 			if (bytesWritten < 0) {
-				TLOG_W("audiofile", "AAC: faacEncEncode flush failed");
-				success = false;
+				error = TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("AAC: faacEncEncode flush failed")};
 				break;
 			}
 			if (bytesWritten > 0) {
 				if (fwrite(m_buffer, 1, bytesWritten, m_fid) != (size_t)bytesWritten) {
-					TLOG_W("audiofile", "AAC: flush fwrite failed");
-					success = false;
+					error = TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("AAC: flush fwrite failed (%1)").arg(QString::fromUtf8(std::strerror(errno)))};
 					break;
 				}
 			}
@@ -339,5 +338,8 @@ bool FaacAudioWriter::close()
 		m_fid = nullptr;
 	}
 
-	return success;
+	if (error) {
+		return std::unexpected(std::move(*error));
+	}
+	return {};
 }

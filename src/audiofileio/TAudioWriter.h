@@ -14,10 +14,12 @@ the Free Software Foundation; either version 2 of the License, or
 #include "defines.h"
 #include "gdither_types.h"
 #include <QString>
+#include <expected>
 #include <memory>
 #include <vector>
 
 #include "TAudioEncodeSettings.h"
+#include "TAudioFileError.h"
 #include "TFileIOBuffer.h"
 class TAudioEncoder;
 class TAudioResampler;
@@ -48,40 +50,47 @@ class TAudioWriter
 public:
     // A new file at fileName in the settings' format, for audio at
     // inputSampleRate (the file's rate is the settings'; another input rate
-    // is resampled): the one way to write an audio file. nullptr when the
-    // file cannot be made (logged): no encoder for the format in this build,
-    // or no file there.
-    static std::unique_ptr<TAudioWriter> open(const TAudioEncodeSettings& settings, const QString& fileName, uint inputSampleRate);
+    // is resampled): the one way to write an audio file. Or why not
+    // (CannotOpen): no encoder for the format in this build, no input rate
+    // (0: no audio device yet), no resampler, or no file there.
+    [[nodiscard]] static std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> open(const TAudioEncodeSettings& settings,
+                                                                                          const QString& fileName, uint inputSampleRate);
 
-    // Closes the file if close() did not
+    // close() is required: the destructor asserts it was called, and where
+    // the assert is gone (a release build) it still closes and logs, so a
+    // forgotten close() does not lose the end of a recording
     ~TAudioWriter();
 
     // frameCount frames of the channel buffers of fileIOBuffer, at the input
     // rate. The input frames taken: frameCount, also when the resampler
-    // holds some of them for a later write or close(); fewer only when the
-    // file could not take them (a write error: what the encoder took, or 0
-    // when the input was resampled). The file's own frames, at its rate, are
-    // another count.
-    nframes_t write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
+    // holds some of them for a later write or close(); fewer, with the
+    // error, when the file could not take them (what the encoder took, or 0
+    // when the input was resampled). After an error the writer is finished:
+    // its count is not what is in the file. The file's own frames, at its
+    // rate, are another count. A caller that only needs the count writes
+    // .frames.
+    TAudioFileResult write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
     // The file complete (the resampler's rest, the encoder's end, the
-    // header); false when that failed. Once: the writer writes no more after.
-    bool close();
+    // header), or why not (WriteFailed). The writer writes no more after; a
+    // second close() does nothing and is no error.
+    [[nodiscard]] TAudioFileStatus close();
 
     uint input_rate() const { return m_inputSampleRate; }
     uint file_rate() const { return m_settings.sampleRate; }
     uint channel_count() const { return m_settings.channelCount; }
 
 private:
-    TAudioWriter(const TAudioEncodeSettings& settings, std::unique_ptr<TAudioEncoder> encoder, uint inputSampleRate);
+    TAudioWriter(const TAudioEncodeSettings& settings, std::unique_ptr<TAudioEncoder> encoder, std::unique_ptr<TAudioResampler> resampler,
+                 uint inputSampleRate);
 
-    // At close: what the resampler still holds into the file; false when it
-    // could not all be written
-    bool flush_resampler();
+    // At close: what the resampler still holds into the file; the error when
+    // it could not all be written
+    TAudioFileStatus flush_resampler();
     // The channels of buffer, frames long, into its interleaved part
     void interleave(TFileIOBuffer& buffer, nframes_t frames);
     // frames frames of buffer's interleaved part into the file, in the
     // file's format (packed in buffer's byte part when it is not float)
-    nframes_t write_interleaved(TFileIOBuffer& buffer, nframes_t frames);
+    TAudioFileResult write_interleaved(TFileIOBuffer& buffer, nframes_t frames);
 
     std::unique_ptr<TAudioEncoder>                  m_encoder;
     TAudioEncodeSettings                            m_settings;

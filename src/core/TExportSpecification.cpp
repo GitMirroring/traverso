@@ -87,6 +87,14 @@ int TExportSpecification::is_valid()
         TLog::write_printf(TLogLevel::Debug, TLOG_FILE_CATEGORY, "ExportSpecification: No File Format set");
         return -1;
     }
+#if !defined(M4A_ENCODE_SUPPORT)
+    // Before the export starts, not halfway: this build has no AAC encoder
+    // (the writer refuses it too, TAudioWriter::open())
+    if (m_writerType == TraversoDAW::WriterType::M4A) {
+        tInformUser().warning(tr("This build of Traverso cannot write M4A (AAC) files"));
+        return -1;
+    }
+#endif
 
     return 1;
 }

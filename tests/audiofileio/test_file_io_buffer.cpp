@@ -70,11 +70,11 @@ static bool write_wav(const QString& path, uint channels, uint frames)
 // that every channel holds its own value
 static bool read_file(TFileIOBuffer& buffer, const QString& path, uint channels, nframes_t count)
 {
-    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     if (!reader || reader->channel_count() != channels) {
         return false;
     }
-    if (reader->read_file_frames(buffer, 0, count) != count) {
+    if (reader->read_file_frames(buffer, 0, count).frames != count) {
         return false;
     }
     for (uint channel = 0; channel < channels; ++channel) {

@@ -28,7 +28,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <vector>
+#include <tuple>
 
 static int failures = 0;
 
@@ -64,10 +66,12 @@ static QString write_scenario(const QTemporaryDir& dir, const char* name, const 
 // default quality)
 static std::unique_ptr<TAudioReader> open_at(const QString& path, uint outputRate)
 {
-    std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+    std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     if (reader && outputRate != reader->file_rate()) {
-        reader->set_output_rate_and_resampler(outputRate, TAudioResampler::BackendType::LIBSOXR,
-                                              TAudioResampler::default_quality(TAudioResampler::BackendType::LIBSOXR));
+        if (!reader->set_output_rate_and_resampler(outputRate, TAudioResampler::BackendType::LIBSOXR,
+                                                   TAudioResampler::default_quality(TAudioResampler::BackendType::LIBSOXR))) {
+            return nullptr;
+        }
     }
     return reader;
 }
@@ -77,6 +81,7 @@ struct ReadBlock
     nframes_t first;
     nframes_t read;
     std::vector<float> samples;   // channel 1, Block frames
+    std::optional<TAudioFileError::Code> error;
 };
 
 // Blocks of Block frames read one after the other from output frame from, as
@@ -86,9 +91,10 @@ static std::vector<ReadBlock> read_blocks(TAudioReader& reader, nframes_t from, 
     std::vector<ReadBlock> blocks;
     TFileIOBuffer buffer;
     for (nframes_t first = from; first < to; first += Block) {
-        const nframes_t read = reader.read(buffer, TTimeRef(first, reader.output_rate()), Block);
+        auto [read, error] = reader.read(buffer, TTimeRef(first, reader.output_rate()), Block);
         const float* data = buffer.get_channel_buffer(1).get_data(Block);
-        blocks.push_back({first, read, std::vector<float>(data, data + Block)});
+        blocks.push_back({first, read, std::vector<float>(data, data + Block),
+                          error ? std::optional<TAudioFileError::Code>(error->code) : std::nullopt});
     }
     return blocks;
 }
@@ -99,7 +105,7 @@ static std::vector<float> clean_block(const QString& cleanPath, uint outputRate,
 {
     const std::unique_ptr<TAudioReader> reader = open_at(cleanPath, outputRate);
     TFileIOBuffer buffer;
-    reader->read(buffer, TTimeRef(first, outputRate), Block);
+    std::ignore = reader->read(buffer, TTimeRef(first, outputRate), Block);
     const float* data = buffer.get_channel_buffer(1).get_data(Block);
     return std::vector<float>(data, data + Block);
 }
@@ -142,6 +148,18 @@ static void test_read_error(const QTemporaryDir& dir, const QString& cleanPath, 
     }
     std::snprintf(what, sizeof(what), "a read error %s: zeros after the frames it gave", way(outputRate));
     check(all_zero(shortBlock->samples, shortBlock->read), what);
+    // The error is the read's that met it: the short one, or for the
+    // resampled path one block before it, which reads ahead of its output
+    // (its frames are all there)
+    std::snprintf(what, sizeof(what), "a read error %s: the read that comes short says ReadFailed, the reads well before it no error",
+                  way(outputRate));
+    bool errorsRight = shortBlock->error == TAudioFileError::Code::ReadFailed;
+    for (const ReadBlock& block : blocks) {
+        if (block.first + Block < shortBlock->first) {
+            errorsRight = errorsRight && !block.error;
+        }
+    }
+    check(errorsRight, what);
 
     // In the damaged part: 0 and zeros; past it the audio again, as a reader
     // without the damage gives it after a seek there
@@ -155,9 +173,14 @@ static void test_read_error(const QTemporaryDir& dir, const QString& cleanPath, 
             after = &block;
         }
     }
-    std::snprintf(what, sizeof(what), "a read error %s: reads inside the damaged part give 0 and zeros", way(outputRate));
+    for (const ReadBlock& block : blocks) {
+        if (block.first > shortBlock->first && block.first + Block <= damageEnd) {
+            inside = inside && block.error == TAudioFileError::Code::ReadFailed;
+        }
+    }
+    std::snprintf(what, sizeof(what), "a read error %s: reads inside the damaged part give 0, zeros and ReadFailed", way(outputRate));
     check(inside, what);
-    const bool again = after && after->read == Block && after->samples == clean_block(cleanPath, outputRate, after->first);
+    const bool again = after && after->read == Block && !after->error && after->samples == clean_block(cleanPath, outputRate, after->first);
     std::snprintf(what, sizeof(what), "a read error %s: past the damaged part the next read seeks and the audio comes again (frame %u)", way(outputRate),
                   after ? after->first : 0);
     check(again, what);
@@ -174,22 +197,24 @@ static void test_seek_error(const QTemporaryDir& dir, const QString& cleanPath, 
     const nframes_t inside = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(TTimeRef(nframes_t(65000), FileRate), outputRate));
     buffer.check_capacity(Block, 2);
     std::fill_n(buffer.get_channel_buffer(1).get_data(Block), Block, 0.7f);
-    const nframes_t read = reader->read(buffer, TTimeRef(inside, outputRate), Block);
+    auto [read, error] = reader->read(buffer, TTimeRef(inside, outputRate), Block);
     const float* data = buffer.get_channel_buffer(1).get_data(Block);
-    std::snprintf(what, sizeof(what), "a seek that fails %s: zeros and 0 (%u)", way(outputRate), read);
-    check(read == 0 && std::all_of(data, data + Block, [](float sample) { return sample == 0.0f; }), what);
+    std::snprintf(what, sizeof(what), "a seek that fails %s: zeros, 0 and SeekFailed (%u)", way(outputRate), read);
+    check(read == 0 && error && error->code == TAudioFileError::Code::SeekFailed
+              && std::all_of(data, data + Block, [](float sample) { return sample == 0.0f; }),
+          what);
 
     // The same location again: the failed seek left the reader without a
     // position, so it seeks again (and fails again), it does not read from
     // where the decoder is
     std::fill_n(buffer.get_channel_buffer(1).get_data(Block), Block, 0.7f);
-    const nframes_t again = reader->read(buffer, TTimeRef(inside, outputRate), Block);
+    const nframes_t again = reader->read(buffer, TTimeRef(inside, outputRate), Block).frames;
     std::snprintf(what, sizeof(what), "a seek that fails %s: the same location again, zeros and 0 (%u)", way(outputRate), again);
     check(again == 0 && std::all_of(data, data + Block, [](float sample) { return sample == 0.0f; }), what);
 
     // Elsewhere: it seeks, the error clears, the audio is there
     const nframes_t elsewhere = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(TTimeRef(nframes_t(90000), FileRate), outputRate));
-    const nframes_t back = reader->read(buffer, TTimeRef(elsewhere, outputRate), Block);
+    const nframes_t back = reader->read(buffer, TTimeRef(elsewhere, outputRate), Block).frames;
     const std::vector<float> samples(data, data + Block);
     std::snprintf(what, sizeof(what), "a seek that fails %s: a read elsewhere seeks and reads (%u)", way(outputRate), back);
     check(back == Block && samples == clean_block(cleanPath, outputRate, elsewhere), what);
@@ -216,6 +241,10 @@ static void test_end(const QTemporaryDir& dir, uint outputRate)
             first = false;
         }
     }
+    // At and past the frame count: nothing to read, no error
+    TFileIOBuffer buffer;
+    const TAudioFileResult past = reader->read(buffer, TTimeRef(reader->output_frame_count(), outputRate), Block);
+    zerosAfter = zerosAfter && past.frames == 0 && !past.error;
     std::snprintf(what, sizeof(what), "audio that ends early %s: the frames until then (%u, the end at %u), zeros and 0 after", way(outputRate), total, end);
     check(std::labs(long(total) - long(end)) <= 1 && zerosAfter, what);
 }

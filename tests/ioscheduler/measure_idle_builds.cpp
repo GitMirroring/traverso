@@ -87,7 +87,7 @@ int main(int argc, char** argv)
     timer.start();
     for (const QString& name : files) {
         const QString path = directory.filePath(name);
-        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
         if (!reader) {
             std::printf("skipped: %s\n", qPrintable(name));
             done.fetch_add(1);

@@ -20,9 +20,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "SFAudioWriter.h"
-#include "TLog.h"
 
 #include <QString>
+
+#include <algorithm>
+#include <tuple>
 
 
 
@@ -35,13 +37,15 @@ SFAudioWriter::SFAudioWriter(const TAudioEncodeSettings& settings)
 
 SFAudioWriter::~SFAudioWriter()
 {
-    SFAudioWriter::close();
+    // TAudioWriter closes it and reports how that went; this is the last
+    // resort for an encoder destroyed with its file open
+    std::ignore = SFAudioWriter::close();
 }
 
 
-bool SFAudioWriter::open(const QString& fileName)
+TAudioFileStatus SFAudioWriter::open(const QString& fileName)
 {
-    close();
+    std::ignore = close();
     m_fileName = fileName;
 
     char errbuf[256];
@@ -81,8 +85,7 @@ bool SFAudioWriter::open(const QString& fileName)
 
     m_file.setFileName(m_fileName);
     if (!m_file.open(QIODevice::WriteOnly)) {
-        TLOG_W("audiofile", "{}: cannot create it ({})", m_fileName.toStdString(), m_file.errorString().toStdString());
-        return false;
+        return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, m_file.errorString()});
     }
 
     m_sf = sf_open_fd(m_file.handle(), SFM_WRITE, &m_sfinfo, false);
@@ -97,9 +100,8 @@ bool SFAudioWriter::open(const QString& fileName)
 
     if (m_sf == nullptr) {
         sf_error_str(nullptr, errbuf, sizeof(errbuf) - 1);
-        TLOG_W("audiofile", "{}: libsndfile cannot write it ({})", m_fileName.toStdString(), errbuf);
         m_file.close();
-        return false;
+        return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, QString::fromUtf8(errbuf)});
     }
 
     // A file with a header gets it updated with every write: when the
@@ -111,15 +113,18 @@ bool SFAudioWriter::open(const QString& fileName)
         sf_command(m_sf, SFC_SET_UPDATE_HEADER_AUTO, nullptr, SF_TRUE);
     }
 
-    return true;
+    return {};
 }
 
 
 
-nframes_t SFAudioWriter::write(void* buffer, nframes_t frameCount)
+TAudioFileResult SFAudioWriter::write(void* buffer, nframes_t frameCount)
 {
-    if (!m_sf || !buffer || frameCount == 0) {
-        return 0;
+    if (frameCount == 0) {
+        return {};
+    }
+    if (!m_sf || !buffer) {
+        return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("no file open")}};
     }
 
     int written = 0;
@@ -153,28 +158,30 @@ nframes_t SFAudioWriter::write(void* buffer, nframes_t frameCount)
         break;
     }
 
-    // Validate bounds to trap pipeline and device storage underruns
+    // Fewer frames than given: the disk is full or the file went
     if (written < 0 || static_cast<nframes_t>(written) != frameCount) {
         sf_error_str(m_sf, errbuf, sizeof(errbuf) - 1);
-        TLOG_E("audiofile", "{}: writing failed ({})", m_fileName.toStdString(), errbuf);
-        return 0; // Return 0 instead of -1 to align with unsigned nframes_t error contracts safely
+        return {static_cast<nframes_t>(std::max(written, 0)), TAudioFileError{TAudioFileError::Code::WriteFailed, QString::fromUtf8(errbuf)}};
     }
 
-    return static_cast<nframes_t>(written);
+    return {static_cast<nframes_t>(written), std::nullopt};
 }
 
 
 
-bool SFAudioWriter::close()
+TAudioFileStatus SFAudioWriter::close()
 {
     if (!m_sf) {
-        return false;
+        return {};
     }
-    const bool success = (sf_close(m_sf) == 0);
+    const int result = sf_close(m_sf);
     m_sf = nullptr;
     // libsndfile does not close a descriptor it was given: the file is
     // closed here, not when the writer goes
     m_file.close();
-    return success;
+    if (result != 0) {
+        return std::unexpected(TAudioFileError{TAudioFileError::Code::WriteFailed, QString::fromUtf8(sf_error_number(result))});
+    }
+    return {};
 }
 

@@ -2,6 +2,7 @@
 add_library(traversoaudiofileio STATIC
     decode/TAudioDecoder.h decode/TAudioDecoder.cpp
     decode/SFAudioReader.cpp
+    TAudioFileError.h
     TAudioReader.h TAudioReader.cpp
     decode/WPAudioReader.cpp
     decode/MadAudioReader.cpp

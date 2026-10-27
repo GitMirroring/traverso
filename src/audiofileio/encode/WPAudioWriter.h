@@ -34,9 +34,9 @@ public:
     explicit WPAudioWriter(const TAudioEncodeSettings& settings);
     ~WPAudioWriter() override;
 
-    bool open(const QString& fileName) override;
-    nframes_t write(void* buffer, nframes_t frameCount) override;
-    bool close() override;
+    TAudioFileStatus open(const QString& fileName) override;
+    TAudioFileResult write(void* buffer, nframes_t frameCount) override;
+    TAudioFileStatus close() override;
 
 protected:
 	int write_to_file(void *lpBuffer, uint32_t nNumberOfBytesToWrite, uint32_t *lpNumberOfBytesWritten);
@@ -51,5 +51,8 @@ protected:
 	int32_t 	m_firstBlockSize{0};
     int32_t*	m_tmp_buffer{nullptr};
 	nframes_t	m_tmpBufferSize{0};
+    // Why write_block() could not write a block (WavPack calls it while it
+    // packs); the WavPack context stays, close() releases it
+    QString m_writeError;
 };
 

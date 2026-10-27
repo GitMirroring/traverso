@@ -30,11 +30,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Utils.h"
 #include "TAudioDevice.h"
 #include "Debugger.h"
+#include "TLog.h"
 
 #include <QFile>
 #include <QThread>
 
 #include <algorithm>
+#include <tuple>
 
 /**
  *	\class ReadSource
@@ -74,8 +76,8 @@ TBufferedAudioStreamReader::TBufferedAudioStreamReader(const QString& dir, const
 {
     private_init();
 
-    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(m_fileName);
-    m_channelCount = reader ? reader->channel_count() : 0;
+    const std::expected<std::unique_ptr<TAudioReader>, TAudioFileError> reader = TAudioReader::open(m_fileName);
+    m_channelCount = reader ? (*reader)->channel_count() : 0;
 
     m_silent = false;
 }
@@ -198,16 +200,16 @@ int TBufferedAudioStreamReader::init( )
         return (m_error = INVALID_CHANNEL_COUNT);
     }
 
-    if ( ! QFile::exists(m_fileName)) {
-        return (m_error = FILE_DOES_NOT_EXIST);
-    }
-
     // A reader exists only for a file it reads (channels, rate and frames
-    // there); the reader logs why it has none
-    m_audioReader = TAudioReader::open(m_fileName);
-    if (!m_audioReader) {
-        return (m_error = COULD_NOT_OPEN_FILE);
+    // there), or says why there is none. A missing file is asked after the
+    // open, not before (a race): NotFound stays FILE_DOES_NOT_EXIST, so what
+    // the GUI does with a missing file (relink it) carries over
+    std::expected<std::unique_ptr<TAudioReader>, TAudioFileError> reader = TAudioReader::open(m_fileName);
+    if (!reader) {
+        TLOG_W("audiofile", "{}: cannot read it ({})", m_fileName.toStdString(), reader.error().detail.toStdString());
+        return (m_error = reader.error().code == TAudioFileError::Code::NotFound ? FILE_DOES_NOT_EXIST : COULD_NOT_OPEN_FILE);
     }
+    m_audioReader = std::move(*reader);
 
     // At the file's own rate: no resampler, so no choice of one; the IO
     // scheduler hands the configured one on with the device's rate
@@ -231,7 +233,13 @@ void TBufferedAudioStreamReader::set_output_rate_and_resampler(int outputRate, c
     // comes with the resampler, from the owner's thread: this runs in the
     // IO scheduler's threads too, where TConfig must not be read
     const uint readRate = resampler.resample ? uint(outputRate) : m_audioReader->file_rate();
-    m_audioReader->set_output_rate_and_resampler(readRate, TAudioResampler::BackendType(resampler.backend), resampler.quality);
+    // A resampler that does not start leaves the reader as it was (at its
+    // old rate): said here, the stream plays on (its error state: task R9)
+    if (TAudioFileStatus set = m_audioReader->set_output_rate_and_resampler(readRate, TAudioResampler::BackendType(resampler.backend),
+                                                                              resampler.quality);
+        !set) {
+        TLOG_W("audiofile", "{}: no output rate of {} Hz ({})", m_fileName.toStdString(), readRate, set.error().detail.toStdString());
+    }
 
     m_outputRate = outputRate;
 }
@@ -242,14 +250,14 @@ void TBufferedAudioStreamReader::set_source_start_location(const TTimeRef &sourc
     m_sourceStartLocation = sourceStartLocation;
 }
 
-int TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, const TTimeRef& fileLocation, nframes_t count) const
+TAudioFileResult TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, const TTimeRef& fileLocation, nframes_t count) const
 {
     Q_ASSERT(m_audioReader);
     return m_audioReader->read(buffer, fileLocation, count);
 }
 
 
-int TBufferedAudioStreamReader::file_read_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count) const
+TAudioFileResult TBufferedAudioStreamReader::file_read_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count) const
 {
     Q_ASSERT(m_audioReader);
     return m_audioReader->read_file_frames(buffer, firstFrame, count);
@@ -378,9 +386,10 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
             // most half a frame before the source start, so its frame is never
             // before the file. The reader makes room in the buffer and gives zeros
             // past the end of the file.
-            nframes_t read = file_read(fileDecodeBuffer, fileLocation + TTimeRef(offset, m_outputRate), toRead);
-            if (read != toRead) {
-                TLog::write_printf(TLogLevel::Warning, TLOG_FILE_CATEGORY, "Could not read %d frames, only %d", toRead, read);
+            auto [read, error] = file_read(fileDecodeBuffer, fileLocation + TTimeRef(offset, m_outputRate), toRead);
+            if (error) {
+                // What the stream does on a read error is task R9
+                TLOG_W("audiofile", "{}: read {} of {} frames ({})", m_fileName.toStdString(), read, toRead, error->detail.toStdString());
             }
 
             if (!m_freeBufferSlotsQueue->try_dequeue(slot)) {
@@ -462,11 +471,10 @@ void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDec
     // the file: file_read() fills every one of them, zeros where the file
     // ends (the contract of TAudioReader::read()), so no stale audio
     // reaches the ring
-    nframes_t read = file_read(fileDecodeBuffer, slotFileLocation, totalReadSize);
+    // The error of the read is dropped here on purpose: what the stream
+    // does on a read error is task R9
+    std::ignore = file_read(fileDecodeBuffer, slotFileLocation, totalReadSize);
     nframes_t offset = 0;
-    if (read != bufferSize) { // likely end of file
-        // printf("ReadSource::fill_realtime_buffers: file_read gave only %d\n", read);
-    }
 
     while (slotsToFill)
     {

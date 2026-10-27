@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include "TAudioFileError.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
 #include <QString>
 
+#include <expected>
 #include <memory>
 
 class TFileIOBuffer;
@@ -48,7 +50,9 @@ class TFileIOBuffer;
  *    a file.
  *
  * Each decoder ends its seek() with seek_landed() or seek_failed() and its
- * read() with read_done(), which keep points 3 and 4.
+ * read() with read_done(), which keep points 3 and 4 and say why a call
+ * failed (TAudioFileError): the error of that call, nothing is logged. A
+ * decoder that cannot open its file says why in m_openError.
  *
  * Not for the audio thread: file IO, and the buffer may grow.
  */
@@ -67,6 +71,8 @@ public:
     // Channels, a rate and frames: a decoder without one of them reads
     // nothing (and a rate of 0 would be divided by)
     bool is_valid() const { return m_channels > 0 && m_rate > 0 && m_frames > 0; }
+    // Why it could not open its file, when it said so
+    const std::optional<TAudioFileError>& open_error() const { return m_openError; }
     // The library, for messages
     virtual QString decoder_type() const = 0;
 
@@ -79,31 +85,33 @@ public:
     // error state. Otherwise a read from frame seeks first (point 3).
     bool reads_from(nframes_t frame) const { return m_frame == frame && !m_error; }
 
-    // To frame, which is below frame_count(); false when the decoder cannot
-    // go there (frame() is then unchanged)
-    virtual bool seek(nframes_t frame) = 0;
-    // count frames from frame() into buffer, as the contract above says;
-    // the frames read from the file, and frame() moves on by as many
-    virtual nframes_t read(TFileIOBuffer& buffer, nframes_t count) = 0;
+    // To frame, which is below frame_count(); why not when the decoder
+    // cannot go there (frame() is then unchanged)
+    [[nodiscard]] virtual TAudioFileStatus seek(nframes_t frame) = 0;
+    // count frames from frame() into buffer, as the contract above says:
+    // the frames read from the file (frame() moves on by as many), and the
+    // error when this read failed
+    virtual TAudioFileResult read(TFileIOBuffer& buffer, nframes_t count) = 0;
 
     // count frames from first: a seek only when frame() is elsewhere or the
     // decoder is in its error state (a seek costs: MAD and FAAD decode
-    // frames before the target), then read(). At or past the end, and where
-    // the decoder cannot seek to, zeros and 0.
-    nframes_t read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count);
+    // frames before the target), then read(). At or past the end zeros and
+    // 0, no error; where the decoder cannot seek to, zeros, 0 and the seek's
+    // error.
+    TAudioFileResult read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count);
 
 protected:
     explicit TAudioDecoder(const QString& fileName) : m_fileName(fileName) {}
 
-    // The end of every seek() that landed: at frame, no error. Returns true.
-    bool seek_landed(nframes_t frame);
-    // The end of every seek() that did not: an error, frame() unchanged.
-    // Returns false.
-    bool seek_failed();
+    // The end of every seek() that landed: at frame, no error
+    TAudioFileStatus seek_landed(nframes_t frame);
+    // The end of every seek() that did not: the error state, frame()
+    // unchanged; detail says why (the library's words where it has any)
+    TAudioFileStatus seek_failed(nframes_t frame, const QString& detail = QString());
     // The end of every read(): zeros past the frames read, frame() moved on
-    // by them, and fewer frames than asked before frame_count() an error.
-    // Returns read.
-    nframes_t read_done(TFileIOBuffer& buffer, nframes_t read, nframes_t count);
+    // by them, and fewer frames than asked before frame_count() an error,
+    // with detail where the decoder knows why
+    TAudioFileResult read_done(TFileIOBuffer& buffer, nframes_t read, nframes_t count, const QString& detail = QString());
 
     // Set by the decoder when it opens the file
     QString m_fileName;
@@ -114,13 +122,16 @@ protected:
     // seek_failed() and read_done()
     nframes_t m_frame{0};
     bool m_error{false};
+    // Set by a decoder that cannot open its file, with the reason
+    std::optional<TAudioFileError> m_openError;
 };
 
-// The decoder for fileName, open and valid; nullptr when none can read it
-// (logged). A scenario file (.tscenario) is known by its name and read by
-// TScenarioDecoder; other files go to the libraries in order of preference
-// (libsndfile, WavPack, FAAD, MAD).
-std::unique_ptr<TAudioDecoder> open_audio_decoder(const QString& fileName);
+// The decoder for fileName, open and valid, or why there is none: NotFound
+// when the file is not there, else CannotOpen (no permission, no decoder for
+// its format, the decoder's own reason). A scenario file (.tscenario) is
+// known by its name and read by TScenarioDecoder; other files go to the
+// libraries in order of preference (libsndfile, WavPack, FAAD, MAD).
+[[nodiscard]] std::expected<std::unique_ptr<TAudioDecoder>, TAudioFileError> open_audio_decoder(const QString& fileName);
 
 // Whether one of the decoders can read fileName. The file is only probed: no
 // decoder is kept, nothing is logged.

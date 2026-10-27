@@ -7,6 +7,7 @@
 #include "defines.h"
 
 #include "TAudioEncodeSettings.h"
+#include "TAudioFileError.h"
 
 #include <QString>
 
@@ -29,15 +30,17 @@ public:
     virtual ~TAudioEncoder() = default;
 
     // A new file at fileName in the settings' format; an encoder that has a
-    // file open closes it first. False when the file cannot be made.
-    virtual bool open(const QString& fileName) = 0;
+    // file open closes it first. Why not when the file cannot be made
+    // (CannotOpen).
+    [[nodiscard]] virtual TAudioFileStatus open(const QString& fileName) = 0;
     // frameCount interleaved frames of buffer, in the settings' sample format
     // as gdither writes it (float; 8 and 16 bit; 24 and 32 bit in 32 bit
-    // words); the frames written, 0 when no file is open or writing fails
-    virtual nframes_t write(void* buffer, nframes_t frameCount) = 0;
-    // The file complete; false when that failed. Without a file open:
-    // nothing, false.
-    virtual bool close() = 0;
+    // words): the frames written, and the error when writing failed
+    // (WriteFailed; also without a file open)
+    virtual TAudioFileResult write(void* buffer, nframes_t frameCount) = 0;
+    // The file complete, or why not (WriteFailed). Without a file open:
+    // nothing to do, no error.
+    [[nodiscard]] virtual TAudioFileStatus close() = 0;
 
 protected:
     explicit TAudioEncoder(const TAudioEncodeSettings& settings) : m_settings(settings) {}
@@ -45,5 +48,6 @@ protected:
     const TAudioEncodeSettings m_settings;
 };
 
-// The encoder for the settings' writer type
+// The encoder for the settings' writer type; nullptr when this build has
+// none for it (AAC without FAAC)
 std::unique_ptr<TAudioEncoder> create_audio_encoder(const TAudioEncodeSettings& settings);

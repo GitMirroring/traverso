@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
+#include "TAudioFileError.h"
 #include "TAudioResampler.h"
 #include "TFileIOBuffer.h"
 #include "TTimeRef.h"
@@ -29,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <QString>
 
+#include <expected>
 #include <memory>
 #include <optional>
 
@@ -73,8 +75,9 @@ public:
     // Whether a decoder reads fileName: a probe, nothing is kept or logged
     static bool can_read(const QString& fileName);
     // A reader of fileName, at the file's own rate until
-    // set_output_rate_and_resampler(); nullptr when no decoder reads it
-    static std::unique_ptr<TAudioReader> open(const QString& fileName);
+    // set_output_rate_and_resampler(); or why there is none (NotFound,
+    // CannotOpen)
+    [[nodiscard]] static std::expected<std::unique_ptr<TAudioReader>, TAudioFileError> open(const QString& fileName);
 
     ~TAudioReader();
 
@@ -89,8 +92,9 @@ public:
     // file's rate: a backend and one of its qualities
     // (TAudioResampler::qualities()). The reader has no position at the new
     // rate: the next read() gives it one. Until it is called, the output
-    // rate is the file's.
-    void set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality);
+    // rate is the file's. rate > 0. A resampler that does not start is an
+    // error (CannotOpen), and the reader stays as it was.
+    [[nodiscard]] TAudioFileStatus set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality);
     uint output_rate() const { return m_outputRate; }
     // The frames the file gives at the output rate: the first output frame at
     // or after its length, where read() ends
@@ -98,32 +102,37 @@ public:
 
     // count frames at the output rate into buffer, from the output frame
     // nearest to location (frame n sits at n / rate,
-    // TTimeRef::frame_nearest()); the frames that came from the file. A seek
-    // only when the reader is elsewhere or its decoder is in its error
-    // state: reads at locations whole frames apart, each where the last one
-    // ended, are one read, whatever fraction of a frame the first location
-    // has. At or past the end: zeros and 0, no seek.
-    nframes_t read(TFileIOBuffer& buffer, const TTimeRef& location, nframes_t count);
+    // TTimeRef::frame_nearest()): the frames that came from the file, and
+    // the error of this read when it failed (a caller that only needs the
+    // count writes .frames). A seek only when the reader is elsewhere or its
+    // decoder is in its error state: reads at locations whole frames apart,
+    // each where the last one ended, are one read, whatever fraction of a
+    // frame the first location has. At or past the end: zeros and 0, no
+    // seek, no error.
+    TAudioFileResult read(TFileIOBuffer& buffer, const TTimeRef& location, nframes_t count);
     // count frames of the file at its own rate into buffer, from its frame
-    // firstFrame; the frames that came from the file
-    nframes_t read_file_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count);
+    // firstFrame: the frames that came from the file, and the error of this
+    // read when it failed
+    TAudioFileResult read_file_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count);
 
 private:
     explicit TAudioReader(std::unique_ptr<TAudioDecoder> decoder);
 
     // The reader at output frame frame: the decoder sought there, through
-    // the resampler from the last frame of both rates before it; false when
-    // the file cannot go there
-    bool reposition(nframes_t frame);
+    // the resampler from the last frame of both rates before it. False:
+    // nothing to read there (a rounding onto the file's end); the error of a
+    // seek that failed
+    std::expected<bool, TAudioFileError> reposition(nframes_t frame);
     // The resampler and the frames to drop forget the position read before
     void reset();
     // count resampled frames from the reader's position into buffer; what
-    // came from the file, zeros after it
-    nframes_t read_resampled(TFileIOBuffer& buffer, nframes_t count);
+    // came from the file, zeros after it, and the error of the decoder's
+    // reads
+    TAudioFileResult read_resampled(TFileIOBuffer& buffer, nframes_t count);
     // count output frames into out from frame 0, reading the file as far as
     // that takes; fewer only at the end of the file or after a decoder
-    // error (the resampler flushed at both)
-    nframes_t resample_into(TFileIOBuffer& out, nframes_t count);
+    // error (the resampler flushed at both), with that error
+    TAudioFileResult resample_into(TFileIOBuffer& out, nframes_t count);
     // The file frames that cover outputFrames output frames: one read of
     // the decoder for them
     nframes_t file_frames_for(nframes_t outputFrames) const;

@@ -47,18 +47,18 @@ bool TScenarioDecoder::is_scenario_file(const QString& fileName)
     return fileName.endsWith(QLatin1String(".tscenario"), Qt::CaseInsensitive);
 }
 
-bool TScenarioDecoder::can_decode(const QString& fileName, QString* why)
+std::expected<void, QString> TScenarioDecoder::check(const QString& fileName)
 {
-    return parse(fileName, why).has_value();
+    if (std::expected<Scenario, QString> scenario = parse(fileName); !scenario) {
+        return std::unexpected(scenario.error());
+    }
+    return {};
 }
 
-std::optional<TScenarioDecoder::Scenario> TScenarioDecoder::parse(const QString& fileName, QString* why)
+std::expected<TScenarioDecoder::Scenario, QString> TScenarioDecoder::parse(const QString& fileName)
 {
-    const auto fail = [why](const QString& reason) -> std::optional<Scenario> {
-        if (why) {
-            *why = reason;
-        }
-        return std::nullopt;
+    const auto fail = [](const QString& reason) -> std::expected<Scenario, QString> {
+        return std::unexpected(reason);
     };
 
     QFile file(fileName);
@@ -212,9 +212,11 @@ TScenarioDecoder::TScenarioDecoder(const QString& fileName)
     : TAudioDecoder(fileName)
 {
     // Parsed again here, as every decoder opens its file again after the
-    // factory's probe; nothing set when it no longer parses (is_valid() false)
-    std::optional<Scenario> scenario = parse(fileName, nullptr);
+    // factory's probe; nothing set when it no longer parses (is_valid()
+    // false), with the reason
+    std::expected<Scenario, QString> scenario = parse(fileName);
     if (!scenario) {
+        m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, QStringLiteral("not a scenario: %1").arg(scenario.error())};
         return;
     }
     m_rate = scenario->rate;
@@ -251,21 +253,21 @@ float TScenarioDecoder::sample(const Signal& signal, nframes_t frame) const
     return 0.0f;
 }
 
-bool TScenarioDecoder::seek(nframes_t frame)
+TAudioFileStatus TScenarioDecoder::seek(nframes_t frame)
 {
     Q_ASSERT(frame < m_frames);
     for (const Fault& fault : m_faults) {
         if (fault.kind == Fault::Kind::SeekError && frame >= fault.first && frame - fault.first < fault.frames) {
-            return seek_failed();
+            return seek_failed(frame, QStringLiteral("the scenario's seek-error at frame %1").arg(fault.first));
         }
     }
     return seek_landed(frame);
 }
 
-nframes_t TScenarioDecoder::read(TFileIOBuffer& buffer, nframes_t count)
+TAudioFileResult TScenarioDecoder::read(TFileIOBuffer& buffer, nframes_t count)
 {
     if (count == 0) {
-        return 0;
+        return {};
     }
     buffer.check_capacity(count, m_channels);
 
@@ -291,5 +293,5 @@ nframes_t TScenarioDecoder::read(TFileIOBuffer& buffer, nframes_t count)
             }
         }
     }
-    return read_done(buffer, readFrames, count);
+    return read_done(buffer, readFrames, count, readFrames < count ? QStringLiteral("the scenario's damaged part or end") : QString());
 }

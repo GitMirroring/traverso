@@ -35,9 +35,9 @@ public:
 	explicit FaacAudioWriter(const TAudioEncodeSettings& settings);
 	~FaacAudioWriter() override;
 
-    bool open(const QString& fileName) override;
-    nframes_t write(void* buffer, nframes_t frameCount) override;
-    bool close() override;
+    TAudioFileStatus open(const QString& fileName) override;
+    TAudioFileResult write(void* buffer, nframes_t frameCount) override;
+    TAudioFileStatus close() override;
 
 protected:
 

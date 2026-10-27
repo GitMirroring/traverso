@@ -33,6 +33,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TBufferedAudioStreamWriter.h"
 #include "defines.h"
 
+#include <tuple>
+
 TAudioFileCopyConvert::TAudioFileCopyConvert()
 {
     m_stopProcessing = false;
@@ -115,7 +117,8 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
         // The reader makes room for its channels; the export may ask for more
         fileIOBuffer.check_capacity(nframes, task.spec->get_channel_count());
 
-        task.readsource->file_read(fileIOBuffer, task.spec->get_export_location(), nframes);
+        // Read errors are not handled yet (task R9): zeros in the copy
+        std::ignore = task.readsource->file_read(fileIOBuffer, task.spec->get_export_location(), nframes);
 
         TQueueBufferSlot virtualSlot(0, task.spec->get_channel_count(), nframes);
 

@@ -36,8 +36,8 @@ public:
 
     static void print_libwavpack_version();
 
-    bool seek(nframes_t frame) override;
-    nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+    TAudioFileStatus seek(nframes_t frame) override;
+    TAudioFileResult read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
 
 private:
     // readFrames frames WavPack unpacked into the channel buffers, as float

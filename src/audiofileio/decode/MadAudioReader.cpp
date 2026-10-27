@@ -538,7 +538,9 @@ MadAudioReader::MadAudioReader(const QString& filename)
     d = new MadDecoderPrivate();
     d->handle = new K3bMad();
 
-    initDecoderInternal();
+    if (!initDecoderInternal()) {
+        m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, QStringLiteral("MAD finds no MPEG audio header in it")};
+    }
 
     const unsigned long audioFrames = countFrames();
 
@@ -553,6 +555,10 @@ MadAudioReader::MadAudioReader(const QString& filename)
     }
 
     if (audioFrames == 0) {
+        if (!m_openError) {
+            m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen,
+                                          d->handle->inputError() ? QStringLiteral("reading it failed") : QStringLiteral("MAD finds no MPEG audio frames in it")};
+        }
         d->handle->cleanup();
         delete d->handle;
         delete d;
@@ -582,9 +588,13 @@ MadAudioReader::MadAudioReader(const QString& filename)
     }
 
     // countFrames() read the file to its end and closed it: open again, at
-    // frame 0, as a seek puts the decoder anywhere
+    // frame 0, as a seek puts the decoder anywhere. A decoder that cannot
+    // get there does not open (no frames: is_valid() false), with the reason
     initDecoderInternal();
-    seek(0);
+    if (TAudioFileStatus atStart = seek(0); !atStart) {
+        m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, atStart.error().detail};
+        m_frames = 0;
+    }
 }
 
 
@@ -671,18 +681,18 @@ bool MadAudioReader::can_decode(const QString& filename)
 }
 
 
-bool MadAudioReader::seek(nframes_t frame)
+TAudioFileStatus MadAudioReader::seek(nframes_t frame)
 {
     Q_ASSERT(frame < m_frames);
     if (!d) {
-        return seek_failed();
+        return seek_failed(frame);
     }
 
     // The frame in the decoder's output, and the audio frame it is in
     const qint64 decoderFrame = qint64(frame) + d->skip;
     const qint64 target = decoderFrame / d->samplesPerFrame;
     if (target >= d->seekPositions.size()) {
-        return seek_failed();
+        return seek_failed(frame, QStringLiteral("frame %1 lies past the MPEG frames found").arg(frame));
     }
 
     // The decoder's state at the target as a read from the start has it:
@@ -692,7 +702,7 @@ bool MadAudioReader::seek(nframes_t frame)
     // not decode (their reservoir lies before the seek) and give silence.
     const qint64 first = std::max<qint64>(0, target - PreRollFrames);
     if (!d->handle->inputSeek(qint64(d->seekPositions[first]))) {
-        return seek_failed();
+        return seek_failed(frame, QStringLiteral("cannot seek in the file to frame %1").arg(frame));
     }
     mad_frame_mute(d->handle->madFrame);
     mad_synth_mute(d->handle->madSynth);
@@ -700,7 +710,7 @@ bool MadAudioReader::seek(nframes_t frame)
     d->pcmStart = d->pcmCount = 0;
     while (d->nextFrame <= target) {
         if (!decode_next_frame()) {
-            return seek_failed();
+            return seek_failed(frame, QStringLiteral("the frames before frame %1 do not decode").arg(frame));
         }
     }
     d->pcmStart = std::min(nframes_t(decoderFrame - target * d->samplesPerFrame), d->pcmCount);
@@ -769,16 +779,17 @@ unsigned long MadAudioReader::countFrames()
 }
 
 
-nframes_t MadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+TAudioFileResult MadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
-        return 0;
+        return {};
     }
     fileIOBuffer.check_capacity(count, m_channels);
 
     const nframes_t readFrames = (d && !at_end() && !m_error) ? decode(fileIOBuffer, count) : 0;
 
-    return read_done(fileIOBuffer, readFrames, count);
+    const bool inputError = d && d->handle->inputError();
+    return read_done(fileIOBuffer, readFrames, count, inputError ? QStringLiteral("reading the file failed") : QString());
 }
 
 

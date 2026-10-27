@@ -23,6 +23,7 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <tuple>
 
 static int failures = 0;
 
@@ -63,7 +64,7 @@ static std::vector<std::vector<float>> read_all(TAudioReader& reader)
     TFileIOBuffer buffer;
     for (nframes_t at = 0; at < frames; at += 4096) {
         const nframes_t count = std::min<nframes_t>(4096, frames - at);
-        reader.read_file_frames(buffer, at, count);
+        std::ignore = reader.read_file_frames(buffer, at, count);
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(count);
             std::copy(data, data + count, samples[channel].begin() + at);
@@ -85,7 +86,7 @@ static void test_signals(const QTemporaryDir& dir)
                                                  {"signal": "sweep", "mode": "exponential", "start": 20, "end": 20000, "amplitude": 0.7},
                                                  {"signal": "sweep", "mode": "linear", "start": 3000, "end": 300, "amplitude": 0.3}])"));
     check(TAudioReader::can_read(path), "a scenario can be read");
-    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     check(reader != nullptr, "a scenario opens");
     if (!reader) {
         return;
@@ -120,7 +121,7 @@ static void test_ramp(const QTemporaryDir& dir)
 {
     const nframes_t frames = nframes_t(TestSignals::RampFrames) + 4096;
     const QString path = write_file(dir, "ramp.tscenario", scenario(48000, frames, R"([{"signal": "ramp"}, {"signal": "ramp-high"}])"));
-    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     if (!reader) {
         check(false, "the ramp opens");
         return;
@@ -130,7 +131,7 @@ static void test_ramp(const QTemporaryDir& dir)
     TFileIOBuffer buffer;
     for (nframes_t at = 0; at < frames; at += 65536) {
         const nframes_t count = std::min<nframes_t>(65536, frames - at);
-        reader->read_file_frames(buffer, at, count);
+        std::ignore = reader->read_file_frames(buffer, at, count);
         const float* low = buffer.get_channel_buffer(0).get_data(count);
         const float* high = buffer.get_channel_buffer(1).get_data(count);
         for (nframes_t i = 0; i < count; ++i) {
@@ -174,7 +175,7 @@ static void test_edges(const QTemporaryDir& dir)
         char name[40];
         std::snprintf(name, sizeof(name), "rate%u.tscenario", rate);
         const QString path = write_file(dir, name, scenario(rate, frames, R"([{"signal": "ramp"}])"));
-        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
         // The length as time: exact where the rate divides the universal
         // rate, else rounded up by less than one universal unit (TTimeRef's
         // frame constructor), so the frame at or before it is the frame count
@@ -190,11 +191,11 @@ static void test_edges(const QTemporaryDir& dir)
     }
 
     const QString single = write_file(dir, "single.tscenario", scenario(48000, 1, R"([{"signal": "impulse", "frame": 0, "amplitude": 0.25}])"));
-    const std::unique_ptr<TAudioReader> one = TAudioReader::open(single);
+    const std::unique_ptr<TAudioReader> one = TAudioReader::open(single).value_or(nullptr);
     bool ok = one && one->file_frame_count() == 1;
     if (ok) {
         TFileIOBuffer buffer;
-        const nframes_t read = one->read_file_frames(buffer, 0, 10);
+        const nframes_t read = one->read_file_frames(buffer, 0, 10).frames;
         const float* data = buffer.get_channel_buffer(0).get_data(10);
         ok = read == 1 && data[0] == 0.25f && std::all_of(data + 1, data + 10, [](float sample) { return sample == 0.0f; });
     }
@@ -206,7 +207,7 @@ static void test_edges(const QTemporaryDir& dir)
     }
     many += "]";
     const QString manyPath = write_file(dir, "many.tscenario", scenario(48000, 48000, many.constData()));
-    const std::unique_ptr<TAudioReader> wide = TAudioReader::open(manyPath);
+    const std::unique_ptr<TAudioReader> wide = TAudioReader::open(manyPath).value_or(nullptr);
     ok = wide && wide->channel_count() == 32;
     if (ok) {
         const std::vector<std::vector<float>> samples = read_all(*wide);
@@ -223,13 +224,13 @@ static void test_ramp_through_writer(const QTemporaryDir& dir)
 {
     const nframes_t frames = 100000;
     const QString path = write_file(dir, "write.tscenario", scenario(48000, frames, R"([{"signal": "ramp"}])"));
-    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     if (!reader) {
         check(false, "the ramp to write opens");
         return;
     }
     TFileIOBuffer buffer;
-    reader->read_file_frames(buffer, 0, frames);
+    std::ignore = reader->read_file_frames(buffer, 0, frames);
 
     TAudioEncodeSettings settings;
     settings.writerType = TraversoDAW::WriterType::SNDFILE;
@@ -238,14 +239,17 @@ static void test_ramp_through_writer(const QTemporaryDir& dir)
     settings.channelCount = 1;
     settings.sampleRate = 48000;
     const QString wavPath = dir.filePath(QStringLiteral("ramp.wav"));
-    const std::unique_ptr<TAudioWriter> writer = TAudioWriter::open(settings, wavPath, 48000);
-    const bool written = writer && writer->write(buffer, frames) == frames && writer->close();
+    const std::unique_ptr<TAudioWriter> writer = TAudioWriter::open(settings, wavPath, 48000).value_or(nullptr);
+    // close() is required, also when the write failed
+    const bool writtenAll = writer && writer->write(buffer, frames).frames == frames;
+    const bool closed = writer && writer->close();
+    const bool written = writtenAll && closed;
     check(written, "the ramp written as a float WAV");
     if (!written) {
         return;
     }
 
-    const std::unique_ptr<TAudioReader> back = TAudioReader::open(wavPath);
+    const std::unique_ptr<TAudioReader> back = TAudioReader::open(wavPath).value_or(nullptr);
     bool exact = back && back->file_frame_count() == frames;
     if (exact) {
         const std::vector<std::vector<float>> samples = read_all(*back);

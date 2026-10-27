@@ -16,31 +16,48 @@ the Free Software Foundation; either version 2 of the License, or
 #include "gdither.h"
 #include "TLog.h"
 
-std::unique_ptr<TAudioWriter> TAudioWriter::open(const TAudioEncodeSettings& settings, const QString& fileName, uint inputSampleRate)
+#include <tuple>
+
+std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> TAudioWriter::open(const TAudioEncodeSettings& settings, const QString& fileName,
+                                                                                  uint inputSampleRate)
 {
+    const auto cannot = [](const QString& why) {
+        return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, why});
+    };
+
+    // The device's rate is 0 until a device is set up; a precondition once
+    // the rate is guaranteed (task R6)
+    if (inputSampleRate == 0) {
+        return cannot(QStringLiteral("no input sample rate (no audio device set up)"));
+    }
     std::unique_ptr<TAudioEncoder> encoder = create_audio_encoder(settings);
     if (!encoder) {
-        TLOG_W("audiofile", "{}: no encoder for this format in this build", fileName.toStdString());
-        return nullptr;
+        return cannot(QStringLiteral("no encoder for this format in this build"));
     }
-    // The encoder logs why it cannot make the file
-    if (inputSampleRate == 0 || !encoder->open(fileName)) {
-        return nullptr;
+    // The resampler before the file: one that does not start leaves no
+    // empty file behind
+    std::unique_ptr<TAudioResampler> resampler;
+    if (inputSampleRate != settings.sampleRate) {
+        const double ratio = double(settings.sampleRate) / inputSampleRate;
+        resampler = std::make_unique<TAudioResampler>(settings.resampler, ratio, settings.resampleQuality, settings.channelCount);
+        if (!resampler->valid()) {
+            return cannot(QStringLiteral("the %1 resampler did not start").arg(TAudioResampler::backend_name(settings.resampler)));
+        }
     }
-    return std::unique_ptr<TAudioWriter>(new TAudioWriter(settings, std::move(encoder), inputSampleRate));
+    if (TAudioFileStatus opened = encoder->open(fileName); !opened) {
+        return std::unexpected(std::move(opened.error()));
+    }
+    return std::unique_ptr<TAudioWriter>(new TAudioWriter(settings, std::move(encoder), std::move(resampler), inputSampleRate));
 }
 
-TAudioWriter::TAudioWriter(const TAudioEncodeSettings& settings, std::unique_ptr<TAudioEncoder> encoder, uint inputSampleRate)
+TAudioWriter::TAudioWriter(const TAudioEncodeSettings& settings, std::unique_ptr<TAudioEncoder> encoder, std::unique_ptr<TAudioResampler> resampler,
+                           uint inputSampleRate)
     : m_encoder(std::move(encoder))
     , m_settings(settings)
     , m_inputSampleRate(inputSampleRate)
+    , m_resampler(std::move(resampler))
     , m_dither(nullptr)
 {
-    if (m_inputSampleRate != m_settings.sampleRate) {
-        const double ratio = double(m_settings.sampleRate) / m_inputSampleRate;
-        m_resampler = std::make_unique<TAudioResampler>(m_settings.resampler, ratio, m_settings.resampleQuality, m_settings.channelCount);
-    }
-
     if (m_settings.dataFormat != TraversoDAW::DataFormat::FLOAT) {
         m_dither = gdither_new(
             m_settings.ditherType,
@@ -53,19 +70,29 @@ TAudioWriter::TAudioWriter(const TAudioEncodeSettings& settings, std::unique_ptr
 
 TAudioWriter::~TAudioWriter()
 {
-    close();
+    Q_ASSERT_X(m_closed, "~TAudioWriter", "close() was not called");
+    // A release build: still closed, and said, so the file is complete. Where
+    // the writer is destroyed (for a recording the GUI thread), with file IO
+    // and the resampler's flush there, only in this case.
+    if (!m_closed) {
+        if (TAudioFileStatus closed = close(); !closed) {
+            TLOG_E("audiofile", "a writer destroyed without close(): closing failed ({})", closed.error().detail.toStdString());
+        } else {
+            TLOG_W("audiofile", "a writer destroyed without close(): closed it");
+        }
+    }
 }
 
-bool TAudioWriter::close()
+TAudioFileStatus TAudioWriter::close()
 {
     if (m_closed) {
-        return false;
+        return {};
     }
     m_closed = true;
 
     // The end of the input: what the resampler still holds goes into the
     // file too, else the file loses its last few milliseconds
-    const bool flushed = m_resampler ? flush_resampler() : true;
+    TAudioFileStatus flushed = m_resampler ? flush_resampler() : TAudioFileStatus{};
 
     if (m_dither) {
         gdither_free(m_dither);
@@ -73,13 +100,19 @@ bool TAudioWriter::close()
     }
     m_resampler.reset();
 
-    return m_encoder->close() && flushed;
+    // The encoder completes the file also when the flush failed; the first
+    // error is the one told
+    TAudioFileStatus closed = m_encoder->close();
+    return flushed ? closed : flushed;
 }
 
-nframes_t TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
+TAudioFileResult TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
-    if (m_closed || frameCount == 0) {
-        return 0;
+    if (frameCount == 0) {
+        return {};
+    }
+    if (m_closed) {
+        return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("the file is closed")}};
     }
     // Every channel of the file in the caller's buffer (one it lacks is
     // silence), so the resampler and the interleaving read no further than
@@ -101,14 +134,19 @@ nframes_t TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
     // All input is taken, also when the resampler holds it for now (it gives
     // it at a later write, the rest at close())
     if (frames == 0) {
-        return frameCount;
+        return {frameCount, std::nullopt};
     }
     interleave(m_resampleEncodeBuffer, frames);
-    // The file took less than the input became: a write error
-    return write_interleaved(m_resampleEncodeBuffer, frames) == frames ? frameCount : 0;
+    // The file took less than the input became: a write error, and no
+    // input frame count means anything then
+    TAudioFileResult written = write_interleaved(m_resampleEncodeBuffer, frames);
+    if (written.error) {
+        return {0, std::move(written.error)};
+    }
+    return {frameCount, std::nullopt};
 }
 
-bool TAudioWriter::flush_resampler()
+TAudioFileStatus TAudioWriter::flush_resampler()
 {
     // The resampler says how much it can still hold: one flush of that many
     // frames gives all of it
@@ -116,10 +154,13 @@ bool TAudioWriter::flush_resampler()
     m_resampleEncodeBuffer.check_capacity(pending, m_settings.channelCount);
     const nframes_t frames = m_resampler->flush(m_resampleEncodeBuffer.channel_buffers(), 0, pending);
     if (frames == 0) {
-        return true;
+        return {};
     }
     interleave(m_resampleEncodeBuffer, frames);
-    return write_interleaved(m_resampleEncodeBuffer, frames) == frames;
+    if (TAudioFileResult written = write_interleaved(m_resampleEncodeBuffer, frames); written.error) {
+        return std::unexpected(std::move(*written.error));
+    }
+    return {};
 }
 
 void TAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
@@ -134,7 +175,7 @@ void TAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
     }
 }
 
-nframes_t TAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nframes_t targetFrames)
+TAudioFileResult TAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nframes_t targetFrames)
 {
     nframes_t finalInterleavedSamples = targetFrames * m_settings.channelCount;
     // Not const: gdither and the codec writers take a plain pointer
@@ -160,7 +201,7 @@ nframes_t TAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nframes_t
     }
 
     void* packedOutputBuffer = fileIOBuffer.get_packed_byte_buffer();
-    nframes_t writtenFrames = 0;
+    TAudioFileResult written;
 
     switch (m_settings.dataFormat) {
     case TraversoDAW::DataFormat::PCM_S8:
@@ -171,7 +212,7 @@ nframes_t TAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nframes_t
         for (uint chn = 0; chn < m_settings.channelCount; ++chn) {
             gdither_runf(m_dither, chn, targetFrames, interleavedFloatBuffer, packedOutputBuffer);
         }
-        writtenFrames = m_encoder->write(packedOutputBuffer, targetFrames);
+        written = m_encoder->write(packedOutputBuffer, targetFrames);
         break;
 
     case TraversoDAW::DataFormat::PCM_32:
@@ -198,14 +239,14 @@ nframes_t TAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nframes_t
                 }
             }
         }
-        writtenFrames = m_encoder->write(packedOutputBuffer, targetFrames);
+        written = m_encoder->write(packedOutputBuffer, targetFrames);
         break;
     }
 
     default:
-        writtenFrames = m_encoder->write(interleavedFloatBuffer, targetFrames);
+        written = m_encoder->write(interleavedFloatBuffer, targetFrames);
         break;
     }
 
-    return writtenFrames;
+    return written;
 }

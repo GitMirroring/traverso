@@ -37,9 +37,9 @@ public:
     explicit SFAudioWriter(const TAudioEncodeSettings& settings);
     ~SFAudioWriter() override;
 
-    bool open(const QString& fileName) override;
-    nframes_t write(void* buffer, nframes_t frameCount) override;
-    bool close() override;
+    TAudioFileStatus open(const QString& fileName) override;
+    TAudioFileResult write(void* buffer, nframes_t frameCount) override;
+    TAudioFileStatus close() override;
 
 private:
     SNDFILE*	m_sf{nullptr};

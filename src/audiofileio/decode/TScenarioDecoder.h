@@ -5,6 +5,7 @@
 
 #include "TAudioDecoder.h"
 
+#include <expected>
 #include <optional>
 #include <vector>
 
@@ -59,11 +60,11 @@ public:
     // A scenario by its name: the factory asks it before any library probes
     // the file
     static bool is_scenario_file(const QString& fileName);
-    // The file parses as a scenario; why not in why
-    static bool can_decode(const QString& fileName, QString* why = nullptr);
+    // The file parses as a scenario, or why not
+    [[nodiscard]] static std::expected<void, QString> check(const QString& fileName);
 
-    bool seek(nframes_t frame) override;
-    nframes_t read(TFileIOBuffer& buffer, nframes_t count) override;
+    TAudioFileStatus seek(nframes_t frame) override;
+    TAudioFileResult read(TFileIOBuffer& buffer, nframes_t count) override;
 
 private:
     struct Signal
@@ -96,7 +97,7 @@ private:
         std::vector<Fault> faults;
     };
 
-    static std::optional<Scenario> parse(const QString& fileName, QString* why);
+    static std::expected<Scenario, QString> parse(const QString& fileName);
     float sample(const Signal& signal, nframes_t frame) const;
 
     std::vector<Signal> m_signals;

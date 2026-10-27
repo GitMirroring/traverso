@@ -62,11 +62,13 @@ int TBufferedAudioStreamWriter::prepare_file(TExportSpecification *specification
     set_name(get_name() + specification->get_file_extension());
     specification->print_export_data();
 
-    // The writer logs why it cannot make the file
-    m_audioWriter = TAudioWriter::open(specification->get_encode_settings(), m_fileName, m_sampleRate);
-    if (!m_audioWriter) {
+    std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> writer = TAudioWriter::open(specification->get_encode_settings(), m_fileName,
+                                                                                            m_sampleRate);
+    if (!writer) {
+        TLOG_W("audiofile", "{}: cannot write it ({})", m_fileName.toStdString(), writer.error().detail.toStdString());
         return -1;
     }
+    m_audioWriter = std::move(*writer);
 
     return 0;
 }
@@ -76,8 +78,9 @@ void TBufferedAudioStreamWriter::finish_file()
     if (m_audioWriter) {
         // The resampler's rest and the final header: a file whose close
         // fails may not hold all that was written
-        if (!m_audioWriter->close()) {
-            TLOG_W("diskio", "closing {} failed: it may not hold all that was written", m_fileName.toStdString());
+        if (TAudioFileStatus closed = m_audioWriter->close(); !closed) {
+            TLOG_W("diskio", "closing {} failed: it may not hold all that was written ({})", m_fileName.toStdString(),
+                   closed.error().detail.toStdString());
         }
         m_audioWriter.reset();
     }
@@ -152,11 +155,11 @@ int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuf
 
     // The frames taken, at the stream's rate: all of them, unless the file
     // could not take them (TAudioWriter::write())
-    const nframes_t taken = m_audioWriter->write(fileIOBuffer, nframes);
+    const auto [taken, error] = m_audioWriter->write(fileIOBuffer, nframes);
     m_writtenFrames += taken;
 
-    if (taken != nframes) {
-        PERROR(QString("Write failure! Requested: %1, taken: %2").arg(nframes).arg(taken));
+    if (error) {
+        TLOG_E("diskio", "{}: writing failed, {} of {} frames taken ({})", m_fileName.toStdString(), taken, nframes, error->detail.toStdString());
         return 0;
     }
 

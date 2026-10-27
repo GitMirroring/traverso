@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QFile>
 #include <QVector>
 #include <algorithm>
+#include <limits>
 #include <optional>
 
 #define MINIMP4_IMPLEMENTATION
@@ -256,6 +257,10 @@ public:
 		if (isMp4) {
 			unsigned int size = 0, timestamp = 0, duration = 0;
 			offset = qint64(MP4D_frame_offset(&demux, audioTrack, unsigned(index), &size, &timestamp, &duration));
+			if (size > unsigned(std::numeric_limits<int>::max())) {
+				// No AAC packet is that large: a damaged sample table
+				return std::nullopt;
+			}
 			bytes = int(size);
 		} else {
 			offset = adtsFrameOffsets[index];
@@ -309,6 +314,11 @@ FaadAudioReader::FaadAudioReader(const QString& filename)
 	}
 
 	if (!initDecoderInternal()) {
+		// Not opened: no frames (is_valid() false), and why where known
+		if (!m_openError) {
+			m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, QStringLiteral("FAAD cannot read it")};
+		}
+		m_frames = 0;
 		d->cleanup();
 	}
 }
@@ -486,7 +496,7 @@ bool FaadAudioReader::initDecoderInternal()
 			m_frames = nframes_t(std::clamp<qint64>(frames, 0, std::max<qint64>(0, decodable - d->skip)));
 			// No frames: it cannot be read (and seek() is asked below the
 			// frame count only)
-			return m_frames > 0 && seek(0);
+			return start_at_frame_0();
 		}
 	}
 
@@ -551,7 +561,22 @@ bool FaadAudioReader::initDecoderInternal()
 	// leaves out as much as most encoders prime), up to an AAC frame more
 	// than the encoder was given
 	m_frames = nframes_t(qint64(d->packet_count() - d->leadingEmpty) * d->frameLength);
-	return m_frames > 0 && seek(0);
+	return start_at_frame_0();
+}
+
+// At frame 0, as a read from the start; false (and why) when the file has
+// no frames or the decoder cannot get there
+bool FaadAudioReader::start_at_frame_0()
+{
+	if (m_frames == 0) {
+		m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, QStringLiteral("no AAC frames in it")};
+		return false;
+	}
+	if (TAudioFileStatus atStart = seek(0); !atStart) {
+		m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, atStart.error().detail};
+		return false;
+	}
+	return true;
 }
 
 bool FaadAudioReader::open_decoder()
@@ -601,18 +626,15 @@ bool FaadAudioReader::measure_decoder()
 	return false;
 }
 
-bool FaadAudioReader::seek(nframes_t frame)
+TAudioFileStatus FaadAudioReader::seek(nframes_t frame)
 {
 	Q_ASSERT(frame < m_frames);
-	if (!d) {
-		return seek_failed();
-	}
 
 	// The frame in the decoder's output, and the packet that gives it
 	const qint64 decoderFrame = qint64(frame) + d->skip;
 	const int target = int(decoderFrame / d->frameLength) + d->leadingEmpty;
 	if (target >= d->packet_count()) {
-		return seek_failed();
+		return seek_failed(frame, QStringLiteral("frame %1 lies past the AAC packets found").arg(frame));
 	}
 
 	// A fresh decoder from a few packets before: what it gives for the
@@ -620,13 +642,13 @@ bool FaadAudioReader::seek(nframes_t frame)
 	// packet before it is all an AAC packet carries over)
 	const int first = std::max(0, target - std::max(PreRollPackets, d->leadingEmpty + 1));
 	if (!open_decoder()) {
-		return seek_failed();
+		return seek_failed(frame, QStringLiteral("FAAD cannot start a decoder"));
 	}
 	d->nextPacket = first;
 	d->pendingStart = d->pendingCount = 0;
 	while (d->nextPacket <= target) {
 		if (!decode_next_packet()) {
-			return seek_failed();
+			return seek_failed(frame, QStringLiteral("the packets before frame %1 cannot be read").arg(frame));
 		}
 	}
 	d->pendingStart = std::min(nframes_t(decoderFrame - qint64(target - d->leadingEmpty) * d->frameLength), d->pendingCount);
@@ -634,16 +656,18 @@ bool FaadAudioReader::seek(nframes_t frame)
 	return seek_landed(frame);
 }
 
-nframes_t FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+TAudioFileResult FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
-        return 0;
+        return {};
     }
     fileIOBuffer.check_capacity(count, m_channels);
 
-    const nframes_t readFrames = (d && d->hDecoder && !at_end() && !m_error) ? decode(fileIOBuffer, count) : 0;
+    const nframes_t readFrames = (d->hDecoder && !at_end() && !m_error) ? decode(fileIOBuffer, count) : 0;
 
-    return read_done(fileIOBuffer, readFrames, count);
+    // The only read error FAAD's reader sees: a packet the file does not
+    // give whole (decode_next_packet())
+    return read_done(fileIOBuffer, readFrames, count, readFrames < count ? QStringLiteral("the file gives an AAC packet only in part") : QString());
 }
 
 nframes_t FaadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)

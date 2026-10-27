@@ -34,7 +34,7 @@ WPAudioReader::WPAudioReader(const QString& filename)
     m_wp = WavpackOpenFileInput(m_fileName.toUtf8().data(), error, OPEN_NORMALIZE | OPEN_WVC, 0);
 
     if (m_wp == nullptr) {
-        TLOG_W("audiofile", "{}: WavPack cannot read it ({})", filename.toStdString(), error);
+        m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, QString::fromUtf8(error)};
         return;
     }
 
@@ -80,27 +80,26 @@ void WPAudioReader::print_libwavpack_version()
 }
 
 
-bool WPAudioReader::seek(nframes_t frame)
+TAudioFileStatus WPAudioReader::seek(nframes_t frame)
 {
     Q_ASSERT(frame < m_frames);
     if (!m_wp) {
-        return seek_failed();
+        return seek_failed(frame);
     }
 
     // WavPack's name: a sample of every channel, a frame here
     if (!WavpackSeekSample(m_wp, frame)) {
-        TLOG_W("audiofile", "{}: WavPack cannot seek to frame {} ({})", m_fileName.toStdString(), frame, WavpackGetErrorMessage(m_wp));
-        return seek_failed();
+        return seek_failed(frame, QString::fromUtf8(WavpackGetErrorMessage(m_wp)));
     }
 
     return seek_landed(frame);
 }
 
 
-nframes_t WPAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+TAudioFileResult WPAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
-        return 0;
+        return {};
     }
     fileIOBuffer.check_capacity(count, m_channels);
 
@@ -112,7 +111,9 @@ nframes_t WPAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
         unpack(fileIOBuffer, unpackBuffer.data(), readFrames);
     }
 
-    return read_done(fileIOBuffer, readFrames, count);
+    // WavPack's last message, when a short read is its error
+    const QString detail = m_wp && readFrames < count && WavpackGetNumErrors(m_wp) > 0 ? QString::fromUtf8(WavpackGetErrorMessage(m_wp)) : QString();
+    return read_done(fileIOBuffer, readFrames, count, detail);
 }
 
 void WPAudioReader::unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuffer, nframes_t readFrames)

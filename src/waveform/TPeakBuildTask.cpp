@@ -26,7 +26,9 @@ public:
     qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override
     {
         const int channelCount = channel_count();
-        const qint64 read = qint64(m_reader->read_file_frames(m_buffer, nframes_t(firstFrame), nframes_t(count)));
+        // The count only: the build keeps what was read up to a read error
+        // and ends there; whether an error fails the build (-1) is task R9
+        const qint64 read = qint64(m_reader->read_file_frames(m_buffer, nframes_t(firstFrame), nframes_t(count)).frames);
         const qint64 frames = std::min(read, count);
         for (int c = 0; c < channelCount; ++c) {
             std::copy_n(m_buffer.get_channel_buffer(uint(c)).get_data(nframes_t(frames)), frames, channels[c]);
@@ -43,12 +45,12 @@ private:
 TPeakBuildTask::OpenSource TPeakBuildTask::audio_file(const QString& fileName)
 {
     return [fileName](QString* error) -> std::unique_ptr<TPeakBuildSource> {
-        std::unique_ptr<TAudioReader> reader = TAudioReader::open(fileName);
+        std::expected<std::unique_ptr<TAudioReader>, TAudioFileError> reader = TAudioReader::open(fileName);
         if (!reader) {
-            *error = QStringLiteral("cannot read %1").arg(fileName);
+            *error = QStringLiteral("cannot read %1 (%2)").arg(fileName, reader.error().detail);
             return nullptr;
         }
-        return std::make_unique<TAudioFileBuildSource>(std::move(reader));
+        return std::make_unique<TAudioFileBuildSource>(std::move(*reader));
     };
 }
 

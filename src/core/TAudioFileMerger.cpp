@@ -31,6 +31,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "defines.h"
 #include "Debugger.h"
 
+#include <tuple>
+
 TAudioFileMerger::TAudioFileMerger()
 {
     m_stopMerging = false;
@@ -104,8 +106,9 @@ void TAudioFileMerger::process_task(MergeTask task)
         nframes_t this_nframes = std::min(diff, spec.get_block_size());
         nframes_t nframes = this_nframes;
 
-        task.readsource0->file_read(decodebuffer0, spec.get_export_location(), nframes);
-        task.readsource1->file_read(decodebuffer1, spec.get_export_location(), nframes);
+        // Read errors are not handled yet (task R9): zeros in the merge
+        std::ignore = task.readsource0->file_read(decodebuffer0, spec.get_export_location(), nframes);
+        std::ignore = task.readsource1->file_read(decodebuffer1, spec.get_export_location(), nframes);
 
         TQueueBufferSlot virtualSlot(0, 2, nframes);
         virtualSlot.update_location_and_offset(TTimeRef(), TTimeRef());
@@ -118,10 +121,9 @@ void TAudioFileMerger::process_task(MergeTask task)
 
     } while (spec.get_remaining_export_frames() > 0);
 
-    if (m_stopMerging) {
-        PMESG("AudioFileMerger::process_task: Stop Merging was requested, WriterSource finish export called");
-        writesource.finish_file();
-    }
+    // Always: the audio file complete (its writer closed) and its peaks, also
+    // when the merge was stopped
+    writesource.finish_file();
 
     if (m_stopMerging) {
         exit(0);

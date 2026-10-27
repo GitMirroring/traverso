@@ -34,8 +34,8 @@ public:
 
 	static bool can_decode(const QString& filename);
 
-    bool seek(nframes_t frame) override;
-    nframes_t read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+    TAudioFileStatus seek(nframes_t frame) override;
+    TAudioFileResult read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
 
 protected:
     // The packets decoded before the one a seek goes to (with a fresh
@@ -52,6 +52,8 @@ protected:
     bool open_decoder();
     // How a fresh decoder starts: its empty packets, its frames per packet
     bool measure_decoder();
+    // At frame 0 after the open; false, with the reason, when not
+    bool start_at_frame_0();
 
 	bool initDecoderInternal();
 

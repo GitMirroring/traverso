@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <memory>
 
+#include "TAudioFileError.h"
 #include "TAudioResampler.h"
 #include "TBufferedAudioStream.h"
 #include "TProcessContext.h"
@@ -64,8 +65,8 @@ public :
     // (a time); and count frames of the file at its own rate from its frame
     // firstFrame (a waveform works on the file's grid). What the file gives
     // and zeros past its end (TAudioReader).
-    int file_read(TFileIOBuffer &buffer, const TTimeRef& fileLocation, nframes_t count) const;
-    int file_read_frames(TFileIOBuffer &buffer, nframes_t firstFrame, nframes_t count) const;
+    TAudioFileResult file_read(TFileIOBuffer &buffer, const TTimeRef& fileLocation, nframes_t count) const;
+    TAudioFileResult file_read_frames(TFileIOBuffer &buffer, nframes_t firstFrame, nframes_t count) const;
 
 	int init();
 	int get_error() const {return m_error;}

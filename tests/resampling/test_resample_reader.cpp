@@ -23,6 +23,7 @@
 #include <numeric>
 #include <utility>
 #include <vector>
+#include <tuple>
 
 static int failures = 0;
 
@@ -90,13 +91,13 @@ static const char* pattern_name(Pattern p)
 static std::vector<float> read_all(const QString& path, uint outputRate, TAudioResampler::BackendType backend, int quality,
                                    Pattern pattern, nframes_t& first, nframes_t fileFrames, uint fileRate)
 {
-    const std::unique_ptr<TAudioReader> opened = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> opened = TAudioReader::open(path).value_or(nullptr);
     check(opened != nullptr, "the file opens");
     if (!opened) {
         return {};
     }
     TAudioReader& reader = *opened;
-    reader.set_output_rate_and_resampler(outputRate, backend, quality);
+    std::ignore = reader.set_output_rate_and_resampler(outputRate, backend, quality);
 
     // The length and the frames are the file's, at any output rate; the
     // frames at the output rate end where the file ends
@@ -129,7 +130,7 @@ static std::vector<float> read_all(const QString& path, uint outputRate, TAudioR
         }
         if (count) {
             const nframes_t frames = count * bufferSize;
-            reader.read(buffer, location, frames);
+            std::ignore = reader.read(buffer, location, frames);
             const float* data = buffer.get_channel_buffer(0).get_data(frames);
             out.insert(out.end(), data, data + frames);
             location += TTimeRef(frames, outputRate);
@@ -154,7 +155,7 @@ static std::vector<float> read_sequence(TAudioReader& reader, const std::vector<
     std::vector<float> out;
     TFileIOBuffer buffer;
     for (const Read& r : reads) {
-        reader.read(buffer, r.location, r.count);
+        std::ignore = reader.read(buffer, r.location, r.count);
         const float* data = buffer.get_channel_buffer(0).get_data(r.count);
         out.insert(out.end(), data, data + r.count);
     }
@@ -188,10 +189,10 @@ static std::vector<Read> ring_reads(const TTimeRef& sourceStart, const TTimeRef&
 // the first read on, by a reader of its own
 static float off_one_read(const QString& path, uint rate, TAudioResampler::BackendType backend, const std::vector<Read>& reads)
 {
-    const std::unique_ptr<TAudioReader> ringReader = TAudioReader::open(path);
-    const std::unique_ptr<TAudioReader> oneReader = TAudioReader::open(path);
-    ringReader->set_output_rate_and_resampler(rate, backend, TAudioResampler::default_realtime_quality(backend));
-    oneReader->set_output_rate_and_resampler(rate, backend, TAudioResampler::default_realtime_quality(backend));
+    const std::unique_ptr<TAudioReader> ringReader = TAudioReader::open(path).value_or(nullptr);
+    const std::unique_ptr<TAudioReader> oneReader = TAudioReader::open(path).value_or(nullptr);
+    std::ignore = ringReader->set_output_rate_and_resampler(rate, backend, TAudioResampler::default_realtime_quality(backend));
+    std::ignore = oneReader->set_output_rate_and_resampler(rate, backend, TAudioResampler::default_realtime_quality(backend));
 
     const std::vector<float> ring = read_sequence(*ringReader, reads);
     const nframes_t first = TTimeRef::to_nframes(TTimeRef::frame_nearest(reads.front().location, rate));
@@ -226,7 +227,7 @@ static void ring_reads_join(const QTemporaryDir& dir)
         // Between two frames the nearest, half to the later one (the file
         // as it is, so the frames are the file's samples)
         if (c.fileRate == c.outputRate) {
-            const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+            const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
             bool nearest = true;
             for (const auto& [fraction, frame] : {std::pair{0.4, size_t(1000)}, std::pair{0.5, size_t(1001)}, std::pair{0.6, size_t(1001)}}) {
                 const std::vector<float> one = read_sequence(*reader, {{frames(1000, fraction), 1}});
@@ -347,19 +348,19 @@ int main()
         const QString path = dir.filePath(QString("end-%1.wav").arg(c.fileRate));
         check(write_wav(path, c.fileRate, file), "writing the file");
 
-        const std::unique_ptr<TAudioReader> opened = TAudioReader::open(path);
+        const std::unique_ptr<TAudioReader> opened = TAudioReader::open(path).value_or(nullptr);
         check(opened != nullptr, "the file opens");
         if (!opened) {
             continue;
         }
         TAudioReader& reader = *opened;
-        reader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+        std::ignore = reader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t frames = reader.output_frame_count();
         TFileIOBuffer buffer;
         std::vector<float> out;
         for (nframes_t at = 0; at < frames;) {
             const nframes_t n = piece ? std::min(piece, frames - at) : frames;
-            reader.read(buffer, TTimeRef(at, c.outputRate), n);
+            std::ignore = reader.read(buffer, TTimeRef(at, c.outputRate), n);
             const float* data = buffer.get_channel_buffer(0).get_data(n);
             out.insert(out.end(), data, data + n);
             at += n;
@@ -396,15 +397,15 @@ int main()
         }
         const QString tonePath = dir.filePath(QString("tone-%1.wav").arg(c.fileRate));
         check(write_wav(tonePath, c.fileRate, tone), "writing the tone");
-        const std::unique_ptr<TAudioReader> toneOpened = TAudioReader::open(tonePath);
+        const std::unique_ptr<TAudioReader> toneOpened = TAudioReader::open(tonePath).value_or(nullptr);
         check(toneOpened != nullptr, "the tone opens");
         if (!toneOpened) {
             continue;
         }
         TAudioReader& toneReader = *toneOpened;
-        toneReader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+        std::ignore = toneReader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t toneFrames = toneReader.output_frame_count();
-        toneReader.read(buffer, TTimeRef(), toneFrames);
+        std::ignore = toneReader.read(buffer, TTimeRef(), toneFrames);
         const std::vector<float> sequential(buffer.get_channel_buffer(0).get_data(toneFrames),
                                             buffer.get_channel_buffer(0).get_data(toneFrames) + toneFrames);
 
@@ -413,7 +414,7 @@ int main()
             last -= period;
         }
         const nframes_t left = toneFrames - last;
-        const nframes_t read = toneReader.read(buffer, TTimeRef(last, c.outputRate), left);
+        const nframes_t read = toneReader.read(buffer, TTimeRef(last, c.outputRate), left).frames;
         const float* data = buffer.get_channel_buffer(0).get_data(left);
         float worstDiff = 0.0f;
         for (nframes_t i = 0; i < left; ++i) {
@@ -433,22 +434,22 @@ int main()
         // seeks, its resampler starts anew (no frame lost or doubled; a
         // frame off is some 0.07 for this tone)
         {
-            const std::unique_ptr<TAudioReader> bothOpened = TAudioReader::open(tonePath);
+            const std::unique_ptr<TAudioReader> bothOpened = TAudioReader::open(tonePath).value_or(nullptr);
             TAudioReader& both = *bothOpened;
-            both.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+            std::ignore = both.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
             const nframes_t half = toneFrames / 2;
             TFileIOBuffer output;
-            both.read(output, TTimeRef(), half);
+            std::ignore = both.read(output, TTimeRef(), half);
             std::vector<float> resampled(output.get_channel_buffer(0).get_data(half), output.get_channel_buffer(0).get_data(half) + half);
             TFileIOBuffer native;
             const nframes_t nativeFirst = nframes_t(tone.size() / 3);
-            const nframes_t nativeRead = both.read_file_frames(native, nativeFirst, 500);
+            const nframes_t nativeRead = both.read_file_frames(native, nativeFirst, 500).frames;
             float nativeDiff = 0.0f;
             for (nframes_t i = 0; i < nativeRead; ++i) {
                 nativeDiff = std::max(nativeDiff, std::fabs(native.get_channel_buffer(0).get_data(500)[i] - tone[nativeFirst + i]));
             }
             const nframes_t rest = toneFrames - half;
-            both.read(output, TTimeRef(half, c.outputRate), rest);
+            std::ignore = both.read(output, TTimeRef(half, c.outputRate), rest);
             resampled.insert(resampled.end(), output.get_channel_buffer(0).get_data(rest), output.get_channel_buffer(0).get_data(rest) + rest);
             float outputDiff = 0.0f;
             for (nframes_t i = 0; i < toneFrames; ++i) {
@@ -469,16 +470,16 @@ int main()
         // at before (1000)
         {
             const uint otherRate = c.outputRate == 48000 ? 44100 : 48000;
-            const std::unique_ptr<TAudioReader> changed = TAudioReader::open(tonePath);
-            const std::unique_ptr<TAudioReader> fresh = TAudioReader::open(tonePath);
-            changed->set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
-            fresh->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
+            const std::unique_ptr<TAudioReader> changed = TAudioReader::open(tonePath).value_or(nullptr);
+            const std::unique_ptr<TAudioReader> fresh = TAudioReader::open(tonePath).value_or(nullptr);
+            std::ignore = changed->set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+            std::ignore = fresh->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
             TFileIOBuffer output;
-            changed->read(output, TTimeRef(), 1000);
-            changed->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
-            changed->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);
+            std::ignore = changed->read(output, TTimeRef(), 1000);
+            std::ignore = changed->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
+            std::ignore = changed->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);
             const std::vector<float> afterChange(output.get_channel_buffer(0).get_data(2000), output.get_channel_buffer(0).get_data(2000) + 2000);
-            fresh->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);
+            std::ignore = fresh->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);
             float changeDiff = 0.0f;
             for (nframes_t i = 0; i < 2000; ++i) {
                 changeDiff = std::max(changeDiff, std::fabs(afterChange[i] - output.get_channel_buffer(0).get_data(2000)[i]));

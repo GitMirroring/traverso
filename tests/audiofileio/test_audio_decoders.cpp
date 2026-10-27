@@ -35,6 +35,7 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <tuple>
 
 static int failures = 0;
 
@@ -117,7 +118,7 @@ static bool write_with_traverso(const QString& path, const Source& source, Trave
     settings.dataFormat = aac ? TraversoDAW::DataFormat::PCM_16 : TraversoDAW::DataFormat::FLOAT;
     settings.channelCount = source.channels;
     settings.sampleRate = source.rate;
-    const std::unique_ptr<TAudioWriter> file = TAudioWriter::open(settings, path, source.rate);
+    const std::unique_ptr<TAudioWriter> file = TAudioWriter::open(settings, path, source.rate).value_or(nullptr);
     if (!file) {
         return false;
     }
@@ -127,7 +128,7 @@ static bool write_with_traverso(const QString& path, const Source& source, Trave
         const std::vector<float> samples = source.channel(channel);
         std::copy(samples.begin(), samples.end(), buffer.get_channel_buffer(channel).get_data(source.frames()));
     }
-    const nframes_t written = file->write(buffer, source.frames());
+    const nframes_t written = file->write(buffer, source.frames()).frames;
     return file->close() && written == source.frames();
 }
 
@@ -274,7 +275,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         std::printf("%s: cannot be written here, skipped\n", format.name);
         return;
     }
-    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     std::snprintf(what, sizeof(what), "%s: opens (%s)", format.name, reader ? qPrintable(reader->decoder_type()) : "no decoder");
     check(reader != nullptr, what);
     if (!reader) {
@@ -298,7 +299,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
     for (nframes_t at = 0; at < frames; at += 1000) {
         const nframes_t count = std::min<nframes_t>(1000, frames - at);
         fill_with_garbage(buffer, count, channels);
-        const nframes_t read = decoder->read_file_frames(buffer, at, count);
+        const nframes_t read = decoder->read_file_frames(buffer, at, count).frames;
         total += read;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(count);
@@ -357,7 +358,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
     const float tolerance = format.seekTolerance;
     for (const nframes_t first : {total * 2 / 3, total / 8, nframes_t(1), total / 4 + 345, total - 1500}) {
         fill_with_garbage(buffer, seekCount, channels);
-        const nframes_t read = decoder->read_file_frames(buffer, first, seekCount);
+        const nframes_t read = decoder->read_file_frames(buffer, first, seekCount).frames;
         const nframes_t expected = std::min(seekCount, total - first);
         float worst = 0.0f;
         for (uint channel = 0; channel < channels; ++channel) {
@@ -382,7 +383,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
         const nframes_t count = 500;
         const nframes_t first = total - 100;
         fill_with_garbage(buffer, count, channels);
-        const nframes_t read = decoder->read_file_frames(buffer, first, count);
+        const nframes_t read = decoder->read_file_frames(buffer, first, count).frames;
         bool zeros = true;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(count);
@@ -399,7 +400,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
     for (const bool seekPastEnd : {false, true}) {
         const nframes_t count = 500;
         fill_with_garbage(buffer, count, channels);
-        const nframes_t read = decoder->read_file_frames(buffer, seekPastEnd ? frames + 10 : frames, count);
+        const nframes_t read = decoder->read_file_frames(buffer, seekPastEnd ? frames + 10 : frames, count).frames;
         bool zeros = true;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(count);
@@ -438,8 +439,8 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
         std::printf("%s: a cut file: cannot be written here, skipped\n", format.name);
         return;
     }
-    const std::unique_ptr<TAudioReader> whole = TAudioReader::open(path);
-    const std::unique_ptr<TAudioReader> cut = TAudioReader::open(path);
+    const std::unique_ptr<TAudioReader> whole = TAudioReader::open(path).value_or(nullptr);
+    const std::unique_ptr<TAudioReader> cut = TAudioReader::open(path).value_or(nullptr);
     if (!whole || !cut) {
         check(false, "a cut file: opens");
         return;
@@ -450,7 +451,7 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
     TFileIOBuffer buffer;
     for (nframes_t at = 0; at < frames; at += 1000) {
         const nframes_t count = std::min<nframes_t>(1000, frames - at);
-        const nframes_t read = whole->read_file_frames(buffer, at, count);
+        const nframes_t read = whole->read_file_frames(buffer, at, count).frames;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(count);
             reference[channel].insert(reference[channel].end(), data, data + read);
@@ -481,7 +482,7 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
     for (nframes_t at = 0; at < frames; at += 1000) {
         const nframes_t count = std::min<nframes_t>(1000, frames - at);
         fill_with_garbage(buffer, count, channels);
-        const nframes_t read = cut->read_file_frames(buffer, at, count);
+        const nframes_t read = cut->read_file_frames(buffer, at, count).frames;
         if (shortAt == frames && read < count) {
             shortAt = at + read;
         }
@@ -515,10 +516,10 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
     // the first read: a decoder that skipped the seek there reads nothing.
     if (seekBack == SeekBack::NotTried && shortAt > 6000 && frames - shortAt > 4000) {
         const nframes_t first = shortAt / 3;
-        cut->read_file_frames(buffer, first, 1000);
-        cut->read_file_frames(buffer, shortAt + 2000, 1000);
+        std::ignore = cut->read_file_frames(buffer, first, 1000);
+        std::ignore = cut->read_file_frames(buffer, shortAt + 2000, 1000);
         fill_with_garbage(buffer, 1000, channels);
-        const nframes_t read = cut->read_file_frames(buffer, first + 1000, 1000);
+        const nframes_t read = cut->read_file_frames(buffer, first + 1000, 1000).frames;
         float worst = 0.0f;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(1000);
@@ -537,7 +538,7 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
     if (seekBack != SeekBack::NotTried && shortAt > 3000) {
         const nframes_t first = shortAt / 3;
         fill_with_garbage(buffer, 1000, channels);
-        const nframes_t read = cut->read_file_frames(buffer, first, 1000);
+        const nframes_t read = cut->read_file_frames(buffer, first, 1000).frames;
         bool same = true;
         for (uint channel = 0; channel < channels; ++channel) {
             const float* data = buffer.get_channel_buffer(channel).get_data(1000);

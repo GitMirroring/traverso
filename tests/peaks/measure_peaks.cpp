@@ -26,12 +26,13 @@
 #include <memory>
 #include <random>
 #include <vector>
+#include <tuple>
 
 // Random access to the samples of an audio file, as TWaveform reads them
 class FileSamples final : public TWaveformSampleSource
 {
 public:
-    explicit FileSamples(const QString& fileName) : m_reader(TAudioReader::open(fileName)) {}
+    explicit FileSamples(const QString& fileName) : m_reader(TAudioReader::open(fileName).value_or(nullptr)) {}
 
     bool is_valid() { return m_reader != nullptr; }
     uint rate() { return m_reader->file_rate(); }
@@ -40,7 +41,7 @@ public:
 
     qint64 read(qint64 firstFrame, qint64 count, float* const* channels) override
     {
-        const qint64 read = std::clamp<qint64>(qint64(m_reader->read_file_frames(m_buffer, nframes_t(firstFrame), nframes_t(count))), 0, count);
+        const qint64 read = std::clamp<qint64>(qint64(m_reader->read_file_frames(m_buffer, nframes_t(firstFrame), nframes_t(count)).frames), 0, count);
         for (int c = 0; c < channel_count(); ++c) {
             std::copy_n(m_buffer.get_channel_buffer(uint(c)).get_data(nframes_t(std::max<qint64>(read, 1))), read, channels[c]);
         }
@@ -60,7 +61,7 @@ private:
 static int build(const QString& audio, const QString& peaks)
 {
     QFile::remove(peaks);
-    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(audio);
+    const std::unique_ptr<TAudioReader> reader = TAudioReader::open(audio).value_or(nullptr);
     if (!reader) {
         std::printf("cannot read %s\n", qPrintable(audio));
         return 1;

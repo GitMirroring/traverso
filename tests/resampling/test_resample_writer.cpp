@@ -18,6 +18,7 @@
 #include <cmath>
 #include <cstdio>
 #include <vector>
+#include <tuple>
 
 static int failures = 0;
 
@@ -109,7 +110,7 @@ int main()
         const QString path = dir.filePath(QString("written-%1-%2-%3-%4.%5").arg(c.inputRate).arg(c.fileRate).arg(formatName, backend)
                                               .arg(c.writer == wavpack ? "wv" : "wav"));
         {
-            const std::unique_ptr<TAudioWriter> writer = TAudioWriter::open(settings, path, c.inputRate);
+            const std::unique_ptr<TAudioWriter> writer = TAudioWriter::open(settings, path, c.inputRate).value_or(nullptr);
             check(writer != nullptr, "opening the writer");
             if (!writer) {
                 continue;
@@ -120,10 +121,10 @@ int main()
                 const nframes_t n = std::min<nframes_t>(settings.blockSize, inputFrames - at);
                 buffer.check_capacity(n, 1);
                 std::copy(input.begin() + at, input.begin() + at + n, buffer.get_channel_buffer(0).get_data(n));
-                const nframes_t taken = writer->write(buffer, n);
+                const nframes_t taken = writer->write(buffer, n).frames;
                 allTaken = allTaken && taken == n;
             }
-            const bool closed = writer->close();
+            const bool closed = writer->close().has_value();
             char what[200];
             std::snprintf(what, sizeof(what), "%u -> %u Hz, %s: every write takes all of its input, close() succeeds", c.inputRate, c.fileRate,
                           format);
@@ -131,7 +132,7 @@ int main()
         }
 
         // The file at its own rate
-        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path);
+        const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
         check(reader != nullptr, "reading the file");
         if (!reader) {
             continue;
@@ -140,7 +141,7 @@ int main()
         std::vector<float> file(fileFrames, 0.0f);
         TFileIOBuffer buffer;
         if (fileFrames > 0) {
-            reader->read_file_frames(buffer, 0, fileFrames);
+            std::ignore = reader->read_file_frames(buffer, 0, fileFrames);
         }
         std::copy_n(buffer.get_channel_buffer(0).get_data(fileFrames), fileFrames, file.begin());
 
