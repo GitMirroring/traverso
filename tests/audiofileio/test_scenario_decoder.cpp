@@ -125,11 +125,18 @@ static void test_ramp(const QTemporaryDir& dir)
         check(false, "the ramp opens");
         return;
     }
-    const std::vector<std::vector<float>> samples = read_all(*reader);
+    // Block by block: all of it at once would be 134 MB
     bool exact = true;
-    for (nframes_t frame = 0; frame < frames; ++frame) {
-        const double value = double(samples[0][frame]) * TestSignals::RampFrames + double(samples[1][frame]) * TestSignals::RampFrames * TestSignals::RampFrames;
-        exact = exact && value == double(frame);
+    TFileIOBuffer buffer;
+    for (nframes_t at = 0; at < frames; at += 65536) {
+        const nframes_t count = std::min<nframes_t>(65536, frames - at);
+        reader->read_file_frames(buffer, at, count);
+        const float* low = buffer.get_channel_buffer(0).get_data(count);
+        const float* high = buffer.get_channel_buffer(1).get_data(count);
+        for (nframes_t i = 0; i < count; ++i) {
+            const double value = double(low[i]) * TestSignals::RampFrames + double(high[i]) * TestSignals::RampFrames * TestSignals::RampFrames;
+            exact = exact && value == double(at + i);
+        }
     }
     check(exact, "the ramp gives every frame exactly, past 2^24 frames with its high part");
 }

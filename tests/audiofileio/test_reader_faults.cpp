@@ -179,8 +179,9 @@ static void test_seek_error(const QTemporaryDir& dir, const QString& cleanPath, 
     std::snprintf(what, sizeof(what), "a seek that fails %s: zeros and 0 (%u)", way(outputRate), read);
     check(read == 0 && std::all_of(data, data + Block, [](float sample) { return sample == 0.0f; }), what);
 
-    // The same location again: the decoder is in its error state, so it
-    // seeks again (and fails again), it does not read from where it is
+    // The same location again: the failed seek left the reader without a
+    // position, so it seeks again (and fails again), it does not read from
+    // where the decoder is
     std::fill_n(buffer.get_channel_buffer(1).get_data(Block), Block, 0.7f);
     const nframes_t again = reader->read(buffer, TTimeRef(inside, outputRate), Block);
     std::snprintf(what, sizeof(what), "a seek that fails %s: the same location again, zeros and 0 (%u)", way(outputRate), again);

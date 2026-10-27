@@ -420,9 +420,10 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
 // before the cut, so: a read comes short before the frame count; the frames
 // before it are the file's; after it zeros and 0. A seek back into the part
 // still there clears the error where it can land (WAV): that part reads
-// again. WavPack refuses every seek in a cut file (the library reads the
-// last block on each, "can't read all of last block!"), so the error stays:
-// within the contract, a seek that fails is an error. (Windows refuses to
+// again. WavPack and FLAC refuse every seek in a file cut while it is open
+// (WavPack's library reads the last block on each, "can't read all of last
+// block!"; libsndfile's FLAC decoder does not recover after it hit the cut),
+// so the error stays: within the contract, a seek that fails is an error. (Windows refuses to
 // resize a file another handle holds open.)
 enum class SeekBack { NotTried, Reads, Refused };
 
@@ -434,6 +435,7 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
     source.extraSeconds = 29;
     const QString path = dir.filePath(QStringLiteral("cut.%1").arg(QLatin1String(format.suffix)));
     if (!format.write(path, source)) {
+        std::printf("%s: a cut file: cannot be written here, skipped\n", format.name);
         return;
     }
     const std::unique_ptr<TAudioReader> whole = TAudioReader::open(path);
@@ -457,6 +459,11 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
 
     // A decoder may hold all of a small file in its buffers from the start
     // (MAD reads 40 KB at a time): the cut is no cut for it then
+    // The reference must be whole (test_format() reports a short one)
+    if (reference[0].size() != frames) {
+        std::printf("%s: a cut file: the whole file reads short, skipped\n", format.name);
+        return;
+    }
     QFile file(path);
     if (file.size() < 64 * 1024) {
         std::printf("%s: a cut file: %lld bytes, a decoder may hold it all, skipped\n", format.name, static_cast<long long>(file.size()));
@@ -499,6 +506,31 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
     check(before, what);
     std::snprintf(what, sizeof(what), "%s: a file cut to half, after the error zeros and 0", format.name);
     check(after, what);
+
+    // A decoder whose seek failed is read again at the frame it is still at:
+    // it must seek, not read from where its library was left (contract point
+    // 3, task R8: MAD and FAAD move their input before the seek can fail).
+    // A seek into the part still there (it lands, the error clears), a seek
+    // past the cut (it fails, frame() stays), then the frames right after
+    // the first read: a decoder that skipped the seek there reads nothing.
+    if (seekBack == SeekBack::NotTried && shortAt > 6000 && frames - shortAt > 4000) {
+        const nframes_t first = shortAt / 3;
+        cut->read_file_frames(buffer, first, 1000);
+        cut->read_file_frames(buffer, shortAt + 2000, 1000);
+        fill_with_garbage(buffer, 1000, channels);
+        const nframes_t read = cut->read_file_frames(buffer, first + 1000, 1000);
+        float worst = 0.0f;
+        for (uint channel = 0; channel < channels; ++channel) {
+            const float* data = buffer.get_channel_buffer(channel).get_data(1000);
+            for (nframes_t i = 0; i < 1000; ++i) {
+                worst = std::max(worst, std::fabs(data[i] - reference[channel][first + 1000 + i]));
+            }
+        }
+        const bool same = read == 1000 && worst <= format.seekTolerance;
+        std::snprintf(what, sizeof(what), "%s: after a seek that failed, a read where the decoder still is seeks again (%u frames, worst %.2g)", format.name,
+                      read, double(worst));
+        check(same, what);
+    }
 
     // A seek back into what is still there: it clears the error, or the
     // library refuses it and the error stays
@@ -590,7 +622,7 @@ int main()
     for (const Format& format : formats) {
         const QLatin1String suffix(format.suffix);
         const SeekBack seekBack = suffix == QLatin1String("wav") || suffix == QLatin1String("16.wav") ? SeekBack::Reads
-                                  : suffix == QLatin1String("wv")                                    ? SeekBack::Refused
+                                  : suffix == QLatin1String("wv") || suffix == QLatin1String("flac") ? SeekBack::Refused
                                                                                                      : SeekBack::NotTried;
         test_cut_file(dir, format, seekBack);
     }
