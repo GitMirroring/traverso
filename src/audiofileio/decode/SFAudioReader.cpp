@@ -96,7 +96,7 @@ bool SFAudioReader::seek(nframes_t frame)
 {
     Q_ASSERT(frame < m_frames);
     if (!m_sf) {
-        return seek_done(frame, false);
+        return seek_failed();
     }
 
     // libsndfile's Ogg seek is exact from the start of the file only: from
@@ -104,14 +104,14 @@ bool SFAudioReader::seek(nframes_t frame)
     // 1.2.2, test_audio_decoders). Back to the start first; a seek there is
     // cheap, the seek from it is a bisection of the file either way.
     if ((m_sfinfo.format & SF_FORMAT_TYPEMASK) == SF_FORMAT_OGG && sf_seek(m_sf, 0, SEEK_SET) < 0) {
-        return seek_done(frame, false);
+        return seek_failed();
     }
 
     if (sf_seek (m_sf, (off_t) frame, SEEK_SET) < 0) {
-        return seek_done(frame, false);
+        return seek_failed();
     }
 
-    return seek_done(frame, true);
+    return seek_landed(frame);
 }
 
 

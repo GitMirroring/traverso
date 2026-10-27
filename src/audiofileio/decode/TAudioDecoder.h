@@ -47,8 +47,8 @@ class TFileIOBuffer;
  *    never sees what the buffer held before; none reaches a ring buffer or
  *    a file.
  *
- * Each decoder ends its seek() with seek_done() and its read() with
- * read_done(), which keep points 3 and 4.
+ * Each decoder ends its seek() with seek_landed() or seek_failed() and its
+ * read() with read_done(), which keep points 3 and 4.
  *
  * Not for the audio thread: file IO, and the buffer may grow.
  */
@@ -95,9 +95,11 @@ public:
 protected:
     explicit TAudioDecoder(const QString& fileName) : m_fileName(fileName) {}
 
-    // The end of every seek(): at frame and no error when it landed; an error
-    // and frame() unchanged when not. Returns landed.
-    bool seek_done(nframes_t frame, bool landed);
+    // The end of every seek() that landed: at frame, no error. Returns true.
+    bool seek_landed(nframes_t frame);
+    // The end of every seek() that did not: an error, frame() unchanged.
+    // Returns false.
+    bool seek_failed();
     // The end of every read(): zeros past the frames read, frame() moved on
     // by them, and fewer frames than asked before frame_count() an error.
     // Returns read.
@@ -108,8 +110,8 @@ protected:
     uint m_channels{0};
     uint m_rate{0};
     nframes_t m_frames{0};
-    // Moved by the decoder's seek() and read() only, through seek_done() and
-    // read_done()
+    // Moved by the decoder's seek() and read() only, through seek_landed(),
+    // seek_failed() and read_done()
     nframes_t m_frame{0};
     bool m_error{false};
 };

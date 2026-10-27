@@ -38,13 +38,17 @@ nframes_t TAudioDecoder::read_from(TFileIOBuffer& buffer, nframes_t first, nfram
     return read(buffer, count);
 }
 
-bool TAudioDecoder::seek_done(nframes_t frame, bool landed)
+bool TAudioDecoder::seek_landed(nframes_t frame)
 {
-    m_error = !landed;
-    if (landed) {
-        m_frame = frame;
-    }
-    return landed;
+    m_frame = frame;
+    m_error = false;
+    return true;
+}
+
+bool TAudioDecoder::seek_failed()
+{
+    m_error = true;
+    return false;
 }
 
 nframes_t TAudioDecoder::read_done(TFileIOBuffer& buffer, nframes_t read, nframes_t count)

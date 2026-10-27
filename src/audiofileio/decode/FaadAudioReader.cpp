@@ -605,14 +605,14 @@ bool FaadAudioReader::seek(nframes_t frame)
 {
 	Q_ASSERT(frame < m_frames);
 	if (!d) {
-		return seek_done(frame, false);
+		return seek_failed();
 	}
 
 	// The frame in the decoder's output, and the packet that gives it
 	const qint64 decoderFrame = qint64(frame) + d->skip;
 	const int target = int(decoderFrame / d->frameLength) + d->leadingEmpty;
 	if (target >= d->packet_count()) {
-		return seek_done(frame, false);
+		return seek_failed();
 	}
 
 	// A fresh decoder from a few packets before: what it gives for the
@@ -620,18 +620,18 @@ bool FaadAudioReader::seek(nframes_t frame)
 	// packet before it is all an AAC packet carries over)
 	const int first = std::max(0, target - std::max(PreRollPackets, d->leadingEmpty + 1));
 	if (!open_decoder()) {
-		return seek_done(frame, false);
+		return seek_failed();
 	}
 	d->nextPacket = first;
 	d->pendingStart = d->pendingCount = 0;
 	while (d->nextPacket <= target) {
 		if (!decode_next_packet()) {
-			return seek_done(frame, false);
+			return seek_failed();
 		}
 	}
 	d->pendingStart = std::min(nframes_t(decoderFrame - qint64(target - d->leadingEmpty) * d->frameLength), d->pendingCount);
 
-	return seek_done(frame, true);
+	return seek_landed(frame);
 }
 
 nframes_t FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)

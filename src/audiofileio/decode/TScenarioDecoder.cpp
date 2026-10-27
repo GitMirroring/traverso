@@ -255,10 +255,10 @@ bool TScenarioDecoder::seek(nframes_t frame)
     Q_ASSERT(frame < m_frames);
     for (const Fault& fault : m_faults) {
         if (fault.kind == Fault::Kind::SeekError && frame >= fault.first && frame - fault.first < fault.frames) {
-            return seek_done(frame, false);
+            return seek_failed();
         }
     }
-    return seek_done(frame, true);
+    return seek_landed(frame);
 }
 
 nframes_t TScenarioDecoder::read(TFileIOBuffer& buffer, nframes_t count)

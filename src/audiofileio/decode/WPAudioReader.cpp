@@ -84,16 +84,16 @@ bool WPAudioReader::seek(nframes_t frame)
 {
     Q_ASSERT(frame < m_frames);
     if (!m_wp) {
-        return seek_done(frame, false);
+        return seek_failed();
     }
 
     // WavPack's name: a sample of every channel, a frame here
     if (!WavpackSeekSample(m_wp, frame)) {
         TLOG_W("audiofile", "{}: WavPack cannot seek to frame {} ({})", m_fileName.toStdString(), frame, WavpackGetErrorMessage(m_wp));
-        return seek_done(frame, false);
+        return seek_failed();
     }
 
-    return seek_done(frame, true);
+    return seek_landed(frame);
 }
 
 
