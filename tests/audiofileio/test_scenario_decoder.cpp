@@ -17,6 +17,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <functional>

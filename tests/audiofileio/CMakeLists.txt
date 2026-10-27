@@ -31,3 +31,10 @@ add_test(NAME audio_decoders COMMAND traverso_audio_decoders_test)
 add_executable(traverso_scenario_decoder_test test_scenario_decoder.cpp)
 target_link_libraries(traverso_scenario_decoder_test PRIVATE traverso_compiler_settings traverso_test_common traversoaudiofileio traversodsp traversosupport Qt6::Core)
 add_test(NAME scenario_decoder COMMAND traverso_scenario_decoder_test)
+
+# Headless test of TAudioReader with damaged files (scenarios with faults):
+# read and seek errors, audio that ends early, NaN and inf, at the file's
+# rate and resampled
+add_executable(traverso_reader_faults_test test_reader_faults.cpp)
+target_link_libraries(traverso_reader_faults_test PRIVATE traverso_compiler_settings traverso_test_common traversoaudiofileio traversodsp traversosupport Qt6::Core)
+add_test(NAME reader_faults COMMAND traverso_reader_faults_test)
