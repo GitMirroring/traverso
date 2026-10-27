@@ -32,21 +32,6 @@ target_link_libraries(traverso_curve_polyline_test PRIVATE traverso_compiler_set
 
 add_test(NAME curve_polyline COMMAND traverso_curve_polyline_test)
 
-# Benchmark of curve painting, not part of ctest. Build it in Release:
-#   cmake -DCMAKE_BUILD_TYPE=Release ... && cmake --build . --target traverso_curve_paint_benchmark
-add_executable(traverso_curve_paint_benchmark
-    benchmark_curve_paint.cpp
-    ${CMAKE_SOURCE_DIR}/src/core/TCurveSnapshot.cpp
-)
-
-target_include_directories(traverso_curve_paint_benchmark PRIVATE
-    ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/support
-    ${CMAKE_SOURCE_DIR}/src/sheetcanvas
-)
-
-target_link_libraries(traverso_curve_paint_benchmark PRIVATE traverso_compiler_settings Qt6::Core Qt6::Gui)
-
 # Headless test of the fade shape
 add_executable(traverso_fade_shape_test
     test_fade_shape.cpp

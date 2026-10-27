@@ -106,7 +106,8 @@ void TCurveView::paint( QPainter * painter, const QStyleOptionGraphicsItem * opt
 
     // A cosmetic pen of one device pixel: Qt draws wider pens (or a 1 pixel
     // pen scaled for a high resolution screen) with its general stroker,
-    // which is 30 to 600 times slower, see tests/curves/benchmark_curve_paint
+    // which is 30 to 600 times slower (measured 2026-10-15 with the curve
+    // paint benchmark of c3c1861a, since removed)
     QPen pen;
     pen.setWidth(1);
     pen.setCosmetic(true);

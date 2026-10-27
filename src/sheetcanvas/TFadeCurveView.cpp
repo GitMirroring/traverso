@@ -96,7 +96,8 @@ void TFadeCurveView::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     }
 
     // One column per pixel, reduced to half a device pixel: filling costs
-    // time per point, see tests/curves/benchmark_curve_paint
+    // time per point (measured 2026-10-15 with the curve paint benchmark of
+    // c3c1861a, since removed)
     std::vector<TCurveColumn> columns(static_cast<size_t>(pixelcount));
     m_fadeCurve->get_columns(vector_start * scale, scale, pixelcount, columns.data());
     const qreal tolerance = 0.5 / painter->device()->devicePixelRatioF();
