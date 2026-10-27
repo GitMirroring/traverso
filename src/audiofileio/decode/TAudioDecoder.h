@@ -22,12 +22,32 @@ class TFileIOBuffer;
  * reads from it (read()). The file's channels, rate and frames are set once,
  * when it is opened.
  *
- * The contract of read(), which every decoder keeps and test_audio_decoders
- * checks: count frames of every channel are filled, from frame 0 of the
- * buffer's channel buffers: what the file gives, zeros for the rest, also at
- * or past the end of the file. A caller never silences a buffer before a
- * read, and never sees what the buffer held before: no stale audio reaches
- * a ring buffer or a file.
+ * The contract, which every decoder keeps and test_audio_decoders checks:
+ * 1. read(buffer, count) fills count frames of every channel, from frame 0 of
+ *    the buffer's channel buffers: what the file gives, zeros for the rest.
+ *    It gives fewer frames than asked only at the end of the file or on an
+ *    error.
+ * 2. seek(frame) is only asked for a frame below frame_count(); a read at or
+ *    past the end is handled above the decoder (read_from(),
+ *    TAudioReader::read()): zeros and 0, no decoder call, no error. A seek
+ *    that succeeds lands exactly: frame() is frame and the next read starts
+ *    there, its samples equal to a read from the start (within the format's
+ *    seek tolerance, AAC). A seek that cannot go there returns false, leaves
+ *    frame() unchanged and is an error.
+ * 3. On an error (a failed seek, a failed read) the decoder is in its error
+ *    state (error()): reads give zeros and 0 until a seek succeeds, which
+ *    clears it, so a damaged part of a file can be skipped. A caller seeks
+ *    again when the decoder is in its error state, also to frame().
+ * 4. Audio that ends before frame_count() (a header that says more, a file
+ *    cut short) is an error, where the decoder does not repair it itself
+ *    (MAD and the LAME padding). A packet that does not decode (MAD, FAAD)
+ *    stays silence, as the decoder decides: not an error.
+ * 5. No stale audio: a caller never silences a buffer before a read, and
+ *    never sees what the buffer held before; none reaches a ring buffer or
+ *    a file.
+ *
+ * Each decoder ends its seek() with seek_done() and its read() with
+ * read_done(), which keep points 3 and 4.
  *
  * Not for the audio thread: file IO, and the buffer may grow.
  */
@@ -52,6 +72,8 @@ public:
     // The frame the next read() starts at
     nframes_t frame() const { return m_frame; }
     bool at_end() const { return m_frame >= m_frames; }
+    // A seek or a read failed, and no seek succeeded since (point 3)
+    bool error() const { return m_error; }
 
     // To frame, which is below frame_count(); false when the decoder cannot
     // go there (frame() is then unchanged)
@@ -60,21 +82,32 @@ public:
     // the frames read from the file, and frame() moves on by as many
     virtual nframes_t read(TFileIOBuffer& buffer, nframes_t count) = 0;
 
-    // count frames from first: a seek only when frame() is elsewhere (a
-    // seek costs, and a lossy format may not land on the frame exactly),
-    // then read(). A first the decoder cannot seek to gives zeros.
+    // count frames from first: a seek only when frame() is elsewhere or the
+    // decoder is in its error state (a seek costs: MAD and FAAD decode
+    // frames before the target), then read(). At or past the end, and where
+    // the decoder cannot seek to, zeros and 0.
     nframes_t read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count);
 
 protected:
     explicit TAudioDecoder(const QString& fileName) : m_fileName(fileName) {}
+
+    // The end of every seek(): at frame and no error when it landed; an error
+    // and frame() unchanged when not. Returns landed.
+    bool seek_done(nframes_t frame, bool landed);
+    // The end of every read(): zeros past the frames read, frame() moved on
+    // by them, and fewer frames than asked before frame_count() an error.
+    // Returns read.
+    nframes_t read_done(TFileIOBuffer& buffer, nframes_t read, nframes_t count);
 
     // Set by the decoder when it opens the file
     QString m_fileName;
     uint m_channels{0};
     uint m_rate{0};
     nframes_t m_frames{0};
-    // Moved by the decoder's seek() and read() only
+    // Moved by the decoder's seek() and read() only, through seek_done() and
+    // read_done()
     nframes_t m_frame{0};
+    bool m_error{false};
 };
 
 // The decoder for fileName, the libraries tried in order of preference

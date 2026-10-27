@@ -588,15 +588,16 @@ bool FaadAudioReader::measure_decoder()
 
 bool FaadAudioReader::seek(nframes_t frame)
 {
-	if (!d || frame >= m_frames) {
-		return false;
+	Q_ASSERT(frame < m_frames);
+	if (!d) {
+		return seek_done(frame, false);
 	}
 
 	// The frame in the decoder's output, and the packet that gives it
 	const qint64 decoderFrame = qint64(frame) + d->skip;
 	const int target = int(decoderFrame / d->frameLength) + d->leadingEmpty;
 	if (target >= d->packet_count()) {
-		return false;
+		return seek_done(frame, false);
 	}
 
 	// A fresh decoder from a few packets before: what it gives for the
@@ -604,19 +605,18 @@ bool FaadAudioReader::seek(nframes_t frame)
 	// packet before it is all an AAC packet carries over)
 	const int first = std::max(0, target - std::max(PreRollPackets, d->leadingEmpty + 1));
 	if (!open_decoder()) {
-		return false;
+		return seek_done(frame, false);
 	}
 	d->nextPacket = first;
 	d->pendingStart = d->pendingCount = 0;
 	while (d->nextPacket <= target) {
 		if (!decode_next_packet()) {
-			return false;
+			return seek_done(frame, false);
 		}
 	}
 	d->pendingStart = std::min(nframes_t(decoderFrame - qint64(target - d->leadingEmpty) * d->frameLength), d->pendingCount);
 
-	m_frame = frame;
-	return true;
+	return seek_done(frame, true);
 }
 
 nframes_t FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
@@ -626,12 +626,9 @@ nframes_t FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
     }
     fileIOBuffer.check_capacity(count, m_channels);
 
-    const nframes_t readFrames = (d && d->hDecoder && !at_end()) ? decode(fileIOBuffer, count) : 0;
+    const nframes_t readFrames = (d && d->hDecoder && !at_end() && !m_error) ? decode(fileIOBuffer, count) : 0;
 
-    // What the file did not give: zeros (the contract of TAudioDecoder::read())
-    fileIOBuffer.silence(readFrames, count - readFrames, m_channels);
-    m_frame += readFrames;
-    return readFrames;
+    return read_done(fileIOBuffer, readFrames, count);
 }
 
 nframes_t FaadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)

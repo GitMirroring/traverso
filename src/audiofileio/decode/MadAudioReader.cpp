@@ -673,15 +673,16 @@ bool MadAudioReader::can_decode(const QString& filename)
 
 bool MadAudioReader::seek(nframes_t frame)
 {
-    if (!d || frame >= m_frames) {
-        return false;
+    Q_ASSERT(frame < m_frames);
+    if (!d) {
+        return seek_done(frame, false);
     }
 
     // The frame in the decoder's output, and the audio frame it is in
     const qint64 decoderFrame = qint64(frame) + d->skip;
     const qint64 target = decoderFrame / d->samplesPerFrame;
     if (target >= d->seekPositions.size()) {
-        return false;
+        return seek_done(frame, false);
     }
 
     // The decoder's state at the target as a read from the start has it:
@@ -691,7 +692,7 @@ bool MadAudioReader::seek(nframes_t frame)
     // not decode (their reservoir lies before the seek) and give silence.
     const qint64 first = std::max<qint64>(0, target - PreRollFrames);
     if (!d->handle->inputSeek(qint64(d->seekPositions[first]))) {
-        return false;
+        return seek_done(frame, false);
     }
     mad_frame_mute(d->handle->madFrame);
     mad_synth_mute(d->handle->madSynth);
@@ -699,13 +700,12 @@ bool MadAudioReader::seek(nframes_t frame)
     d->pcmStart = d->pcmCount = 0;
     while (d->nextFrame <= target) {
         if (!decode_next_frame()) {
-            return false;
+            return seek_done(frame, false);
         }
     }
     d->pcmStart = std::min(nframes_t(decoderFrame - target * d->samplesPerFrame), d->pcmCount);
 
-    m_frame = frame;
-    return true;
+    return seek_done(frame, true);
 }
 
 
@@ -776,12 +776,9 @@ nframes_t MadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
     }
     fileIOBuffer.check_capacity(count, m_channels);
 
-    const nframes_t readFrames = (d && !at_end()) ? decode(fileIOBuffer, count) : 0;
+    const nframes_t readFrames = (d && !at_end() && !m_error) ? decode(fileIOBuffer, count) : 0;
 
-    // What the file did not give: zeros (the contract of TAudioDecoder::read())
-    fileIOBuffer.silence(readFrames, count - readFrames, m_channels);
-    m_frame += readFrames;
-    return readFrames;
+    return read_done(fileIOBuffer, readFrames, count);
 }
 
 

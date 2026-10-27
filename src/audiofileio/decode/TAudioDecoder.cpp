@@ -17,8 +17,9 @@
 
 nframes_t TAudioDecoder::read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count)
 {
-    if (first != m_frame && !seek(first)) {
-        // Nothing to read there: zeros, as read() gives past the end
+    // At or past the end nothing to read, and no seek (contract point 2);
+    // elsewhere a seek that fails leaves nothing to read either
+    if (first >= m_frames || ((first != m_frame || m_error) && !seek(first))) {
         if (count > 0) {
             buffer.check_capacity(count, m_channels);
             buffer.silence(0, count, m_channels);
@@ -26,6 +27,27 @@ nframes_t TAudioDecoder::read_from(TFileIOBuffer& buffer, nframes_t first, nfram
         return 0;
     }
     return read(buffer, count);
+}
+
+bool TAudioDecoder::seek_done(nframes_t frame, bool landed)
+{
+    m_error = !landed;
+    if (landed) {
+        m_frame = frame;
+    }
+    return landed;
+}
+
+nframes_t TAudioDecoder::read_done(TFileIOBuffer& buffer, nframes_t read, nframes_t count)
+{
+    // What the file did not give: zeros (contract point 1)
+    buffer.silence(read, count - read, m_channels);
+    // Short before the end: the file ends early or a read failed (points 3, 4)
+    if (read < count && m_frame + read < m_frames) {
+        m_error = true;
+    }
+    m_frame += read;
+    return read;
 }
 
 enum class DecoderLibrary {

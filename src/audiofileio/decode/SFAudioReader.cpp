@@ -94,8 +94,9 @@ int SFAudioReader::major_format(const QString& filename)
 
 bool SFAudioReader::seek(nframes_t frame)
 {
-    if (!m_sf || frame >= m_frames) {
-        return false;
+    Q_ASSERT(frame < m_frames);
+    if (!m_sf) {
+        return seek_done(frame, false);
     }
 
     // libsndfile's Ogg seek is exact from the start of the file only: from
@@ -103,15 +104,14 @@ bool SFAudioReader::seek(nframes_t frame)
     // 1.2.2, test_audio_decoders). Back to the start first; a seek there is
     // cheap, the seek from it is a bisection of the file either way.
     if ((m_sfinfo.format & SF_FORMAT_TYPEMASK) == SF_FORMAT_OGG && sf_seek(m_sf, 0, SEEK_SET) < 0) {
-        return false;
+        return seek_done(frame, false);
     }
 
     if (sf_seek (m_sf, (off_t) frame, SEEK_SET) < 0) {
-        return false;
+        return seek_done(frame, false);
     }
 
-    m_frame = frame;
-    return true;
+    return seek_done(frame, true);
 }
 
 
@@ -124,7 +124,7 @@ nframes_t SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 
     TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
 
-    const nframes_t readFrames = (m_sf && !at_end()) ? nframes_t(sf_readf_float(m_sf, readBuffer.get_data(count * m_channels), count)) : 0;
+    const nframes_t readFrames = (m_sf && !at_end() && !m_error) ? nframes_t(sf_readf_float(m_sf, readBuffer.get_data(count * m_channels), count)) : 0;
 
     // De-interlace
     switch (m_channels) {
@@ -157,9 +157,6 @@ nframes_t SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
     }
     }
 
-    // What the file did not give: zeros (the contract of TAudioDecoder::read())
-    fileIOBuffer.silence(readFrames, count - readFrames, m_channels);
-    m_frame += readFrames;
-    return readFrames;
+    return read_done(fileIOBuffer, readFrames, count);
 }
 

@@ -82,18 +82,18 @@ void WPAudioReader::print_libwavpack_version()
 
 bool WPAudioReader::seek(nframes_t frame)
 {
-    if (!m_wp || frame >= m_frames) {
-        return false;
+    Q_ASSERT(frame < m_frames);
+    if (!m_wp) {
+        return seek_done(frame, false);
     }
 
     // WavPack's name: a sample of every channel, a frame here
     if (!WavpackSeekSample(m_wp, frame)) {
         TLOG_W("audiofile", "{}: WavPack cannot seek to frame {} ({})", m_fileName.toStdString(), frame, WavpackGetErrorMessage(m_wp));
-        return false;
+        return seek_done(frame, false);
     }
 
-    m_frame = frame;
-    return true;
+    return seek_done(frame, true);
 }
 
 
@@ -105,17 +105,14 @@ nframes_t WPAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
     fileIOBuffer.check_capacity(count, m_channels);
 
     nframes_t readFrames = 0;
-    if (m_wp && !at_end()) {
+    if (m_wp && !at_end() && !m_error) {
         // WavPack unpacks into int32_t, the buffers are float
         std::vector<int32_t> unpackBuffer(size_t(count) * m_channels);
         readFrames = WavpackUnpackSamples(m_wp, unpackBuffer.data(), count);
         unpack(fileIOBuffer, unpackBuffer.data(), readFrames);
     }
 
-    // What the file did not give: zeros (the contract of TAudioDecoder::read())
-    fileIOBuffer.silence(readFrames, count - readFrames, m_channels);
-    m_frame += readFrames;
-    return readFrames;
+    return read_done(fileIOBuffer, readFrames, count);
 }
 
 void WPAudioReader::unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuffer, nframes_t readFrames)

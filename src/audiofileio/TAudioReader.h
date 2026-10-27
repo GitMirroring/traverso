@@ -53,9 +53,12 @@ class TAudioDecoder;
  * the decoder under the output, so the next read() seeks and its resampler
  * starts anew.
  *
- * Both keep the contract of TAudioDecoder::read(): count frames of every
- * channel are filled, what the file gives and zeros for the rest, also past
- * the end of the file; the caller never silences before a read.
+ * Both keep the contract of TAudioDecoder: count frames of every channel are
+ * filled, what the file gives and zeros for the rest, also past the end of
+ * the file; the caller never silences before a read. Fewer frames than asked
+ * come only at the end of the file or after a decoder error, on both ways
+ * and at any output rate; the next read seeks then, which may clear the
+ * error (a damaged part of a file skipped).
  *
  * Positions come in as time (TTimeRef) or as the file's frames; the frames
  * at the output rate stay inside. Not for the audio thread: file IO, and the
