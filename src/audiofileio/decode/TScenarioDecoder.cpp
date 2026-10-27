@@ -15,8 +15,9 @@
 #include <limits>
 
 static constexpr int ScenarioVersion = 1;
-// Large enough for any scenario a test writes; a larger file is no scenario
-static constexpr qint64 MaxScenarioBytes = 1024 * 1024;
+// A scenario is a short description (a few hundred bytes, some KB with
+// many channels or faults); a larger file named .tscenario is not read whole
+static constexpr qint64 MaxScenarioBytes = 64 * 1024;
 static constexpr double RampFrames = 16777216.0;
 
 // A whole number of frames, or nothing
