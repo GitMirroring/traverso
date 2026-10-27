@@ -224,21 +224,23 @@ nframes_t TAudioReader::resample_into(TFileIOBuffer& out, nframes_t count)
     // The resampler gives what its input allows: after a seek it holds back
     // the length of its filter, and soxr releases its output in blocks of its
     // own. So it is fed until it gave all that was asked for, reading as much
-    // of the file as that takes; at the end of the file it is flushed, also
-    // over several reads when they ask for less than it holds.
+    // of the file as that takes; at the end of the file, or where the decoder
+    // gives no more (its error state), it is flushed, also over several
+    // reads when they ask for less than it holds: the frames before an error
+    // come out as those before the end do.
     nframes_t produced = 0;
     while (produced < count) {
-        if (m_decoder->at_end()) {
+        if (m_decoder->at_end() || m_decoder->error()) {
             produced += m_resampler->flush(out.channel_buffers(), produced, count - produced);
             break;
         }
-        // The decoder makes room in its buffer and leaves no stale frames in it
+        // The decoder makes room in its buffer and leaves no stale frames in
+        // it. No frames only at the end or in the error state (the
+        // decoder's contract): the loop flushes then.
         const nframes_t inputFrames = m_decoder->read(m_decodeBuffer, file_frames_for(count - produced));
-        if (inputFrames == 0) {
-            // A read error: not at the end, and nothing came
-            break;
+        if (inputFrames > 0) {
+            produced += m_resampler->process(m_decodeBuffer.channel_buffers(), inputFrames, out.channel_buffers(), produced, count - produced);
         }
-        produced += m_resampler->process(m_decodeBuffer.channel_buffers(), inputFrames, out.channel_buffers(), produced, count - produced);
     }
     return produced;
 }
