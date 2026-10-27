@@ -243,16 +243,24 @@ public:
 		return file.read(size);
 	}
 
-	// The AAC packets of the file: MP4 samples, or ADTS frames
+	// The AAC packets of the file: MP4 samples, or ADTS frames. Empty when
+	// the file gives fewer bytes than the packet has (a file cut short, a
+	// read that failed): a read error, not a packet that does not decode.
 	int packet_count() const { return isMp4 ? int(sampleCount) : adtsFrameOffsets.size(); }
 	QByteArray packet(int index)
 	{
+		qint64 offset = 0;
+		int bytes = 0;
 		if (isMp4) {
-			unsigned int bytes = 0, timestamp = 0, duration = 0;
-			const MP4D_file_offset_t offset = MP4D_frame_offset(&demux, audioTrack, unsigned(index), &bytes, &timestamp, &duration);
-			return readBytes(qint64(offset), int(bytes));
+			unsigned int size = 0, timestamp = 0, duration = 0;
+			offset = qint64(MP4D_frame_offset(&demux, audioTrack, unsigned(index), &size, &timestamp, &duration));
+			bytes = int(size);
+		} else {
+			offset = adtsFrameOffsets[index];
+			bytes = adtsFrameSizes[index];
 		}
-		return readBytes(adtsFrameOffsets[index], adtsFrameSizes[index]);
+		QByteArray data = readBytes(offset, bytes);
+		return data.size() == bytes ? data : QByteArray();
 	}
 
 	QFile file;
@@ -657,6 +665,10 @@ bool FaadAudioReader::decode_next_packet()
 		return false;
 	}
 	QByteArray data = d->packet(d->nextPacket);
+	if (data.isEmpty()) {
+		// The file did not give the packet: an error (contract point 4)
+		return false;
+	}
 	NeAACDecFrameInfo info;
 	void* pcm = NeAACDecDecode(d->hDecoder, &info, reinterpret_cast<unsigned char*>(data.data()), (unsigned long)data.size());
 	++d->nextPacket;
