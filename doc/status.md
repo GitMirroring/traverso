@@ -153,6 +153,10 @@ R9–R13 → R10–R14; old R14–R17 → R18–R21; old R18 → R27.
 - **R14 (medium): each lib and a headless test on its own.** File format
   enums out of `support/defines.h` into audiofileio; the encode settings
   without dsp headers; the app without ALSA and lilv headers.
+  With it (API review I2, 2026-10-27): `TAudioEncodeSettings` gets one format
+  field: `M4A` in `FileFormat`, `create_audio_encoder()` chooses by
+  `fileFormat`, `writerType` and the dead `blockSize` leave the settings
+  (`writerType`/`fileFormat` must agree today without a check).
 - **R15 (medium): `transport_position` test failed 3 times under ctest load**
   (2026-10-27, Clang and GCC; not reproduced in 72 parallel runs). First find
   out which check: a torn read is a real race in the frame clock's seqlock, a
@@ -194,15 +198,12 @@ R9–R13 → R10–R14; old R14–R17 → R18–R21; old R18 → R27.
 
 From the audiofileio API review (`doc/design/audiofileio-api-review.md`,
 2026-10-27):
-- **Audio buffers: the scratch into audiofileio, then the names**
-  (proposed: medium-low). Three steps: (1) the interleaved and packed
-  buffers out of `TFileIOBuffer` into the library (`thread_local` scratch in
-  the readers, members in the writer; `write()` takes its buffer `const`);
-  (2) `TAudioBuffer` → `TChannelBuffer`, `TRealTimeAudioBuffer` →
-  `TRealTimeChannelBuffer`; (3) `TFileIOBuffer` → `TAudioBuffer`, in `dsp`,
-  a list of `TChannelBuffer`s. Step 2 before 3. Decided by Remon; the rank
-  is still his.
-- **I2–I7 of that review**: to discuss.
+- **The API review's work order** (no rank: approved by Remon once Fable
+  approves the document, built after midnight): W1 buffers (the scratch
+  into the library, `TAudioBuffer` → `TChannelBuffer`, `TFileIOBuffer` →
+  `TAudioBuffer`, the threading sentence), W2 the writer stops after a
+  failed write, W3 the buffers' hygiene and small header cleanups, W4 the
+  resampler choice as one typed value in `support`. I2 joined R14.
 
 From the Fable review of the `audiofileio-errors` branch (2026-10-27, existing
 code):
