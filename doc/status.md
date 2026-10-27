@@ -192,6 +192,18 @@ R9–R13 → R10–R14; old R14–R17 → R18–R21; old R18 → R27.
 
 ### Not ranked yet (Remon places them)
 
+From the audiofileio API review (`doc/design/audiofileio-api-review.md`,
+2026-10-27):
+- **Audio buffers: the scratch into audiofileio, then the names**
+  (proposed: medium-low). Three steps: (1) the interleaved and packed
+  buffers out of `TFileIOBuffer` into the library (`thread_local` scratch in
+  the readers, members in the writer; `write()` takes its buffer `const`);
+  (2) `TAudioBuffer` → `TChannelBuffer`, `TRealTimeAudioBuffer` →
+  `TRealTimeChannelBuffer`; (3) `TFileIOBuffer` → `TAudioBuffer`, in `dsp`,
+  a list of `TChannelBuffer`s. Step 2 before 3. Decided by Remon; the rank
+  is still his.
+- **I2–I7 of that review**: to discuss.
+
 From the Fable review of the `audiofileio-errors` branch (2026-10-27, existing
 code):
 - **A recording on a full disk** keeps calling `rb_file_write()` per slot
