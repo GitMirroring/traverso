@@ -57,6 +57,9 @@ public:
     ~TAudioResampler();
 
     uint channel_count() const { return m_channels; }
+    // Whether the backend made its converter; one that did not gives no
+    // output (the backend logs why)
+    bool valid() const;
 
     // Forgets the frames fed so far (filter history, kept input): before
     // feeding frames from another position than the last one's

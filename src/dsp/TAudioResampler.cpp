@@ -15,6 +15,8 @@ class ResampleBackend
 {
 public:
     virtual ~ResampleBackend() = default;
+    // Whether the library made its converter
+    virtual bool valid() const = 0;
     virtual void reset() = 0;
     // inFrames frames of in[channel]; out[channel] has room for maxOut
     // frames. endOfInput: no input follows, what is inside comes out. The
@@ -44,6 +46,8 @@ public:
         }
         src_set_ratio(m_state, ratio);
     }
+
+    bool valid() const override { return m_state != nullptr; }
 
     ~LibSampleRateBackend() override
     {
@@ -132,6 +136,8 @@ public:
             m_soxr = nullptr;
         }
     }
+
+    bool valid() const override { return m_soxr != nullptr; }
 
     ~LibSoxrBackend() override
     {
@@ -321,4 +327,9 @@ nframes_t TAudioResampler::run(const TAudioBuffer* const* in, nframes_t inputFra
         }
     }
     return given;
+}
+
+bool TAudioResampler::valid() const
+{
+    return m_backend && m_backend->valid();
 }
