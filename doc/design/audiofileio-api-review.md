@@ -167,9 +167,12 @@ before the review.
 - **W1 (I1 + I4) Buffers**, three steps, each its own commit:
   1. The interleaved and packed buffers out of `TFileIOBuffer` into
      audiofileio. `SFAudioReader.cpp`: a `static` helper returning a
-     `static thread_local TAudioBuffer` (float, interleaved) grown to the
-     read's size; `WPAudioReader.cpp`: the same for its `int32_t` unpack
-     buffer (`std::vector<int32_t>`, now made per read). `TAudioWriter`: its
+     `static thread_local std::vector<float>` (interleaved) grown to the
+     read's size; a channel buffer as interleaved scratch would contradict
+     its name after step 2; the mono path's `TAudioBuffer::copy_data()`
+     becomes `std::copy`. `WPAudioReader.cpp`: the same for its unpack
+     buffer, a `static thread_local std::vector<int32_t>` (now made per
+     read). `TAudioWriter`: its
      own members for the interleaved and packed bytes (the packed buffer no
      longer memset per write). `write()` takes `const TFileIOBuffer&`; a
      buffer with fewer channels than the file is a precondition
@@ -191,7 +194,11 @@ before the review.
      (`get_channel_buffer()`, `channel_buffers()`, `check_capacity()`,
      `silence()`, `channel_count()`). `test_file_io_buffer.cpp` →
      `tests/dsp/test_audio_buffer.cpp` with its CMake entry. Comments and
-     docs follow (`doc/design/*.md` that name `TFileIOBuffer`).
+     docs follow (`doc/design/*.md` that name `TFileIOBuffer`). A new
+     `doc/design/renames.md` (a list of renamed names, for old documents,
+     commits, other forks and agents): "`TAudioBuffer` meant one channel
+     until 2026-10-28 (now `TChannelBuffer`); since then the list of
+     channels (before `TFileIOBuffer`)".
   The commit messages of steps 2 and 3 say that the name `TAudioBuffer`
   changed meaning. Then the threading sentence in the class comments of
   `TAudioReader` and `TAudioWriter` (I4).
@@ -206,8 +213,12 @@ before the review.
   `check_capacity()`, at the size asked; every decoder and `read_from()`
   call it before writing). `TChannelBuffer`: not copyable (`= delete` on the
   copy constructor and assignment: a copy shares the raw pointer and frees
-  it twice), with a `static_assert(!std::is_copy_constructible_v<...>)`
-  in the buffer test; the rule "size > 0, always" in the header as the
+  it twice). With the copy gone there is no implicit move either, and none
+  is added: no container holds channel buffers by value (the list and the
+  ring slots hold `unique_ptr`s, `TFileIOBuffer.h:120`,
+  `TQueueBufferSlot.h:94`; the list needs them for its stable pointer
+  array), none is copied or returned by value. A
+  `static_assert(!std::is_copy_constructible_v<...>)` in the buffer test; the rule "size > 0, always" in the header as the
   class contract. It holds today: the constructor goes through `resize()`,
   which asserts `size > 0` (`TAudioBuffer.cpp:64`); no caller found passes
   0 (the real-time buffers take the device's buffer size, default 1024);
@@ -237,7 +248,14 @@ before the review.
   };
   ```
 
-  No default: every maker sets the choice (`TExportSpecification.cpp:346-347`,
+  The quality is a plain number, so the value from the configuration is
+  checked against `qualities(backend)` where it enters, and only there:
+  `configured_resampler()` (`TResamplerSettings.cpp:17`, falls back to the
+  default) for reading, the export dialog (it offers only
+  `qualities(backend)`, `ExportFormatOptionsWidget.cpp:57,199-200`) for
+  writing; behind that the libraries trust it, and the asserts in
+  `TAudioResampler`'s constructor and `TExportSpecification::set_resampler()`
+  catch a mistake in a debug build. No default: every maker sets the choice (`TExportSpecification.cpp:346-347`,
   `TResamplerSettings`, the tests already do); a type in `support` cannot
   call `TAudioResampler::default_quality()`. `TIOStream::Resampler` becomes
   `TResamplerChoice choice; bool resample;` and stays 8 bytes and lock-free
@@ -276,7 +294,10 @@ I2 is part of task T15.
 All points discussed (2026-10-27). Fable reviewed this work order and
 approved it with changes, which are in (the W4 types and no default, W2's
 log claim, W1's channel precondition and file moves; the debug guard
-dropped; `output_frame_count()` stays public). No rank: Remon approved this as a work
+dropped; `output_frame_count()` stays public). Remon's last review points
+are in too: a channel buffer is not movable either (containers hold
+`unique_ptr`s), the scratch is plain `std::vector`s, `renames.md`, and the
+one place where a configured quality is checked. No rank: Remon approved this as a work
 order once Fable has reviewed and approved the document; then it is built
 after midnight, on a branch stacked on `audiofileio-errors` (it builds on
 that API).
