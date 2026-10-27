@@ -251,7 +251,7 @@ qint64 TWaveform::read(qint64 firstFrame, qint64 count, float* const* channels)
     // The file's own frames (the peaks' grid), whatever rate the source
     // plays at; the reader makes room in the buffer
     // The error is dropped on purpose: what a waveform does on a read error
-    // is task R10
+    // is task T10
     const qint64 read = source->file_read_frames(*m_decodeBuffer, nframes_t(firstFrame), nframes_t(count)).frames;
     if (read <= 0) {
         return 0;

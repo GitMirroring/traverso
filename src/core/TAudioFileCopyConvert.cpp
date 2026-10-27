@@ -117,7 +117,7 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
         // The reader makes room for its channels; the export may ask for more
         fileIOBuffer.check_capacity(nframes, task.spec->get_channel_count());
 
-        // Read errors are not handled yet (task R10): zeros in the copy
+        // Read errors are not handled yet (task T10): zeros in the copy
         std::ignore = task.readsource->file_read(fileIOBuffer, task.spec->get_export_location(), nframes);
 
         TQueueBufferSlot virtualSlot(0, task.spec->get_channel_count(), nframes);

@@ -27,7 +27,7 @@ public:
     {
         const int channelCount = channel_count();
         // The count only: the build keeps what was read up to a read error
-        // and ends there; whether an error fails the build (-1) is task R10
+        // and ends there; whether an error fails the build (-1) is task T10
         const qint64 read = qint64(m_reader->read_file_frames(m_buffer, nframes_t(firstFrame), nframes_t(count)).frames);
         const qint64 frames = std::min(read, count);
         for (int c = 0; c < channelCount; ++c) {

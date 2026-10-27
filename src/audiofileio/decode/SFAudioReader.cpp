@@ -44,7 +44,7 @@ SFAudioReader::SFAudioReader(const QString& filename)
 
     if ((m_sf = sf_open_fd (m_file.handle(), SFM_READ, &m_sfinfo, false)) == nullptr) {
         // libsndfile's last open error is global: with files opened at the
-        // same time on other threads it may be theirs (task R26)
+        // same time on other threads it may be theirs (task T26)
         m_openError = TAudioFileError{TAudioFileError::Code::CannotOpen, QString::fromUtf8(sf_strerror(nullptr))};
         return;
     }

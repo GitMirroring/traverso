@@ -16,7 +16,7 @@ and encoders, and one addition to `TAudioResampler` in `src/dsp` (E2).
 | # | Pattern | Where | Problem |
 |---|---|---|---|
 | 1 | `unique_ptr` or nullptr | `TAudioReader::open()`, `TAudioWriter::open()` | the reason is logged inside the factory (`TAudioDecoder.cpp`); the caller knows only *that* it failed: core maps it to `COULD_NOT_OPEN_FILE` (`TBufferedAudioStreamReader.cpp:207`) |
-| 2 | `bool` | `TAudioWriter::close()`, encoder `open()`/`close()`, decoder `seek()` | no reason; easily dropped (`~TAudioWriter()` discards `close()`, `TAudioWriter.cpp:56`; task R6, finding #18) |
+| 2 | `bool` | `TAudioWriter::close()`, encoder `open()`/`close()`, decoder `seek()` | no reason; easily dropped (`~TAudioWriter()` discards `close()`, `TAudioWriter.cpp:56`; task T6, finding #18) |
 | 3 | count + hidden state | `TAudioReader::read()`, `read_file_frames()` | a short count is the end or an error; which one is `TAudioDecoder::error()`, not visible on the reader |
 | 4 | count with a special value | `TPeakBuildSource::read()` (negative = failed), `TAudioWriter::write()` (fewer = failed) | the meaning lives in comments; `TAudioFileBuildSource::read()` never returns the negative count its contract promises (`TPeakBuildTask.cpp:26-35`) |
 | 5 | out parameter | `TScenarioDecoder::can_decode(path, QString* why)`; also the waveform library's convention: `TPeakStream::open(QString* error)`, `finish(path, QString* error)`, sticky `write_failed()` + `error()` (`TPeakStream.h:55-70`) | the type does not say that it can fail; status and text are two separate things |
@@ -36,7 +36,7 @@ it (0 channels, 0 Hz, 0 frames)".
 `std::expected` with one error type for calls that either succeed or fail;
 per block a result that holds the count and the error of that call. The
 waveform library's style (pattern 5) is not taken over: it follows this one
-later (task R23).
+later (task T23).
 
 ## Proposal
 
@@ -80,7 +80,7 @@ The user's message is built by core from the code, with `tr()`; the detail
 is shown as the technical addition (libsndfile, WavPack and the others speak
 English and cannot be translated). The detail is copied from the library's
 `const char*` at once; `sf_strerror(nullptr)` is a global last error, which
-copying does not make safe across worker threads (task R26). Where a library
+copying does not make safe across worker threads (task T26). Where a library
 gives no text, ours: MAD and FAAD, and a failed `fopen` in the WavPack and
 FAAC writers (`strerror(errno)`, `WPAudioWriter.cpp:43-45`,
 `FaacAudioWriter.cpp:91-93`), as after a failed `fwrite`.
@@ -121,7 +121,7 @@ leave an empty file behind.
 (`CannotOpen`): the stream writer passes the device's rate
 (`TBufferedAudioStreamWriter.cpp:60`), which is 0 until a device is set up
 (`TAudioDevice.cpp:169`, set at `:363`); converts and merges run without a
-device. It becomes a precondition once task R6 guarantees the rate.
+device. It becomes a precondition once task T6 guarantees the rate.
 
 **E3. `[[nodiscard]]` on every call that can fail**, also those that keep
 their return type (`std::expected` is not `[[nodiscard]]` by itself). No
@@ -171,8 +171,8 @@ the frames before a seek target are dropped.
 `TAudioFileBuildSource::read()` keeps returning the count in this task:
 returning -1 on an error would fail the whole peak build, where today a
 waveform up to the damaged part remains. That behaviour change belongs to
-O1 and task R10 (Remon, 2026-10-27). It writes `.frames` and drops the error
-on purpose, with a one-line comment there pointing to task R10, so it does
+O1 and task T10 (Remon, 2026-10-27). It writes `.frames` and drops the error
+on purpose, with a one-line comment there pointing to task T10, so it does
 not read as an oversight.
 
 Considered for E4: the count plus `last_error()` on the reader (the type
@@ -198,12 +198,12 @@ else can hear it.
 Not every owner closes today: `TAudioFileMerger.cpp:121-124` calls
 `finish_file()` only when the merge is stopped, so a finished merge closes
 through the destructor, which would hit the assert in a debug build. It
-gets an explicit close in this task (it is also part of task R6, finding
+gets an explicit close in this task (it is also part of task T6, finding
 #18).
 
 **E6. Threads.** A `TAudioFileError` is handed on by value (QString is
 implicitly shared). It reaches the GUI through the stream's status path
-(task R10), not through a getter the GUI reads while an IO worker writes.
+(task T10), not through a getter the GUI reads while an IO worker writes.
 It never comes near the audio thread: making one allocates (the QString).
 The audio thread's functions are `T_REALTIME_SAFE`, so Clang reports any
 that would.
@@ -216,8 +216,8 @@ that would.
 - Per block: `TBufferedAudioStreamReader.cpp:381-384,465-469`;
   `file_read()`/`file_read_frames()` (`TBufferedAudioStreamReader.h:67-68`,
   `.cpp:245-256`, `const`, returning `int`) return the result, so the stream
-  can keep the error for task R10; `TBufferedAudioStreamWriter.cpp:155-161`;
-  `TPeakBuildTask.cpp:26-35` (`.frames` with a comment pointing to task R10,
+  can keep the error for task T10; `TBufferedAudioStreamWriter.cpp:155-161`;
+  `TPeakBuildTask.cpp:26-35` (`.frames` with a comment pointing to task T10,
   see E4).
 - The rate: `src/ioscheduler/TIOScheduler.cpp:265,337,568` through the
   streams.
@@ -239,7 +239,7 @@ GCC 12+ is libstdc++'s own requirement.
 
 - **The waveform style** (`Status` + `QString*` + sticky `error()`): the
   type does not say a call can fail. The waveform library follows this
-  design later (task R23).
+  design later (task T23).
 - **`std::error_code` + `error_category`**: boilerplate, and `message()` is
   one fixed text per code.
 - **Exceptions:** a damaged file is normal input; Qt and Traverso do not use
@@ -256,9 +256,9 @@ GCC 12+ is libstdc++'s own requirement.
 ## Open
 
 - **Q1** The list of codes, with O1 (disk full, permission).
-- **Q2** Order: this is task R9. Before task R10 (read errors hidden in
+- **Q2** Order: this is task T9. Before task T10 (read errors hidden in
   core), which needs E4's error to reach the stream; it includes the
-  merger's close (E5), also listed under task R6.
+  merger's close (E5), also listed under task T6.
 - **Q3 (decided 2026-10-27):** M4A without FAAC (`create_audio_encoder()`
   returns nullptr, `TAudioEncoder.cpp:19-25`): checked before the export
   starts, so the user is not stopped halfway (the export dialog offers M4A
@@ -279,7 +279,7 @@ GCC 12+ is libstdc++'s own requirement.
 - Encoders: `open()`/`close()` return `TAudioFileStatus`, `write()` a result;
   their logs are gone. `WPAudioWriter::write_block()` no longer nulls the
   context on a failed block (`write()` dereferenced it afterwards), it keeps
-  the reason and `close()` releases context and file: task R18 done here.
+  the reason and `close()` releases context and file: task T18 done here.
 - The library logs only what nobody else can hear: a reader's failed close,
   the writer's release-build close in its destructor, the WavPack version.
 - Core: NotFound → `FILE_DOES_NOT_EXIST` (the `QFile::exists` before the open

@@ -8,7 +8,7 @@ SPDX-License-Identifier: GPL-2.0-or-later
 Review of the public API of `traversoaudiofileio` (`TAudioReader.h`,
 `TAudioWriter.h`, `TAudioFileError.h`, `TAudioEncodeSettings.h`,
 `TFileIOBuffer.h`), 2026-10-27, on branch `audiofileio-errors` (after task
-R9). By Fable, discussed with Remon. Findings become tasks in
+T9). By Fable, discussed with Remon. Findings become tasks in
 `doc/status.md`; decisions are recorded here.
 
 ## Strong
@@ -136,7 +136,7 @@ Considered for the names:
 - `TAudioBufferList` (the Qt norm `XList`) or a plural: superseded by the
   swap above, which gives the multichannel buffer the domain's name.
 
-**I2** joins task R15 (the format enums into audiofileio): the format
+**I2** joins task T15 (the format enums into audiofileio): the format
 moves once, to where it belongs, as one field.
 
 **I3 (approved): the writer stops itself after a failed write.** After the first
@@ -145,11 +145,11 @@ without touching the encoder; `close()` still completes the file. One
 `std::optional<TAudioFileError> m_failed` in `TAudioWriter`; the count on an
 error is always 0 (one meaning, not "what the encoder took" or 0). The
 stream still logs each failed slot (`TBufferedAudioStreamWriter.cpp:168-172`)
-until task R10 stops it. Prevent, not detect: the comment "the caller stops
+until task T10 stops it. Prevent, not detect: the comment "the caller stops
 writing" becomes what the writer does. Not a contradiction with the error
 design, which rejected a sticky error for *reporting* (pattern 5); this is
 *behaviour*. What the stream and the user do with that one error stays
-task R10.
+task T10.
 
 **I4 (approved): the threading contract in the class comments.** One sentence in
 `TAudioReader` and `TAudioWriter`: "One thread at a time: the owner
@@ -248,19 +248,19 @@ before the review.
   `TAudioResampler`, taking `TResamplerChoice::Backend`.
   `set_output_rate_and_resampler(rate, TResamplerChoice)`;
   `TAudioEncodeSettings` one field `resampler` (its `TAudioResampler.h`
-  include goes; R15 then has only `gdither_types.h` left there);
+  include goes; T15 then has only `gdither_types.h` left there);
   `TExportSpecification` one field and `set_resampler(TResamplerChoice)`;
   `configured_resampler_backend()` and the export dialog's member use
   `TResamplerChoice::Backend`; the config keys (`Conversion/Resampler`,
   `Conversion/RTResamplingQuality`, `Conversion/DynamicResampling`,
   `ExportFormatOptionsWidget/resampleQuality`) stay as they are; the cast
   in core goes. Shared vocabulary of four libraries (dsp, audiofileio,
-  ioscheduler, core), so `support` is its place, unlike the format enums R15
+  ioscheduler, core), so `support` is its place, unlike the format enums T15
   moves out (used by audiofileio and core only). Rejected: an untyped
   hand-on (no compile-time check); a `dsp` type in the ioscheduler (a
   dependency for a value it only hands on). Medium, mechanical.
 
-I2 is part of task R15.
+I2 is part of task T15.
 
 ## Smells with no task
 

@@ -106,7 +106,7 @@ void TAudioFileMerger::process_task(MergeTask task)
         nframes_t this_nframes = std::min(diff, spec.get_block_size());
         nframes_t nframes = this_nframes;
 
-        // Read errors are not handled yet (task R10): zeros in the merge
+        // Read errors are not handled yet (task T10): zeros in the merge
         std::ignore = task.readsource0->file_read(decodebuffer0, spec.get_export_location(), nframes);
         std::ignore = task.readsource1->file_read(decodebuffer1, spec.get_export_location(), nframes);
 
