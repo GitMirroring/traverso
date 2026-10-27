@@ -6,6 +6,7 @@
 
 #include "TCurvePolyline.h"
 #include "TCurveSnapshot.h"
+#include "test_seed.h"
 
 #include <algorithm>
 #include <cmath>
@@ -51,8 +52,9 @@ static std::vector<TCurveColumn> columns_of(const std::vector<TCurveSnapshot::Po
     return columns;
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    const TestSeed seed(argc, argv, 3);
     const qreal height = 100.0;
 
     // A straight line keeps only its two end points
@@ -85,7 +87,7 @@ int main()
     // Random curves with groups: every point of the full polyline lies within
     // the tolerance of the reduced one
     {
-        std::mt19937 rng(3);
+        std::mt19937 rng(std::mt19937::result_type(seed(3)));
         std::uniform_real_distribution<double> unit(0.0, 1.0);
         bool ok = true;
         qsizetype full = 0, reduced = 0;

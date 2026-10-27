@@ -12,6 +12,7 @@
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
 #include "TPeakStream.h"
+#include "test_seed.h"
 
 #include <QFile>
 #include <QTemporaryDir>
@@ -107,8 +108,10 @@ static float sample(int channel)
     return float(std::uniform_real_distribution<double>(-1.0, 1.0)(s_random)) * (kind % 7 == 0 ? 0.001f : 0.5f);
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    const TestSeed seed(argc, argv, 20261024);
+    s_random.seed(seed.seed());
     QTemporaryDir dir;
     if (!dir.isValid()) {
         std::printf("no temporary directory\n");

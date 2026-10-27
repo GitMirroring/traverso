@@ -12,7 +12,7 @@ target_include_directories(traverso_curve_test PRIVATE
     ${CMAKE_SOURCE_DIR}/src/support
 )
 
-target_link_libraries(traverso_curve_test PRIVATE traverso_compiler_settings Qt6::Core)
+target_link_libraries(traverso_curve_test PRIVATE traverso_compiler_settings traverso_test_common Qt6::Core)
 
 add_test(NAME curve_snapshot COMMAND traverso_curve_test)
 
@@ -28,7 +28,7 @@ target_include_directories(traverso_curve_polyline_test PRIVATE
     ${CMAKE_SOURCE_DIR}/src/sheetcanvas
 )
 
-target_link_libraries(traverso_curve_polyline_test PRIVATE traverso_compiler_settings Qt6::Core Qt6::Gui)
+target_link_libraries(traverso_curve_polyline_test PRIVATE traverso_compiler_settings traverso_test_common Qt6::Core Qt6::Gui)
 
 add_test(NAME curve_polyline COMMAND traverso_curve_polyline_test)
 

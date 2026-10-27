@@ -6,6 +6,7 @@
 // precision does not depend on where the curve is on the timeline.
 
 #include "TCurveSnapshot.h"
+#include "test_seed.h"
 
 #include <algorithm>
 #include <cmath>
@@ -173,9 +174,9 @@ static void check(bool ok, const char* what)
 }
 
 // The new evaluation gives the same results as the old one
-static void test_same_as_legacy()
+static void test_same_as_legacy(const TestSeed& seed)
 {
-    std::mt19937 rng(20261015);
+    std::mt19937 rng(std::mt19937::result_type(seed(20261015)));
     double worst = 0.0;
     int unset = 0;
 
@@ -229,9 +230,9 @@ static void test_same_as_legacy()
 
 // Moving a curve along the timeline must not change its values. The old
 // evaluation loses precision far on the timeline, the new one must not.
-static void test_precision_far_on_timeline()
+static void test_precision_far_on_timeline(const TestSeed& seed)
 {
-    std::mt19937 rng(42);
+    std::mt19937 rng(std::mt19937::result_type(seed(42)));
     const double tenMs = 282240.0;               // 10 ms in universal frames
     const double oneHour = 101606400000.0;       // 1 hour in universal frames
 
@@ -283,9 +284,9 @@ static void test_points_at_the_same_position()
 
 // The constrained spline never turns between two points: every segment stays
 // between the values of its two points. get_columns() relies on this.
-static void test_segments_do_not_turn()
+static void test_segments_do_not_turn(const TestSeed& seed)
 {
-    std::mt19937 rng(11);
+    std::mt19937 rng(std::mt19937::result_type(seed(11)));
     bool ok = true;
 
     for (int round = 0; round < 300; ++round) {
@@ -311,9 +312,9 @@ static void test_segments_do_not_turn()
 // Columns: every value of the curve inside a column lies between its lowest and
 // highest value, the reported extremes are values of the curve, and each column
 // starts where the previous one ended
-static void test_columns()
+static void test_columns(const TestSeed& seed)
 {
-    std::mt19937 rng(7);
+    std::mt19937 rng(std::mt19937::result_type(seed(7)));
     std::uniform_real_distribution<double> unit(0.0, 1.0);
     bool ok = true;
 
@@ -384,13 +385,14 @@ static void test_columns()
     check(ok, "pixel columns");
 }
 
-int main()
+int main(int argc, char** argv)
 {
-    test_same_as_legacy();
-    test_precision_far_on_timeline();
+    const TestSeed seed(argc, argv, 20261015);
+    test_same_as_legacy(seed);
+    test_precision_far_on_timeline(seed);
     test_points_at_the_same_position();
-    test_segments_do_not_turn();
-    test_columns();
+    test_segments_do_not_turn(seed);
+    test_columns(seed);
 
     if (failures) {
         std::printf("%d test(s) failed\n", failures);

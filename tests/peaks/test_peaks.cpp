@@ -11,6 +11,7 @@
 #include "TPeakPyramid.h"
 #include "TPeakStream.h"
 #include "TWaveformColumns.h"
+#include "test_seed.h"
 
 #include <QDir>
 #include <QElapsedTimer>
@@ -1146,8 +1147,10 @@ static void test_zero_crossing()
     }
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    const TestSeed seed(argc, argv, 20261017);
+    s_random.seed(seed.seed());
     QTemporaryDir dir;
     CHECK(dir.isValid(), "no temporary directory");
     s_dir = &dir;

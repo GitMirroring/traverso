@@ -13,6 +13,7 @@
 #include "TPeakPyramid.h"
 #include "TPeakStream.h"
 #include "TWaveformColumns.h"
+#include "test_seed.h"
 
 #include <QDir>
 #include <QFile>
@@ -207,7 +208,7 @@ static bool same_column(const TWaveformColumn& live, const TWaveformColumn& fini
 // RMS and max_amplitude. Every column of blocks that are there equals the
 // finished pyramid's, the count never goes back, and the finished file
 // answers like the reference.
-static void stress_stream(const QString& peakPath, const QString& audioPath, const QString& referencePath, bool build)
+static void stress_stream(const TestSeed& seed, const QString& peakPath, const QString& audioPath, const QString& referencePath, bool build)
 {
     const Signal signal = make_signal(2, 1024 * 400 + 333);
     reference_file(referencePath, signal, audioPath);
@@ -225,7 +226,7 @@ static void stress_stream(const QString& peakPath, const QString& audioPath, con
     }
     std::atomic<bool> done{false};
     std::thread writer([&] {
-        std::mt19937_64 random(42);
+        std::mt19937_64 random(seed(42));
         if (build) {
             // Level 0 and post-processing, as DiskIO steps it
             while (task.step()) {
@@ -327,8 +328,10 @@ static void stress_stream(const QString& peakPath, const QString& audioPath, con
     CHECK(file_bytes(peakPath) == file_bytes(referencePath), "stress: the file differs from the reference");
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    const TestSeed seed(argc, argv, 20261018);
+    s_random.seed(seed.seed());
     QTemporaryDir dir;
     CHECK(dir.isValid(), "no temporary directory");
     // Any file stands in for the audio file: its size and time go into the header
@@ -399,7 +402,7 @@ int main()
         std::atomic<bool> done{false};
         TPeakFile::Status finished = TPeakFile::Status::Error;
         std::thread writer([&] {
-            std::mt19937_64 random(round);
+            std::mt19937_64 random(seed(round));
             qint64 position = 0;
             while (position < signal.frames()) {
                 const qint64 count = std::min<qint64>(std::uniform_int_distribution<qint64>(1, 3000)(random), signal.frames() - position);
@@ -452,8 +455,8 @@ int main()
         std::printf("    recording of %lld frames: %d reads\n", (long long)signal.frames(), reads);
     }
 
-    stress_stream(peakPath, audioPath, referencePath, false);
-    stress_stream(peakPath, audioPath, referencePath, true);
+    stress_stream(seed, peakPath, audioPath, referencePath, false);
+    stress_stream(seed, peakPath, audioPath, referencePath, true);
 
     // A build read as it goes, as a waveform shows it growing: after every
     // step the columns over what is built are the finished pyramid's, the

@@ -18,6 +18,7 @@
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
 #include "TFileIOBuffer.h"
+#include "test_signals.h"
 
 #include <QFile>
 #include <QProcess>
@@ -57,14 +58,10 @@ struct Source
 
     float sample(nframes_t frame, uint channel) const
     {
-        const double t = double(frame) / rate;
-        const double length = double(frames()) / rate;
         if (channel == 0) {
-            const double top = std::min(6000.0, 0.4 * rate);
-            const double k = std::log(top / 200.0) / length;
-            return float(0.5 * std::sin(2.0 * M_PI * 200.0 * (std::exp(k * t) - 1.0) / k));
+            return TestSignals::sweep_exponential(frame, rate, frames(), 200.0, std::min(6000.0, 0.4 * rate), 0.5);
         }
-        return float(0.3 * std::sin(2.0 * M_PI * (3000.0 * t + (300.0 - 3000.0) * t * t / (2.0 * length))));
+        return TestSignals::sweep_linear(frame, rate, frames(), 3000.0, 300.0, 0.3);
     }
 
     double level(uint channel) const { return (channel == 0 ? 0.5 : 0.3) / M_SQRT2; }

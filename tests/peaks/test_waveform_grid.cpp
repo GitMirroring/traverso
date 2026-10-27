@@ -18,6 +18,7 @@
 #include "TPeakPyramid.h"
 #include "TPeakStream.h"
 #include "TWaveformColumns.h"
+#include "test_seed.h"
 
 #include <QFile>
 #include <QTemporaryDir>
@@ -428,8 +429,10 @@ static void test_device_columns()
     }
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    const TestSeed seed(argc, argv, 20261025);
+    s_random.seed(seed.seed());
     test_grid();
     test_one_record();
     test_device_columns();
