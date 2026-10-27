@@ -25,3 +25,9 @@ add_executable(traverso_audio_decoders_test test_audio_decoders.cpp)
 target_link_libraries(traverso_audio_decoders_test PRIVATE traverso_compiler_settings traverso_test_common traversoaudiofileio traversodsp traversosupport Qt6::Core
                       PkgConfig::SNDFILE)
 add_test(NAME audio_decoders COMMAND traverso_audio_decoders_test)
+
+# Headless test of the scenario decoder: every signal against its reference,
+# the exact ramp, what it refuses, rates, one frame and many channels
+add_executable(traverso_scenario_decoder_test test_scenario_decoder.cpp)
+target_link_libraries(traverso_scenario_decoder_test PRIVATE traverso_compiler_settings traverso_test_common traversoaudiofileio traversodsp traversosupport Qt6::Core)
+add_test(NAME scenario_decoder COMMAND traverso_scenario_decoder_test)

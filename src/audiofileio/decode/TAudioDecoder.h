@@ -15,7 +15,8 @@ class TFileIOBuffer;
 /**
  * @brief Reads the audio of one file at the file's own rate. One class per
  * library (SFAudioReader: libsndfile, WPAudioReader: WavPack, MadAudioReader:
- * MP3 through MAD, FaadAudioReader: AAC), opened by open_audio_decoder().
+ * MP3 through MAD, FaadAudioReader: AAC), and TScenarioDecoder for a test
+ * signal described in a scenario file; opened by open_audio_decoder().
  *
  * What a decoder does, and nothing else does for it: it keeps its position
  * in the file (frame(), in frames at the file's rate), moves it (seek()) and
@@ -110,9 +111,10 @@ protected:
     bool m_error{false};
 };
 
-// The decoder for fileName, the libraries tried in order of preference
-// (libsndfile, WavPack, FAAD, MAD), open and valid; nullptr when none can
-// read it (logged)
+// The decoder for fileName, open and valid; nullptr when none can read it
+// (logged). A scenario file (.tscenario) is known by its name and read by
+// TScenarioDecoder; other files go to the libraries in order of preference
+// (libsndfile, WavPack, FAAD, MAD).
 std::unique_ptr<TAudioDecoder> open_audio_decoder(const QString& fileName);
 
 // Whether one of the decoders can read fileName. The file is only probed: no

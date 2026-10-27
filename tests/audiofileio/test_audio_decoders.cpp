@@ -10,10 +10,10 @@
 // cut short while it is open reads short before its end, its frames until
 // then, zeros and 0 after (the error state of TAudioDecoder's contract).
 //
-// The files are made here: WAV, FLAC, Ogg Vorbis and MP3 with libsndfile,
-// WavPack and AAC (ADTS) with Traverso's own writers, and when ffmpeg is
-// installed AAC (ADTS and M4A) and an MP3 without gapless information with
-// ffmpeg. Each channel holds a sweep of its own, so channels that are
+// The files are made here: a scenario (the signal described, no samples),
+// WAV, FLAC, Ogg Vorbis and MP3 with libsndfile, WavPack and AAC (ADTS) with
+// Traverso's own writers, and when ffmpeg is installed AAC (ADTS and M4A)
+// and an MP3 without gapless information with ffmpeg. Each channel holds a sweep of its own, so channels that are
 // swapped or silent show, and audio that is shifted shows too (a sweep
 // matches itself at one place only).
 
@@ -129,6 +129,23 @@ static bool write_with_traverso(const QString& path, const Source& source, Trave
     }
     const nframes_t written = file->write(buffer, source.frames());
     return file->close() && written == source.frames();
+}
+
+// A scenario (TScenarioDecoder) that describes the source: its two sweeps
+static bool write_scenario(const QString& path, const Source& source)
+{
+    if (source.channels != 2) {
+        return false;
+    }
+    const QString json = QStringLiteral(R"({"version": 1, "rate": %1, "frames": %2, "channels": [
+        {"signal": "sweep", "mode": "exponential", "start": 200, "end": %3, "amplitude": 0.5},
+        {"signal": "sweep", "mode": "linear", "start": 3000, "end": 300, "amplitude": 0.3}]})")
+                             .arg(source.rate)
+                             .arg(source.frames())
+                             .arg(std::min(6000.0, 0.4 * source.rate), 0, 'g', 17);
+    QFile file(path);
+    const QByteArray bytes = json.toUtf8();
+    return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size();
 }
 
 // With ffmpeg, from a 16 bit WAV of the source; false when ffmpeg is not
@@ -527,6 +544,9 @@ int main()
     const Source mono22{22050, 1};
     const std::vector<Format> formats = {
         {"WAV float (sndfile)", "wav", stereo, sndfile(SF_FORMAT_WAV | SF_FORMAT_FLOAT), true, 0.0f},
+        // The test signals described, computed by the decoder on its own:
+        // the same sweeps within float rounding
+        {"Scenario (test signals)", "tscenario", stereo, write_scenario, true, 1e-6f},
         {"WAV 16 bit (sndfile)", "16.wav", stereo, sndfile(SF_FORMAT_WAV | SF_FORMAT_PCM_16), true, 1.0f / 32768},
         {"FLAC 24 bit (sndfile)", "flac", stereo, sndfile(SF_FORMAT_FLAC | SF_FORMAT_PCM_24), true, 1.0f / 8388608},
         {"Ogg Vorbis (sndfile)", "ogg", stereo, sndfile(SF_FORMAT_OGG | SF_FORMAT_VORBIS), false, 0.0f},

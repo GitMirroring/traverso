@@ -8,6 +8,7 @@
 #include "SFAudioReader.h"
 #include "WPAudioReader.h"
 #include "MadAudioReader.h"
+#include "TScenarioDecoder.h"
 
 #if defined M4A_DECODE_SUPPORT
 #include "FaadAudioReader.h"
@@ -52,6 +53,7 @@ nframes_t TAudioDecoder::read_done(TFileIOBuffer& buffer, nframes_t read, nframe
 
 enum class DecoderLibrary {
     None,
+    Scenario,
     SndFile,
     WavPack,
     Faad,
@@ -61,6 +63,11 @@ enum class DecoderLibrary {
 // The library that can read fileName, tried in order of preference
 static DecoderLibrary find_decoder(const QString& fileName)
 {
+    // A scenario (a test signal described, TScenarioDecoder) by its name,
+    // before any library probes it; one that does not parse is no audio file
+    if (TScenarioDecoder::is_scenario_file(fileName)) {
+        return TScenarioDecoder::can_decode(fileName) ? DecoderLibrary::Scenario : DecoderLibrary::None;
+    }
     if (const int format = SFAudioReader::major_format(fileName)) {
         // MP3 through MAD, whose seeks are sample accurate; libsndfile's are
         // not (1.2.2, mpg123 lands some hundreds of frames off)
@@ -93,6 +100,9 @@ std::unique_ptr<TAudioDecoder> open_audio_decoder(const QString& fileName)
     std::unique_ptr<TAudioDecoder> decoder;
 
     switch (find_decoder(fileName)) {
+    case DecoderLibrary::Scenario:
+        decoder = std::make_unique<TScenarioDecoder>(fileName);
+        break;
     case DecoderLibrary::SndFile:
         decoder = std::make_unique<SFAudioReader>(fileName);
         break;
@@ -108,7 +118,11 @@ std::unique_ptr<TAudioDecoder> open_audio_decoder(const QString& fileName)
         decoder = std::make_unique<MadAudioReader>(fileName);
         break;
     case DecoderLibrary::None:
-        TLOG_W("audiofile", "{}: no decoder reads this format", fileName.toStdString());
+        if (QString why; TScenarioDecoder::is_scenario_file(fileName) && !TScenarioDecoder::can_decode(fileName, &why)) {
+            TLOG_W("audiofile", "{}: not a scenario ({})", fileName.toStdString(), why.toStdString());
+        } else {
+            TLOG_W("audiofile", "{}: no decoder reads this format", fileName.toStdString());
+        }
         break;
     }
 

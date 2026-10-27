@@ -1,0 +1,101 @@
+// SPDX-FileCopyrightText: 2026 Remon Sijrier
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#pragma once
+
+#include "TAudioDecoder.h"
+
+#include <optional>
+#include <vector>
+
+/**
+ * @brief The decoder of a scenario file (.tscenario): a description of a
+ * signal instead of its samples, for headless tests of what reads audio
+ * files. It keeps the TAudioDecoder contract like every decoder and is
+ * chosen by the factory like them, by the file (its extension, first).
+ *
+ * The file is JSON:
+ *
+ *     {
+ *       "version": 1,
+ *       "rate": 48000,
+ *       "frames": 96000,
+ *       "channels": [
+ *         {"signal": "sine", "frequency": 440, "amplitude": 0.5},
+ *         {"signal": "ramp"}
+ *       ],
+ *       "faults": [
+ *         {"kind": "read-error", "frame": 1000, "frames": 500}
+ *       ]
+ *     }
+ *
+ * Signals, one per channel: "silence"; "sine" (frequency, amplitude);
+ * "impulse" (frame, amplitude); "ramp" (the frame / 2^24, exact in float up
+ * to 2^24 frames, then it starts again) and "ramp-high" (the frame's high
+ * part, (frame / 2^24) / 2^24, the second channel of longer material);
+ * "sweep" over the whole length (mode "exponential" or "linear", start, end,
+ * amplitude).
+ *
+ * Faults, only when the file asks for them, and only what a real file or
+ * decoder can do (the contract): "read-error" (frame, frames: a damaged part,
+ * to the end without frames): a read gives the frames before it, then the
+ * error state; "seek-error" (frame, frames): a seek into that part fails;
+ * "end" (frame): the audio ends there, before the frame count (a header that
+ * says more); "value" (frame, channel, value "nan", "inf" or "-inf").
+ *
+ * The version is a guard: another one does not open. A file that does not
+ * parse is no scenario: no decoder reads it.
+ */
+class TScenarioDecoder : public TAudioDecoder
+{
+public:
+    explicit TScenarioDecoder(const QString& fileName);
+
+    QString decoder_type() const override { return QStringLiteral("scenario"); }
+
+    // A scenario by its name: the factory asks it before any library probes
+    // the file
+    static bool is_scenario_file(const QString& fileName);
+    // The file parses as a scenario; why not in why
+    static bool can_decode(const QString& fileName, QString* why = nullptr);
+
+    bool seek(nframes_t frame) override;
+    nframes_t read(TFileIOBuffer& buffer, nframes_t count) override;
+
+private:
+    struct Signal
+    {
+        enum class Kind { Silence, Sine, Impulse, Ramp, RampHigh, SweepExponential, SweepLinear };
+        Kind kind{Kind::Silence};
+        double frequency{0.0};
+        double start{0.0};
+        double end{0.0};
+        double amplitude{0.0};
+        nframes_t frame{0};
+    };
+
+    struct Fault
+    {
+        enum class Kind { ReadError, SeekError, Value };
+        Kind kind{Kind::ReadError};
+        // The part of the file: [first, first + frames)
+        nframes_t first{0};
+        nframes_t frames{0};
+        uint channel{0};
+        float value{0.0f};
+    };
+
+    struct Scenario
+    {
+        uint rate{0};
+        nframes_t frames{0};
+        std::vector<Signal> channels;
+        std::vector<Fault> faults;
+    };
+
+    static std::optional<Scenario> parse(const QString& fileName, QString* why);
+    float sample(const Signal& signal, nframes_t frame) const;
+
+    std::vector<Signal> m_signals;
+    std::vector<Fault> m_faults;
+};
