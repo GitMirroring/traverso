@@ -18,8 +18,11 @@
 /**
  * @brief What a peak build reads: an audio source at its own rate.
  *
- * read() returns the frames read: 0 at the end of the source (which can come
- * before frame_count(): decoders can report more frames than they deliver).
+ * read() keeps the contract of TAudioDecoder (TAudioDecoder.h), through
+ * which peaks of an audio file are built: it gives the count asked, fewer
+ * only at the end of the source or on an error, and 0 after that. The end
+ * can come before frame_count() (a file cut short, a damaged part): the
+ * pyramid ends there. A negative count: the read failed, the build fails.
  */
 class TPeakBuildSource : public TWaveformSampleSource
 {
