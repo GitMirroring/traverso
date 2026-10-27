@@ -6,7 +6,8 @@
 // sizes, also for more channels than stereo; sources that end early, fail
 // or are cancelled leave no valid file behind; a recording or a build read while
 // it writes level 0 shows the right peaks; a write failure in the middle of
-// a recording leaves no file.
+// a recording leaves no file. Peaks of an audio file through the reader and
+// its decoder (a scenario as the file) equal those of the same samples.
 
 #include "TPeakBuildTask.h"
 #include "TPeakFile.h"
@@ -14,6 +15,7 @@
 #include "TPeakStream.h"
 #include "TWaveformColumns.h"
 #include "test_seed.h"
+#include "test_signals.h"
 
 #include <QDir>
 #include <QFile>
@@ -28,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <memory>
 #include <random>
 #include <thread>
@@ -320,6 +323,122 @@ static void stress_stream(const TestSeed& seed, const QString& peakPath, const Q
         CHECK(run(post) == TPeakBuildTask::State::Done, "stress: post-processing %s", qPrintable(post.error()));
     }
     CHECK(file_bytes(peakPath) == file_bytes(referencePath), "stress: the file differs from the reference");
+}
+
+// A scenario file (TScenarioDecoder) with these channels and faults
+static QString write_scenario(const QString& path, uint rate, qint64 frames, const char* channels, const char* faults = "[]")
+{
+    const QByteArray json = QStringLiteral(R"({"version": 1, "rate": %1, "frames": %2, "channels": %3, "faults": %4})")
+                                .arg(rate)
+                                .arg(frames)
+                                .arg(QLatin1String(channels), QLatin1String(faults))
+                                .toUtf8();
+    QFile file(path);
+    CHECK(file.open(QIODevice::WriteOnly) && file.write(json) == json.size(), "scenario %s", qPrintable(path));
+    return path;
+}
+
+// Peaks of an audio file, as the app builds them: TPeakBuildTask::audio_file()
+// through TAudioReader and the decoder, with a scenario as the file. The same
+// signal gives the same file as from memory; an impulse lands in its block;
+// a damaged part, an early end and NaN as the decoder contract says.
+static void test_audio_file_builds(const QTemporaryDir& dir, const QString& referencePath, const QString& peakPath)
+{
+    const uint rate = 48000;
+
+    // The same signal from the file and from memory: the same peak file
+    {
+        const qint64 frames = 300000 + 77;
+        const QString path = write_scenario(dir.filePath("signals.tscenario"), rate, frames,
+                                            R"([{"signal": "sine", "frequency": 441, "amplitude": 0.5},
+                                                {"signal": "sweep", "mode": "exponential", "start": 20, "end": 20000, "amplitude": 0.9}])");
+        Signal signal;
+        signal.channels.assign(2, std::vector<float>(size_t(frames)));
+        for (qint64 n = 0; n < frames; ++n) {
+            signal.channels[0][size_t(n)] = TestSignals::sine(nframes_t(n), rate, 441, 0.5);
+            signal.channels[1][size_t(n)] = TestSignals::sweep_exponential(nframes_t(n), rate, nframes_t(frames), 20, 20000, 0.9);
+        }
+        const QByteArray reference = reference_file(referencePath, signal, path);
+        TPeakBuildTask task(TPeakBuildTask::audio_file(path), path, stream_for(signal, peakPath));
+        CHECK(run(task) == TPeakBuildTask::State::Done, "audio file: %s", qPrintable(task.error()));
+        CHECK(file_bytes(peakPath) == reference, "audio file: the peak file differs from the one of the same signal in memory");
+    }
+
+    // An impulse: one level-0 block holds it, every other block is silence
+    {
+        const qint64 frames = 200000;
+        const qint64 at = 123457;
+        const QString path = write_scenario(dir.filePath("impulse.tscenario"), rate, frames,
+                                            R"([{"signal": "impulse", "frame": 123457, "amplitude": 0.8}])");
+        TPeakBuildTask task(TPeakBuildTask::audio_file(path), path, std::make_shared<TPeakStream>(rate, 1, peakPath));
+        CHECK(run(task) == TPeakBuildTask::State::Done, "impulse: %s", qPrintable(task.error()));
+        TPeakFile file;
+        CHECK(file.open(peakPath, TPeakFile::SourceInfo::from_file(path, rate, 1, frames)) == TPeakFile::Status::Ok, "impulse: the file opens");
+        const TPeakLevels& levels = file.levels();
+        const qint64 impulseBlock = at >> TPeakLevels::BlockFramesShift;
+        bool placed = levels.block_count(0) == (frames + TPeakLevels::BlockFrames - 1) / TPeakLevels::BlockFrames;
+        for (qint64 index = 0; placed && index < levels.block_count(0); ++index) {
+            const TPeakBlock block = levels.block(0, 0, index);
+            placed = index == impulseBlock ? block.max > 0 && block.min == 0 : block.min == 0 && block.max == 0;
+        }
+        CHECK(placed, "impulse: only block %lld of level 0 holds it", (long long)impulseBlock);
+        file.close();
+    }
+
+    // Audio that ends before the frame count: the pyramid ends there and the
+    // file opens for the reported length (contract point 4)
+    {
+        const qint64 frames = 200000;
+        const QString path = write_scenario(dir.filePath("end.tscenario"), rate, frames, R"([{"signal": "sine", "frequency": 441, "amplitude": 0.5}])",
+                                            R"([{"kind": "end", "frame": 150000}])");
+        TPeakBuildTask task(TPeakBuildTask::audio_file(path), path, std::make_shared<TPeakStream>(rate, 1, peakPath));
+        CHECK(run(task) == TPeakBuildTask::State::Done, "early end: %s", qPrintable(task.error()));
+        TPeakFile file;
+        CHECK(file.open(peakPath, TPeakFile::SourceInfo::from_file(path, rate, 1, frames)) == TPeakFile::Status::Ok
+                  && file.levels().frame_count() == 150000,
+              "early end: the pyramid ends where the audio does (%lld)", (long long)file.levels().frame_count());
+        file.close();
+    }
+
+    // A damaged part: the build stops there, the audio after it gets no
+    // waveform. What it should do is open (work order O1): KNOWN until
+    // decided, a failure once it changes, to update this entry.
+    {
+        const qint64 frames = 200000;
+        const QString path = write_scenario(dir.filePath("damaged.tscenario"), rate, frames, R"([{"signal": "sine", "frequency": 441, "amplitude": 0.5}])",
+                                            R"([{"kind": "read-error", "frame": 100000, "frames": 1000}])");
+        TPeakBuildTask task(TPeakBuildTask::audio_file(path), path, std::make_shared<TPeakStream>(rate, 1, peakPath));
+        CHECK(run(task) == TPeakBuildTask::State::Done, "damaged part: %s", qPrintable(task.error()));
+        TPeakFile file;
+        const bool opened = file.open(peakPath, TPeakFile::SourceInfo::from_file(path, rate, 1, frames)) == TPeakFile::Status::Ok;
+        const qint64 built = opened ? file.levels().frame_count() : -1;
+        if (built == 100000) {
+            std::printf("damaged part: the pyramid ends at the damaged part (frame 100000 of 200000): KNOWN (work order O1)\n");
+        } else {
+            CHECK(false, "damaged part: the pyramid holds %lld frames, the KNOWN entry (O1) is out of date", (long long)built);
+        }
+        file.close();
+    }
+
+    // NaN and inf: through the file the same peak file as the same samples
+    // from memory (the stream leaves them out of min and max)
+    {
+        const qint64 frames = 100000;
+        const QString path = write_scenario(dir.filePath("values.tscenario"), rate, frames, R"([{"signal": "sine", "frequency": 441, "amplitude": 0.5}])",
+                                            R"([{"kind": "value", "frame": 5000, "channel": 0, "value": "nan"},
+                                                {"kind": "value", "frame": 9000, "channel": 0, "value": "inf"}])");
+        Signal signal;
+        signal.channels.assign(1, std::vector<float>(size_t(frames)));
+        for (qint64 n = 0; n < frames; ++n) {
+            signal.channels[0][size_t(n)] = TestSignals::sine(nframes_t(n), rate, 441, 0.5);
+        }
+        signal.channels[0][5000] = std::numeric_limits<float>::quiet_NaN();
+        signal.channels[0][9000] = std::numeric_limits<float>::infinity();
+        const QByteArray reference = reference_file(referencePath, signal, path);
+        TPeakBuildTask task(TPeakBuildTask::audio_file(path), path, stream_for(signal, peakPath));
+        CHECK(run(task) == TPeakBuildTask::State::Done, "NaN and inf: %s", qPrintable(task.error()));
+        CHECK(file_bytes(peakPath) == reference, "NaN and inf: the peak file differs from the one of the same samples in memory");
+    }
 }
 
 int main(int argc, char** argv)
@@ -639,6 +758,8 @@ int main(int argc, char** argv)
               "a source of another rate accepted");
         CHECK(partsBefore.isEmpty(), "part files left by the cases before: %s", qPrintable(partsBefore.join(QLatin1Char(' '))));
     }
+
+    test_audio_file_builds(dir, referencePath, peakPath);
 
     if (s_failures) {
         std::printf("%d failures\n", s_failures);
