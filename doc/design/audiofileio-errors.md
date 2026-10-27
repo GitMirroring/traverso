@@ -162,6 +162,12 @@ to read there". After a write error the writer is finished, and its count is
 not "what is in the file" (with a resampler a failed write gives 0,
 `TAudioWriter.cpp:108`).
 
+The resampled path reads ahead of its output (the resampler's filter), so
+a read can give all the frames asked for and the error it met in the frames
+beyond them; the frames before an error are always given (the resampler is
+flushed there, as at the end of the file), also when the error comes while
+the frames before a seek target are dropped.
+
 `TAudioFileBuildSource::read()` keeps returning the count in this task:
 returning -1 on an error would fail the whole peak build, where today a
 waveform up to the damaged part remains. That behaviour change belongs to
@@ -259,3 +265,28 @@ GCC 12+ is libstdc++'s own requirement.
   only with `M4A_ENCODE_SUPPORT`, `ExportFormatOptionsWidget.cpp:70`, and
   `TExportSpecification::is_valid()` refuses it otherwise), and still
   `CannotOpen` with a detail from `open()` as a safety net.
+
+## Built (2026-10-27, branch `audiofileio-errors`)
+
+- `TAudioFileError.h`: the error, `TAudioFileResult`, and
+  `TAudioFileStatus = std::expected<void, TAudioFileError>`.
+- Decoders: `seek()` returns `TAudioFileStatus`, `read()` a result;
+  `seek_failed()` and `read_done()` take the library's words; a decoder that
+  cannot open keeps the reason in `m_openError`. MAD checks its `seek(0)` at
+  open; FAAD's dead `if (!d)` and its sample-size narrowing are gone, and a
+  failed start keeps its reason. `TScenarioDecoder::check()` returns
+  `std::expected<void, QString>` (pattern 5 gone).
+- Encoders: `open()`/`close()` return `TAudioFileStatus`, `write()` a result;
+  their logs are gone. `WPAudioWriter::write_block()` no longer nulls the
+  context on a failed block (`write()` dereferenced it afterwards), it keeps
+  the reason and `close()` releases context and file: task R17 done here.
+- The library logs only what nobody else can hear: a reader's failed close,
+  the writer's release-build close in its destructor, the WavPack version.
+- Core: NotFound → `FILE_DOES_NOT_EXIST` (the `QFile::exists` before the open
+  is gone), the reason logged once by the caller; `TAudioFileMerger` always
+  finishes its file (its peaks too, which a finished merge skipped before);
+  `TExportSpecification::is_valid()` refuses M4A in a build without FAAC.
+- Tests: `test_audio_file_errors` (NotFound, CannotOpen for an unknown
+  format, a broken scenario and no permission; the writer without a rate or
+  a directory, a second close, a write after close); `test_reader_faults`
+  checks the codes (ReadFailed, SeekFailed, none at or past the end).
