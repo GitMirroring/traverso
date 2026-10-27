@@ -290,3 +290,10 @@ GCC 12+ is libstdc++'s own requirement.
   format, a broken scenario and no permission; the writer without a rate or
   a directory, a second close, a write after close); `test_reader_faults`
   checks the codes (ReadFailed, SeekFailed, none at or past the end).
+- Review fixes (Fable, 2026-10-27): a stream writer destroyed before its
+  file was finished (a project closed between the end of a recording and
+  its last disk step) closes its writer in its destructor; the WavPack and
+  FAAC writers check `fclose()` (stdio's last bytes: a full disk shows
+  there); a reader that refuses a rate leaves the stream at its old rate;
+  `test_audio_file_errors` writes to `/dev/full` (WavPack: WriteFailed "No
+  space left on device"; libsndfile fails at open, writing its header).

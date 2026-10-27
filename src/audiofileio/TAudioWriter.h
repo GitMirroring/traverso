@@ -52,7 +52,7 @@ public:
     // inputSampleRate (the file's rate is the settings'; another input rate
     // is resampled): the one way to write an audio file. Or why not
     // (CannotOpen): no encoder for the format in this build, no input rate
-    // (0: no audio device yet), no resampler, or no file there.
+    // (0: no audio device yet), no resampler, or the file cannot be made.
     [[nodiscard]] static std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> open(const TAudioEncodeSettings& settings,
                                                                                           const QString& fileName, uint inputSampleRate);
 
@@ -65,8 +65,8 @@ public:
     // rate. The input frames taken: frameCount, also when the resampler
     // holds some of them for a later write or close(); fewer, with the
     // error, when the file could not take them (what the encoder took, or 0
-    // when the input was resampled). After an error the writer is finished:
-    // its count is not what is in the file. The file's own frames, at its
+    // when the input was resampled). After an error the caller stops
+    // writing: the count is not what is in the file. The file's own frames, at its
     // rate, are another count. A caller that only needs the count writes
     // .frames.
     TAudioFileResult write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);

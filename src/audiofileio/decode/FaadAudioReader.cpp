@@ -665,9 +665,11 @@ TAudioFileResult FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t co
 
     const nframes_t readFrames = (d->hDecoder && !at_end() && !m_error) ? decode(fileIOBuffer, count) : 0;
 
-    // The only read error FAAD's reader sees: a packet the file does not
-    // give whole (decode_next_packet())
-    return read_done(fileIOBuffer, readFrames, count, readFrames < count ? QStringLiteral("the file gives an AAC packet only in part") : QString());
+    // A packet the file does not give whole (decode_next_packet()); when the
+    // packets ran out before the frame count, read_done() says so itself
+    const bool packetLeft = d->nextPacket < d->packet_count();
+    return read_done(fileIOBuffer, readFrames, count,
+                     readFrames < count && packetLeft ? QStringLiteral("the file gives an AAC packet only in part") : QString());
 }
 
 nframes_t FaadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)

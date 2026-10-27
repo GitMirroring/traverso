@@ -27,13 +27,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QString>
 #include <QtGlobal>
 
-RELAYTOOL_FAAC;
-
-// Always put me below _all_ includes, this is needed
-// in case we run with memory leak detection enabled!
 #include <cerrno>
 #include <cstring>
 #include <tuple>
+
+RELAYTOOL_FAAC;
 
 
 struct FaacAudioWriter::FaacInfo {
@@ -333,8 +331,11 @@ TAudioFileStatus FaacAudioWriter::close()
 	}
 #endif
 
+	// stdio writes its last bytes here: a full disk shows now
 	if (m_fid) {
-		fclose(m_fid);
+		if (fclose(m_fid) != 0 && !error) {
+			error = TAudioFileError{TAudioFileError::Code::WriteFailed, QString::fromUtf8(std::strerror(errno))};
+		}
 		m_fid = nullptr;
 	}
 

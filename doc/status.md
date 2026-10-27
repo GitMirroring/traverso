@@ -192,6 +192,16 @@ R9–R13 → R10–R14; old R14–R17 → R18–R21; old R18 → R27.
 
 ### Not ranked yet (Remon places them)
 
+From the Fable review of the `audiofileio-errors` branch (2026-10-27, existing
+code):
+- **A recording on a full disk** keeps calling `rb_file_write()` per slot
+  after a write error (`TBufferedAudioStreamWriter.cpp:158-162`): one log
+  line per slot, and the stream does not stop (with R9).
+- **`FaacAudioWriter::write()`** returns 0 after a failure mid-loop although
+  earlier chunks were written (`:218-246`).
+- **`WPAudioWriter::write_block()`**: a short `fwrite` without `ferror`
+  leaves a stale `errno` in the detail (`:145-149`).
+
 - **Discuss first:** `TAudioReader`'s resume after `read_file_frames()` (KISS:
   keep or plain reposition) and `set_output_rate_and_resampler()` repositioning
   with an index at the old rate.

@@ -270,7 +270,10 @@ TAudioFileStatus WPAudioWriter::close()
 	WavpackCloseFile(m_wp);
 	m_wp = 0;
 	
-	fclose(m_file);
+	// stdio writes its last bytes here: a full disk shows now
+	if (fclose(m_file) != 0 && !error) {
+		error = TAudioFileError{TAudioFileError::Code::WriteFailed, QString::fromUtf8(std::strerror(errno))};
+	}
 	m_file = 0;
 
     if (m_tmp_buffer) {

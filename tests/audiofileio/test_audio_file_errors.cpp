@@ -6,7 +6,7 @@
 // (NotFound) from one that cannot be read (CannotOpen: no permission, an
 // unknown format, a broken scenario); a writer without an input rate or a
 // directory does not open; a second close() is no error, a write after it
-// is.
+// is; a full disk is WriteFailed with the reason.
 
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
@@ -16,6 +16,7 @@
 #include <QTemporaryDir>
 
 #include <cstdio>
+#include <optional>
 #include <unistd.h>
 
 static int failures = 0;
@@ -99,6 +100,53 @@ static void test_writer(const QTemporaryDir& dir)
     check(late.frames == 0 && late.error && late.error->code == TAudioFileError::Code::WriteFailed, "a write after close(): WriteFailed");
 }
 
+// A full disk (/dev/full: it opens, every write fails with ENOSPC): the
+// writer says so, at the write that meets it or at close() (stdio and the
+// codecs keep some bytes), and close() releases what it holds
+static void test_full_disk()
+{
+    if (!QFile::exists(QStringLiteral("/dev/full"))) {
+        std::printf("no /dev/full here: full disk not tested\n");
+        return;
+    }
+    for (const TraversoDAW::WriterType type : {TraversoDAW::WriterType::WAVPACK, TraversoDAW::WriterType::SNDFILE}) {
+        const char* name = type == TraversoDAW::WriterType::WAVPACK ? "WavPack" : "libsndfile";
+        TAudioEncodeSettings settings;
+        settings.writerType = type;
+        settings.fileFormat = type == TraversoDAW::WriterType::WAVPACK ? TraversoDAW::FileFormat::WAVPACK : TraversoDAW::FileFormat::WAV;
+        settings.dataFormat = TraversoDAW::DataFormat::FLOAT;
+        settings.channelCount = 2;
+        settings.sampleRate = 48000;
+
+        char what[160];
+        auto writer = TAudioWriter::open(settings, QStringLiteral("/dev/full"), 48000);
+        if (!writer) {
+            // libsndfile writes its header at open
+            std::snprintf(what, sizeof(what), "%s on a full disk: open fails with why (%s)", name, qPrintable(writer.error().detail));
+            check(writer.error().code == TAudioFileError::Code::CannotOpen && !writer.error().detail.isEmpty(), what);
+            continue;
+        }
+        TFileIOBuffer buffer;
+        buffer.check_capacity(4800, 2);
+        for (uint channel = 0; channel < 2; ++channel) {
+            float* data = buffer.get_channel_buffer(channel).get_data(4800);
+            for (int i = 0; i < 4800; ++i) {
+                data[i] = float(i % 97) / 97.0f - 0.5f;
+            }
+        }
+        std::optional<TAudioFileError> error;
+        for (int block = 0; block < 100 && !error; ++block) {
+            error = (*writer)->write(buffer, 4800).error;
+        }
+        const TAudioFileStatus closed = (*writer)->close();
+        if (!error && !closed) {
+            error = closed.error();
+        }
+        std::snprintf(what, sizeof(what), "%s on a full disk: WriteFailed with why (%s)", name, error ? qPrintable(error->detail) : "no error");
+        check(error && error->code == TAudioFileError::Code::WriteFailed && !error->detail.isEmpty(), what);
+    }
+}
+
 int main()
 {
     QTemporaryDir dir;
@@ -109,6 +157,7 @@ int main()
 
     test_open_reader(dir);
     test_writer(dir);
+    test_full_disk();
 
     if (failures) {
         std::printf("%d check(s) failed\n", failures);

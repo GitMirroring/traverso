@@ -48,6 +48,16 @@ TBufferedAudioStreamWriter::TBufferedAudioStreamWriter(const QString& exportDir,
 TBufferedAudioStreamWriter::~TBufferedAudioStreamWriter()
 {
     PENTERDES;
+    // A stream that goes before its file was finished (a project closed
+    // between the end of a recording and its last disk step) closes its
+    // writer here: TAudioWriter requires close(), and the file keeps what
+    // was written
+    if (m_audioWriter) {
+        if (TAudioFileStatus closed = m_audioWriter->close(); !closed) {
+            TLOG_W("diskio", "closing {} failed: it may not hold all that was written ({})", m_fileName.toStdString(),
+                   closed.error().detail.toStdString());
+        }
+    }
 }
 
 int TBufferedAudioStreamWriter::prepare_file(TExportSpecification *specification)

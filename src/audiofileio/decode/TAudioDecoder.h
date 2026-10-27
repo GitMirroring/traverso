@@ -35,8 +35,8 @@ class TFileIOBuffer;
  *    TAudioReader::read()): zeros and 0, no decoder call, no error. A seek
  *    that succeeds lands exactly: frame() is frame and the next read starts
  *    there, its samples equal to a read from the start (within the format's
- *    seek tolerance, AAC). A seek that cannot go there returns false, leaves
- *    frame() unchanged and is an error.
+ *    seek tolerance, AAC). A seek that cannot go there says why (SeekFailed),
+ *    leaves frame() unchanged and is an error.
  * 3. On an error (a failed seek, a failed read) the decoder is in its error
  *    state (error()): reads give zeros and 0 until a seek succeeds, which
  *    clears it, so a damaged part of a file can be skipped. A caller seeks

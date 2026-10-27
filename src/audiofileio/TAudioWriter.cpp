@@ -16,8 +16,6 @@ the Free Software Foundation; either version 2 of the License, or
 #include "gdither.h"
 #include "TLog.h"
 
-#include <tuple>
-
 std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> TAudioWriter::open(const TAudioEncodeSettings& settings, const QString& fileName,
                                                                                   uint inputSampleRate)
 {

@@ -66,8 +66,8 @@ class TAudioDecoder;
  * at the output rate stay inside. Not for the audio thread: file IO, and the
  * buffers may grow.
  *
- * A reader exists only for a file it reads: open() gives one, or nullptr
- * (logged). Its facts are the file's, its reads read.
+ * A reader exists only for a file it reads: open() gives one, or why there
+ * is none. Its facts are the file's, its reads read.
  */
 class TAudioReader
 {

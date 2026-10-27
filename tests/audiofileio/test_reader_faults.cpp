@@ -154,8 +154,9 @@ static void test_read_error(const QTemporaryDir& dir, const QString& cleanPath, 
     std::snprintf(what, sizeof(what), "a read error %s: the read that comes short says ReadFailed, the reads well before it no error",
                   way(outputRate));
     bool errorsRight = shortBlock->error == TAudioFileError::Code::ReadFailed;
+    const nframes_t aheadBlocks = outputRate == FileRate ? 0 : Block;
     for (const ReadBlock& block : blocks) {
-        if (block.first + Block < shortBlock->first) {
+        if (block.first + aheadBlocks < shortBlock->first) {
             errorsRight = errorsRight && !block.error;
         }
     }
