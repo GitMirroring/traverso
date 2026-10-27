@@ -140,6 +140,13 @@ bool TAudioReader::reposition(nframes_t frame)
     const TTimeRef position(frame, m_outputRate);
     const TTimeRef common = TTimeRef::common_frame_at_or_before(position, file_rate(), m_outputRate);
     const nframes_t fileFrame = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(common, file_rate()));
+    // Below the file's frame count for every output rate that divides the
+    // universal rate; at one that does not, the last output frame can round
+    // onto the file's end: nothing to read there (a decoder seeks below its
+    // frame count only)
+    if (fileFrame >= file_frame_count()) {
+        return false;
+    }
     if ((m_decoder->frame() != fileFrame || m_decoder->error()) && !m_decoder->seek(fileFrame)) {
         return false;
     }

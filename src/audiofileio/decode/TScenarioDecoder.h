@@ -31,9 +31,10 @@
  *
  * Signals, one per channel: "silence"; "sine" (frequency, amplitude);
  * "impulse" (frame, amplitude); "ramp" (the frame / 2^24, exact in float up
- * to 2^24 frames, then it starts again) and "ramp-high" (the frame's high
- * part, (frame / 2^24) / 2^24, the second channel of longer material);
- * "sweep" over the whole length (mode "exponential" or "linear", start, end,
+ * to 2^24 frames, then it starts again: its low part) and "ramp-high" (the
+ * frame's high part, (frame / 2^24) / 2^24): the two channels together give
+ * every frame of longer material exactly; "sweep" over the whole length
+ * (mode "exponential" with start and end apart, or "linear"; start, end,
  * amplitude).
  *
  * Faults, only when the file asks for them, and only what a real file or
@@ -41,7 +42,9 @@
  * to the end without frames): a read gives the frames before it, then the
  * error state; "seek-error" (frame, frames): a seek into that part fails;
  * "end" (frame): the audio ends there, before the frame count (a header that
- * says more); "value" (frame, channel, value "nan", "inf" or "-inf").
+ * says more); as a WAV file does it: a seek into the ended part succeeds and
+ * the read there fails (another format may refuse such a seek instead);
+ * "value" (frame, channel, value "nan", "inf" or "-inf").
  *
  * The version is a guard: another one does not open. A file that does not
  * parse is no scenario: no decoder reads it.

@@ -39,8 +39,8 @@ class TAudioDecoder;
  * Traverso (TAudioWriter is the one way to write one).
  *
  * It opens the file with the decoder for its format (libsndfile, WavPack,
- * MP3, AAC) and gives the file's facts: channels, rate, frames, length. The
- * audio comes two ways:
+ * MP3, AAC, or a scenario's test signal) and gives the file's facts:
+ * channels, rate, frames, length. The audio comes two ways:
  * - read(): at the output rate, from a location in time. With the output
  *   rate the file's own, the file as it is; with another, through a
  *   TAudioResampler for all channels, sample exact: every output frame is
@@ -99,9 +99,10 @@ public:
     // count frames at the output rate into buffer, from the output frame
     // nearest to location (frame n sits at n / rate,
     // TTimeRef::frame_nearest()); the frames that came from the file. A seek
-    // only when the reader is elsewhere: reads at locations whole frames
-    // apart, each where the last one ended, are one read, whatever fraction
-    // of a frame the first location has.
+    // only when the reader is elsewhere or its decoder is in its error
+    // state: reads at locations whole frames apart, each where the last one
+    // ended, are one read, whatever fraction of a frame the first location
+    // has. At or past the end: zeros and 0, no seek.
     nframes_t read(TFileIOBuffer& buffer, const TTimeRef& location, nframes_t count);
     // count frames of the file at its own rate into buffer, from its frame
     // firstFrame; the frames that came from the file
@@ -120,7 +121,8 @@ private:
     // came from the file, zeros after it
     nframes_t read_resampled(TFileIOBuffer& buffer, nframes_t count);
     // count output frames into out from frame 0, reading the file as far as
-    // that takes; fewer only at the end of the file or on a read error
+    // that takes; fewer only at the end of the file or after a decoder
+    // error (the resampler flushed at both)
     nframes_t resample_into(TFileIOBuffer& out, nframes_t count);
     // The file frames that cover outputFrames output frames: one read of
     // the decoder for them
@@ -135,8 +137,8 @@ private:
     uint m_outputRate{0};
     nframes_t m_outputFrames{0};
     // The position of read(), in output frames. None after a new output
-    // rate, a read of the file's own frames (the decoder moved) or a seek
-    // that failed: the next read() seeks.
+    // rate, a read of the file's own frames (the decoder moved), a seek that
+    // failed or a read at or past the end: the next read() seeks.
     std::optional<nframes_t> m_frame{0};
     // After a seek: output frames to drop before the frame asked for
     nframes_t m_dropFrames{0};

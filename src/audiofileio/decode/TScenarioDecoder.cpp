@@ -115,6 +115,9 @@ std::optional<TScenarioDecoder::Scenario> TScenarioDecoder::parse(const QString&
             if (!frame || !amplitude) {
                 return fail(QStringLiteral("an impulse needs frame and amplitude"));
             }
+            if (*frame >= scenario.frames) {
+                return fail(QStringLiteral("an impulse's frame is inside the file"));
+            }
             signal.kind = Signal::Kind::Impulse;
             signal.frame = *frame;
             signal.amplitude = *amplitude;
@@ -127,6 +130,11 @@ std::optional<TScenarioDecoder::Scenario> TScenarioDecoder::parse(const QString&
                 return fail(QStringLiteral("a sweep needs start and end above 0 Hz and amplitude"));
             }
             if (mode == QLatin1String("exponential")) {
+                // From a frequency to itself the rate of change is 0, and
+                // its phase divides by it: a NaN no fault asked for
+                if (*start == *end) {
+                    return fail(QStringLiteral("an exponential sweep needs start and end apart (a sine is one frequency)"));
+                }
                 signal.kind = Signal::Kind::SweepExponential;
             } else if (mode == QLatin1String("linear")) {
                 signal.kind = Signal::Kind::SweepLinear;
@@ -142,7 +150,11 @@ std::optional<TScenarioDecoder::Scenario> TScenarioDecoder::parse(const QString&
         scenario.channels.push_back(signal);
     }
 
-    for (const QJsonValue& value : root.value(QLatin1String("faults")).toArray()) {
+    const QJsonValue faults = root.value(QLatin1String("faults"));
+    if (!faults.isUndefined() && !faults.isArray()) {
+        return fail(QStringLiteral("faults is a list"));
+    }
+    for (const QJsonValue& value : faults.toArray()) {
         const QJsonObject object = value.toObject();
         const QString kind = object.value(QLatin1String("kind")).toString();
         const std::optional<nframes_t> frame = frames_of(object.value(QLatin1String("frame")));
@@ -153,7 +165,7 @@ std::optional<TScenarioDecoder::Scenario> TScenarioDecoder::parse(const QString&
         fault.first = *frame;
         // Without frames: to the end of the file
         fault.frames = scenario.frames - *frame;
-        if (object.contains(QLatin1String("frames"))) {
+        if (kind != QLatin1String("end") && object.contains(QLatin1String("frames"))) {
             const std::optional<nframes_t> frames = frames_of(object.value(QLatin1String("frames")));
             if (!frames || *frames == 0) {
                 return fail(QStringLiteral("a fault's frames is a whole number above 0"));
