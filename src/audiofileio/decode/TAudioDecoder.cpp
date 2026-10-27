@@ -72,7 +72,11 @@ enum class DecoderLibrary {
 static DecoderLibrary find_decoder(const QString& fileName)
 {
     // A scenario (a test signal described, TScenarioDecoder) by its name,
-    // before any library probes it; one that does not parse is no audio file
+    // before any library probes it; one that does not parse is no audio file.
+    // First, because the libraries probe the bytes: MAD looks for frame
+    // syncs and can find one in any text, so a scenario (or a broken one)
+    // could pass as an MP3. Cheap for every other file: only the name is
+    // compared, the file is opened only when it is called .tscenario.
     if (TScenarioDecoder::is_scenario_file(fileName)) {
         return TScenarioDecoder::can_decode(fileName) ? DecoderLibrary::Scenario : DecoderLibrary::None;
     }
