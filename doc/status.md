@@ -27,8 +27,8 @@ or another one is finished or parked first.
 
 ## Repository
 
-- `master`: `realtime-path` and `scenario-decoder` merged 2026-10-27, not
-  pushed (`origin/master` = `6dc4fe2b`).
+- `master`: `realtime-path`, `scenario-decoder` and `audiofileio-errors`
+  merged 2026-10-27, not pushed (`origin/master` = `6dc4fe2b`).
 - Worktrees: `traverso` (master), `traverso-input-controllers`,
   `traverso-curve-gpu-bench`. The merged branches `realtime-path` and
   `scenario-decoder` are deleted, with their backups and build directories.
@@ -128,7 +128,7 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
   `TAudioDevice::run_one_cycle()` before `m_driver->write()` (NaN also comes
   from plugins: a named exception to "prevent, do not detect"). Export is not
   covered by the net: a third place, or out of scope.
-- **T9 (medium; built on `audiofileio-errors` 2026-10-27, test and review pending): audiofileio errors** (`doc/design/audiofileio-errors.md`):
+- **T9 (done 2026-10-27: reviewed by Remon, merged `aade2a79`): audiofileio errors** (`doc/design/audiofileio-errors.md`):
   one error type, `std::expected` for open, close and the rate, a result
   with the count and the error for every block call, decoders and encoders
   included, `close()` required (with it the merger's missing close,
@@ -177,7 +177,7 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
 - **T17 (medium-low): a WavPack file of unknown length** reports 2^32-1
   frames (`WavpackGetNumSamples()` -1, `WPAudioReader.cpp:45`): a clip of
   27 hours, and an error state at its real end.
-- **T18 (fixed on `audiofileio-errors` with T9, awaiting review): `WPAudioWriter::write_block()`** closes the file and
+- **T18 (done 2026-10-27 with T9): `WPAudioWriter::write_block()`** closes the file and
   nulls `m_wp` on a failed write without a log line, and
   `WavpackCloseFile()` is never called afterwards (`WPAudioWriter.cpp:137-141`,
   `close()` returns at `:240-242`): a leak and a silent failure.
