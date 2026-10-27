@@ -235,7 +235,7 @@ void TBufferedAudioStreamReader::set_output_rate_and_resampler(int outputRate, c
     const uint readRate = resampler.resample ? uint(outputRate) : m_audioReader->file_rate();
     // A resampler that does not start leaves the reader as it was (at its
     // old rate), and so the stream, which times its slots by that rate: said
-    // here, the stream plays on (its error state: task R9)
+    // here, the stream plays on (its error state: task R10)
     if (TAudioFileStatus set = m_audioReader->set_output_rate_and_resampler(readRate, TAudioResampler::BackendType(resampler.backend),
                                                                               resampler.quality);
         !set) {
@@ -390,7 +390,7 @@ void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fi
             // past the end of the file.
             auto [read, error] = file_read(fileDecodeBuffer, fileLocation + TTimeRef(offset, m_outputRate), toRead);
             if (error) {
-                // What the stream does on a read error is task R9
+                // What the stream does on a read error is task R10
                 TLOG_W("audiofile", "{}: read {} of {} frames ({})", m_fileName.toStdString(), read, toRead, error->detail.toStdString());
             }
 
@@ -474,7 +474,7 @@ void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDec
     // ends (the contract of TAudioReader::read()), so no stale audio
     // reaches the ring
     // The error of the read is dropped here on purpose: what the stream
-    // does on a read error is task R9
+    // does on a read error is task R10
     std::ignore = file_read(fileDecodeBuffer, slotFileLocation, totalReadSize);
     nframes_t offset = 0;
 

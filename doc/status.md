@@ -37,11 +37,11 @@ or another one is finished or parked first.
 
 | Area | Status | Branch | Design doc | Next step |
 |---|---|---|---|---|
-| Library split (support, dsp, audioruntime, audiofileio, waveform, ioscheduler) | done | master | — | R14: each lib and a headless test on its own |
+| Library split (support, dsp, audioruntime, audiofileio, waveform, ioscheduler) | done | master | — | R15: each lib and a headless test on its own |
 | RT state (TRtList, TRtValue, TRtTransaction, curves, fades, owners) | done | master (2026-10-14…17) | `rt-transaction-design` (agent notes; not in the repo) **(check)** | processing-node graph design (not now); JACK port lists with the JACK revision |
 | Session log (TLog) | done | master (2026-10-17) | — | — |
 | GUI frame clock | done | master (2026-10-17) | — | — |
-| Audio file I/O: `TAudioReader` / `TAudioWriter`, decoders sample exact, resampler choice | done | master (review stack, 2026-10-25) | — (decisions in commits and agent notes) | R7–R10 (from the scenario-decoder review), R11, R20, R21, R23–R26 |
+| Audio file I/O: `TAudioReader` / `TAudioWriter`, decoders sample exact, resampler choice | done | master (review stack, 2026-10-25) | — (decisions in commits and agent notes) | R8–R11 (from the scenario-decoder review), R12, R21, R22, R24–R27 |
 | Waveform library, peak format v4, waveform grid | done | master (review stack, 2026-10-25) | `peak-records.md`, `waveform-grid.md` | post-merge items (below); Remon's in-app grid check **(check)** |
 | IO scheduler (lib, thread, app-wide schedulers, dispatcher) | done | master (review stack, 2026-10-25) | `diskio-app-wide.md`, `diskio-rounds.md` | R4 (stream-window race); requirements R1–R18 of `diskio-app-wide.md` §0 still marked concept **(check)** |
 | Recording latency compensation | done, not runtime-tested with a loopback | master (review stack) | `recording-latency.md` | loopback test |
@@ -51,7 +51,7 @@ or another one is finished or parked first.
 | Controllers / input layer (branch 3) | awaiting answers | `input-controllers` (design only, 2026-10-18) | `input-controllers.md` (on the branch), `actions-and-controllers.md` (outside) | Remon answers §10 (11 questions; 1, 2, 3, 5, 6, 8 block the fader reference port) |
 | Shortcut system | first part done (action registry, 2026-10-14) | master | — | the rest after branch 3 (explicit items, marker classes, hold-tool factories, QML) |
 | Test fixture (`TTestProject`) | planned | — | `actions-and-controllers.md` §6 | own task, after R6 |
-| TimeRef enforcement and timebase | planned; interim fix done (`aaa94dbc`) | — | `design-principles.md` §5 (outside) | R11 first; universal rate 112,896,000 and the upgrade path for old projects before a release |
+| TimeRef enforcement and timebase | planned; interim fix done (`aaa94dbc`) | — | `design-principles.md` §5 (outside) | R12 first; universal rate 112,896,000 and the upgrade path for old projects before a release |
 | Organic interface (Qt Quick timeline) | planned | `curve-gpu-bench` (reference only) | `curve-gpu-benchmark.md` (on that branch) | after controllers and the fixture |
 
 Two areas are in progress: the scenario decoder and branch 3 (waiting for
@@ -85,7 +85,9 @@ proposal, and are not decided or built during the review; Remon ranks them.
 R1–R3 are done (2026-10-24: reader layering and names, writer finish, lossy
 decoders sample exact), and so is the old R8 (MAD and FAAD after a failed
 seek, 2026-10-27). Renumbered 2026-10-27: old R5–R7 → R6, R7, R9; old
-R9–R13 → R10–R14; old R14–R17 → R18–R21; old R18 → R27.
+R9–R13 → R10–R14; old R14–R17 → R18–R21; old R18 → R27. Again 2026-10-27
+evening: the written-frame count inserted as R7 (medium-high); R7–R27 →
+R8–R28.
 
 - **R4 (high): race in the stream windows.** The GUI writes `m_streamStart`,
   `m_streamEnd` and `m_sourceStartLocation` of a reader in place
@@ -110,88 +112,95 @@ R9–R13 → R10–R14; old R14–R17 → R18–R21; old R18 → R27.
   `m_recordingStream`, `m_readSourceId` → `m_sourceId`; with it the
   `TAudioWriter` close result and `TAudioFileMerger`'s missing
   `finish_file()` (review finding #18).
-- **R7 (medium): NaN to the output.** Prevent at the reader boundary on the
+- **R7 (medium-high): a recording's written-frame count is in input
+  frames.** `TBufferedAudioStreamWriter::m_writtenFrames` counts frames at
+  the device rate (`TBufferedAudioStreamWriter.cpp:169`), while
+  `TWaveform.cpp:99` and `TPeakBuildService.cpp:104` read it as the file's
+  frames at the file's rate: a wrong live-waveform length and peak build
+  when the rates differ (Fable, review of the audiofileio API work order,
+  2026-10-27).
+- **R8 (medium): NaN to the output.** Prevent at the reader boundary on the
   decoder's output (before the resampler); a safety net in
   `TAudioDevice::run_one_cycle()` before `m_driver->write()` (NaN also comes
   from plugins: a named exception to "prevent, do not detect"). Export is not
   covered by the net: a third place, or out of scope.
-- **R8 (medium; built on `audiofileio-errors` 2026-10-27, test and review pending): audiofileio errors** (`doc/design/audiofileio-errors.md`):
+- **R9 (medium; built on `audiofileio-errors` 2026-10-27, test and review pending): audiofileio errors** (`doc/design/audiofileio-errors.md`):
   one error type, `std::expected` for open, close and the rate, a result
   with the count and the error for every block call, decoders and encoders
   included, `close()` required (with it the merger's missing close,
   `TAudioFileMerger.cpp:121-124`), `TAudioResampler::valid()`. With it:
   `MadAudioReader` checks its `seek(0)` at open (`:587`), FAAD's dead
-  `if (!d)` and its size narrowing (`:600`, `:256`). Before R9, which needs
+  `if (!d)` and its size narrowing (`:600`, `:256`). Before R10, which needs
   its error.
-- **R9 (medium): read errors are hidden in core.** The reader reports them
+- **R10 (medium): read errors are hidden in core.** The reader reports them
   now (a short count on both paths, done in `scenario-decoder`); the stream
   logs or ignores the count and sets IN_SYNC
   (`TBufferedAudioStreamReader.cpp:381-384,465-469,501`), and the peak build
   stops at a damaged part (`TAudioFileBuildSource::read()` returning -1 on
-  an error, as its contract says, is decided here, not in R8). The error
-  reaches the stream through R8. Wanted behaviour first (open question O1,
+  an error, as its contract says, is decided here, not in R9). The error
+  reaches the stream through R9. Wanted behaviour first (open question O1,
   parked 2026-10-27): silence and one log line per stream, or a read-error
   state and a signal to the clip.
-- **R10 (medium): MP3 without libmad goes to libsndfile, whose seeks are not
+- **R11 (medium): MP3 without libmad goes to libsndfile, whose seeks are not
   exact.** Proposal: refuse MP3 without MAD and tell the user. Behaviour
   change: Remon confirms.
-- **R11 (medium): TTimeRef frame-conversion cleanup.** One symmetric style
+- **R12 (medium): TTimeRef frame-conversion cleanup.** One symmetric style
   (`from_frames` ↔ `frame_at_or_before/after`), one call for rate-to-rate
   counts, one call for `to_nframes(frame_*(...))` (8 sites). Text/QTime family
   later.
-- **R12 (medium): clocks.** One function per domain: monotonic for intervals
+- **R13 (medium): clocks.** One function per domain: monotonic for intervals
   (driver cycles, scheduler, rings, autorepeat, profiling), wall time only
   where stored; stored times in UTC (backup file name, session log header).
   Also: `TTimeRef::get_*seconds_since_epoch()` use `high_resolution_clock`
   (the wall clock in libstdc++) for intervals, and return `long`, which is
   32 bits on Windows: nanoseconds since 1970 overflow there (`qint64` or
   `trav_time_t`).
-- **R13 (medium): strength of the unique IDs.** `create_id()` = seconds × 10⁹
+- **R14 (medium): strength of the unique IDs.** `create_id()` = seconds × 10⁹
   + `rand()` seeded by seconds; collisions possible across seconds and between
   two instances. Investigate where uniqueness is assumed, then a stronger
   scheme (format change through the project converter).
-- **R14 (medium): each lib and a headless test on its own.** File format
+- **R15 (medium): each lib and a headless test on its own.** File format
   enums out of `support/defines.h` into audiofileio; the encode settings
   without dsp headers; the app without ALSA and lilv headers.
   With it (API review I2, 2026-10-27): `TAudioEncodeSettings` gets one format
   field: `M4A` in `FileFormat`, `create_audio_encoder()` chooses by
   `fileFormat`, `writerType` and the dead `blockSize` leave the settings
   (`writerType`/`fileFormat` must agree today without a check).
-- **R15 (medium): `transport_position` test failed 3 times under ctest load**
+- **R16 (medium): `transport_position` test failed 3 times under ctest load**
   (2026-10-27, Clang and GCC; not reproduced in 72 parallel runs). First find
   out which check: a torn read is a real race in the frame clock's seqlock, a
   starved reader only a test too tight for a loaded machine.
-- **R16 (medium-low): a WavPack file of unknown length** reports 2^32-1
+- **R17 (medium-low): a WavPack file of unknown length** reports 2^32-1
   frames (`WavpackGetNumSamples()` -1, `WPAudioReader.cpp:45`): a clip of
   27 hours, and an error state at its real end.
-- **R17 (fixed on `audiofileio-errors` with R8, awaiting review): `WPAudioWriter::write_block()`** closes the file and
+- **R18 (fixed on `audiofileio-errors` with R9, awaiting review): `WPAudioWriter::write_block()`** closes the file and
   nulls `m_wp` on a failed write without a log line, and
   `WavpackCloseFile()` is never called afterwards (`WPAudioWriter.cpp:137-141`,
   `close()` returns at `:240-242`): a leak and a silent failure.
-- **R18 (medium-low): parallel readers for a long compressed file's peak
+- **R19 (medium-low): parallel readers for a long compressed file's peak
   build**; then `TIOIdleTask::weight()` goes.
-- **R19 (low): `TAudioBuffer` operations auto-vectorised, hand SIMD
+- **R20 (low): `TAudioBuffer` operations auto-vectorised, hand SIMD
   retired.** Measure first.
-- **R20 (low, Ben): Traverso's AAC writer** drops the first 2048 frames and
+- **R21 (low, Ben): Traverso's AAC writer** drops the first 2048 frames and
   writes raw ADTS into `.m4a`.
-- **R21 (low): the export dialog's MP3 and Ogg options** do nothing (fixed
+- **R22 (low): the export dialog's MP3 and Ogg options** do nothing (fixed
   VBR quality); map them to libsndfile or drop them.
-- **R22 (low): the waveform library's error style** (`TPeakFile::Status` +
-  `QString*` + sticky `error()`, `TPeakStream.h:55-70`) follows R8, so one
+- **R23 (low): the waveform library's error style** (`TPeakFile::Status` +
+  `QString*` + sticky `error()`, `TPeakStream.h:55-70`) follows R9, so one
   style remains.
-- **R23 (low): an MP3 whose last frame is cut** is now an error at its tail,
+- **R24 (low): an MP3 whose last frame is cut** is now an error at its tail,
   and every read there costs a seek with pre-roll (MAD counts the header,
   the decode fails).
-- **R24 (low): FAAD's seek pre-roll assumes AAC-LC**: HE-AAC may decode
+- **R25 (low): FAAD's seek pre-roll assumes AAC-LC**: HE-AAC may decode
   wrongly after a seek; needs a test file, or document the limit.
-- **R25 (low): `sf_strerror(nullptr)`** reads libsndfile's global last-open
+- **R26 (low): `sf_strerror(nullptr)`** reads libsndfile's global last-open
   error (`SFAudioReader.cpp:46`): with readers opened at the same time on
-  worker threads the message can belong to another file. Verify, with R8.
-- **R26 (low): `TAudioReader::output_frame_count()`** at another rate can be
+  worker threads the message can belong to another file. Verify, with R9.
+- **R27 (low): `TAudioReader::output_frame_count()`** at another rate can be
   one frame high for file rates that do not divide the universal rate (37.8,
   50 kHz): the length is rounded up by less than one unit. With the timebase
   task.
-- **R27 (very low): recovering a damaged file** (what to do when the decoder
+- **R28 (very low): recovering a damaged file** (what to do when the decoder
   keeps returning errors).
 
 ### Not ranked yet (Remon places them)
@@ -203,18 +212,13 @@ From the audiofileio API review (`doc/design/audiofileio-api-review.md`,
   into the library, `TAudioBuffer` → `TChannelBuffer`, `TFileIOBuffer` →
   `TAudioBuffer`, the threading sentence), W2 the writer stops after a
   failed write, W3 the buffers' hygiene and small header cleanups, W4 the
-  resampler choice as one typed value in `support`. I2 joined R14.
-- **A recording's written-frame count is in input frames**:
-  `TBufferedAudioStreamWriter::m_writtenFrames` counts frames at the device
-  rate (`:169`), `TWaveform.cpp:99` and `TPeakBuildService.cpp:104` read it
-  as the file's frames at the file's rate: a wrong live-waveform length and
-  peak build when the rates differ (Fable, work order review).
+  resampler choice as one typed value in `support`. I2 joined R15.
 
 From the Fable review of the `audiofileio-errors` branch (2026-10-27, existing
 code):
 - **A recording on a full disk** keeps calling `rb_file_write()` per slot
   after a write error (`TBufferedAudioStreamWriter.cpp:158-162`): one log
-  line per slot, and the stream does not stop (with R9).
+  line per slot, and the stream does not stop (with R10).
 - **`FaacAudioWriter::write()`** returns 0 after a failure mid-loop although
   earlier chunks were written (`:218-246`).
 - **`WPAudioWriter::write_block()`**: a short `fwrite` without `ferror`
