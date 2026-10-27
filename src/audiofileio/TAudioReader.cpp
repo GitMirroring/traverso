@@ -117,9 +117,8 @@ bool TAudioReader::reposition(nframes_t frame)
     // Where a seek fails the decoder may be anywhere: no position then
     m_frame.reset();
     if (!m_resampler) {
-        // A decoder that is there already does not seek, unless it is in its
-        // error state: only a seek clears that
-        if ((m_decoder->frame() != frame || m_decoder->error()) && !m_decoder->seek(frame)) {
+        // A decoder that reads from there already does not seek
+        if (!m_decoder->reads_from(frame) && !m_decoder->seek(frame)) {
             return false;
         }
         m_frame = frame;
@@ -147,7 +146,7 @@ bool TAudioReader::reposition(nframes_t frame)
     if (fileFrame >= file_frame_count()) {
         return false;
     }
-    if ((m_decoder->frame() != fileFrame || m_decoder->error()) && !m_decoder->seek(fileFrame)) {
+    if (!m_decoder->reads_from(fileFrame) && !m_decoder->seek(fileFrame)) {
         return false;
     }
     m_dropFrames = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(position - common, m_outputRate));
@@ -176,7 +175,8 @@ nframes_t TAudioReader::read(TFileIOBuffer& buffer, const TTimeRef& location, nf
     }
     // Elsewhere, no position at all, or a decoder in its error state (after
     // a read that failed, the reader's position may still be right): a seek
-    if ((m_frame != first || m_decoder->error()) && !reposition(first)) {
+    const bool readsFromFirst = m_frame == first && !m_decoder->error();
+    if (!readsFromFirst && !reposition(first)) {
         // Nothing to read there: zeros, as past the end of the file
         buffer.silence(0, count, channel_count());
         return 0;

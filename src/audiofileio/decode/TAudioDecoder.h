@@ -75,6 +75,9 @@ public:
     bool at_end() const { return m_frame >= m_frames; }
     // A seek or a read failed, and no seek succeeded since (point 3)
     bool error() const { return m_error; }
+    // The next read() reads frame: the decoder is there and not in its
+    // error state. Otherwise a read from frame seeks first (point 3).
+    bool reads_from(nframes_t frame) const { return m_frame == frame && !m_error; }
 
     // To frame, which is below frame_count(); false when the decoder cannot
     // go there (frame() is then unchanged)

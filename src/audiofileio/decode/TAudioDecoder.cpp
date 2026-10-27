@@ -18,14 +18,22 @@
 
 nframes_t TAudioDecoder::read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count)
 {
-    // At or past the end nothing to read, and no seek (contract point 2);
-    // elsewhere a seek that fails leaves nothing to read either
-    if (first >= m_frames || ((first != m_frame || m_error) && !seek(first))) {
+    // Nothing to read: zeros, as read() gives past the end
+    const auto nothing = [&]() -> nframes_t {
         if (count > 0) {
             buffer.check_capacity(count, m_channels);
             buffer.silence(0, count, m_channels);
         }
         return 0;
+    };
+
+    // At or past the end: no seek (contract point 2)
+    if (first >= m_frames) {
+        return nothing();
+    }
+    // A seek only when the decoder does not read from first already
+    if (!reads_from(first) && !seek(first)) {
+        return nothing();
     }
     return read(buffer, count);
 }
