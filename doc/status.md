@@ -204,6 +204,11 @@ From the audiofileio API review (`doc/design/audiofileio-api-review.md`,
   `TAudioBuffer`, the threading sentence), W2 the writer stops after a
   failed write, W3 the buffers' hygiene and small header cleanups, W4 the
   resampler choice as one typed value in `support`. I2 joined R14.
+- **A recording's written-frame count is in input frames**:
+  `TBufferedAudioStreamWriter::m_writtenFrames` counts frames at the device
+  rate (`:169`), `TWaveform.cpp:99` and `TPeakBuildService.cpp:104` read it
+  as the file's frames at the file's rate: a wrong live-waveform length and
+  peak build when the rates differ (Fable, work order review).
 
 From the Fable review of the `audiofileio-errors` branch (2026-10-27, existing
 code):

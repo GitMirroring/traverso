@@ -100,9 +100,11 @@ R8). By Fable, discussed with Remon. Findings become tasks in
      shape: per thread by `thread_local` (no concurrent use); not kept
      between calls (no member, nothing in a header, only reachable inside
      the function); no nesting on a thread (`sf_readf_float()` calls
-     nothing of ours back), guarded in debug builds by a small scope guard
-     that asserts. Not on the audio thread: `read()` is not
-     `T_REALTIME_SAFE`, Clang reports such a call.
+     nothing of ours back). Not on the audio thread: `read()` is not
+     `T_REALTIME_SAFE`, Clang reports such a call from a marked function.
+     (A debug guard against nesting was proposed and dropped after Fable's
+     work order review: the shape already excludes it; detecting it would
+     go against "prevent, do not detect".)
    - `TAudioWriter`: its own members (few writers); `write()` takes the
      caller's buffer `const`.
    - `TAudioReader::m_decodeBuffer` (the resampled path, per reader) loses
@@ -141,9 +143,9 @@ moves once, to where it belongs, as one field.
 failed `write()` every later `write()` returns `{0, the first error}`
 without touching the encoder; `close()` still completes the file. One
 `std::optional<TAudioFileError> m_failed` in `TAudioWriter`; the count on an
-error is always 0 (one meaning, not "what the encoder took" or 0). It also
-ends the log line per slot on a full disk (`TBufferedAudioStreamWriter.cpp`
-logs each failed slot). Prevent, not detect: the comment "the caller stops
+error is always 0 (one meaning, not "what the encoder took" or 0). The
+stream still logs each failed slot (`TBufferedAudioStreamWriter.cpp:168-172`)
+until task R9 stops it. Prevent, not detect: the comment "the caller stops
 writing" becomes what the writer does. Not a contradiction with the error
 design, which rejected a sticky error for *reporting* (pattern 5); this is
 *behaviour*. What the stream and the user do with that one error stays
@@ -162,35 +164,60 @@ This document is the work order (see Status): the tasks below, in this
 order, each its own commits on one branch, tests green on GCC and Clang
 before the review.
 
-- **W1 (I1 + I4) Buffers.** (1) The interleaved and packed buffers out of
-  `TFileIOBuffer` into audiofileio: `static thread_local` scratch behind a
-  helper in `SFAudioReader.cpp` and `WPAudioReader.cpp` with the debug scope
-  guard; members in `TAudioWriter`; `write()` takes its buffer `const`.
-  (2) `TAudioBuffer` → `TChannelBuffer`, `TRealTimeAudioBuffer` →
-  `TRealTimeChannelBuffer`. (3) `TFileIOBuffer` → `TAudioBuffer`, in `dsp`.
-  The threading sentence in the class comments of `TAudioReader` and
-  `TAudioWriter`.
+- **W1 (I1 + I4) Buffers**, three steps, each its own commit:
+  1. The interleaved and packed buffers out of `TFileIOBuffer` into
+     audiofileio. `SFAudioReader.cpp`: a `static` helper returning a
+     `static thread_local TAudioBuffer` (float, interleaved) grown to the
+     read's size; `WPAudioReader.cpp`: the same for its `int32_t` unpack
+     buffer (`std::vector<int32_t>`, now made per read). `TAudioWriter`: its
+     own members for the interleaved and packed bytes (the packed buffer no
+     longer memset per write). `write()` takes `const TFileIOBuffer&`; a
+     buffer with fewer channels than the file is a precondition
+     (`Q_ASSERT(buffer.channel_count() >= channel_count())`, every caller
+     sizes it: `TBufferedAudioStreamWriter.cpp:138`, the merger, the
+     tests); the header sentence "a channel the buffer lacks is silence"
+     goes. The list gets a const `channel_buffers()` (the resampler takes
+     `const TAudioBuffer* const*`, `TAudioResampler.h:72`) and a
+     `channel_count()`. `test_file_io_buffer.cpp` loses its interleaved
+     checks (`:99,111`).
+  2. `TAudioBuffer` → `TChannelBuffer`, `TRealTimeAudioBuffer` →
+     `TRealTimeChannelBuffer`, with the files: `src/dsp/TAudioBuffer.h/.cpp`
+     → `TChannelBuffer.h/.cpp` (and the real-time one likewise), the CMake
+     lists, includes, comments, and `doc/design/realtime-audio-path.md`
+     (`:41,256,268-273`). Variable names stay. Behaviour unchanged; Clang's
+     `-Wfunction-effects` count stays 7.
+  3. `TFileIOBuffer` → `TAudioBuffer`, moved to `src/dsp/TAudioBuffer.h`
+     (the name freed by step 2); method names unchanged
+     (`get_channel_buffer()`, `channel_buffers()`, `check_capacity()`,
+     `silence()`, `channel_count()`). `test_file_io_buffer.cpp` →
+     `tests/dsp/test_audio_buffer.cpp` with its CMake entry. Comments and
+     docs follow (`doc/design/*.md` that name `TFileIOBuffer`).
+  The commit messages of steps 2 and 3 say that the name `TAudioBuffer`
+  changed meaning. Then the threading sentence in the class comments of
+  `TAudioReader` and `TAudioWriter` (I4).
 - **W2 (I3) The writer stops after a failed write.** `m_failed` in
-  `TAudioWriter`; a test that a second write after a failure does not reach
-  the encoder (the `/dev/full` case).
-
-- **W3 (I5) The buffers' hygiene**, after W1, on the new names.
-  `TAudioBuffer` (the list): `Q_ASSERT(channel < count)` and `[]` instead of
-  `.at()` (which throws); `nframes_t` in `check_capacity()`; no channels made
-  in advance (they come from `check_capacity()`, at the size asked); a
-  `channel_count()`. `TChannelBuffer`: not copyable (`= delete` on the copy
-  constructor and assignment: a copy shares the raw pointer and frees it
-  twice); the rule "size > 0, always" in the header as the class contract.
-  It holds today: the constructor goes through `resize()`, which asserts
-  `size > 0` (`TAudioBuffer.cpp:64`); no caller passes 0; the list made its
-  channels with 1 frame in advance only because 0 is not allowed. No
-  release-build conversion of 0: nothing gives 0, and the assert catches a
-  future one in the tests. With it (I7): `TAudioWriter.h` loses its unused
-  `<vector>`; `TAudioReader::output_frame_count()` becomes private (only
-  tests use it; they take the end from `length()`, as
-  `test_resample_reader.cpp:106` does), so the public end is `length()` and
-  `file_frame_count()`.
-
+  `TAudioWriter`; later writes give `{0, the first error}` without the
+  encoder, `close()` completes the file. Test: on `/dev/full` (WavPack) a
+  write after the failure returns the first error at once.
+- **W3 (I5) The buffers' hygiene**, on the new names. `TAudioBuffer` (the
+  list): `Q_ASSERT(channel < count)` and `[]` instead of `std::vector::at()`
+  (which throws, `TFileIOBuffer.h:47,72`); `nframes_t` in
+  `check_capacity()`; no channels made in advance (they come from
+  `check_capacity()`, at the size asked; every decoder and `read_from()`
+  call it before writing). `TChannelBuffer`: not copyable (`= delete` on the
+  copy constructor and assignment: a copy shares the raw pointer and frees
+  it twice), with a `static_assert(!std::is_copy_constructible_v<...>)`
+  in the buffer test; the rule "size > 0, always" in the header as the
+  class contract. It holds today: the constructor goes through `resize()`,
+  which asserts `size > 0` (`TAudioBuffer.cpp:64`); no caller found passes
+  0 (the real-time buffers take the device's buffer size, default 1024);
+  the list made its channels with 1 frame in advance only because 0 is not
+  allowed. No release-build conversion of 0: nothing gives 0; a future one
+  hits the debug assert. With it (I7): `TAudioWriter.h` loses its unused
+  `<vector>`. `TAudioReader::output_frame_count()` stays public (changed
+  after Fable's work order review): the tests use it to check the reader's
+  end rule against `TTimeRef` (`test_resample_reader.cpp:106`), and a
+  getter only tests use costs nothing.
 - **W4 (I6) The resampler choice as one typed value, in `support`.** A
   backend and its quality belong together (a soxr quality means nothing to
   libsamplerate) but travel apart in three shapes: two parameters of
@@ -198,26 +225,58 @@ before the review.
   and raw integers in `TIOStream::Resampler`, cast back in core
   (`TBufferedAudioStreamReader.cpp:239`). The raw integers are there on
   purpose: the ioscheduler links `support` and Qt Core only, not `dsp`.
-  Typed without that dependency: `support/TResamplerChoice.h`,
-  `struct TResamplerChoice { enum class Backend { LibSampleRate, LibSoxr };
-  Backend backend; int quality; }`. `TAudioResampler` takes it (its own
-  `BackendType` goes, the quality lists stay in dsp);
+  Typed without that dependency, in `src/support/TResamplerChoice.h`:
+
+  ```cpp
+  struct TResamplerChoice
+  {
+      enum class Backend : qint8 { LibSampleRate, LibSoxr };
+      Backend backend;
+      qint16 quality;   // one of TAudioResampler::qualities(backend)
+      bool operator==(const TResamplerChoice&) const = default;
+  };
+  ```
+
+  No default: every maker sets the choice (`TExportSpecification.cpp:346-347`,
+  `TResamplerSettings`, the tests already do); a type in `support` cannot
+  call `TAudioResampler::default_quality()`. `TIOStream::Resampler` becomes
+  `TResamplerChoice choice; bool resample;` and stays 8 bytes and lock-free
+  (the `static_assert` at `TIOStream.h:89` stays). `TAudioResampler` takes
+  it; its `BackendType` goes; `qualities()`, `quality_name()`,
+  `quality_description()`, `backend_name()`, `backend_from_name()`,
+  `default_quality()`, `default_realtime_quality()` stay static on
+  `TAudioResampler`, taking `TResamplerChoice::Backend`.
   `set_output_rate_and_resampler(rate, TResamplerChoice)`;
-  `TAudioEncodeSettings` one field; `TIOStream::Resampler` becomes
-  `TResamplerChoice choice; bool resample;`; the cast in core goes. Shared
-  vocabulary of four libraries (dsp, audiofileio, ioscheduler, core), so
-  `support` is its place, unlike the format enums R14 moves out (used by
-  audiofileio and core only). Rejected: an untyped hand-on (what the
-  ioscheduler does now: no compile-time check); a `dsp` type in the
-  ioscheduler (a dependency for a value it only hands on). Touches dsp,
-  audiofileio, ioscheduler, core, the settings and the export dialog:
-  medium, mechanical.
+  `TAudioEncodeSettings` one field `resampler` (its `TAudioResampler.h`
+  include goes; R14 then has only `gdither_types.h` left there);
+  `TExportSpecification` one field and `set_resampler(TResamplerChoice)`;
+  `configured_resampler_backend()` and the export dialog's member use
+  `TResamplerChoice::Backend`; the config keys (`Conversion/Resampler`,
+  `Conversion/RTResamplingQuality`, `Conversion/DynamicResampling`,
+  `ExportFormatOptionsWidget/resampleQuality`) stay as they are; the cast
+  in core goes. Shared vocabulary of four libraries (dsp, audiofileio,
+  ioscheduler, core), so `support` is its place, unlike the format enums R14
+  moves out (used by audiofileio and core only). Rejected: an untyped
+  hand-on (no compile-time check); a `dsp` type in the ioscheduler (a
+  dependency for a value it only hands on). Medium, mechanical.
 
 I2 is part of task R14.
 
+## Smells with no task
+
+- #4, the stream part: `TBufferedAudioStreamWriter::m_writtenFrames` counts
+  input frames at the device rate, while `TWaveform` and `TPeakBuildService`
+  read it as the file's frames: a task in `doc/status.md` (not ranked yet).
+- #5 (`CannotOpen` for a rate change and "no input rate"; a write after
+  `close()` is `WriteFailed`), #11 (`open()` as the only way to ask a
+  file's facts), #12 (`value_or(nullptr)` in tests and tools): no change.
+
 ## Status
 
-All points discussed (2026-10-27). No rank: Remon approved this as a work
+All points discussed (2026-10-27). Fable reviewed this work order and
+approved it with changes, which are in (the W4 types and no default, W2's
+log claim, W1's channel precondition and file moves; the debug guard
+dropped; `output_frame_count()` stays public). No rank: Remon approved this as a work
 order once Fable has reviewed and approved the document; then it is built
 after midnight, on a branch stacked on `audiofileio-errors` (it builds on
 that API).
