@@ -172,9 +172,15 @@ before the review.
      its name after step 2; the mono path's `TAudioBuffer::copy_data()`
      becomes `std::copy`. `WPAudioReader.cpp`: the same for its unpack
      buffer, a `static thread_local std::vector<int32_t>` (now made per
-     read). `TAudioWriter`: its
-     own members for the interleaved and packed bytes (the packed buffer no
-     longer memset per write). `write()` takes `const TFileIOBuffer&`; a
+     read). `TAudioWriter`: the same
+     rule, `static thread_local` scratch for the interleaved samples and the
+     packed bytes (the packed buffer no longer memset per write), and
+     `WPAudioWriter`'s `m_tmp_buffer` becomes a `static thread_local
+     std::vector<int32_t>` too: used within one call only (WavPack copies
+     the samples into its own blocks; `write_block()` uses only the bytes
+     WavPack hands it), one thread at a time per writer. One rule for the
+     library: scratch a call uses only within itself is `thread_local`
+     (Remon, 2026-10-27). `write()` takes `const TFileIOBuffer&`; a
      buffer with fewer channels than the file is a precondition
      (`Q_ASSERT(buffer.channel_count() >= channel_count())`, every caller
      sizes it: `TBufferedAudioStreamWriter.cpp:138`, the merger, the
