@@ -34,8 +34,6 @@ extern "C" {
 #include <neaacdec.h>
 }
 
-RELAYTOOL_FAAD;
-
 static int mp4_read_callback(int64_t offset, void *buffer, size_t size, void *token)
 {
 	QFile *file = static_cast<QFile*>(token);
@@ -309,10 +307,6 @@ FaadAudioReader::FaadAudioReader(const QString& filename)
 	: TAudioDecoder(filename)
 	, d(new FaadDecoderPrivate())
 {
-	if (!libfaad_is_present) {
-		return;
-	}
-
 	if (!initDecoderInternal()) {
 		// Not opened: no frames (is_valid() false), and why where known
 		if (!m_openError) {
@@ -330,10 +324,6 @@ FaadAudioReader::~FaadAudioReader()
 
 bool FaadAudioReader::can_decode(const QString& filename)
 {
-	if (!libfaad_is_present) {
-		return false;
-	}
-
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
 		return false;

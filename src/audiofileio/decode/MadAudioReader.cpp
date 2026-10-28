@@ -31,8 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioBuffer.h"
 
-RELAYTOOL_MAD;
-
 
 
 static const int INPUT_BUFFER_SIZE = 5*8192;
@@ -612,10 +610,6 @@ MadAudioReader::~MadAudioReader()
 
 bool MadAudioReader::can_decode(const QString& filename)
 {
-    if (!libmad_is_present) {
-        return false;
-    }
-
     //
     // HACK:
     //

@@ -34,6 +34,9 @@
 class TAudioDevice;
 class AudioChannel;
 
+// Channel index of a driver.
+using channel_t = unsigned long;
+
 class TAudioDriver : public QObject
 {
     Q_OBJECT

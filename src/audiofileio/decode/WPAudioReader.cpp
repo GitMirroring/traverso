@@ -24,8 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioBuffer.h"
 #include "TLog.h"
 
-RELAYTOOL_WAVPACK;
-
 WPAudioReader::WPAudioReader(const QString& filename)
     : TAudioDecoder(filename)
 {
@@ -57,10 +55,6 @@ WPAudioReader::~WPAudioReader()
 
 bool WPAudioReader::can_decode(const QString& filename)
 {
-    if (!libwavpack_is_present) {
-        return false;
-    }
-
     char error[80];
 
     WavpackContext *wp = WavpackOpenFileInput(filename.toUtf8().data(), error, OPEN_NORMALIZE | OPEN_WVC, 0);

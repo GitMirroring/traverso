@@ -31,8 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cstring>
 #include <tuple>
 
-RELAYTOOL_FAAC;
-
 
 struct FaacAudioWriter::FaacInfo {
 #if defined(FAAC_VERSION_MAJOR) && (FAAC_VERSION_MAJOR >= 1)
@@ -50,7 +48,6 @@ struct FaacAudioWriter::FaacInfo {
 FaacAudioWriter::FaacAudioWriter(const TAudioEncodeSettings& settings)
 	: TAudioEncoder(settings)
 {
-	(void)libfaac_is_present;
 	m_fid = nullptr;
 	m_faacInfo = new FaacInfo();
 #if defined(FAAC_VERSION_MAJOR) && (FAAC_VERSION_MAJOR >= 1)

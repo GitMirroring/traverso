@@ -29,7 +29,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #endif
 
 #if defined (JACK_SUPPORT)
-RELAYTOOL_JACK
 #include "TJackDriver.h"
 #endif
 
@@ -192,9 +191,7 @@ TAudioDevice::TAudioDevice()
 #endif
 
 #if defined (JACK_SUPPORT)
-    if (libjack_is_present) {
-        m_availableDrivers << "Jack";
-    }
+    m_availableDrivers << "Jack";
 #endif
 
 #if defined (PORTAUDIO_SUPPORT)
@@ -511,11 +508,9 @@ void TAudioDevice::create_driver()
     QString driverType = m_setup.get_driver_type();
 
 #if defined (JACK_SUPPORT)
-    if (libjack_is_present) {
-        if (driverType == "Jack") {
-            m_driver = new TJackDriver(this);
-            return;
-        }
+    if (driverType == "Jack") {
+        m_driver = new TJackDriver(this);
+        return;
     }
 #endif
 
@@ -567,15 +562,13 @@ int TAudioDevice::setup_driver()
     QString cardDevice = m_setup.get_card_device();
 
 #if defined (JACK_SUPPORT)
-    if (libjack_is_present) {
-        if (driverType == "Jack") {
-            TJackDriver* jackDriver = qobject_cast<TJackDriver*>(m_driver);
-            if (jackDriver && jackDriver->setup(m_setup.get_jack_channels(), m_setup.get_project_name()) < 0) {
-                driver_setup_message("AudioDevice", tr("Failed to setup the Jack Driver"), DRIVER_SETUP_FAILURE);
-                return -1;
-            }
-            return 1;
+    if (driverType == "Jack") {
+        TJackDriver* jackDriver = qobject_cast<TJackDriver*>(m_driver);
+        if (jackDriver && jackDriver->setup(m_setup.get_jack_channels(), m_setup.get_project_name()) < 0) {
+            driver_setup_message("AudioDevice", tr("Failed to setup the Jack Driver"), DRIVER_SETUP_FAILURE);
+            return -1;
         }
+        return 1;
     }
 #endif
 
@@ -738,16 +731,14 @@ QList<AudioChannel*> TAudioDevice::get_playback_channels() const
 int TAudioDevice::add_jack_channel(AudioChannel *channel)
 {
 #if defined (JACK_SUPPORT)
-    if (libjack_is_present) {
-        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
-        if (!jackdriver) {
-            return -1;
-        }
-
-        jackdriver->add_channel(channel);
-
-        return 1;
+    TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
+    if (!jackdriver) {
+        return -1;
     }
+
+    jackdriver->add_channel(channel);
+
+    return 1;
 #else
     Q_UNUSED(channel);
 #endif
@@ -758,15 +749,13 @@ int TAudioDevice::add_jack_channel(AudioChannel *channel)
 void TAudioDevice::remove_jack_channel(AudioChannel *channel)
 {
 #if defined (JACK_SUPPORT)
-    if (libjack_is_present) {
-        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
-        if (!jackdriver) {
-            return;
-        }
-
-        TLOG_D("device", "removing channel from the JACK driver");
-        jackdriver->remove_channel(channel);
+    TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
+    if (!jackdriver) {
+        return;
     }
+
+    TLOG_D("device", "removing channel from the JACK driver");
+    jackdriver->remove_channel(channel);
 #else
     Q_UNUSED(channel);
 #endif
@@ -1019,17 +1008,15 @@ void TAudioDevice::check_audio_thread_progress()
 void TAudioDevice::check_jack_shutdown()
 {
 #if defined (JACK_SUPPORT)
-    if (libjack_is_present) {
-        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
-        if (jackdriver) {
-            if ( ! jackdriver->is_running()) {
-                jackShutDownChecker.stop();
-                TLOG_W("device", "JACK shut down");
-                driver_setup_message("Jack", tr("The Jack server has been shutdown!"), CRITICAL);
-                delete m_driver;
-                m_driver = nullptr;
-                set_parameters(fallback_setup());
-            }
+    TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
+    if (jackdriver) {
+        if ( ! jackdriver->is_running()) {
+            jackShutDownChecker.stop();
+            TLOG_W("device", "JACK shut down");
+            driver_setup_message("Jack", tr("The Jack server has been shutdown!"), CRITICAL);
+            delete m_driver;
+            m_driver = nullptr;
+            set_parameters(fallback_setup());
         }
     }
 #endif
@@ -1166,11 +1153,9 @@ int TAudioDevice::transport_locate(TAudioDeviceClient* client, const TTimeRef& l
 #if defined (JACK_SUPPORT)
 TJackDriver* TAudioDevice::slaved_jack_driver()
 {
-    if (libjack_is_present) {
-        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
-        if (jackdriver && jackdriver->is_slave()) {
-            return jackdriver;
-        }
+    TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
+    if (jackdriver && jackdriver->is_slave()) {
+        return jackdriver;
     }
 
     return nullptr;
@@ -1212,11 +1197,9 @@ void TAudioDevice::set_driver_properties(QHash< QString, QVariant > & properties
 {
     m_driverProperties = properties;
 #if defined (JACK_SUPPORT)
-    if (libjack_is_present) {
-        TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
-        if (jackdriver) {
-            jackdriver->update_config();
-        }
+    TJackDriver* jackdriver = qobject_cast<TJackDriver*>(m_driver);
+    if (jackdriver) {
+        jackdriver->update_config();
     }
 #endif
 }

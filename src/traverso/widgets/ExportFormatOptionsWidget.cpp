@@ -28,15 +28,9 @@
 #include "TResamplerSettings.h"
 
 
-RELAYTOOL_WAVPACK;
-RELAYTOOL_FAAC;
-
-
 ExportFormatOptionsWidget::ExportFormatOptionsWidget( QWidget * parent )
 	: QWidget(parent)
 {
-	(void)libwavpack_is_present;
-	(void)libfaac_is_present;
 	setupUi(this);
 
     dataFormatComboBox->addItem(tr("8 bit PCM"),   QVariant::fromValue(TraversoDAW::DataFormat::PCM_S8));
