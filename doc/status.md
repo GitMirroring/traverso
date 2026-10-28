@@ -466,7 +466,7 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
   menu leaves those targets out, and `Q_ASSERT(&dest != &src)` in
   `TChannelBuffer::mix_buffers_*()`. Before T20's `__restrict` (with it
   the self-mix is undefined behaviour).
-- **T65 Sends only between registered tracks: load and remove/undo**
+- **T67 Sends only between registered tracks: load and remove/undo**
   (proposed medium; found 2026-10-28 during T64 and in its review; merged
   into one task by Remon). Both halves are sends that exist while their
   track is not registered in the session:
