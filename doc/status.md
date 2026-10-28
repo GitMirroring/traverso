@@ -171,6 +171,26 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
   (the wall clock in libstdc++) for intervals, and return `long`, which is
   32 bits on Windows: nanoseconds since 1970 overflow there (`qint64` or
   `trav_time_t`).
+  With it (Remon, 2026-10-28): the thread's own CPU time next to the
+  monotonic clock, to see whether the CPU goes where it should: to
+  Traverso's code, or to the system.
+  - The DSP load stays elapsed time against the period (the deadline,
+    what decides a dropout). The thread's CPU time is what Traverso's code
+    costs; the difference is the system's share (preemption, interrupts,
+    drivers, power management).
+  - Linux and macOS: `CLOCK_THREAD_CPUTIME_ID`, per cycle, nanoseconds (a
+    system call on Linux, not the vDSO: `T_REALTIME_SAFE_BY_CONTRACT`).
+    This is the precise measurement, for development.
+  - Windows: no per-cycle time (`GetThreadTimes` counts in scheduler ticks
+    of about 15.6 ms; `QueryThreadCycleTime` gives CPU cycles, not time):
+    only a share over the meter's interval, the thread's cycles against
+    the cycles that passed. Enough to tell Traverso's share from the
+    system's. What Traverso's code costs is about the same as on Linux
+    (same code and, with MinGW, the same compiler and the AVX2 path); the
+    system's share
+    is not, and on Windows it is where the trouble usually is (drivers
+    that hold a DPC too long, MMCSS priorities). A user with dropouts and
+    a low Traverso share: point to LatencyMon.
 - **T14 (medium): strength of the unique IDs.** `create_id()` = seconds × 10⁹
   + `rand()` seeded by seconds; collisions possible across seconds and between
   two instances. Investigate where uniqueness is assumed, then a stronger
