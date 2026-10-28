@@ -21,16 +21,46 @@
 */
 
 #include "TBufferOperations.h"
+#include "TCpuFeatures.h"
 #include "defines.h"
 #include <cmath> // used for fabs
 #if defined(Q_OS_MACOS)
 #include <Accelerate/Accelerate.h>
 #endif
 
-TBufferOperations::UpdatePeak  TBufferOperations::update_peak   = nullptr;
-TBufferOperations::ApplyGain   TBufferOperations::apply_gain    = nullptr;
-TBufferOperations::MixWithGain TBufferOperations::mix_with_gain = nullptr;
-TBufferOperations::Mix         TBufferOperations::mix           = nullptr;
+// The portable versions from the start (constant initialization, before any
+// code runs), so the operations work without the application; the best
+// implementation for this machine replaces them below, still before main()
+constinit TBufferOperations::UpdatePeak  TBufferOperations::update_peak   = portable_update_peak;
+constinit TBufferOperations::ApplyGain   TBufferOperations::apply_gain    = portable_apply_gain;
+constinit TBufferOperations::MixWithGain TBufferOperations::mix_with_gain = portable_mix_with_gain;
+constinit TBufferOperations::Mix         TBufferOperations::mix           = portable_mix;
+constinit const char* TBufferOperations::s_implementation = "portable";
+
+// Before main(), so before any thread: no thread sees the pointers change.
+// Not on first use, which can be the audio thread (cpuid, a race on the
+// pointers). No log here: TLog may not exist yet (implementation_name()).
+bool TBufferOperations::choose_best_implementation()
+{
+#if defined(__SSE__) && defined(SSE_OPTIMIZATIONS)
+    if (TCpuFeatures().has_sse()) {
+        update_peak   = x86_sse_compute_peak;
+        apply_gain    = x86_sse_apply_gain_to_buffer;
+        mix_with_gain = x86_sse_mix_buffers_with_gain;
+        mix           = x86_sse_mix_buffers_no_gain;
+        s_implementation = "SSE";
+    }
+#elif defined(Q_OS_MACOS)
+    update_peak   = accel_compute_peak;
+    apply_gain    = accel_apply_gain_to_buffer;
+    mix_with_gain = accel_mix_buffers_with_gain;
+    mix           = accel_mix_buffers_no_gain;
+    s_implementation = "Apple Accelerate";
+#endif
+    return true;
+}
+
+const bool TBufferOperations::s_bestImplementationChosen = choose_best_implementation();
 
 float portable_update_peak (const audio_sample_t* buf, nframes_t nframes, float current) T_REALTIME_SAFE
 {

@@ -11,3 +11,9 @@ add_test(NAME fader_law COMMAND traverso_fader_law_test)
 add_executable(traverso_audio_buffer_test test_audio_buffer.cpp)
 target_link_libraries(traverso_audio_buffer_test PRIVATE traverso_compiler_settings traversodsp traversosupport Qt6::Core)
 add_test(NAME audio_buffer COMMAND traverso_audio_buffer_test)
+
+# Headless test of TBufferOperations without the application (T52): the
+# implementation in use against the portable loops
+add_executable(traverso_buffer_operations_test test_buffer_operations.cpp)
+target_link_libraries(traverso_buffer_operations_test PRIVATE traverso_compiler_settings traversodsp traversosupport Qt6::Core)
+add_test(NAME buffer_operations COMMAND traverso_buffer_operations_test)

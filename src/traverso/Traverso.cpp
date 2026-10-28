@@ -54,7 +54,8 @@ Traverso::Traverso(int &argc, char **argv )
     config().check_and_load_configuration();
     srand ( time(nullptr) );
 
-    init_sse();
+    TLOG_I("app", "Buffer operations: {}", TBufferOperations::implementation_name());
+    setup_fpu();
 
     // The audio thread runs from the start: its period is the clock pulse of
     // Traverso, and real-time changes are only ever posted to it. Loading a
@@ -157,44 +158,6 @@ void Traverso::close_without_questions()
         return;
     }
     pm().exit_without_questions();
-}
-
-void Traverso::init_sse()
-{
-    bool generic_mix_functions = true;
-    TCpuFeatures fpu;
-
-#if defined(__SSE__) && defined(SSE_OPTIMIZATIONS)
-    if (fpu.has_sse()) {
-        TLOG_I("app", "Using SSE optimized routines");
-
-        TBufferOperations::update_peak   = x86_sse_compute_peak;
-        TBufferOperations::apply_gain    = x86_sse_apply_gain_to_buffer;
-        TBufferOperations::mix_with_gain = x86_sse_mix_buffers_with_gain;
-        TBufferOperations::mix           = x86_sse_mix_buffers_no_gain;
-
-        generic_mix_functions = false;
-    }
-#elif defined (Q_OS_MACOS)
-    TBufferOperations::update_peak   = accel_compute_peak;
-    TBufferOperations::apply_gain    = accel_apply_gain_to_buffer;
-    TBufferOperations::mix_with_gain = accel_mix_buffers_with_gain;
-    TBufferOperations::mix           = accel_mix_buffers_no_gain;
-    generic_mix_functions = false;
-
-    TLOG_I("app", "Apple Accelerate/vDSP H/W specific optimizations in use");
-#endif
-
-    setup_fpu();
-
-    if (generic_mix_functions) {
-        TBufferOperations::update_peak   = portable_update_peak;
-        TBufferOperations::apply_gain    = portable_apply_gain;
-        TBufferOperations::mix_with_gain = portable_mix_with_gain;
-        TBufferOperations::mix           = portable_mix;
-
-        TLOG_I("app", "No Hardware specific optimizations in use");
-    }
 }
 
 void Traverso::setup_fpu()

@@ -58,4 +58,13 @@ public:
     static ApplyGain   apply_gain;
     static MixWithGain mix_with_gain;
     static Mix         mix;
+
+    // The implementation in use: "portable", "SSE" or "Apple Accelerate"
+    static const char* implementation_name() { return s_implementation; }
+
+private:
+    // Picks the best implementation, before main() (TBufferOperations.cpp)
+    static bool choose_best_implementation();
+    static const char* s_implementation;
+    static const bool s_bestImplementationChosen;
 };
