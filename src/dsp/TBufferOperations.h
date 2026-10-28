@@ -1,7 +1,5 @@
-/*
-    Copyright (C) 2005-2026 Remon Sijrier
-    This file is part of Traverso
-*/
+// SPDX-FileCopyrightText: 2005-2026 Remon Sijrier
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #pragma once
 

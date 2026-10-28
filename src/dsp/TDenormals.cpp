@@ -28,11 +28,11 @@ bool TDenormals::decide()
         s_modeName = "none (valgrind)";
         return true;
     }
-    const TCpuFeatures cpu;
-    if (cpu.has_flush_to_zero()) {
+    const TCpuFeatures cpu = TCpuFeatures::detect();
+    if (cpu.flushToZero) {
         s_mask |= FlushToZero;
     }
-    if (cpu.has_denormals_are_zero()) {
+    if (cpu.denormalsAreZero) {
         s_mask |= DenormalsAreZero;
     }
     s_modeName = s_mask == (FlushToZero | DenormalsAreZero) ? "FTZ and DAZ" : s_mask == FlushToZero ? "FTZ" : "none";
