@@ -219,12 +219,12 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
 
 From the audiofileio API review (`doc/design/audiofileio-api-review.md`,
 2026-10-27):
-- **T44 A round-trip test of every writer and reader** (high; Remon,
+- **T44 (done 2026-10-28: merged `660ab5ea`, failures as KNOWN entries T46–T48) A round-trip test of every writer and reader** (high; Remon,
   2026-10-27): every writer × data format × 1, 2, 6 channels through
   `TAudioWriter` and back through `TAudioReader`; float exact, integer
   within the dither, lossy by level, placement and channel order. W0 of the
   API work order, built first so it checks W1–W4.
-- **T29 The API review's work order** (no rank: approved by Remon once Fable
+- **T29 (done 2026-10-28: W0–W4 reviewed by Remon and Fable, merged `660ab5ea`) The API review's work order** (no rank: approved by Remon once Fable
   approves the document, built after midnight): W1 buffers (the scratch
   into the library, `TAudioBuffer` → `TChannelBuffer`, `TFileIOBuffer` →
   `TAudioBuffer`, the threading sentence), W2 the writer stops after a
