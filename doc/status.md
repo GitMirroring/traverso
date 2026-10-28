@@ -29,7 +29,7 @@ or another one is finished or parked first.
 
 - `master`: `realtime-path`, `scenario-decoder` and `audiofileio-errors`
   merged 2026-10-27; `audiofileio-api` (T44, T29) merged 2026-10-28
-  (`660ab5ea`); `dsp-kernels` (T52, T51) merged 2026-10-28 (`28216d8e`); not pushed (`origin/master` = `6dc4fe2b`).
+  (`660ab5ea`); `dsp-kernels` (T52, T51) merged 2026-10-28 (`28216d8e`); `audiodevice-races` (T58 step 1, T53, T54) merged 2026-10-28 (`73dad650`); not pushed (`origin/master` = `6dc4fe2b`).
 - Worktrees: `traverso` (master), `traverso-input-controllers`. The branch
   `curve-gpu-bench` is kept without a worktree. The merged branches are
   deleted, with their backups and build directories.
@@ -384,7 +384,7 @@ Other open tasks:
   nothing): fix with the test audio driver (work order step 8).
 
 TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
-- **T53 Races in TAudioDevice** (proposed medium-high):
+- **T53 (done 2026-10-28: merged `73dad650`) Races in TAudioDevice** (proposed medium-high):
   `m_processCallBackWaitTime` is added to on the audio thread
   (`run_one_cycle()`) and read and zeroed by the GUI (`get_cpu_time()`),
   not atomic. `m_isRealTime` and `m_processCallBackData.set_real_time()`
@@ -403,7 +403,7 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
   `exchange(0)` too (a `fetch_add` between them is lost now). TSan in its
   own build next to the RTSan one; CMake refuses both at once. Branch
   `audiodevice-races` with T54 and the safety net of T58 step 1.
-- **T54 `xrun()` stops the driver from the audio thread** (proposed
+- **T54 (done 2026-10-28: merged `73dad650`; a flag the GUI watchdog timer takes, untested until the test audio driver) `xrun()` stops the driver from the audio thread** (proposed
   medium): `m_driver->stop()` on a storm runs on the thread the driver
   drives. Stop it from the GUI thread (the storm signal already goes
   there).
@@ -438,7 +438,8 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
 
 - **T58 Remove the singletons** (Remon, 2026-10-28; before T60).
   - Safety net first: a headless test with the Dummy driver (start, add a
-    client, cycles, remove, switch driver, shut down).
+    client, cycles, remove, switch driver, shut down). **Done 2026-10-28**
+    (`test_audio_device`, merged `73dad650`).
   - `audiodevice()` first: map every caller per lib and thread;
     Traverso.cpp owns the device (constructed after the scheduler,
     destroyed after the project manager), `audiodevice()` a temporary
