@@ -1,5 +1,6 @@
 #include "TExportSpecification.h"
 
+#include "TAudioResampler.h"
 #include "TInformUser.h"
 #include "TProject.h"
 #include "TSheet.h"
@@ -22,8 +23,8 @@ TExportSpecification::TExportSpecification()
 
     m_writerType = TraversoDAW::WriterType::SNDFILE;
     m_fileFormat = TraversoDAW::FileFormat::WAV;
-    m_resampler = TAudioResampler::BackendType::LIBSOXR;
-    m_resampleQuality = TAudioResampler::default_quality(m_resampler);
+    m_resampler = {TResamplerChoice::Backend::LibSoxr,
+                   qint16(TAudioResampler::default_quality(TResamplerChoice::Backend::LibSoxr))};
 
     m_exportStartLocation = TTimeRef::INVALID;
     m_exportEndLocation = TTimeRef::INVALID;
@@ -276,11 +277,10 @@ TraversoDAW::BitrateMode TExportSpecification::string_to_format(const QString &o
     return TraversoDAW::BitrateMode::UNKNOWN;
 }
 
-void TExportSpecification::set_resampler(TAudioResampler::BackendType backend, int quality)
+void TExportSpecification::set_resampler(TResamplerChoice resampler)
 {
-    Q_ASSERT(TAudioResampler::qualities(backend).contains(quality));
-    m_resampler = backend;
-    m_resampleQuality = quality;
+    Q_ASSERT(TAudioResampler::qualities(resampler.backend).contains(resampler.quality));
+    m_resampler = resampler;
 }
 
 void TExportSpecification::set_is_cd_export(bool cdExport)
@@ -344,7 +344,6 @@ TAudioEncodeSettings TExportSpecification::get_encode_settings() const
     settings.sampleRate = get_sample_rate();
     settings.blockSize = get_block_size();
     settings.resampler = get_resampler();
-    settings.resampleQuality = get_resample_quality();
     settings.ditherType = get_dither_type();
 
     // The writer's options, as the export dialog and the recording settings

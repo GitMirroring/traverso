@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "TResamplerChoice.h"
 #include <atomic>
 #include "TTimeRef.h"
 #include "TRealTime.h"
@@ -35,11 +36,11 @@ public:
     // a TAudioResampler backend and one of its qualities, and whether to
     // resample at all, as the owner chose them in its thread; the scheduler
     // only hands them on
-    struct Resampler
+    // alignas(8): 8 bytes, so the scheduler's std::atomic of it is lock-free
+    // (the static_assert below the class)
+    struct alignas(8) Resampler
     {
-        qint32 backend{0};
-        // A backend's quality number (small)
-        qint16 quality{0};
+        TResamplerChoice choice{};
         // false: the file is read at its own rate (and plays at another
         // pitch when the device's rate is not the file's)
         bool resample{true};

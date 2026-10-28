@@ -63,7 +63,7 @@ int main()
         uint fileRate;
         TraversoDAW::DataFormat format;
         TraversoDAW::WriterType writer;
-        TAudioResampler::BackendType backend;
+        TResamplerChoice::Backend backend;
     };
     std::vector<Case> cases;
     for (const Format f : {Format{48000, 44100, TraversoDAW::DataFormat::FLOAT, wav}, Format{44100, 48000, TraversoDAW::DataFormat::FLOAT, wav},
@@ -72,9 +72,9 @@ int main()
                            Format{48000, 44100, TraversoDAW::DataFormat::FLOAT, wavpack}, Format{48000, 44100, TraversoDAW::DataFormat::PCM_24, wavpack},
                            Format{48000, 48000, TraversoDAW::DataFormat::PCM_24, wavpack}, Format{48000, 48000, TraversoDAW::DataFormat::PCM_16, wav},
                            Format{48000, 48000, TraversoDAW::DataFormat::PCM_16, wavpack}, Format{48000, 48000, TraversoDAW::DataFormat::PCM_S8, wavpack}}) {
-        cases.push_back({f.inputRate, f.fileRate, f.format, f.writer, TAudioResampler::BackendType::LIBSOXR});
+        cases.push_back({f.inputRate, f.fileRate, f.format, f.writer, TResamplerChoice::Backend::LibSoxr});
         if (f.inputRate != f.fileRate) {
-            cases.push_back({f.inputRate, f.fileRate, f.format, f.writer, TAudioResampler::BackendType::LIBSAMPLERATE});
+            cases.push_back({f.inputRate, f.fileRate, f.format, f.writer, TResamplerChoice::Backend::LibSampleRate});
         }
     }
     for (const Case& c : cases) {
@@ -101,8 +101,7 @@ int main()
         default: break;
         }
         settings.ditherType = GDitherNone;
-        settings.resampler = c.backend;
-        settings.resampleQuality = TAudioResampler::default_quality(c.backend);
+        settings.resampler = {c.backend, qint16(TAudioResampler::default_quality(c.backend))};
 
         const QString backend = TAudioResampler::backend_name(c.backend);
         const QByteArray formatText = QString("%1 %2, %3").arg(c.writer == wavpack ? "wavpack" : "wav", formatName, backend).toLatin1();

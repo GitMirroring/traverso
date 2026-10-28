@@ -12,7 +12,7 @@
 
 // Conversion/Resampler: soxr or libsamplerate, for on-the-fly reading and
 // for exports
-TAudioResampler::BackendType configured_resampler_backend();
+TResamplerChoice::Backend configured_resampler_backend();
 // The resampler of on-the-fly reading: the backend, its quality
 // (Conversion/RTResamplingQuality, the backend's own number; another number
 // is the backend's default) and whether to resample at all

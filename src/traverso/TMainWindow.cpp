@@ -983,7 +983,7 @@ void TMainWindow::create_menus()
     // Submenu: Resample Quality, the qualities of the resampler in use
     m_resampleQualityMenu = settingsMenu->addMenu(tr("Resample &Quality"));
     m_resampleQualityMenu->setToolTipsVisible(true);
-    const TAudioResampler::BackendType resampler = configured_resampler_backend();
+    const TResamplerChoice::Backend resampler = configured_resampler_backend();
     for (int quality : TAudioResampler::qualities(resampler)) {
         action = m_resampleQualityMenu->addAction(TAudioResampler::quality_name(resampler, quality));
         action->setData(quality);
@@ -1345,7 +1345,7 @@ void TMainWindow::config_changed()
         }
     }
 
-    int quality = configured_resampler().quality;
+    int quality = configured_resampler().choice.quality;
     actions = m_resampleQualityMenu->actions();
 
     bool useResampling = config().get_property("Conversion", "DynamicResampling", true).toBool();

@@ -68,8 +68,8 @@ static std::unique_ptr<TAudioReader> open_at(const QString& path, uint outputRat
 {
     std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     if (reader && outputRate != reader->file_rate()) {
-        if (!reader->set_output_rate_and_resampler(outputRate, TAudioResampler::BackendType::LIBSOXR,
-                                                   TAudioResampler::default_quality(TAudioResampler::BackendType::LIBSOXR))) {
+        if (!reader->set_output_rate_and_resampler(
+                outputRate, {TResamplerChoice::Backend::LibSoxr, qint16(TAudioResampler::default_quality(TResamplerChoice::Backend::LibSoxr))})) {
             return nullptr;
         }
     }

@@ -46,7 +46,7 @@ private slots:
 
 private:
     // The backend whose qualities the quality combo box lists
-    TAudioResampler::BackendType m_resampler{TAudioResampler::BackendType::LIBSOXR};
+    TResamplerChoice::Backend m_resampler{TResamplerChoice::Backend::LibSoxr};
 };
 
 

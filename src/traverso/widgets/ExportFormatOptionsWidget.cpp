@@ -371,7 +371,7 @@ void ExportFormatOptionsWidget::get_format_options(TExportSpecification* spec)
 
     spec->set_channel_count(channelComboBox->itemData(channelComboBox->currentIndex()).toUInt());
     spec->set_sample_rate(sampleRateComboBox->itemData(sampleRateComboBox->currentIndex()).toUInt());
-    spec->set_resampler(m_resampler, resampleQualityComboBox->currentData().toInt());
+    spec->set_resampler({m_resampler, qint16(resampleQualityComboBox->currentData().toInt())});
 
     // TODO Make a ComboBox for this one too!
     spec->set_dither_type(GDitherTri);

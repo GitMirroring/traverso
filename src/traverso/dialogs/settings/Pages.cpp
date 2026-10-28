@@ -1048,7 +1048,7 @@ RecordingConfigPage::RecordingConfigPage(QWidget * parent)
     wavpackCompressionComboBox->addItem("Fast", "fast");
 
     // The qualities of the resampler in use
-    const TAudioResampler::BackendType resampler = configured_resampler_backend();
+    const TResamplerChoice::Backend resampler = configured_resampler_backend();
     for (int quality : TAudioResampler::qualities(resampler)) {
         ontheflyResampleComboBox->addItem(TAudioResampler::quality_name(resampler, quality), quality);
     }
@@ -1147,7 +1147,7 @@ void RecordingConfigPage::load_config()
         wavpackCompressionComboBox->setCurrentIndex(2);
     }
 
-    int index = ontheflyResampleComboBox->findData(configured_resampler().quality);
+    int index = ontheflyResampleComboBox->findData(configured_resampler().choice.quality);
     ontheflyResampleComboBox->setCurrentIndex(index);
 
     index = config().get_property("Conversion", "ExportResamplingConverterType", 1).toInt();

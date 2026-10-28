@@ -91,12 +91,11 @@ public:
     QString decoder_type() const;
 
     // The output rate of read(), and the resampler for it when it is not the
-    // file's rate: a backend and one of its qualities
-    // (TAudioResampler::qualities()). The reader has no position at the new
+    // file's rate (a backend and one of its qualities). The reader has no position at the new
     // rate: the next read() gives it one. Until it is called, the output
     // rate is the file's. rate > 0. A resampler that does not start is an
     // error (CannotOpen), and the reader stays as it was.
-    [[nodiscard]] TAudioFileStatus set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality);
+    [[nodiscard]] TAudioFileStatus set_output_rate_and_resampler(uint rate, TResamplerChoice resampler);
     uint output_rate() const { return m_outputRate; }
     // The frames the file gives at the output rate: the first output frame at
     // or after its length, where read() ends

@@ -73,18 +73,18 @@ QString TAudioReader::decoder_type() const
     return m_decoder->decoder_type();
 }
 
-TAudioFileStatus TAudioReader::set_output_rate_and_resampler(uint rate, TAudioResampler::BackendType backend, int quality)
+TAudioFileStatus TAudioReader::set_output_rate_and_resampler(uint rate, TResamplerChoice resampler)
 {
     Q_ASSERT(rate > 0);
 
     // Another ratio is another resampler (soxr cannot change it once it
     // ran). Made first: one that does not start leaves the reader as it was.
-    std::unique_ptr<TAudioResampler> resampler;
+    std::unique_ptr<TAudioResampler> made;
     if (rate != file_rate()) {
-        resampler = std::make_unique<TAudioResampler>(backend, double(rate) / file_rate(), quality, channel_count());
-        if (!resampler->valid()) {
-            return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen,
-                                                   QStringLiteral("the %1 resampler did not start").arg(TAudioResampler::backend_name(backend))});
+        made = std::make_unique<TAudioResampler>(resampler, double(rate) / file_rate(), channel_count());
+        if (!made->valid()) {
+            return std::unexpected(TAudioFileError{TAudioFileError::Code::CannotOpen, QStringLiteral("the %1 resampler did not start")
+                                                                                          .arg(TAudioResampler::backend_name(resampler.backend))});
         }
     }
 
@@ -94,7 +94,7 @@ TAudioFileStatus TAudioReader::set_output_rate_and_resampler(uint rate, TAudioRe
     m_outputFrames = rate == file_rate() ? m_decoder->frame_count()
                                          : TTimeRef::to_nframes(TTimeRef::frame_at_or_after(m_decoder->length(), rate));
 
-    m_resampler = std::move(resampler);
+    m_resampler = std::move(made);
     m_dropFrames = 0;
 
     // A frame at the old rate is another time at this one: no position, the

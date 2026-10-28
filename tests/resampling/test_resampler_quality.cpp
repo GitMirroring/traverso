@@ -36,7 +36,7 @@ static constexpr uint OutputRate = 44100;
 
 // The level of a tone of frequency after resampling, in dB against its
 // level before
-static double level_after(TAudioResampler::BackendType backend, int quality, double frequency)
+static double level_after(TResamplerChoice::Backend backend, int quality, double frequency)
 {
     const nframes_t frames = InputRate;
     std::vector<float> input(frames);
@@ -44,7 +44,7 @@ static double level_after(TAudioResampler::BackendType backend, int quality, dou
         input[i] = float(0.5 * std::sin(2.0 * M_PI * frequency * i / InputRate));
     }
 
-    TAudioResampler resampler(backend, double(OutputRate) / InputRate, quality, 1);
+    TAudioResampler resampler({backend, qint16(quality)}, double(OutputRate) / InputRate, 1);
     TChannelBuffer in(1024);
     TChannelBuffer out(frames + 4096);
     TChannelBuffer* inBuffer = &in;
@@ -79,13 +79,13 @@ static double level_after(TAudioResampler::BackendType backend, int quality, dou
 // left, and the output is the input's length at the new rate within a
 // frame: at every quality of a backend, converting up and down, by small and
 // large ratios
-static void flush_gives_all(TAudioResampler::BackendType backend, uint inputRate, uint outputRate)
+static void flush_gives_all(TResamplerChoice::Backend backend, uint inputRate, uint outputRate)
 {
     const double ratio = double(outputRate) / inputRate;
     const nframes_t frames = inputRate;
     const QByteArray name = TAudioResampler::backend_name(backend).toLatin1();
     for (const int quality : TAudioResampler::qualities(backend)) {
-        TAudioResampler resampler(backend, ratio, quality, 2);
+        TAudioResampler resampler({backend, qint16(quality)}, ratio, 2);
         const nframes_t outSize = nframes_t(std::ceil(frames * ratio)) + 1024 * 10;
         TChannelBuffer in[] = {TChannelBuffer(1024), TChannelBuffer(1024)};
         TChannelBuffer out[] = {TChannelBuffer(outSize), TChannelBuffer(outSize)};
@@ -120,7 +120,7 @@ static void flush_gives_all(TAudioResampler::BackendType backend, uint inputRate
 
 int main()
 {
-    for (TAudioResampler::BackendType backend : {TAudioResampler::BackendType::LIBSOXR, TAudioResampler::BackendType::LIBSAMPLERATE}) {
+    for (TResamplerChoice::Backend backend : {TResamplerChoice::Backend::LibSoxr, TResamplerChoice::Backend::LibSampleRate}) {
         const QList<int> qualities = TAudioResampler::qualities(backend);
         const QByteArray name = TAudioResampler::backend_name(backend).toLatin1();
         char what[200];
@@ -152,7 +152,7 @@ int main()
     check(flushedAll, "every quality of both backends: one flush of pending_frames() frames gives all it holds");
 
     struct Rates { uint input; uint output; };
-    for (TAudioResampler::BackendType backend : {TAudioResampler::BackendType::LIBSOXR, TAudioResampler::BackendType::LIBSAMPLERATE}) {
+    for (TResamplerChoice::Backend backend : {TResamplerChoice::Backend::LibSoxr, TResamplerChoice::Backend::LibSampleRate}) {
         for (const Rates r : {Rates{44100, 48000}, Rates{48000, 44100}, Rates{8000, 48000}, Rates{48000, 8000}, Rates{11025, 64000},
                               Rates{192000, 44100}, Rates{22050, 192000}}) {
             flush_gives_all(backend, r.input, r.output);

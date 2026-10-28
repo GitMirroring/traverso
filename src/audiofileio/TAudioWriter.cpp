@@ -39,9 +39,9 @@ std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> TAudioWriter::open
     std::unique_ptr<TAudioResampler> resampler;
     if (inputSampleRate != settings.sampleRate) {
         const double ratio = double(settings.sampleRate) / inputSampleRate;
-        resampler = std::make_unique<TAudioResampler>(settings.resampler, ratio, settings.resampleQuality, settings.channelCount);
+        resampler = std::make_unique<TAudioResampler>(settings.resampler, ratio, settings.channelCount);
         if (!resampler->valid()) {
-            return cannot(QStringLiteral("the %1 resampler did not start").arg(TAudioResampler::backend_name(settings.resampler)));
+            return cannot(QStringLiteral("the %1 resampler did not start").arg(TAudioResampler::backend_name(settings.resampler.backend)));
         }
     }
     if (TAudioFileStatus opened = encoder->open(fileName); !opened) {

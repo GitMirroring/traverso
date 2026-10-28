@@ -236,9 +236,7 @@ void TBufferedAudioStreamReader::set_output_rate_and_resampler(int outputRate, c
     // A resampler that does not start leaves the reader as it was (at its
     // old rate), and so the stream, which times its slots by that rate: said
     // here, the stream plays on (its error state: task T10)
-    if (TAudioFileStatus set = m_audioReader->set_output_rate_and_resampler(readRate, TAudioResampler::BackendType(resampler.backend),
-                                                                              resampler.quality);
-        !set) {
+    if (TAudioFileStatus set = m_audioReader->set_output_rate_and_resampler(readRate, resampler.choice); !set) {
         TLOG_W("audiofile", "{}: no output rate of {} Hz ({})", m_fileName.toStdString(), readRate, set.error().detail.toStdString());
         return;
     }

@@ -180,21 +180,21 @@ private:
 // =========================================================================
 // TAudioResampler
 // =========================================================================
-QList<int> TAudioResampler::qualities(BackendType backend)
+QList<int> TAudioResampler::qualities(TResamplerChoice::Backend backend)
 {
     // Not libsamplerate's zero order hold and linear converters: they lag,
     // one input frame and one and a half, so what they give is not where
     // it belongs
-    if (backend == BackendType::LIBSAMPLERATE) {
+    if (backend == TResamplerChoice::Backend::LibSampleRate) {
         return {SRC_SINC_BEST_QUALITY, SRC_SINC_MEDIUM_QUALITY, SRC_SINC_FASTEST};
     }
     // The five standard qualities of soxr, as SoX has them
     return {SOXR_VHQ, SOXR_HQ, SOXR_MQ, SOXR_LQ, SOXR_QQ};
 }
 
-QString TAudioResampler::quality_name(BackendType backend, int quality)
+QString TAudioResampler::quality_name(TResamplerChoice::Backend backend, int quality)
 {
-    if (backend == BackendType::LIBSAMPLERATE) {
+    if (backend == TResamplerChoice::Backend::LibSampleRate) {
         return QString(src_get_name(quality));
     }
     switch (quality) {
@@ -207,9 +207,9 @@ QString TAudioResampler::quality_name(BackendType backend, int quality)
     }
 }
 
-QString TAudioResampler::quality_description(BackendType backend, int quality)
+QString TAudioResampler::quality_description(TResamplerChoice::Backend backend, int quality)
 {
-    if (backend == BackendType::LIBSAMPLERATE) {
+    if (backend == TResamplerChoice::Backend::LibSampleRate) {
         return QString(src_get_description(quality));
     }
     switch (quality) {
@@ -223,40 +223,40 @@ QString TAudioResampler::quality_description(BackendType backend, int quality)
     }
 }
 
-int TAudioResampler::default_quality(BackendType backend)
+int TAudioResampler::default_quality(TResamplerChoice::Backend backend)
 {
-    return backend == BackendType::LIBSAMPLERATE ? SRC_SINC_MEDIUM_QUALITY : SOXR_HQ;
+    return backend == TResamplerChoice::Backend::LibSampleRate ? SRC_SINC_MEDIUM_QUALITY : SOXR_HQ;
 }
 
-int TAudioResampler::default_realtime_quality(BackendType backend)
+int TAudioResampler::default_realtime_quality(TResamplerChoice::Backend backend)
 {
-    return backend == BackendType::LIBSAMPLERATE ? SRC_SINC_FASTEST : SOXR_MQ;
+    return backend == TResamplerChoice::Backend::LibSampleRate ? SRC_SINC_FASTEST : SOXR_MQ;
 }
 
-QString TAudioResampler::backend_name(BackendType backend)
+QString TAudioResampler::backend_name(TResamplerChoice::Backend backend)
 {
-    return backend == BackendType::LIBSAMPLERATE ? QStringLiteral("libsamplerate") : QStringLiteral("soxr");
+    return backend == TResamplerChoice::Backend::LibSampleRate ? QStringLiteral("libsamplerate") : QStringLiteral("soxr");
 }
 
-TAudioResampler::BackendType TAudioResampler::backend_from_name(const QString& name)
+TResamplerChoice::Backend TAudioResampler::backend_from_name(const QString& name)
 {
-    return name == QLatin1String("libsamplerate") ? BackendType::LIBSAMPLERATE : BackendType::LIBSOXR;
+    return name == QLatin1String("libsamplerate") ? TResamplerChoice::Backend::LibSampleRate : TResamplerChoice::Backend::LibSoxr;
 }
 
 
-TAudioResampler::TAudioResampler(BackendType backend, double ratio, int quality, uint channels)
+TAudioResampler::TAudioResampler(TResamplerChoice choice, double ratio, uint channels)
     : m_channels(channels)
     , m_ratio(ratio)
     , m_kept(channels)
     , m_inputPointers(channels)
     , m_outputPointers(channels)
 {
-    Q_ASSERT_X(qualities(backend).contains(quality), "TAudioResampler", "not a quality of this backend");
+    Q_ASSERT_X(qualities(choice.backend).contains(choice.quality), "TAudioResampler", "not a quality of this backend");
     Q_ASSERT(channels > 0);
-    if (backend == BackendType::LIBSOXR) {
-        m_backend = std::make_unique<LibSoxrBackend>(quality, ratio, channels);
+    if (choice.backend == TResamplerChoice::Backend::LibSoxr) {
+        m_backend = std::make_unique<LibSoxrBackend>(choice.quality, ratio, channels);
     } else {
-        m_backend = std::make_unique<LibSampleRateBackend>(quality, ratio, channels);
+        m_backend = std::make_unique<LibSampleRateBackend>(choice.quality, ratio, channels);
     }
 }
 

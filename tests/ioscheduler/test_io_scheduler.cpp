@@ -63,7 +63,7 @@ public:
     void set_output_rate_and_resampler(int outputRate, const Resampler& resampler) override
     {
         m_rate.store(uint(outputRate));
-        m_quality.store(resampler.quality);
+        m_quality.store(resampler.choice.quality);
     }
     uint get_channel_count() const T_REALTIME_SAFE override { return 1; }
     void prepare_ring_buffers(nframes_t) override { m_prepared.fetch_add(1); }
@@ -412,7 +412,7 @@ int main(int argc, char** argv)
         one.request_seek(TTimeRef(qint64(1000)));
         scheduler.dispatch();
         check(a.m_rateChanges.load() == 1 && a.m_rate.load() == 48000, "the first song's stream takes the new rate");
-        scheduler.set_resampler(TIOStream::Resampler{0, 7});
+        scheduler.set_resampler(TIOStream::Resampler{{TResamplerChoice::Backend::LibSampleRate, 7}});
         scheduler.dispatch();
         check(b.m_quality.load() == 7 && b.m_rate.load() == 44100, "a new resampler keeps the rate the stream reads at");
         two.request_seek(TTimeRef(qint64(1000)));

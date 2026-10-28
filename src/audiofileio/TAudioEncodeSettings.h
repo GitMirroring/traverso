@@ -5,7 +5,7 @@
 
 #include "defines.h"
 #include "gdither_types.h"
-#include "TAudioResampler.h"
+#include "TResamplerChoice.h"
 
 /**
  * @brief What an audio writer needs to know to encode a file: the writer and
@@ -23,10 +23,9 @@ struct TAudioEncodeSettings
     uint                    channelCount{0};
     uint                    sampleRate{0};
     uint                    blockSize{0};
-    // The resampler when the input rate is not sampleRate: a backend and one
-    // of its qualities
-    TAudioResampler::BackendType resampler{TAudioResampler::BackendType::LIBSOXR};
-    int                     resampleQuality{TAudioResampler::default_quality(TAudioResampler::BackendType::LIBSOXR)};
+    // The resampler when the input rate is not sampleRate. Zero until the
+    // maker sets it (TExportSpecification, the tests): no default here
+    TResamplerChoice        resampler{};
     GDitherType             ditherType{};
 
     // WavPack: how hard it compresses, and whether it leaves out the

@@ -88,7 +88,7 @@ static const char* pattern_name(Pattern p)
 // Seek, the stream pattern from 3.3 s on; SeekCommon, from 3 s on, a frame
 // of both rates (nothing to drop). Returns the output and its first frame
 // on the file's timeline.
-static std::vector<float> read_all(const QString& path, uint outputRate, TAudioResampler::BackendType backend, int quality,
+static std::vector<float> read_all(const QString& path, uint outputRate, TResamplerChoice::Backend backend, int quality,
                                    Pattern pattern, nframes_t& first, nframes_t fileFrames, uint fileRate)
 {
     const std::unique_ptr<TAudioReader> opened = TAudioReader::open(path).value_or(nullptr);
@@ -97,7 +97,7 @@ static std::vector<float> read_all(const QString& path, uint outputRate, TAudioR
         return {};
     }
     TAudioReader& reader = *opened;
-    std::ignore = reader.set_output_rate_and_resampler(outputRate, backend, quality);
+    std::ignore = reader.set_output_rate_and_resampler(outputRate, {backend, qint16(quality)});
 
     // The length and the frames are the file's, at any output rate; the
     // frames at the output rate end where the file ends
@@ -187,12 +187,12 @@ static std::vector<Read> ring_reads(const TTimeRef& sourceStart, const TTimeRef&
 
 // The largest difference between the reads and one read from the frame of
 // the first read on, by a reader of its own
-static float off_one_read(const QString& path, uint rate, TAudioResampler::BackendType backend, const std::vector<Read>& reads)
+static float off_one_read(const QString& path, uint rate, TResamplerChoice::Backend backend, const std::vector<Read>& reads)
 {
     const std::unique_ptr<TAudioReader> ringReader = TAudioReader::open(path).value_or(nullptr);
     const std::unique_ptr<TAudioReader> oneReader = TAudioReader::open(path).value_or(nullptr);
-    std::ignore = ringReader->set_output_rate_and_resampler(rate, backend, TAudioResampler::default_realtime_quality(backend));
-    std::ignore = oneReader->set_output_rate_and_resampler(rate, backend, TAudioResampler::default_realtime_quality(backend));
+    std::ignore = ringReader->set_output_rate_and_resampler(rate, {backend, qint16(TAudioResampler::default_realtime_quality(backend))});
+    std::ignore = oneReader->set_output_rate_and_resampler(rate, {backend, qint16(TAudioResampler::default_realtime_quality(backend))});
 
     const std::vector<float> ring = read_sequence(*ringReader, reads);
     const nframes_t first = TTimeRef::to_nframes(TTimeRef::frame_nearest(reads.front().location, rate));
@@ -242,7 +242,7 @@ static void ring_reads_join(const QTemporaryDir& dir)
         // The fractions of the source start and of the clip's place in its slot
         const std::pair<double, double> fractions[] = {{0.0, 0.0}, {0.0, 0.3}, {0.0, 0.7}, {0.6, 0.3}, {0.4, 0.6}, {0.5, 0.5}, {0.3, 0.5}};
 
-        for (TAudioResampler::BackendType backend : {TAudioResampler::BackendType::LIBSOXR, TAudioResampler::BackendType::LIBSAMPLERATE}) {
+        for (TResamplerChoice::Backend backend : {TResamplerChoice::Backend::LibSoxr, TResamplerChoice::Backend::LibSampleRate}) {
             for (const auto& [sourceFraction, modulusFraction] : fractions) {
                 const float worst = off_one_read(path, c.outputRate, backend,
                                                  ring_reads(frames(1000, sourceFraction), frames(300, modulusFraction), c.outputRate, true));
@@ -281,8 +281,8 @@ int main()
     struct Case { uint fileRate; uint outputRate; };
     const Case cases[] = {{44100, 48000}, {48000, 44100}, {96000, 48000}, {22050, 48000}, {44100, 96000},
                           {88200, 48000}, {8000, 48000}, {192000, 44100}, {11025, 64000}, {48000, 48000}};
-    const TAudioResampler::BackendType backends[] = {TAudioResampler::BackendType::LIBSOXR,
-                                                     TAudioResampler::BackendType::LIBSAMPLERATE};
+    const TResamplerChoice::Backend backends[] = {TResamplerChoice::Backend::LibSoxr,
+                                                     TResamplerChoice::Backend::LibSampleRate};
 
     for (const Case& c : cases) {
         // Below both Nyquist frequencies, so the sweep is the same at either rate
@@ -300,7 +300,7 @@ int main()
 
         const std::vector<float> tpl = sweep(c.outputRate, high);
         // Every quality of every backend
-        for (TAudioResampler::BackendType backend : backends) {
+        for (TResamplerChoice::Backend backend : backends) {
         for (int quality : TAudioResampler::qualities(backend)) {
             for (Pattern pattern : {Pattern::Buffers, Pattern::Stream, Pattern::Seek, Pattern::SeekCommon}) {
                 nframes_t first = 0;
@@ -338,7 +338,7 @@ int main()
     // The end of the file: a sweep that ends 3 ms before it is whole in the
     // output, through the flush of the resampler, read in one go or in
     // pieces of 100 frames (the flush goes on over several reads)
-    for (TAudioResampler::BackendType backend : backends) {
+    for (TResamplerChoice::Backend backend : backends) {
     for (const nframes_t piece : {nframes_t(0), nframes_t(100)}) {
     for (const Case& c : {Case{44100, 48000}, Case{48000, 44100}, Case{96000, 48000}}) {
         const std::vector<float> s = sweep(c.fileRate, 6000.0);
@@ -354,7 +354,7 @@ int main()
             continue;
         }
         TAudioReader& reader = *opened;
-        std::ignore = reader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+        std::ignore = reader.set_output_rate_and_resampler(c.outputRate, {backend, qint16(TAudioResampler::default_realtime_quality(backend))});
         const nframes_t frames = reader.output_frame_count();
         TAudioBuffer buffer;
         std::vector<float> out;
@@ -403,7 +403,7 @@ int main()
             continue;
         }
         TAudioReader& toneReader = *toneOpened;
-        std::ignore = toneReader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+        std::ignore = toneReader.set_output_rate_and_resampler(c.outputRate, {backend, qint16(TAudioResampler::default_realtime_quality(backend))});
         const nframes_t toneFrames = toneReader.output_frame_count();
         std::ignore = toneReader.read(buffer, TTimeRef(), toneFrames);
         const std::vector<float> sequential(buffer.get_channel_buffer(0).get_data(toneFrames),
@@ -436,7 +436,7 @@ int main()
         {
             const std::unique_ptr<TAudioReader> bothOpened = TAudioReader::open(tonePath).value_or(nullptr);
             TAudioReader& both = *bothOpened;
-            std::ignore = both.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
+            std::ignore = both.set_output_rate_and_resampler(c.outputRate, {backend, qint16(TAudioResampler::default_realtime_quality(backend))});
             const nframes_t half = toneFrames / 2;
             TAudioBuffer output;
             std::ignore = both.read(output, TTimeRef(), half);
@@ -472,11 +472,11 @@ int main()
             const uint otherRate = c.outputRate == 48000 ? 44100 : 48000;
             const std::unique_ptr<TAudioReader> changed = TAudioReader::open(tonePath).value_or(nullptr);
             const std::unique_ptr<TAudioReader> fresh = TAudioReader::open(tonePath).value_or(nullptr);
-            std::ignore = changed->set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
-            std::ignore = fresh->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
+            std::ignore = changed->set_output_rate_and_resampler(c.outputRate, {backend, qint16(TAudioResampler::default_realtime_quality(backend))});
+            std::ignore = fresh->set_output_rate_and_resampler(otherRate, {backend, qint16(TAudioResampler::default_realtime_quality(backend))});
             TAudioBuffer output;
             std::ignore = changed->read(output, TTimeRef(), 1000);
-            std::ignore = changed->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
+            std::ignore = changed->set_output_rate_and_resampler(otherRate, {backend, qint16(TAudioResampler::default_realtime_quality(backend))});
             std::ignore = changed->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);
             const std::vector<float> afterChange(output.get_channel_buffer(0).get_data(2000), output.get_channel_buffer(0).get_data(2000) + 2000);
             std::ignore = fresh->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);
