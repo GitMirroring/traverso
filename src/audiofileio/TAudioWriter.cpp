@@ -114,6 +114,22 @@ TAudioFileResult TAudioWriter::write(const TAudioBuffer& fileIOBuffer, nframes_t
     if (m_closed) {
         return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("the file is closed")}};
     }
+    // After a failed write the writer stops: the encoder is not asked again,
+    // every later write gives that first error (close() still completes the
+    // file)
+    if (m_failed) {
+        return {0, m_failed};
+    }
+    TAudioFileResult result = write_frames(fileIOBuffer, frameCount);
+    if (result.error) {
+        result.frames = 0;
+        m_failed = result.error;
+    }
+    return result;
+}
+
+TAudioFileResult TAudioWriter::write_frames(const TAudioBuffer& fileIOBuffer, nframes_t frameCount)
+{
     // Every channel of the file in the caller's buffer: the caller sizes it
     Q_ASSERT(fileIOBuffer.channel_count() >= m_settings.channelCount);
 

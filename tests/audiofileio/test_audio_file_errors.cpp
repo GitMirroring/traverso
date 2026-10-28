@@ -138,6 +138,13 @@ static void test_full_disk()
         for (int block = 0; block < 100 && !error; ++block) {
             error = (*writer)->write(buffer, 4800).error;
         }
+        // The writer stopped at the failure: a later write gives that error
+        // again, 0 frames, without the encoder (W2)
+        if (error) {
+            const TAudioFileResult again = (*writer)->write(buffer, 4800);
+            std::snprintf(what, sizeof(what), "%s on a full disk: a write after the failure gives the first error, 0 frames", name);
+            check(again.frames == 0 && again.error && again.error->detail == error->detail, what);
+        }
         const TAudioFileStatus closed = (*writer)->close();
         if (!error && !closed) {
             error = closed.error();

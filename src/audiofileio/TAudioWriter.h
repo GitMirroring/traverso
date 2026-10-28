@@ -16,6 +16,7 @@ the Free Software Foundation; either version 2 of the License, or
 #include <QString>
 #include <expected>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "TAudioEncodeSettings.h"
@@ -65,10 +66,10 @@ public:
 
     // frameCount frames of the channel buffers of fileIOBuffer, at the input
     // rate. The input frames taken: frameCount, also when the resampler
-    // holds some of them for a later write or close(); fewer, with the
-    // error, when the file could not take them (what the encoder took, or 0
-    // when the input was resampled). After an error the caller stops
-    // writing: the count is not what is in the file. The file's own frames, at its
+    // holds some of them for a later write or close(); 0 with the error when
+    // the file could not take them. After a failed write the writer stops:
+    // every later write gives that first error without touching the file;
+    // close() still completes what was written. The file's own frames, at its
     // rate, are another count. A caller that only needs the count writes
     // .frames.
     TAudioFileResult write(const TAudioBuffer& fileIOBuffer, nframes_t frameCount);
@@ -85,6 +86,8 @@ private:
     TAudioWriter(const TAudioEncodeSettings& settings, std::unique_ptr<TAudioEncoder> encoder, std::unique_ptr<TAudioResampler> resampler,
                  uint inputSampleRate);
 
+    // write() without the stop after a failure
+    TAudioFileResult write_frames(const TAudioBuffer& fileIOBuffer, nframes_t frameCount);
     // At close: what the resampler still holds into the file; the error when
     // it could not all be written
     TAudioFileStatus flush_resampler();
@@ -102,6 +105,8 @@ private:
     // channels are the settings'
     uint                                            m_inputSampleRate;
     bool                                            m_closed{false};
+    // The first failed write's error: the writer writes no more after it
+    std::optional<TAudioFileError>                  m_failed;
 
     // All channels at once: every channel gives the same frames
     std::unique_ptr<TAudioResampler>                m_resampler;
