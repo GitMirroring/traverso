@@ -3,7 +3,7 @@
 
 #include "TScenarioDecoder.h"
 
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 #include <QFile>
 #include <QJsonArray>
@@ -264,7 +264,7 @@ TAudioFileStatus TScenarioDecoder::seek(nframes_t frame)
     return seek_landed(frame);
 }
 
-TAudioFileResult TScenarioDecoder::read(TFileIOBuffer& buffer, nframes_t count)
+TAudioFileResult TScenarioDecoder::read(TAudioBuffer& buffer, nframes_t count)
 {
     if (count == 0) {
         return {};

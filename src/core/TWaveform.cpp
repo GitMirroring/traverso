@@ -4,7 +4,7 @@
 #include "TWaveform.h"
 
 #include "TBufferedAudioStreamReader.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TLog.h"
 #include "TPeakCache.h"
 #include "TPeakPyramid.h"
@@ -30,7 +30,7 @@ TWaveform::TWaveform(TBufferedAudioStreamReader* source, RequestBuild build)
     , m_frameCount(source->get_nframes())
     , m_sourceValid(source->get_error() >= 0)
     , m_peakPath(peak_path(source))
-    , m_decodeBuffer(std::make_unique<TFileIOBuffer>())
+    , m_decodeBuffer(std::make_unique<TAudioBuffer>())
     , m_requestBuild(std::move(build))
 {
     // Delivered once per build, also when it finished before it was watched

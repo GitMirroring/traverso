@@ -10,7 +10,7 @@
 
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 #include <QFile>
 #include <QTemporaryDir>
@@ -89,7 +89,7 @@ static void test_writer(const QTemporaryDir& dir)
         check(false, "a writer opens");
         return;
     }
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     buffer.check_capacity(1000, 2);
     buffer.silence(0, 1000, 2);
     const TAudioFileResult written = (*writer)->write(buffer, 1000);
@@ -126,7 +126,7 @@ static void test_full_disk()
             check(writer.error().code == TAudioFileError::Code::CannotOpen && !writer.error().detail.isEmpty(), what);
             continue;
         }
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         buffer.check_capacity(4800, 2);
         for (uint channel = 0; channel < 2; ++channel) {
             float* data = buffer.get_channel_buffer(channel).get_data(4800);

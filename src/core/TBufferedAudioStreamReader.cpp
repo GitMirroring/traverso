@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProjectManager.h"
 #include "TProject.h"
 #include "AudioBus.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TQueueBufferSlot.h"
 #include "Utils.h"
 #include "TAudioDevice.h"
@@ -252,14 +252,14 @@ void TBufferedAudioStreamReader::set_source_start_location(const TTimeRef &sourc
     m_sourceStartLocation = sourceStartLocation;
 }
 
-TAudioFileResult TBufferedAudioStreamReader::file_read(TFileIOBuffer& buffer, const TTimeRef& fileLocation, nframes_t count) const
+TAudioFileResult TBufferedAudioStreamReader::file_read(TAudioBuffer& buffer, const TTimeRef& fileLocation, nframes_t count) const
 {
     Q_ASSERT(m_audioReader);
     return m_audioReader->read(buffer, fileLocation, count);
 }
 
 
-TAudioFileResult TBufferedAudioStreamReader::file_read_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count) const
+TAudioFileResult TBufferedAudioStreamReader::file_read_frames(TAudioBuffer& buffer, nframes_t firstFrame, nframes_t count) const
 {
     Q_ASSERT(m_audioReader);
     return m_audioReader->read_file_frames(buffer, firstFrame, count);
@@ -310,7 +310,7 @@ int TBufferedAudioStreamReader::set_file(const QString & filename)
 }
 
 
-void TBufferedAudioStreamReader::rb_seek_to_transport_location(TFileIOBuffer &fileDecodeBuffer, const TTimeRef& transportLocation)
+void TBufferedAudioStreamReader::rb_seek_to_transport_location(TAudioBuffer &fileDecodeBuffer, const TTimeRef& transportLocation)
 {
     m_bufferstatus.set_sync_status(TBufferedAudioStreamStatus::QUEUE_SEEKING_TO_NEW_LOCATION);
 
@@ -438,7 +438,7 @@ TIOStream::State TBufferedAudioStreamReader::disk_state(const TTimeRef& transpor
     return TIOStream::State{status.needs_disk_work(), true, status.get_fill_status()};
 }
 
-void TBufferedAudioStreamReader::process_realtime_buffers(TFileIOBuffer& fileDecodeBuffer)
+void TBufferedAudioStreamReader::process_realtime_buffers(TAudioBuffer& fileDecodeBuffer)
 {
     Q_ASSERT(m_lastQueuedRTBufferSlot);
     Q_ASSERT(m_channelCount > 0);

@@ -9,7 +9,7 @@
 
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 #include <QFile>
 #include <QTemporaryDir>
@@ -45,7 +45,7 @@ static bool reads(const QString& path, nframes_t frames)
     if (!reader || reader->file_frame_count() != frames || reader->channel_count() != Channels) {
         return false;
     }
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     if (reader->read_file_frames(buffer, 0, frames).frames != frames) {
         return false;
     }
@@ -107,7 +107,7 @@ int main()
         }
 
         // A second in pieces, as a recording writes it
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         buffer.check_capacity(Piece, Channels);
         nframes_t frame = 0;
         for (int piece = 0; piece < 10; ++piece) {

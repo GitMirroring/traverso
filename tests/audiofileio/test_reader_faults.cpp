@@ -16,7 +16,7 @@
 // Reads go through read() at a location in time, as the streams read.
 
 #include "TAudioReader.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TTimeRef.h"
 #include "test_signals.h"
 
@@ -89,7 +89,7 @@ struct ReadBlock
 static std::vector<ReadBlock> read_blocks(TAudioReader& reader, nframes_t from, nframes_t to)
 {
     std::vector<ReadBlock> blocks;
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     for (nframes_t first = from; first < to; first += Block) {
         auto [read, error] = reader.read(buffer, TTimeRef(first, reader.output_rate()), Block);
         const float* data = buffer.get_channel_buffer(1).get_data(Block);
@@ -104,7 +104,7 @@ static std::vector<ReadBlock> read_blocks(TAudioReader& reader, nframes_t from, 
 static std::vector<float> clean_block(const QString& cleanPath, uint outputRate, nframes_t first)
 {
     const std::unique_ptr<TAudioReader> reader = open_at(cleanPath, outputRate);
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     std::ignore = reader->read(buffer, TTimeRef(first, outputRate), Block);
     const float* data = buffer.get_channel_buffer(1).get_data(Block);
     return std::vector<float>(data, data + Block);
@@ -194,7 +194,7 @@ static void test_seek_error(const QTemporaryDir& dir, const QString& cleanPath, 
     // without a seek works (no seek is asked)
     const QString path = write_scenario(dir, "seek-error.tscenario", R"([{"kind": "seek-error", "frame": 60000, "frames": 10000}])");
     const std::unique_ptr<TAudioReader> reader = open_at(path, outputRate);
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     const nframes_t inside = TTimeRef::to_nframes(TTimeRef::frame_at_or_before(TTimeRef(nframes_t(65000), FileRate), outputRate));
     buffer.check_capacity(Block, 2);
     std::fill_n(buffer.get_channel_buffer(1).get_data(Block), Block, 0.7f);
@@ -243,7 +243,7 @@ static void test_end(const QTemporaryDir& dir, uint outputRate)
         }
     }
     // At and past the frame count: nothing to read, no error
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     const TAudioFileResult past = reader->read(buffer, TTimeRef(reader->output_frame_count(), outputRate), Block);
     zerosAfter = zerosAfter && past.frames == 0 && !past.error;
     std::snprintf(what, sizeof(what), "audio that ends early %s: the frames until then (%u, the end at %u), zeros and 0 after", way(outputRate), total, end);

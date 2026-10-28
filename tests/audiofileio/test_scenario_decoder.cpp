@@ -10,7 +10,7 @@
 
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TTimeRef.h"
 #include "test_signals.h"
 
@@ -61,7 +61,7 @@ static std::vector<std::vector<float>> read_all(TAudioReader& reader)
     const uint channels = reader.channel_count();
     const nframes_t frames = reader.file_frame_count();
     std::vector<std::vector<float>> samples(channels, std::vector<float>(frames));
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     for (nframes_t at = 0; at < frames; at += 4096) {
         const nframes_t count = std::min<nframes_t>(4096, frames - at);
         std::ignore = reader.read_file_frames(buffer, at, count);
@@ -128,7 +128,7 @@ static void test_ramp(const QTemporaryDir& dir)
     }
     // Block by block: all of it at once would be 134 MB
     bool exact = true;
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     for (nframes_t at = 0; at < frames; at += 65536) {
         const nframes_t count = std::min<nframes_t>(65536, frames - at);
         std::ignore = reader->read_file_frames(buffer, at, count);
@@ -194,7 +194,7 @@ static void test_edges(const QTemporaryDir& dir)
     const std::unique_ptr<TAudioReader> one = TAudioReader::open(single).value_or(nullptr);
     bool ok = one && one->file_frame_count() == 1;
     if (ok) {
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         const nframes_t read = one->read_file_frames(buffer, 0, 10).frames;
         const float* data = buffer.get_channel_buffer(0).get_data(10);
         ok = read == 1 && data[0] == 0.25f && std::all_of(data + 1, data + 10, [](float sample) { return sample == 0.0f; });
@@ -229,7 +229,7 @@ static void test_ramp_through_writer(const QTemporaryDir& dir)
         check(false, "the ramp to write opens");
         return;
     }
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     std::ignore = reader->read_file_frames(buffer, 0, frames);
 
     TAudioEncodeSettings settings;

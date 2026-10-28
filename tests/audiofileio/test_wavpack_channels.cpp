@@ -7,7 +7,7 @@
 
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 #include <QTemporaryDir>
 
@@ -43,7 +43,7 @@ static bool write_file(const QString& path, const TAudioEncodeSettings& settings
     if (!writer) {
         return false;
     }
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     buffer.check_capacity(Frames, settings.channelCount);
     for (uint channel = 0; channel < settings.channelCount; ++channel) {
         float* samples = buffer.get_channel_buffer(channel).get_data(Frames);
@@ -92,7 +92,7 @@ int main()
 
         const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
         bool same = reader && reader->channel_count() == c.channels && reader->file_frame_count() == Frames;
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         same = same && reader->read_file_frames(buffer, 0, Frames).frames == Frames;
         for (uint channel = 0; same && channel < c.channels; ++channel) {
             const float* samples = buffer.get_channel_buffer(channel).get_data(Frames);

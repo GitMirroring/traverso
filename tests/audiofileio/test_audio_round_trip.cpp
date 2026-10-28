@@ -24,7 +24,7 @@
 
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 #include <QFile>
 #include <QTemporaryDir>
@@ -96,7 +96,7 @@ static Channels read_all(TAudioReader& reader)
     const uint channels = reader.channel_count();
     const nframes_t frames = std::min(reader.file_frame_count(), ReadLimit);
     Channels samples(channels, std::vector<float>(frames));
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     for (nframes_t at = 0; at < frames; at += Block) {
         const nframes_t count = std::min(Block, frames - at);
         std::ignore = reader.read_file_frames(buffer, at, count);
@@ -209,7 +209,7 @@ static void round_trip(const QTemporaryDir& dir, const Format& format, TraversoD
         s_refused.push_back(line);
         return;
     }
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     bool written = true;
     for (nframes_t at = 0; at < Frames; at += Block) {
         const nframes_t count = std::min(Block, Frames - at);

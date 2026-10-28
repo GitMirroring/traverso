@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 #include "TAudioDecoder.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 class FaadAudioReader : public TAudioDecoder
 {
@@ -35,7 +35,7 @@ public:
 	static bool can_decode(const QString& filename);
 
     TAudioFileStatus seek(nframes_t frame) override;
-    TAudioFileResult read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+    TAudioFileResult read(TAudioBuffer& fileIOBuffer, nframes_t count) override;
 
 protected:
     // The packets decoded before the one a seek goes to (with a fresh
@@ -44,7 +44,7 @@ protected:
 
     // frameCount frames from the decoder's position into the channel
     // buffers; the frames it gave
-    nframes_t decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
+    nframes_t decode(TAudioBuffer& fileIOBuffer, nframes_t frameCount);
     // The next packet into the decoder's output (silence when it does not
     // decode); false at the end of the file
     bool decode_next_packet();

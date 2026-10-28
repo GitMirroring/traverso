@@ -4,7 +4,7 @@
 #include "TPeakBuildTask.h"
 
 #include "TAudioReader.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TLog.h"
 
 
@@ -38,7 +38,7 @@ public:
 
 private:
     std::unique_ptr<TAudioReader> m_reader;
-    TFileIOBuffer m_buffer;
+    TAudioBuffer m_buffer;
 };
 
 

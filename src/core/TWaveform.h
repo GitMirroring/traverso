@@ -20,7 +20,7 @@
 class TBufferedAudioStream;
 class TBufferedAudioStreamReader;
 class TPeakStream;
-class TFileIOBuffer;
+class TAudioBuffer;
 
 /**
  * @brief The waveform of one audio source for its views.
@@ -117,7 +117,7 @@ private:
     std::shared_ptr<TPeakStream> m_building;
     QString m_peakPath;
     TPeakFile m_file;
-    std::unique_ptr<TFileIOBuffer> m_decodeBuffer;
+    std::unique_ptr<TAudioBuffer> m_decodeBuffer;
     RequestBuild m_requestBuild;
     QFutureWatcher<TPeakBuildResult> m_build;
     State m_state{State::Building};

@@ -19,7 +19,7 @@
 
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "test_signals.h"
 
 #include <QFile>
@@ -122,7 +122,7 @@ static bool write_with_traverso(const QString& path, const Source& source, Trave
     if (!file) {
         return false;
     }
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     buffer.check_capacity(source.frames(), source.channels);
     for (uint channel = 0; channel < source.channels; ++channel) {
         const std::vector<float> samples = source.channel(channel);
@@ -248,7 +248,7 @@ struct Format
     const char* knownWhy = nullptr;
 };
 
-static void fill_with_garbage(TFileIOBuffer& buffer, nframes_t count, uint channels)
+static void fill_with_garbage(TAudioBuffer& buffer, nframes_t count, uint channels)
 {
     buffer.check_capacity(count, channels);
     for (uint channel = 0; channel < channels; ++channel) {
@@ -294,7 +294,7 @@ static void test_format(const QTemporaryDir& dir, const Format& format)
 
     // From the start in reads of 1000 frames
     std::vector<std::vector<float>> sequential(channels);
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     nframes_t total = 0;
     for (nframes_t at = 0; at < frames; at += 1000) {
         const nframes_t count = std::min<nframes_t>(1000, frames - at);
@@ -448,7 +448,7 @@ static void test_cut_file(const QTemporaryDir& dir, const Format& format, SeekBa
     const uint channels = whole->channel_count();
     const nframes_t frames = whole->file_frame_count();
     std::vector<std::vector<float>> reference(channels);
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     for (nframes_t at = 0; at < frames; at += 1000) {
         const nframes_t count = std::min<nframes_t>(1000, frames - at);
         const nframes_t read = whole->read_file_frames(buffer, at, count).frames;

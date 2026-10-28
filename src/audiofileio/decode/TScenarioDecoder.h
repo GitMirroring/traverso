@@ -64,7 +64,7 @@ public:
     [[nodiscard]] static std::expected<void, QString> check(const QString& fileName);
 
     TAudioFileStatus seek(nframes_t frame) override;
-    TAudioFileResult read(TFileIOBuffer& buffer, nframes_t count) override;
+    TAudioFileResult read(TAudioBuffer& buffer, nframes_t count) override;
 
 private:
     struct Signal

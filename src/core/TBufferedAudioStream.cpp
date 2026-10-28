@@ -121,7 +121,7 @@ int TBufferedAudioStream::step(const StepInfo& info)
 {
     // One decode buffer per thread that steps (a worker of the scheduler's
     // pool)
-    static thread_local TFileIOBuffer fileIOBuffer;
+    static thread_local TAudioBuffer fileIOBuffer;
     TBufferedAudioStreamStatus& status = get_buffer_status();
 
     if (info.seek) {

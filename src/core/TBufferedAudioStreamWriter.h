@@ -30,7 +30,7 @@ class TExportSpecification;
 class TPeakStream;
 class TAudioWriter;
 class AudioBus;
-class TFileIOBuffer;
+class TAudioBuffer;
 
 class TBufferedAudioStreamWriter : public TBufferedAudioStream
 {
@@ -41,7 +41,7 @@ public :
     ~TBufferedAudioStreamWriter();
 
     nframes_t ringbuffer_write(TProcessContext &context) T_REALTIME_SAFE;
-    int rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer);
+    int rb_file_write(TQueueBufferSlot* slot, TAudioBuffer& fileIOBuffer);
 
     TBufferedAudioStreamStatus& get_buffer_status() final;
     // The peaks of this recording, streamed to its peak file as level 0
@@ -84,8 +84,8 @@ private:
 
     TQueueBufferSlot* dequeue_from_free_queue(TProcessContext &context) T_REALTIME_SAFE;
 
-    void process_realtime_buffers(TFileIOBuffer &fileIOBuffer) final;
-    void rb_seek_to_transport_location(TFileIOBuffer&, const TTimeRef &/*transportLocation*/) final {}
+    void process_realtime_buffers(TAudioBuffer &fileIOBuffer) final;
+    void rb_seek_to_transport_location(TAudioBuffer&, const TTimeRef &/*transportLocation*/) final {}
     void set_output_rate_and_resampler(int /*outputRate*/, const Resampler& /*resampler*/) final {}
     // Something to write (it is recorded audio: as soon as it is there), or
     // the recording stopped and the file is not finished yet

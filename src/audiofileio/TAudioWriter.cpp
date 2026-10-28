@@ -12,7 +12,7 @@ the Free Software Foundation; either version 2 of the License, or
 #include "TAudioWriter.h"
 #include "TAudioEncoder.h"
 #include "TAudioResampler.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "gdither.h"
 #include "TLog.h"
 
@@ -106,7 +106,7 @@ TAudioFileStatus TAudioWriter::close()
     return flushed ? closed : flushed;
 }
 
-TAudioFileResult TAudioWriter::write(const TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
+TAudioFileResult TAudioWriter::write(const TAudioBuffer& fileIOBuffer, nframes_t frameCount)
 {
     if (frameCount == 0) {
         return {};
@@ -180,7 +180,7 @@ static void* packed_scratch(size_t bytes)
     return scratch.data();
 }
 
-float* TAudioWriter::interleave(const TFileIOBuffer& buffer, nframes_t frames)
+float* TAudioWriter::interleave(const TAudioBuffer& buffer, nframes_t frames)
 {
     float* interleaved = interleaved_scratch(size_t(frames) * m_settings.channelCount);
     for (uint chan = 0; chan < m_settings.channelCount; ++chan) {

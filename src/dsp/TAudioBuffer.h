@@ -25,12 +25,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <memory>
 #include <vector>
 
-// The channels of audio read from or written to a file: one TChannelBuffer
-// per channel. Who writes into it makes the room (check_capacity()); the
-// readers and writers keep their interleaved and packed scratch themselves.
-class TFileIOBuffer {
+// Audio of several channels: one TChannelBuffer per channel, owned here,
+// with a stable array of them for a resampler. Used where audio is read or
+// written (TAudioReader, TAudioWriter, the disk streams), not on the audio
+// thread: it grows. Who writes into it makes the room (check_capacity());
+// the readers and writers keep their interleaved and packed scratch
+// themselves. (Before 2026-10-28 this was TFileIOBuffer, and TAudioBuffer
+// was the one-channel buffer, now TChannelBuffer: doc/design/renames.md.)
+class TAudioBuffer {
 public:
-    TFileIOBuffer()
+    TAudioBuffer()
         : m_channelBufferSize(1)
     {
         // Default initialize to stereo footprint capacity

@@ -10,7 +10,7 @@
 // bit: no frame lost or doubled where they join.
 
 #include "TAudioReader.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TTimeRef.h"
 #include "sweeps.h"
 
@@ -113,7 +113,7 @@ static std::vector<float> read_all(const QString& path, uint outputRate, TAudioR
           : pattern == Pattern::SeekCommon ? 3 * outputRate : 0;
 
     std::vector<float> out;
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     TTimeRef location(first, outputRate);
     nframes_t queued = 0;
     nframes_t produced = first / bufferSize;
@@ -153,7 +153,7 @@ struct Read {
 static std::vector<float> read_sequence(TAudioReader& reader, const std::vector<Read>& reads)
 {
     std::vector<float> out;
-    TFileIOBuffer buffer;
+    TAudioBuffer buffer;
     for (const Read& r : reads) {
         std::ignore = reader.read(buffer, r.location, r.count);
         const float* data = buffer.get_channel_buffer(0).get_data(r.count);
@@ -356,7 +356,7 @@ int main()
         TAudioReader& reader = *opened;
         std::ignore = reader.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
         const nframes_t frames = reader.output_frame_count();
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         std::vector<float> out;
         for (nframes_t at = 0; at < frames;) {
             const nframes_t n = piece ? std::min(piece, frames - at) : frames;
@@ -438,10 +438,10 @@ int main()
             TAudioReader& both = *bothOpened;
             std::ignore = both.set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
             const nframes_t half = toneFrames / 2;
-            TFileIOBuffer output;
+            TAudioBuffer output;
             std::ignore = both.read(output, TTimeRef(), half);
             std::vector<float> resampled(output.get_channel_buffer(0).get_data(half), output.get_channel_buffer(0).get_data(half) + half);
-            TFileIOBuffer native;
+            TAudioBuffer native;
             const nframes_t nativeFirst = nframes_t(tone.size() / 3);
             const nframes_t nativeRead = both.read_file_frames(native, nativeFirst, 500).frames;
             float nativeDiff = 0.0f;
@@ -474,7 +474,7 @@ int main()
             const std::unique_ptr<TAudioReader> fresh = TAudioReader::open(tonePath).value_or(nullptr);
             std::ignore = changed->set_output_rate_and_resampler(c.outputRate, backend, TAudioResampler::default_realtime_quality(backend));
             std::ignore = fresh->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
-            TFileIOBuffer output;
+            TAudioBuffer output;
             std::ignore = changed->read(output, TTimeRef(), 1000);
             std::ignore = changed->set_output_rate_and_resampler(otherRate, backend, TAudioResampler::default_realtime_quality(backend));
             std::ignore = changed->read(output, TTimeRef(nframes_t(1000), otherRate), 2000);

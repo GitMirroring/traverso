@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 #include "TBufferedAudioStreamStatus.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TIOStream.h"
 #include "TTimeRef.h"
 #include "defines.h"
@@ -95,7 +95,7 @@ private:
     void delete_queue_buffers();
     // What a step does, in the reader or the writer: read or write all there
     // is room for, or seek
-    virtual void process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer) = 0;
-    virtual void rb_seek_to_transport_location(TFileIOBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) = 0;
+    virtual void process_realtime_buffers(TAudioBuffer &fileDecodeBuffer) = 0;
+    virtual void rb_seek_to_transport_location(TAudioBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) = 0;
 };
 

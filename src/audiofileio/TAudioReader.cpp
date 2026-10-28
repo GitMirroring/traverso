@@ -162,7 +162,7 @@ std::expected<bool, TAudioFileError> TAudioReader::reposition(nframes_t frame)
     return true;
 }
 
-TAudioFileResult TAudioReader::read(TFileIOBuffer& buffer, const TTimeRef& location, nframes_t count)
+TAudioFileResult TAudioReader::read(TAudioBuffer& buffer, const TTimeRef& location, nframes_t count)
 {
     if (count == 0) {
         return {};
@@ -204,7 +204,7 @@ TAudioFileResult TAudioReader::read(TFileIOBuffer& buffer, const TTimeRef& locat
     return result;
 }
 
-TAudioFileResult TAudioReader::read_file_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count)
+TAudioFileResult TAudioReader::read_file_frames(TAudioBuffer& buffer, nframes_t firstFrame, nframes_t count)
 {
     if (count == 0) {
         return {};
@@ -214,7 +214,7 @@ TAudioFileResult TAudioReader::read_file_frames(TFileIOBuffer& buffer, nframes_t
     return m_decoder->read_from(buffer, firstFrame, count);
 }
 
-TAudioFileResult TAudioReader::read_resampled(TFileIOBuffer& buffer, nframes_t count)
+TAudioFileResult TAudioReader::read_resampled(TAudioBuffer& buffer, nframes_t count)
 {
     // Not past the frames the file gives at the output rate (read() asks
     // below them only)
@@ -258,7 +258,7 @@ nframes_t TAudioReader::file_frames_for(nframes_t outputFrames) const
     return TTimeRef::to_nframes(TTimeRef::frames_covering(outputFrames, m_outputRate, file_rate()));
 }
 
-TAudioFileResult TAudioReader::resample_into(TFileIOBuffer& out, nframes_t count)
+TAudioFileResult TAudioReader::resample_into(TAudioBuffer& out, nframes_t count)
 {
     // The resampler gives what its input allows: after a seek it holds back
     // the length of its filter, and soxr releases its output in blocks of its

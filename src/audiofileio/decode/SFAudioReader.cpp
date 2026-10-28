@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <algorithm>
 #include <vector>
 
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TLog.h"
 
 
@@ -132,7 +132,7 @@ static float* interleaved_scratch(size_t samples)
     return scratch.data();
 }
 
-TAudioFileResult SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+TAudioFileResult SFAudioReader::read(TAudioBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
         return {};

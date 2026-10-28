@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <algorithm>
 #include <cstring>
 
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 RELAYTOOL_MAD;
 
@@ -779,7 +779,7 @@ unsigned long MadAudioReader::countFrames()
 }
 
 
-TAudioFileResult MadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+TAudioFileResult MadAudioReader::read(TAudioBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
         return {};
@@ -793,7 +793,7 @@ TAudioFileResult MadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t cou
 }
 
 
-nframes_t MadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
+nframes_t MadAudioReader::decode(TAudioBuffer& fileIOBuffer, nframes_t frameCount)
 {
     nframes_t given = 0;
     while (given < frameCount && m_frame + given < m_frames) {

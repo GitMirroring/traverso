@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "WPAudioReader.h"
 #include <QString>
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TLog.h"
 
 RELAYTOOL_WAVPACK;
@@ -96,7 +96,7 @@ TAudioFileStatus WPAudioReader::seek(nframes_t frame)
 }
 
 
-TAudioFileResult WPAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+TAudioFileResult WPAudioReader::read(TAudioBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
         return {};
@@ -120,7 +120,7 @@ TAudioFileResult WPAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t coun
     return read_done(fileIOBuffer, readFrames, count, detail);
 }
 
-void WPAudioReader::unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuffer, nframes_t readFrames)
+void WPAudioReader::unpack(TAudioBuffer& fileIOBuffer, const int32_t* unpackBuffer, nframes_t readFrames)
 {
     if (readFrames == 0) {
         return;

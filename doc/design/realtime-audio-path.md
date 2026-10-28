@@ -269,7 +269,7 @@ Open, for the review (design choices, not made on the branch):
    the path does not use them where a plain `TChannelBuffer` will do (user
    2026-10-25): check every `TChannelBuffer` the path reads or writes (the
    buses' channels, the slots, the curve buffer, the clip's and plugins'
-   buffers, `TFileIOBuffer`s the audio thread touches) and every
+   buffers, `TAudioBuffer`s (channel lists, before `TFileIOBuffer`) the audio thread touches) and every
    `TRealTimeChannelBuffer` outside it. `TChannelBuffer::is_memory_locked()`
    (review-stack 2b39ca5b) tells whether a lock was granted.
 7. A run that plays: the clips' read path, recording, fades and plugins ran

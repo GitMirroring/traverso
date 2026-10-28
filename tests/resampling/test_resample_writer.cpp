@@ -8,7 +8,7 @@
 
 #include "TAudioReader.h"
 #include "TAudioEncodeSettings.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TAudioWriter.h"
 #include "sweeps.h"
 
@@ -115,7 +115,7 @@ int main()
             if (!writer) {
                 continue;
             }
-            TFileIOBuffer buffer;
+            TAudioBuffer buffer;
             bool allTaken = true;
             for (nframes_t at = 0; at < inputFrames; at += settings.blockSize) {
                 const nframes_t n = std::min<nframes_t>(settings.blockSize, inputFrames - at);
@@ -139,7 +139,7 @@ int main()
         }
         const nframes_t fileFrames = reader->file_frame_count();
         std::vector<float> file(fileFrames, 0.0f);
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         if (fileFrames > 0) {
             std::ignore = reader->read_file_frames(buffer, 0, fileFrames);
         }

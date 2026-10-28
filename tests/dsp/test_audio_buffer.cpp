@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// Headless test of TFileIOBuffer: a buffer that served a stereo source (as
+// Headless test of TAudioBuffer: a buffer that served a stereo source (as
 // the decode buffer of a disk thread does) also holds a source with more
 // channels, whether the new read is smaller or larger than the ones before,
 // and a 4-channel file read through it keeps its channels apart.
 
 #include "TAudioReader.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 #include <QFile>
 #include <QTemporaryDir>
@@ -68,7 +68,7 @@ static bool write_wav(const QString& path, uint channels, uint frames)
 
 // Reads count frames of a file into the buffer, as a stream does, and checks
 // that every channel holds its own value
-static bool read_file(TFileIOBuffer& buffer, const QString& path, uint channels, nframes_t count)
+static bool read_file(TAudioBuffer& buffer, const QString& path, uint channels, nframes_t count)
 {
     const std::unique_ptr<TAudioReader> reader = TAudioReader::open(path).value_or(nullptr);
     if (!reader || reader->channel_count() != channels) {
@@ -93,7 +93,7 @@ int main()
 {
     // More channels with a read smaller than the ones before
     {
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         buffer.check_capacity(4096, 2);
         buffer.check_capacity(1024, 4);
         bool roomy = buffer.channel_count() == 4;
@@ -105,7 +105,7 @@ int main()
 
     // More channels with a read larger than the ones before
     {
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         buffer.check_capacity(1024, 2);
         buffer.check_capacity(30720, 4);
         bool roomy = buffer.channel_count() == 4;
@@ -124,12 +124,12 @@ int main()
         return 1;
     }
     {
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         const bool stereoRead = read_file(buffer, stereo, 2, 4096);
         check(stereoRead && read_file(buffer, quad, 4, 1024), "a 4-channel file read after a larger stereo read");
     }
     {
-        TFileIOBuffer buffer;
+        TAudioBuffer buffer;
         const bool stereoRead = read_file(buffer, stereo, 2, 512);
         check(stereoRead && read_file(buffer, quad, 4, 4096), "a 4-channel file read after a smaller stereo read");
     }
@@ -138,6 +138,6 @@ int main()
         std::printf("%d check(s) failed\n", failures);
         return 1;
     }
-    std::printf("all TFileIOBuffer tests passed\n");
+    std::printf("all TAudioBuffer tests passed\n");
     return 0;
 }

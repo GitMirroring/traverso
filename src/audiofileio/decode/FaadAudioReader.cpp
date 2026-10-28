@@ -656,7 +656,7 @@ TAudioFileStatus FaadAudioReader::seek(nframes_t frame)
 	return seek_landed(frame);
 }
 
-TAudioFileResult FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
+TAudioFileResult FaadAudioReader::read(TAudioBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
         return {};
@@ -672,7 +672,7 @@ TAudioFileResult FaadAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t co
                      readFrames < count && packetLeft ? QStringLiteral("the file gives an AAC packet only in part") : QString());
 }
 
-nframes_t FaadAudioReader::decode(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
+nframes_t FaadAudioReader::decode(TAudioBuffer& fileIOBuffer, nframes_t frameCount)
 {
 	nframes_t given = 0;
 	while (given < frameCount && m_frame + given < m_frames) {

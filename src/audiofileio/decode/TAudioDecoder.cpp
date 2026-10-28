@@ -3,7 +3,7 @@
 
 #include "TAudioDecoder.h"
 
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 
 #include "SFAudioReader.h"
 #include "WPAudioReader.h"
@@ -17,7 +17,7 @@
 #include <QFile>
 #include <QFileInfo>
 
-TAudioFileResult TAudioDecoder::read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count)
+TAudioFileResult TAudioDecoder::read_from(TAudioBuffer& buffer, nframes_t first, nframes_t count)
 {
     // Nothing to read: zeros, as read() gives past the end
     const auto nothing = [&](std::optional<TAudioFileError> error) -> TAudioFileResult {
@@ -55,7 +55,7 @@ TAudioFileStatus TAudioDecoder::seek_failed(nframes_t frame, const QString& deta
                                            detail.isEmpty() ? QStringLiteral("cannot seek to frame %1").arg(frame) : detail});
 }
 
-TAudioFileResult TAudioDecoder::read_done(TFileIOBuffer& buffer, nframes_t read, nframes_t count, const QString& detail)
+TAudioFileResult TAudioDecoder::read_done(TAudioBuffer& buffer, nframes_t read, nframes_t count, const QString& detail)
 {
     // What the file did not give: zeros (contract point 1)
     buffer.silence(read, count - read, m_channels);

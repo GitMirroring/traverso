@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioFileError.h"
 #include "TAudioResampler.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -109,11 +109,11 @@ public:
     // each where the last one ended, are one read, whatever fraction of a
     // frame the first location has. At or past the end: zeros and 0, no
     // seek, no error.
-    TAudioFileResult read(TFileIOBuffer& buffer, const TTimeRef& location, nframes_t count);
+    TAudioFileResult read(TAudioBuffer& buffer, const TTimeRef& location, nframes_t count);
     // count frames of the file at its own rate into buffer, from its frame
     // firstFrame: the frames that came from the file, and the error of this
     // read when it failed
-    TAudioFileResult read_file_frames(TFileIOBuffer& buffer, nframes_t firstFrame, nframes_t count);
+    TAudioFileResult read_file_frames(TAudioBuffer& buffer, nframes_t firstFrame, nframes_t count);
 
 private:
     explicit TAudioReader(std::unique_ptr<TAudioDecoder> decoder);
@@ -128,11 +128,11 @@ private:
     // count resampled frames from the reader's position into buffer; what
     // came from the file, zeros after it, and the error of the decoder's
     // reads
-    TAudioFileResult read_resampled(TFileIOBuffer& buffer, nframes_t count);
+    TAudioFileResult read_resampled(TAudioBuffer& buffer, nframes_t count);
     // count output frames into out from frame 0, reading the file as far as
     // that takes; fewer only at the end of the file or after a decoder
     // error (the resampler flushed at both), with that error
-    TAudioFileResult resample_into(TFileIOBuffer& out, nframes_t count);
+    TAudioFileResult resample_into(TAudioBuffer& out, nframes_t count);
     // The file frames that cover outputFrames output frames: one read of
     // the decoder for them
     nframes_t file_frames_for(nframes_t outputFrames) const;
@@ -141,7 +141,7 @@ private:
     // Only when the output rate is not the file's
     std::unique_ptr<TAudioResampler> m_resampler;
     // What the decoder reads for the resampler
-    TFileIOBuffer m_decodeBuffer;
+    TAudioBuffer m_decodeBuffer;
 
     uint m_outputRate{0};
     nframes_t m_outputFrames{0};

@@ -27,7 +27,7 @@ if(TARGET PkgConfig::FAAC)
 endif()
 
 # What the rest of Traverso reads and writes audio files with: TAudioReader
-# and TAudioWriter (with TFileIOBuffer and TAudioEncodeSettings), in this
+# and TAudioWriter (with TAudioEncodeSettings, and dsp's TAudioBuffer), in this
 # directory. The decoders and encoders per library are the library's own.
 # It never includes headers of libraries it does not link.
 target_include_directories(traversoaudiofileio

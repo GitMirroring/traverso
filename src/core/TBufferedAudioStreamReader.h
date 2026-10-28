@@ -65,8 +65,8 @@ public :
     // (a time); and count frames of the file at its own rate from its frame
     // firstFrame (a waveform works on the file's grid). What the file gives
     // and zeros past its end (TAudioReader).
-    TAudioFileResult file_read(TFileIOBuffer &buffer, const TTimeRef& fileLocation, nframes_t count) const;
-    TAudioFileResult file_read_frames(TFileIOBuffer &buffer, nframes_t firstFrame, nframes_t count) const;
+    TAudioFileResult file_read(TAudioBuffer &buffer, const TTimeRef& fileLocation, nframes_t count) const;
+    TAudioFileResult file_read_frames(TAudioBuffer &buffer, nframes_t firstFrame, nframes_t count) const;
 
 	int init();
 	int get_error() const {return m_error;}
@@ -114,8 +114,8 @@ private:
     friend class TProjectConverter;
 
     // re-implemented only to be called by DiskIO
-    void process_realtime_buffers(TFileIOBuffer &fileDecodeBuffer) final;
-    void rb_seek_to_transport_location(TFileIOBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) final;
+    void process_realtime_buffers(TAudioBuffer &fileDecodeBuffer) final;
+    void rb_seek_to_transport_location(TAudioBuffer& fileDecodeBuffer, const TTimeRef &transportLocation) final;
     void set_output_rate_and_resampler(int outputRate, const Resampler& resampler) final;
     // Out of its window, a reader needs work when the transport came close
     // (it seeks then) and its fill does not count; otherwise it needs work

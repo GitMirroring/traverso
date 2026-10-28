@@ -20,7 +20,7 @@ the Free Software Foundation; either version 2 of the License, or
 
 #include "TAudioEncodeSettings.h"
 #include "TAudioFileError.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 class TAudioEncoder;
 class TAudioResampler;
 
@@ -68,7 +68,7 @@ public:
     // writing: the count is not what is in the file. The file's own frames, at its
     // rate, are another count. A caller that only needs the count writes
     // .frames.
-    TAudioFileResult write(const TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
+    TAudioFileResult write(const TAudioBuffer& fileIOBuffer, nframes_t frameCount);
     // The file complete (the resampler's rest, the encoder's end, the
     // header), or why not (WriteFailed). The writer writes no more after; a
     // second close() does nothing and is no error.
@@ -87,7 +87,7 @@ private:
     TAudioFileStatus flush_resampler();
     // The channels of buffer, frames long, interleaved in the writer's
     // scratch (per thread); a pointer to it
-    float* interleave(const TFileIOBuffer& buffer, nframes_t frames);
+    float* interleave(const TAudioBuffer& buffer, nframes_t frames);
     // frames interleaved frames into the file, in the file's format (packed
     // in the writer's scratch when it is not float)
     TAudioFileResult write_interleaved(float* interleaved, nframes_t frames);
@@ -105,5 +105,5 @@ private:
     GDither                                         m_dither;
     // What the resampler gives, per channel (the input frames become
     // another count of output frames)
-    TFileIOBuffer                                   m_resampleEncodeBuffer;
+    TAudioBuffer                                   m_resampleEncodeBuffer;
 };

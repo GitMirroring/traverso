@@ -19,6 +19,7 @@ endif()
 
 add_library(traversodsp STATIC
     TChannelBuffer.h TChannelBuffer.cpp
+    TAudioBuffer.h
     Mixer.h Mixer.cpp
     fpu.h fpu.cc
     gdither.h gdither_types.h gdither.cpp

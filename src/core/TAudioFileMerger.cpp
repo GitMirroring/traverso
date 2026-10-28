@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QMutexLocker>
 
 #include "TExportSpecification.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TBufferedAudioStreamReader.h"
 #include "TBufferedAudioStreamWriter.h"
 #include "TQueueBufferSlot.h"
@@ -75,9 +75,9 @@ void TAudioFileMerger::process_task(MergeTask task)
 
     emit taskStarted(name.left(length-28));
 
-    TFileIOBuffer decodebuffer0;
-    TFileIOBuffer decodebuffer1;
-    TFileIOBuffer fileIOBuffer;
+    TAudioBuffer decodebuffer0;
+    TAudioBuffer decodebuffer1;
+    TAudioBuffer fileIOBuffer;
 
     TExportSpecification spec;
     spec.set_export_start_location(TTimeRef());

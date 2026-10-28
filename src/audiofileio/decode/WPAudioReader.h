@@ -37,11 +37,11 @@ public:
     static void print_libwavpack_version();
 
     TAudioFileStatus seek(nframes_t frame) override;
-    TAudioFileResult read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+    TAudioFileResult read(TAudioBuffer& fileIOBuffer, nframes_t count) override;
 
 private:
     // readFrames frames WavPack unpacked into the channel buffers, as float
-    void unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuffer, nframes_t readFrames);
+    void unpack(TAudioBuffer& fileIOBuffer, const int32_t* unpackBuffer, nframes_t readFrames);
 
     WavpackContext*	m_wp{nullptr};
     bool		m_isFloat{false};

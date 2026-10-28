@@ -12,7 +12,7 @@
 #include <expected>
 #include <memory>
 
-class TFileIOBuffer;
+class TAudioBuffer;
 
 /**
  * @brief Reads the audio of one file at the file's own rate. One class per
@@ -91,14 +91,14 @@ public:
     // count frames from frame() into buffer, as the contract above says:
     // the frames read from the file (frame() moves on by as many), and the
     // error when this read failed
-    virtual TAudioFileResult read(TFileIOBuffer& buffer, nframes_t count) = 0;
+    virtual TAudioFileResult read(TAudioBuffer& buffer, nframes_t count) = 0;
 
     // count frames from first: a seek only when frame() is elsewhere or the
     // decoder is in its error state (a seek costs: MAD and FAAD decode
     // frames before the target), then read(). At or past the end zeros and
     // 0, no error; where the decoder cannot seek to, zeros, 0 and the seek's
     // error.
-    TAudioFileResult read_from(TFileIOBuffer& buffer, nframes_t first, nframes_t count);
+    TAudioFileResult read_from(TAudioBuffer& buffer, nframes_t first, nframes_t count);
 
 protected:
     explicit TAudioDecoder(const QString& fileName) : m_fileName(fileName) {}
@@ -111,7 +111,7 @@ protected:
     // The end of every read(): zeros past the frames read, frame() moved on
     // by them, and fewer frames than asked before frame_count() an error,
     // with detail where the decoder knows why
-    TAudioFileResult read_done(TFileIOBuffer& buffer, nframes_t read, nframes_t count, const QString& detail = QString());
+    TAudioFileResult read_done(TAudioBuffer& buffer, nframes_t read, nframes_t count, const QString& detail = QString());
 
     // Set by the decoder when it opens the file
     QString m_fileName;

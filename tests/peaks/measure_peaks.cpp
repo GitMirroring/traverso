@@ -10,7 +10,7 @@
 //   measure_peaks record <dir>             8 mono tracks, 10 minutes: time
 
 #include "TAudioReader.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TPeakBuildTask.h"
 #include "TPeakFile.h"
 #include "TPeakPyramid.h"
@@ -55,7 +55,7 @@ public:
 
 private:
     std::unique_ptr<TAudioReader> m_reader;
-    TFileIOBuffer m_buffer;
+    TAudioBuffer m_buffer;
 };
 
 static int build(const QString& audio, const QString& peaks)

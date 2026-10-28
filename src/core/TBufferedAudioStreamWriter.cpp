@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cstring>
 #include "TWaveform.h"
 #include "TQueueBufferSlot.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "Debugger.h"
 
 TBufferedAudioStreamWriter::TBufferedAudioStreamWriter(const QString& exportDir, const QString &exportFileName)
@@ -123,7 +123,7 @@ void TBufferedAudioStreamWriter::finish_file()
     emit fileFinished();
 }
 
-int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TFileIOBuffer& fileIOBuffer)
+int TBufferedAudioStreamWriter::rb_file_write(TQueueBufferSlot* slot, TAudioBuffer& fileIOBuffer)
 {
     nframes_t nframes = slot->get_buffer_size();
 
@@ -227,7 +227,7 @@ TQueueBufferSlot* TBufferedAudioStreamWriter::dequeue_from_free_queue(TProcessCo
     return slot;
 }
 
-void TBufferedAudioStreamWriter::process_realtime_buffers(TFileIOBuffer &fileIOBuffer)
+void TBufferedAudioStreamWriter::process_realtime_buffers(TAudioBuffer &fileIOBuffer)
 {
     if (m_fileFinished) {
         return;

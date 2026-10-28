@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TQueueBufferSlot.h"
 #include "TResourcesManager.h"
 #include "TBufferedAudioStreamReader.h"
-#include "TFileIOBuffer.h"
+#include "TAudioBuffer.h"
 #include "TBufferedAudioStreamWriter.h"
 #include "defines.h"
 
@@ -84,7 +84,7 @@ void TAudioFileCopyConvert::process_task(CopyTask task)
 {
     emit taskStarted(task.readsource->get_name());
 
-    TFileIOBuffer fileIOBuffer;
+    TAudioBuffer fileIOBuffer;
 
     task.spec->set_export_start_location(TTimeRef());
     task.spec->set_export_end_location(task.readsource->get_length());

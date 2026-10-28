@@ -41,7 +41,7 @@ public:
     static int major_format(const QString& filename);
 
     TAudioFileStatus seek(nframes_t frame) override;
-    TAudioFileResult read(TFileIOBuffer& fileIOBuffer, nframes_t count) override;
+    TAudioFileResult read(TAudioBuffer& fileIOBuffer, nframes_t count) override;
 
 private:
     SNDFILE*	m_sf{nullptr};
