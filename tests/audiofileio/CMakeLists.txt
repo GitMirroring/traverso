@@ -44,3 +44,9 @@ add_test(NAME reader_faults COMMAND traverso_reader_faults_test)
 add_executable(traverso_audio_file_errors_test test_audio_file_errors.cpp)
 target_link_libraries(traverso_audio_file_errors_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
 add_test(NAME audio_file_errors COMMAND traverso_audio_file_errors_test)
+
+# Headless round trip of every writer and reader: every writer x data format
+# x 1, 2 and 6 channels written and read back (task T44)
+add_executable(traverso_audio_round_trip_test test_audio_round_trip.cpp)
+target_link_libraries(traverso_audio_round_trip_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
+add_test(NAME audio_round_trip COMMAND traverso_audio_round_trip_test)
