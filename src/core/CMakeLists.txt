@@ -36,6 +36,7 @@ add_library(traversocore STATIC
     TRecordingCommand.h TRecordingCommand.cpp
     TBusTrack.cpp
     TSend.cpp
+    TRoutingGraph.h
     TSession.cpp
     TSheet.cpp
     TTrack.cpp

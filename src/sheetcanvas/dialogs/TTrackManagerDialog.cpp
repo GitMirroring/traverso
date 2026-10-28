@@ -180,6 +180,11 @@ void TTrackManagerDialog::create_routing_input_menu()
             }
         }
         for(TTrack* track : tracks) {
+            // Input from a track is that track's send to this one: leave out
+            // the tracks for which it would close a feedback loop (T64)
+            if (track->send_closes_loop(m_track->get_id())) {
+                continue;
+            }
             QAction* action = m_routingInputMenu->addAction(track->get_name());
             action->setData(track->get_id());
         }
@@ -263,7 +268,14 @@ QMenu* TTrackManagerDialog::create_sends_menu()
         menu->addSeparator();
     }
 
-
+    // Leave out the targets a send to which would close a feedback loop
+    // (T64), the track itself included
+    for (QAction* target : menu->actions()) {
+        if (!target->isSeparator() && m_track->send_closes_loop(target->data().toLongLong())) {
+            menu->removeAction(target);
+            delete target;
+        }
+    }
 
     for(AudioBus* bus : pm().get_project()->get_hardware_buses()) {
         if (bus->is_output() && bus->is_valid()) {

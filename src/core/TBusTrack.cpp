@@ -67,15 +67,18 @@ int TBusTrack::set_state( const QDomNode & node )
 {
         QDomElement e = node.toElement();
 
-        TTrack::set_state(node);
-
         bool ok;
         m_channelCount = e.attribute("channelcount", "2").toInt(&ok);
 
-
+        // The process bus has the track's id: sends find a bus track by it,
+        // and TTrack::set_state() restores the sends, so the file's id is on
+        // the track and on its bus before that (T64's loop check relies on it)
+        set_id(e.attribute("id", "0").toLongLong());
         create_process_bus();
-
         m_processBus->set_id(get_id());
+
+        TTrack::set_state(node);
+
         m_processBus->set_name(m_name);
 
         return 1;

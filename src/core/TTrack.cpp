@@ -35,6 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "Utils.h"
 #include "TBusTrack.h"
 #include "TSend.h"
+#include "TRoutingGraph.h"
 
 #include "Debugger.h"
 
@@ -142,6 +143,9 @@ int TTrack::set_state( const QDomNode & node )
             if (send->set_state(sendNode) < 0) {
                 // This send could not set it's state...
                 TLOG_W("track", "a send could not restore its state, moving on");
+                delete send;
+            } else if (send_closes_loop(send->get_bus_id())) {
+                TLOG_W("track", "track {}: the send to bus {} would close a feedback loop, not loaded", m_name, send->get_bus_id());
                 delete send;
             } else {
                 if (send->get_type() == TSend::POSTSEND) {
@@ -307,6 +311,11 @@ void TTrack::add_post_send(qint64 busId)
 
 void TTrack::add_post_send(AudioBus *bus)
 {
+    if (send_closes_loop(bus->get_id())) {
+        TLOG_W("track", "track {}: a post send to bus {} would close a feedback loop, refused", m_name, bus->get_id());
+        return;
+    }
+
     TSend* postSend = new TSend(this, bus);
     postSend->set_type(TSend::POSTSEND);
 
@@ -333,6 +342,11 @@ void TTrack::add_pre_send(qint64 busId)
 
     if (!bus) {
         TLOG_W("track", "bus {} not found in the project", busId);
+        return;
+    }
+
+    if (send_closes_loop(busId)) {
+        TLOG_W("track", "track {}: a pre send to bus {} would close a feedback loop, refused", m_name, busId);
         return;
     }
 
@@ -415,6 +429,35 @@ void TTrack::remove_pre_sends(QList<qint64> sendIds)
     }
 
     emit routingConfigurationChanged();
+}
+
+bool TTrack::send_closes_loop(qint64 busId)
+{
+    TProject* project = pm().get_project();
+    if (!project) {
+        return false;
+    }
+
+    // A bus track's process bus has the id of its track; other buses (the
+    // hardware and software buses) have no track and send nowhere
+    auto targetsOf = [project](qint64 id) {
+        QList<qint64> targets;
+        TTrack* track = project->get_track(id);
+        if (!track && project->get_master_out_bus_track()->get_id() == id) {
+            track = project->get_master_out_bus_track();
+        }
+        if (track) {
+            for (TSend* send : track->get_post_sends()) {
+                targets.append(send->get_bus_id());
+            }
+            for (TSend* send : track->get_pre_sends()) {
+                targets.append(send->get_bus_id());
+            }
+        }
+        return targets;
+    };
+
+    return TRoutingGraph::closes_loop(get_id(), busId, targetsOf);
 }
 
 void TTrack::private_add_post_send(TSend* postSend, TRtTransaction& transaction)

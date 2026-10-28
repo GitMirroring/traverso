@@ -98,6 +98,9 @@ public:
     QList<TSend*> get_pre_sends() const;
     TSend* get_send(qint64 sendId);
     bool has_post_send(qint64 busId) const;
+    // True when a send from this track to the bus busId would close a
+    // feedback loop (T64): such a send is refused
+    bool send_closes_loop(qint64 busId);
     virtual void add_input_bus(AudioBus* bus);
 
 

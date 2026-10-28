@@ -450,6 +450,45 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
   "an existing project's rate never changes silently" (decisions
   2026-10-28).
 
+- **T64 Feedback loops in the routing: a bus track can send to itself**
+  (proposed medium-high; found 2026-10-28 for T20's `__restrict`; Remon:
+  every feedback loop must be excluded): a send to a bus track mixes into that
+  track's process bus (`TProject::get_audio_bus()`), and a track's send
+  mixes from its own process bus (`TTrack::process_send()`), so a bus
+  track with a send to itself mixes a buffer into itself. The send menu
+  leaves the track itself out for the masters but not for the project's
+  bus tracks (`TTrackManagerDialog.cpp:258`); `TTrack::add_post_send()`
+  and `add_pre_send()` only refuse a duplicate, and a project file is
+  loaded as it is. Loops through more bus tracks (A to B to A) are not
+  refused either: no overlap, but feedback. Fix: `TTrack` refuses a send
+  that closes a loop (the target, or a track it sends to, directly or
+  further on, is this track; one place for menu, dialog and load), the
+  menu leaves those targets out, and `Q_ASSERT(&dest != &src)` in
+  `TChannelBuffer::mix_buffers_*()`. Before T20's `__restrict` (with it
+  the self-mix is undefined behaviour).
+- **T65 Sends only between registered tracks: load and remove/undo**
+  (proposed medium; found 2026-10-28 during T64 and in its review; merged
+  into one task by Remon). Both halves are sends that exist while their
+  track is not registered in the session:
+  - **Load** (read in the code, not reproduced): a track's sends load in
+    its `set_state()`, and `TSend::set_state()` finds the target through
+    `TProject::get_audio_bus()`, which only knows the bus tracks registered
+    so far (a track registers after its `set_state()`: `TProject.cpp:409`,
+    `TSheet.cpp:236`). A send between two project bus tracks, which the
+    send menu allows, survives a reload only when the target comes first
+    in the file.
+  - **Remove and undo** (Fable's T64 review, traced in the code):
+    removing a track only takes it out of the lists
+    (`TSession::private_remove_track()`), its sends and the sends to it
+    stay. T64's loop check does not see a removed track, so with PB1 to
+    PB2 to PB3, removing PB2, adding PB3 to PB1 and undoing the removal
+    gives the loop PB1 to PB2 to PB3 to PB1. Already before T64: while PB2
+    is removed, PB1 still mixes into PB2's bus, which nothing processes or
+    silences.
+  - Fix: load creates and registers all tracks first, then restores the
+    sends; removing a track also removes its sends and the sends to it,
+    and the same command restores them on undo (a removed track has no
+    routing). T64's check then sees every send that can come back.
 ## Plans
 
 - **T58 Remove the singletons** (Remon, 2026-10-28; before T60).

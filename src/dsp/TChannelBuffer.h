@@ -140,11 +140,15 @@ public:
         return TBufferOperations::update_peak(m_buffer, m_size, 0.0f);
     }
 
+    // dest and src are two buffers, never one: each owns its own memory, so
+    // they never overlap (the routing excludes feedback loops, T64)
     static void mix_buffers_no_gain(const TChannelBuffer &dest, const TChannelBuffer &src, nframes_t nframes) T_REALTIME_SAFE {
+        Q_ASSERT(&dest != &src);
         TBufferOperations::mix(dest.get_data(nframes), src.get_data(nframes), nframes);
     }
 
     static void mix_buffers_with_gain(const TChannelBuffer &dest, const TChannelBuffer &src, nframes_t nframes, float gain) T_REALTIME_SAFE {
+        Q_ASSERT(&dest != &src);
         if (TraversoDAW::Float::equals_1(gain)) {
             return TBufferOperations::mix(dest.get_data(nframes), src.get_data(nframes), nframes);
         }
