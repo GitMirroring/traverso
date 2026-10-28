@@ -28,10 +28,12 @@ or another one is finished or parked first.
 ## Repository
 
 - `master`: `realtime-path`, `scenario-decoder` and `audiofileio-errors`
-  merged 2026-10-27, not pushed (`origin/master` = `6dc4fe2b`).
+  merged 2026-10-27; `audiofileio-api` (T44, T29) merged 2026-10-28
+  (`660ab5ea`); not pushed (`origin/master` = `6dc4fe2b`).
 - Worktrees: `traverso` (master), `traverso-input-controllers`,
-  `traverso-curve-gpu-bench`. The merged branches `realtime-path` and
-  `scenario-decoder` are deleted, with their backups and build directories.
+  `traverso-dsp-kernels` (T52, T51, 2026-10-28). The branch
+  `curve-gpu-bench` is kept without a worktree. The merged branches are
+  deleted, with their backups and build directories.
 
 ## Foundations
 
@@ -251,6 +253,9 @@ Other open tasks:
   stream per cycle, then a modal dialog in `TProject::disconnect_from_audio_device()`).
 - **T35 Split `TSheet::transport_control()`** into an audio-thread callback and a
   GUI function (removes 3 of the 7 Clang `-Wfunction-effects` reports).
+  With it (TAudioDevice review, 2026-10-28): `transport_start/stop/locate`
+  call the client's real-time callback on the GUI thread and share
+  `m_transportControl` with the JACK slave path on the audio thread.
 - **T36 Clip fader offset in the start cycle**: the gain curve is shifted by
   `offset` frames in a clip's first cycle (FIXME in `TAudioClip.cpp`).
 - **T37 Readahead and sample-exact clip edges** (reads more frames than processed
@@ -360,6 +365,97 @@ Other open tasks:
   context menu); `TConfig::load_configuration` runs twice on first start;
   `TAudioDriver.cpp:64` shadows `sleepTime` (the subtraction on `:68` does
   nothing): fix with the test audio driver (work order step 8).
+
+TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
+- **T53 Races in TAudioDevice** (proposed medium-high):
+  `m_processCallBackWaitTime` is added to on the audio thread
+  (`run_one_cycle()`) and read and zeroed by the GUI (`get_cpu_time()`),
+  not atomic. `m_isRealTime` and `m_processCallBackData.set_real_time()`
+  are written by the GUI (`set_free_wheeling()`,
+  `driver_changed_free_wheel_mode()`) while the audio thread reads them.
+  `m_xrunCount` is written by the audio thread (`xrun()`), reset by a GUI
+  timer and read in `audiothread_finished()`. Fix: atomics, or through the
+  message queue. No structural change.
+- **T54 `xrun()` stops the driver from the audio thread** (proposed
+  medium): `m_driver->stop()` on a storm runs on the thread the driver
+  drives. Stop it from the GUI thread (the storm signal already goes
+  there).
+- **T55 `TAudioDriver::attach()` gives playback channels the capture
+  latency** (proposed medium; `TAudioDriver.cpp:114`, copy-paste).
+- **T56 Drivers use the singleton while they hold the device** (proposed
+  low; `TAudioDriver.cpp:123,131`: `audiodevice().create_channel()` where
+  `m_device` is there). Part of T58.
+- **T57 Channel ownership in three places** (proposed low): the device
+  creates, the driver lists, the driver's destructor deletes through the
+  device, `shutdown()` removes them first, the device's destructor deletes
+  the rest. One owner: the driver.
+
+## Plans
+
+- **T58 Remove the singletons** (Remon, 2026-10-28; before T60).
+  - Safety net first: a headless test with the Dummy driver (start, add a
+    client, cycles, remove, switch driver, shut down).
+  - `audiodevice()` first: map every caller per lib and thread;
+    Traverso.cpp owns the device (constructed after the scheduler,
+    destroyed after the project manager), `audiodevice()` a temporary
+    bridge; replace callers bottom up (drivers: `m_device`; real-time code:
+    rate and buffer size from `TProcessContext`, which removes the
+    `T_BLOCKING_BY_DESIGN` exception; core and GUI: a reference through
+    constructors); then the bridge goes.
+  - `tsmp()` after it, by composition: the device owns its queue. Map
+    first who uses it directly and through `TRtTransaction`/`TRtList`; a
+    queue per device also gives tests a queue they apply on demand.
+- **T59 TAudioDevice split** (later, each step isolated).
+  - `TAudioRuntime`: the control interface (not the GUI interface:
+    headless, agent and tests use it), owned by Traverso.cpp; owns the
+    cycle, the current driver, setups, watchdog, xrun storm, setup
+    messages, the queue.
+  - `TAudioDriver`: the backend only, a narrow host interface instead of
+    friend access, one `setup(const TAudioDeviceSetup&)`, a factory in one
+    place; owns its channels and, for blocking drivers, its thread.
+  - The cycle as its own class: clients, process context, posted changes,
+    cycle count, CPU time (atomics), a post-cycle hook
+    (`TRealTimeCallBack`, for the scheduler tick and later the published
+    clock). Testable with the Dummy driver.
+  - Transport sync as a driver capability (`TTransportSync`), not in the
+    base: JACK follows and controls; PipeWire can follow natively
+    (`spa_io_position`), control through pipewire-jack (to verify).
+    Traverso's own transport is the sheet's, not the driver's (T35).
+  - For headless tests only the singleton removal (T58) and the cycle are
+    on the critical path; the rest are separate tasks.
+- **T60 IO scheduler step 2: on hold until the singletons are gone (T58).**
+  Design changes written 2026-10-28 (to go into `diskio-app-wide.md`):
+  - the scheduler reads groups, never writes them (no friend access; the
+    seek target in `StepInfo`, the transport written by the audio thread
+    only);
+  - `TIOHost` in ioscheduler (groups, streams, idle work), the one
+    interface core sees, also the scheduler seam for headless tests;
+  - the scheduler owned by Traverso.cpp, the tick through the post-cycle
+    hook;
+  - a group is one transport of a song (comments and names now; the
+    transport owns its streams, `multi-transport.md` decisions 1 and 4).
+- **T61 Design assignment: one scheduler, disk slots apart from threads.**
+  Check `dispatcher-conclusie.md` (which disk, which scenario, CPU or
+  disk), measure overdubbing on an HDD with one and two schedulers. Later:
+  a prefetch phase holds the disk slot, the decode runs without it.
+
+## Decisions taken (Remon, 2026-10-28)
+
+- **Project rate** is the user's wish, also when the hardware does not run
+  at it. New project: the device's rate by default; an existing project's
+  rate never changes silently (show both rates when they differ).
+  Resampling stays at the source side (per stream, IO threads): no cost to
+  the round trip. Recording at the project rate by default (the writer
+  resamples on the IO thread, best quality), an option for the hardware's
+  rate. Converting on import is an optional optimisation that keeps the
+  original. T5 and T7 first.
+- **A second output device** (live playhead): left to the sound server
+  (PipeWire routing, JACK via zita, macOS aggregate devices, on Windows
+  ASIO4ALL or Voicemeeter). Without one: the live device is the master
+  clock, the editor output a slave output driver with a ring and an
+  adaptive resampler on the slave's side; no resampling on the live
+  output. One audio thread processes both transports; open: plugins with
+  two transports (an instance per transport, or main transport only).
 
 ## Decisions waiting for Remon
 
