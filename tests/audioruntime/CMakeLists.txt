@@ -27,3 +27,9 @@ add_test(NAME realtime_closure COMMAND traverso_realtime_closure_test)
 add_executable(traverso_denormals_test test_denormals.cpp)
 target_link_libraries(traverso_denormals_test PRIVATE traverso_compiler_settings traversoaudioruntime traversodsp traversosupport Qt6::Core)
 add_test(NAME denormals COMMAND traverso_denormals_test)
+
+# Headless test of TAudioDevice with the Dummy driver: start, clients,
+# free-wheeling, CPU time, removal, driver switch, shutdown (T58 step 1)
+add_executable(traverso_audio_device_test test_audio_device.cpp)
+target_link_libraries(traverso_audio_device_test PRIVATE traverso_compiler_settings traversoaudioruntime traversodsp traversosupport Qt6::Core)
+add_test(NAME audio_device COMMAND traverso_audio_device_test)
