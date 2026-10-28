@@ -29,19 +29,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cstring>
 
-class TAudioBuffer
+class TChannelBuffer
 {
 public:
     // Whether the buffer's memory is kept in RAM (mlock()), so that the audio
-    // thread never faults a page of it in: a TRealTimeAudioBuffer asks for it
+    // thread never faults a page of it in: a TRealTimeChannelBuffer asks for it
     enum class MemoryLock { No, Yes };
 
-    explicit TAudioBuffer(nframes_t size)
-        : TAudioBuffer (size, MemoryLock::No)
+    explicit TChannelBuffer(nframes_t size)
+        : TChannelBuffer (size, MemoryLock::No)
     {
     }
 
-    ~TAudioBuffer()
+    ~TChannelBuffer()
     {
         delete_buffer_data();
     }
@@ -91,7 +91,7 @@ public:
 
     // The frames [at, at + count) multiplied by the first count values of
     // gains (a fade, a gain curve)
-    void multiply(nframes_t at, nframes_t count, const TAudioBuffer& gains) T_REALTIME_SAFE {
+    void multiply(nframes_t at, nframes_t count, const TChannelBuffer& gains) T_REALTIME_SAFE {
         Q_ASSERT(at + count <= m_size && count <= gains.m_size);
         for (nframes_t frame = 0; frame < count; ++frame) {
             m_buffer[at + frame] *= gains.m_buffer[frame];
@@ -133,11 +133,11 @@ public:
         return Mixer::compute_peak(m_buffer, m_size, 0.0f);
     }
 
-    static void mix_buffers_no_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) T_REALTIME_SAFE {
+    static void mix_buffers_no_gain(const TChannelBuffer &dest, const TChannelBuffer &src, nframes_t nframes) T_REALTIME_SAFE {
         Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
     }
 
-    static void mix_buffers_with_gain(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes, float gain) T_REALTIME_SAFE {
+    static void mix_buffers_with_gain(const TChannelBuffer &dest, const TChannelBuffer &src, nframes_t nframes, float gain) T_REALTIME_SAFE {
         if (TraversoDAW::Float::equals_1(gain)) {
             return Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
         }
@@ -147,12 +147,12 @@ public:
 
     // count frames of source, from its frame sourceAt, into this buffer from
     // frame at
-    void copy_from(nframes_t at, const TAudioBuffer& source, nframes_t sourceAt, nframes_t count) T_REALTIME_SAFE {
+    void copy_from(nframes_t at, const TChannelBuffer& source, nframes_t sourceAt, nframes_t count) T_REALTIME_SAFE {
         Q_ASSERT(at + count <= m_size && sourceAt + count <= source.m_size);
         memcpy(m_buffer + at, source.m_buffer + sourceAt, sizeof(audio_sample_t) * count);
     }
 
-    static void copy_data(const TAudioBuffer &dest, const TAudioBuffer &src, nframes_t nframes) T_REALTIME_SAFE {
+    static void copy_data(const TChannelBuffer &dest, const TChannelBuffer &src, nframes_t nframes) T_REALTIME_SAFE {
         memcpy(dest.get_data(nframes), src.get_data(nframes), nframes * sizeof(audio_sample_t));
     }
 
@@ -162,8 +162,8 @@ public:
     }
 
 protected:
-    // For TRealTimeAudioBuffer
-    TAudioBuffer(nframes_t size, MemoryLock memoryLock)
+    // For TRealTimeChannelBuffer
+    TChannelBuffer(nframes_t size, MemoryLock memoryLock)
         : m_memoryLock(memoryLock)
     {
         resize(size);
@@ -183,10 +183,10 @@ private:
 
 // A buffer of the audio processing path: its memory locked in RAM. The type
 // says so where the buffer is declared; it adds nothing else, and is never
-// deleted through a TAudioBuffer pointer (no virtual destructor)
-class TRealTimeAudioBuffer final : public TAudioBuffer
+// deleted through a TChannelBuffer pointer (no virtual destructor)
+class TRealTimeChannelBuffer final : public TChannelBuffer
 {
 public:
-    explicit TRealTimeAudioBuffer(nframes_t size) : TAudioBuffer(size, MemoryLock::Yes) {}
+    explicit TRealTimeChannelBuffer(nframes_t size) : TChannelBuffer(size, MemoryLock::Yes) {}
 };
 

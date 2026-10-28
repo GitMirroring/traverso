@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include "TAudioDriver.h"
 #include "portaudio.h"
 
@@ -63,8 +63,8 @@ protected:
 
 private:
     PaStream* m_paStream;
-    TRealTimeAudioBuffer m_paInputBuffer;
-    TRealTimeAudioBuffer m_paOutputBuffer;
+    TRealTimeChannelBuffer m_paInputBuffer;
+    TRealTimeChannelBuffer m_paOutputBuffer;
 
 
     static int _xrun_callback(void *arg);

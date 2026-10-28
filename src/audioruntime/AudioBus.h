@@ -61,7 +61,7 @@ public:
 	 * @param nframes The buffer size to get
 	 * @return 
 	 */
-    TAudioBuffer& get_buffer(uint channel) T_REALTIME_SAFE {
+    TChannelBuffer& get_buffer(uint channel) T_REALTIME_SAFE {
         Q_ASSERT(channel < get_channel_count());
         return m_channels.at(channel)->get_buffer();
     }

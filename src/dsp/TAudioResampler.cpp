@@ -271,7 +271,7 @@ void TAudioResampler::reset()
     m_keptFrames = 0;
 }
 
-nframes_t TAudioResampler::process(const TAudioBuffer* const* in, nframes_t inputFrames, TAudioBuffer* const* out, nframes_t at, nframes_t count)
+nframes_t TAudioResampler::process(const TChannelBuffer* const* in, nframes_t inputFrames, TChannelBuffer* const* out, nframes_t at, nframes_t count)
 {
     return run(in, inputFrames, out, at, count, false);
 }
@@ -283,7 +283,7 @@ nframes_t TAudioResampler::pending_frames() const
     return nframes_t(std::ceil(double(m_keptFrames) * m_ratio)) + m_backend->delay_frames() + 16;
 }
 
-nframes_t TAudioResampler::flush(TAudioBuffer* const* out, nframes_t at, nframes_t count)
+nframes_t TAudioResampler::flush(TChannelBuffer* const* out, nframes_t at, nframes_t count)
 {
     // First the input kept, then the filter's tail: until count frames came
     // out, or a call gave nothing and had nothing left to take
@@ -299,7 +299,7 @@ nframes_t TAudioResampler::flush(TAudioBuffer* const* out, nframes_t at, nframes
     return given;
 }
 
-nframes_t TAudioResampler::run(const TAudioBuffer* const* in, nframes_t inputFrames, TAudioBuffer* const* out, nframes_t at, nframes_t count,
+nframes_t TAudioResampler::run(const TChannelBuffer* const* in, nframes_t inputFrames, TChannelBuffer* const* out, nframes_t at, nframes_t count,
                                bool endOfInput)
 {
     // The input behind what was kept, so the backend sees one block

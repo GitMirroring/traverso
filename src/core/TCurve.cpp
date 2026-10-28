@@ -160,7 +160,7 @@ int TCurve::process(
         return 1;
     }
 
-    TAudioBuffer &curveBuffer = m_session->get_curve_buffer();
+    TChannelBuffer &curveBuffer = m_session->get_curve_buffer();
 
     // Calculate the vector, and apply it to the buffer including the makeup gain.
     snapshot->get_vector(double(startlocation.universal_frame()), double(endlocation.universal_frame()),
@@ -193,7 +193,7 @@ std::shared_ptr<const TCurveSnapshot> TCurve::gui_snapshot() const
     return m_snapshot.gui_snapshot();
 }
 
-void TCurve::get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen)
+void TCurve::get_vector (double x0, double x1, const TChannelBuffer &audioBuffer, nframes_t veclen)
 {
     gui_snapshot()->get_vector(x0, x1, audioBuffer.get_data(veclen), veclen, m_guiLookupCache);
 }

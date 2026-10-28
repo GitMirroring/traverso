@@ -21,11 +21,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include <memory>
 #include <vector>
 
-// The channels of audio read from or written to a file: one TAudioBuffer
+// The channels of audio read from or written to a file: one TChannelBuffer
 // per channel. Who writes into it makes the room (check_capacity()); the
 // readers and writers keep their interleaved and packed scratch themselves.
 class TFileIOBuffer {
@@ -40,19 +40,19 @@ public:
     }
 
     // Accesses a single, standalone de-interleaved mono channel stream
-    TAudioBuffer& get_channel_buffer(uint channel) {
+    TChannelBuffer& get_channel_buffer(uint channel) {
         return *m_channelBuffers.at(channel);
     }
-    const TAudioBuffer& get_channel_buffer(uint channel) const {
+    const TChannelBuffer& get_channel_buffer(uint channel) const {
         return *m_channelBuffers.at(channel);
     }
 
     // The channel buffers, one per channel, as one array (a resampler takes
     // them so); they stay where they are when the buffer grows
-    TAudioBuffer* const* channel_buffers() {
+    TChannelBuffer* const* channel_buffers() {
         return m_channelPointers.data();
     }
-    const TAudioBuffer* const* channel_buffers() const {
+    const TChannelBuffer* const* channel_buffers() const {
         return m_channelPointers.data();
     }
 
@@ -87,11 +87,11 @@ public:
 
 private:
     void add_channel_buffer() {
-        m_channelBuffers.push_back(std::make_unique<TAudioBuffer>(m_channelBufferSize));
+        m_channelBuffers.push_back(std::make_unique<TChannelBuffer>(m_channelBufferSize));
         m_channelPointers.push_back(m_channelBuffers.back().get());
     }
 
-    std::vector<std::unique_ptr<TAudioBuffer>>  m_channelBuffers;
-    std::vector<TAudioBuffer*>                  m_channelPointers;
+    std::vector<std::unique_ptr<TChannelBuffer>>  m_channelBuffers;
+    std::vector<TChannelBuffer*>                  m_channelPointers;
     uint                                        m_channelBufferSize;
 };

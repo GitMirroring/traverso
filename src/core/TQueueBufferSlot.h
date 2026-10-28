@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #pragma once
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include "defines.h"
 #include "TTimeRef.h"
 
@@ -32,7 +32,7 @@ public:
         : m_slotNumber(slotNumber), m_bufferSize(bufferSize)
     {
         for (uint chan=0; chan < channelCount; ++chan) {
-            m_buffers.push_back(std::make_unique<TRealTimeAudioBuffer>(bufferSize));
+            m_buffers.push_back(std::make_unique<TRealTimeChannelBuffer>(bufferSize));
         }
     }
 
@@ -48,12 +48,12 @@ public:
 
     nframes_t get_buffer_write_offset() const {return m_bufferWriteOffset;}
 
-    void read_buffer(TAudioBuffer &dest, uint channel, nframes_t nframes) T_REALTIME_SAFE {
+    void read_buffer(TChannelBuffer &dest, uint channel, nframes_t nframes) T_REALTIME_SAFE {
         Q_ASSERT(nframes <= m_bufferSize);
         Q_ASSERT(nframes > 0);
         // operator[]: at() throws
         Q_ASSERT(channel < m_buffers.size());
-        TAudioBuffer::copy_data(dest, *m_buffers[channel], nframes);
+        TChannelBuffer::copy_data(dest, *m_buffers[channel], nframes);
     }
 
     // Where the slot's frames are: on the transport, in the file, and from
@@ -69,12 +69,12 @@ public:
     // count frames of source, from its frame sourceAt, into channel from the
     // slot's offset on. The positions before the offset are silence: a slot
     // comes back from the free queue with what it held before
-    void write_channel(uint channel, const TAudioBuffer& source, nframes_t sourceAt, nframes_t count) T_REALTIME_SAFE {
+    void write_channel(uint channel, const TChannelBuffer& source, nframes_t sourceAt, nframes_t count) T_REALTIME_SAFE {
         Q_ASSERT(m_bufferWriteOffset + count <= m_bufferSize);
         Q_ASSERT(count > 0);
         // operator[]: at() throws
         Q_ASSERT(channel < m_buffers.size());
-        TAudioBuffer& buffer = *m_buffers[channel];
+        TChannelBuffer& buffer = *m_buffers[channel];
         buffer.silence(0, m_bufferWriteOffset);
         buffer.copy_from(m_bufferWriteOffset, source, sourceAt, count);
     }
@@ -91,7 +91,7 @@ private:
     TTimeRef            m_fileLocation{};
     TTimeRef            m_transportLocation{};
     int                 m_slotNumber{-1};
-    std::vector<std::unique_ptr<TRealTimeAudioBuffer>> m_buffers;
+    std::vector<std::unique_ptr<TRealTimeChannelBuffer>> m_buffers;
     nframes_t           m_bufferSize{0};
     nframes_t           m_bufferWriteOffset{0};
 };

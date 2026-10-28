@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Remon Sijrier
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-// The parts of TAudioBuffer that allocate: never called in the audio thread,
+// The parts of TChannelBuffer that allocate: never called in the audio thread,
 // so nothing is lost by not inlining them
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 
 #include "TLog.h"
 
@@ -19,20 +19,20 @@
 
 // Each kind of lock failure is told once: one log line and one call of the
 // handler, also when thousands of buffers fail the same way
-static std::atomic<TAudioBuffer::MemoryLockFailureHandler> s_lockFailureHandler{nullptr};
+static std::atomic<TChannelBuffer::MemoryLockFailureHandler> s_lockFailureHandler{nullptr};
 static std::atomic<bool> s_lockFailed[2]{false, false};
 static std::atomic<bool> s_lockFailureTold[2]{false, false};
 
-static void tell_lock_failure(TAudioBuffer::MemoryLockFailure failure)
+static void tell_lock_failure(TChannelBuffer::MemoryLockFailure failure)
 {
     const int kind = int(failure);
-    TAudioBuffer::MemoryLockFailureHandler handler = s_lockFailureHandler.load();
+    TChannelBuffer::MemoryLockFailureHandler handler = s_lockFailureHandler.load();
     if (handler && !s_lockFailureTold[kind].exchange(true)) {
         handler(failure);
     }
 }
 
-void TAudioBuffer::set_memory_lock_failure_handler(MemoryLockFailureHandler handler)
+void TChannelBuffer::set_memory_lock_failure_handler(MemoryLockFailureHandler handler)
 {
     s_lockFailureHandler.store(handler);
     for (MemoryLockFailure failure : {MemoryLockFailure::NoPermission, MemoryLockFailure::LimitReached}) {
@@ -45,12 +45,12 @@ void TAudioBuffer::set_memory_lock_failure_handler(MemoryLockFailureHandler hand
 #ifdef USE_MLOCK
 static void lock_failed(int error, nframes_t size)
 {
-    const auto failure = (error == EPERM) ? TAudioBuffer::MemoryLockFailure::NoPermission
-                                          : TAudioBuffer::MemoryLockFailure::LimitReached;
+    const auto failure = (error == EPERM) ? TChannelBuffer::MemoryLockFailure::NoPermission
+                                          : TChannelBuffer::MemoryLockFailure::LimitReached;
     if (s_lockFailed[int(failure)].exchange(true)) {
         return;
     }
-    if (failure == TAudioBuffer::MemoryLockFailure::NoPermission) {
+    if (failure == TChannelBuffer::MemoryLockFailure::NoPermission) {
         TLOG_W("dsp", "no permission to lock audio buffers into memory (a buffer of {} frames), they work unlocked", size);
     } else {
         TLOG_W("dsp", "the limit on locked memory is reached (a buffer of {} frames), the next buffers work unlocked", size);
@@ -59,7 +59,7 @@ static void lock_failed(int error, nframes_t size)
 }
 #endif /* USE_MLOCK */
 
-void TAudioBuffer::resize(nframes_t size)
+void TChannelBuffer::resize(nframes_t size)
 {
     Q_ASSERT(size > 0);
 
@@ -100,7 +100,7 @@ void TAudioBuffer::resize(nframes_t size)
     }
 }
 
-void TAudioBuffer::allocate_buffer_data(nframes_t size)
+void TChannelBuffer::allocate_buffer_data(nframes_t size)
 {
     Q_ASSERT(!m_buffer);
     Q_ASSERT(m_size == 0);
@@ -119,7 +119,7 @@ void TAudioBuffer::allocate_buffer_data(nframes_t size)
 #endif /* USE_MLOCK */
 }
 
-void TAudioBuffer::delete_buffer_data()
+void TChannelBuffer::delete_buffer_data()
 {
     if (!m_buffer) return;
 

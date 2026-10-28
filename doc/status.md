@@ -183,7 +183,7 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
   `close()` returns at `:240-242`): a leak and a silent failure.
 - **T19 (medium-low): parallel readers for a long compressed file's peak
   build**; then `TIOIdleTask::weight()` goes.
-- **T20 (low): `TAudioBuffer` operations auto-vectorised, hand SIMD
+- **T20 (low): `TChannelBuffer` operations auto-vectorised, hand SIMD
   retired.** Measure first.
 - **T21 (low, Ben): Traverso's AAC writer** drops the first 2048 frames and
   writes raw ADTS into `.m4a`.

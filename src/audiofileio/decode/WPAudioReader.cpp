@@ -136,14 +136,14 @@ void WPAudioReader::unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuf
         switch (m_channels) {
         case 1:
         {
-            TAudioBuffer &dest = fileIOBuffer.get_channel_buffer(0);
+            TChannelBuffer &dest = fileIOBuffer.get_channel_buffer(0);
             std::memcpy(dest.get_data(readFrames), floatSrc, readFrames * sizeof(float));
             break;
         }
         case 2:
         {
-            TAudioBuffer &left = fileIOBuffer.get_channel_buffer(0);
-            TAudioBuffer &right = fileIOBuffer.get_channel_buffer(1);
+            TChannelBuffer &left = fileIOBuffer.get_channel_buffer(0);
+            TChannelBuffer &right = fileIOBuffer.get_channel_buffer(1);
 
             for (nframes_t f = 0; f < readFrames; f++) {
                 left[f]  = floatSrc[f * 2];
@@ -154,7 +154,7 @@ void WPAudioReader::unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuf
         default:
         {
             for (uint channel = 0; channel < m_channels; channel++) {
-                TAudioBuffer &destBuffer = fileIOBuffer.get_channel_buffer(channel);
+                TChannelBuffer &destBuffer = fileIOBuffer.get_channel_buffer(channel);
                 for (nframes_t frame = 0; frame < readFrames; frame++) {
                     destBuffer[frame] = floatSrc[frame * m_channels + channel];
                 }
@@ -166,7 +166,7 @@ void WPAudioReader::unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuf
         switch (m_channels) {
         case 1:
         {
-            TAudioBuffer &destination = fileIOBuffer.get_channel_buffer(0);
+            TChannelBuffer &destination = fileIOBuffer.get_channel_buffer(0);
             for (nframes_t frame = 0; frame < readFrames; frame++) {
                 destination[frame] = static_cast<float>(unpackBuffer[frame]) / divider;
             }
@@ -174,8 +174,8 @@ void WPAudioReader::unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuf
         }
         case 2:
         {
-            TAudioBuffer &left = fileIOBuffer.get_channel_buffer(0);
-            TAudioBuffer &right = fileIOBuffer.get_channel_buffer(1);
+            TChannelBuffer &left = fileIOBuffer.get_channel_buffer(0);
+            TChannelBuffer &right = fileIOBuffer.get_channel_buffer(1);
 
             for (nframes_t frame = 0; frame < readFrames; frame++) {
                 uint index = frame * 2;
@@ -186,7 +186,7 @@ void WPAudioReader::unpack(TFileIOBuffer& fileIOBuffer, const int32_t* unpackBuf
         }
         default:
             for (uint channel = 0; channel < m_channels; channel++) {
-                TAudioBuffer &destBuffer = fileIOBuffer.get_channel_buffer(channel);
+                TChannelBuffer &destBuffer = fileIOBuffer.get_channel_buffer(channel);
                 for (nframes_t frame = 0; frame < readFrames; frame++) {
                     destBuffer[frame] = static_cast<float>(unpackBuffer[frame * m_channels + channel]) / divider;
                 }

@@ -27,7 +27,7 @@ $Id: FadeCurve.h,v 1.19 2008/01/21 16:22:14 r_sijrier Exp $
 #include "TCurveSnapshot.h"
 #include "TFadeShape.h"
 #include "TRtValue.h"
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include "TTimeRef.h"
 
 #include <QDomDocument>
@@ -80,7 +80,7 @@ public:
 
 
     // Audio thread
-    void process(const TAudioBuffer &curveBuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes) T_REALTIME_SAFE;
+    void process(const TChannelBuffer &curveBuffer, AudioBus* bus, const TTimeRef &startLocation, const TTimeRef &endLocation, nframes_t nframes) T_REALTIME_SAFE;
 
     // GUI thread
 
@@ -111,7 +111,7 @@ public:
 
     // The fade's gain between x0 and x1, in universal frames from the start of
     // the fade, and for drawing, see TCurveSnapshot::get_columns()
-    void get_vector(double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen);
+    void get_vector(double x0, double x1, const TChannelBuffer &audioBuffer, nframes_t veclen);
     void get_columns(double x0, double columnWidth, int count, TCurveColumn* columns);
 
 private:

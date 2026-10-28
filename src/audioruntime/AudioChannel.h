@@ -22,7 +22,7 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 
 #pragma once
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include "defines.h"
 #include "TRealTime.h"
 #include <QString>
@@ -44,7 +44,7 @@ public:
         ChannelIsOutput = 2
     };
 
-    TAudioBuffer& get_buffer() {
+    TChannelBuffer& get_buffer() {
         return m_audioBuffer;
     }
 
@@ -68,7 +68,7 @@ public:
 
 private:
     TRtList<TVUMonitor>     m_monitors;
-    TRealTimeAudioBuffer    m_audioBuffer;
+    TRealTimeChannelBuffer    m_audioBuffer;
     uint 			m_latency;
     uint 			m_number;
     qint64                  m_id;

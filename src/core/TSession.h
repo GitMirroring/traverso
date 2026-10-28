@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QDomNode>
 #include <QHash>
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include "TLocation.h"
 #include "TRtList.h"
 #include "TRtTransportPosition.h"
@@ -110,7 +110,7 @@ public:
 	void add_child_session(TSession* child);
 	void remove_child_session(TSession* child);
 
-    TAudioBuffer& get_curve_buffer() {
+    TChannelBuffer& get_curve_buffer() {
         return m_curveProcessBuffer;
     }
 
@@ -140,7 +140,7 @@ protected:
     TTimeRef            m_workLocation;
     TTimeRef            m_seekTransportLocation;
 
-    TRealTimeAudioBuffer     	m_curveProcessBuffer;
+    TRealTimeChannelBuffer     	m_curveProcessBuffer;
 
     bool get_transport_rolling_state() const {
         return m_transportRolling.load();

@@ -45,10 +45,10 @@ static double level_after(TAudioResampler::BackendType backend, int quality, dou
     }
 
     TAudioResampler resampler(backend, double(OutputRate) / InputRate, quality, 1);
-    TAudioBuffer in(1024);
-    TAudioBuffer out(frames + 4096);
-    TAudioBuffer* inBuffer = &in;
-    TAudioBuffer* outBuffer = &out;
+    TChannelBuffer in(1024);
+    TChannelBuffer out(frames + 4096);
+    TChannelBuffer* inBuffer = &in;
+    TChannelBuffer* outBuffer = &out;
     nframes_t produced = 0;
     for (nframes_t at = 0; at < frames; at += 1024) {
         const nframes_t n = std::min<nframes_t>(1024, frames - at);
@@ -87,10 +87,10 @@ static void flush_gives_all(TAudioResampler::BackendType backend, uint inputRate
     for (const int quality : TAudioResampler::qualities(backend)) {
         TAudioResampler resampler(backend, ratio, quality, 2);
         const nframes_t outSize = nframes_t(std::ceil(frames * ratio)) + 1024 * 10;
-        TAudioBuffer in[] = {TAudioBuffer(1024), TAudioBuffer(1024)};
-        TAudioBuffer out[] = {TAudioBuffer(outSize), TAudioBuffer(outSize)};
-        TAudioBuffer* inBuffers[] = {&in[0], &in[1]};
-        TAudioBuffer* outBuffers[] = {&out[0], &out[1]};
+        TChannelBuffer in[] = {TChannelBuffer(1024), TChannelBuffer(1024)};
+        TChannelBuffer out[] = {TChannelBuffer(outSize), TChannelBuffer(outSize)};
+        TChannelBuffer* inBuffers[] = {&in[0], &in[1]};
+        TChannelBuffer* outBuffers[] = {&out[0], &out[1]};
         nframes_t produced = 0;
         for (nframes_t at = 0; at < frames; at += 1024) {
             const nframes_t n = std::min<nframes_t>(1024, frames - at);

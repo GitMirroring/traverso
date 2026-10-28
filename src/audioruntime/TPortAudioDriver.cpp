@@ -100,7 +100,7 @@ int TPortAudioDriver::_read(nframes_t nframes) T_REALTIME_SAFE
 
     for (uint chan = 0; chan < channelCount; chan++) {
         AudioChannel* channel = m_captureChannels.at(chan);
-        TAudioBuffer &buf = channel->get_buffer();
+        TChannelBuffer &buf = channel->get_buffer();
         for(nframes_t frame=0; frame<nframes; frame++) {
             buf[frame] = m_paInputBuffer[frame * channelCount + chan];
         }
@@ -116,7 +116,7 @@ int TPortAudioDriver::_write(nframes_t nframes) T_REALTIME_SAFE
 
     uint channelCount = m_playbackChannels.size();
     for (uint chan = 0; chan < channelCount; chan++) {
-        TAudioBuffer &buffer = m_playbackChannels.at(chan)->get_buffer();
+        TChannelBuffer &buffer = m_playbackChannels.at(chan)->get_buffer();
         for (nframes_t frame = 0; frame < nframes; frame++) {
             m_paOutputBuffer[frame * channelCount + chan] = buffer.at(frame);
         }

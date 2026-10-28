@@ -12,7 +12,7 @@
 #include <QDomDocument>
 #include <memory>
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include "TCurveSnapshot.h"
 #include "TRtValue.h"
 #include "TTimeRef.h"
@@ -58,7 +58,7 @@ public:
 
     // Get functions
     double get_range() const;
-    void get_vector (double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen);
+    void get_vector (double x0, double x1, const TChannelBuffer &audioBuffer, nframes_t veclen);
     // For drawing, see TCurveSnapshot::get_columns()
     void get_columns(double x0, double columnWidth, int count, TCurveColumn* columns);
     // Sorted by when

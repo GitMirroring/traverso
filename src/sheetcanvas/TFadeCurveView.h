@@ -22,7 +22,7 @@ $Id: FadeCurveView.h,v 1.2 2008/05/24 17:27:49 r_sijrier Exp $
 
 #pragma once
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include "TViewItem.h"
 
 class TCurve;

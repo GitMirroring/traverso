@@ -164,7 +164,7 @@ TAudioFileResult SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t coun
     default:
     {
         for (uint channel = 0; channel < m_channels; channel++) {
-            TAudioBuffer &destBuffer = fileIOBuffer.get_channel_buffer(channel);
+            TChannelBuffer &destBuffer = fileIOBuffer.get_channel_buffer(channel);
             for (nframes_t frame = 0; frame < readFrames; frame++) {
                 destBuffer[frame] = readBuffer[frame * m_channels + channel];
             }

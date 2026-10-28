@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include "defines.h"
 #include <QList>
 #include <QString>
@@ -16,7 +16,7 @@ class ResampleBackend;
  * @brief Converts audio from one rate to another, all channels of a stream
  * at once: every channel gives the same frames, by construction.
  *
- * The caller hands channel buffers (one TAudioBuffer per channel) and a
+ * The caller hands channel buffers (one TChannelBuffer per channel) and a
  * range; the backends' plain pointers stay inside this class. Input that a
  * process() cannot take yet (the output range is full) is kept for the next
  * one. At the end of the input, flush() gives what is still inside: the input
@@ -69,7 +69,7 @@ public:
     // and puts what comes out into out (one buffer per channel) from frame
     // at, at most count frames. The frames given, the same in every channel;
     // fewer than count while the filter fills.
-    nframes_t process(const TAudioBuffer* const* in, nframes_t inputFrames, TAudioBuffer* const* out, nframes_t at, nframes_t count);
+    nframes_t process(const TChannelBuffer* const* in, nframes_t inputFrames, TChannelBuffer* const* out, nframes_t at, nframes_t count);
 
     // The end of the input: at most this many frames still come out (the
     // input kept and the tail of the filter)
@@ -77,12 +77,12 @@ public:
     // The end of the input: what is still inside into out from frame at, at
     // most count frames. The frames given; fewer than count once it is all
     // out. A flush of pending_frames() frames gives all of it.
-    nframes_t flush(TAudioBuffer* const* out, nframes_t at, nframes_t count);
+    nframes_t flush(TChannelBuffer* const* out, nframes_t at, nframes_t count);
 
 private:
     // The kept input followed by inputFrames frames of in (when in is given)
     // through the backend into out from frame at, at most count frames
-    nframes_t run(const TAudioBuffer* const* in, nframes_t inputFrames, TAudioBuffer* const* out, nframes_t at, nframes_t count,
+    nframes_t run(const TChannelBuffer* const* in, nframes_t inputFrames, TChannelBuffer* const* out, nframes_t at, nframes_t count,
                   bool endOfInput);
 
     uint m_channels;

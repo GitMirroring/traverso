@@ -38,7 +38,7 @@ are lock-free on every platform Traverso builds for (`static_assert` on
 ARM); memory that is allocated before the cycle and only reused.
 
 Memory that is touched for the first time in the cycle can still fault a page
-in. `TRealTimeAudioBuffer` locks its memory (`USE_MLOCK`, defined by the build
+in. `TRealTimeChannelBuffer` locks its memory (`USE_MLOCK`, defined by the build
 where the system has `mlock()`); a failed lock (`RLIMIT_MEMLOCK`) is only
 logged. RealtimeSanitizer does not see page faults.
 
@@ -253,7 +253,7 @@ Open, for the review (design choices, not made on the branch):
    made. That holds with every standard library; the size check on
    `std::move_only_function` held for libstdc++ only.
 5. Page faults and other stalls. `USE_MLOCK` is defined (CMakeLists.txt,
-   where the system has `mlock()`), so `TRealTimeAudioBuffer`s are locked. A
+   where the system has `mlock()`), so `TRealTimeChannelBuffer`s are locked. A
    failed lock is told once per kind, no permission or the limit reached: one
    log line and one message to the user (2026-10-25). Other memory of the
    path is not locked.
@@ -265,12 +265,12 @@ Open, for the review (design choices, not made on the branch):
    visible), and keep other threads from unmapping and mapping again and
    again (reuse buffers, keep the peak files' mappings open): a note for the
    next work on the peak and DiskIO side.
-6. The buffers the path uses are `TRealTimeAudioBuffer`s (locked), and code off
-   the path does not use them where a plain `TAudioBuffer` will do (user
-   2026-10-25): check every `TAudioBuffer` the path reads or writes (the
+6. The buffers the path uses are `TRealTimeChannelBuffer`s (locked), and code off
+   the path does not use them where a plain `TChannelBuffer` will do (user
+   2026-10-25): check every `TChannelBuffer` the path reads or writes (the
    buses' channels, the slots, the curve buffer, the clip's and plugins'
    buffers, `TFileIOBuffer`s the audio thread touches) and every
-   `TRealTimeAudioBuffer` outside it. `TAudioBuffer::is_memory_locked()`
+   `TRealTimeChannelBuffer` outside it. `TChannelBuffer::is_memory_locked()`
    (review-stack 2b39ca5b) tells whether a lock was granted.
 7. A run that plays: the clips' read path, recording, fades and plugins ran
    under RealtimeSanitizer only as far as the tests reach them. This waits for

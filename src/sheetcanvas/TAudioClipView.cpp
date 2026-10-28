@@ -43,7 +43,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TLocation.h"
 #include "TThemer.h"
 #include "TConfig.h"
-#include "TAudioBuffer.h"
+#include "TChannelBuffer.h"
 #include <TFadeCurve.h>
 #include <TCurve.h>
 #include "TMainWindow.h"
@@ -707,7 +707,7 @@ void TAudioClipView::fill_gain(const TTimeRef& clipLocalStart, const TTimeRef& c
     std::fill(gain, gain + count, clipGain);
 
     const double width = double(columnWidth.universal_frame());
-    TAudioBuffer buffer{nframes_t(count)};
+    TChannelBuffer buffer{nframes_t(count)};
 
     // The clip's gain curve, in source time
     TCurve* clipCurve = m_clip->get_plugin_chain()->get_fader()->get_curve();

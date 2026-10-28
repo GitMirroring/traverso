@@ -111,7 +111,7 @@ int TFadeCurve::set_state( const QDomNode & node )
 }
 
 
-void TFadeCurve::process(const TAudioBuffer &curveBuffer, AudioBus *bus, const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes) T_REALTIME_SAFE
+void TFadeCurve::process(const TChannelBuffer &curveBuffer, AudioBus *bus, const TTimeRef& startLocation, const TTimeRef& endLocation, nframes_t nframes) T_REALTIME_SAFE
 {
     Q_ASSERT(bus->get_channel_count() == 2);
     Q_ASSERT(m_parentTimeLineEntity != nullptr);
@@ -312,7 +312,7 @@ QString TFadeCurve::fade_type_to_string() const
     return QString("Unknown Fade Type to String Conversion");
 }
 
-void TFadeCurve::get_vector(double x0, double x1, const TAudioBuffer &audioBuffer, nframes_t veclen)
+void TFadeCurve::get_vector(double x0, double x1, const TChannelBuffer &audioBuffer, nframes_t veclen)
 {
     float* vec = audioBuffer.get_data(veclen);
 

@@ -486,7 +486,7 @@ void TTrack::process_send(TSend *send, nframes_t nframes)
 
             gainFactor = panFactor * send->get_gain();
 
-            TAudioBuffer::mix_buffers_with_gain(receiver->get_buffer(), sender->get_buffer(), nframes, gainFactor);
+            TChannelBuffer::mix_buffers_with_gain(receiver->get_buffer(), sender->get_buffer(), nframes, gainFactor);
         }
 
     }
