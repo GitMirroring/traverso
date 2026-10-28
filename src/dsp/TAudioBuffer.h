@@ -34,21 +34,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 // was the one-channel buffer, now TChannelBuffer: doc/design/renames.md.)
 class TAudioBuffer {
 public:
-    TAudioBuffer()
-        : m_channelBufferSize(1)
-    {
-        // Default initialize to stereo footprint capacity
-        for (uint chan = 0; chan < 2; ++chan) {
-            add_channel_buffer();
-        }
-    }
+    TAudioBuffer() = default;
 
     // Accesses a single, standalone de-interleaved mono channel stream
     TChannelBuffer& get_channel_buffer(uint channel) {
-        return *m_channelBuffers.at(channel);
+        Q_ASSERT(channel < m_channelBuffers.size());
+        return *m_channelBuffers[channel];
     }
     const TChannelBuffer& get_channel_buffer(uint channel) const {
-        return *m_channelBuffers.at(channel);
+        Q_ASSERT(channel < m_channelBuffers.size());
+        return *m_channelBuffers[channel];
     }
 
     // The channel buffers, one per channel, as one array (a resampler takes
@@ -64,38 +59,35 @@ public:
 
     // Zeros in the first channels channel buffers, count frames from frame at
     void silence(nframes_t at, nframes_t count, uint channels) {
+        Q_ASSERT(channels <= m_channelBuffers.size());
         for (uint channel = 0; channel < channels; ++channel) {
-            m_channelBuffers.at(channel)->silence(at, count);
+            m_channelBuffers[channel]->silence(at, count);
         }
     }
 
-    // Room for size frames in each of channels channel buffers (frames, not
-    // frames times channels). Who writes into the buffer makes the room: a
-    // reader for what it reads. A source with more channels than the buffer
-    // has gets the channel buffers it lacks. Grows only, and keeps what the
-    // buffer held. Not in the audio thread: allocates
-    void check_capacity(uint size, uint channels)
+    // Room for frames frames in each of channels channel buffers (frames,
+    // not frames times channels). Who writes into the buffer makes the room:
+    // a reader for what it reads. No channels exist before the first call;
+    // a source with more channels than the buffer has gets the channel
+    // buffers it lacks. Grows only, and keeps what the buffer held. Not in
+    // the audio thread: allocates
+    void check_capacity(nframes_t frames, uint channels)
     {
-        Q_ASSERT(size > 0);
-        while (m_channelBuffers.size() < channels) {
-            add_channel_buffer();
-        }
-        if (size > m_channelBufferSize) {
-            // Buffer resize will safely handle data-migration and silences the structures
-            for (const auto &buffer : m_channelBuffers) {
-                buffer->resize(size);
+        Q_ASSERT(frames > 0);
+        if (frames > m_channelBufferSize) {
+            for (const auto& buffer : m_channelBuffers) {
+                buffer->resize(frames);
             }
-            m_channelBufferSize = size;
+            m_channelBufferSize = frames;
+        }
+        while (m_channelBuffers.size() < channels) {
+            m_channelBuffers.push_back(std::make_unique<TChannelBuffer>(m_channelBufferSize));
+            m_channelPointers.push_back(m_channelBuffers.back().get());
         }
     }
 
 private:
-    void add_channel_buffer() {
-        m_channelBuffers.push_back(std::make_unique<TChannelBuffer>(m_channelBufferSize));
-        m_channelPointers.push_back(m_channelBuffers.back().get());
-    }
-
     std::vector<std::unique_ptr<TChannelBuffer>>  m_channelBuffers;
     std::vector<TChannelBuffer*>                  m_channelPointers;
-    uint                                        m_channelBufferSize;
+    nframes_t                                     m_channelBufferSize{0};
 };

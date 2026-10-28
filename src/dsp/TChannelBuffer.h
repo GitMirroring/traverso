@@ -29,9 +29,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cstring>
 
+// The samples of one channel. Its size is never 0: a buffer of no frames
+// does not exist (resize() asserts size > 0). Neither copyable nor movable:
+// it owns a raw block of memory, and a copy would free it twice; containers
+// hold it by unique_ptr (TAudioBuffer, the ring slots).
 class TChannelBuffer
 {
 public:
+    TChannelBuffer(const TChannelBuffer&) = delete;
+    TChannelBuffer& operator=(const TChannelBuffer&) = delete;
+
     // Whether the buffer's memory is kept in RAM (mlock()), so that the audio
     // thread never faults a page of it in: a TRealTimeChannelBuffer asks for it
     enum class MemoryLock { No, Yes };

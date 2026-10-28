@@ -13,6 +13,7 @@
 #include <QTemporaryDir>
 
 #include <cmath>
+#include <type_traits>
 #include <cstdint>
 #include <cstdio>
 
@@ -89,8 +90,21 @@ static bool read_file(TAudioBuffer& buffer, const QString& path, uint channels, 
     return true;
 }
 
+// A channel buffer owns a raw block of memory: a copy or a move would free it
+// twice; containers hold it by unique_ptr
+static_assert(!std::is_copy_constructible_v<TChannelBuffer> && !std::is_copy_assignable_v<TChannelBuffer>);
+static_assert(!std::is_move_constructible_v<TChannelBuffer> && !std::is_move_assignable_v<TChannelBuffer>);
+
 int main()
 {
+    // No channels before the first check_capacity(), then the ones asked
+    {
+        TAudioBuffer buffer;
+        check(buffer.channel_count() == 0, "a new buffer has no channels");
+        buffer.check_capacity(100, 3);
+        check(buffer.channel_count() == 3 && buffer.get_channel_buffer(2).get_size() >= 100, "check_capacity() makes the channels at the size asked");
+    }
+
     // More channels with a read smaller than the ones before
     {
         TAudioBuffer buffer;

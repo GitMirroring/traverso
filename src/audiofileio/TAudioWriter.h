@@ -17,7 +17,6 @@ the Free Software Foundation; either version 2 of the License, or
 #include <expected>
 #include <memory>
 #include <optional>
-#include <vector>
 
 #include "TAudioEncodeSettings.h"
 #include "TAudioFileError.h"
