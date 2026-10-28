@@ -418,6 +418,21 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
   creates, the driver lists, the driver's destructor deletes through the
   device, `shutdown()` removes them first, the device's destructor deletes
   the rest. One owner: the driver.
+- **T62 A stale `QThread::finished` gives a second fallback** (proposed
+  low; Fable's review of `audiodevice-races`, 2026-10-28; on master too,
+  to verify with a log): after a storm a blocking driver's thread ends on
+  its own, so `finished` is queued before `shutdown()` disconnects it; it
+  arrives after `switch_to_null_driver()` started the Dummy driver, passes
+  `audiothread_finished()`'s guard and restarts the Dummy driver once
+  more. Fix: a generation in the connect lambda, not `sender() ==
+  m_audioThread` (the freed address may be reused).
+- **T63 Off the audio thread into the audio thread's queue** (proposed
+  low; same review): JACK calls `xrun()` from its notification thread,
+  which posts `bufferUnderRun` into `m_postedFromRTThreadQueue`, a
+  single-producer ring, next to the audio thread's own posts (the storm
+  no longer posts since `audiodevice-races`). And `set_free_wheeling()`
+  stops and starts a driver without native freewheel from the GUI while
+  the audio thread runs it (benign on the Dummy driver).
 
 ## Plans
 
