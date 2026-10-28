@@ -441,7 +441,9 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
   model: project (the user's wish), runtime requested (`m_setup`), runtime
   granted (`m_rate`, `TProcessContext`), source (the file's rate); outside
   audioruntime only the granted rate is read, the requested one only by
-  the settings dialog and the project save.
+  the settings dialog and the project save. Also: `set_parameters()`
+  writes `m_rate` directly while the cycle's context gets the rate only
+  through `set_sample_rate()`; one path, so the two cannot drift.
 - **T66 A fallback overwrites the project's driver wish** (proposed
   medium; Remon 2026-10-28): after a fallback `m_setup` is the Dummy setup
   with the granted rate (`fallback_setup()`), and `TProject` saves
@@ -496,15 +498,20 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
     client, cycles, remove, switch driver, shut down). **Done 2026-10-28**
     (`test_audio_device`, merged `73dad650`).
   - `audiodevice()` first: map every caller per lib and thread;
-    Traverso.cpp owns the device (constructed after the scheduler,
-    destroyed after the project manager), `audiodevice()` a temporary
+    Traverso.cpp owns the device (made after `tsmp()`, before the
+    configuration is read; gone after the projects and the window, before
+    the static `pm()` and `tsmp()`), `audiodevice()` a temporary
     bridge; replace callers bottom up (drivers: `m_device`; real-time code:
     rate and buffer size from `TProcessContext`, which removes the
     `T_BLOCKING_BY_DESIGN` exception; core and GUI: a reference through
     constructors); then the bridge goes.
   - `tsmp()` after it, by composition: the device owns its queue. Map
     first who uses it directly and through `TRtTransaction`/`TRtList`; a
-    queue per device also gives tests a queue they apply on demand.
+    queue per device also gives tests a queue they apply on demand. Then a
+    callback the audio thread posted that captures the device (`xrun()`'s
+    `bufferUnderRun`) can no longer run after the device is gone: the
+    queue's worker is joined in the device's destructor (Fable's review of
+    `device-ownership`, 2026-10-28).
 - **T59 TAudioDevice split** (later, each step isolated).
   - `TAudioRuntime`: the control interface (not the GUI interface:
     headless, agent and tests use it), owned by Traverso.cpp; owns the
