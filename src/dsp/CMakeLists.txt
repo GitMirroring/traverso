@@ -22,7 +22,7 @@ add_library(traversodsp STATIC
     TAudioBuffer.h
     TBufferOperations.h TBufferOperations.cpp
     TFaderLaw.h TFaderLaw.cpp
-    TDecibels.h
+    TGain.h
     TCpuFeatures.h TCpuFeatures.cpp
     TDenormals.h TDenormals.cpp
     gdither.h gdither_types.h gdither.cpp

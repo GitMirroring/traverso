@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TDecibels.h"
+#include "TGain.h"
 #include "TKnobView.h"
 
 #include "TThemer.h"
@@ -176,8 +176,8 @@ TGainKnobView::TGainKnobView(TViewItem* parent, TTrack* track)
 {
     connect(m_track, &TTrack::stateChanged, this, &TGainKnobView::track_gain_changed);
     set_title("GAIN");
-    set_min_value(TGainRange::MinGain);
-    set_max_value(TGainRange::MaxGain);
+    set_min_value(TGain::MinGain);
+    set_max_value(TGain::MaxGain);
     track_gain_changed();
 }
 

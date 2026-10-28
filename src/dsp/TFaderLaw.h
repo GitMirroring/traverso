@@ -4,7 +4,7 @@
 #pragma once
 
 // The fader law: where a level sits on a fader's travel (0.0 at the bottom,
-// TGainRange::MinDB; 1.0 at the top, TGainRange::MaxDB). How a fader is
+// TGain::MinDB; 1.0 at the top, TGain::MaxDB). How a fader is
 // operated, not audio: it goes along to the controllers with the fader port
 // of branch 3.
 class TFaderLaw

@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <cfloat>
 
-#include "TDecibels.h"
+#include "TGain.h"
 #include "TAudioThreadMessageQueue.h"
 #include "TContextItem.h"
 #include "TBufferedAudioStreamReader.h"
@@ -961,7 +961,7 @@ int TAudioClip::recording_state( ) const T_REALTIME_SAFE
 
 float TAudioClip::calculate_normalization_factor(float targetdB)
 {
-    float target = dB_to_gain (targetdB);
+    float target = TGain::from_dB(targetdB);
 
     if (TraversoDAW::Float::equals_1(target)) {
         /* do not normalize to precisely 1.0 (0 dBFS), to avoid making it appear

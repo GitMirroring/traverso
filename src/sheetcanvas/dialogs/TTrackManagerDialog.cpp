@@ -35,7 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TThemer.h"
 #include "TMainWindow.h"
 
-#include "TDecibels.h"
+#include "TGain.h"
 
 #include <QMenu>
 
@@ -61,7 +61,7 @@ TTrackManagerDialog::TTrackManagerDialog(TTrack *track, QWidget *parent)
     update_pre_post_fader_plugins_widget_view();
 
     trackPanSlider->setValue(int(m_track->get_pan() * 64));
-    trackGainSlider->setValue(int(gain_to_dB(m_track->get_gain()) * 10.f));
+    trackGainSlider->setValue(int(TGain::to_dB(m_track->get_gain()) * 10.f));
 
     update_gain_indicator();
     update_pan_indicator();
@@ -469,7 +469,7 @@ void TTrackManagerDialog::pre_sends_selection_changed()
         qint64 sendId = selectedItems.first()->data(Qt::UserRole).toLongLong();
         m_selectedPreSend = m_track->get_send(sendId);
         if (m_selectedPreSend) {
-            preSendsGainSlider->setValue(int(gain_to_dB(m_selectedPreSend->get_gain()) * 10.f));
+            preSendsGainSlider->setValue(int(TGain::to_dB(m_selectedPreSend->get_gain()) * 10.f));
             postSendsPanSlider->setValue(int(m_selectedPreSend->get_pan() * 64));
         }
     } else {
@@ -486,7 +486,7 @@ void TTrackManagerDialog::post_sends_selection_changed()
         qint64 sendId = selectedItems.first()->data(Qt::UserRole).toLongLong();
         m_selectedPostSend = m_track->get_send(sendId);
         if (m_selectedPostSend) {
-            postSendsGainSlider->setValue(int(gain_to_dB(m_selectedPostSend->get_gain()) * 10));
+            postSendsGainSlider->setValue(int(TGain::to_dB(m_selectedPostSend->get_gain()) * 10));
             postSendsPanSlider->setValue(int(m_selectedPostSend->get_pan() * 64));
         }
     } else {
@@ -498,7 +498,7 @@ void TTrackManagerDialog::post_sends_selection_changed()
 void TTrackManagerDialog::track_gain_value_changed(int value)
 {
     float v = float(value) / 10;
-    float gain = dB_to_gain(v);
+    float gain = TGain::from_dB(v);
     m_track->set_gain(gain);
 }
 
@@ -515,7 +515,7 @@ void TTrackManagerDialog::pre_sends_gain_value_changed(int value)
     }
 
     qreal v = value / 10;
-    float gain = dB_to_gain(float(v));
+    float gain = TGain::from_dB(float(v));
     QByteArray gainString = QByteArray::number(v, 'f', 1) + " dB";
     preSendGainLabel->setText(gainString);
     m_selectedPreSend->set_gain(gain);
@@ -539,7 +539,7 @@ void TTrackManagerDialog::post_sends_gain_value_changed(int value)
         return;
     }
     float v = float(value) / 10;
-    float gain = dB_to_gain(v);
+    float gain = TGain::from_dB(v);
     QByteArray gainString = QByteArray::number(double(v), 'f', 1) + " dB";
     postSendGainLabel->setText(gainString);
     m_selectedPostSend->set_gain(gain);

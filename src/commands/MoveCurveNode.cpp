@@ -8,7 +8,7 @@
 #include "TCurveView.h"
 #include "TCurveNode.h"
 #include "TSheetView.h"
-#include "TDecibels.h"
+#include "TGain.h"
 #include "TContextPointer.h"
 #include "TRtTransaction.h"
 
@@ -143,7 +143,7 @@ void MoveCurveNode::set_cursor_shape(int useX, int useY)
     // The [DRAG] prefix makes the cursor renderer draw drag arrows as soon as
     // the hold starts.
     if (m_nodeDatas.size() == 1) {
-        float dbFactor = gain_to_dB(m_nodeDatas.at(0).origValue + m_valueDiff);
+        float dbFactor = TGain::to_dB(m_nodeDatas.at(0).origValue + m_valueDiff);
         m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QString("[DRAG]%1 dB").arg(dbFactor, 0, 'f', 1)));
     } else {
         m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("[DRAG]Multiple Nodes")));
@@ -181,10 +181,10 @@ int MoveCurveNode::check_and_apply_when_and_value_diffs()
     if (m_valueDiff < mcnd->minValueDiff) m_valueDiff = mcnd->minValueDiff;
 
     if (m_nodeDatas.size() == 1) {
-        float dbFactor = gain_to_dB(m_nodeDatas.at(0).origValue + m_valueDiff);
+        float dbFactor = TGain::to_dB(m_nodeDatas.at(0).origValue + m_valueDiff);
 
         // Append the [DRAG] token prefix to signal the crosshair to morph into directional arrows
-        if (dbFactor <= TGainRange::MinDB) {
+        if (dbFactor <= TGain::MinDB) {
             m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("[DRAG]-inf dB")));
         } else {
             m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QString("[DRAG]%1 dB").arg(dbFactor, 0, 'f', 1)));

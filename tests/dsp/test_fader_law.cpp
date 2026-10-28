@@ -6,7 +6,7 @@
 // ZeroDBPosition and the ends of the travel are silence and +12 dB.
 
 #include "TFaderLaw.h"
-#include "TDecibels.h"
+#include "TGain.h"
 
 #include <cmath>
 #include <cstdio>
@@ -23,7 +23,7 @@ static void check(bool ok, const char* what)
 
 static float position_round_trip(float position)
 {
-    return TFaderLaw::dB_to_position(gain_to_dB(TFaderLaw::position_to_gain(position)));
+    return TFaderLaw::dB_to_position(TGain::to_dB(TFaderLaw::position_to_gain(position)));
 }
 
 int main()
@@ -31,9 +31,9 @@ int main()
     // The anchor points of the travel
     check(TFaderLaw::dB_to_position(0.0f) == TFaderLaw::ZeroDBPosition, "0 dB sits at ZeroDBPosition");
     check(TFaderLaw::position_to_gain(TFaderLaw::ZeroDBPosition) == 1.0f, "ZeroDBPosition is unity gain");
-    check(TFaderLaw::dB_to_position(TGainRange::MaxDB) == 1.0f, "+12 dB is the top of the travel");
-    check(std::fabs(TFaderLaw::position_to_gain(1.0f) - TGainRange::MaxGain) < 1.0e-6f, "the top of the travel is +12 dB");
-    check(TFaderLaw::dB_to_position(TGainRange::MinDB) == 0.0f, "-120 dB is the bottom of the travel");
+    check(TFaderLaw::dB_to_position(TGain::MaxDB) == 1.0f, "+12 dB is the top of the travel");
+    check(std::fabs(TFaderLaw::position_to_gain(1.0f) - TGain::MaxGain) < 1.0e-6f, "the top of the travel is +12 dB");
+    check(TFaderLaw::dB_to_position(TGain::MinDB) == 0.0f, "-120 dB is the bottom of the travel");
     check(TFaderLaw::position_to_gain(0.0f) == 0.0f, "the bottom of the travel is silence");
 
     // Position -> gain -> position, below and above 0 dB

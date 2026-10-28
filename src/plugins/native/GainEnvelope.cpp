@@ -18,7 +18,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TDecibels.h"
+#include "TGain.h"
 #include "GainEnvelope.h"
 
 #include "TSheet.h"
@@ -90,7 +90,7 @@ void GainEnvelope::set_session(TSession * session)
 }
 
 void GainEnvelope::set_gain(float gain) {
-    m_gain = TGainRange::clamp_gain(gain);
+    m_gain = TGain::clamp(gain);
 
 }
 
@@ -124,7 +124,7 @@ void GainEnvelope::process_gain(AudioBus* audioBus, const TTimeRef& startlocatio
 
 QString GainEnvelope::get_gain_db_string(int decimals)
 {
-    float db = gain_to_dB (get_gain());
+    float db = TGain::to_dB(get_gain());
 
     QString gainIndB;
 
