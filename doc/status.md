@@ -318,8 +318,10 @@ Other open tasks:
   Names, agreed 2026-10-28, as the FIRST commit of T52 (names only, all
   green; then the behaviour change as a small diff of its own), with the
   rows in `doc/design/renames.md` in that commit:
-  - `Mixer` splits: the kernels → `TMixKernels`; the fader position
-    mapping and its limits → `TFaderLaw`.
+  - `Mixer` splits: the operations on a buffer's samples →
+    `TBufferOperations` (not "kernels": a filter kernel in DSP, and not
+    all four mix; not "sample": a sound snippet in a DAW; Remon
+    2026-10-28); the fader position mapping and its limits → `TFaderLaw`.
   - `compute_peak(buf, nsamples, current)` → `update_peak(buf, nframes,
     current)`; `apply_gain_to_buffer` → `apply_gain`;
     `mix_buffers_with_gain` / `mix_buffers_no_gain` → `mix_with_gain` /
