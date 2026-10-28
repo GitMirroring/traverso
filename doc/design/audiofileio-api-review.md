@@ -284,7 +284,11 @@ before the review.
   `TAudioResampler`'s constructor and `TExportSpecification::set_resampler()`
   catch a mistake in a debug build. No default: every maker sets the choice (`TExportSpecification.cpp:346-347`,
   `TResamplerSettings`, the tests already do); a type in `support` cannot
-  call `TAudioResampler::default_quality()`. `TIOStream::Resampler` becomes
+  call `TAudioResampler::default_quality()`. In `TAudioEncodeSettings` it is
+  a `std::optional<TResamplerChoice>` (Remon's review 2026-10-28: a zeroed
+  choice is libsamplerate at its best, most expensive quality, silently);
+  a writer that has to resample without a choice does not open
+  (`CannotOpen`). `TIOStream::Resampler` becomes
   `TResamplerChoice choice; bool resample;` and stays 8 bytes and lock-free
   (the `static_assert` at `TIOStream.h:89` stays). `TAudioResampler` takes
   it; its `BackendType` goes; `qualities()`, `quality_name()`,

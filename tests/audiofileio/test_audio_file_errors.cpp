@@ -84,6 +84,11 @@ static void test_writer(const QTemporaryDir& dir)
     check(!noDir && noDir.error().code == TAudioFileError::Code::CannotOpen && !noDir.error().detail.isEmpty(),
           "a writer in a directory that is not there: CannotOpen, with why");
 
+    const auto noResampler = TAudioWriter::open(settings, dir.filePath(QStringLiteral("noresampler.wav")), 44100);
+    check(!noResampler && noResampler.error().code == TAudioFileError::Code::CannotOpen &&
+              !QFile::exists(dir.filePath(QStringLiteral("noresampler.wav"))),
+          "a writer that has to resample without a resampler chosen: CannotOpen, no file");
+
     auto writer = TAudioWriter::open(settings, dir.filePath(QStringLiteral("closed.wav")), 48000);
     if (!writer) {
         check(false, "a writer opens");

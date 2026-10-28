@@ -65,8 +65,9 @@ file itself (`SFAudioReader.cpp:76-79`, `WPAudioReader.cpp:66`,
 `MadAudioReader.cpp:616-619`, `FaadAudioReader.cpp:327`), so a missing file,
 an unreadable file and a file of an unknown format all end there. That
 branch asks, in this order: does the file exist (else `NotFound`); can it be
-opened for reading (else `CannotOpen`, "permission denied"); only then "no
-decoder reads this format" (`CannotOpen`). A file that goes between the
+opened for reading (else `CannotOpen`, with the system's reason from
+`QFile::errorString()`); only then "no decoder reads this format"
+(`CannotOpen`). A file that goes between the
 probe and the decoder's open lands in the `is_valid()` branch (`:145-149`)
 as `CannotOpen`. The writer never gives `NotFound`.
 

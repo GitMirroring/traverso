@@ -10,6 +10,7 @@
 // bit: no frame lost or doubled where they join.
 
 #include "TAudioReader.h"
+#include "TAudioResampler.h"
 #include "TAudioBuffer.h"
 #include "TTimeRef.h"
 #include "sweeps.h"

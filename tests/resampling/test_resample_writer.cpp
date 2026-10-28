@@ -7,6 +7,7 @@
 // not flush its resampler at the end loses what the resampler still holds.
 
 #include "TAudioReader.h"
+#include "TAudioResampler.h"
 #include "TAudioEncodeSettings.h"
 #include "TAudioBuffer.h"
 #include "TAudioWriter.h"
@@ -101,7 +102,7 @@ int main()
         default: break;
         }
         settings.ditherType = GDitherNone;
-        settings.resampler = {c.backend, qint16(TAudioResampler::default_quality(c.backend))};
+        settings.resampler = TResamplerChoice{c.backend, qint16(TAudioResampler::default_quality(c.backend))};
 
         const QString backend = TAudioResampler::backend_name(c.backend);
         const QByteArray formatText = QString("%1 %2, %3").arg(c.writer == wavpack ? "wavpack" : "wav", formatName, backend).toLatin1();

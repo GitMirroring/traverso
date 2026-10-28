@@ -16,6 +16,7 @@
 // Reads go through read() at a location in time, as the streams read.
 
 #include "TAudioReader.h"
+#include "TAudioResampler.h"
 #include "TAudioBuffer.h"
 #include "TTimeRef.h"
 #include "test_signals.h"

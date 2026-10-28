@@ -7,6 +7,8 @@
 #include "gdither_types.h"
 #include "TResamplerChoice.h"
 
+#include <optional>
+
 /**
  * @brief What an audio writer needs to know to encode a file: the writer and
  *        file format, the sample format, channels, sample rate, resampler and
@@ -23,9 +25,10 @@ struct TAudioEncodeSettings
     uint                    channelCount{0};
     uint                    sampleRate{0};
     uint                    blockSize{0};
-    // The resampler when the input rate is not sampleRate. Zero until the
-    // maker sets it (TExportSpecification, the tests): no default here
-    TResamplerChoice        resampler{};
+    // The resampler when the input rate is not sampleRate. No default: the
+    // maker sets it (TExportSpecification, the tests); without it a writer
+    // that has to resample does not open (CannotOpen)
+    std::optional<TResamplerChoice> resampler;
     GDitherType             ditherType{};
 
     // WavPack: how hard it compresses, and whether it leaves out the

@@ -26,7 +26,7 @@ std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> TAudioWriter::open
     };
 
     // The device's rate is 0 until a device is set up; a precondition once
-    // the rate is guaranteed (task R6)
+    // the rate is guaranteed (task T6)
     if (inputSampleRate == 0) {
         return cannot(QStringLiteral("no input sample rate (no audio device set up)"));
     }
@@ -38,10 +38,13 @@ std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> TAudioWriter::open
     // empty file behind
     std::unique_ptr<TAudioResampler> resampler;
     if (inputSampleRate != settings.sampleRate) {
+        if (!settings.resampler) {
+            return cannot(QStringLiteral("the input rate is not the file's and no resampler is chosen"));
+        }
         const double ratio = double(settings.sampleRate) / inputSampleRate;
-        resampler = std::make_unique<TAudioResampler>(settings.resampler, ratio, settings.channelCount);
+        resampler = std::make_unique<TAudioResampler>(*settings.resampler, ratio, settings.channelCount);
         if (!resampler->valid()) {
-            return cannot(QStringLiteral("the %1 resampler did not start").arg(TAudioResampler::backend_name(settings.resampler.backend)));
+            return cannot(QStringLiteral("the %1 resampler did not start").arg(TAudioResampler::backend_name(settings.resampler->backend)));
         }
     }
     if (TAudioFileStatus opened = encoder->open(fileName); !opened) {

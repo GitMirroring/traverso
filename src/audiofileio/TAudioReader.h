@@ -23,8 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 #include "TAudioFileError.h"
-#include "TAudioResampler.h"
 #include "TAudioBuffer.h"
+#include "TResamplerChoice.h"
 #include "TTimeRef.h"
 #include "defines.h"
 
@@ -35,6 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <optional>
 
 class TAudioDecoder;
+class TAudioResampler;
 
 /**
  * @brief The audio of one file: the one way to read an audio file in
@@ -91,10 +92,10 @@ public:
     QString decoder_type() const;
 
     // The output rate of read(), and the resampler for it when it is not the
-    // file's rate (a backend and one of its qualities). The reader has no position at the new
-    // rate: the next read() gives it one. Until it is called, the output
-    // rate is the file's. rate > 0. A resampler that does not start is an
-    // error (CannotOpen), and the reader stays as it was.
+    // file's rate (a backend and one of its qualities). The reader has no
+    // position at the new rate: the next read() gives it one. Until it is
+    // called, the output rate is the file's. rate > 0. A resampler that does
+    // not start is an error (CannotOpen), and the reader stays as it was.
     [[nodiscard]] TAudioFileStatus set_output_rate_and_resampler(uint rate, TResamplerChoice resampler);
     uint output_rate() const { return m_outputRate; }
     // The frames the file gives at the output rate: the first output frame at

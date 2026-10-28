@@ -145,6 +145,14 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
   reaches the stream through T9. Wanted behaviour first (open question O1,
   parked 2026-10-27): silence and one log line per stream, or a read-error
   state and a signal to the clip.
+  Note (Remon's review of W1–W4, 2026-10-28): the same error comes back.
+  The resampled path reads ahead, so a read gives all its frames plus the
+  error met beyond them; the next read sees the decoder's error state,
+  repositions, the seek succeeds (the damaged part lies further on), the
+  error is cleared, and the read-ahead hits the same part again: at least
+  two reports of one fault, each costing a seek (MP3: with pre-roll). Not
+  wrong, but "one log line per stream" needs de-duplication by position,
+  not by count.
 - **T11 (medium): MP3 without libmad goes to libsndfile, whose seeks are not
   exact.** Proposal: refuse MP3 without MAD and tell the user. Behaviour
   change: Remon confirms.
