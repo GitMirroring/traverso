@@ -297,6 +297,39 @@ Other open tasks:
   (`TAudioFileMerger.cpp:108-116`; before W3 it failed one line later, at
   `TQueueBufferSlot(0, …)`). Guard the merge on a zero-length source.
   (Fable's review of the API branch, 2026-10-28.)
+- **T52 The mix functions work without the application** (proposed
+  medium; before T51; Remon 2026-10-28). `Mixer::compute_peak`,
+  `apply_gain_to_buffer`, `mix_buffers_with_gain`, `mix_buffers_no_gain`
+  are nullptr until `Traverso::init_sse()`: a headless dsp or core test
+  crashes at the first mix or peak. Change: the pointers `constinit` to the
+  `default_*` functions; one dynamic static initializer in `Mixer.cpp`
+  picks SSE or Accelerate before `main()` (no threads yet, no race; not on
+  first use, which can be the audio thread); no log there (TLog may not
+  exist yet): the choice is logged later through a name getter.
+  `Traverso::init_sse()` goes. Test in `tests/dsp`: mix, gain and peak
+  without the application, and the chosen functions against the defaults
+  on random buffers of several lengths and unaligned pointers (the SSE
+  assembly under test at last; the base for T20).
+- **T51 Denormal protection on every audio thread** (proposed medium-high;
+  after T52; Remon 2026-10-28). `Traverso::setup_fpu()` clears FTZ and then
+  sets 0x8000, which is FTZ again (DAZ is 0x0040): net FTZ on a CPU that
+  reports DAZ, DAZ never. It runs once on the GUI thread; threads made by
+  CoreAudio (possibly PipeWire, JACK) do not inherit it. And it hangs on
+  `SSE_OPTIMIZATIONS` (`UNIX AND WANT_SSE` and a known architecture):
+  Windows, `WANT_SSE=OFF` and probably macOS have no protection at all.
+  Change: one function in dsp (with `fpu.h`), on `__x86_64__`/`_M_X64`
+  (and `__SSE__` for 32 bit), independent of `SSE_OPTIMIZATIONS`. The mask
+  (FTZ, plus DAZ where the CPU has it, 0 under
+  `TRAVERSO_RUNNING_UNDER_VALGRIND`) is decided once off the audio thread
+  (`cpuid`, `getenv`); every cycle `TAudioDevice::run_cycle()` (all drivers
+  go through it) reads MXCSR and writes it only when bits are missing
+  (`T_REALTIME_SAFE`; catches new driver threads and plugins that change
+  MXCSR). `Traverso::setup_fpu()` goes. Test: a Dummy-driver cycle in a
+  process without `Traverso` reads FTZ and DAZ on the audio thread; clear
+  them on the audio thread, the next cycle sets them again. Runtime check
+  on ALSA and JACK (CoreAudio when someone can). Not in scope: the IO and
+  peak threads (denormals cost throughput there, no glitches); ARM:
+  FPCR.FZ, later (Debian ARM builds, Apple Silicon).
 - Post-merge leftovers of the peak work: remove the recording post-processing
   glue, check mapping a growing file on Windows and macOS, fix the sentence in
   `diskio-rounds.md` §5 **(check whether done)**.
