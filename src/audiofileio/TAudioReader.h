@@ -64,7 +64,9 @@ class TAudioDecoder;
  *
  * Positions come in as time (TTimeRef) or as the file's frames; the frames
  * at the output rate stay inside. Not for the audio thread: file IO, and the
- * buffers may grow.
+ * buffers may grow. One thread at a time: the owner serializes the calls
+ * (read(), read_file_frames(), set_output_rate_and_resampler()); the IO
+ * scheduler does so for the streams.
  *
  * A reader exists only for a file it reads: open() gives one, or why there
  * is none. Its facts are the file's, its reads read.

@@ -39,7 +39,10 @@ class TAudioResampler;
  * buffer has every channel of the file (the caller sizes it). It interleaves
  * and packs in scratch of its own, one per thread (used within one call
  * only). One file per instance: open(), write() as the audio comes,
- * close(). Not for the audio thread: it allocates and does file IO.
+ * close(). Not for the audio thread: it allocates and does file IO. One
+ * thread at a time: the owner serializes write() and close(). A writer
+ * destroyed without close() closes in its destructor (release builds), on
+ * the thread that destroys it.
  *
  * The only user is TBufferedAudioStreamWriter (recordings, imports, merges,
  * exports); the codec writers know nothing of rates or planar buffers.
