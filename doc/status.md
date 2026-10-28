@@ -194,7 +194,23 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
 - **T19 (medium-low): parallel readers for a long compressed file's peak
   build**; then `TIOIdleTask::weight()` goes.
 - **T20 (low): `TChannelBuffer` operations auto-vectorised, hand SIMD
-  retired.** Measure first.
+  retired.** Measure first. Three variants on Linux: the portable loops,
+  the SSE assembly, and AVX2 through `target_clones("avx2", "default")` on
+  the portable loops (Remon + review, 2026-10-28). Then decide which stay.
+  - The test needs its own reference: a plain scalar loop in the test,
+    never cloned. With `target_clones` on `portable_*`, "the portable
+    version" is the AVX2 clone on an AVX2 machine, and the test would
+    compare AVX2 with AVX2.
+  - FMA: with an "avx2,fma" target, or contraction allowed (GCC's default
+    in GNU mode is `-ffp-contract=fast`), `dst += src * gain` skips a
+    rounding and differs from SSE in the last bit. Compare with a
+    tolerance (the test has 1e-6 for gain and mix, peaks exact), or
+    `-ffp-contract=off` for that file.
+  - `target_clones` needs ifunc: Linux with glibc only. macOS has
+    Accelerate (and Apple Silicon is ARM); Windows would need a separate
+    TU with `/arch:AVX2` and a choice through `TCpuFeatures` (CPUID leaf 7
+    plus the OS check with `xgetbv`): only if the Linux measurement shows
+    it is worth it.
 - **T21 (low, Ben): Traverso's AAC writer** drops the first 2048 frames and
   writes raw ADTS into `.m4a`.
 - **T22 (low): the export dialog's MP3 and Ogg options** do nothing (fixed
