@@ -9,7 +9,7 @@
 
 float avx2_update_peak(const audio_sample_t* buf, nframes_t nframes, float current) T_REALTIME_SAFE
 {
-    return buffer_loop_update_peak(buf, nframes, current);
+    return buffer_loop_update_peak<8>(buf, nframes, current);
 }
 
 void avx2_apply_gain(audio_sample_t* buf, nframes_t nframes, float gain) T_REALTIME_SAFE

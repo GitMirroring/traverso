@@ -15,7 +15,7 @@
 // loops of TBufferOperationsLoops.h built for the baseline target
 static float portable_update_peak(const audio_sample_t* buf, nframes_t nframes, float current) T_REALTIME_SAFE
 {
-    return buffer_loop_update_peak(buf, nframes, current);
+    return buffer_loop_update_peak<4>(buf, nframes, current);
 }
 
 static void portable_apply_gain(audio_sample_t* buf, nframes_t nframes, float gain) T_REALTIME_SAFE

@@ -16,26 +16,45 @@
 #include "TRealTime.h"
 
 #include <cmath>
-#if defined(__SSE__)
+#if defined(__AVX__)
+#include <immintrin.h>
+#elif defined(__SSE__)
 #include <xmmintrin.h>
 #endif
 
-// The peak of buf, or current when that is higher
+#if defined(__GNUC__)
+// The vector types of the peak, per number of float lanes. Specialised with
+// fixed sizes: GCC drops a vector_size that depends on a template parameter.
+// Load: at any float address, no alignment, may alias the samples. A
+// typedef, as the compilers' own __m128_u: Clang drops the aligned(4) of the
+// same attributes in a using alias (an aligned load, a crash)
+template <int Lanes> struct TFloatLanes;
+template <> struct TFloatLanes<4> {
+    typedef float Vector __attribute__((vector_size(16)));
+    typedef float Load __attribute__((vector_size(16), aligned(4), may_alias));
+};
+template <> struct TFloatLanes<8> {
+    typedef float Vector __attribute__((vector_size(32)));
+    typedef float Load __attribute__((vector_size(32), aligned(4), may_alias));
+};
+#endif
+
+// The peak of buf, or current when that is higher. Lanes: the floats per
+// vector, 4 for the baseline (128 bit), 8 for AVX2 (256 bit)
+template <int Lanes>
 static inline float buffer_loop_update_peak(const audio_sample_t* buf, nframes_t nframes, float current) T_REALTIME_SAFE
 {
     nframes_t i = 0;
 #if defined(__GNUC__)
-    // GCC and Clang (MinGW too): the maximum in four vectors of four lanes.
+    // GCC and Clang (MinGW too): the maximum in four vectors of Lanes lanes.
     // A maximum in one chain is never vectorised: that would reorder it, which
     // the compiler may not do. Written in vectors, it is vectorised at -O2,
-    // whatever the vectoriser decides.
-    using Float4 = float __attribute__((vector_size(16)));
-    // A load at any float address: no alignment, may alias the samples. A
-    // typedef, as the compilers' own __m128_u: Clang drops the aligned(4)
-    // of the same attributes in a using alias (an aligned load, a crash)
-    typedef float Float4Load __attribute__((vector_size(16), aligned(4), may_alias));
-    const auto abs4 = [](Float4 x) T_REALTIME_SAFE {
-        for (int lane = 0; lane < 4; ++lane) {
+    // whatever the vectoriser decides. Four vectors: a max waits about four
+    // cycles for the one before it, four chains keep the unit busy.
+    using FloatN = typename TFloatLanes<Lanes>::Vector;
+    using FloatNLoad = typename TFloatLanes<Lanes>::Load;
+    const auto absN = [](FloatN x) T_REALTIME_SAFE {
+        for (int lane = 0; lane < Lanes; ++lane) {
             x[lane] = fabsf(x[lane]);
         }
         return x;
@@ -44,25 +63,34 @@ static inline float buffer_loop_update_peak(const audio_sample_t* buf, nframes_t
     // a compare and three logic operations in a chain (the old SSE assembly
     // was faster on short buffers for it). maxps is the same, NaN and the
     // signed zeros included, so the result is bit for bit the same
-    const auto max4 = [](Float4 a, Float4 b) T_REALTIME_SAFE {
-#if defined(__SSE__)
-        return Float4(_mm_max_ps(__m128(a), __m128(b)));
-#else
-        return a > b ? a : b;
+    const auto maxN = [](FloatN a, FloatN b) T_REALTIME_SAFE {
+#if defined(__AVX__)
+        if constexpr (Lanes == 8) {
+            return FloatN(_mm256_max_ps(__m256(a), __m256(b)));
+        }
 #endif
+#if defined(__SSE__)
+        if constexpr (Lanes == 4) {
+            return FloatN(_mm_max_ps(__m128(a), __m128(b)));
+        }
+#endif
+        return a > b ? a : b;
     };
 
-    const Float4 start = {current, current, current, current};
-    Float4 m0 = start, m1 = start, m2 = start, m3 = start;
-    for (; i + 16 <= nframes; i += 16) {
-        const Float4Load* p = reinterpret_cast<const Float4Load*>(buf + i);
-        m0 = max4(m0, abs4(p[0]));
-        m1 = max4(m1, abs4(p[1]));
-        m2 = max4(m2, abs4(p[2]));
-        m3 = max4(m3, abs4(p[3]));
+    FloatN start;
+    for (int lane = 0; lane < Lanes; ++lane) {
+        start[lane] = current;
     }
-    const Float4 m = max4(max4(m0, m1), max4(m2, m3));
-    for (int lane = 0; lane < 4; ++lane) {
+    FloatN m0 = start, m1 = start, m2 = start, m3 = start;
+    for (; i + 4 * Lanes <= nframes; i += 4 * Lanes) {
+        const FloatNLoad* p = reinterpret_cast<const FloatNLoad*>(buf + i);
+        m0 = maxN(m0, absN(p[0]));
+        m1 = maxN(m1, absN(p[1]));
+        m2 = maxN(m2, absN(p[2]));
+        m3 = maxN(m3, absN(p[3]));
+    }
+    const FloatN m = maxN(maxN(m0, m1), maxN(m2, m3));
+    for (int lane = 0; lane < Lanes; ++lane) {
         current = m[lane] > current ? m[lane] : current;
     }
 #endif
