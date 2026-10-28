@@ -433,6 +433,22 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
   no longer posts since `audiodevice-races`). And `set_free_wheeling()`
   stops and starts a driver without native freewheel from the GUI while
   the audio thread runs it (benign on the Dummy driver).
+- **T65 The device's rate before the driver granted it** (proposed low;
+  Remon 2026-10-28): `set_parameters()` sets `m_rate` to the requested
+  rate (`TAudioDevice.cpp:371`) before the driver reports the rate it got
+  (`set_sample_rate()`); in between the requested rate is "the rate", also
+  when the hardware does not give it. `m_rate` only from the driver. Rate
+  model: project (the user's wish), runtime requested (`m_setup`), runtime
+  granted (`m_rate`, `TProcessContext`), source (the file's rate); outside
+  audioruntime only the granted rate is read, the requested one only by
+  the settings dialog and the project save.
+- **T66 A fallback overwrites the project's driver wish** (proposed
+  medium; Remon 2026-10-28): after a fallback `m_setup` is the Dummy setup
+  with the granted rate (`fallback_setup()`), and `TProject` saves
+  `get_device_setup()` (`TProject.cpp:1445`): saving after a fallback
+  writes the Dummy driver into the project, the wish is gone. Against
+  "an existing project's rate never changes silently" (decisions
+  2026-10-28).
 
 ## Plans
 
