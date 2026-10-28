@@ -99,12 +99,16 @@ int main()
     bool mixesWithGain = true;
     char what[200];
     for (const nframes_t nframes : lengths) {
-        // Offsets 0 to 3 floats from a 16-byte boundary
-        for (size_t offset = 0; offset < 4; ++offset) {
+        // Offsets 0 to 3 floats from a 16-byte boundary, for dst and src
+        // apart (the SSE assembly has its own path for dst and src out of
+        // phase with each other)
+        for (size_t combination = 0; combination < 16; ++combination) {
+            const size_t offset = combination % 4;
+            const size_t srcOffset = combination / 4;
             alignas(16) static float srcStore[4096 + 8];
             alignas(16) static float a[4096 + 8];
             alignas(16) static float b[4096 + 8];
-            float* src = srcStore + offset;
+            float* src = srcStore + srcOffset;
             float* dstA = a + offset;
             float* dstB = b + offset;
             for (nframes_t i = 0; i < nframes; ++i) {
@@ -116,7 +120,7 @@ int main()
 
             const float current = 0.125f;
             if (std::fabs(TBufferOperations::update_peak(src, nframes, current) - reference_peak(src, nframes, current)) > 1.0e-6f) {
-                std::snprintf(what, sizeof(what), "peak differs at %u frames, offset %zu", nframes, offset);
+                std::snprintf(what, sizeof(what), "peak differs at %u frames, offsets %zu and %zu", nframes, offset, srcOffset);
                 check(false, what);
                 peaks = false;
             }

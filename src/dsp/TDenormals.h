@@ -5,14 +5,24 @@
 
 #include "TRealTime.h"
 
+// x86 with SSE: the MXCSR exists (the one place this is decided; the test
+// uses it too)
+#if defined(__x86_64__) || defined(_M_X64) || (defined(__i386__) && defined(__SSE__)) || (defined(_M_IX86_FP) && _M_IX86_FP >= 1)
+#define TRAVERSO_DENORMALS_MXCSR 1
+#endif
+
 // Denormals (the tails of fades, filters and reverbs) make a cycle many times
 // slower. On x86 the audio threads flush them to zero: flush-to-zero (FTZ)
 // and, where the CPU has it, denormals-are-zero (DAZ), bits of the
 // per-thread MXCSR. Which bits is decided once before main() (cpuid, and
 // none under TRAVERSO_RUNNING_UNDER_VALGRIND); enforce() sets them on the
-// thread it runs on. TAudioDevice::run_cycle() calls it every cycle: a driver
-// that makes a new thread, or a plugin that changes MXCSR, is caught at the
-// next cycle. Elsewhere it does nothing (ARM flushes through FPCR.FZ: later).
+// thread it runs on. Two calls cover all threads:
+// - Traverso's constructor, on the main thread before any other thread: the
+//   threads Traverso starts (DiskIO, the pools, the converters) inherit it;
+// - TAudioDevice::run_cycle(), every cycle: threads Traverso did not start
+//   (JACK, PipeWire, CoreAudio), a driver that makes a new thread, a plugin
+//   that changes MXCSR, all caught at the next cycle.
+// Without SSE it does nothing (ARM flushes through FPCR.FZ: later).
 class TDenormals
 {
 public:
@@ -20,7 +30,7 @@ public:
     // writes it only then
     static void enforce() T_REALTIME_SAFE;
 
-    // "FTZ and DAZ", "FTZ", "none (valgrind)", "none (not x86)"
+    // "FTZ and DAZ", "FTZ", "none (valgrind)", "none (no SSE)"
     static const char* mode_name() { return s_modeName; }
 
     // The bits enforce() sets, and whether this thread has them all (tests)

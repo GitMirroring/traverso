@@ -20,7 +20,7 @@
 #include <atomic>
 #include <cstdio>
 
-#if defined(__x86_64__) || defined(_M_X64) || (defined(__i386__) && defined(__SSE__))
+#if defined(TRAVERSO_DENORMALS_MXCSR)
 #include <xmmintrin.h>
 #define TEST_MXCSR 1
 #endif
@@ -77,7 +77,7 @@ int main(int argc, char** argv)
 
     std::printf("denormals on the audio threads: %s\n", TDenormals::mode_name());
 #if !defined(TEST_MXCSR)
-    std::printf("not x86: nothing to test\n");
+    std::printf("no SSE: nothing to test\n");
     return 0;
 #else
     if (TDenormals::mask() == 0) {

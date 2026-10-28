@@ -50,8 +50,10 @@ Traverso::Traverso(int &argc, char **argv )
     config().check_and_load_configuration();
     srand ( time(nullptr) );
 
-    TLOG_I("app", "Buffer operations: {}; denormals on the audio threads: {}", TBufferOperations::implementation_name(),
-           TDenormals::mode_name());
+    // Before any other thread: the threads Traverso starts inherit the bits;
+    // the audio threads get them every cycle too (TDenormals)
+    TDenormals::enforce();
+    TLOG_I("app", "Buffer operations: {}; denormals: {}", TBufferOperations::implementation_name(), TDenormals::mode_name());
 
     // The audio thread runs from the start: its period is the clock pulse of
     // Traverso, and real-time changes are only ever posted to it. Loading a

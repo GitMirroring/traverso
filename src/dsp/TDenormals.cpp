@@ -6,8 +6,7 @@
 
 #include <cstdlib>
 
-#if defined(__x86_64__) || defined(_M_X64) || (defined(__i386__) && defined(__SSE__)) || (defined(_M_IX86_FP) && _M_IX86_FP >= 1)
-#define TRAVERSO_DENORMALS_MXCSR 1
+#if defined(TRAVERSO_DENORMALS_MXCSR)
 #include <xmmintrin.h>
 #endif
 
@@ -16,7 +15,7 @@ static constexpr unsigned FlushToZero      = 0x8000;  // bit 15
 static constexpr unsigned DenormalsAreZero = 0x0040;  // bit 6
 
 constinit unsigned TDenormals::s_mask = 0;
-constinit const char* TDenormals::s_modeName = "none (not x86)";
+constinit const char* TDenormals::s_modeName = "none (no SSE)";
 
 // Before main(), so before any audio thread, and off it: cpuid and getenv
 // never run in a cycle. No log here (TLog may not exist yet): Traverso logs
@@ -35,7 +34,7 @@ bool TDenormals::decide()
     if (cpu.denormalsAreZero) {
         s_mask |= DenormalsAreZero;
     }
-    s_modeName = s_mask == (FlushToZero | DenormalsAreZero) ? "FTZ and DAZ" : s_mask == FlushToZero ? "FTZ" : "none";
+    s_modeName = s_mask == (FlushToZero | DenormalsAreZero) ? "FTZ and DAZ" : s_mask == FlushToZero ? "FTZ" : "none (no SSE)";
 #endif
     return true;
 }
