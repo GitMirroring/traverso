@@ -310,6 +310,29 @@ Other open tasks:
   without the application, and the chosen functions against the defaults
   on random buffers of several lengths and unaligned pointers (the SSE
   assembly under test at last; the base for T20).
+  Names, agreed 2026-10-28, as the FIRST commit of T52 (names only, all
+  green; then the behaviour change as a small diff of its own), with the
+  rows in `doc/design/renames.md` in that commit:
+  - `Mixer` splits: the kernels → `TMixKernels`; the fader position
+    mapping and its limits → `TFaderLaw`.
+  - `compute_peak(buf, nsamples, current)` → `update_peak(buf, nframes,
+    current)`; `apply_gain_to_buffer` → `apply_gain`;
+    `mix_buffers_with_gain` / `mix_buffers_no_gain` → `mix_with_gain` /
+    `mix`; `default_*` → `portable_*`; `x86_sse_*` and `accel_*` stay
+    (assembly symbols, T20). `typedef ..._t` → `using`.
+  - dB ↔ gain is audio domain, not fader: free functions in dsp,
+    `dB_to_gain()` (was `dB_to_scale_factor()`) and `gain_to_dB()` (was
+    `Mixer::coefficient_to_dB()`), used by curves and automation too.
+  - `TFaderLaw`: `dB_to_position()`, `position_to_gain()`, `clamp_dB()`,
+    `clamp_gain()`; the limits `constexpr`: `MinDB`, `MaxDB`, `MinGain`,
+    `MaxGain`. One spelling: the B of dB is always capital (`dB_` in
+    snake_case, `DB` in CamelCase), so `ZeroDbPosition` → `ZeroDBPosition`.
+  - `FPU`, `fpu.h`/`fpu.cc` → `TCpuFeatures`, `.h`/`.cpp`; with T51
+    `TDenormals::prepare()` (off the audio thread) and `enforce()` (every
+    cycle).
+  - `f_max` stays: `std::max` ignores a NaN where the trick passes it on
+    (a meter would hide T8's NaN), and whether it vectorises better is
+    T20's measurement, not a rename.
 - **T51 Denormal protection on every audio thread** (proposed medium-high;
   after T52; Remon 2026-10-28). `Traverso::setup_fpu()` clears FTZ and then
   sets 0x8000, which is FTZ again (DAZ is 0x0040): net FTZ on a CPU that
