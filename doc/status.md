@@ -267,6 +267,14 @@ Other open tasks:
 - **T42 Project file converter**: upgrade when the version is bumped; removes the
   default fades of older versions.
 - **T43 Gain ramp**: click-free mute, solo and fader (ramp state per transport).
+- **T45 Encode settings come with sane defaults** (proposed low; Remon
+  2026-10-28): whoever makes a `TAudioEncodeSettings` is forced to start from
+  sane defaults, never undefined; what the user then chooses is the user's.
+  Today it nearly works that way: `TExportSpecification` is the only maker in
+  the app and its constructor sets soxr at its default quality; the export
+  dialog takes the configured backend (`Conversion/Resampler`), but a
+  recording keeps the constructor's soxr whatever the config says. Choosing
+  the backend in the GUI is planned (settings page).
 - Post-merge leftovers of the peak work: remove the recording post-processing
   glue, check mapping a growing file on Windows and macOS, fix the sentence in
   `diskio-rounds.md` §5 **(check whether done)**.
