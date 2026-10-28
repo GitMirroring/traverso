@@ -393,10 +393,22 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
   `m_xrunCount` is written by the audio thread (`xrun()`), reset by a GUI
   timer and read in `audiothread_finished()`. Fix: atomics, or through the
   message queue. No structural change.
+  How (Remon, 2026-10-28): the real-time flag is a `std::atomic<bool>` the
+  GUI writes; `run_cycle()` copies it into `TProcessContext` at the start
+  of every cycle (as `TDenormals::enforce()`), so the context stays a plain
+  struct only the audio thread writes, and the cycle uses the copy (also
+  for `m_isRealTime`'s own reads, `TAudioDevice.cpp:323,336`). The wait
+  time like the CPU time: an atomic, `fetch_add` on the audio thread,
+  `exchange(0)` on the GUI; the CPU time's `load()` + `store(0)` gets
+  `exchange(0)` too (a `fetch_add` between them is lost now). TSan in its
+  own build next to the RTSan one; CMake refuses both at once. Branch
+  `audiodevice-races` with T54 and the safety net of T58 step 1.
 - **T54 `xrun()` stops the driver from the audio thread** (proposed
   medium): `m_driver->stop()` on a storm runs on the thread the driver
   drives. Stop it from the GUI thread (the storm signal already goes
   there).
+  Right after T53 on the same branch (same `m_xrunCount`, same storm
+  path).
 - **T55 `TAudioDriver::attach()` gives playback channels the capture
   latency** (proposed medium; `TAudioDriver.cpp:114`, copy-paste).
 - **T56 Drivers use the singleton while they hold the device** (proposed
