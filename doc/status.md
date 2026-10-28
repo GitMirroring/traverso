@@ -187,10 +187,9 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
     the cycles that passed. Enough to tell Traverso's share from the
     system's. What Traverso's code costs is about the same as on Linux
     (same code and, with MinGW, the same compiler and the AVX2 path); the
-    system's share
-    is not, and on Windows it is where the trouble usually is (drivers
-    that hold a DPC too long, MMCSS priorities). A user with dropouts and
-    a low Traverso share: point to LatencyMon.
+    system's share is not, and on Windows it is where the trouble usually
+    is (drivers that hold a DPC too long, MMCSS priorities). A user with
+    dropouts and a low Traverso share: point to LatencyMon.
 - **T14 (medium): strength of the unique IDs.** `create_id()` = seconds × 10⁹
   + `rand()` seeded by seconds; collisions possible across seconds and between
   two instances. Investigate where uniqueness is assumed, then a stronger
