@@ -19,6 +19,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
+#include "TFaderLaw.h"
+#include "TDecibels.h"
 #include "TCurveView.h"
 #include "Debugger.h"
 #include "TSheetView.h"
@@ -237,10 +239,10 @@ void TCurveView::mouse_hover_move_event()
 
         // 2. Fetch the target node's actual current layout coefficient factor
         float currentVal = m_blinkingNode->get_curve_node()->get_value();
-        float dbFactor = Mixer::coefficient_to_dB(currentVal);
+        float dbFactor = gain_to_dB(currentVal);
 
         // 3. Render real-time feedback inside the LCD box during hover state
-        if (dbFactor <= Mixer::min_fader_dB()) {
+        if (dbFactor <= TFaderLaw::MinDB) {
             cpointer().set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("-inf dB")));
         } else {
             cpointer().set_canvas_cursor_data(QVariant::fromValue(QString("%1 dB").arg(dbFactor, 0, 'f', 1)));

@@ -33,9 +33,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #endif
 #endif
 
-#include "fpu.h"
+#include "TCpuFeatures.h"
 
-FPU::FPU ()
+TCpuFeatures::TCpuFeatures ()
 {
     _flags = Flags(0);
 
@@ -80,6 +80,6 @@ FPU::FPU ()
 #endif
 }
 
-FPU::~FPU ()
+TCpuFeatures::~TCpuFeatures ()
 {
 }

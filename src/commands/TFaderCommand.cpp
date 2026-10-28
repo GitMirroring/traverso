@@ -6,7 +6,8 @@
 #include "TFaderCommand.h"
 #include "TContextItem.h"
 #include "TAudioProcessingNode.h"
-#include "Mixer.h"
+#include "TFaderLaw.h"
+#include "TDecibels.h"
 #include "Utils.h"
 #include "Debugger.h"
 
@@ -21,8 +22,8 @@ TFaderCommand::TFaderCommand(TAudioProcessingNode* context, const QVariantList& 
 {
     m_newGain = m_origGain = m_audioProcessingNode->get_gain();
 
-    float currentDb = Mixer::coefficient_to_dB(m_newGain);
-    m_faderPosition = Mixer::db_to_fader_position(currentDb);
+    float currentDb = gain_to_dB(m_newGain);
+    m_faderPosition = TFaderLaw::dB_to_position(currentDb);
 }
 
 TFaderCommand::~TFaderCommand()
@@ -41,13 +42,13 @@ int TFaderCommand::prepare_actions()
 void TFaderCommand::apply_new_gain_to_object(float newGain)
 {
     // Validate and secure value distribution natively via the centralized single source of truth
-    m_newGain = Mixer::clamp_gain(newGain);
+    m_newGain = TFaderLaw::clamp_gain(newGain);
     m_audioProcessingNode->set_gain(m_newGain);
 
     // Read back final engine state and seamlessly synchronize UI fader positioning tracking variables
     m_newGain = m_audioProcessingNode->get_gain();
-    float acceptedDb = Mixer::coefficient_to_dB(m_newGain);
-    m_faderPosition = Mixer::db_to_fader_position(acceptedDb);
+    float acceptedDb = gain_to_dB(m_newGain);
+    m_faderPosition = TFaderLaw::dB_to_position(acceptedDb);
 }
 
 int TFaderCommand::do_action()
@@ -65,8 +66,8 @@ int TFaderCommand::undo_action()
     PENTER;
     m_audioProcessingNode->set_gain_animated(m_origGain);
 
-    float undoneDb = Mixer::coefficient_to_dB(m_origGain);
-    m_faderPosition = Mixer::db_to_fader_position(undoneDb);
+    float undoneDb = gain_to_dB(m_origGain);
+    m_faderPosition = TFaderLaw::dB_to_position(undoneDb);
 
     return 1;
 }
@@ -81,7 +82,7 @@ void TFaderCommand::increase_gain()
     // Incremental step change mimicking keyboard command shift interactions
     m_faderPosition = std::clamp(m_faderPosition + 0.015f, 0.0f, 1.0f);
 
-    m_newGain = Mixer::fader_position_to_gain(m_faderPosition);
+    m_newGain = TFaderLaw::position_to_gain(m_faderPosition);
     m_audioProcessingNode->set_gain(m_newGain);
     m_newGain = m_audioProcessingNode->get_gain();
 }
@@ -91,7 +92,7 @@ void TFaderCommand::decrease_gain()
     // Decremental step change mimicking keyboard command shift interactions
     m_faderPosition = std::clamp(m_faderPosition - 0.015f, 0.0f, 1.0f);
 
-    m_newGain = Mixer::fader_position_to_gain(m_faderPosition);
+    m_newGain = TFaderLaw::position_to_gain(m_faderPosition);
     m_audioProcessingNode->set_gain(m_newGain);
     m_newGain = m_audioProcessingNode->get_gain();
 }
@@ -115,8 +116,8 @@ int TFaderCommand::process_mouse_move(qreal diffY)
         if (m_origGain == 0.0f) {
             m_faderPosition = 0.0f;
         } else {
-            float currentDb = Mixer::coefficient_to_dB(m_origGain);
-            m_faderPosition = Mixer::db_to_fader_position(currentDb);
+            float currentDb = gain_to_dB(m_origGain);
+            m_faderPosition = TFaderLaw::dB_to_position(currentDb);
         }
     }
 #endif
@@ -131,7 +132,7 @@ int TFaderCommand::process_mouse_move(qreal diffY)
     m_faderPosition = static_cast<float>(std::clamp(m_faderPosition + delta, 0.0, 1.0));
 
     // 2. Decode the linear tracking boundaries cleanly into downstream processing parameters
-    float targetGain = Mixer::fader_position_to_gain(m_faderPosition);
+    float targetGain = TFaderLaw::position_to_gain(m_faderPosition);
 
     // 3. Directly push the validated configuration parameters seamlessly to the audio rendering layers
     m_newGain = targetGain;

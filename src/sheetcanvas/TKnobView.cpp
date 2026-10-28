@@ -26,7 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cmath>
 
 #include <Utils.h>
-#include <Mixer.h>
+#include "TFaderLaw.h"
 
 TKnobView::TKnobView(TViewItem *parent)
     : TViewItem(parent, nullptr)
@@ -176,8 +176,8 @@ TGainKnobView::TGainKnobView(TViewItem* parent, TTrack* track)
 {
     connect(m_track, &TTrack::stateChanged, this, &TGainKnobView::track_gain_changed);
     set_title("GAIN");
-    set_min_value(Mixer::min_fader_gain());
-    set_max_value(Mixer::max_fader_gain());
+    set_min_value(TFaderLaw::MinGain);
+    set_max_value(TFaderLaw::MaxGain);
     track_gain_changed();
 }
 

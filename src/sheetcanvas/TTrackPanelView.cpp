@@ -38,7 +38,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <TAudioTrack.h>
 #include "TTrackPanelView.h"
 #include <Utils.h>
-#include <Mixer.h>
+#include "TDecibels.h"
 #include <TFaderCommand.h>
 #include <TrackPan.h>
 #include "TProject.h"
@@ -322,17 +322,17 @@ void TTrackLanePanelView::paint(QPainter* painter, const QStyleOptionGraphicsIte
 	int height = m_laneView->get_height() - TCurveView::BORDER_MARGIN;
 	int topBorderMargin = TCurveView::BORDER_MARGIN / 2;
 
-    int y = int( (1.0f - dB_to_scale_factor(0.0)) * height + topBorderMargin);
+    int y = int( (1.0f - dB_to_gain(0.0)) * height + topBorderMargin);
 	int textY = y + halfFontHeight;
     painter->drawLine(QLineF(m_boundingRect.width() - 4, y, m_boundingRect.width(), y));
     painter->drawText(QPointF(m_boundingRect.width() - xpos, textY), "  0 dB");
 
-    y = int( (1.0f - dB_to_scale_factor(-6.0f)) * height + topBorderMargin);
+    y = int( (1.0f - dB_to_gain(-6.0f)) * height + topBorderMargin);
 	textY = y + halfFontHeight;
     painter->drawLine(QLineF(m_boundingRect.width() - 4, y, m_boundingRect.width(), y));
     painter->drawText(QPointF(m_boundingRect.width() - xpos, textY), " - 6 dB");
 
-    y = int( (1.0f - dB_to_scale_factor(-24.0f)) * height + topBorderMargin);
+    y = int( (1.0f - dB_to_gain(-24.0f)) * height + topBorderMargin);
 	textY = y + halfFontHeight;
     painter->drawLine(QLineF(m_boundingRect.width() - 4, y, m_boundingRect.width(), y));
     painter->drawText(QPointF(m_boundingRect.width() - xpos, textY), " -24 dB");
@@ -366,7 +366,7 @@ void TrackPanelGain::paint( QPainter * painter, const QStyleOptionGraphicsItem *
     int sliderWidth = int(m_boundingRect.width() - 75);
         float gain = m_track->get_gain();
     QString sgain = m_track->get_gain_db_string();
-    float db = Mixer::coefficient_to_dB(gain);
+    float db = gain_to_dB(gain);
 
 	if (db < -60) {
 		db = -60;

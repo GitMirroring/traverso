@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #pragma once
 
 
-class FPU {
+class TCpuFeatures {
   private:
     enum Flags {
         HasFlushToZero = 0x1,
@@ -34,8 +34,8 @@ class FPU {
     };
 
   public:
-	FPU ();
-	~FPU ();
+	TCpuFeatures ();
+	~TCpuFeatures ();
 
 	bool has_flush_to_zero () const { return _flags & HasFlushToZero; }
 	bool has_denormals_are_zero () const { return _flags & HasDenormalsAreZero; }

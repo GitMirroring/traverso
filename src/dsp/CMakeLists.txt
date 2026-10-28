@@ -20,8 +20,10 @@ endif()
 add_library(traversodsp STATIC
     TChannelBuffer.h TChannelBuffer.cpp
     TAudioBuffer.h
-    Mixer.h Mixer.cpp
-    fpu.h fpu.cc
+    TBufferOperations.h TBufferOperations.cpp
+    TFaderLaw.h TFaderLaw.cpp
+    TDecibels.h
+    TCpuFeatures.h TCpuFeatures.cpp
     gdither.h gdither_types.h gdither.cpp
     noise.h
     TAudioResampler.h TAudioResampler.cpp

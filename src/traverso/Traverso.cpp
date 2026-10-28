@@ -12,7 +12,7 @@ This file is part of Traverso
 #include <QStyleFactory>
 
 #include "Traverso.h"
-#include "Mixer.h"
+#include "TBufferOperations.h"
 #include "TAudioThreadMessageQueue.h"
 #include "TInformUser.h"
 #include "TProjectManager.h"
@@ -28,7 +28,7 @@ This file is part of Traverso
 #include "TSheet.h"
 #include "TLog.h"
 #include "Debugger.h"
-#include "fpu.h"
+#include "TCpuFeatures.h"
 
 #include <QTimer>
 
@@ -162,24 +162,24 @@ void Traverso::close_without_questions()
 void Traverso::init_sse()
 {
     bool generic_mix_functions = true;
-    FPU fpu;
+    TCpuFeatures fpu;
 
 #if defined(__SSE__) && defined(SSE_OPTIMIZATIONS)
     if (fpu.has_sse()) {
         TLOG_I("app", "Using SSE optimized routines");
 
-        Mixer::compute_peak           = x86_sse_compute_peak;
-        Mixer::apply_gain_to_buffer   = x86_sse_apply_gain_to_buffer;
-        Mixer::mix_buffers_with_gain  = x86_sse_mix_buffers_with_gain;
-        Mixer::mix_buffers_no_gain    = x86_sse_mix_buffers_no_gain;
+        TBufferOperations::update_peak   = x86_sse_compute_peak;
+        TBufferOperations::apply_gain    = x86_sse_apply_gain_to_buffer;
+        TBufferOperations::mix_with_gain = x86_sse_mix_buffers_with_gain;
+        TBufferOperations::mix           = x86_sse_mix_buffers_no_gain;
 
         generic_mix_functions = false;
     }
 #elif defined (Q_OS_MACOS)
-    Mixer::compute_peak           = accel_compute_peak;
-    Mixer::apply_gain_to_buffer   = accel_apply_gain_to_buffer;
-    Mixer::mix_buffers_with_gain  = accel_mix_buffers_with_gain;
-    Mixer::mix_buffers_no_gain    = accel_mix_buffers_no_gain;
+    TBufferOperations::update_peak   = accel_compute_peak;
+    TBufferOperations::apply_gain    = accel_apply_gain_to_buffer;
+    TBufferOperations::mix_with_gain = accel_mix_buffers_with_gain;
+    TBufferOperations::mix           = accel_mix_buffers_no_gain;
     generic_mix_functions = false;
 
     TLOG_I("app", "Apple Accelerate/vDSP H/W specific optimizations in use");
@@ -188,10 +188,10 @@ void Traverso::init_sse()
     setup_fpu();
 
     if (generic_mix_functions) {
-        Mixer::compute_peak           = default_compute_peak;
-        Mixer::apply_gain_to_buffer   = default_apply_gain_to_buffer;
-        Mixer::mix_buffers_with_gain  = default_mix_buffers_with_gain;
-        Mixer::mix_buffers_no_gain    = default_mix_buffers_no_gain;
+        TBufferOperations::update_peak   = portable_update_peak;
+        TBufferOperations::apply_gain    = portable_apply_gain;
+        TBufferOperations::mix_with_gain = portable_mix_with_gain;
+        TBufferOperations::mix           = portable_mix;
 
         TLOG_I("app", "No Hardware specific optimizations in use");
     }
@@ -205,7 +205,7 @@ void Traverso::setup_fpu()
     }
 
 #if defined(TRAVERSO_HAS_XMMINTRIN) && defined(SSE_OPTIMIZATIONS)
-    FPU fpu;
+    TCpuFeatures fpu;
 
     if (!fpu.has_flush_to_zero() && !fpu.has_denormals_are_zero()) {
         return;
