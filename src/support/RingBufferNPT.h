@@ -21,6 +21,7 @@
 #ifndef ringbuffer_npt_h
 #define ringbuffer_npt_h
 
+#include <QtGlobal>
 #include <atomic>
 #include <stdio.h>
 

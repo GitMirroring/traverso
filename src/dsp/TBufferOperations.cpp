@@ -4,6 +4,7 @@
 #include "TBufferOperations.h"
 #include "TCpuFeatures.h"
 #include "defines.h"
+#include <QtGlobal>
 #include <cmath> // used for fabs
 #if defined(Q_OS_MACOS)
 #include <Accelerate/Accelerate.h>
