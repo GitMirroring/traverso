@@ -18,7 +18,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TFaderLaw.h"
 #include "TDecibels.h"
 #include "GainEnvelope.h"
 
@@ -91,7 +90,7 @@ void GainEnvelope::set_session(TSession * session)
 }
 
 void GainEnvelope::set_gain(float gain) {
-    m_gain = TFaderLaw::clamp_gain(gain);
+    m_gain = TGainRange::clamp_gain(gain);
 
 }
 

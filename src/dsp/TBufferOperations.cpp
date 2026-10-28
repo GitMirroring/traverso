@@ -9,6 +9,38 @@
 #include <Accelerate/Accelerate.h>
 #endif
 
+// The implementations: only this file knows them
+static inline float f_max(float x, float a)
+{
+    x -= a;
+    x += fabsf (x);
+    x *= 0.5f;
+    x += a;
+    return (x);
+}
+
+static float portable_update_peak    (const audio_sample_t*  buf, nframes_t nframes, float current) T_REALTIME_SAFE;
+static void  portable_apply_gain     (audio_sample_t*  buf, nframes_t nframes, float gain) T_REALTIME_SAFE;
+static void  portable_mix_with_gain  (audio_sample_t*  dst, const audio_sample_t*  src, nframes_t nframes, float gain) T_REALTIME_SAFE;
+static void  portable_mix            (audio_sample_t*  dst, const audio_sample_t*  src, nframes_t nframes) T_REALTIME_SAFE;
+
+#if defined(__SSE__) && defined(SSE_OPTIMIZATIONS)
+extern "C"
+{
+float x86_sse_compute_peak          (const audio_sample_t*  buf, nframes_t nsamples, float current) T_REALTIME_SAFE;
+void  x86_sse_apply_gain_to_buffer   (audio_sample_t*  buf, nframes_t nframes, float gain) T_REALTIME_SAFE;
+void  x86_sse_mix_buffers_with_gain  (audio_sample_t*  dst, const audio_sample_t*  src, nframes_t nframes, float gain) T_REALTIME_SAFE;
+void  x86_sse_mix_buffers_no_gain    (audio_sample_t*  dst, const audio_sample_t*  src, nframes_t nframes) T_REALTIME_SAFE;
+}
+#endif
+
+#if defined (Q_OS_MACOS)
+static float accel_compute_peak              (const audio_sample_t* buf, nframes_t nsamples, float current) T_REALTIME_SAFE;
+static void  accel_apply_gain_to_buffer      (audio_sample_t* buf, nframes_t nframes, float gain) T_REALTIME_SAFE;
+static void  accel_mix_buffers_with_gain     (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes, float gain) T_REALTIME_SAFE;
+static void  accel_mix_buffers_no_gain       (audio_sample_t* dst, const audio_sample_t* src, nframes_t nframes) T_REALTIME_SAFE;
+#endif
+
 // The portable versions from the start (constant initialization, before any
 // code runs), so the operations work without the application; the best
 // implementation for this machine replaces them below, still before main()

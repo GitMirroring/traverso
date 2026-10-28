@@ -9,14 +9,33 @@
 #include <intrin.h>
 #else
 #include <cpuid.h>
+#include <immintrin.h>
 #endif
+#include <cstring>
+#endif
+
+#if defined(TRAVERSO_CPU_X86)
+// The MXCSR bits this CPU accepts, as Intel documents it (SDM vol. 1,
+// 11.6.6): FXSAVE writes them as MXCSR_MASK at byte 28; 0 there means the
+// default mask 0xFFBF, which has no DAZ. Setting a bit outside it faults.
+#if !defined(_MSC_VER)
+__attribute__((target("fxsr")))
+#endif
+static unsigned int mxcsr_mask()
+{
+    alignas(16) unsigned char area[512] = {};
+    _fxsave(area);
+    unsigned int mask = 0;
+    std::memcpy(&mask, area + 28, sizeof(mask));
+    return mask != 0 ? mask : 0xFFBF;
+}
 #endif
 
 TCpuFeatures TCpuFeatures::detect()
 {
     TCpuFeatures cpu;
 #if defined(TRAVERSO_CPU_X86)
-    // Leaf 1: the feature bits, SSE in bit 25 of edx
+    // Leaf 1: the feature bits in edx, FXSAVE in bit 24, SSE in bit 25
     unsigned int edx = 0;
 #if defined(_MSC_VER)
     int registers[4] = {};
@@ -31,11 +50,9 @@ TCpuFeatures TCpuFeatures::detect()
     cpu.sse = (edx & (1u << 25)) != 0;
     // MXCSR, and FTZ in it, came with SSE
     cpu.flushToZero = cpu.sse;
-#if defined(__x86_64__) || defined(_M_X64)
-    // Every 64-bit x86 CPU has DAZ. On 32-bit x86 an early SSE2 CPU may not,
-    // and setting the bit there faults: 32-bit keeps FTZ only.
-    cpu.denormalsAreZero = cpu.sse;
-#endif
+    // DAZ (bit 6) only where the CPU accepts it: an early SSE2 CPU does not
+    const bool fxsave = (edx & (1u << 24)) != 0;
+    cpu.denormalsAreZero = cpu.sse && fxsave && (mxcsr_mask() & 0x0040) != 0;
 #endif
     return cpu;
 }

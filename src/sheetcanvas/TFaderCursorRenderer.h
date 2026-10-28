@@ -1,5 +1,6 @@
 // TFaderCursorRenderer.h
 #pragma once
+#include "TDecibels.h"
 #include "TChannelStripCursorRenderer.h"
 #include "TFaderLaw.h"
 
@@ -17,7 +18,7 @@ protected:
     QString get_value_text(const QVariant& liveData) const override {
         float db = liveData.toFloat();
 
-        if (db <= TFaderLaw::MinDB) {
+        if (db <= TGainRange::MinDB) {
             return QStringLiteral("-inf dB");
         }
 
@@ -48,7 +49,7 @@ protected:
 
         ticks.append({TFaderLaw::dB_to_position(-40.0),  QStringLiteral("-40")});
         ticks.append({TFaderLaw::dB_to_position(-60.0),  QStringLiteral("-60")});
-        ticks.append({TFaderLaw::dB_to_position(TFaderLaw::MinDB), QStringLiteral("-inf")});
+        ticks.append({TFaderLaw::dB_to_position(TGainRange::MinDB), QStringLiteral("-inf")});
 
         return ticks;
     }

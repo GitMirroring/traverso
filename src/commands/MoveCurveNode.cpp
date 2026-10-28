@@ -8,7 +8,6 @@
 #include "TCurveView.h"
 #include "TCurveNode.h"
 #include "TSheetView.h"
-#include "TFaderLaw.h"
 #include "TDecibels.h"
 #include "TContextPointer.h"
 #include "TRtTransaction.h"
@@ -185,7 +184,7 @@ int MoveCurveNode::check_and_apply_when_and_value_diffs()
         float dbFactor = gain_to_dB(m_nodeDatas.at(0).origValue + m_valueDiff);
 
         // Append the [DRAG] token prefix to signal the crosshair to morph into directional arrows
-        if (dbFactor <= TFaderLaw::MinDB) {
+        if (dbFactor <= TGainRange::MinDB) {
             m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("[DRAG]-inf dB")));
         } else {
             m_contextPointer->set_canvas_cursor_data(QVariant::fromValue(QString("[DRAG]%1 dB").arg(dbFactor, 0, 'f', 1)));

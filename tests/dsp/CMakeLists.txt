@@ -13,7 +13,7 @@ target_link_libraries(traverso_audio_buffer_test PRIVATE traverso_compiler_setti
 add_test(NAME audio_buffer COMMAND traverso_audio_buffer_test)
 
 # Headless test of TBufferOperations without the application (T52): the
-# implementation in use against the portable loops
+# implementation in use against the test's own scalar loops
 add_executable(traverso_buffer_operations_test test_buffer_operations.cpp)
 target_link_libraries(traverso_buffer_operations_test PRIVATE traverso_compiler_settings traversodsp traversosupport Qt6::Core)
 add_test(NAME buffer_operations COMMAND traverso_buffer_operations_test)

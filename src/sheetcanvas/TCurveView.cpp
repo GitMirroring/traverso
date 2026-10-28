@@ -19,7 +19,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
-#include "TFaderLaw.h"
 #include "TDecibels.h"
 #include "TCurveView.h"
 #include "Debugger.h"
@@ -242,7 +241,7 @@ void TCurveView::mouse_hover_move_event()
         float dbFactor = gain_to_dB(currentVal);
 
         // 3. Render real-time feedback inside the LCD box during hover state
-        if (dbFactor <= TFaderLaw::MinDB) {
+        if (dbFactor <= TGainRange::MinDB) {
             cpointer().set_canvas_cursor_data(QVariant::fromValue(QStringLiteral("-inf dB")));
         } else {
             cpointer().set_canvas_cursor_data(QVariant::fromValue(QString("%1 dB").arg(dbFactor, 0, 'f', 1)));

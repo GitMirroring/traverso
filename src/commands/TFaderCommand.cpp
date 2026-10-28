@@ -42,7 +42,7 @@ int TFaderCommand::prepare_actions()
 void TFaderCommand::apply_new_gain_to_object(float newGain)
 {
     // Validate and secure value distribution natively via the centralized single source of truth
-    m_newGain = TFaderLaw::clamp_gain(newGain);
+    m_newGain = TGainRange::clamp_gain(newGain);
     m_audioProcessingNode->set_gain(m_newGain);
 
     // Read back final engine state and seamlessly synchronize UI fader positioning tracking variables

@@ -31,9 +31,9 @@ int main()
     // The anchor points of the travel
     check(TFaderLaw::dB_to_position(0.0f) == TFaderLaw::ZeroDBPosition, "0 dB sits at ZeroDBPosition");
     check(TFaderLaw::position_to_gain(TFaderLaw::ZeroDBPosition) == 1.0f, "ZeroDBPosition is unity gain");
-    check(TFaderLaw::dB_to_position(TFaderLaw::MaxDB) == 1.0f, "+12 dB is the top of the travel");
-    check(std::fabs(TFaderLaw::position_to_gain(1.0f) - TFaderLaw::MaxGain) < 1.0e-6f, "the top of the travel is +12 dB");
-    check(TFaderLaw::dB_to_position(TFaderLaw::MinDB) == 0.0f, "-120 dB is the bottom of the travel");
+    check(TFaderLaw::dB_to_position(TGainRange::MaxDB) == 1.0f, "+12 dB is the top of the travel");
+    check(std::fabs(TFaderLaw::position_to_gain(1.0f) - TGainRange::MaxGain) < 1.0e-6f, "the top of the travel is +12 dB");
+    check(TFaderLaw::dB_to_position(TGainRange::MinDB) == 0.0f, "-120 dB is the bottom of the travel");
     check(TFaderLaw::position_to_gain(0.0f) == 0.0f, "the bottom of the travel is silence");
 
     // Position -> gain -> position, below and above 0 dB

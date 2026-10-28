@@ -8,21 +8,21 @@
 
 float TFaderLaw::dB_to_position(float dB)
 {
-    if (dB <= MinDB) return 0.0f;
-    if (dB >= MaxDB) return 1.0f;
+    if (dB <= TGainRange::MinDB) return 0.0f;
+    if (dB >= TGainRange::MaxDB) return 1.0f;
 
     float gain = dB_to_gain(dB);
 
     if (dB < 0.0f) {
         // Normalize the gain between absolute silence and 0 dB (1.0f), then
         // warp it with LowerExponent
-        float minGain = MinGain;
+        float minGain = TGainRange::MinGain;
         float normalizedGain = (gain - minGain) / (1.0f - minGain);
 
         return ZeroDBPosition * std::pow(std::clamp(normalizedGain, 0.0f, 1.0f), LowerExponent);
     } else {
         // 0 dB to +12 dB in the travel above ZeroDBPosition
-        float maxGain = MaxGain;
+        float maxGain = TGainRange::MaxGain;
         float normalizedGain = (gain - 1.0f) / (maxGain - 1.0f);
 
         return ZeroDBPosition + ((1.0f - ZeroDBPosition) * std::pow(std::clamp(normalizedGain, 0.0f, 1.0f), UpperExponent));
@@ -32,17 +32,17 @@ float TFaderLaw::dB_to_position(float dB)
 float TFaderLaw::position_to_gain(float position)
 {
     if (position <= 0.0f) return 0.0f;
-    if (position >= 1.0f) return MaxGain;
+    if (position >= 1.0f) return TGainRange::MaxGain;
 
     if (position < ZeroDBPosition) {
         // The inverse of the warp below 0 dB in dB_to_position()
         float normalizedGain = std::pow(position / ZeroDBPosition, 1.0f / LowerExponent);
-        float minGain = MinGain;
+        float minGain = TGainRange::MinGain;
         return (normalizedGain * (1.0f - minGain)) + minGain;
     } else {
         // The inverse of the warp above 0 dB
         float normalizedGain = std::pow((position - ZeroDBPosition) / (1.0f - ZeroDBPosition), 1.0f / UpperExponent);
-        float maxGain = MaxGain;
+        float maxGain = TGainRange::MaxGain;
         return (normalizedGain * (maxGain - 1.0f)) + 1.0f;
     }
 }
