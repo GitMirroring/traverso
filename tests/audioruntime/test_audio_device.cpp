@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 // Headless test of TAudioDevice with the Dummy driver, the safety net for its
-// races (T53), the xrun storm (T54) and the singleton removal (T58): start,
+// races (T53) and the singleton removal (T58): start,
 // add a client, cycles, free-wheeling and back, the CPU time, remove the
 // client (no call after), switch the driver to another buffer size, shut
-// down. Run it under ThreadSanitizer too (TRAVERSO_TSAN).
+// down. Run it under ThreadSanitizer too (TRAVERSO_TSAN). The xrun storm
+// (T54) needs a driver that makes xruns: the test audio driver of the
+// headless scenario work (step 8).
 
 #include "TAudioDevice.h"
 #include "TAudioDeviceClient.h"

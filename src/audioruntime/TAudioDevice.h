@@ -257,9 +257,11 @@ private:
     friend class TJackDriver;
 #endif
 
-    // The audio thread adds, the GUI takes and zeroes them (exchange(0))
+    // The audio thread adds a cycle's time and takes off its waits on ring
+    // buffers; the GUI takes and zeroes it (exchange(0))
     std::atomic<trav_time_t>    m_processCallBackCpuTime;
-    std::atomic<trav_time_t>    m_processCallBackWaitTime; // in nanoseconds
+    // Set by xrun() on a storm, taken by the GUI's watchdog timer
+    std::atomic<bool>           m_xrunStorm{false};
     std::atomic<bool>           m_runAudioThread;
     // Written by the GUI (free-wheeling) or the JACK freewheel callback;
     // run_cycle() copies it into the process context at the start of a cycle
@@ -300,7 +302,7 @@ private:
 
     void set_transport_cycle_end_time(trav_time_t time)
     {
-        m_processCallBackCpuTime.fetch_add(time - m_cycleStartTime);
+        m_processCallBackCpuTime.fetch_add(time - m_cycleStartTime, std::memory_order_relaxed);
     }
 
     TAudioDriver* get_driver() const {return m_driver;}
