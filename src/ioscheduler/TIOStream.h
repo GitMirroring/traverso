@@ -7,7 +7,7 @@
 #include <atomic>
 #include "TTimeRef.h"
 #include "TRealTime.h"
-#include "defines.h"
+#include "TTypes.h"
 
 /**
  * @brief What TIOScheduler asks of a stream it reads or writes: its state

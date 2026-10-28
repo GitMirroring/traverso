@@ -22,7 +22,7 @@
 #define __jack_memops_h__
 
 #include <string.h>
-#include "defines.h"
+#include "TTypes.h"
 #include "TRealTime.h"
 
 typedef	enum  {

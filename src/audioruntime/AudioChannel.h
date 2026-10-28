@@ -23,7 +23,7 @@ $Id: AudioChannel.h,v 1.8 2008/11/24 21:11:04 r_sijrier Exp $
 #pragma once
 
 #include "TChannelBuffer.h"
-#include "defines.h"
+#include "TTypes.h"
 #include "TRealTime.h"
 #include <QString>
 #include <QObject>

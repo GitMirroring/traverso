@@ -9,7 +9,7 @@
 // its decoder computes them on its own, these are the reference.
 // (The windowed chirp of the resampler tests stays in resampling/sweeps.h.)
 
-#include "defines.h"
+#include "TTypes.h"
 
 #include <cmath>
 

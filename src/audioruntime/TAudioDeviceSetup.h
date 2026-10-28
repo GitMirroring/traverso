@@ -5,7 +5,7 @@
 // #include "TAudioBusConfiguration.h"
 // #include "TAudioChannelConfiguration.h"
 
-#include "defines.h"
+#include "TTypes.h"
 
 class AudioChannel;
 

@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TAudioPluginControlPort.h"
 #include "TAudioPluginInputPort.h"
 #include "TAudioPluginOutputPort.h"
-#include "defines.h"
+#include "TTypes.h"
 
 class TSession;
 class AudioBus;

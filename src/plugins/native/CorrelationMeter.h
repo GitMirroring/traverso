@@ -25,7 +25,7 @@ $Id: CorrelationMeter.h,v 1.2 2008/02/07 11:46:09 n_doebelin Exp $
 
 #include "TAudioPlugin.h"
 #include "cameron/readerwritercircularbuffer.h"
-#include "defines.h"
+#include "TTypes.h"
 
 class AudioBus;
 

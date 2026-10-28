@@ -24,7 +24,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TViewItem.h"
 
 #include <QPointer>
-#include <defines.h>
 #include <QList>
 #include <QTimer>
 #include <QPolygonF>

@@ -11,7 +11,7 @@ the Free Software Foundation; either version 2 of the License, or
 
 #pragma once
 
-#include "defines.h"
+#include "TTypes.h"
 #include "gdither_types.h"
 #include <QString>
 #include <expected>

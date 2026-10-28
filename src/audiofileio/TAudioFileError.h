@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "defines.h"
+#include "TTypes.h"
 
 #include <QString>
 

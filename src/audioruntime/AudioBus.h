@@ -27,7 +27,7 @@ $Id: AudioBus.h,v 1.7 2007/06/04 20:47:16 r_sijrier Exp $
 #include <QList>
 #include <QString>
 #include "TAudioBusConfiguration.h"
-#include "defines.h"
+#include "TTypes.h"
 #include "AudioChannel.h"
 
 class AudioBus : public QObject

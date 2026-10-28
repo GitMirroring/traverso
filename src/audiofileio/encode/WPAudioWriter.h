@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "TAudioEncoder.h"
 
-#include "defines.h"
+#include "TTypes.h"
 #include "wavpack/wavpack.h"
 
 #include "TAudioEncodeSettings.h"

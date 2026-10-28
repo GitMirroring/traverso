@@ -29,7 +29,7 @@
 #include "TAudioFileMerger.h"
 #include "TBufferedAudioStreamReader.h"
 #include "Utils.h"
-#include "defines.h"
+#include "TTypes.h"
 
 
 TProjectConverter::TProjectConverter() 

@@ -5,7 +5,7 @@
 
 #include "TAudioFileError.h"
 #include "TTimeRef.h"
-#include "defines.h"
+#include "TTypes.h"
 
 #include <QString>
 

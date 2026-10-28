@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "defines.h"
+#include "TTypes.h"
 #include "TAudioDevice.h"
 #include <memops.h>
 

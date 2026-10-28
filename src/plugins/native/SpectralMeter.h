@@ -24,7 +24,7 @@ $Id: SpectralMeter.h,v 1.5 2008/02/07 12:52:57 n_doebelin Exp $
 #pragma once
 
 #include "TAudioPlugin.h"
-#include "defines.h"
+#include "TTypes.h"
 #include <fftw3.h>
 #include <RingBufferNPT.h>
 #include <QVector>

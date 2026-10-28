@@ -25,7 +25,6 @@
 
 #include <QPoint>
 #include <QVariantList>
-#include <defines.h>
 #include "TAudioClipGroup.h"
 #include "TTimeLineMarker.h"
 

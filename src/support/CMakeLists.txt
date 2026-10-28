@@ -12,6 +12,7 @@ add_library(traversosupport STATIC
     TRealTime.h
     Utils.h Utils.cpp
     TTimeRef.h TTimeRef.cpp
+    TTypes.h
     defines.h
     TResamplerChoice.h
     RingBufferNPT.h

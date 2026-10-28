@@ -3,7 +3,7 @@
 
 #include "TBufferOperations.h"
 #include "TCpuFeatures.h"
-#include "defines.h"
+#include "TTypes.h"
 #include <QtGlobal>
 #include <cmath> // used for fabs
 #if defined(Q_OS_MACOS)

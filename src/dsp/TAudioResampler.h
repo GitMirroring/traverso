@@ -6,7 +6,7 @@
 #include "TResamplerChoice.h"
 
 #include "TChannelBuffer.h"
-#include "defines.h"
+#include "TTypes.h"
 #include <QList>
 #include <QString>
 #include <memory>

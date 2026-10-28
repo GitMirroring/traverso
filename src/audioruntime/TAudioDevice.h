@@ -40,7 +40,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TTimeRef.h"
 #include "TTransportControl.h"
 #include "TProcessContext.h"
-#include "defines.h"
+#include "TTypes.h"
 #include "TRealTime.h"
 
 class TAudioDeviceThread;

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "defines.h"
+#include "TTypes.h"
 #include "TRealTime.h"
 
 // The operations on a buffer's samples in the audio path, each the best

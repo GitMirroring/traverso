@@ -28,7 +28,7 @@
 
 #include "TViewPortScroller.h"
 
-#include "defines.h"
+#include "TTypes.h"
 
 class TCommand;
 class TCommandController;

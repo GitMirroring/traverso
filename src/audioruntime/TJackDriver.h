@@ -21,7 +21,7 @@
 #pragma once
 
 #include "TAudioDriver.h"
-#include "defines.h"
+#include "TTypes.h"
 #include <jack/jack.h>
 #include <QObject>
 #include <QVector>
