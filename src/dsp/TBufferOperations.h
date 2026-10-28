@@ -6,9 +6,11 @@
 #include "TTypes.h"
 #include "TRealTime.h"
 
+#include <vector>
+
 // The operations on a buffer's samples in the audio path, each the best
-// implementation for this machine: the portable C++ loops, SSE assembly or
-// Apple's Accelerate.
+// implementation for this machine: the portable C++ loops, the same loops
+// built for AVX2, or Apple's Accelerate (T20).
 class TBufferOperations
 {
 public:
@@ -25,8 +27,21 @@ public:
     static MixWithGain mix_with_gain;
     static Mix         mix;
 
-    // The implementation in use: "portable", "SSE" or "Apple Accelerate"
+    // The implementation in use: "portable", "AVX2" or "Apple Accelerate"
     static const char* implementation_name() { return s_implementation; }
+
+    // One implementation of the four operations
+    struct Implementation {
+        const char*  name;
+        UpdatePeak   updatePeak;
+        ApplyGain    applyGain;
+        MixWithGain  mixWithGain;
+        Mix          mix;
+    };
+
+    // The implementations this machine can run, the portable one first and
+    // the one in use last (for the tests; not real-time safe)
+    static std::vector<Implementation> available_implementations();
 
 private:
     // Picks the best implementation, before main() (TBufferOperations.cpp)

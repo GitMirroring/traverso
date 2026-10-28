@@ -29,22 +29,44 @@ static unsigned int mxcsr_mask()
     std::memcpy(&mask, area + 28, sizeof(mask));
     return mask != 0 ? mask : 0xFFBF;
 }
+
+// XCR0: which register states the operating system saves (XGETBV, only
+// when CPUID says OSXSAVE)
+#if !defined(_MSC_VER)
+__attribute__((target("xsave")))
+#endif
+static unsigned long long xcr0()
+{
+    return _xgetbv(0);
+}
 #endif
 
 TCpuFeatures TCpuFeatures::detect()
 {
     TCpuFeatures cpu;
 #if defined(TRAVERSO_CPU_X86)
-    // Leaf 1: the feature bits in edx, FXSAVE in bit 24, SSE in bit 25
-    unsigned int edx = 0;
+    // Leaf 1: the feature bits in edx, FXSAVE in bit 24, SSE in bit 25; in
+    // ecx OSXSAVE in bit 27, AVX in bit 28. Leaf 7: AVX2 in ebx bit 5
+    unsigned int ecx = 0, edx = 0, leaf7ebx = 0;
 #if defined(_MSC_VER)
     int registers[4] = {};
+    __cpuid(registers, 0);
+    const int maxLeaf = registers[0];
     __cpuid(registers, 1);
+    ecx = static_cast<unsigned int>(registers[2]);
     edx = static_cast<unsigned int>(registers[3]);
+    if (maxLeaf >= 7) {
+        __cpuidex(registers, 7, 0);
+        leaf7ebx = static_cast<unsigned int>(registers[1]);
+    }
 #else
-    unsigned int eax = 0, ebx = 0, ecx = 0;
+    unsigned int eax = 0, ebx = 0;
     if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
         return cpu;
+    }
+    unsigned int leaf7eax = 0, leaf7ecx = 0, leaf7edx = 0;
+    if (!__get_cpuid_count(7, 0, &leaf7eax, &leaf7ebx, &leaf7ecx, &leaf7edx)) {
+        leaf7ebx = 0;
     }
 #endif
     cpu.sse = (edx & (1u << 25)) != 0;
@@ -53,6 +75,10 @@ TCpuFeatures TCpuFeatures::detect()
     // DAZ (bit 6) only where the CPU accepts it: an early SSE2 CPU does not
     const bool fxsave = (edx & (1u << 24)) != 0;
     cpu.denormalsAreZero = cpu.sse && fxsave && (mxcsr_mask() & 0x0040) != 0;
+    // AVX2 only when the operating system saves the XMM and YMM registers
+    // (XCR0 bits 1 and 2): otherwise a context switch corrupts them
+    const bool osSavesYmm = (ecx & (1u << 27)) != 0 && (ecx & (1u << 28)) != 0 && (xcr0() & 0x6) == 0x6;
+    cpu.avx2 = osSavesYmm && (leaf7ebx & (1u << 5)) != 0;
 #endif
     return cpu;
 }
