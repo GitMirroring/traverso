@@ -16,6 +16,8 @@ the Free Software Foundation; either version 2 of the License, or
 #include "gdither.h"
 #include "TLog.h"
 
+#include <vector>
+
 std::expected<std::unique_ptr<TAudioWriter>, TAudioFileError> TAudioWriter::open(const TAudioEncodeSettings& settings, const QString& fileName,
                                                                                   uint inputSampleRate)
 {
@@ -104,7 +106,7 @@ TAudioFileStatus TAudioWriter::close()
     return flushed ? closed : flushed;
 }
 
-TAudioFileResult TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
+TAudioFileResult TAudioWriter::write(const TFileIOBuffer& fileIOBuffer, nframes_t frameCount)
 {
     if (frameCount == 0) {
         return {};
@@ -112,14 +114,11 @@ TAudioFileResult TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t fram
     if (m_closed) {
         return {0, TAudioFileError{TAudioFileError::Code::WriteFailed, QStringLiteral("the file is closed")}};
     }
-    // Every channel of the file in the caller's buffer (one it lacks is
-    // silence), so the resampler and the interleaving read no further than
-    // the buffer goes
-    fileIOBuffer.check_capacity(frameCount, m_settings.channelCount);
+    // Every channel of the file in the caller's buffer: the caller sizes it
+    Q_ASSERT(fileIOBuffer.channel_count() >= m_settings.channelCount);
 
     if (!m_resampler) {
-        interleave(fileIOBuffer, frameCount);
-        return write_interleaved(fileIOBuffer, frameCount);
+        return write_interleaved(interleave(fileIOBuffer, frameCount), frameCount);
     }
 
     // Resampled into the writer's own buffer: the output has another length
@@ -134,10 +133,9 @@ TAudioFileResult TAudioWriter::write(TFileIOBuffer& fileIOBuffer, nframes_t fram
     if (frames == 0) {
         return {frameCount, std::nullopt};
     }
-    interleave(m_resampleEncodeBuffer, frames);
     // The file took less than the input became: a write error, and no
     // input frame count means anything then
-    TAudioFileResult written = write_interleaved(m_resampleEncodeBuffer, frames);
+    TAudioFileResult written = write_interleaved(interleave(m_resampleEncodeBuffer, frames), frames);
     if (written.error) {
         return {0, std::move(written.error)};
     }
@@ -154,30 +152,49 @@ TAudioFileStatus TAudioWriter::flush_resampler()
     if (frames == 0) {
         return {};
     }
-    interleave(m_resampleEncodeBuffer, frames);
-    if (TAudioFileResult written = write_interleaved(m_resampleEncodeBuffer, frames); written.error) {
+    if (TAudioFileResult written = write_interleaved(interleave(m_resampleEncodeBuffer, frames), frames); written.error) {
         return std::unexpected(std::move(*written.error));
     }
     return {};
 }
 
-void TAudioWriter::interleave(TFileIOBuffer& buffer, nframes_t frames)
+// The writer's scratch: the interleaved samples and the packed bytes of one
+// write. Used within one call only, one thread at a time per writer, so one
+// per thread serves every writer (the rule of the library: scratch a call
+// uses only within itself is thread_local). Grows only.
+static float* interleaved_scratch(size_t samples)
 {
-    buffer.check_capacity(frames, m_settings.channelCount);
-    float* interleaved = buffer.get_file_io_interleaved_buffer().get_data(frames * m_settings.channelCount);
+    static thread_local std::vector<float> scratch;
+    if (scratch.size() < samples) {
+        scratch.resize(samples);
+    }
+    return scratch.data();
+}
+
+static void* packed_scratch(size_t bytes)
+{
+    static thread_local std::vector<char> scratch;
+    if (scratch.size() < bytes) {
+        scratch.resize(bytes);
+    }
+    return scratch.data();
+}
+
+float* TAudioWriter::interleave(const TFileIOBuffer& buffer, nframes_t frames)
+{
+    float* interleaved = interleaved_scratch(size_t(frames) * m_settings.channelCount);
     for (uint chan = 0; chan < m_settings.channelCount; ++chan) {
         const float* data = buffer.get_channel_buffer(chan).get_data(frames);
         for (nframes_t f = 0; f < frames; ++f) {
             interleaved[f * m_settings.channelCount + chan] = data[f];
         }
     }
+    return interleaved;
 }
 
-TAudioFileResult TAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nframes_t targetFrames)
+TAudioFileResult TAudioWriter::write_interleaved(float* interleavedFloatBuffer, nframes_t targetFrames)
 {
-    nframes_t finalInterleavedSamples = targetFrames * m_settings.channelCount;
-    // Not const: gdither and the codec writers take a plain pointer
-    float* interleavedFloatBuffer = fileIOBuffer.get_file_io_interleaved_buffer().get_data(finalInterleavedSamples);
+    const size_t finalInterleavedSamples = size_t(targetFrames) * m_settings.channelCount;
 
     // The bytes a sample takes in memory, as gdither writes it and the
     // codec writer reads it: a 24 bit sample sits in a 32 bit word
@@ -194,11 +211,10 @@ TAudioFileResult TAudioWriter::write_interleaved(TFileIOBuffer& fileIOBuffer, nf
     default:
         break;
     }
-    if (m_settings.dataFormat != TraversoDAW::DataFormat::FLOAT) {
-        fileIOBuffer.check_packed_byte_capacity(size_t(finalInterleavedSamples) * containerBytes);
-    }
-
-    void* packedOutputBuffer = fileIOBuffer.get_packed_byte_buffer();
+    // Every byte written by gdither or the 32 bit conversion below: no
+    // silencing first
+    void* packedOutputBuffer = m_settings.dataFormat != TraversoDAW::DataFormat::FLOAT
+                                   ? packed_scratch(finalInterleavedSamples * containerBytes) : nullptr;
     TAudioFileResult written;
 
     switch (m_settings.dataFormat) {

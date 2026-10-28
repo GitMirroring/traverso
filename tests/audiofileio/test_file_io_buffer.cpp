@@ -96,7 +96,7 @@ int main()
         TFileIOBuffer buffer;
         buffer.check_capacity(4096, 2);
         buffer.check_capacity(1024, 4);
-        bool roomy = buffer.get_file_io_interleaved_buffer().get_size() >= 1024 * 4;
+        bool roomy = buffer.channel_count() == 4;
         for (uint channel = 0; channel < 4; ++channel) {
             roomy = roomy && buffer.get_channel_buffer(channel).get_size() >= 1024;
         }
@@ -108,7 +108,7 @@ int main()
         TFileIOBuffer buffer;
         buffer.check_capacity(1024, 2);
         buffer.check_capacity(30720, 4);
-        bool roomy = buffer.get_file_io_interleaved_buffer().get_size() >= 30720 * 4;
+        bool roomy = buffer.channel_count() == 4;
         for (uint channel = 0; channel < 4; ++channel) {
             roomy = roomy && buffer.get_channel_buffer(channel).get_size() >= 30720;
         }

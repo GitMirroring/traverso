@@ -49,8 +49,6 @@ protected:
 	FILE*		m_file{nullptr};
     char*		m_firstBlock{nullptr};
 	int32_t 	m_firstBlockSize{0};
-    int32_t*	m_tmp_buffer{nullptr};
-	nframes_t	m_tmpBufferSize{0};
     // Why write_block() could not write a block (WavPack calls it while it
     // packs); the WavPack context stays, close() releases it
     QString m_writeError;

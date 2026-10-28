@@ -25,13 +25,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <memory>
 #include <vector>
 
+// The channels of audio read from or written to a file: one TAudioBuffer
+// per channel. Who writes into it makes the room (check_capacity()); the
+// readers and writers keep their interleaved and packed scratch themselves.
 class TFileIOBuffer {
-
 public:
     TFileIOBuffer()
-        : m_interleavedBuffer(1)
-        , m_channelBufferSize(1)
-        , m_interleavedBufferSize(1)
+        : m_channelBufferSize(1)
     {
         // Default initialize to stereo footprint capacity
         for (uint chan = 0; chan < 2; ++chan) {
@@ -39,11 +39,11 @@ public:
         }
     }
 
-    ~TFileIOBuffer() {
-    }
-
     // Accesses a single, standalone de-interleaved mono channel stream
     TAudioBuffer& get_channel_buffer(uint channel) {
+        return *m_channelBuffers.at(channel);
+    }
+    const TAudioBuffer& get_channel_buffer(uint channel) const {
         return *m_channelBuffers.at(channel);
     }
 
@@ -52,20 +52,12 @@ public:
     TAudioBuffer* const* channel_buffers() {
         return m_channelPointers.data();
     }
-
-    // Accesses the contiguous interleaved floating point data stream array
-    TAudioBuffer& get_file_io_interleaved_buffer() {
-        return m_interleavedBuffer;
+    const TAudioBuffer* const* channel_buffers() const {
+        return m_channelPointers.data();
     }
 
-    // Accesses the unmanaged raw byte cache block used for storing packed PCM integer bit-depths
-    void* get_packed_byte_buffer() {
-        return static_cast<void*>(m_packedByteBuffer.data());
-    }
+    uint channel_count() const { return uint(m_channelBuffers.size()); }
 
-    // =========================================================================
-    // Common Management API (Used by both Read and Write paths)
-    // =========================================================================
     // Zeros in the first channels channel buffers, count frames from frame at
     void silence(nframes_t at, nframes_t count, uint channels) {
         for (uint channel = 0; channel < channels; ++channel) {
@@ -73,21 +65,17 @@ public:
         }
     }
 
-
     // Room for size frames in each of channels channel buffers (frames, not
-    // frames times channels), and in the interleaved buffer for all channel
-    // buffers. Who writes into the buffer makes the room: a reader for what
-    // it reads, a writer for what it packs. A source with more channels than
-    // the buffer has gets the channel buffers it lacks. Grows only, and keeps
-    // what the buffer held. Not in the audio thread: allocates
+    // frames times channels). Who writes into the buffer makes the room: a
+    // reader for what it reads. A source with more channels than the buffer
+    // has gets the channel buffers it lacks. Grows only, and keeps what the
+    // buffer held. Not in the audio thread: allocates
     void check_capacity(uint size, uint channels)
     {
         Q_ASSERT(size > 0);
-
         while (m_channelBuffers.size() < channels) {
             add_channel_buffer();
         }
-
         if (size > m_channelBufferSize) {
             // Buffer resize will safely handle data-migration and silences the structures
             for (const auto &buffer : m_channelBuffers) {
@@ -95,20 +83,6 @@ public:
             }
             m_channelBufferSize = size;
         }
-
-        const uint interleavedSize = m_channelBufferSize * uint(m_channelBuffers.size());
-        if (interleavedSize > m_interleavedBufferSize) {
-            m_interleavedBuffer.resize(interleavedSize);
-            m_interleavedBufferSize = interleavedSize;
-        }
-    }
-
-    // Dynamically secures memory capacity inside the raw byte container used for integer packaging
-    void check_packed_byte_capacity(size_t requiredBytes) {
-        if (m_packedByteBuffer.size() < requiredBytes) {
-            m_packedByteBuffer.resize(requiredBytes);
-        }
-        std::memset(m_packedByteBuffer.data(), 0, m_packedByteBuffer.size());
     }
 
 private:
@@ -119,9 +93,5 @@ private:
 
     std::vector<std::unique_ptr<TAudioBuffer>>  m_channelBuffers;
     std::vector<TAudioBuffer*>                  m_channelPointers;
-    TAudioBuffer                                m_interleavedBuffer;
-    std::vector<char>                           m_packedByteBuffer;
-
     uint                                        m_channelBufferSize;
-    uint                                        m_interleavedBufferSize;
 };

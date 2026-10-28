@@ -105,8 +105,12 @@ TAudioFileResult WPAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t coun
 
     nframes_t readFrames = 0;
     if (m_wp && !at_end() && !m_error) {
-        // WavPack unpacks into int32_t, the buffers are float
-        std::vector<int32_t> unpackBuffer(size_t(count) * m_channels);
+        // WavPack unpacks into int32_t, the buffers are float: scratch per
+        // thread, used within this read only, grown to the largest read
+        static thread_local std::vector<int32_t> unpackBuffer;
+        if (unpackBuffer.size() < size_t(count) * m_channels) {
+            unpackBuffer.resize(size_t(count) * m_channels);
+        }
         readFrames = WavpackUnpackSamples(m_wp, unpackBuffer.data(), count);
         unpack(fileIOBuffer, unpackBuffer.data(), readFrames);
     }

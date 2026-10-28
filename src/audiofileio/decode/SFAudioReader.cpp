@@ -22,6 +22,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "SFAudioReader.h"
 #include <QString>
 
+#include <algorithm>
+#include <vector>
+
 #include "TFileIOBuffer.h"
 #include "TLog.h"
 
@@ -117,6 +120,18 @@ TAudioFileStatus SFAudioReader::seek(nframes_t frame)
 }
 
 
+// libsndfile's interleaved frames before they go to the channels: one per
+// thread, used within one read only (sf_readf_float() calls nothing of ours
+// back), grown to the largest read on the thread
+static float* interleaved_scratch(size_t samples)
+{
+    static thread_local std::vector<float> scratch;
+    if (scratch.size() < samples) {
+        scratch.resize(samples);
+    }
+    return scratch.data();
+}
+
 TAudioFileResult SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t count)
 {
     if (count == 0) {
@@ -124,15 +139,15 @@ TAudioFileResult SFAudioReader::read(TFileIOBuffer& fileIOBuffer, nframes_t coun
     }
     fileIOBuffer.check_capacity(count, m_channels);
 
-    TAudioBuffer &readBuffer = fileIOBuffer.get_file_io_interleaved_buffer();
+    float* readBuffer = interleaved_scratch(size_t(count) * m_channels);
 
-    const nframes_t readFrames = (m_sf && !at_end() && !m_error) ? nframes_t(sf_readf_float(m_sf, readBuffer.get_data(count * m_channels), count)) : 0;
+    const nframes_t readFrames = (m_sf && !at_end() && !m_error) ? nframes_t(sf_readf_float(m_sf, readBuffer, count)) : 0;
 
     // De-interlace
     switch (m_channels) {
     case 1:
     {
-        TAudioBuffer::copy_data(fileIOBuffer.get_channel_buffer(0), readBuffer, readFrames);
+        std::copy_n(readBuffer, readFrames, fileIOBuffer.get_channel_buffer(0).get_data(readFrames));
         break;
     }
     case 2:

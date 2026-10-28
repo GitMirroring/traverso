@@ -35,12 +35,11 @@ class TAudioResampler;
  * channels, and converts float to the file's sample format (8, 16 and 24
  * bit dithered through gdither, 32 bit scaled, float as it is). It owns the
  * codec writer, the resampler, the dither and the buffer the resampled
- * audio goes through. Of the caller's buffer it reads the channels, after
- * making room for all of the file's (a channel the buffer lacks is
- * silence); without resampling it interleaves and packs in that buffer's
- * own interleaved and byte parts. One file per instance: open(), write() as
- * the audio comes, close(). Not for the audio thread: it allocates and does
- * file IO.
+ * audio goes through. Of the caller's buffer it only reads the channels; the
+ * buffer has every channel of the file (the caller sizes it). It interleaves
+ * and packs in scratch of its own, one per thread (used within one call
+ * only). One file per instance: open(), write() as the audio comes,
+ * close(). Not for the audio thread: it allocates and does file IO.
  *
  * The only user is TBufferedAudioStreamWriter (recordings, imports, merges,
  * exports); the codec writers know nothing of rates or planar buffers.
@@ -69,7 +68,7 @@ public:
     // writing: the count is not what is in the file. The file's own frames, at its
     // rate, are another count. A caller that only needs the count writes
     // .frames.
-    TAudioFileResult write(TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
+    TAudioFileResult write(const TFileIOBuffer& fileIOBuffer, nframes_t frameCount);
     // The file complete (the resampler's rest, the encoder's end, the
     // header), or why not (WriteFailed). The writer writes no more after; a
     // second close() does nothing and is no error.
@@ -86,11 +85,12 @@ private:
     // At close: what the resampler still holds into the file; the error when
     // it could not all be written
     TAudioFileStatus flush_resampler();
-    // The channels of buffer, frames long, into its interleaved part
-    void interleave(TFileIOBuffer& buffer, nframes_t frames);
-    // frames frames of buffer's interleaved part into the file, in the
-    // file's format (packed in buffer's byte part when it is not float)
-    TAudioFileResult write_interleaved(TFileIOBuffer& buffer, nframes_t frames);
+    // The channels of buffer, frames long, interleaved in the writer's
+    // scratch (per thread); a pointer to it
+    float* interleave(const TFileIOBuffer& buffer, nframes_t frames);
+    // frames interleaved frames into the file, in the file's format (packed
+    // in the writer's scratch when it is not float)
+    TAudioFileResult write_interleaved(float* interleaved, nframes_t frames);
 
     std::unique_ptr<TAudioEncoder>                  m_encoder;
     TAudioEncodeSettings                            m_settings;
@@ -103,8 +103,7 @@ private:
     // All channels at once: every channel gives the same frames
     std::unique_ptr<TAudioResampler>                m_resampler;
     GDither                                         m_dither;
-    // What the resampler gives, interleaved and packed there, like the
-    // decode buffer of TAudioReader; of the caller's buffer only the
-    // channels are read then
+    // What the resampler gives, per channel (the input frames become
+    // another count of output frames)
     TFileIOBuffer                                   m_resampleEncodeBuffer;
 };

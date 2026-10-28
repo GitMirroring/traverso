@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <cerrno>
 #include <cstring>
 #include <tuple>
+#include <vector>
 
 WPAudioWriter::WPAudioWriter(const TAudioEncodeSettings& settings)
     : TAudioEncoder(settings)
@@ -198,42 +199,42 @@ TAudioFileResult WPAudioWriter::write(void* buffer, nframes_t frameCount)
         dataFormat == TraversoDAW::DataFormat::PCM_16 ||
         dataFormat == TraversoDAW::DataFormat::PCM_24)
     {
-        // Dynamically resize our safe, pre-allocated internal integer scratch pad
-        if (totalSamples > m_tmpBufferSize) {
-            if (m_tmp_buffer) {
-                delete [] m_tmp_buffer;
-            }
-            m_tmp_buffer = new int32_t[totalSamples];
-            m_tmpBufferSize = totalSamples;
+        // The samples widened to int32_t: scratch per thread, used within
+        // this call only (WavPack copies them into its own blocks), grown to
+        // the largest write on the thread
+        static thread_local std::vector<int32_t> widened;
+        if (widened.size() < totalSamples) {
+            widened.resize(totalSamples);
         }
+        int32_t* samples = widened.data();
 
         // Perform type-safe bit-extension up to 32-bit integer scale boundaries
         for (nframes_t s = 0; s < totalSamples; s++) {
             switch (dataFormat) {
             case TraversoDAW::DataFormat::PCM_S8:
                 // Unsigned, around 128, as gdither writes 8 bits (GDither8bit)
-                m_tmp_buffer[s] = static_cast<int32_t>(static_cast<uint8_t*>(buffer)[s]) - 128;
+                samples[s] = static_cast<int32_t>(static_cast<uint8_t*>(buffer)[s]) - 128;
                 break;
 
             case TraversoDAW::DataFormat::PCM_16:
                 // FIXED: Compile-time constant enum comparison resolves the legacy 'case 16' bug
-                m_tmp_buffer[s] = static_cast<int32_t>(static_cast<int16_t*>(buffer)[s]);
+                samples[s] = static_cast<int32_t>(static_cast<int16_t*>(buffer)[s]);
                 break;
 
             case TraversoDAW::DataFormat::PCM_24:
                 // In the upper 24 bits of a 32 bit word, as gdither writes it
                 // (GDither32bit); WavPack takes it in the lower 24
-                m_tmp_buffer[s] = static_cast<int32_t*>(buffer)[s] >> 8;
+                samples[s] = static_cast<int32_t*>(buffer)[s] >> 8;
                 break;
 
             default:
-                m_tmp_buffer[s] = 0;
+                samples[s] = 0;
                 break;
             }
         }
 
         // Push the aligned int32_t block to the WavPack compression engine
-        if (WavpackPackSamples(m_wp, m_tmp_buffer, frameCount) == false) {
+        if (WavpackPackSamples(m_wp, samples, frameCount) == false) {
             return failed();
         }
         return {frameCount, std::nullopt};
@@ -276,11 +277,6 @@ TAudioFileStatus WPAudioWriter::close()
 	}
 	m_file = 0;
 
-    if (m_tmp_buffer) {
-        delete [] m_tmp_buffer;
-        m_tmp_buffer = 0;
-	}
-	m_tmpBufferSize = 0;
 
 	if (m_firstBlock) {
 		delete [] m_firstBlock;
