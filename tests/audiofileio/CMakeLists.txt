@@ -44,3 +44,9 @@ add_test(NAME audio_file_errors COMMAND traverso_audio_file_errors_test)
 add_executable(traverso_audio_round_trip_test test_audio_round_trip.cpp)
 target_link_libraries(traverso_audio_round_trip_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
 add_test(NAME audio_round_trip COMMAND traverso_audio_round_trip_test)
+
+# Headless test of TAudioReader filling a reused TAudioBuffer: a 4-channel
+# file after a stereo one keeps its channels apart
+add_executable(traverso_reader_buffer_reuse_test test_reader_buffer_reuse.cpp)
+target_link_libraries(traverso_reader_buffer_reuse_test PRIVATE traverso_compiler_settings traversoaudiofileio traversodsp traversosupport Qt6::Core)
+add_test(NAME reader_buffer_reuse COMMAND traverso_reader_buffer_reuse_test)

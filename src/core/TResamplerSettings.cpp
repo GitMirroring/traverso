@@ -3,6 +3,7 @@
 
 #include "TResamplerSettings.h"
 
+#include "TAudioResampler.h"
 #include "TConfig.h"
 
 TResamplerChoice::Backend configured_resampler_backend()

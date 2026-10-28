@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include <QStyleFactory>
 
 #include "Pages.h"
+#include "TAudioResampler.h"
 #include "TResamplerSettings.h"
 #include "dialogs/ThemeModifierDialog.h"
 #include "TAudioDevice.h"

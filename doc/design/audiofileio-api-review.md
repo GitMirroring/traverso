@@ -105,7 +105,8 @@ T9). By Fable, discussed with Remon. Findings become tasks in
      (A debug guard against nesting was proposed and dropped after Fable's
      work order review: the shape already excludes it; detecting it would
      go against "prevent, do not detect".)
-   - `TAudioWriter`: its own members (few writers); `write()` takes the
+   - `TAudioWriter`: `static thread_local` scratch too, as W1.1 says (first
+     its own members; changed 2026-10-27, 8eead5ab); `write()` takes the
      caller's buffer `const`.
    - `TAudioReader::m_decodeBuffer` (the resampled path, per reader) loses
      its interleaved part with it.

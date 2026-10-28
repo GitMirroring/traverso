@@ -24,6 +24,7 @@
 #include "TAudioDevice.h"
 #include "TConfig.h"
 #include "TExportSpecification.h"
+#include "TAudioResampler.h"
 #include "TResamplerSettings.h"
 
 

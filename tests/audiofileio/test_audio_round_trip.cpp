@@ -20,7 +20,10 @@
 // - every file: the frame count (lossy: as close as the format says).
 // A combination the format refuses (libsndfile's rules, FAAC's 16 bit) is
 // reported as refused with the writer's reason; whether a refusal is right
-// is the list at the end of the run.
+// is the list at the end of the run (task T49).
+// A failure known when this test came (the same before and after W1 of the
+// API work order) has its task in known(): it prints KNOWN, and once it
+// passes it fails, so the entry goes with the fix.
 
 #include "TAudioReader.h"
 #include "TAudioWriter.h"
@@ -36,6 +39,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <memory>
 #include <tuple>
 #include <vector>
@@ -46,6 +50,20 @@ static void check(bool ok, const char* what)
 {
     std::printf("%s: %s\n", what, ok ? "ok" : "FAILED");
     if (!ok) {
+        ++failures;
+    }
+}
+
+// A check of a combination with a known failure: KNOWN while it fails, a
+// failure once it passes (the defect is gone, its entry has to go too)
+static void check_known(bool ok, const char* what, const char* knownWhy)
+{
+    if (!knownWhy) {
+        check(ok, what);
+    } else if (!ok) {
+        std::printf("%s: KNOWN (%s)\n", what, knownWhy);
+    } else {
+        std::printf("%s: passes now, the KNOWN entry (%s) is out of date: remove it\n", what, knownWhy);
         ++failures;
     }
 }
@@ -181,6 +199,32 @@ static float tolerance(TraversoDAW::DataFormat data)
     return 0.0f;
 }
 
+// The failures known when this test came, measured 2026-10-28, each with its
+// task. checkName: "frames" (channels, rate and frame count), "samples",
+// "levels", "placement", "order".
+static const char* known(const Format& format, TraversoDAW::DataFormat data, uint channels, const char* checkName)
+{
+    const auto is = [checkName](const char* name) { return std::strcmp(checkName, name) == 0; };
+    const bool bits8 = data == TraversoDAW::DataFormat::PCM_S8;
+    if (format.file == TraversoDAW::FileFormat::FLAC && bits8 && is("frames")) {
+        return "T46: the file reports 2^32 - 1 frames";
+    }
+    if (format.file == TraversoDAW::FileFormat::AIFF && bits8 && (is("samples") || (channels == 1 && is("frames")))) {
+        return "T47: samples off by up to 1.0, mono one frame more";
+    }
+    if (format.writer == TraversoDAW::WriterType::M4A) {
+        if (channels == 1 && is("frames")) {
+            return "T48: mono reads back as 2 channels";
+        }
+        // The level of 16 bit stereo comes out right
+        const bool levelRight = channels == 2 && data == TraversoDAW::DataFormat::PCM_16;
+        if (channels > 1 && (is("placement") || is("order") || (is("levels") && !levelRight))) {
+            return "T48: channels mixed up and shifted";
+        }
+    }
+    return nullptr;
+}
+
 static std::vector<QString> s_refused;
 
 static void round_trip(const QTemporaryDir& dir, const Format& format, TraversoDAW::DataFormat data, uint channels, const QString& sourcePath)
@@ -238,8 +282,11 @@ static void round_trip(const QTemporaryDir& dir, const Format& format, TraversoD
     const long frameError = long(reader.file_frame_count()) - long(Frames);
     std::snprintf(what, sizeof(what), "%s %s %u ch: %u channels at %u Hz, %u frames (%+ld)", format.name, data_name(data), channels,
                   reader.channel_count(), reader.file_rate(), reader.file_frame_count(), frameError);
-    check(reader.channel_count() == channels && reader.file_rate() == Rate && std::labs(frameError) <= format.frameTolerance, what);
-    if (reader.channel_count() != channels || reader.file_frame_count() > ReadLimit) {
+    const bool framesRight = reader.channel_count() == channels && reader.file_rate() == Rate && std::labs(frameError) <= format.frameTolerance;
+    check_known(framesRight, what, known(format, data, channels, "frames"));
+    // A file of other channels or another length is not compared further:
+    // the comparisons below read the frames that were written
+    if (reader.channel_count() != channels || reader.file_frame_count() < Frames || reader.file_frame_count() > ReadLimit) {
         return;
     }
     const Channels samples = read_all(reader);
@@ -248,7 +295,7 @@ static void round_trip(const QTemporaryDir& dir, const Format& format, TraversoD
         float worst = 0.0f;
         uint worstChannel = 0;
         for (uint c = 0; c < channels; ++c) {
-            for (nframes_t f = 0; f < std::min<nframes_t>(Frames, reader.file_frame_count()); ++f) {
+            for (nframes_t f = 0; f < Frames; ++f) {
                 const float d = std::fabs(samples[c][f] - reference[c][f]);
                 if (d > worst) {
                     worst = d;
@@ -258,7 +305,7 @@ static void round_trip(const QTemporaryDir& dir, const Format& format, TraversoD
         }
         std::snprintf(what, sizeof(what), "%s %s %u ch: every sample as written (worst %.3g in channel %u, allowed %.3g)", format.name,
                       data_name(data), channels, double(worst), worstChannel, double(tolerance(data)));
-        check(worst <= tolerance(data), what);
+        check_known(worst <= tolerance(data), what, known(format, data, channels, "samples"));
         return;
     }
 
@@ -288,12 +335,12 @@ static void round_trip(const QTemporaryDir& dir, const Format& format, TraversoD
         }
     }
     std::snprintf(what, sizeof(what), "%s %s %u ch: each channel's level", format.name, data_name(data), channels);
-    check(levels, what);
+    check_known(levels, what, known(format, data, channels, "levels"));
     std::snprintf(what, sizeof(what), "%s %s %u ch: each channel where it was written (lag of channel 0: %+ld)", format.name, data_name(data),
                   channels, lags[0]);
-    check(placed, what);
+    check_known(placed, what, known(format, data, channels, "placement"));
     std::snprintf(what, sizeof(what), "%s %s %u ch: each channel is its own (the channel order)", format.name, data_name(data), channels);
-    check(own, what);
+    check_known(own, what, known(format, data, channels, "order"));
 }
 
 int main()
@@ -301,7 +348,12 @@ int main()
     // The test's memory capped, so whatever a file claims, the test fails and
     // nothing else on the machine does. Not under AddressSanitizer, which
     // reserves terabytes of address space.
-#if defined(Q_OS_UNIX) && !defined(__SANITIZE_ADDRESS__)
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define ROUND_TRIP_ASAN
+#endif
+#endif
+#if defined(Q_OS_UNIX) && !defined(__SANITIZE_ADDRESS__) && !defined(ROUND_TRIP_ASAN)
     const rlimit limit{rlim_t(4) << 30, rlim_t(4) << 30};
     setrlimit(RLIMIT_AS, &limit);
 #endif

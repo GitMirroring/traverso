@@ -68,7 +68,8 @@ public:
     // holds some of them for a later write or close(); 0 with the error when
     // the file could not take them. After a failed write the writer stops:
     // every later write gives that first error without touching the file;
-    // close() still completes what was written. The file's own frames, at its
+    // close() still completes what was written, and can fail again with an
+    // error of its own (the resampler's flush goes to the file). The file's own frames, at its
     // rate, are another count. A caller that only needs the count writes
     // .frames.
     TAudioFileResult write(const TAudioBuffer& fileIOBuffer, nframes_t frameCount);

@@ -275,6 +275,28 @@ Other open tasks:
   dialog takes the configured backend (`Conversion/Resampler`), but a
   recording keeps the constructor's soxr whatever the config says. Choosing
   the backend in the GUI is planned (settings page).
+- **T46 FLAC 8 bit reports 2^32 - 1 frames** (proposed medium): a FLAC file
+  written by `TAudioWriter` at 8 bit reads back with a frame count of
+  4294967295 (writer or reader, libsndfile; 16 and 24 bit are right). Found
+  by the round-trip test (T44); this made the first run take 13 GB
+  (2026-10-28). KNOWN entry in `test_audio_round_trip.cpp`.
+- **T47 AIFF 8 bit** (proposed medium-low): samples come back off by up to
+  1.0 (a sign or offset error) and mono has one frame more (the pad byte of
+  an odd-sized chunk?). Round-trip test, KNOWN entry.
+- **T48 AAC channels** (proposed medium-low, with T21): mono written by FAAC
+  reads back as 2 channels (FAAD's upmix?); with 2 and 6 channels the
+  levels, the placement and the channel order are wrong. Round-trip test,
+  KNOWN entries.
+- **T49 What the writer refuses** (proposed low, with T22): libsndfile
+  refuses WAV and W64 at 8 bit (they take unsigned 8 bit: map PCM_S8 to
+  PCM_U8?), FLAC float and 32 bit (not in FLAC: should the dialog offer
+  them?), and every Ogg Vorbis and MP3 combination through `TAudioWriter`
+  (the sub-format mapping). The round-trip test lists the refusals.
+- **T50 `TAudioFileMerger` with an empty source** (proposed low): the first
+  pass of its do-while runs with 0 frames and indexes an empty channel list
+  (`TAudioFileMerger.cpp:108-116`; before W3 it failed one line later, at
+  `TQueueBufferSlot(0, …)`). Guard the merge on a zero-length source.
+  (Fable's review of the API branch, 2026-10-28.)
 - Post-merge leftovers of the peak work: remove the recording post-processing
   glue, check mapping a growing file on Windows and macOS, fix the sentence in
   `diskio-rounds.md` §5 **(check whether done)**.

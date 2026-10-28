@@ -35,7 +35,10 @@ public:
     // The resampler of a stream that reads at another rate than its file's:
     // a TAudioResampler backend and one of its qualities, and whether to
     // resample at all, as the owner chose them in its thread; the scheduler
-    // only hands them on
+    // only hands them on. The zeroed choice (libsamplerate at its best,
+    // most expensive quality) is no chosen default: std::atomic needs one,
+    // and the owner sets the choice before any stream comes
+    // (TIOScheduler::set_resampler()).
     // alignas(8): 8 bytes, so the scheduler's std::atomic of it is lock-free
     // (the static_assert below the class)
     struct alignas(8) Resampler

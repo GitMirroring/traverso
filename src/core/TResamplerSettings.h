@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "TAudioResampler.h"
 #include "TIOStream.h"
 
 // The resampler the settings choose, read from TConfig: in the GUI thread
