@@ -29,8 +29,9 @@ or another one is finished or parked first.
 
 - `master`: `realtime-path`, `scenario-decoder` and `audiofileio-errors`
   merged 2026-10-27; `audiofileio-api` (T44, T29) merged 2026-10-28
-  (`660ab5ea`); `dsp-kernels` (T52, T51) merged 2026-10-28 (`28216d8e`); `audiodevice-races` (T58 step 1, T53, T54) merged 2026-10-28 (`73dad650`); not pushed (`origin/master` = `6dc4fe2b`).
-- Worktrees: `traverso` (master), `traverso-input-controllers`. The branch
+  (`660ab5ea`); `dsp-kernels` (T52, T51) merged 2026-10-28 (`28216d8e`); `audiodevice-races` (T58 step 1, T53, T54) merged 2026-10-28 (`73dad650`); on 2026-10-28 also `defines-split` (`a9091f38`, `e47c4deb`), `t64-routing-loops` (T64, `094f3e1b`), `t20-measure` (T20, `9ab838d7`) and on master `456432df` (32-bit x86 refused, the last SSE leftovers); not pushed (`origin/master` = `6dc4fe2b`).
+- Worktrees: `traverso` (master), `traverso-input-controllers`,
+  `traverso-device-ownership`. The branch
   `curve-gpu-bench` is kept without a worktree. The merged branches are
   deleted, with their backups and build directories.
 
@@ -40,6 +41,8 @@ or another one is finished or parked first.
 |---|---|---|---|---|
 | Library split (support, dsp, audioruntime, audiofileio, waveform, ioscheduler) | done | master | — | T15: each lib and a headless test on its own |
 | RT state (TRtList, TRtValue, TRtTransaction, curves, fades, owners) | done | master (2026-10-14…17) | `rt-transaction-design` (agent notes; not in the repo) **(check)** | processing-node graph design (not now); JACK port lists with the JACK revision |
+| DSP: buffer operations (portable and AVX2), `TGain`, `TFaderLaw`, `TDenormals`, `TCpuFeatures` | done | master (T52, T51 `28216d8e`; T20 `9ab838d7`) | `t20-buffer-operations-measurement.md` | denormals on ARM (FPCR.FZ, later); T15 |
+| Audio runtime: `TAudioDevice` races, ownership, the singletons | in progress | `device-ownership` (T58); the races merged (`73dad650`) | — | T58 (`audiodevice()`, then `tsmp()`), then T59–T61 |
 | Session log (TLog) | done | master (2026-10-17) | — | — |
 | GUI frame clock | done | master (2026-10-17) | — | — |
 | Audio file I/O: `TAudioReader` / `TAudioWriter`, decoders sample exact, resampler choice | done | master (review stack, 2026-10-25) | — (decisions in commits and agent notes) | T8–T11 (from the scenario-decoder review), T12, T21, T22, T24–T27 |
@@ -47,7 +50,7 @@ or another one is finished or parked first.
 | IO scheduler (lib, thread, app-wide schedulers, dispatcher) | done | master (review stack, 2026-10-25) | `diskio-app-wide.md`, `diskio-rounds.md` | T4 (stream-window race); requirements R1–R18 of `diskio-app-wide.md` §0 still marked concept **(check)** |
 | Recording latency compensation | done, not runtime-tested with a loopback | master (review stack) | `recording-latency.md` | loopback test |
 | Recording session (`TRecordingSession`) | done | master (review stack) | `recording-session.md` | writer ownership by the session (`ioscheduler-taak.md` "Later") **(check)** |
-| Real-time path (markers, `TRealTimeClosure` / `TGuiClosure`, RTSan, mlock) | done (reviewed 2026-10-25; the commits after that review, incl. f7a782d6 and 654144c6 of 2026-10-27, not yet seen by Remon) | master (2026-10-27, `654144c6`) | `doc/design/realtime-audio-path.md` | Clang: 7 `-Wfunction-effects` reports left (split `transport_control()`: 3; JACK port lists: 4), then step 5 (`-Werror=function-effects`) and 6 of the note |
+| Real-time path (markers, `TRealTimeClosure` / `TGuiClosure`, RTSan, mlock) | done (reviewed 2026-10-25; the commits after that review, incl. f7a782d6 and 654144c6 of 2026-10-27, not yet seen by Remon; and `run_cycle()` changed again on 2026-10-28: T51 denormals, T53 races, T54 storm flag, not yet checked against the note) | master (2026-10-27, `654144c6`) | `doc/design/realtime-audio-path.md` | Clang: 7 `-Wfunction-effects` reports left (split `transport_control()`: 3; JACK port lists: 4), then step 5 (`-Werror=function-effects`) and 6 of the note |
 | Headless core tests: scenario decoder | steps 1–4 done (reviewed by Remon 2026-10-27, merged `184eca11`); also peak builds through the reader tested | master | `Work order fake decoder for headless core tests (revised).md` (outside the repo; status note and "Step 3 check" inside) | step 5 waits for O1 (wanted behaviour per fault); steps 6–8 wait for T6, `TTestProject`, a scheduler seam |
 | Controllers / input layer (branch 3) | awaiting answers | `input-controllers` (design only, 2026-10-18) | `input-controllers.md` (on the branch), `actions-and-controllers.md` (outside) | Remon answers §10 (11 questions; 1, 2, 3, 5, 6, 8 block the fader reference port); the fader port takes `TFaderLaw` (the position mapping, dsp since T52) along to the controllers, headless tested there (2026-10-28) |
 | Shortcut system | first part done (action registry, 2026-10-14) | master | — | the rest after branch 3 (explicit items, marker classes, hold-tool factories, QML) |
@@ -55,8 +58,8 @@ or another one is finished or parked first.
 | TimeRef enforcement and timebase | planned; interim fix done (`aaa94dbc`) | — | `design-principles.md` §5 (outside) | T12 first; universal rate 112,896,000 and the upgrade path for old projects before a release |
 | Organic interface (Qt Quick timeline) | planned | `curve-gpu-bench` (reference only) | `curve-gpu-benchmark.md` (on that branch) | after controllers and the fixture |
 
-Two areas are in progress: the scenario decoder and branch 3 (waiting for
-answers).
+Three areas are in progress: the scenario decoder, branch 3 (waiting for
+answers) and the singletons (T58, branch `device-ownership`).
 
 ## Review of 2026-10-25, per branch
 
@@ -179,6 +182,13 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
   field: `M4A` in `FileFormat`, `create_audio_encoder()` chooses by
   `fileFormat`, `writerType` and the dead `blockSize` leave the settings
   (`writerType`/`fileFormat` must agree today without a check).
+  With it, `support/defines.h` goes once the enums are out. Done before
+  (2026-10-28, `a9091f38`, `e47c4deb`): the basic types in `TTypes.h`
+  (`trav_time_t` as `std::int64_t`, no Qt), the rest of `defines.h`
+  removed (relaytool, the Windows shim, `PortFlags`, profiling), every
+  other include switched; four files still include `defines.h` for the
+  enums: `TExportSpecification.h`, `TAudioEncodeSettings.h`,
+  `TAudioFileCopyConvert.cpp`, `TAudioFileMerger.cpp`.
 - **T16 (medium): `transport_position` test failed 3 times under ctest load**
   (2026-10-27, Clang and GCC; not reproduced in 72 parallel runs). First find
   out which check: a torn read is a real race in the frame clock's seqlock, a
@@ -192,7 +202,7 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
   `close()` returns at `:240-242`): a leak and a silent failure.
 - **T19 (medium-low): parallel readers for a long compressed file's peak
   build**; then `TIOIdleTask::weight()` goes.
-- **T20 (low): `TChannelBuffer` operations auto-vectorised, hand SIMD
+- **T20 (done 2026-10-28: merged `9ab838d7`; built otherwise than planned, see Built): `TChannelBuffer` operations auto-vectorised, hand SIMD
   retired.** Measure first. Three variants on Linux: the portable loops,
   the SSE assembly, and AVX2 through `target_clones("avx2", "default")` on
   the portable loops (Remon + review, 2026-10-28). Then decide which stay.
@@ -210,6 +220,21 @@ T29 onwards. (Not to confuse with the requirement numbers R1–R28 of
     TU with `/arch:AVX2` and a choice through `TCpuFeatures` (CPUID leaf 7
     plus the OS check with `xgetbv`): only if the Linux measurement shows
     it is worth it.
+  - **Built** (measured first: `doc/design/t20-buffer-operations-measurement.md`):
+    the SSE assembly is gone (`sse_functions*.S`, `WANT_SSE`,
+    `SSE_OPTIMIZATIONS`). No `target_clones`: the same loops
+    (`TBufferOperationsLoops.h`) in their own translation unit with
+    `-mavx2` (x86-64 with GCC or Clang, MinGW too; not macOS, which keeps
+    Accelerate), chosen at run time through `TCpuFeatures::avx2` (CPUID
+    leaf 7, XGETBV); the compiler's target decides whether the file is
+    built. The peak in the GCC/Clang vector extension (no compiler
+    vectorises a maximum in one chain), `maxps` on x86, 4 lanes portable
+    and 8 in the AVX2 file; the mixes with `__restrict` (GCC's -O2, as
+    Debian builds, refuses the overlap check otherwise; safe since T64).
+    No -O3 needed. The test compares every implementation the machine
+    runs with its own scalar loops, exact on x86 (no FMA there).
+    Freewheel throughput of Minidisk opname: master 814×, portable 902×,
+    AVX2 1189×. 32-bit x86 dropped with it (`456432df`).
 - **T21 (low, Ben): Traverso's AAC writer** drops the first 2048 frames and
   writes raw ADTS into `.m4a`.
 - **T22 (low): the export dialog's MP3 and Ogg options** do nothing (fixed
@@ -266,6 +291,10 @@ Other open tasks:
 - **T34 Freewheel as its own task**: export and the bounce track run on it;
   bounded waits; close while freewheeling hangs (reader waits up to 1 s per
   stream per cycle, then a modal dialog in `TProject::disconnect_from_audio_device()`).
+  With it (Remon, 2026-10-28, a mixdown in freewheel on PipeWire): the
+  watchdog reports "the PipeWire audio thread stopped processing" and
+  switches to the Dummy driver (`TAudioDevice.cpp:1016`); freewheel on
+  PipeWire does not work (not yet analysed).
 - **T35 Split `TSheet::transport_control()`** into an audio-thread callback and a
   GUI function (removes 3 of the 7 Clang `-Wfunction-effects` reports).
   With it (TAudioDevice review, 2026-10-28): `transport_start/stop/locate`
@@ -355,6 +384,15 @@ Other open tasks:
   - `f_max` stays: `std::max` ignores a NaN where the trick passes it on
     (a meter would hide T8's NaN), and whether it vectorises better is
     T20's measurement, not a rename.
+  - **Built** (where it differs from the names above): dB ↔ gain is
+    `TGain` (`from_dB()`, `to_dB()`, `clamp()`, `clamp_dB()`), not free
+    functions, so `clamp_dB()` is in `TGain` and `TFaderLaw` has
+    `dB_to_position()` and `position_to_gain()`; `TDenormals::decide()`
+    runs before `main()` instead of a `prepare()`. `f_max` went with T20
+    after all (Remon, 2026-10-28): the SSE assembly in use on x86 already
+    hid a NaN (measured: except at the last frame), so the reason above
+    did not hold; a NaN is kept out of the buffers by T8, and the meter
+    does not show one.
 - **T51 (done 2026-10-28: merged `28216d8e`; `TDenormals`, DAZ from the FXSAVE mask, FTZ also on the main thread; tested on PipeWire and ALSA, JACK not) Denormal protection on every audio thread** (proposed medium-high;
   after T52; Remon 2026-10-28). `Traverso::setup_fpu()` clears FTZ and then
   sets 0x8000, which is FTZ again (DAZ is 0x0040): net FTZ on a CPU that
@@ -452,7 +490,7 @@ TAudioDevice review (Remon, 2026-10-28; proposed, Remon ranks):
   "an existing project's rate never changes silently" (decisions
   2026-10-28).
 
-- **T64 Feedback loops in the routing: a bus track can send to itself**
+- **T64 (done 2026-10-28: merged `094f3e1b`) Feedback loops in the routing: a bus track can send to itself**
   (proposed medium-high; found 2026-10-28 for T20's `__restrict`; Remon:
   every feedback loop must be excluded): a send to a bus track mixes into that
   track's process bus (`TProject::get_audio_bus()`), and a track's send
