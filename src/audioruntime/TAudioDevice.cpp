@@ -973,12 +973,16 @@ void TAudioDevice::xrun( )
         .guiCallback = [this]() { emit bufferUnderRun(); }
     });
 
-    if (count > 30) {
+    // A storm: once, the GUI switches to the Dummy driver
+    // (switch_to_null_driver(), set_parameters() stops this driver there).
+    // Not m_driver->stop() here: that is the thread the driver drives. A
+    // blocking driver's loop ends now; a callback driver's cycles go on
+    // until the GUI is there
+    if (count == 31) {
         tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
             .rtTask = nullptr,
             .guiCallback = [this]() { emit xrunStormDetected(); }
         });
-        m_driver->stop();
         m_runAudioThread.store(false);
     }
 }
