@@ -5,9 +5,9 @@
 
 #include "TRealTime.h"
 
-// x86 with SSE: the MXCSR exists (the one place this is decided; the test
-// uses it too)
-#if defined(__x86_64__) || defined(_M_X64) || (defined(__i386__) && defined(__SSE__)) || (defined(_M_IX86_FP) && _M_IX86_FP >= 1)
+// x86-64: the MXCSR exists (the one place this is decided; the test uses it
+// too). 32-bit x86 is not supported (CMakeLists.txt)
+#if defined(__x86_64__) || defined(_M_X64)
 #define TRAVERSO_DENORMALS_MXCSR 1
 #endif
 

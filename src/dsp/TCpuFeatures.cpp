@@ -3,7 +3,7 @@
 
 #include "TCpuFeatures.h"
 
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)
+#if defined(__x86_64__) || defined(_M_X64)
 #define TRAVERSO_CPU_X86 1
 #if defined(_MSC_VER)
 #include <intrin.h>

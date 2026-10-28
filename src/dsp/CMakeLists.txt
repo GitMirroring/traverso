@@ -18,12 +18,10 @@ add_library(traversodsp STATIC
     TAudioResampler.h TAudioResampler.cpp
 )
 
-# The buffer operations built for AVX2 as well, on x86-64 with GCC or Clang
-# (MinGW too); TBufferOperations uses them when the CPU has AVX2 (T20). Not
-# on macOS, which uses Accelerate. The compiler's target decides, not
-# CMAKE_SYSTEM_PROCESSOR (the build machine without a toolchain file: wrong
-# for -m32 and cross builds); the build machine's CPU does not matter, the
-# CPU check is at run time (TCpuFeatures)
+# The buffer operations built for AVX2 as well (T20), on x86-64 with GCC or
+# Clang (MinGW too), not on macOS (Accelerate). The compiler says whether it
+# targets x86-64; the CPU says at run time whether it has AVX2
+# (TCpuFeatures), so the build machine's CPU does not matter
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles("
 #if !defined(__x86_64__)

@@ -13,6 +13,20 @@ set(TRAVERSO_FULL_VERSION "${PROJECT_VERSION}${VERSION_SUFFIX}")
 # Include GNU standard installation directories for distribution layout compliance
 include(GNUInstallDirs)
 
+# 32-bit x86 is not supported: no distribution ships it any more, and the
+# audio path counts on x86-64 (MXCSR for TDenormals, the AVX2 build of the
+# buffer operations). Refused here rather than half working. 32-bit ARM
+# is not affected
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("
+#if defined(__i386__) || defined(_M_IX86)
+#error 32-bit x86
+#endif
+int main() { return 0; }" TRAVERSO_COMPILER_TARGET_NOT_X86_32)
+if(NOT TRAVERSO_COMPILER_TARGET_NOT_X86_32)
+    message(FATAL_ERROR "Traverso does not support 32-bit x86 (i386/i686); build for x86-64")
+endif()
+
 # Allow CMake to look inside the local 'cmake' directory for custom modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -59,7 +73,6 @@ option(WANT_DEBUG "Debug build" OFF)
 option(AUTOPACKAGE_BUILD "Build traverso with autopackage tools" OFF)
 option(BUILD_TESTING "Build the automated tests (run them with ctest)" ON)
 option(WANT_THREAD_CHECK "Enable runtime thread checks for debugging" OFF)
-option(DETECT_HOST_CPU_FEATURES "Detect the feature set of the host cpu" OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer for memory debugging (Development only)" OFF)
 
 # Determine the dynamic default state for the command-line debugger capability
@@ -136,31 +149,6 @@ endif()
 check_function_exists(mlock HAVE_MLOCK)
 if(HAVE_MLOCK)
     target_compile_definitions(traverso_compiler_settings INTERFACE USE_MLOCK)
-endif()
-
-# 32-bit x86: SSE, so MXCSR is there for TDenormals (64-bit x86 always has
-# it; the buffer operations need no flags here, T20)
-if(UNIX)
-    if(CMAKE_CXX_LIBRARY_ARCHITECTURE MATCHES "(i386|i686|x86)" AND NOT CMAKE_CXX_LIBRARY_ARCHITECTURE MATCHES "x86_64")
-        include(CheckCXXSourceCompiles)
-
-        set(SAFE_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
-        set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse")
-
-        check_cxx_source_compiles("
-            #include <xmmintrin.h>
-            int main() {
-                __m128 a = _mm_setzero_ps();
-                return 0;
-            }
-        " TARGET_SUPPORTS_SSE)
-
-        set(CMAKE_REQUIRED_FLAGS "${SAFE_CMAKE_REQUIRED_FLAGS}")
-
-        if(TARGET_SUPPORTS_SSE)
-            target_compile_options(traverso_compiler_settings INTERFACE -msse)
-        endif()
-    endif()
 endif()
 
 # ---------------------------------------------------------------------------

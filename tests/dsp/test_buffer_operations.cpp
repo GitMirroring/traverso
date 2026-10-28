@@ -60,7 +60,7 @@ static void reference_mix(float* dst, const float* src, nframes_t nframes)
     }
 }
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+#if defined(__x86_64__) || defined(_M_X64)
 static constexpr float Tolerance = 0.0f;
 #else
 static constexpr float Tolerance = 1.0e-6f;
