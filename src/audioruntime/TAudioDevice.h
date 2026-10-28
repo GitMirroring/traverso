@@ -128,7 +128,8 @@ public:
 
     void set_parameters(TAudioDeviceSetup ads);
     void set_free_wheeling(bool freeWheeling);
-    bool running_real_time() const {return m_isRealTime;}
+    // Any thread; a cycle uses the value it copied at its start
+    bool running_real_time() const {return m_isRealTime.load(std::memory_order_relaxed);}
 
     void add_client(TAudioDeviceClient* client);
     // Returns once the audio thread no longer uses client, so its owner may
@@ -256,16 +257,20 @@ private:
     friend class TJackDriver;
 #endif
 
+    // The audio thread adds, the GUI takes and zeroes them (exchange(0))
     std::atomic<trav_time_t>    m_processCallBackCpuTime;
+    std::atomic<trav_time_t>    m_processCallBackWaitTime; // in nanoseconds
     std::atomic<bool>           m_runAudioThread;
-    bool            m_isRealTime;
+    // Written by the GUI (free-wheeling) or the JACK freewheel callback;
+    // run_cycle() copies it into the process context at the start of a cycle
+    std::atomic<bool>           m_isRealTime;
     trav_time_t		m_cycleStartTime;
     trav_time_t		m_lastCpuReadTime;
-    trav_time_t     m_processCallBackWaitTime; // in nanoseconds
     uint 			m_bufferSize;
     uint 			m_rate;
     uint			m_bitdepth;
-    uint			m_xrunCount;
+    // The audio thread counts, the GUI's timer and set_parameters() reset
+    std::atomic<uint>   m_xrunCount;
     QString			m_driverType;
     QString			m_ditherShape;
 
@@ -359,7 +364,7 @@ signals:
 private slots:
     void audiothread_finished();
     void switch_to_null_driver();
-    void reset_xrun_counter() {m_xrunCount = 0;}
+    void reset_xrun_counter() {m_xrunCount.store(0, std::memory_order_relaxed);}
     void check_jack_shutdown();
     void check_audio_thread_progress();
     void driver_setup_message(const QString &driver, const QString &message, int severity, trav_time_t creatonOn = TTimeRef::get_milliseconds_since_epoch());

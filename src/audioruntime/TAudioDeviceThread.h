@@ -24,6 +24,8 @@
 
 #include <QThread>
 
+#include <atomic>
+
 class TAudioDevice;
 
 class TAudioDeviceThread : public QThread
@@ -36,7 +38,8 @@ public:
         void run_on_cpu(int cpu);
         void set_real_time(bool realTime);
 
-        volatile size_t watchdogCheck;
+        // The audio thread sets it every cycle, the watchdog clears it
+        std::atomic<bool> watchdogCheck{true};
 
 protected:
         void run();

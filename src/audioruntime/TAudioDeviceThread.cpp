@@ -60,7 +60,7 @@ protected:
 			sleep(5);
 //                         printf("Checking watchdogCheck...\n");
 
-			if (guardedThread->watchdogCheck == 0) {
+			if (!guardedThread->watchdogCheck.load(std::memory_order_relaxed)) {
 				qCritical("WatchDog timed out!");
 //				guardedThread->terminate();
 #if defined (Q_OS_LINUX) || defined (Q_OS_MAC)
@@ -68,7 +68,7 @@ protected:
 #endif
 			}
 
-			guardedThread->watchdogCheck = 0;
+			guardedThread->watchdogCheck.store(false, std::memory_order_relaxed);
 		}
 	}
 };
@@ -78,8 +78,6 @@ TAudioDeviceThread::TAudioDeviceThread(TAudioDevice* device, bool realTime)
 	m_device = device;
     m_realTime = realTime;
 	setTerminationEnabled(true);
-
-	watchdogCheck = 1;
 }
 
 
@@ -111,7 +109,7 @@ void TAudioDeviceThread::run()
             PERROR("Driver cycle error, exiting!");
             break;
         }
-		watchdogCheck = 1;
+		watchdogCheck.store(true, std::memory_order_relaxed);
 	}
 	
 	watchdog.terminate();
