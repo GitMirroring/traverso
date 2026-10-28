@@ -29,9 +29,8 @@ or another one is finished or parked first.
 
 - `master`: `realtime-path`, `scenario-decoder` and `audiofileio-errors`
   merged 2026-10-27; `audiofileio-api` (T44, T29) merged 2026-10-28
-  (`660ab5ea`); not pushed (`origin/master` = `6dc4fe2b`).
-- Worktrees: `traverso` (master), `traverso-input-controllers`,
-  `traverso-dsp-kernels` (T52, T51, 2026-10-28). The branch
+  (`660ab5ea`); `dsp-kernels` (T52, T51) merged 2026-10-28 (`28216d8e`); not pushed (`origin/master` = `6dc4fe2b`).
+- Worktrees: `traverso` (master), `traverso-input-controllers`. The branch
   `curve-gpu-bench` is kept without a worktree. The merged branches are
   deleted, with their backups and build directories.
 
@@ -318,7 +317,7 @@ Other open tasks:
   (`TAudioFileMerger.cpp:108-116`; before W3 it failed one line later, at
   `TQueueBufferSlot(0, …)`). Guard the merge on a zero-length source.
   (Fable's review of the API branch, 2026-10-28.)
-- **T52 The mix functions work without the application** (proposed
+- **T52 (done 2026-10-28: merged `28216d8e`; names: `TBufferOperations`, `TFaderLaw`, `TGain`, `TCpuFeatures`) The mix functions work without the application** (proposed
   medium; before T51; Remon 2026-10-28). `Mixer::compute_peak`,
   `apply_gain_to_buffer`, `mix_buffers_with_gain`, `mix_buffers_no_gain`
   are nullptr until `Traverso::init_sse()`: a headless dsp or core test
@@ -356,7 +355,7 @@ Other open tasks:
   - `f_max` stays: `std::max` ignores a NaN where the trick passes it on
     (a meter would hide T8's NaN), and whether it vectorises better is
     T20's measurement, not a rename.
-- **T51 Denormal protection on every audio thread** (proposed medium-high;
+- **T51 (done 2026-10-28: merged `28216d8e`; `TDenormals`, DAZ from the FXSAVE mask, FTZ also on the main thread; tested on PipeWire and ALSA, JACK not) Denormal protection on every audio thread** (proposed medium-high;
   after T52; Remon 2026-10-28). `Traverso::setup_fpu()` clears FTZ and then
   sets 0x8000, which is FTZ again (DAZ is 0x0040): net FTZ on a CPU that
   reports DAZ, DAZ never. It runs once on the GUI thread; threads made by
