@@ -21,3 +21,9 @@ add_executable(traverso_realtime_closure_test test_realtime_closure.cpp)
 target_include_directories(traverso_realtime_closure_test PRIVATE ${CMAKE_SOURCE_DIR}/src/audioruntime)
 target_link_libraries(traverso_realtime_closure_test PRIVATE traverso_compiler_settings traversosupport Qt6::Core)
 add_test(NAME realtime_closure COMMAND traverso_realtime_closure_test)
+
+# Headless test of the denormal protection on the audio thread (T51): a
+# Dummy-driver cycle in a process without Traverso
+add_executable(traverso_denormals_test test_denormals.cpp)
+target_link_libraries(traverso_denormals_test PRIVATE traverso_compiler_settings traversoaudioruntime traversodsp traversosupport Qt6::Core)
+add_test(NAME denormals COMMAND traverso_denormals_test)

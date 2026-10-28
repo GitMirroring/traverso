@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 */
 
 #include "TAudioDevice.h"
+#include "TDenormals.h"
 #include "TAudioDeviceThread.h"
 #include "TAudioThreadMessageQueue.h"
 #include "Utils.h"
@@ -280,6 +281,10 @@ int TAudioDevice::_run_cycle()
 int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs ) T_REALTIME_SAFE
 {
     nframes_t left;
+
+    // Every cycle: a driver that made a new thread, or a plugin that changed
+    // MXCSR, gets flush-to-zero back before anything is processed
+    TDenormals::enforce();
 
     TLog::set_audio_cycle(m_cycleCount.load(std::memory_order_relaxed) + 1);
 

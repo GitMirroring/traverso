@@ -24,6 +24,7 @@ add_library(traversodsp STATIC
     TFaderLaw.h TFaderLaw.cpp
     TDecibels.h
     TCpuFeatures.h TCpuFeatures.cpp
+    TDenormals.h TDenormals.cpp
     gdither.h gdither_types.h gdither.cpp
     noise.h
     TAudioResampler.h TAudioResampler.cpp

@@ -28,16 +28,12 @@ This file is part of Traverso
 #include "TSheet.h"
 #include "TLog.h"
 #include "Debugger.h"
-#include "TCpuFeatures.h"
+#include "TDenormals.h"
 
 #include <QTimer>
 
 #include <csignal>
 
-#if defined(__SSE__) || defined(_M_X64) || defined(_M_IX86)
-#include <xmmintrin.h>
-#define TRAVERSO_HAS_XMMINTRIN 1
-#endif
 
 Traverso::Traverso(int &argc, char **argv )
     : QApplication ( argc, argv )
@@ -54,8 +50,8 @@ Traverso::Traverso(int &argc, char **argv )
     config().check_and_load_configuration();
     srand ( time(nullptr) );
 
-    TLOG_I("app", "Buffer operations: {}", TBufferOperations::implementation_name());
-    setup_fpu();
+    TLOG_I("app", "Buffer operations: {}; denormals on the audio threads: {}", TBufferOperations::implementation_name(),
+           TDenormals::mode_name());
 
     // The audio thread runs from the start: its period is the clock pulse of
     // Traverso, and real-time changes are only ever posted to it. Loading a
@@ -158,31 +154,6 @@ void Traverso::close_without_questions()
         return;
     }
     pm().exit_without_questions();
-}
-
-void Traverso::setup_fpu()
-{
-    if (getenv("TRAVERSO_RUNNING_UNDER_VALGRIND")) {
-        TLOG_I("app", "TRAVERSO_RUNNING_UNDER_VALGRIND=TRUE");
-        return;
-    }
-
-#if defined(TRAVERSO_HAS_XMMINTRIN) && defined(SSE_OPTIMIZATIONS)
-    TCpuFeatures fpu;
-
-    if (!fpu.has_flush_to_zero() && !fpu.has_denormals_are_zero()) {
-        return;
-    }
-
-    int MXCSR = _mm_getcsr();
-
-    MXCSR &= ~_MM_FLUSH_ZERO_ON;
-    if (fpu.has_denormals_are_zero()) {
-        MXCSR |= 0x8000;
-    }
-
-    _mm_setcsr (MXCSR);
-#endif
 }
 
 void Traverso::saveState(QSessionManager &manager)
