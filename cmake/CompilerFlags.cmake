@@ -17,8 +17,23 @@ target_compile_options(traverso_compiler_settings INTERFACE -Wall -Wextra -Wno-u
 
 # ThreadSanitizer for everything built with these settings, the tests
 # included (the peak tests run threads against the lock-free peak code).
-# For a CI job or by hand, in a build directory of its own.
+# For a CI job or by hand, in a build directory of its own. Qt is not
+# instrumented: a report whose racing accesses are both operator new/delete
+# inside libQt6Core (around QThread and its queues) is Qt's own, not ours. No
+# suppression file: every thread starts in Qt, so race:libQt6Core hides all
+# races and called_from_lib leaves the threads with ignores on.
 option(TRAVERSO_TSAN "Build with ThreadSanitizer" OFF)
+# One sanitizer per build: ThreadSanitizer does not combine with the
+# RealtimeSanitizer or AddressSanitizer (each in a build directory of its own)
+set(TRAVERSO_SANITIZER_COUNT 0)
+foreach(sanitizer TRAVERSO_TSAN ENABLE_RTSAN ENABLE_ASAN)
+    if(${sanitizer})
+        math(EXPR TRAVERSO_SANITIZER_COUNT "${TRAVERSO_SANITIZER_COUNT} + 1")
+    endif()
+endforeach()
+if(TRAVERSO_SANITIZER_COUNT GREATER 1)
+    message(FATAL_ERROR "TRAVERSO_TSAN, ENABLE_RTSAN and ENABLE_ASAN: one per build directory")
+endif()
 if(TRAVERSO_TSAN)
     target_compile_options(traverso_compiler_settings INTERFACE -fsanitize=thread -fno-omit-frame-pointer)
     target_link_options(traverso_compiler_settings INTERFACE -fsanitize=thread)
