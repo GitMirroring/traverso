@@ -168,11 +168,11 @@ TAudioDevice::TAudioDevice()
     m_bufferSize = 1024;
     m_rate = 0;
     m_bitdepth = 0;
-    m_xrunCount = 0;
+    m_xrunCount.store(0);
     m_processCallBackCpuTime.store(0);
     m_cycleStartTime = {};
     m_lastCpuReadTime = {};
-    m_isRealTime = true;
+    m_isRealTime.store(true);
 
     m_driverType = tr("No Driver Loaded");
 
@@ -282,6 +282,11 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs ) T_REALTIME
     // Every cycle: a driver that made a new thread, or a plugin that changed
     // MXCSR, gets flush-to-zero back before anything is processed
     TDenormals::enforce();
+    // The mode for this cycle's processing and driver read/write: the context
+    // stays a plain struct only this thread writes. A blocking driver's loop
+    // chose its wait before this (_run_cycle()): on a switch that one cycle
+    // can differ
+    m_processCallBackData.set_real_time(m_isRealTime.load(std::memory_order_relaxed));
 
     TLog::set_audio_cycle(m_cycleCount.load(std::memory_order_relaxed) + 1);
 
@@ -320,7 +325,7 @@ int TAudioDevice::run_cycle( nframes_t nframes, float delayed_usecs ) T_REALTIME
 int TAudioDevice::run_one_cycle( nframes_t nframes, float  ) T_REALTIME_SAFE
 {
 
-    if (m_isRealTime && m_driver->read(nframes) < 0) {
+    if (m_processCallBackData.get_is_real_time() && m_driver->read(nframes) < 0) {
         TLOG_RT_E("audio", "driver read failed");
         return -1;
     }
@@ -330,10 +335,11 @@ int TAudioDevice::run_one_cycle( nframes_t nframes, float  ) T_REALTIME_SAFE
         client->process(m_processCallBackData);
         auto ringBufferReadTime = m_processCallBackData.get_ringbuffers_read_write_wait_time();
         // printf("processing wait time (micro seconds): %ld\n", ringBufferReadTime / 1000);
-        m_processCallBackWaitTime += ringBufferReadTime;
+        // Waiting on a ring buffer is not load
+        m_processCallBackCpuTime.fetch_sub(ringBufferReadTime, std::memory_order_relaxed);
     }
 
-    if (m_isRealTime && m_driver->write(nframes) < 0) {
+    if (m_processCallBackData.get_is_real_time() && m_driver->write(nframes) < 0) {
         TLOG_RT_E("audio", "driver write failed");
         return -1;
     }
@@ -364,7 +370,9 @@ void TAudioDevice::set_parameters(TAudioDeviceSetup ads)
 
     m_rate = ads.get_sample_rate();
     m_bufferSize = ads.get_buffer_size();
-    m_xrunCount = 0;
+    // A new driver: a storm of the old one is over
+    m_xrunCount.store(0);
+    m_xrunStorm.store(false);
     m_ditherShape = ads.get_dither_shape();
     //        if (!(ads.driverType == "Dummy")) {
     m_setup = ads;
@@ -488,9 +496,8 @@ void TAudioDevice::set_free_wheeling(bool freeWheeling)
         m_driver->start();
     }
 
-    m_isRealTime = !freeWheeling;
-    // FIXME Only set if AudioDriver supports freewheeling
-    m_processCallBackData.set_real_time(m_isRealTime);
+    // The next cycle takes it over (run_cycle())
+    m_isRealTime.store(!freeWheeling);
 
     emit freeWheelingChanged();
 }
@@ -499,9 +506,8 @@ void TAudioDevice::driver_changed_free_wheel_mode()
 {
     Q_ASSERT(m_driver && m_driver->supports_free_wheeling());
 
-    m_isRealTime = !m_driver->is_free_wheeling();
-    // FIXME Only set if AudioDriver supports freewheeling
-    m_processCallBackData.set_real_time(m_isRealTime);
+    // The JACK freewheel callback's thread; the next cycle takes it over
+    m_isRealTime.store(!m_driver->is_free_wheeling());
 
     emit freeWheelingChanged();
 
@@ -874,11 +880,8 @@ QString TAudioDevice::get_driver_information() const
 float TAudioDevice::get_cpu_time( )
 {
     trav_time_t currentTime = TTimeRef::get_nanoseconds_since_epoch();
-    trav_time_t totalTime = m_processCallBackCpuTime.load();
-
-    totalTime -= m_processCallBackWaitTime;
-    m_processCallBackWaitTime = 0;
-    m_processCallBackCpuTime.store(0);
+    // Taken and zeroed in one step: what a cycle adds in between is not lost
+    const trav_time_t totalTime = m_processCallBackCpuTime.exchange(0);
 
     audio_sample_t result = ( (double(totalTime)  / (currentTime - m_lastCpuReadTime) ) * 100 );
 
@@ -956,7 +959,7 @@ bool TAudioDevice::wait_until_changes_applied(int timeoutMilliseconds)
 
 void TAudioDevice::audiothread_finished()
 {
-    if (m_runAudioThread.load() && m_xrunCount <= 30) {
+    if (m_runAudioThread.load() && m_xrunCount.load() <= 30) {
         // AudioThread stopped, but we didn't do it ourselves
         // so something certainly did go wrong when starting the beast
         // Start the Dummy Driver to avoid problems with TSMP
@@ -967,25 +970,34 @@ void TAudioDevice::audiothread_finished()
 
 void TAudioDevice::xrun( )
 {
-    TLOG_RT_W("audio", "xrun {}", m_xrunCount + 1);
+    const uint count = m_xrunCount.fetch_add(1, std::memory_order_relaxed) + 1;
+    TLOG_RT_W("audio", "xrun {}", count);
     tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
         .rtTask = nullptr,
         .guiCallback = [this]() { emit bufferUnderRun(); }
     });
 
-    m_xrunCount++;
-    if (m_xrunCount > 30) {
-        tsmp().post_to_gui_thread(TAudioThreadMessageQueueEvent{
-            .rtTask = nullptr,
-            .guiCallback = [this]() { emit xrunStormDetected(); }
-        });
-        m_driver->stop();
+    // A storm: the GUI's watchdog timer sees the flag within half a second
+    // and switches to the Dummy driver (check_audio_thread_progress());
+    // set_parameters() stops this driver there. A flag, not a post: a post
+    // can be dropped on a full queue, and JACK calls this from its
+    // notification thread, a second producer on the queue. Not
+    // m_driver->stop() here: that is the thread the driver drives. A
+    // blocking driver's loop ends now; a callback driver's cycles go on
+    // until the GUI is there
+    if (count > 30) {
+        m_xrunStorm.store(true);
         m_runAudioThread.store(false);
     }
 }
 
 void TAudioDevice::check_audio_thread_progress()
 {
+    if (m_xrunStorm.exchange(false)) {
+        emit xrunStormDetected();
+        return;
+    }
+
     if (!m_driver || !m_runAudioThread.load()) {
         // Stopped on purpose, e.g. after a buffer underrun storm
         m_watchdog.restart(m_cycleCount.load(std::memory_order_relaxed), m_watchdogClock.elapsed());
@@ -1072,6 +1084,9 @@ TAudioDeviceSetup TAudioDevice::fallback_setup() const
 
 void TAudioDevice::switch_to_null_driver()
 {
+    if (m_driverType == "Dummy") {
+        return;
+    }
     driver_setup_message("AudioDevice", tr("Buffer underrun 'Storm' detected, switching to Dummy Driver"), CRITICAL);
     driver_setup_message("AudioDevice", tr("For trouble shooting this problem, please see Chapter 11 from the user manual!"), CRITICAL);
     set_parameters(fallback_setup());
