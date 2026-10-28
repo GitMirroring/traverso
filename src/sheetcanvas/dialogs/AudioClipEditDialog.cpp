@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 #include "TProjectManager.h"
 #include "TResourcesManager.h"
 #include "TLocation.h"
-#include "Mixer.h"
+#include "TGain.h"
 #include "TCommand.h"
 #include "AudioClipExternalProcessing.h"
 #include "TInputEventDispatcher.h"
@@ -121,7 +121,7 @@ void AudioClipEditDialog::clip_state_changed()
 		clipNameLineEdit->setText(m_clip->get_name());
 	}
 	
-    clipGainSpinBox->setValue(Mixer::coefficient_to_dB(m_clip->get_gain()));
+    clipGainSpinBox->setValue(TGain::to_dB(m_clip->get_gain()));
     sourceLineEdit->setText(m_clip->get_readsource()->get_filename());
     sourceLineEdit->setToolTip(m_clip->get_readsource()->get_filename());
     sampleRateLable->setText(QString::number(m_clip->get_rate() / 1000.0, 'f', 1) + " KHz");
@@ -146,7 +146,7 @@ void AudioClipEditDialog::cancel_changes()
 
 void AudioClipEditDialog::gain_spinbox_value_changed(double value)
 {
-	float gain = dB_to_scale_factor(value);
+	float gain = TGain::from_dB(value);
 	m_clip->set_gain(gain);
 }
 

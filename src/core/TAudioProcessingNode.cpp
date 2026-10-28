@@ -3,6 +3,7 @@
     This file is part of Traverso
 */
 
+#include "TGain.h"
 #include "TAudioProcessingNode.h"
 #include <cmath>
 #include "TAudioClip.h"
@@ -70,7 +71,7 @@ TCommand* TAudioProcessingNode::mute()
 
 void TAudioProcessingNode::set_gain(float gain)
 {
-    m_fader->set_gain(Mixer::clamp_gain(gain));
+    m_fader->set_gain(TGain::clamp(gain));
 
     emit stateChanged();
     emit gainChanged();
@@ -97,7 +98,7 @@ TCommand* TAudioProcessingNode::remove_plugin( TAudioPlugin * plugin )
 
 void TAudioProcessingNode::set_gain_animated(float gain)
 {
-    gain = Mixer::clamp_gain(gain);
+    gain = TGain::clamp(gain);
 
     if (m_gainAnimation.isNull()) {
         m_gainAnimation = new QPropertyAnimation(this, "gain");

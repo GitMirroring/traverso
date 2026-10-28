@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include "defines.h"
 #include "TRealTime.h"
-#include "Mixer.h"
+#include "TBufferOperations.h"
 #include "Utils.h"
 
 #include <cstring>
@@ -131,25 +131,25 @@ public:
     float compute_peak(nframes_t nframes, float current) T_REALTIME_SAFE
     {
         Q_ASSERT(nframes <= m_size);
-        return Mixer::compute_peak(m_buffer, nframes, current);
+        return TBufferOperations::update_peak(m_buffer, nframes, current);
     }
 
     // calculate peak value on whole buffer
     float compute_peak() T_REALTIME_SAFE
     {
-        return Mixer::compute_peak(m_buffer, m_size, 0.0f);
+        return TBufferOperations::update_peak(m_buffer, m_size, 0.0f);
     }
 
     static void mix_buffers_no_gain(const TChannelBuffer &dest, const TChannelBuffer &src, nframes_t nframes) T_REALTIME_SAFE {
-        Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
+        TBufferOperations::mix(dest.get_data(nframes), src.get_data(nframes), nframes);
     }
 
     static void mix_buffers_with_gain(const TChannelBuffer &dest, const TChannelBuffer &src, nframes_t nframes, float gain) T_REALTIME_SAFE {
         if (TraversoDAW::Float::equals_1(gain)) {
-            return Mixer::mix_buffers_no_gain(dest.get_data(nframes), src.get_data(nframes), nframes);
+            return TBufferOperations::mix(dest.get_data(nframes), src.get_data(nframes), nframes);
         }
 
-        Mixer::mix_buffers_with_gain(dest.get_data(nframes), src.get_data(nframes), nframes, gain);
+        TBufferOperations::mix_with_gain(dest.get_data(nframes), src.get_data(nframes), nframes, gain);
     }
 
     // count frames of source, from its frame sourceAt, into this buffer from
@@ -165,7 +165,7 @@ public:
 
     void apply_gain_to_buffer(nframes_t nframes, float gain) T_REALTIME_SAFE {
         Q_ASSERT(nframes <= m_size);
-        Mixer::apply_gain_to_buffer(m_buffer, nframes, gain);
+        TBufferOperations::apply_gain(m_buffer, nframes, gain);
     }
 
 protected:

@@ -34,7 +34,7 @@
 
 #include "TVUMonitor.h"
 #include "TThemer.h"
-#include "Mixer.h"
+#include "TGain.h"
 #include "TAudioDevice.h"
 #include <AudioChannel.h>
 #include <AudioBus.h>
@@ -524,7 +524,7 @@ void VUMeterLevel::paintEvent( QPaintEvent*  )
 	QPainter directpainter(this);
 
 	// convert the peak value to dB and make sure it's in a valid range
-	float dBVal = Mixer::coefficient_to_dB(peak);
+	float dBVal = TGain::to_dB(peak);
 	if (dBVal > 6.0) {
 		dBVal = 6.0;
 	}
@@ -559,7 +559,7 @@ void VUMeterLevel::paintEvent( QPaintEvent*  )
 
 	// convert dB values into widget position
 	int meterLevel = get_meter_position(dBVal);
-	int rmsLevel = get_meter_position(Mixer::coefficient_to_dB(rms));
+	int rmsLevel = get_meter_position(TGain::to_dB(rms));
 	int peakHoldLevel = get_meter_position(peakHoldValue);
 
 	// draw levels

@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 */
 
+#include "TGain.h"
 #include "TSend.h"
 #include "Debugger.h"
 
@@ -142,5 +143,5 @@ void TSend::set_pan(float pan)
 
 void TSend::set_gain(float gain)
 {
-    m_gain = Mixer::clamp_gain(gain);
+    m_gain = TGain::clamp(gain);
 }

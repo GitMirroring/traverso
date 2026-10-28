@@ -1,0 +1,61 @@
+// SPDX-FileCopyrightText: 2026 Remon Sijrier
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#include "TDenormals.h"
+#include "TCpuFeatures.h"
+
+#include <cstdlib>
+
+#if defined(TRAVERSO_DENORMALS_MXCSR)
+#include <xmmintrin.h>
+#endif
+
+// The MXCSR bits
+static constexpr unsigned FlushToZero      = 0x8000;  // bit 15
+static constexpr unsigned DenormalsAreZero = 0x0040;  // bit 6
+
+constinit unsigned TDenormals::s_mask = 0;
+constinit const char* TDenormals::s_modeName = "none (no SSE)";
+
+// Before main(), so before any audio thread, and off it: cpuid and getenv
+// never run in a cycle. No log here (TLog may not exist yet): Traverso logs
+// mode_name().
+bool TDenormals::decide()
+{
+#if defined(TRAVERSO_DENORMALS_MXCSR)
+    if (std::getenv("TRAVERSO_RUNNING_UNDER_VALGRIND")) {
+        s_modeName = "none (valgrind)";
+        return true;
+    }
+    const TCpuFeatures cpu = TCpuFeatures::detect();
+    if (cpu.flushToZero) {
+        s_mask |= FlushToZero;
+    }
+    if (cpu.denormalsAreZero) {
+        s_mask |= DenormalsAreZero;
+    }
+    s_modeName = s_mask == (FlushToZero | DenormalsAreZero) ? "FTZ and DAZ" : s_mask == FlushToZero ? "FTZ" : "none (no SSE)";
+#endif
+    return true;
+}
+
+const bool TDenormals::s_decided = decide();
+
+void TDenormals::enforce() T_REALTIME_SAFE
+{
+#if defined(TRAVERSO_DENORMALS_MXCSR)
+    const unsigned csr = _mm_getcsr();
+    if ((csr & s_mask) != s_mask) {
+        _mm_setcsr(csr | s_mask);
+    }
+#endif
+}
+
+bool TDenormals::active_on_this_thread() T_REALTIME_SAFE
+{
+#if defined(TRAVERSO_DENORMALS_MXCSR)
+    return (_mm_getcsr() & s_mask) == s_mask;
+#else
+    return true;
+#endif
+}

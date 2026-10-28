@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA.
 
 #include <commands.h>
 
+#include "TGain.h"
 #include "TAudioDevice.h"
 #include "TPeakPyramid.h"
 #include "AudioBus.h"
@@ -398,7 +399,7 @@ void TSheet::set_artists(const QString& pArtists)
 
 void TSheet::set_gain(float gain)
 {
-    gain = Mixer::clamp_gain(gain);
+    gain = TGain::clamp(gain);
 
     m_masterOutBusTrack->set_gain(gain);
 

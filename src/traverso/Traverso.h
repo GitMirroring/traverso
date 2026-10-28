@@ -44,8 +44,6 @@ protected:
         void commitData ( QSessionManager& manager );
 
 private :
-	void init_sse();
-	void setup_fpu();
         void prepare_audio_device();
         void close_without_questions();
 };
